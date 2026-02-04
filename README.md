@@ -18,12 +18,18 @@ Antigravity/
         └── execution/
 ```
 
-## Branches
+## Workflow
 
-Each major project has its own branch:
-- `main` - Core shared resources
-- `milesmarketplace` - Miles Marketplace project
+All projects live on `main` in the `projects/` folder. Use feature branches for work-in-progress:
 
-## Skills
+```bash
+# Start a new project
+mkdir -p projects/my-new-idea
 
-Skills are imported from [anthropics/skills](https://github.com/anthropics/skills) and live at the root so all projects can use them.
+# Work on a feature
+git checkout -b feature/marketplace-auth
+# ... make changes ...
+git commit -m "Add auth flow"
+git push origin feature/marketplace-auth
+# Create PR → merge to main
+```
