@@ -1238,9 +1238,9 @@
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "alwaysOutputData": false,
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1340,9 +1340,9 @@
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "alwaysOutputData": false,
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1429,9 +1429,9 @@
       "name": "share_stories_reasoning",
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1584,9 +1584,9 @@
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "alwaysOutputData": false,
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1667,9 +1667,9 @@
       "name": "share_subject_line_reasoning",
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1700,9 +1700,9 @@
       "name": "share_stories_approval_feedback",
       "webhookId": "e87a6c20-99dc-45a7-954d-f9bbdc7029ce",
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1733,9 +1733,9 @@
       "name": "share_subject_line_approval_feedback",
       "webhookId": "e87a6c20-99dc-45a7-954d-f9bbdc7029ce",
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1836,9 +1836,9 @@
       "name": "upload_newsletter_file",
       "webhookId": "4cbc0321-a8dd-4d49-95d4-3339b6170896",
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
@@ -1868,9 +1868,9 @@
       "webhookId": "5421d123-06c1-4dc5-a7a2-46e6f951c985",
       "alwaysOutputData": false,
       "credentials": {
-        "slackOAuth2Api": {
-          "id": "iKdTzmZ6YuYaaRG4",
-          "name": "Slack (OAuth)"
+        "slackApi": {
+          "id": "f5cqPp5U0ROdfezC",
+          "name": "Slack API (Antigravity)"
         }
       }
     },
