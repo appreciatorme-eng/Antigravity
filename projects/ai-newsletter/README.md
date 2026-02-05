@@ -48,3 +48,20 @@ After importing, you must configure these Credentials in the n8n UI:
 - **AWS S3** (Name: `AWS S3`)
 - **Google Gemini** (Name: `Google Gemini Attributes`)
 - **Slack** (Name: `Slack API`)
+
+## Testing & Verification
+
+### Run Unit Tests
+```bash
+pytest
+```
+
+### Verify RSS Feed
+```bash
+python execution/verify_rss.py
+```
+
+### Verify Data Ingestion
+```bash
+python execution/verify_data.py
+```
