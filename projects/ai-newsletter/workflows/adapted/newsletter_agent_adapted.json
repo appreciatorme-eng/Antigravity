@@ -956,9 +956,10 @@
         "url": "=https://api.aitools.inc/admin/files/info/data-ingestion/{{ $json.Key }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "options": {},
+        "bucketName": "data-ingestion"
       },
-      "type": "n8n-nodes-base.httpRequest",
+      "type": "n8n-nodes-base.awsS3",
       "typeVersion": 4.2,
       "position": [
         940,
@@ -971,6 +972,10 @@
         "httpHeaderAuth": {
           "id": "p8IcYsXBMrfPvKz8",
           "name": "AI Tools Admin API"
+        },
+        "awsS3": {
+          "id": "D3yXvV7J9Qz4L8mN",
+          "name": "AWS S3"
         }
       },
       "onError": "continueRegularOutput"
@@ -1959,21 +1964,32 @@
       ],
       "id": "5fef2154-c2da-475c-a120-6012b8e0251f",
       "name": "image_urls_auto_parser"
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "bucketName": "data-ingestion",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "s3_list_node_injected",
+      "name": "S3 List Files",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -20
+      ],
+      "credentials": {
+        "awsS3": {
+          "id": "D3yXvV7J9Qz4L8mN",
+          "name": "AWS S3"
+        }
+      }
     }
   ],
   "pinData": {},
   "connections": {
-    "form_trigger": {
-      "main": [
-        [
-          {
-            "node": "search_markdown_objects",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "filter_only_markdown": {
       "main": [
         [
@@ -2926,6 +2942,28 @@
           {
             "node": "extract_image_urls",
             "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "form_trigger": {
+      "main": [
+        [
+          {
+            "node": "S3 List Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "S3 List Files": {
+      "main": [
+        [
+          {
+            "node": "filter_only_markdown",
+            "type": "main",
             "index": 0
           }
         ]
