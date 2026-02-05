@@ -1,59 +1,34 @@
-import os
+"""Configure Google Gemini credentials in n8n."""
 import sys
-import json
-import requests
-from dotenv import load_dotenv
+from n8n_utils import N8NClient, require_env_var, logger
 
-# Load env variables
-load_dotenv()
 
-N8N_API_URL = os.getenv("N8N_API_URL", "http://localhost:5678").rstrip('/')
-N8N_API_KEY = os.getenv("N8N_API_KEY")
-GOOGLE_GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY")
+def main():
+    api_key = require_env_var("GOOGLE_GEMINI_API_KEY")
+    if not api_key:
+        sys.exit(1)
 
-def create_gemini_credential():
-    if not GOOGLE_GEMINI_API_KEY:
-        print("Error: GOOGLE_GEMINI_API_KEY not found in .env")
-        return None
+    try:
+        client = N8NClient()
+    except ValueError:
+        sys.exit(1)
 
-    url = f"{N8N_API_URL}/api/v1/credentials"
-    headers = {
-        "X-N8N-API-KEY": N8N_API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    # "googleGeminiApi" didn't work. Search suggests "googlePalmApi"
-    payload = {
-        "name": "Google Gemini Attributes",
-        "type": "googlePalmApi",
-        "data": {
-            "apiKey": GOOGLE_GEMINI_API_KEY,
+    # Note: n8n uses "googlePalmApi" type for Gemini credentials
+    cred_id = client.create_credential(
+        name="Google Gemini Attributes",
+        cred_type="googlePalmApi",
+        data={
+            "apiKey": api_key,
             "host": "generativelanguage.googleapis.com"
         }
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        cred = response.json()
-        print(f"Success: Created Credential '{cred['name']}' (ID: {cred['id']})")
-        return cred['id']
-    except Exception as e:
-        print(f"Error creating credential: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-             print(f"Response: {e.response.text}")
-             if e.response.status_code == 400:
-                 # Debug schema
-                 try:
-                    s_res = requests.get(f"{N8N_API_URL}/api/v1/credentials/schema/googlePalmApi", headers=headers)
-                    print(f"Schema for googlePalmApi: {json.dumps(s_res.json(), indent=2)}")
-                 except:
-                    pass
-        return None
+    )
+
+    if cred_id:
+        logger.info(f"Google Gemini credential configured successfully: {cred_id}")
+    else:
+        logger.error("Failed to configure Google Gemini credential")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    if not N8N_API_URL or not N8N_API_KEY:
-         print("Error: N8N_API_URL or N8N_API_KEY missing.")
-         sys.exit(1)
-         
-    create_gemini_credential()
+    main()

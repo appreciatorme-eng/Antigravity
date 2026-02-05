@@ -1,37 +1,70 @@
+"""Verify RSS feed connectivity and content."""
+import os
+import sys
+import logging
+from typing import Optional
 import requests
-import json
+from requests.exceptions import RequestException, Timeout
 
-# URL from the workflow (fetch_blog_nvidia_ai_feed)
-URL = "https://rss.app/feeds/v1.1/rXJrh1u8zDwJLUJK.json"
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('verify_rss')
 
-def verify():
-    print(f"Fetching {URL}...")
+# Default RSS feed URL - can be overridden via environment
+DEFAULT_RSS_URL = "https://rss.app/feeds/v1.1/rXJrh1u8zDwJLUJK.json"
+REQUEST_TIMEOUT = 10
+
+
+def verify(url: Optional[str] = None) -> bool:
+    """
+    Verify RSS feed is accessible and contains items.
+
+    Args:
+        url: RSS feed URL to verify. If None, uses RSS_FEED_URL env var or default.
+
+    Returns:
+        True if feed is valid and has items, False otherwise.
+    """
+    feed_url = url or os.getenv("RSS_FEED_URL", DEFAULT_RSS_URL)
+
+    logger.info(f"Fetching {feed_url}")
+
     try:
-        res = requests.get(URL, timeout=10)
-        print(f"Status: {res.status_code}")
-        
-        if res.status_code == 200:
-            data = res.json()
-            # unique to rss.app json format
-            items = data.get('items', [])
-            print(f"Items found: {len(items)}")
-            
-            if items:
-                print(f"First Item Title: {items[0].get('title')}")
-                print(f"First Item Date: {items[0].get('date_published')}")
-            
-            # Check for error messages disguised as content
-            if len(items) == 0:
-                print("⚠️ No items. Feed might be empty or expired.")
-            elif "expired" in str(data).lower():
-                print("⚠️ Feed content suggests expiration.")
-            else:
-                print("✅ Feed appears valid and active.")
-        else:
-            print(f"❌ Failed to fetch: {res.text}")
+        response = requests.get(feed_url, timeout=REQUEST_TIMEOUT)
+        logger.info(f"Status: {response.status_code}")
 
-    except Exception as e:
-        print(f"Error: {e}")
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch: {response.text}")
+            return False
+
+        data = response.json()
+        items = data.get('items', [])
+        logger.info(f"Items found: {len(items)}")
+
+        if items:
+            logger.info(f"First item: {items[0].get('title')}")
+            logger.info(f"Published: {items[0].get('date_published')}")
+
+        if not items:
+            logger.warning("No items - feed might be empty or expired")
+            return False
+        elif "expired" in str(data).lower():
+            logger.warning("Feed content suggests expiration")
+            return False
+        else:
+            logger.info("Feed appears valid and active")
+            return True
+
+    except Timeout:
+        logger.error(f"Request timed out after {REQUEST_TIMEOUT}s")
+        return False
+    except RequestException as e:
+        logger.error(f"Request failed: {e}")
+        return False
+
 
 if __name__ == "__main__":
-    verify()
+    success = verify()
+    sys.exit(0 if success else 1)
