@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, Wallet, Clock, ArrowLeft, Plane, Download, Share2 } from "lucide-react";
+import { MapPin, Calendar, Wallet, Clock, ArrowLeft, Download, Share2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -37,36 +37,27 @@ export default async function TripDetailPage({
     const tripData = itinerary.raw_data as any;
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50">
-            {/* Header */}
-            <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/trips"
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-gray-600" />
-                        </Link>
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                                <Plane className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="text-lg font-serif text-secondary">GoBuddy Adventures</span>
-                        </Link>
-                    </div>
+        <main className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-emerald-50 via-white to-sky-50">
+            <div className="max-w-4xl mx-auto px-6 py-6">
+                {/* Top Navigation Bar */}
+                <div className="flex justify-between items-center mb-6">
+                    <Link
+                        href="/trips"
+                        className="inline-flex items-center gap-2 text-gray-600 hover:text-secondary transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span className="text-sm font-medium">Back to Trips</span>
+                    </Link>
                     <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Share">
                             <Share2 className="w-5 h-5 text-gray-600" />
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Download PDF">
                             <Download className="w-5 h-5 text-gray-600" />
                         </button>
                     </div>
                 </div>
-            </header>
 
-            <div className="max-w-4xl mx-auto px-6 py-10">
                 {/* Trip Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-serif text-secondary mb-2">

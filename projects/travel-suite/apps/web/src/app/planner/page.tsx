@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
 import SaveItineraryButton from "./SaveItineraryButton";
+import WeatherWidget from "@/components/WeatherWidget";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -210,6 +211,9 @@ export default function PlannerPage() {
                             activities={result.days.flatMap((day: any) => day.activities)}
                         />
                     </div>
+
+                    {/* Weather Forecast */}
+                    <WeatherWidget destination={result.destination} days={days} />
 
                     <div className="space-y-8">
                         {result.days.map((day: any) => (

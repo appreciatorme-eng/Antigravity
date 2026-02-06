@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Calendar, Wallet, ArrowRight, Plane, Plus } from "lucide-react";
+import { MapPin, Calendar, Wallet, ArrowRight, Plus } from "lucide-react";
 
 export default async function TripsPage() {
     const supabase = await createClient();
@@ -19,37 +19,7 @@ export default async function TripsPage() {
         .order("created_at", { ascending: false });
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50">
-            {/* Header */}
-            <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                                <Plane className="w-5 h-5 text-white" />
-                            </div>
-                            <span className="text-xl font-serif text-secondary">GoBuddy Adventures</span>
-                        </Link>
-                    </div>
-                    <nav className="flex items-center gap-4">
-                        <Link
-                            href="/planner"
-                            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-secondary transition-colors"
-                        >
-                            Plan New Trip
-                        </Link>
-                        <form action="/auth/signout" method="post">
-                            <button
-                                type="submit"
-                                className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
-                            >
-                                Sign Out
-                            </button>
-                        </form>
-                    </nav>
-                </div>
-            </header>
-
+        <main className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-emerald-50 via-white to-sky-50">
             <div className="max-w-6xl mx-auto px-6 py-10">
                 <div className="flex justify-between items-center mb-8">
                     <div>
