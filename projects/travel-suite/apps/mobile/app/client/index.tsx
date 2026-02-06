@@ -1,89 +1,229 @@
+import { useEffect, useState, useCallback } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TouchableOpacity,
+    RefreshControl,
+    ActivityIndicator,
+} from "react-native";
+import { router } from "expo-router";
+import { supabase } from "../../src/lib/supabase";
+import { Colors } from "../../src/constants/Colors";
+import {
+    MapPin,
+    Calendar,
+    ChevronRight,
+    Plane,
+    LogOut,
+} from "lucide-react-native";
 
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
-import { Colors } from '../../src/constants/Colors';
-import { Calendar, Clock, MapPin, Phone } from 'lucide-react-native';
+interface Trip {
+    id: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+    itinerary: {
+        trip_title: string;
+        destination: string;
+        duration_days: number;
+    } | null;
+}
 
-export default function ClientTripView() {
+export default function ClientTripsScreen() {
+    const [trips, setTrips] = useState<Trip[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchTrips = async () => {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            router.replace("/auth/login");
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from("trips")
+            .select(
+                `
+                id,
+                status,
+                start_date,
+                end_date,
+                itinerary:itineraries (
+                    trip_title,
+                    destination,
+                    duration_days
+                )
+            `
+            )
+            .eq("client_id", user.id)
+            .order("start_date", { ascending: false });
+
+        if (error) {
+            console.error("Error fetching trips:", error);
+        } else {
+            // Transform data to flatten itinerary
+            const transformedTrips = (data || []).map((trip: any) => ({
+                ...trip,
+                itinerary: trip.itinerary || {
+                    trip_title: "Untitled Trip",
+                    destination: "Unknown",
+                    duration_days: 1,
+                },
+            }));
+            setTrips(transformedTrips);
+        }
+
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchTrips();
+    }, []);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchTrips();
+        setRefreshing(false);
+    }, []);
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.replace("/");
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "confirmed":
+                return "#22c55e";
+            case "in_progress":
+                return Colors.primary;
+            case "pending":
+                return "#f59e0b";
+            case "completed":
+                return Colors.gray;
+            case "cancelled":
+                return "#ef4444";
+            default:
+                return Colors.gray;
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return "TBD";
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
+    };
+
+    const renderTrip = ({ item }: { item: Trip }) => (
+        <TouchableOpacity
+            style={styles.tripCard}
+            onPress={() => router.push(`/client/trip/${item.id}`)}
+        >
+            <View style={styles.tripHeader}>
+                <View
+                    style={[
+                        styles.statusBadge,
+                        { backgroundColor: getStatusColor(item.status) + "20" },
+                    ]}
+                >
+                    <Text
+                        style={[
+                            styles.statusText,
+                            { color: getStatusColor(item.status) },
+                        ]}
+                    >
+                        {item.status.replace("_", " ").toUpperCase()}
+                    </Text>
+                </View>
+                <ChevronRight size={20} color={Colors.gray} />
+            </View>
+
+            <Text style={styles.tripTitle}>
+                {item.itinerary?.trip_title || "Untitled Trip"}
+            </Text>
+
+            <View style={styles.tripDetails}>
+                <View style={styles.detailRow}>
+                    <MapPin size={16} color={Colors.primary} />
+                    <Text style={styles.detailText}>
+                        {item.itinerary?.destination || "Unknown"}
+                    </Text>
+                </View>
+                <View style={styles.detailRow}>
+                    <Calendar size={16} color={Colors.secondary} />
+                    <Text style={styles.detailText}>
+                        {formatDate(item.start_date)} - {formatDate(item.end_date)}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>
+                    {item.itinerary?.duration_days || 1} days
+                </Text>
+            </View>
+        </TouchableOpacity>
+    );
+
+    const renderEmpty = () => (
+        <View style={styles.emptyContainer}>
+            <Plane size={64} color={Colors.gray} />
+            <Text style={styles.emptyTitle}>No Trips Yet</Text>
+            <Text style={styles.emptyText}>
+                Your booked trips will appear here.{"\n"}
+                Contact your travel agent to get started!
+            </Text>
+        </View>
+    );
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+        );
+    }
+
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.headerImageContainer}>
-                {/* Placeholder for generic header if image fails */}
-                <View style={[styles.headerImage, { backgroundColor: Colors.secondary }]} />
-                <View style={styles.headerOverlay}>
-                    <Text style={styles.tripTitle}>Tokyo Odyssey</Text>
-                    <Text style={styles.tripDate}>Oct 12 - Oct 15</Text>
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.greeting}>Welcome back!</Text>
+                    <Text style={styles.subtitle}>Your upcoming adventures</Text>
                 </View>
+                <TouchableOpacity
+                    style={styles.signOutButton}
+                    onPress={handleSignOut}
+                >
+                    <LogOut size={20} color={Colors.gray} />
+                </TouchableOpacity>
             </View>
 
-            <View style={styles.content}>
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Today's Itinerary</Text>
-                    <Text style={styles.sectionDate}>Day 1</Text>
-                </View>
-
-                <View style={styles.timeline}>
-                    {/* Activity 1 */}
-                    <View style={styles.timelineItem}>
-                        <View style={styles.timelineLeft}>
-                            <Text style={styles.time}>09:00</Text>
-                        </View>
-                        <View style={styles.timelineCenter}>
-                            <View style={styles.dot} />
-                            <View style={styles.line} />
-                        </View>
-                        <View style={styles.timelineRight}>
-                            <Text style={styles.activityTitle}>Hotel Pickup</Text>
-                            <Text style={styles.activityDesc}>Private transfer to Tsukiji Market.</Text>
-                            <View style={styles.driverCard}>
-                                <View style={styles.driverAvatar}>
-                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>JD</Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.driverName}>John Driver</Text>
-                                    <Text style={styles.driverStatus}>Arriving in 5 mins...</Text>
-                                </View>
-                                <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                                    <Phone size={20} color={Colors.primary} />
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Activity 2 */}
-                    <View style={styles.timelineItem}>
-                        <View style={styles.timelineLeft}>
-                            <Text style={styles.time}>10:00</Text>
-                        </View>
-                        <View style={styles.timelineCenter}>
-                            <View style={styles.dot} />
-                            <View style={styles.line} />
-                        </View>
-                        <View style={styles.timelineRight}>
-                            <Text style={styles.activityTitle}>Tsukiji Outer Market</Text>
-                            <Text style={styles.activityDesc}>Guided food tour and sushi breakfast.</Text>
-                            <View style={styles.locationTag}>
-                                <MapPin size={12} color={Colors.gray} />
-                                <Text style={styles.locationText}>Chuo City, Tokyo</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Activity 3 */}
-                    <View style={styles.timelineItem}>
-                        <View style={styles.timelineLeft}>
-                            <Text style={styles.time}>13:00</Text>
-                        </View>
-                        <View style={styles.timelineCenter}>
-                            <View style={styles.dot} />
-                        </View>
-                        <View style={styles.timelineRight}>
-                            <Text style={styles.activityTitle}>TeamLab Planets</Text>
-                            <Text style={styles.activityDesc}>Digital art museum experience.</Text>
-                        </View>
-                    </View>
-                </View>
-            </View>
-        </ScrollView>
+            <FlatList
+                data={trips}
+                keyExtractor={(item) => item.id}
+                renderItem={renderTrip}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={renderEmpty}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={Colors.primary}
+                    />
+                }
+            />
+        </View>
     );
 }
 
@@ -92,132 +232,119 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.background,
     },
-    headerImageContainer: {
-        height: 200,
-        backgroundColor: Colors.secondary,
-        justifyContent: 'flex-end',
-        marginBottom: 20,
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: Colors.background,
     },
-    headerImage: {
-        ...StyleSheet.absoluteFillObject,
-        opacity: 0.5,
-    },
-    headerOverlay: {
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         padding: 20,
+        paddingTop: 10,
     },
-    tripTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: 'white',
-        fontFamily: 'serif', // Platform dependent, but adds nice touch
+    greeting: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: Colors.secondary,
     },
-    tripDate: {
-        color: 'rgba(255,255,255,0.8)',
+    subtitle: {
         fontSize: 14,
+        color: Colors.gray,
         marginTop: 4,
     },
-    content: {
+    signOutButton: {
+        padding: 10,
+        backgroundColor: Colors.white,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+    },
+    listContent: {
         padding: 20,
+        paddingTop: 0,
+        flexGrow: 1,
     },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
-        marginBottom: 20,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: Colors.secondary,
-    },
-    sectionDate: {
-        fontSize: 14,
-        color: Colors.gray,
-        fontWeight: '600',
-    },
-    timeline: {
-        paddingLeft: 10,
-    },
-    timelineItem: {
-        flexDirection: 'row',
-        marginBottom: 0,
-    },
-    timelineLeft: {
-        width: 50,
-        paddingTop: 2,
-    },
-    time: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: Colors.secondary,
-    },
-    timelineCenter: {
-        width: 20,
-        alignItems: 'center',
-    },
-    dot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: Colors.primary,
-        zIndex: 1,
-    },
-    line: {
-        width: 2,
-        flex: 1,
-        backgroundColor: '#e5e7eb',
-        marginVertical: 4,
-    },
-    timelineRight: {
-        flex: 1,
-        paddingLeft: 16,
-        paddingBottom: 32,
-    },
-    activityTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1f2937',
-        marginBottom: 4,
-    },
-    activityDesc: {
-        color: Colors.gray,
-        fontSize: 14,
-        marginBottom: 8,
-        lineHeight: 20,
-    },
-    driverCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f3f4f6',
-        padding: 12,
-        borderRadius: 12,
-        marginTop: 8,
-    },
-    driverAvatar: {
-        width: 32,
-        height: 32,
+    tripCard: {
+        backgroundColor: Colors.white,
         borderRadius: 16,
-        backgroundColor: Colors.secondary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
+        padding: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    driverName: {
-        fontSize: 12,
-        fontWeight: 'bold',
+    tripHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
     },
-    driverStatus: {
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    statusText: {
         fontSize: 10,
-        color: Colors.primary,
-        fontWeight: '600',
+        fontWeight: "700",
+        letterSpacing: 0.5,
     },
-    locationTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
+    tripTitle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#1f2937",
+        marginBottom: 12,
     },
-    locationText: {
-        fontSize: 12,
+    tripDetails: {
+        gap: 8,
+    },
+    detailRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    detailText: {
+        fontSize: 14,
         color: Colors.gray,
+    },
+    durationBadge: {
+        position: "absolute",
+        bottom: 20,
+        right: 20,
+        backgroundColor: Colors.primary + "15",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    durationText: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: Colors.primary,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingTop: 80,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+        color: Colors.secondary,
+        marginTop: 20,
+        marginBottom: 8,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: Colors.gray,
+        textAlign: "center",
+        lineHeight: 22,
     },
 });
