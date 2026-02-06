@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Map } from "lucide-react";
+import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
+
+// Dynamic import for Leaflet (SSR incompatible)
+const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
+    ssr: false,
+    loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
+});
 
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
@@ -188,6 +195,13 @@ export default function PlannerPage() {
                             />
                         </div>
                     </header>
+
+                    {/* Itinerary Map */}
+                    <div className="h-72 rounded-xl overflow-hidden shadow-md border border-gray-200">
+                        <ItineraryMap
+                            activities={result.days.flatMap((day: any) => day.activities)}
+                        />
+                    </div>
 
                     <div className="space-y-8">
                         {result.days.map((day: any) => (
