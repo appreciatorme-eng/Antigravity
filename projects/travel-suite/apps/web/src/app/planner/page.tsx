@@ -5,6 +5,7 @@ import { Loader2, Map } from "lucide-react";
 import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
+import SaveItineraryButton from "./SaveItineraryButton";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -187,7 +188,14 @@ export default function PlannerPage() {
                             <p className="text-gray-600 italic">{result.destination}</p>
                             <p className="mt-2 text-gray-800">{result.summary}</p>
                         </div>
-                        <div className="shrink-0 flex items-center gap-3">
+                        <div className="shrink-0 flex flex-wrap items-center gap-2">
+                            <SaveItineraryButton
+                                itineraryData={result}
+                                destination={prompt}
+                                days={days}
+                                budget={budget}
+                                interests={interests}
+                            />
                             <ShareItinerary tripTitle={result.trip_title} description={result.summary} />
                             <DownloadPDFButton
                                 data={result}
