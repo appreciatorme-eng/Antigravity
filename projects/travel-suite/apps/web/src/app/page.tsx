@@ -1,39 +1,68 @@
 import Link from "next/link";
+import { Plane, MapPin, Calendar, Sparkles } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gradient-to-b from-blue-50 to-white">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-serif text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          TravelSuite AI
-        </p>
-      </div>
+    <main className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-6 py-16 bg-gradient-to-b from-blue-50 via-white to-green-50">
+      {/* Hero Section */}
+      <div className="text-center max-w-4xl mx-auto">
+        {/* Logo Icon */}
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-2xl shadow-lg mb-6">
+          <Plane className="w-10 h-10 text-white" />
+        </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <h1 className="text-6xl font-serif text-secondary text-center">
-          GoBuddy <span className="text-primary">TravelSuite</span>
+        {/* Main Title */}
+        <h1 className="text-5xl md:text-6xl font-serif text-secondary mb-4">
+          GoBuddy <span className="text-primary">Adventures</span>
         </h1>
+
+        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Your AI-powered travel companion. Create personalized luxury itineraries in seconds.
+        </p>
+
+        {/* CTA Button */}
+        <Link href="/planner">
+          <button className="px-10 py-4 bg-primary text-white font-bold rounded-full hover:bg-opacity-90 transition-all shadow-lg text-lg inline-flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Start Planning
+          </button>
+        </Link>
       </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-1 lg:text-left mt-12 overflow-hidden">
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 flex flex-col items-center">
-          <h2 className={`mb-3 text-2xl font-semibold text-secondary`}>
-            AI Trip Planner{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-center mb-6`}>
-            Instantly generate personalized luxury itineraries with AI.
+      {/* Features Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 max-w-4xl mx-auto">
+        <div className="text-center p-6 bg-white/60 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <MapPin className="w-6 h-6 text-primary" />
+          </div>
+          <h3 className="font-semibold text-secondary mb-2">Any Destination</h3>
+          <p className="text-sm text-gray-500">
+            Plan trips to any city in the world with AI-curated recommendations.
           </p>
+        </div>
 
-          <Link href="/planner">
-            <button className="px-8 py-4 bg-primary text-primary-foreground font-bold rounded-full hover:bg-opacity-90 transition-all shadow-lg text-lg">
-              Generate Itinerary
-            </button>
-          </Link>
+        <div className="text-center p-6 bg-white/60 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Calendar className="w-6 h-6 text-primary" />
+          </div>
+          <h3 className="font-semibold text-secondary mb-2">Custom Duration</h3>
+          <p className="text-sm text-gray-500">
+            From weekend getaways to extended adventures, we've got you covered.
+          </p>
+        </div>
+
+        <div className="text-center p-6 bg-white/60 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-6 h-6 text-primary" />
+          </div>
+          <h3 className="font-semibold text-secondary mb-2">AI-Powered</h3>
+          <p className="text-sm text-gray-500">
+            Personalized itineraries based on your interests and budget.
+          </p>
         </div>
       </div>
     </main>
   );
 }
+
+

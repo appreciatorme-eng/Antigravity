@@ -16,8 +16,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "TravelSuite | GoBuddy Adventures",
-  description: "AI-Powered Travel Planning Dashboard",
+  title: "GoBuddy Adventures",
+  description: "AI-Powered Travel Planning by GoBuddy",
 };
 
 export default function RootLayout({

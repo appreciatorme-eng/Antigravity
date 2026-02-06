@@ -95,7 +95,7 @@ export default function PlannerPage() {
 
     return (
         <main className="min-h-screen p-8 max-w-4xl mx-auto font-sans">
-            <h1 className="text-4xl font-serif text-secondary mb-6">AI Trip Planner ✈️</h1>
+            <h1 className="text-4xl font-serif text-secondary mb-6">GoBuddy Adventures ✈️</h1>
 
             <div className="bg-white/50 border border-gray-200 p-6 rounded-xl shadow-sm mb-8">
                 <div className="flex flex-col gap-6">

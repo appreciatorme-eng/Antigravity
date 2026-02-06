@@ -62,7 +62,7 @@ export default function AuthPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-lg mb-4">
                         <Plane className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-3xl font-serif text-secondary">TravelSuite</h1>
+                    <h1 className="text-3xl font-serif text-secondary">GoBuddy Adventures</h1>
                     <p className="text-gray-500 mt-1">Your AI-powered travel companion</p>
                 </div>
 
@@ -73,8 +73,8 @@ export default function AuthPage() {
                         <button
                             onClick={() => setMode("login")}
                             className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "login"
-                                    ? "bg-white text-secondary shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
+                                ? "bg-white text-secondary shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             Sign In
@@ -82,8 +82,8 @@ export default function AuthPage() {
                         <button
                             onClick={() => setMode("signup")}
                             className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "signup"
-                                    ? "bg-white text-secondary shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
+                                ? "bg-white text-secondary shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
                                 }`}
                         >
                             Create Account

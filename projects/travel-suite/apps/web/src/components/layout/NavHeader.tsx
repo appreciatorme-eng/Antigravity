@@ -57,7 +57,7 @@ export default function NavHeader() {
                             <Plane className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-xl font-serif text-secondary hidden sm:block">
-                            TravelSuite
+                            GoBuddy Adventures
                         </span>
                     </Link>
 
@@ -68,8 +68,8 @@ export default function NavHeader() {
                                 key={link.href}
                                 href={link.href}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive(link.href)
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-secondary"
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-gray-600 hover:bg-gray-100 hover:text-secondary"
                                     }`}
                             >
                                 <link.icon className="w-4 h-4" />
@@ -141,8 +141,8 @@ export default function NavHeader() {
                                     href={link.href}
                                     onClick={() => setMobileMenuOpen(false)}
                                     className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isActive(link.href)
-                                            ? "bg-primary/10 text-primary"
-                                            : "text-gray-600 hover:bg-gray-100"
+                                        ? "bg-primary/10 text-primary"
+                                        : "text-gray-600 hover:bg-gray-100"
                                         }`}
                                 >
                                     <link.icon className="w-5 h-5" />

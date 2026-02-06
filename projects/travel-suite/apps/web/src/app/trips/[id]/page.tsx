@@ -52,7 +52,7 @@ export default async function TripDetailPage({
                             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                                 <Plane className="w-4 h-4 text-white" />
                             </div>
-                            <span className="text-lg font-serif text-secondary">TravelSuite</span>
+                            <span className="text-lg font-serif text-secondary">GoBuddy Adventures</span>
                         </Link>
                     </div>
                     <div className="flex items-center gap-2">
