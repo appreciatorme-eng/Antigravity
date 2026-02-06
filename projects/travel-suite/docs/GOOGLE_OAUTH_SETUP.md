@@ -1,125 +1,183 @@
-# Google OAuth Setup for GoBuddy Adventures
+# Google OAuth Setup Guide for GoBuddy Adventures
 
-## Overview
-This guide walks you through setting up Google OAuth authentication for the GoBuddy Adventures travel planning application.
+This guide documents how to configure Google OAuth authentication for the GoBuddy Adventures travel planning application.
 
 ## Prerequisites
-- A Google Cloud Console account
-- Admin access to your Supabase project
 
----
+- A Google Cloud account
+- Access to the Supabase dashboard for project `rtdjmykkgmirxdyfckqi`
 
-## Step 1: Create Google OAuth Credentials
+## Configuration Summary
 
-### 1.1 Go to Google Cloud Console
-Navigate to [Google Cloud Console](https://console.cloud.google.com/)
+| Component | Value |
+|-----------|-------|
+| **Supabase Project** | `rtdjmykkgmirxdyfckqi` |
+| **Google Cloud Project** | `gobuddy-adventures` |
+| **OAuth Client Name** | `GoBuddy Adventures Web` |
+| **Client ID** | `927661594030-rjadafq1lph1ooi1c5n72djac992n6lm.apps.googleusercontent.com` |
 
-### 1.2 Create or Select a Project
-1. Click the project dropdown at the top
-2. Click "New Project" or select an existing one
-3. Name it something like "GoBuddy Adventures"
+## Step 1: Google Cloud Console Setup
 
-### 1.3 Enable the Google+ API
-1. Go to **APIs & Services** > **Library**
-2. Search for "Google+ API" or "Google Identity Services"
-3. Click **Enable**
+### 1.1 Create or Select a Project
 
-### 1.4 Create OAuth Credentials
-1. Go to **APIs & Services** > **Credentials**
-2. Click **+ CREATE CREDENTIALS** > **OAuth client ID**
-3. If prompted, configure the OAuth consent screen first:
-   - User Type: **External**
-   - App name: **GoBuddy Adventures**
-   - User support email: Your email
-   - Developer contact: Your email
-   - Click **Save and Continue** through the rest
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Name it: `gobuddy-adventures`
 
-### 1.5 Configure OAuth Client
-1. Application type: **Web application**
-2. Name: **GoBuddy Adventures Web**
-3. **Authorized JavaScript origins:**
-   - `http://localhost:3000` (development)
-   - `https://your-production-domain.com` (production)
-4. **Authorized redirect URIs:**
-   - `http://localhost:3000/auth/callback` (development)
-   - `https://<your-project-ref>.supabase.co/auth/v1/callback` (Supabase callback)
-   - `https://your-production-domain.com/auth/callback` (production)
+### 1.2 Configure OAuth Consent Screen
 
-5. Click **Create**
-6. **IMPORTANT:** Copy the **Client ID** and **Client Secret**
+1. Navigate to **APIs & Services** → **OAuth consent screen**
+2. Select **External** user type
+3. Fill in the required fields:
+   - **App name**: `GoBuddy Adventures`
+   - **User support email**: Your email
+   - **Developer contact email**: Your email
+4. Click **Save and Continue** through remaining steps
 
----
+### 1.3 Create OAuth Credentials
 
-## Step 2: Configure Supabase
+1. Go to **APIs & Services** → **Credentials**
+2. Click **+ CREATE CREDENTIALS** → **OAuth client ID**
+3. Select **Web application**
+4. Name: `GoBuddy Adventures Web`
 
-### 2.1 Access Authentication Settings
-1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
-2. Select your project
-3. Navigate to **Authentication** > **Providers**
+### 1.4 Configure Authorized Origins and Redirect URIs
 
-### 2.2 Enable Google Provider
-1. Find **Google** in the list of providers
-2. Toggle it **ON**
-3. Enter your credentials:
-   - **Client ID:** (from Step 1)
-   - **Client Secret:** (from Step 1)
-4. Click **Save**
-
-### 2.3 Update Redirect URLs
-1. Go to **Authentication** > **URL Configuration**
-2. Add your site URL: `http://localhost:3000` (for development)
-3. Add to redirect URLs: `http://localhost:3000/auth/callback`
-
----
-
-## Step 3: Test the Integration
-
-### 3.1 Start the Development Server
-```bash
-cd projects/travel-suite/apps/web
-npm run dev
+**Authorized JavaScript origins:**
+```
+http://localhost:3000
 ```
 
-### 3.2 Test Google Sign-In
-1. Open http://localhost:3000/auth
-2. Click "Continue with Google"
-3. You should be redirected to Google's sign-in page
-4. After signing in, you'll be redirected back to your app
+**Authorized redirect URIs:**
+```
+https://rtdjmykkgmirxdyfckqi.supabase.co/auth/v1/callback
+```
 
----
+5. Click **Create**
+6. Copy the **Client ID** and **Client Secret**
+
+## Step 2: Supabase Configuration
+
+### 2.1 Enable Google Provider
+
+1. Open [Supabase Dashboard - Auth Providers](https://supabase.com/dashboard/project/rtdjmykkgmirxdyfckqi/auth/providers)
+2. Find **Google** in the providers list
+3. Toggle it **ON**
+4. Enter your credentials:
+   - **Client ID**: Your Google OAuth Client ID
+   - **Client Secret**: Your Google OAuth Client Secret
+5. Click **Save**
+
+### 2.2 Verify Callback URL
+
+The callback URL should be:
+```
+https://rtdjmykkgmirxdyfckqi.supabase.co/auth/v1/callback
+```
+
+This URL is automatically generated by Supabase and must match what's configured in Google Cloud Console.
+
+## Step 3: Application Integration
+
+The application uses Supabase's built-in OAuth flow. The auth page (`/auth`) includes a "Continue with Google" button that triggers the OAuth flow.
+
+### Auth Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as GoBuddy Adventures
+    participant Supabase
+    participant Google
+
+    User->>App: Click "Continue with Google"
+    App->>Supabase: Initiate OAuth flow
+    Supabase->>Google: Redirect to Google OAuth
+    Google->>User: Show account chooser
+    User->>Google: Select account
+    Google->>Supabase: Return with auth code
+    Supabase->>App: Redirect with session
+    App->>User: Show logged-in state
+```
+
+## Step 4: Production Deployment
+
+When deploying to production, add these additional URLs:
+
+### Google Cloud Console
+
+**Authorized JavaScript origins:**
+```
+http://localhost:3000
+https://your-production-domain.com
+```
+
+**Authorized redirect URIs:**
+```
+https://rtdjmykkgmirxdyfckqi.supabase.co/auth/v1/callback
+```
+
+### Supabase URL Configuration
+
+1. Go to **Authentication** → **URL Configuration**
+2. Update **Site URL** to your production domain
+3. Add production domains to **Redirect URLs**
 
 ## Troubleshooting
 
-### "redirect_uri_mismatch" Error
-- Ensure the redirect URI in Google Console exactly matches: `https://<project-ref>.supabase.co/auth/v1/callback`
-- Check for trailing slashes or typos
+### Error: "redirect_uri_mismatch"
 
-### "Access blocked: App not verified"
-- For testing, you can add test users in the OAuth consent screen
-- For production, submit for Google verification
+This means the redirect URI in Google Cloud Console doesn't match the one Supabase is using.
 
-### User Not Created in Supabase
-- Check Supabase logs in **Database** > **Logs**
-- Ensure the `auth.users` table has the correct RLS policies
+**Solution:**
+1. Check the exact callback URL in Supabase (under Google provider settings)
+2. Ensure it's added to **Authorized redirect URIs** in Google Cloud Console
+3. Wait 5 minutes for changes to propagate
+
+### Error: "Access blocked: This app's request is invalid"
+
+This happens when the OAuth consent screen is not properly configured.
+
+**Solution:**
+1. Go to **OAuth consent screen** in Google Cloud Console
+2. Ensure all required fields are filled
+3. For testing, add your email to **Test users** if using "External" user type
+
+### Error: "Google provider not enabled"
+
+**Solution:**
+1. Verify Google is enabled in Supabase Auth Providers
+2. Check that Client ID and Secret are correctly entered
+3. Ensure there are no extra spaces in the credentials
+
+## Security Notes
+
+1. **Never commit Client Secret** to version control
+2. Client secrets should only be stored in:
+   - Supabase dashboard (for authentication)
+   - Environment variables (if needed server-side)
+3. The Client ID is safe to expose (it's visible in the browser)
+4. For production, consider enabling additional security features in Google Cloud Console
+
+## Testing the Integration
+
+1. Navigate to `http://localhost:3000`
+2. Click **Sign In** in the navigation
+3. Click **Continue with Google**
+4. Select your Google account
+5. You should be redirected back to the app as a logged-in user
+6. Check that:
+   - Your name/email appears in the navigation
+   - You can access protected routes like `/trips`
+   - You can save itineraries to your account
+
+## Configuration Completed
+
+✅ Google Cloud Console: OAuth client created and configured
+✅ Supabase: Google provider enabled with credentials
+✅ GoBuddy Adventures: Auth page with Google sign-in button
+✅ OAuth flow: Tested and working
 
 ---
 
-## Production Checklist
-
-1. [ ] Update Google OAuth redirect URIs with production domain
-2. [ ] Update Supabase Site URL to production domain
-3. [ ] Submit OAuth consent screen for Google verification (if > 100 users)
-4. [ ] Enable HTTPS on your production domain
-5. [ ] Test the full flow on production
-
----
-
-## Environment Variables
-
-Make sure your `.env.local` has:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-```
-
-These are already configured if you followed the initial setup.
+*Last updated: February 6, 2026*

@@ -71,8 +71,11 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 
 #### 9. Authentication ✅
 - **Provider**: Supabase Auth
-- **Methods**: Email/Password, OAuth (Google, GitHub ready)
+- **Methods**: Email/Password, Google OAuth ✅
 - **Flow**: Signup → Email verification → Dashboard
+- **Google OAuth**: Configured and tested
+  - Client ID: `927661594030-rjadafq1lph1ooi1c5n72djac992n6lm.apps.googleusercontent.com`
+  - Setup docs: `docs/GOOGLE_OAUTH_SETUP.md`
 
 #### 10. Design System (GoBuddy Identity) ✅
 - **Primary Color (Action)**: `#00d084` (Vivid Green)
@@ -83,7 +86,7 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 
 ### 🔄 Next Steps (Phase 2)
 
-1. **OAuth Configuration** - Enable Google/GitHub in Supabase dashboard
+1. ✅ **OAuth Configuration** - Google OAuth enabled and tested
 2. **User Dashboard** - Display saved trips on `/trips` page
 3. **Share Feature** - Public itinerary sharing via unique links
 4. **Booking Integration** - Add hotel/flight booking links
