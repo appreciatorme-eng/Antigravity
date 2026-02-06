@@ -178,6 +178,229 @@ CREATE POLICY "Owners can create shares"
     );
 
 -- ================================================
+-- ORGANIZATIONS (Multi-tenant for travel agents)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.organizations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    logo_url TEXT,
+    primary_color TEXT DEFAULT '#00d084',
+    owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'enterprise')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
+
+-- Organization policies
+CREATE POLICY "Org owners can view their organization"
+    ON public.organizations FOR SELECT
+    USING (auth.uid() = owner_id);
+
+CREATE POLICY "Org owners can update their organization"
+    ON public.organizations FOR UPDATE
+    USING (auth.uid() = owner_id);
+
+CREATE POLICY "Authenticated users can create organizations"
+    ON public.organizations FOR INSERT
+    WITH CHECK (auth.uid() = owner_id);
+
+-- Add organization_id to profiles (for multi-tenancy)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+
+-- ================================================
+-- EXTERNAL DRIVERS (Third-party drivers, no app account)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.external_drivers (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    vehicle_type TEXT CHECK (vehicle_type IN ('sedan', 'suv', 'van', 'minibus', 'bus')),
+    vehicle_plate TEXT,
+    vehicle_capacity INTEGER DEFAULT 4,
+    languages TEXT[],
+    photo_url TEXT,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.external_drivers ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_external_drivers_org ON public.external_drivers(organization_id);
+
+-- External driver policies (admin only)
+CREATE POLICY "Admins can manage external drivers"
+    ON public.external_drivers FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+            AND profiles.organization_id = external_drivers.organization_id
+        )
+    );
+
+-- ================================================
+-- TRIP DRIVER ASSIGNMENTS (Driver per trip day)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.trip_driver_assignments (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE NOT NULL,
+    external_driver_id UUID REFERENCES public.external_drivers(id) ON DELETE SET NULL,
+    day_number INTEGER NOT NULL,
+    pickup_time TIME,
+    pickup_location TEXT,
+    pickup_coordinates JSONB,
+    dropoff_location TEXT,
+    notes TEXT,
+    notification_sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.trip_driver_assignments ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_trip_driver_assignments_trip ON public.trip_driver_assignments(trip_id);
+
+-- Assignment policies
+CREATE POLICY "Admins can manage driver assignments"
+    ON public.trip_driver_assignments FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Clients can view their trip assignments"
+    ON public.trip_driver_assignments FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.trips
+            WHERE trips.id = trip_driver_assignments.trip_id
+            AND trips.client_id = auth.uid()
+        )
+    );
+
+-- ================================================
+-- TRIP ACCOMMODATIONS (Hotels per trip day)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.trip_accommodations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE NOT NULL,
+    day_number INTEGER NOT NULL,
+    hotel_name TEXT NOT NULL,
+    address TEXT,
+    coordinates JSONB,
+    check_in_time TIME DEFAULT '15:00',
+    check_out_time TIME DEFAULT '11:00',
+    confirmation_number TEXT,
+    contact_phone TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.trip_accommodations ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_trip_accommodations_trip ON public.trip_accommodations(trip_id);
+
+-- Accommodation policies
+CREATE POLICY "Admins can manage accommodations"
+    ON public.trip_accommodations FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Clients can view their trip accommodations"
+    ON public.trip_accommodations FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.trips
+            WHERE trips.id = trip_accommodations.trip_id
+            AND trips.client_id = auth.uid()
+        )
+    );
+
+-- ================================================
+-- PUSH TOKENS (Expo push notification tokens)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.push_tokens (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    expo_push_token TEXT NOT NULL,
+    device_type TEXT CHECK (device_type IN ('ios', 'android')),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, expo_push_token)
+);
+
+-- Enable RLS
+ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Push token policies
+CREATE POLICY "Users can manage their own push tokens"
+    ON public.push_tokens FOR ALL
+    USING (auth.uid() = user_id);
+
+-- ================================================
+-- NOTIFICATION LOGS (Audit trail)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.notification_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE SET NULL,
+    recipient_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    recipient_phone TEXT,
+    recipient_type TEXT CHECK (recipient_type IN ('client', 'driver')),
+    notification_type TEXT NOT NULL CHECK (notification_type IN ('trip_confirmed', 'driver_assigned', 'daily_briefing', 'client_landed', 'itinerary_update')),
+    title TEXT,
+    body TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'failed')),
+    external_id TEXT,
+    error_message TEXT,
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.notification_logs ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_notification_logs_trip ON public.notification_logs(trip_id);
+CREATE INDEX IF NOT EXISTS idx_notification_logs_status ON public.notification_logs(status);
+
+-- Notification log policies
+CREATE POLICY "Admins can view all notification logs"
+    ON public.notification_logs FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Users can view their own notifications"
+    ON public.notification_logs FOR SELECT
+    USING (auth.uid() = recipient_id);
+
+-- ================================================
 -- FUNCTIONS & TRIGGERS
 -- ================================================
 
@@ -201,6 +424,18 @@ CREATE TRIGGER set_updated_at_itineraries
 
 CREATE TRIGGER set_updated_at_trips
     BEFORE UPDATE ON public.trips
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER set_updated_at_organizations
+    BEFORE UPDATE ON public.organizations
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER set_updated_at_external_drivers
+    BEFORE UPDATE ON public.external_drivers
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER set_updated_at_push_tokens
+    BEFORE UPDATE ON public.push_tokens
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Auto-create profile on signup

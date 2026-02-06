@@ -17,6 +17,7 @@ export interface Database {
                     avatar_url: string | null
                     role: 'client' | 'driver' | 'admin'
                     phone: string | null
+                    organization_id: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -27,6 +28,7 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    organization_id?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -37,6 +39,7 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    organization_id?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -181,6 +184,249 @@ export interface Database {
                     recipient_phone?: string | null
                     expires_at?: string
                     viewed_at?: string | null
+                    created_at?: string
+                }
+            }
+            organizations: {
+                Row: {
+                    id: string
+                    name: string
+                    slug: string
+                    logo_url: string | null
+                    primary_color: string
+                    owner_id: string | null
+                    subscription_tier: 'free' | 'pro' | 'enterprise'
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    name: string
+                    slug: string
+                    logo_url?: string | null
+                    primary_color?: string
+                    owner_id?: string | null
+                    subscription_tier?: 'free' | 'pro' | 'enterprise'
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    name?: string
+                    slug?: string
+                    logo_url?: string | null
+                    primary_color?: string
+                    owner_id?: string | null
+                    subscription_tier?: 'free' | 'pro' | 'enterprise'
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            external_drivers: {
+                Row: {
+                    id: string
+                    organization_id: string
+                    full_name: string
+                    phone: string
+                    vehicle_type: 'sedan' | 'suv' | 'van' | 'minibus' | 'bus' | null
+                    vehicle_plate: string | null
+                    vehicle_capacity: number
+                    languages: string[] | null
+                    photo_url: string | null
+                    notes: string | null
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    organization_id: string
+                    full_name: string
+                    phone: string
+                    vehicle_type?: 'sedan' | 'suv' | 'van' | 'minibus' | 'bus' | null
+                    vehicle_plate?: string | null
+                    vehicle_capacity?: number
+                    languages?: string[] | null
+                    photo_url?: string | null
+                    notes?: string | null
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    organization_id?: string
+                    full_name?: string
+                    phone?: string
+                    vehicle_type?: 'sedan' | 'suv' | 'van' | 'minibus' | 'bus' | null
+                    vehicle_plate?: string | null
+                    vehicle_capacity?: number
+                    languages?: string[] | null
+                    photo_url?: string | null
+                    notes?: string | null
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            trip_driver_assignments: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    external_driver_id: string | null
+                    day_number: number
+                    pickup_time: string | null
+                    pickup_location: string | null
+                    pickup_coordinates: Json | null
+                    dropoff_location: string | null
+                    notes: string | null
+                    notification_sent_at: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    external_driver_id?: string | null
+                    day_number: number
+                    pickup_time?: string | null
+                    pickup_location?: string | null
+                    pickup_coordinates?: Json | null
+                    dropoff_location?: string | null
+                    notes?: string | null
+                    notification_sent_at?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    external_driver_id?: string | null
+                    day_number?: number
+                    pickup_time?: string | null
+                    pickup_location?: string | null
+                    pickup_coordinates?: Json | null
+                    dropoff_location?: string | null
+                    notes?: string | null
+                    notification_sent_at?: string | null
+                    created_at?: string
+                }
+            }
+            trip_accommodations: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address: string | null
+                    coordinates: Json | null
+                    check_in_time: string
+                    check_out_time: string
+                    confirmation_number: string | null
+                    contact_phone: string | null
+                    notes: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address?: string | null
+                    coordinates?: Json | null
+                    check_in_time?: string
+                    check_out_time?: string
+                    confirmation_number?: string | null
+                    contact_phone?: string | null
+                    notes?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    day_number?: number
+                    hotel_name?: string
+                    address?: string | null
+                    coordinates?: Json | null
+                    check_in_time?: string
+                    check_out_time?: string
+                    confirmation_number?: string | null
+                    contact_phone?: string | null
+                    notes?: string | null
+                    created_at?: string
+                }
+            }
+            push_tokens: {
+                Row: {
+                    id: string
+                    user_id: string
+                    expo_push_token: string
+                    device_type: 'ios' | 'android' | null
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    expo_push_token: string
+                    device_type?: 'ios' | 'android' | null
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    expo_push_token?: string
+                    device_type?: 'ios' | 'android' | null
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            notification_logs: {
+                Row: {
+                    id: string
+                    trip_id: string | null
+                    recipient_id: string | null
+                    recipient_phone: string | null
+                    recipient_type: 'client' | 'driver' | null
+                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update'
+                    title: string | null
+                    body: string | null
+                    status: 'pending' | 'sent' | 'delivered' | 'failed'
+                    external_id: string | null
+                    error_message: string | null
+                    sent_at: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    trip_id?: string | null
+                    recipient_id?: string | null
+                    recipient_phone?: string | null
+                    recipient_type?: 'client' | 'driver' | null
+                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update'
+                    title?: string | null
+                    body?: string | null
+                    status?: 'pending' | 'sent' | 'delivered' | 'failed'
+                    external_id?: string | null
+                    error_message?: string | null
+                    sent_at?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string | null
+                    recipient_id?: string | null
+                    recipient_phone?: string | null
+                    recipient_type?: 'client' | 'driver' | null
+                    notification_type?: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update'
+                    title?: string | null
+                    body?: string | null
+                    status?: 'pending' | 'sent' | 'delivered' | 'failed'
+                    external_id?: string | null
+                    error_message?: string | null
+                    sent_at?: string | null
                     created_at?: string
                 }
             }

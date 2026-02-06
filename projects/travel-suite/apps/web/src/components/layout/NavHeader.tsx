@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase } from "lucide-react";
+import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+interface UserProfile {
+    role: "client" | "driver" | "admin";
+}
 
 export default function NavHeader() {
     const router = useRouter();
@@ -13,6 +17,7 @@ export default function NavHeader() {
     const supabase = createClient();
 
     const [user, setUser] = useState<SupabaseUser | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -20,6 +25,16 @@ export default function NavHeader() {
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
+
+            if (user) {
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("role")
+                    .eq("id", user.id)
+                    .single();
+                setUserProfile(profile);
+            }
+
             setLoading(false);
         };
         getUser();
@@ -43,6 +58,7 @@ export default function NavHeader() {
         { href: "/", label: "Home", icon: Compass },
         { href: "/planner", label: "Plan Trip", icon: Map },
         ...(user ? [{ href: "/trips", label: "My Trips", icon: Briefcase }] : []),
+        ...(userProfile?.role === "admin" ? [{ href: "/admin", label: "Admin", icon: Settings }] : []),
     ];
 
     const isActive = (href: string) => pathname === href;
