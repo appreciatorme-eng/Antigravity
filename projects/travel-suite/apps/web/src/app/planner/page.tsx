@@ -7,6 +7,8 @@ import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(3);
+    const [budget, setBudget] = useState("Moderate");
+    const [interests, setInterests] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [error, setError] = useState("");
@@ -39,6 +41,14 @@ export default function PlannerPage() {
         setImages(imageMap);
     };
 
+    const toggleInterest = (interest: string) => {
+        setInterests(prev =>
+            prev.includes(interest)
+                ? prev.filter(i => i !== interest)
+                : [...prev, interest]
+        );
+    };
+
     const handleGenerate = async () => {
         if (!prompt) return;
         setLoading(true);
@@ -46,11 +56,17 @@ export default function PlannerPage() {
         setResult(null);
         setImages({});
 
+        // Construct a rich prompt from the form data
+        const interestString = interests.length > 0
+            ? ` focusing on ${interests.join(", ")}`
+            : "";
+        const finalPrompt = `Create a ${budget} ${days}-day itinerary for ${prompt}${interestString}. Include specific practical details.`;
+
         try {
             const res = await fetch("/api/itinerary/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt, days }),
+                body: JSON.stringify({ prompt: finalPrompt, days }),
             });
 
             const data = await res.json();
@@ -73,40 +89,76 @@ export default function PlannerPage() {
             <h1 className="text-4xl font-serif text-secondary mb-6">AI Trip Planner ✈️</h1>
 
             <div className="bg-white/50 border border-gray-200 p-6 rounded-xl shadow-sm mb-8">
-                <div className="flex flex-col gap-4">
-                    <label className="block">
-                        <span className="text-gray-700 font-medium">Where do you want to go?</span>
-                        <textarea
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 p-3 border"
-                            rows={3}
-                            placeholder="e.g. A romantic weekend in Paris with good food and museums..."
+                <div className="flex flex-col gap-6">
+                    {/* Destination Input */}
+                    <div>
+                        <label className="block text-gray-700 font-medium mb-2">Where to?</label>
+                        <input
+                            type="text"
+                            className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent text-lg"
+                            placeholder="e.g. Paris, Tokyo, New York"
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                         />
-                    </label>
+                    </div>
 
-                    <div>
-                        <label className="flex items-center gap-2">
-                            <span className="text-gray-700 font-medium">Duration (Days):</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Duration Input */}
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-2">Duration (Days)</label>
                             <input
                                 type="number"
                                 min={1}
                                 max={14}
                                 value={days}
                                 onChange={(e) => setDays(Number(e.target.value))}
-                                className="w-20 rounded-md border-gray-300 border p-2"
+                                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                             />
-                        </label>
+                        </div>
+
+                        {/* Budget Input */}
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-2">Budget</label>
+                            <select
+                                value={budget}
+                                onChange={(e) => setBudget(e.target.value)}
+                                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                            >
+                                <option value="Budget-Friendly">💰 Budget-Friendly</option>
+                                <option value="Moderate">⚖️ Moderate</option>
+                                <option value="Luxury">💎 Luxury</option>
+                                <option value="Ultra-High End">👑 Ultra-High End</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div className="pt-2">
+                    {/* Interests Input */}
+                    <div>
+                        <label className="block text-gray-700 font-medium mb-2">Interests</label>
+                        <div className="flex flex-wrap gap-2">
+                            {['🎨 Art & Culture', '🍽️ Food & Dining', '🏞️ Nature', '🛍️ Shopping', '🏰 History', '👨‍👩‍👧‍👦 Family'].map((tag) => (
+                                <button
+                                    key={tag}
+                                    onClick={() => toggleInterest(tag)}
+                                    className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${interests.includes(tag)
+                                            ? 'bg-primary text-white border-primary'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                                        }`}
+                                >
+                                    {tag}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="pt-4">
                         <button
                             onClick={handleGenerate}
                             disabled={loading || !prompt}
-                            className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                            className="w-full py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg transform hover:scale-[1.01]"
                         >
-                            {loading && <Loader2 className="animate-spin w-5 h-5" />}
-                            {loading ? "Dreaming..." : "Generate Itinerary"}
+                            {loading && <Loader2 className="animate-spin w-6 h-6" />}
+                            {loading ? "Crafting your Journey..." : "Generate Dream Itinerary"}
                         </button>
                     </div>
 
