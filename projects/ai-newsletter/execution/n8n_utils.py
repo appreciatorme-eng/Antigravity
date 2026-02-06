@@ -2,12 +2,13 @@
 Shared utilities for n8n API interactions.
 Consolidates common patterns from configure_*.py scripts.
 """
+import logging
 import os
 import json
-import logging
 import time
 from typing import Optional, Dict, Any, Callable
 from functools import wraps
+from urllib.parse import urlparse
 
 import requests
 from requests.exceptions import RequestException, Timeout, HTTPError
@@ -26,6 +27,28 @@ MAX_RETRIES = 3
 BACKOFF_FACTOR = 2
 
 
+def validate_url(url: str, require_https: bool = False) -> bool:
+    """
+    Validate that a URL is well-formed.
+
+    Args:
+        url: URL string to validate
+        require_https: If True, only accept HTTPS URLs
+
+    Returns:
+        True if valid, False otherwise
+    """
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return False
+        if require_https and parsed.scheme != 'https':
+            return False
+        return True
+    except Exception:
+        return False
+
+
 class N8NConfig:
     """Configuration container for n8n API access."""
 
@@ -35,9 +58,12 @@ class N8NConfig:
         self.api_key = os.getenv("N8N_API_KEY")
 
     def validate(self) -> bool:
-        """Validate required configuration is present."""
+        """Validate required configuration is present and well-formed."""
         if not self.api_url or not self.api_key:
             logger.error("N8N_API_URL or N8N_API_KEY missing from environment")
+            return False
+        if not validate_url(self.api_url):
+            logger.error(f"N8N_API_URL is not a valid URL: {self.api_url}")
             return False
         return True
 

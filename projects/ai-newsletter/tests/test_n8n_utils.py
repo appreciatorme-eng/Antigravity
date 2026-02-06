@@ -11,8 +11,40 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'execution'))
 
 from n8n_utils import (
     N8NConfig, N8NClient, require_env_var,
-    retry_with_backoff, DEFAULT_TIMEOUT
+    retry_with_backoff, DEFAULT_TIMEOUT, validate_url
 )
+
+
+class TestValidateUrl:
+    """Tests for validate_url function."""
+
+    def test_valid_http_url(self):
+        """Valid HTTP URL should return True."""
+        assert validate_url("http://localhost:5678") is True
+
+    def test_valid_https_url(self):
+        """Valid HTTPS URL should return True."""
+        assert validate_url("https://example.com") is True
+
+    def test_invalid_url_no_scheme(self):
+        """URL without scheme should return False."""
+        assert validate_url("localhost:5678") is False
+
+    def test_invalid_url_no_netloc(self):
+        """URL without netloc should return False."""
+        assert validate_url("http://") is False
+
+    def test_empty_string(self):
+        """Empty string should return False."""
+        assert validate_url("") is False
+
+    def test_require_https_with_http(self):
+        """HTTP URL should fail when HTTPS is required."""
+        assert validate_url("http://example.com", require_https=True) is False
+
+    def test_require_https_with_https(self):
+        """HTTPS URL should pass when HTTPS is required."""
+        assert validate_url("https://example.com", require_https=True) is True
 
 
 class TestN8NConfig:
@@ -64,6 +96,15 @@ class TestN8NConfig:
         config = N8NConfig()
 
         assert config.validate() is True
+
+    def test_config_validate_fails_with_invalid_url(self, monkeypatch):
+        """Validation should fail if URL is malformed."""
+        monkeypatch.setenv("N8N_API_URL", "not-a-valid-url")
+        monkeypatch.setenv("N8N_API_KEY", "test-key")
+
+        config = N8NConfig()
+
+        assert config.validate() is False
 
     def test_headers_property(self, monkeypatch):
         """Headers property should return correct structure."""

@@ -1,32 +1,67 @@
+"""
+Workflow adapter for transforming n8n workflows to use cost-optimized services.
+Replaces Claude/OpenAI with Gemini, adds Jina AI for scraping.
+"""
 import json
+import logging
 import os
-import copy
+from typing import Any, Dict
 
-# Configuration
-INPUT_DIR = "workflows"
-OUTPUT_DIR = "workflows/adapted"
-GEMINI_MODEL = "models/gemini-1.5-flash"
-GEMINI_CRED_NAME = "Google Gemini Attributes" # Matches the name you'll give in n8n
-S3_CRED_NAME = "AWS S3" # Matches the name you'll give in n8n
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('workflow_adapter')
 
-def load_workflow(filename):
+# Try to import from config module, fall back to defaults
+try:
+    from config import (
+        WORKFLOW_INPUT_DIR as INPUT_DIR,
+        WORKFLOW_OUTPUT_DIR as OUTPUT_DIR,
+        GEMINI_MODEL,
+        get_credential_name,
+    )
+    GEMINI_CRED_NAME = get_credential_name("gemini")
+    S3_CRED_NAME = get_credential_name("s3")
+except ImportError:
+    # Fallback defaults when run standalone
+    INPUT_DIR = os.getenv("WORKFLOW_INPUT_DIR", "workflows")
+    OUTPUT_DIR = os.getenv("WORKFLOW_OUTPUT_DIR", "workflows/adapted")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-1.5-flash")
+    GEMINI_CRED_NAME = os.getenv("GEMINI_CRED_NAME", "Google Gemini Attributes")
+    S3_CRED_NAME = os.getenv("S3_CRED_NAME", "AWS S3")
+
+def load_workflow(filename: str) -> Dict[str, Any]:
+    """Load a workflow JSON file."""
     with open(filename, 'r') as f:
         return json.load(f)
 
-def save_workflow(data, filename):
+
+def save_workflow(data: Dict[str, Any], filename: str) -> None:
+    """Save workflow data to a JSON file."""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as f:
         json.dump(data, f, indent=2)
 
-def adapt_scraping_pipeline(workflow):
-    print("Adapting Scraping Pipeline...")
+def adapt_scraping_pipeline(workflow: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Adapt scraping pipeline to use Jina AI for web scraping.
+
+    Args:
+        workflow: The workflow dictionary to adapt
+
+    Returns:
+        The adapted workflow dictionary
+    """
+    logger.info("Adapting Scraping Pipeline...")
     nodes = workflow.get('nodes', [])
     new_nodes = []
-    
+
     for node in nodes:
         # 1. Replace 'scrape_url' (executeWorkflow) with Jina AI HTTP Request
         if node.get('name') == 'scrape_url' and node.get('type') == 'n8n-nodes-base.executeWorkflow':
-            print("  - Replacing 'scrape_url' with Jina AI HTTP Request")
+            logger.info("Replacing 'scrape_url' with Jina AI HTTP Request")
             node['type'] = 'n8n-nodes-base.httpRequest'
             node['typeVersion'] = 4.2
             node['parameters'] = {
@@ -66,7 +101,7 @@ def adapt_scraping_pipeline(workflow):
             # Original: {{ $json.data.json.content }}
             # New Jina: {{ $json.content }} (assuming we put response in 'content')
             if 'parameters' in node and 'text' in node['parameters']:
-                print("  - Updating 'evaluate_content' reference")
+                logger.info("Updating 'evaluate_content' reference")
                 node['parameters']['text'] = node['parameters']['text'].replace('$json.data.json.content', '$json.content')
 
         # 3. Handle 'api.aitools.inc' calls - Replace with direct S3 or ignore
@@ -78,31 +113,38 @@ def adapt_scraping_pipeline(workflow):
         # For now, let's just update the S3 credentials for 'upload_temp_markdown'.
         
         if node.get('type') == 'n8n-nodes-base.s3':
-             print(f"  - Updating Credentials for S3 node: {node.get('name')}")
-             node['credentials'] = {
-                 "s3": {
-                     "id": "AWS_S3_CRED_ID", # Placeholder, relies on name mapping in import
-                     "name": S3_CRED_NAME
-                 }
-             }
-             # Update bucket name if needed? User said "S3 Bucket". 
-             # We should probably use a parameter or env var for bucket name.
-             # existing is "data-ingestion".
-        
+            logger.info(f"Updating credentials for S3 node: {node.get('name')}")
+            node['credentials'] = {
+                "s3": {
+                    "id": "AWS_S3_CRED_ID",  # Placeholder, relies on name mapping in import
+                    "name": S3_CRED_NAME
+                }
+            }
+
         new_nodes.append(node)
-        
+
     workflow['nodes'] = new_nodes
     return workflow
 
-def adapt_newsletter_agent(workflow):
-    print("Adapting Newsletter Agent...")
+
+def adapt_newsletter_agent(workflow: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Adapt newsletter agent to use Gemini instead of Claude/OpenAI.
+
+    Args:
+        workflow: The workflow dictionary to adapt
+
+    Returns:
+        The adapted workflow dictionary
+    """
+    logger.info("Adapting Newsletter Agent...")
     nodes = workflow.get('nodes', [])
     new_nodes = []
-    
+
     for node in nodes:
         # 1. Replace LLM nodes (Claude/OpenAI) with Gemini
         if node.get('type') in ['@n8n/n8n-nodes-langchain.lmChatAnthropic', '@n8n/n8n-nodes-langchain.lmChatOpenAi']:
-            print(f"  - Replacing LLM node '{node.get('name')}' with Gemini")
+            logger.info(f"Replacing LLM node '{node.get('name')}' with Gemini")
             node['type'] = '@n8n/n8n-nodes-langchain.lmChatGoogleGemini'
             node['typeVersion'] = 1
             node['parameters'] = {
@@ -111,31 +153,31 @@ def adapt_newsletter_agent(workflow):
             }
             node['credentials'] = {
                 "googlePalmApi": {
-                    "id": "GOOGLE_GEMINI_CRED_ID", 
+                    "id": "GOOGLE_GEMINI_CRED_ID",
                     "name": GEMINI_CRED_NAME
                 }
             }
-        
+
         # 2. Update existing Gemini nodes (if any) to ensure correct model/creds
         if node.get('type') == '@n8n/n8n-nodes-langchain.lmChatGoogleGemini':
-             print(f"  - Updating existing Gemini node '{node.get('name')}'")
-             node['parameters']['modelName'] = GEMINI_MODEL
-             node['credentials'] = {
+            logger.info(f"Updating existing Gemini node '{node.get('name')}'")
+            node['parameters']['modelName'] = GEMINI_MODEL
+            node['credentials'] = {
                 "googlePalmApi": {
-                    "id": "GOOGLE_GEMINI_CRED_ID", 
+                    "id": "GOOGLE_GEMINI_CRED_ID",
                     "name": GEMINI_CRED_NAME
                 }
             }
-             
+
         # 3. Update S3 nodes
         if node.get('type') == 'n8n-nodes-base.s3':
-             print(f"  - Updating Credentials for S3 node: {node.get('name')}")
-             node['credentials'] = {
-                 "s3": {
-                     "id": "AWS_S3_CRED_ID",
-                     "name": S3_CRED_NAME
-                 }
-             }
+            logger.info(f"Updating credentials for S3 node: {node.get('name')}")
+            node['credentials'] = {
+                "s3": {
+                    "id": "AWS_S3_CRED_ID",
+                    "name": S3_CRED_NAME
+                }
+            }
 
         new_nodes.append(node)
 
@@ -143,23 +185,45 @@ def adapt_newsletter_agent(workflow):
     return workflow
 
 if __name__ == "__main__":
+    import sys
+
     # Ensure output directory exists
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    
+
+    exit_code = 0
+
     # Process Scraping Pipeline
+    scraping_input = f"{INPUT_DIR}/scraping_pipeline.json"
     try:
-        scraping_wf = load_workflow(f"{INPUT_DIR}/scraping_pipeline.json")
+        scraping_wf = load_workflow(scraping_input)
         adapted_scraping = adapt_scraping_pipeline(scraping_wf)
         save_workflow(adapted_scraping, f"{OUTPUT_DIR}/scraping_pipeline_adapted.json")
-        print("Success: scraping_pipeline_adapted.json")
-    except Exception as e:
-        print(f"Error adapting scraping pipeline: {e}")
+        logger.info("Success: scraping_pipeline_adapted.json")
+    except FileNotFoundError:
+        logger.error(f"Workflow file not found: {scraping_input}")
+        exit_code = 1
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in {scraping_input}: {e}")
+        exit_code = 1
+    except OSError as e:
+        logger.error(f"File system error processing scraping pipeline: {e}")
+        exit_code = 1
 
     # Process Newsletter Agent
+    newsletter_input = f"{INPUT_DIR}/newsletter_agent.json"
     try:
-        newsletter_wf = load_workflow(f"{INPUT_DIR}/newsletter_agent.json")
+        newsletter_wf = load_workflow(newsletter_input)
         adapted_newsletter = adapt_newsletter_agent(newsletter_wf)
         save_workflow(adapted_newsletter, f"{OUTPUT_DIR}/newsletter_agent_adapted.json")
-        print("Success: newsletter_agent_adapted.json")
-    except Exception as e:
-        print(f"Error adapting newsletter agent: {e}")
+        logger.info("Success: newsletter_agent_adapted.json")
+    except FileNotFoundError:
+        logger.error(f"Workflow file not found: {newsletter_input}")
+        exit_code = 1
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in {newsletter_input}: {e}")
+        exit_code = 1
+    except OSError as e:
+        logger.error(f"File system error processing newsletter agent: {e}")
+        exit_code = 1
+
+    sys.exit(exit_code)
