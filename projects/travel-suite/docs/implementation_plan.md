@@ -84,14 +84,86 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
   - Headings: `Cormorant Garamond` (Serif)
   - Body/UI: `Poppins` (Sans-serif)
 
-### 🔄 Next Steps (Phase 2)
+---
 
-1. ✅ **OAuth Configuration** - Google OAuth enabled and tested
-2. **User Dashboard** - Display saved trips on `/trips` page
-3. **Share Feature** - Public itinerary sharing via unique links
-4. **Booking Integration** - Add hotel/flight booking links
-5. **Mobile App** - Build React Native version
-6. **Advanced AI** - Add budget breakdown, packing lists
+## 🚀 Phase 2: Tour Operator Notification System
+
+### Goal
+Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with automated push notifications. Enable monetization to other travel agents.
+
+### Cost: $124/year
+- Apple Developer: $99/year
+- Google Play: $25 one-time
+- All other services: Free tier
+
+### Architecture
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Client App    │     │   Admin Panel   │     │   Driver        │
+│  (React Native) │     │    (Next.js)    │     │  (WhatsApp)     │
+│                 │     │                 │     │                 │
+│ • View trips    │     │ • Manage trips  │     │ • Receives      │
+│ • Get notified  │     │ • Assign drivers│     │   pickup info   │
+│ • See driver    │     │ • Send alerts   │     │ • Client details│
+└────────┬────────┘     └────────┬────────┘     └─────────────────┘
+         │                       │
+         └───────────┬───────────┘
+                     ▼
+            ┌─────────────────┐
+            │    Supabase     │
+            │  + Expo Push    │
+            └─────────────────┘
+```
+
+### New Database Tables
+| Table | Purpose |
+|-------|---------|
+| `organizations` | Multi-tenant travel agents |
+| `external_drivers` | Third-party drivers (name, phone, vehicle) |
+| `trip_driver_assignments` | Driver assigned per trip day |
+| `trip_accommodations` | Hotel info per day |
+| `push_tokens` | Client device tokens for push |
+| `notification_logs` | Audit trail |
+
+### Mobile App Features (`apps/mobile/`)
+- [ ] **My Trips** - View upcoming and past trips
+- [ ] **Trip Details** - Day-by-day itinerary with times
+- [ ] **Driver Info** - Today's driver contact, vehicle
+- [ ] **Push Notifications** - Automatic alerts
+- [ ] **"I've Landed" Button** - Triggers driver info
+- [ ] **Offline Support** - View itinerary without internet
+
+### Admin Panel Features (`apps/web/admin/`)
+- [ ] **Dashboard** - Overview of active trips
+- [ ] **Driver Management** - Add/edit external drivers
+- [ ] **Trip Assignment** - Assign drivers + hotels per day
+- [ ] **Send Notifications** - Manual triggers + status
+- [ ] **Client Management** - View/manage clients
+
+### Notification Types
+| Type | Trigger | To Client | To Driver |
+|------|---------|-----------|-----------|
+| `trip_confirmed` | Admin confirms | Push | WhatsApp |
+| `driver_assigned` | Driver assigned | Push | WhatsApp |
+| `daily_briefing` | 7am each day | Push | WhatsApp |
+| `client_landed` | Client taps button | Push | WhatsApp |
+
+### Implementation Timeline
+1. **Week 1**: Database schema + TypeScript types
+2. **Week 2**: Mobile app core (auth, trips, details)
+3. **Week 3**: Admin panel (drivers, assignments)
+4. **Week 4**: Notifications + polish
+5. **Week 5**: App store submission
+
+### Monetization Model
+| Feature | Free Tier | Pro Tier ($29/mo) |
+|---------|-----------|-------------------|
+| Trips/month | 10 | Unlimited |
+| Drivers | 5 | Unlimited |
+| Push notifications | 100/mo | Unlimited |
+| White-label branding | No | Yes |
+
+---
 
 ## Verification Plan
 1. ✅ **Schema**: SQL applied to Supabase
