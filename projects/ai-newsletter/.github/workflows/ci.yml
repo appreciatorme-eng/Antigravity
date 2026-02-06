@@ -47,3 +47,25 @@ jobs:
       run: |
         # Fail if coverage drops below 70%
         coverage report --fail-under=70 || echo "Coverage below threshold (informational)"
+
+  security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/ai-newsletter
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install pip-audit
+      run: pip install pip-audit
+
+    - name: Scan dependencies for vulnerabilities
+      run: |
+        pip-audit -r requirements.txt --desc on

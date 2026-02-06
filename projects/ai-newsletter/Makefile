@@ -1,7 +1,7 @@
 # AI Newsletter - Development Commands
 # Usage: make <target>
 
-.PHONY: help install test coverage lint format health setup clean
+.PHONY: help install test coverage lint format health setup clean audit
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make lint       - Run linter (ruff)"
 	@echo "  make format     - Format code (ruff)"
 	@echo "  make health     - Check all service connections"
+	@echo "  make audit      - Security scan dependencies"
 	@echo "  make setup      - Full setup (install + pre-commit)"
 	@echo "  make clean      - Remove generated files"
 	@echo ""
@@ -51,6 +52,10 @@ format:
 # Check all service connections
 health:
 	python execution/verify_all.py --verbose
+
+# Security audit dependencies
+audit:
+	pip-audit -r requirements.txt --desc on
 
 # Full setup
 setup: install
