@@ -1,7 +1,10 @@
 """Verify data ingestion workflow executions."""
 import os
 import sys
-from n8n_utils import N8NClient, logger
+try:
+    from execution.n8n_utils import N8NClient, logger
+except ImportError:
+    from n8n_utils import N8NClient, logger
 
 # Workflow ID - can be overridden via environment variable
 DEFAULT_WORKFLOW_ID = "9qGuJh8HAnxXA8zH"

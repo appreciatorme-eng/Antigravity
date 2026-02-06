@@ -1,6 +1,9 @@
 """Create a test workflow in n8n to verify API connectivity."""
 import sys
-from n8n_utils import N8NClient, logger
+try:
+    from execution.n8n_utils import N8NClient, logger
+except ImportError:
+    from n8n_utils import N8NClient, logger
 
 # Test workflow definition
 TEST_WORKFLOW = {

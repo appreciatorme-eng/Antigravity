@@ -3,7 +3,10 @@ import os
 import sys
 import json
 from typing import Optional
-from n8n_utils import N8NClient, require_env_var, logger
+try:
+    from execution.n8n_utils import N8NClient, require_env_var, logger
+except ImportError:
+    from n8n_utils import N8NClient, require_env_var, logger
 
 # Workflow file path
 INPUT_WORKFLOW = "workflows/adapted/newsletter_agent_adapted.json"

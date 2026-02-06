@@ -2,7 +2,10 @@
 import os
 import sys
 import json
-from n8n_utils import N8NClient, logger
+try:
+    from execution.n8n_utils import N8NClient, logger
+except ImportError:
+    from n8n_utils import N8NClient, logger
 
 WORKFLOWS_DIR = "workflows/adapted"
 

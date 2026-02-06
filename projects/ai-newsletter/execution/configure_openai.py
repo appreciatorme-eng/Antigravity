@@ -1,6 +1,9 @@
 """Configure OpenAI credentials in n8n."""
 import sys
-from n8n_utils import N8NClient, require_env_var, logger
+try:
+    from execution.n8n_utils import N8NClient, require_env_var, logger
+except ImportError:
+    from n8n_utils import N8NClient, require_env_var, logger
 
 
 def main():
