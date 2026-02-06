@@ -8,7 +8,10 @@ import hashlib
 import functools
 import time
 from typing import Any, Callable, Optional
-from n8n_utils import logger
+try:
+    from execution.n8n_utils import logger
+except ImportError:
+    from n8n_utils import logger
 
 CACHE_DIR = ".cache"
 

@@ -7,7 +7,10 @@ and logs, ensuring storage costs remain minimal.
 import sys
 import boto3
 from botocore.exceptions import ClientError
-from n8n_utils import require_env_var, logger
+try:
+    from execution.n8n_utils import require_env_var, logger
+except ImportError:
+    from n8n_utils import require_env_var, logger
 
 def apply_lifecycle_policy():
     """Apply lifecycle rules to the configured S3 bucket."""
