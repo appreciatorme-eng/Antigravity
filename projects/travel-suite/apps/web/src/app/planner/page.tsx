@@ -7,6 +7,8 @@ import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
 import SaveItineraryButton from "./SaveItineraryButton";
 import WeatherWidget from "@/components/WeatherWidget";
+import CurrencyConverter from "@/components/CurrencyConverter";
+
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
