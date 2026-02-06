@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
+import ShareItinerary from "./ShareItinerary";
 
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
@@ -141,8 +142,8 @@ export default function PlannerPage() {
                                     key={tag}
                                     onClick={() => toggleInterest(tag)}
                                     className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${interests.includes(tag)
-                                            ? 'bg-primary text-white border-primary'
-                                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
                                         }`}
                                 >
                                     {tag}
@@ -179,7 +180,8 @@ export default function PlannerPage() {
                             <p className="text-gray-600 italic">{result.destination}</p>
                             <p className="mt-2 text-gray-800">{result.summary}</p>
                         </div>
-                        <div className="shrink-0">
+                        <div className="shrink-0 flex items-center gap-3">
+                            <ShareItinerary tripTitle={result.trip_title} description={result.summary} />
                             <DownloadPDFButton
                                 data={result}
                                 fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
