@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
@@ -69,14 +70,14 @@ export default function PlannerPage() {
 
     return (
         <main className="min-h-screen p-8 max-w-4xl mx-auto font-sans">
-            <h1 className="text-4xl font-serif text-[--secondary] mb-6">AI Trip Planner ✈️</h1>
+            <h1 className="text-4xl font-serif text-secondary mb-6">AI Trip Planner ✈️</h1>
 
             <div className="bg-white/50 border border-gray-200 p-6 rounded-xl shadow-sm mb-8">
                 <div className="flex flex-col gap-4">
                     <label className="block">
                         <span className="text-gray-700 font-medium">Where do you want to go?</span>
                         <textarea
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[--primary] focus:ring focus:ring-[--primary] focus:ring-opacity-50 p-3 border"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 p-3 border"
                             rows={3}
                             placeholder="e.g. A romantic weekend in Paris with good food and museums..."
                             value={prompt}
@@ -84,9 +85,9 @@ export default function PlannerPage() {
                         />
                     </label>
 
-                    <div className="flex gap-4 items-center">
+                    <div>
                         <label className="flex items-center gap-2">
-                            <span className="text-gray-700">Duration (Days):</span>
+                            <span className="text-gray-700 font-medium">Duration (Days):</span>
                             <input
                                 type="number"
                                 min={1}
@@ -96,16 +97,19 @@ export default function PlannerPage() {
                                 className="w-20 rounded-md border-gray-300 border p-2"
                             />
                         </label>
+                    </div>
 
+                    <div className="pt-2">
                         <button
                             onClick={handleGenerate}
                             disabled={loading || !prompt}
-                            className="px-6 py-2 bg-[--primary] text-white font-bold rounded-full hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
+                            className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm"
                         >
-                            {loading && <Loader2 className="animate-spin w-4 h-4" />}
+                            {loading && <Loader2 className="animate-spin w-5 h-5" />}
                             {loading ? "Dreaming..." : "Generate Itinerary"}
                         </button>
                     </div>
+
                 </div>
             </div>
 
@@ -117,23 +121,31 @@ export default function PlannerPage() {
 
             {result && (
                 <div className="space-y-6">
-                    <header className="border-b pb-4">
-                        <h2 className="text-3xl font-serif text-[--secondary]">{result.trip_title}</h2>
-                        <p className="text-gray-600 italic">{result.destination}</p>
-                        <p className="mt-2 text-gray-800">{result.summary}</p>
+                    <header className="border-b pb-4 flex justify-between items-start">
+                        <div>
+                            <h2 className="text-3xl font-serif text-secondary">{result.trip_title}</h2>
+                            <p className="text-gray-600 italic">{result.destination}</p>
+                            <p className="mt-2 text-gray-800">{result.summary}</p>
+                        </div>
+                        <div className="shrink-0">
+                            <DownloadPDFButton
+                                data={result}
+                                fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
+                            />
+                        </div>
                     </header>
 
                     <div className="space-y-8">
                         {result.days.map((day: any) => (
                             <div key={day.day_number} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                                <h3 className="text-xl font-bold text-[--secondary] mb-4">
+                                <h3 className="text-xl font-bold text-secondary mb-4">
                                     Day {day.day_number}: {day.theme}
                                 </h3>
-                                <ul className="space-y-6 border-l-2 border-[--primary] pl-6 ml-2">
+                                <ul className="space-y-6 border-l-2 border-primary pl-6 ml-2">
                                     {day.activities.map((act: any, idx: number) => (
                                         <li key={idx} className="relative">
-                                            <div className="absolute -left-[31px] top-1 bg-white border-2 border-[--primary] w-4 h-4 rounded-full"></div>
-                                            <span className="text-xs font-bold text-[--primary] uppercase tracking-wider">{act.time}</span>
+                                            <div className="absolute -left-[31px] top-1 bg-white border-2 border-primary w-4 h-4 rounded-full"></div>
+                                            <span className="text-xs font-bold text-primary uppercase tracking-wider">{act.time}</span>
                                             <h4 className="text-lg font-semibold text-gray-900">{act.title}</h4>
                                             <div className="flex gap-4 mt-2">
                                                 {images[act.location] && (
