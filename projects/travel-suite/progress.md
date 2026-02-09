@@ -20,6 +20,14 @@
 - Updated `README.md` with new UI polish features and dependencies
 - Ran `flutter analyze` - 0 errors, only warnings/info
 
+#### Project Cleanup (Current Session)
+- Recreated `task_plan.md`, `findings.md`, `progress.md` using planning-with-files skill
+- Removed n8n references (using Supabase Edge Functions instead)
+- Created consolidated `README.md` at project root
+- Updated `supabase_config.example.dart` with clearer instructions
+- **Git commit:** `818e9cb` - "chore: restructure planning docs & cleanup mobile app"
+- **Pushed to:** `origin/main`
+
 #### Files Modified
 - `lib/features/trips/domain/models/driver.dart` (Freezed syntax update)
 - `lib/features/trips/presentation/screens/trips_screen.dart` (animations)
@@ -27,22 +35,32 @@
 - `lib/features/trips/data/repositories/driver_repository.dart` (debugPrint)
 - `apps/mobile/README.md` (documentation update)
 - `lib/core/config/supabase_config.example.dart` (clearer instructions)
-
-#### Project Cleanup
-- Cleaned up redundant root documentation files
-- Created consolidated `README.md` at project root
-- Recreated `task_plan.md`, `findings.md`, `progress.md` using planning-with-files skill
+- `README.md` (new - project root)
+- `task_plan.md` (recreated with planning-with-files template)
+- `findings.md` (recreated with planning-with-files template)
+- `progress.md` (recreated with planning-with-files template)
 
 ### Phase 4: Push Notifications & Admin Panel
 - **Status:** in_progress
 - **Started:** 2026-02-09
 
 #### Actions Taken
-- (Pending: Firebase FCM integration)
+- Added Firebase dependencies (`firebase_core`, `firebase_messaging`) to `pubspec.yaml`
+- Created `PushNotificationService` in `lib/core/services/push_notification_service.dart` for FCM token management and notification handling
+- Integrated Firebase initialization and push notification setup in `main.dart`
+- Configured Android build files (`build.gradle.kts`, `settings.gradle.kts`) for Google Services
+- (Pending: Firebase configuration files `google-services.json` and `GoogleService-Info.plist`)
+- (Pending: Supabase Edge Functions for notification triggers)
 - (Pending: Admin dashboard)
 
 #### Files Created/Modified
-- (To be updated as work progresses)
+- `apps/mobile/pubspec.yaml` (modified)
+- `apps/mobile/lib/core/services/push_notification_service.dart` (created)
+- `apps/mobile/lib/main.dart` (modified)
+- `apps/mobile/android/app/build.gradle.kts` (modified)
+- `apps/mobile/android/settings.gradle.kts` (modified)
+- `task_plan.md` (updated)
+- `progress.md` (updated)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |

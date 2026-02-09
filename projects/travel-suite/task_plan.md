@@ -32,7 +32,7 @@ Phase 4
 - **Status:** complete
 
 ### Phase 4: Push Notifications & Admin Panel
-- [ ] Integrate Firebase Cloud Messaging (FCM)
+- [/] Integrate Firebase Cloud Messaging (FCM) (Code implemented, configuration pending)
 - [ ] Create Supabase Edge Functions for notification triggers
 - [ ] Create admin dashboard for trip management
 - [ ] Build driver management CRUD
