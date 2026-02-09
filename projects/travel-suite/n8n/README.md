@@ -97,11 +97,51 @@ Edit the "Format Daily Briefing" Code node to change:
 - Included information
 - Formatting style
 
-## Additional Workflows (Coming Soon)
+### 2. Trip Reminder (`trip-reminder.json`)
 
-- **Trip Reminder**: 24h before trip start
-- **Pickup Reminder**: 1h before pickup
-- **Review Request**: After trip completion
+Sends reminder 24 hours before trip starts.
+
+**Trigger:** Daily at 9:00 AM
+**Actions:**
+1. Query trips starting tomorrow (status='confirmed')
+2. Get first day driver assignment
+3. Format reminder with trip details
+4. Send push notification
+5. Log notification
+
+---
+
+### 3. Pickup Reminder (`pickup-reminder.json`)
+
+Sends reminder ~1 hour before each pickup.
+
+**Trigger:** Every 15 minutes
+**Actions:**
+1. Query upcoming pickups (45-75 minutes from now)
+2. Filter out already-notified pickups
+3. Format pickup details with driver info
+4. Send high-priority push notification
+5. Log notification
+
+---
+
+### 4. Review Request (`review-request.json`)
+
+Requests review after trip completion.
+
+**Trigger:** Daily at 10:00 AM
+**Actions:**
+1. Query trips that ended yesterday
+2. Mark trip as completed
+3. Format review request with discount offer
+4. Send push notification
+5. Send email with HTML template
+6. Log notification
+
+---
+
+## Additional Workflows (Planned)
+
 - **Weather Alert**: Severe weather notifications
 
 ## Troubleshooting

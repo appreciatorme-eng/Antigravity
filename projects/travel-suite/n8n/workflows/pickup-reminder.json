@@ -1,0 +1,247 @@
+{
+  "name": "GoBuddy Pickup Reminder (1h Before)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [220, 300],
+      "notes": "Runs every 15 minutes to check for upcoming pickups"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  t.id as trip_id,\n  t.client_id,\n  p.full_name as client_name,\n  i.destination,\n  tda.day_number,\n  tda.pickup_time,\n  tda.pickup_location,\n  ed.full_name as driver_name,\n  ed.phone as driver_phone,\n  ed.vehicle_type,\n  ed.vehicle_plate\nFROM trips t\nJOIN profiles p ON t.client_id = p.id\nJOIN itineraries i ON t.itinerary_id = i.id\nJOIN trip_driver_assignments tda ON tda.trip_id = t.id\nJOIN external_drivers ed ON tda.external_driver_id = ed.id\nWHERE t.status = 'in_progress'\n  AND t.start_date + (tda.day_number - 1) * INTERVAL '1 day' = CURRENT_DATE\n  AND tda.pickup_time IS NOT NULL\n  AND tda.pickup_time BETWEEN (CURRENT_TIME + INTERVAL '45 minutes') AND (CURRENT_TIME + INTERVAL '75 minutes')\n  AND NOT EXISTS (\n    SELECT 1 FROM notification_logs nl\n    WHERE nl.trip_id = t.id\n    AND nl.notification_type = 'pickup_reminder'\n    AND nl.created_at > CURRENT_TIMESTAMP - INTERVAL '2 hours'\n  )",
+        "additionalFields": {}
+      },
+      "id": "get-upcoming-pickups",
+      "name": "Get Upcoming Pickups (1h)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [440, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      },
+      "notes": "Find pickups happening in 45-75 minutes that haven't been notified"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-pickups",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-has-pickups",
+      "name": "Has Pickups?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pickup = $input.item.json;\n\nconst pickupTime = pickup.pickup_time;\nconst formattedTime = pickupTime ? pickupTime.substring(0, 5) : 'Soon';\n\nlet message = `⏰ Pickup in about 1 hour!\\n\\n`;\nmessage += `🚗 Driver: ${pickup.driver_name}\\n`;\nmessage += `📍 Location: ${pickup.pickup_location || 'Check your itinerary'}\\n`;\nmessage += `⏰ Time: ${formattedTime}\\n`;\nmessage += `🚙 Vehicle: ${pickup.vehicle_type} (${pickup.vehicle_plate || 'TBC'})\\n\\n`;\nmessage += `📞 Driver Contact: ${pickup.driver_phone}\\n\\n`;\nmessage += `Please be ready at the pickup location. Your driver will be waiting!`;\n\nreturn {\n  trip_id: pickup.trip_id,\n  client_id: pickup.client_id,\n  client_name: pickup.client_name,\n  driver_phone: pickup.driver_phone,\n  pickup_time: pickupTime,\n  notification: {\n    title: `🚗 Pickup in 1 hour - ${pickup.destination}`,\n    body: message\n  }\n};"
+      },
+      "id": "format-pickup-reminder",
+      "name": "Format Pickup Reminder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT expo_push_token\nFROM push_tokens\nWHERE user_id = '{{ $json.client_id }}'\n  AND is_active = true",
+        "additionalFields": {}
+      },
+      "id": "get-push-tokens",
+      "name": "Get Push Tokens",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1100, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{ $('Get Push Tokens').item.json.expo_push_token }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Format Pickup Reminder').item.json.notification.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $('Format Pickup Reminder').item.json.notification.body }}"
+            },
+            {
+              "name": "sound",
+              "value": "default"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ type: 'pickup_reminder', tripId: $('Format Pickup Reminder').item.json.trip_id }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-push",
+      "name": "Send Push Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "notification_logs",
+        "columns": "trip_id, recipient_id, notification_type, title, body, status, sent_at",
+        "additionalFields": {}
+      },
+      "id": "log-notification",
+      "name": "Log Notification",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [1540, 300],
+      "credentials": {
+        "postgres": {
+          "id": "supabase-db",
+          "name": "Supabase Database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Upcoming Pickups (1h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Upcoming Pickups (1h)": {
+      "main": [
+        [
+          {
+            "node": "Has Pickups?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pickups?": {
+      "main": [
+        [
+          {
+            "node": "Format Pickup Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pickup Reminder": {
+      "main": [
+        [
+          {
+            "node": "Get Push Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Push Tokens": {
+      "main": [
+        [
+          {
+            "node": "Send Push Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Push Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "notifications"
+    },
+    {
+      "name": "high-frequency"
+    }
+  ]
+}
