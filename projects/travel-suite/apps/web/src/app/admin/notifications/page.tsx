@@ -1,7 +1,8 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/lib/supabase/client";
 import {
     Bell,
     CheckCircle2,
@@ -24,18 +25,18 @@ interface NotificationLog {
     notification_type: string;
     title: string;
     body: string;
-    status: "pending" | "sent" | "delivered" | "failed";
+    status: string;
     error_message: string | null;
     sent_at: string | null;
-    created_at: string;
+    created_at: string | null;
     profiles: {
-        full_name: string;
-        email: string;
+        full_name: string | null;
+        email: string | null;
     } | null;
 }
 
 export default function NotificationLogsPage() {
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
     const [logs, setLogs] = useState<NotificationLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -193,9 +194,9 @@ export default function NotificationLogsPage() {
                                             <div className="flex items-center gap-2">
                                                 {getStatusIcon(log.status)}
                                                 <span className={`text-sm font-medium ${log.status === 'sent' ? 'text-emerald-600' :
-                                                        log.status === 'failed' ? 'text-rose-600' :
-                                                            log.status === 'pending' ? 'text-amber-600' :
-                                                                'text-slate-600'
+                                                    log.status === 'failed' ? 'text-rose-600' :
+                                                        log.status === 'pending' ? 'text-amber-600' :
+                                                            'text-slate-600'
                                                     }`}>
                                                     {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
                                                 </span>

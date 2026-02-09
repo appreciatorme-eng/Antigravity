@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
     Calendar,
@@ -34,51 +34,57 @@ export default function AdminTripsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
 
     useEffect(() => {
         fetchTrips();
-    }, []);
+    }, [statusFilter, searchQuery]); // Added dependencies for refetching on filter/search change
 
     const fetchTrips = async () => {
-        const { data, error } = await supabase
+        setLoading(true); // Set loading to true when fetching starts
+        let query = supabase
             .from("trips")
             .select(`
                 id,
                 status,
                 start_date,
                 end_date,
-                destination,
                 created_at,
-                profiles!trips_user_id_fkey (
+                profiles:client_id (
                     full_name,
                     email
                 ),
-                itineraries (
+                itineraries:itinerary_id (
                     trip_title,
-                    duration_days
+                    duration_days,
+                    destination
                 )
-            `)
-            .order("start_date", { ascending: false });
+            `);
+
+        if (statusFilter !== "all") {
+            query = query.eq("status", statusFilter);
+        }
+
+        if (searchQuery) {
+            query = query.or(`itineraries.trip_title.ilike.%${searchQuery}%,profiles.full_name.ilike.%${searchQuery}%,itineraries.destination.ilike.%${searchQuery}%`);
+        }
+
+        query = query.order("created_at", { ascending: false });
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error fetching trips:", error);
         } else {
-            setTrips(data || []);
+            // Map the data to include destination from itinerary at the top level
+            const mappedData = (data || []).map((trip: any) => ({
+                ...trip,
+                destination: trip.itineraries?.destination || 'TBD'
+            }));
+            setTrips(mappedData);
         }
         setLoading(false);
     };
-
-    const filteredTrips = trips.filter((trip) => {
-        const matchesSearch =
-            trip.destination?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            trip.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            trip.itineraries?.trip_title?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesStatus = statusFilter === "all" || trip.status === statusFilter;
-
-        return matchesSearch && matchesStatus;
-    });
 
     const formatDate = (dateString: string) => {
         if (!dateString) return "";
@@ -191,13 +197,13 @@ export default function AdminTripsPage() {
 
             {/* Trips List */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                {filteredTrips.length === 0 ? (
+                {trips.length === 0 ? (
                     <div className="p-12 text-center">
                         <p className="text-gray-500">No trips found</p>
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-100">
-                        {filteredTrips.map((trip) => (
+                        {trips.map((trip) => (
                             <Link
                                 key={trip.id}
                                 href={`/admin/trips/${trip.id}`}

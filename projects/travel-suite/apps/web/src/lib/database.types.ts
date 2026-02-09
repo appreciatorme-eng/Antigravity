@@ -65,6 +65,36 @@ export type Database = {
                     },
                 ]
             }
+            external_drivers: {
+                Row: {
+                    id: string
+                    full_name: string
+                    phone: string | null
+                    vehicle_type: string | null
+                    vehicle_plate: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    full_name: string
+                    phone?: string | null
+                    vehicle_type?: string | null
+                    vehicle_plate?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    full_name?: string
+                    phone?: string | null
+                    vehicle_type?: string | null
+                    vehicle_plate?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: []
+            }
             itineraries: {
                 Row: {
                     budget: string | null
@@ -247,6 +277,101 @@ export type Database = {
                     },
                 ]
             }
+            trip_driver_assignments: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    day_number: number
+                    external_driver_id: string | null
+                    pickup_time: string | null
+                    pickup_location: string | null
+                    notes: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    day_number: number
+                    external_driver_id?: string | null
+                    pickup_time?: string | null
+                    pickup_location?: string | null
+                    notes?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    day_number?: number
+                    external_driver_id?: string | null
+                    pickup_time?: string | null
+                    pickup_location?: string | null
+                    notes?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "trip_driver_assignments_trip_id_fkey"
+                        columns: ["trip_id"]
+                        isOneToOne: false
+                        referencedRelation: "trips"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "trip_driver_assignments_external_driver_id_fkey"
+                        columns: ["external_driver_id"]
+                        isOneToOne: false
+                        referencedRelation: "external_drivers"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            trip_accommodations: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address: string | null
+                    check_in_time: string
+                    contact_phone: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address?: string | null
+                    check_in_time: string
+                    contact_phone?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    day_number?: number
+                    hotel_name?: string
+                    address?: string | null
+                    check_in_time?: string
+                    contact_phone?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "trip_accommodations_trip_id_fkey"
+                        columns: ["trip_id"]
+                        isOneToOne: false
+                        referencedRelation: "trips"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
             organizations: {
                 Row: {
                     id: string
@@ -290,7 +415,10 @@ export type Database = {
                     title: string
                     body: string
                     status: string
-                    sent_at: string
+                    recipient_phone: string | null
+                    error_message: string | null
+                    sent_at: string | null
+                    created_at: string | null
                 }
                 Insert: {
                     id?: string
@@ -301,7 +429,10 @@ export type Database = {
                     title: string
                     body: string
                     status?: string
-                    sent_at?: string
+                    recipient_phone?: string | null
+                    error_message?: string | null
+                    sent_at?: string | null
+                    created_at?: string | null
                 }
                 Update: {
                     id?: string
@@ -312,7 +443,10 @@ export type Database = {
                     title?: string
                     body?: string
                     status?: string
-                    sent_at?: string
+                    recipient_phone?: string | null
+                    error_message?: string | null
+                    sent_at?: string | null
+                    created_at?: string | null
                 }
                 Relationships: [
                     {

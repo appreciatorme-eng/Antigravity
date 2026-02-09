@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,15 +17,18 @@ import {
     Send,
     Save,
     Bell,
+    Plus,
+    Trash,
+    X,
 } from "lucide-react";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications";
 
 interface Driver {
     id: string;
     full_name: string;
-    phone: string;
-    vehicle_type: string;
-    vehicle_plate: string;
+    phone: string | null;
+    vehicle_type: string | null;
+    vehicle_plate: string | null;
 }
 
 interface DriverAssignment {
@@ -69,6 +72,7 @@ interface Trip {
         email: string;
     } | null;
     itineraries: {
+        id: string;
         trip_title: string;
         duration_days: number;
         raw_data: {
@@ -89,8 +93,9 @@ export default function TripDetailPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [activeDay, setActiveDay] = useState(1);
+    const [itineraryDays, setItineraryDays] = useState<Day[]>([]);
 
-    const supabase = createClientComponentClient();
+    const supabase = createClient();
 
     useEffect(() => {
         if (tripId) {
@@ -107,15 +112,16 @@ export default function TripDetailPage() {
                 status,
                 start_date,
                 end_date,
-                destination,
                 profiles!trips_user_id_fkey (
                     id,
                     full_name,
                     email
                 ),
                 itineraries (
+                    id,
                     trip_title,
                     duration_days,
+                    destination,
                     raw_data
                 )
             `)
@@ -127,7 +133,17 @@ export default function TripDetailPage() {
             return;
         }
 
-        setTrip(tripData as unknown as Trip);
+        // Map destination from itineraries if not present in trip (it shouldn't be in trip table anymore)
+        const mappedTrip = {
+            ...tripData,
+            destination: tripData.itineraries?.destination || "TBD"
+        };
+
+        setTrip(mappedTrip as unknown as Trip);
+        if (tripData.itineraries?.raw_data && typeof tripData.itineraries.raw_data === 'object' && 'days' in tripData.itineraries.raw_data) {
+            // Safe cast or check
+            setItineraryDays((tripData.itineraries.raw_data as any).days || []);
+        }
 
         // Fetch drivers
         const { data: driversData } = await supabase
@@ -205,6 +221,66 @@ export default function TripDetailPage() {
         }));
     };
 
+    const updateDayTheme = (dayNumber: number, newTheme: string) => {
+        setItineraryDays((prev) =>
+            prev.map((day) =>
+                day.day_number === dayNumber ? { ...day, theme: newTheme } : day
+            )
+        );
+    };
+
+    const updateActivity = (
+        dayNumber: number,
+        activityIndex: number,
+        field: keyof Activity,
+        value: string | number
+    ) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    const newActivities = [...day.activities];
+                    newActivities[activityIndex] = {
+                        ...newActivities[activityIndex],
+                        [field]: value,
+                    };
+                    return { ...day, activities: newActivities };
+                }
+                return day;
+            })
+        );
+    };
+
+    const addActivity = (dayNumber: number) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    return {
+                        ...day,
+                        activities: [
+                            ...day.activities,
+                            { title: "New Activity", duration_minutes: 60 },
+                        ],
+                    };
+                }
+                return day;
+            })
+        );
+    };
+
+    const removeActivity = (dayNumber: number, activityIndex: number) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    const newActivities = day.activities.filter(
+                        (_, index) => index !== activityIndex
+                    );
+                    return { ...day, activities: newActivities };
+                }
+                return day;
+            })
+        );
+    };
+
     const saveChanges = async () => {
         setSaving(true);
 
@@ -255,6 +331,16 @@ export default function TripDetailPage() {
                 }
             }
 
+            // Save itinerary updates
+            if (trip?.itineraries?.id) {
+                await supabase
+                    .from("itineraries")
+                    .update({
+                        raw_data: { days: itineraryDays } as unknown as any,
+                    })
+                    .eq("id", trip.itineraries.id);
+            }
+
             // Refresh data
             await fetchData();
             alert("Changes saved successfully!");
@@ -302,7 +388,7 @@ export default function TripDetailPage() {
         if (!assignment?.external_driver_id) return null;
 
         const driver = drivers.find((d) => d.id === assignment.external_driver_id);
-        if (!driver) return null;
+        if (!driver || !driver.phone) return null;
 
         const day = trip?.itineraries?.raw_data?.days?.find((d) => d.day_number === dayNumber);
         const accommodation = accommodations[dayNumber];
@@ -401,8 +487,8 @@ export default function TripDetailPage() {
                         key={day}
                         onClick={() => setActiveDay(day)}
                         className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${activeDay === day
-                                ? "bg-primary text-white"
-                                : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                            ? "bg-primary text-white"
+                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
                             }`}
                     >
                         Day {day}
@@ -576,31 +662,90 @@ export default function TripDetailPage() {
                 </div>
             </div>
 
-            {/* Day Activities (Read-only) */}
-            {days.find((d) => d.day_number === activeDay) && (
+            {/* Day Activities (Editable) */}
+            {itineraryDays.find((d) => d.day_number === activeDay) && (
                 <div className="bg-white rounded-xl border border-gray-100 p-6">
-                    <h2 className="text-lg font-semibold mb-4">
-                        Day {activeDay}: {days.find((d) => d.day_number === activeDay)?.theme}
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex-1 mr-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Day Theme
+                            </label>
+                            <input
+                                type="text"
+                                value={
+                                    itineraryDays.find((d) => d.day_number === activeDay)?.theme ||
+                                    ""
+                                }
+                                onChange={(e) => updateDayTheme(activeDay, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold"
+                            />
+                        </div>
+                        <button
+                            onClick={() => addActivity(activeDay)}
+                            className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Activity
+                        </button>
+                    </div>
+
                     <div className="space-y-3">
-                        {days
+                        {itineraryDays
                             .find((d) => d.day_number === activeDay)
                             ?.activities.map((activity, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                    className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg group"
                                 >
-                                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">{activity.title}</p>
+                                    <div className="mt-3 w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className="md:col-span-2">
+                                            <input
+                                                type="text"
+                                                value={activity.title}
+                                                onChange={(e) =>
+                                                    updateActivity(
+                                                        activeDay,
+                                                        index,
+                                                        "title",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5"
+                                                placeholder="Activity title"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                value={activity.duration_minutes}
+                                                onChange={(e) =>
+                                                    updateActivity(
+                                                        activeDay,
+                                                        index,
+                                                        "duration_minutes",
+                                                        parseInt(e.target.value) || 0
+                                                    )
+                                                }
+                                                className="w-20 bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-right"
+                                            />
+                                            <span className="text-sm text-gray-500">mins</span>
+                                        </div>
                                     </div>
-                                    {activity.duration_minutes && (
-                                        <span className="text-sm text-gray-500">
-                                            {activity.duration_minutes} mins
-                                        </span>
-                                    )}
+                                    <button
+                                        onClick={() => removeActivity(activeDay, index)}
+                                        className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <Trash className="h-4 w-4" />
+                                    </button>
                                 </div>
                             ))}
+
+                        {itineraryDays.find((d) => d.day_number === activeDay)?.activities.length === 0 && (
+                            <div className="text-center py-6 text-gray-400 text-sm">
+                                No activities planned for this day.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
