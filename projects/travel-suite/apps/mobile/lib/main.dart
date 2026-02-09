@@ -7,6 +7,8 @@ import 'core/config/supabase_config.dart';
 import 'features/trips/presentation/screens/trips_screen.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 
+import 'core/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -14,6 +16,9 @@ void main() async {
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+
+  await NotificationService().init();
+
 
   runApp(const ProviderScope(child: GoBuddyApp()));
 }

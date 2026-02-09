@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
+import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
+import 'package:gobuddy_mobile/features/trips/presentation/widgets/driver_info_card.dart';
 
+import 'package:gobuddy_mobile/core/services/notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class TripDetailScreen extends StatefulWidget {
@@ -15,6 +20,66 @@ class TripDetailScreen extends StatefulWidget {
 
 class _TripDetailScreenState extends State<TripDetailScreen> {
   int _selectedDayIndex = 0;
+  List<DriverAssignment> _assignments = [];
+  bool _loadingDriver = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDriverAssignments();
+  }
+
+  Future<void> _loadDriverAssignments() async {
+    final repo = DriverRepository(Supabase.instance.client);
+    // Ensure trip has an ID
+    final tripId = widget.trip['id'];
+    if (tripId != null) {
+      final results = await repo.getDriverAssignments(tripId);
+      if (mounted) {
+        setState(() {
+          _assignments = results;
+          _loadingDriver = false;
+        });
+      }
+    } else {
+        if (mounted) setState(() => _loadingDriver = false);
+    }
+  }
+
+  Future<void> _notifyLanded() async {
+    try {
+      // Update trip status to in_progress
+      await Supabase.instance.client
+          .from('trips')
+          .update({'status': 'in_progress'})
+          .eq('id', widget.trip['id']);
+
+      // Show local notification
+      await NotificationService().showNotification(
+        id: 1,
+        title: 'Welcome to ${widget.trip['destination'] ?? 'GoBuddy'}!',
+        body: 'Your driver has been notified of your arrival.',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Driver notified via App System!'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error notifying driver: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   Map<String, dynamic> get rawData =>
       widget.trip['raw_data'] as Map<String, dynamic>? ?? {};
@@ -113,14 +178,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       ),
       // I've Landed Button (Phase 2 feature)
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Driver notification coming soon!'),
-              backgroundColor: AppTheme.primary,
-            ),
-          );
-        },
+        onPressed: _notifyLanded,
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.flight_land_rounded),
         label: const Text("I've Landed"),
@@ -132,6 +190,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     final day = dayData as Map<String, dynamic>;
     final theme = day['theme'] ?? '';
     final activities = day['activities'] as List<dynamic>? ?? [];
+
+    // Check for driver assignment for this day (1-based index)
+    final assignment = _assignments.firstWhere(
+      (a) => a.dayNumber == _selectedDayIndex + 1,
+      orElse: () => const DriverAssignment(id: '', tripId: '', driverId: '', dayNumber: -1),
+    );
+    final hasDriver = assignment.dayNumber != -1;
 
     // Collect coordinates for map
     final markers = <Marker>[];
@@ -187,6 +252,11 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ),
             ),
           const SizedBox(height: 16),
+          
+          if (hasDriver) ...[
+             DriverInfoCard(assignment: assignment),
+             const SizedBox(height: 16),
+          ],
 
           // Map
           if (markers.isNotEmpty)

@@ -19,7 +19,8 @@
 ## Project Review: Travel Suite
 - **Architecture**: Monorepo structure with `apps/web` (Next.js 16) and `apps/agents` (Python FastAPI/Agno).
 - **Backend**: Supabase (Postgres, Auth, Realtime, Vector). robust schema covering multi-tenant organizations, itineraries, and trips.
-- **Frontend**: Modern stack (React 19, Tailwind 4). Functional but could be more visually "premium".
+- **Frontend (Web)**: Modern stack (React 19, Tailwind 4). Functional but could be more visually "premium".
+- **Frontend (Mobile)**: Flutter (Dart) app, leveraging `supabase_flutter` for auth/data, `flutter_riverpod` for state, and `flutter_map` for mapping.
 - **AI Integration**: Specific agents (TripPlanner, SupportBot) implemented via Python backend with RAG/Vector embeddings.
 - **Automation**: n8n workflows handle robust notifications (Trip Briefings, reminders).
 
