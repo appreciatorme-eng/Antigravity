@@ -2,6 +2,7 @@
 
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface PDFDownloadButtonProps {
     itinerary: any;
@@ -49,17 +50,19 @@ export default function PDFDownloadButton({ itinerary, className = "" }: PDFDown
     };
 
     return (
-        <button
+        <Button
+            variant="outline"
+            size="icon"
             onClick={handleDownload}
             disabled={generating}
-            className={`p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 ${className}`}
+            className={`bg-white/80 backdrop-blur-sm shadow-sm hover:bg-gray-100 transition-colors ${className}`}
             title="Download PDF"
         >
             {generating ? (
-                <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
             ) : (
-                <Download className="w-5 h-5 text-gray-600" />
+                <Download className="w-4 h-4 text-gray-700" />
             )}
-        </button>
+        </Button>
     );
 }

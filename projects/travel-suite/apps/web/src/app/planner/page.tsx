@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Map } from "lucide-react";
+import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane } from "lucide-react";
 import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
 import SaveItineraryButton from "./SaveItineraryButton";
 import WeatherWidget from "@/components/WeatherWidget";
 import CurrencyConverter from "@/components/CurrencyConverter";
-
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ItineraryResult } from "@/types/itinerary";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -16,21 +21,34 @@ const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
     loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
 });
 
+const BUDGET_OPTIONS = [
+    { value: "Budget-Friendly", label: "💰 Budget-Friendly" },
+    { value: "Moderate", label: "⚖️ Moderate" },
+    { value: "Luxury", label: "💎 Luxury" },
+    { value: "Ultra-High End", label: "👑 Ultra-High End" },
+];
+
+const INTEREST_OPTIONS = [
+    '🎨 Art & Culture', '🍽️ Food & Dining', '🏞️ Nature',
+    '🛍️ Shopping', '🏰 History', '👨‍👩‍👧‍👦 Family'
+];
+
+
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(3);
     const [budget, setBudget] = useState("Moderate");
     const [interests, setInterests] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<ItineraryResult | null>(null);
     const [error, setError] = useState("");
 
     const [images, setImages] = useState<Record<string, string | null>>({});
 
-    const fetchImagesForItinerary = async (itineraryData: any) => {
+    const fetchImagesForItinerary = async (itineraryData: ItineraryResult) => {
         const locations: string[] = [];
-        itineraryData.days.forEach((day: any) => {
-            day.activities.forEach((act: any) => {
+        itineraryData.days.forEach((day) => {
+            day.activities.forEach((act) => {
                 if (act.location) locations.push(act.location);
             });
         });
@@ -97,159 +115,244 @@ export default function PlannerPage() {
     };
 
     return (
-        <main className="min-h-screen p-8 max-w-4xl mx-auto font-sans">
-            <h1 className="text-4xl font-serif text-secondary mb-6">GoBuddy Adventures ✈️</h1>
+        <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20">
+            <div className="max-w-4xl mx-auto px-6 py-10">
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
+                    <p className="text-gray-500 text-lg font-light">Design your perfect trip with the power of AI</p>
+                </div>
 
-            <div className="bg-white/50 border border-gray-200 p-6 rounded-xl shadow-sm mb-8">
-                <div className="flex flex-col gap-6">
-                    {/* Destination Input */}
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Where to?</label>
-                        <input
-                            type="text"
-                            className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent text-lg"
-                            placeholder="e.g. Paris, Tokyo, New York"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                        />
-                    </div>
+                {!result ? (
+                    <Card className="border-gray-100 shadow-xl bg-white/80 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 border-b border-gray-100 pb-6">
+                            <CardTitle className="text-xl flex items-center gap-2 text-secondary">
+                                <Sparkles className="w-5 h-5 text-primary" />
+                                Start your adventure
+                            </CardTitle>
+                            <CardDescription>
+                                Tell us where you want to go, and we'll handle the rest.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6 md:p-8 space-y-8">
+                            {/* Destination Input */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-primary" /> Where to?
+                                </label>
+                                <Input
+                                    type="text"
+                                    className="h-14 text-lg bg-gray-50/50 border-gray-200 focus-visible:ring-primary pl-4"
+                                    placeholder="e.g. Paris, Tokyo, New York"
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                />
+                            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Duration Input */}
-                        <div>
-                            <label className="block text-gray-700 font-medium mb-2">Duration (Days)</label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={14}
-                                value={days}
-                                onChange={(e) => setDays(Number(e.target.value))}
-                                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                            />
-                        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Duration Input */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={14}
+                                        value={days}
+                                        onChange={(e) => setDays(Number(e.target.value))}
+                                        className="h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-primary"
+                                    />
+                                </div>
 
-                        {/* Budget Input */}
-                        <div>
-                            <label className="block text-gray-700 font-medium mb-2">Budget</label>
-                            <select
-                                value={budget}
-                                onChange={(e) => setBudget(e.target.value)}
-                                className="w-full p-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                                {/* Budget Input */}
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                        <Wallet className="w-4 h-4 text-primary" /> Budget
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {BUDGET_OPTIONS.map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => setBudget(option.value)}
+                                                className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 border ${budget === option.value
+                                                    ? 'bg-primary text-white border-primary shadow-md transform scale-[1.02]'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Interests Input */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                    <Plane className="w-4 h-4 text-primary" /> Interests
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {INTEREST_OPTIONS.map((tag) => (
+                                        <button
+                                            key={tag}
+                                            onClick={() => toggleInterest(tag)}
+                                            className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 ${interests.includes(tag)
+                                                ? 'bg-secondary text-white border-secondary shadow-sm transform scale-105'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-secondary hover:text-secondary hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator className="my-4" />
+
+                            <Button
+                                onClick={handleGenerate}
+                                disabled={loading || !prompt}
+                                className="w-full h-14 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl"
                             >
-                                <option value="Budget-Friendly">💰 Budget-Friendly</option>
-                                <option value="Moderate">⚖️ Moderate</option>
-                                <option value="Luxury">💎 Luxury</option>
-                                <option value="Ultra-High End">👑 Ultra-High End</option>
-                            </select>
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                                        Crafting your Journey...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-5 h-5 mr-2" />
+                                        Generate Dream Itinerary
+                                    </>
+                                )}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        {/* Actions Bar */}
+                        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-4 z-20 backdrop-blur-md bg-white/80">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setResult(null)}
+                                className="text-gray-500 hover:text-secondary"
+                            >
+                                ← Start Over
+                            </Button>
+                            <div className="flex gap-2">
+                                <SaveItineraryButton
+                                    itineraryData={result}
+                                    destination={prompt}
+                                    days={days}
+                                    budget={budget}
+                                    interests={interests}
+                                />
+                                <ShareItinerary tripTitle={result.trip_title} description={result.summary} />
+                                <DownloadPDFButton
+                                    data={result}
+                                    fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Interests Input */}
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Interests</label>
-                        <div className="flex flex-wrap gap-2">
-                            {['🎨 Art & Culture', '🍽️ Food & Dining', '🏞️ Nature', '🛍️ Shopping', '🏰 History', '👨‍👩‍👧‍👦 Family'].map((tag) => (
-                                <button
-                                    key={tag}
-                                    onClick={() => toggleInterest(tag)}
-                                    className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${interests.includes(tag)
-                                        ? 'bg-primary text-white border-primary'
-                                        : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
-                                        }`}
-                                >
-                                    {tag}
-                                </button>
+                        {/* Itinerary Header */}
+                        <div className="text-center space-y-4">
+                            <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
+                                {result.duration_days} Days in {result.destination}
+                            </Badge>
+                            <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
+                            <p className="text-xl text-gray-600 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
+                        </div>
+
+                        {/* Map & Widgets */}
+                        <div className="grid lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 relative">
+                                <ItineraryMap
+                                    activities={result.days.flatMap((day: any) => day.activities)}
+                                />
+                            </div>
+                            <div className="space-y-6">
+                                <Card className="border-gray-200 shadow-md h-full">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500">Destination Info</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6 pt-4">
+                                        <WeatherWidget destination={result.destination} days={days} />
+                                        <Separator />
+                                        <CurrencyConverter compact />
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+
+                        {/* Day by Day */}
+                        <div className="space-y-8">
+                            {result.days.map((day: any) => (
+                                <Card key={day.day_number} className="overflow-hidden border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+                                    <div className="bg-gradient-to-r from-secondary/5 to-transparent px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                        <h3 className="text-xl font-bold text-secondary flex items-center gap-3">
+                                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-white text-sm font-bold shadow-sm">
+                                                {day.day_number}
+                                            </span>
+                                            {day.theme}
+                                        </h3>
+                                    </div>
+                                    <CardContent className="p-0">
+                                        <div className="divide-y divide-gray-100">
+                                            {day.activities.map((act: any, idx: number) => (
+                                                <div key={idx} className="p-6 hover:bg-gray-50/50 transition-colors">
+                                                    <div className="flex flex-col md:flex-row gap-5">
+                                                        <div className="flex items-start gap-3 w-24 shrink-0 pt-1">
+                                                            <Badge variant="outline" className="font-mono text-xs bg-gray-50">
+                                                                {act.time}
+                                                            </Badge>
+                                                        </div>
+
+                                                        {images[act.location] && (
+                                                            <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100">
+                                                                <img
+                                                                    src={images[act.location]!}
+                                                                    alt={act.location}
+                                                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex-1 space-y-2">
+                                                            <div className="flex items-start justify-between">
+                                                                <h4 className="text-lg font-semibold text-gray-900 leading-tight">
+                                                                    {act.title}
+                                                                </h4>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                                                                <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                                {act.location}
+                                                            </div>
+
+                                                            <p className="text-gray-600 text-sm leading-relaxed">
+                                                                {act.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             ))}
                         </div>
                     </div>
+                )}
 
-                    <div className="pt-4">
-                        <button
-                            onClick={handleGenerate}
-                            disabled={loading || !prompt}
-                            className="w-full py-4 bg-primary text-primary-foreground font-bold text-lg rounded-xl hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg transform hover:scale-[1.01]"
-                        >
-                            {loading && <Loader2 className="animate-spin w-6 h-6" />}
-                            {loading ? "Crafting your Journey..." : "Generate Dream Itinerary"}
-                        </button>
+                {error && (
+                    <div className="fixed bottom-6 right-6 p-4 bg-red-white border border-red-200 text-red-600 rounded-xl shadow-2xl animate-in slide-in-from-right duration-500 flex items-center gap-3">
+                        <span className="text-2xl">⚠️</span>
+                        {error}
+                        <button onClick={() => setError("")} className="ml-2 hover:bg-red-50 p-1 rounded-full"><span className="sr-only">Dismiss</span>×</button>
                     </div>
-
-                </div>
+                )}
             </div>
-
-            {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-100 mb-6">
-                    {error}
-                </div>
-            )}
-
-            {result && (
-                <div className="space-y-6">
-                    <header className="border-b pb-4 flex justify-between items-start">
-                        <div>
-                            <h2 className="text-3xl font-serif text-secondary">{result.trip_title}</h2>
-                            <p className="text-gray-600 italic">{result.destination}</p>
-                            <p className="mt-2 text-gray-800">{result.summary}</p>
-                        </div>
-                        <div className="shrink-0 flex flex-wrap items-center gap-2">
-                            <SaveItineraryButton
-                                itineraryData={result}
-                                destination={prompt}
-                                days={days}
-                                budget={budget}
-                                interests={interests}
-                            />
-                            <ShareItinerary tripTitle={result.trip_title} description={result.summary} />
-                            <DownloadPDFButton
-                                data={result}
-                                fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
-                            />
-                        </div>
-                    </header>
-
-                    {/* Itinerary Map */}
-                    <div className="h-72 rounded-xl overflow-hidden shadow-md border border-gray-200">
-                        <ItineraryMap
-                            activities={result.days.flatMap((day: any) => day.activities)}
-                        />
-                    </div>
-
-                    {/* Weather Forecast */}
-                    <WeatherWidget destination={result.destination} days={days} />
-
-                    <div className="space-y-8">
-                        {result.days.map((day: any) => (
-                            <div key={day.day_number} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                                <h3 className="text-xl font-bold text-secondary mb-4">
-                                    Day {day.day_number}: {day.theme}
-                                </h3>
-                                <ul className="space-y-6 border-l-2 border-primary pl-6 ml-2">
-                                    {day.activities.map((act: any, idx: number) => (
-                                        <li key={idx} className="relative">
-                                            <div className="absolute -left-[31px] top-1 bg-white border-2 border-primary w-4 h-4 rounded-full"></div>
-                                            <span className="text-xs font-bold text-primary uppercase tracking-wider">{act.time}</span>
-                                            <h4 className="text-lg font-semibold text-gray-900">{act.title}</h4>
-                                            <div className="flex gap-4 mt-2">
-                                                {images[act.location] && (
-                                                    <img
-                                                        src={images[act.location]!}
-                                                        alt={act.location}
-                                                        className="w-24 h-24 object-cover rounded-md shadow-sm flex-shrink-0"
-                                                    />
-                                                )}
-                                                <div>
-                                                    <p className="text-sm text-gray-500 mb-1">📍 {act.location}</p>
-                                                    <p className="text-gray-700 leading-relaxed">{act.description}</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </main>
     );
 }
