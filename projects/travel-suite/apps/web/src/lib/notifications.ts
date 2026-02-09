@@ -55,37 +55,30 @@ export async function sendPushNotifications(messages: ExpoPushMessage[]): Promis
 }
 
 /**
- * Send notification to a specific user
+ * Send notification to a specific user via Supabase Edge Function (FCM)
  */
 export async function sendNotificationToUser(payload: NotificationPayload): Promise<{ success: boolean; error?: string }> {
     try {
-        // Get user's push tokens
-        const { data: tokens, error: tokenError } = await supabaseAdmin
-            .from("push_tokens")
-            .select("expo_push_token")
-            .eq("user_id", payload.userId);
+        // We now use the Supabase Edge Function which handles FCM V1
+        // This is more robust and avoids Expo dependency in the backend
+        const { data, error } = await supabaseAdmin.functions.invoke("send-notification", {
+            body: {
+                user_id: payload.userId,
+                title: payload.title,
+                body: payload.body,
+                data: {
+                    ...payload.data,
+                    // FCM data values must be strings
+                    tripId: payload.data?.tripId || "",
+                    type: payload.data?.type || "general",
+                },
+            },
+        });
 
-        if (tokenError) {
-            console.error("Error fetching push tokens:", tokenError);
-            return { success: false, error: tokenError.message };
+        if (error) {
+            console.error("Error invoking send-notification function:", error);
+            return { success: false, error: error.message };
         }
-
-        if (!tokens || tokens.length === 0) {
-            console.log("No push tokens found for user:", payload.userId);
-            return { success: true }; // Not an error, user just doesn't have notifications enabled
-        }
-
-        // Build messages for each token
-        const messages: ExpoPushMessage[] = tokens.map((t) => ({
-            to: t.expo_push_token,
-            sound: "default",
-            title: payload.title,
-            body: payload.body,
-            data: payload.data,
-        }));
-
-        // Send notifications
-        await sendPushNotifications(messages);
 
         // Log notification
         await supabaseAdmin.from("notification_logs").insert({
@@ -117,7 +110,7 @@ export async function sendNotificationToTripUsers(
         // Get trip and its user
         const { data: trip, error: tripError } = await supabaseAdmin
             .from("trips")
-            .select("user_id")
+            .select("client_id")
             .eq("id", tripId)
             .single();
 
@@ -127,7 +120,7 @@ export async function sendNotificationToTripUsers(
 
         // Send to trip owner
         const result = await sendNotificationToUser({
-            userId: trip.user_id,
+            userId: trip.client_id,
             title,
             body,
             data: {

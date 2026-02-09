@@ -270,9 +270,13 @@ export default function TripDetailPage() {
         if (!trip?.profiles?.id) return;
 
         try {
+            const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/notifications/send", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
                 body: JSON.stringify({
                     tripId,
                     userId: trip.profiles.id,
@@ -396,11 +400,10 @@ export default function TripDetailPage() {
                     <button
                         key={day}
                         onClick={() => setActiveDay(day)}
-                        className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-                            activeDay === day
+                        className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${activeDay === day
                                 ? "bg-primary text-white"
                                 : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                        }`}
+                            }`}
                     >
                         Day {day}
                         {assignments[day]?.external_driver_id && (

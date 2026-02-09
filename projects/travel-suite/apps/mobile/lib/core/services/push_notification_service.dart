@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:gobuddy_mobile/main.dart';
+import 'package:gobuddy_mobile/features/trips/presentation/screens/trip_detail_screen.dart';
 
 /// Handles Firebase Cloud Messaging for push notifications.
 /// 
@@ -100,7 +103,7 @@ class PushNotificationService {
       // Upsert the token (insert or update if exists)
       await Supabase.instance.client.from('push_tokens').upsert({
         'user_id': userId,
-        'token': token,
+        'fcm_token': token,
         'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id, platform');
@@ -173,8 +176,7 @@ class PushNotificationService {
     debugPrint('Notification tapped: ${message.messageId}');
     final tripId = message.data['trip_id'];
     if (tripId != null) {
-      // TODO: Navigate to trip detail screen
-      debugPrint('Should navigate to trip: $tripId');
+      _navigateToTripDetail(tripId);
     }
   }
 
@@ -183,8 +185,22 @@ class PushNotificationService {
     debugPrint('Local notification tapped: ${response.payload}');
     final tripId = response.payload;
     if (tripId != null) {
-      // TODO: Navigate to trip detail screen
-      debugPrint('Should navigate to trip: $tripId');
+      _navigateToTripDetail(tripId);
+    }
+  }
+
+  /// Helper to navigate to trip detail screen
+  void _navigateToTripDetail(String tripId) {
+    final context = GoBuddyApp.navigatorKey.currentContext;
+    if (context != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TripDetailScreen(tripId: tripId),
+        ),
+      );
+    } else {
+      debugPrint('Navigator context is null, cannot navigate');
     }
   }
 

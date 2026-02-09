@@ -13,9 +13,14 @@ import 'package:gobuddy_mobile/core/services/notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class TripDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> trip;
+  final Map<String, dynamic>? trip;
+  final String? tripId;
 
-  const TripDetailScreen({super.key, required this.trip});
+  const TripDetailScreen({
+    super.key,
+    this.trip,
+    this.tripId,
+  }) : assert(trip != null || tripId != null, 'Either trip or tripId must be provided');
 
   @override
   State<TripDetailScreen> createState() => _TripDetailScreenState();
@@ -25,17 +30,47 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   int _selectedDayIndex = 0;
   List<DriverAssignment> _assignments = [];
   bool _loadingDriver = true;
+  bool _loadingTrip = false;
+  Map<String, dynamic>? _trip;
 
   @override
   void initState() {
     super.initState();
-    _loadDriverAssignments();
+    _trip = widget.trip;
+    if (_trip == null && widget.tripId != null) {
+      _fetchTripDetails();
+    } else {
+      _loadDriverAssignments();
+    }
+  }
+
+  Future<void> _fetchTripDetails() async {
+    setState(() => _loadingTrip = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('trips')
+          .select('*, itineraries(*)')
+          .eq('id', widget.tripId!)
+          .single();
+      
+      if (mounted) {
+        setState(() {
+          _trip = response;
+          _loadingTrip = false;
+        });
+        _loadDriverAssignments();
+      }
+    } catch (e) {
+      debugPrint('Error fetching trip details: $e');
+      if (mounted) setState(() => _loadingTrip = false);
+    }
   }
 
   Future<void> _loadDriverAssignments() async {
+    if (_trip == null) return;
+    
     final repo = DriverRepository(Supabase.instance.client);
-    // Ensure trip has an ID
-    final tripId = widget.trip['id'];
+    final tripId = _trip!['id'];
     if (tripId != null) {
       final results = await repo.getDriverAssignments(tripId);
       if (mounted) {
@@ -55,12 +90,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       await Supabase.instance.client
           .from('trips')
           .update({'status': 'in_progress'})
-          .eq('id', widget.trip['id']);
+          .eq('id', _trip!['id']);
 
       // Show local notification
       await NotificationService().showNotification(
         id: 1,
-        title: 'Welcome to ${widget.trip['destination'] ?? 'GoBuddy'}!',
+        title: 'Welcome to ${_trip!['destination'] ?? 'GoBuddy'}!',
         body: 'Your driver has been notified of your arrival.',
       );
 
@@ -85,13 +120,21 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   }
 
   Map<String, dynamic> get rawData =>
-      widget.trip['raw_data'] as Map<String, dynamic>? ?? {};
+      _trip?['itineraries']?['raw_data'] as Map<String, dynamic>? ?? {};
 
   List<dynamic> get days => rawData['days'] as List<dynamic>? ?? [];
 
   @override
   Widget build(BuildContext context) {
-    final destination = widget.trip['destination'] ?? 'Trip Details';
+    if (_loadingTrip || _trip == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppTheme.primary),
+        ),
+      );
+    }
+
+    final destination = _trip!['destination'] ?? 'Trip Details';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -121,9 +164,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
-                    title: Text(destination, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    title: Text(_trip!['destination'] ?? 'Trip', 
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                     background: Hero(
-                       tag: 'trip-bg-${widget.trip['id']}',
+                       tag: 'trip-bg-${_trip!['id']}',
                        child: Container(
                           decoration: BoxDecoration(
                               gradient: LinearGradient(
