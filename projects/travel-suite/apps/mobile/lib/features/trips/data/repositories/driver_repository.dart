@@ -1,4 +1,3 @@
-import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

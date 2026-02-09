@@ -33,10 +33,13 @@ Conduct a comprehensive review of the Travel Suite project, identifying strength
 - **Status:** complete
 
 ### Phase 5: Refinement & Polish
-- [ ] Add Loading States and Error Handling improvements
+- [x] Add Loading States with Shimmer effects
+- [x] Add Hero animations on trip cards
+- [x] Implement SliverAppBar with collapsing header on Trip Detail
+- [x] Add flutter_animate entrance animations on card lists
+- [x] Polish UI/UX with modern design patterns
 - [ ] Implement Push Notifications (Firebase/Expo) integration
-- [ ] Polish UI/UX with animations and "premium" feel
-- **Status:** pending
+- **Status:** in progress (UI polish complete, push notifications pending)
 
 ## Current Phase
 Phase 5: Refinement & Polish
@@ -44,7 +47,13 @@ Phase 5: Refinement & Polish
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
+| Use `flutter_animate` | Provides declarative animation API with stagger support |
+| Use `shimmer` package | Standard loading skeleton pattern for professional UX |
+| Use `SliverAppBar` with Hero | Modern collapsing header pattern + smooth transitions |
+| Use `abstract class` for Freezed 3.x | Required syntax for Dart 3.10+ with freezed 3.2+ |
 
 ## Errors Encountered
 | Error | Resolution |
 |-------|------------|
+| Freezed mixin abstract getter errors | Changed `class X with _$X` to `abstract class X with _$X` |
+| `@JsonKey` on factory params warnings | Expected behavior with freezed 3.x, doesn't affect compilation |

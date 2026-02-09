@@ -5,11 +5,12 @@ A cross-platform mobile application for GoBuddy users, built with [Flutter](http
 ## Features
 
 *   **Authentication**: Magic Link login via Supabase Auth.
-*   **Trips Overview**: View upcoming and past trips.
-*   **Detailed Itinerary**: Visual timeline of daily activities with maps.
+*   **Trips Overview**: View upcoming and past trips with animated card transitions.
+*   **Detailed Itinerary**: Visual timeline of daily activities with maps and collapsible header.
 *   **Driver Integration**: View assigned driver details (photo, vehicle, contact).
 *   **Notifications**: Local notifications for key events (e.g., "I've Landed").
 *   **Mapping**: Interactive maps powered by `flutter_map` and OpenStreetMap.
+*   **Premium UI**: Modern design with gradients, shimmer loading, Hero transitions, and smooth animations.
 
 ## Tech Stack
 
@@ -18,6 +19,18 @@ A cross-platform mobile application for GoBuddy users, built with [Flutter](http
 *   **State Management**: `flutter_riverpod` (simpler `setState` used for Phase 1 prototypes)
 *   **Navigation**: `go_router`
 *   **Code Generation**: `freezed` & `json_serializable`
+
+## Key Dependencies
+
+| Package | Purpose |
+|---------|--------|
+| `supabase_flutter` | Backend integration |
+| `flutter_map` | Interactive maps |
+| `flutter_animate` | Smooth UI animations |
+| `shimmer` | Loading skeleton effects |
+| `sliver_tools` | Advanced scroll layouts |
+| `flutter_local_notifications` | Local push notifications |
+| `cached_network_image` | Image caching |
 
 ## Project Structure
 

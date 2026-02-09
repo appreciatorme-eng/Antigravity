@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'trip_detail_screen.dart';
@@ -96,7 +98,7 @@ class _TripsScreenState extends State<TripsScreen> {
               // Content
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? _buildLoadingList()
                     : _error != null
                         ? Center(
                             child: Column(
@@ -121,12 +123,36 @@ class _TripsScreenState extends State<TripsScreen> {
                                 child: ListView.builder(
                                   padding: const EdgeInsets.all(16),
                                   itemCount: _trips.length,
-                                  itemBuilder: (context, index) =>
-                                      _buildTripCard(_trips[index]),
+                                  itemBuilder: (context, index) {
+                                    final trip = _trips[index];
+                                    return _buildTripCard(trip)
+                                        .animate(delay: (100 * index).ms)
+                                        .fadeIn(duration: 600.ms, curve: Curves.easeOutQuad)
+                                        .slideY(begin: 0.2, end: 0);
+                                  },
                                 ),
                               ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingList() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 3,
+        itemBuilder: (_, __) => Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          height: 240,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
@@ -197,20 +223,22 @@ class _TripsScreenState extends State<TripsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Image placeholder
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primary.withOpacity(0.8),
-                      AppTheme.secondary.withOpacity(0.8),
-                    ],
+              Hero(
+                tag: 'trip-bg-${trip['id']}',
+                child: Container(
+                  height: 140,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppTheme.primary.withOpacity(0.8),
+                        AppTheme.secondary.withOpacity(0.8),
+                      ],
+                    ),
                   ),
-                ),
                 child: Stack(
                   children: [
                     const Center(
@@ -242,7 +270,9 @@ class _TripsScreenState extends State<TripsScreen> {
                     ),
                   ],
                 ),
+
               ),
+            ),
               // Content
               Padding(
                 padding: const EdgeInsets.all(16),

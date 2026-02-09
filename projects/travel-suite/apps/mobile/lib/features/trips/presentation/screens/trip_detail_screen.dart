@@ -1,7 +1,10 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
 import 'package:gobuddy_mobile/features/trips/presentation/widgets/driver_info_card.dart';
@@ -89,95 +92,78 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final destination = widget.trip['destination'] ?? 'Trip Details';
-    final summary = rawData['summary'] ?? '';
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
+      backgroundColor: Colors.white,
+      body: _loadingDriver
+          ? Center(
+              child: Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(color: Colors.white),
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 200,
+                  pinned: true,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  actions: [
                     IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_rounded),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            destination,
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          if (summary.isNotEmpty)
-                            Text(
-                              summary,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        // TODO: Implement share/PDF
-                      },
-                      icon: const Icon(Icons.share_rounded),
+                        icon: const Icon(Icons.share_rounded),
+                        onPressed: () {
+                          // TODO: Share
+                        },
                     ),
                   ],
-                ),
-              ),
-
-              // Day Selector
-              if (days.isNotEmpty)
-                SizedBox(
-                  height: 50,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: days.length,
-                    itemBuilder: (context, index) {
-                      final isSelected = index == _selectedDayIndex;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          selected: isSelected,
-                          label: Text('Day ${index + 1}'),
-                          selectedColor: AppTheme.primary,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? Colors.white
-                                : AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
+                  flexibleSpace: FlexibleSpaceBar(
+                    title: Text(destination, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    background: Hero(
+                       tag: 'trip-bg-${widget.trip['id']}',
+                       child: Container(
+                          decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                      AppTheme.primary,
+                                      AppTheme.secondary,
+                                  ],
+                              ),
                           ),
-                          onSelected: (_) =>
-                              setState(() => _selectedDayIndex = index),
-                        ),
-                      );
-                    },
+                          child: const Center(
+                             child: Icon(Icons.landscape_rounded, size: 64, color: Colors.white24),
+                          ),
+                       ),
+                    ),
                   ),
                 ),
-
-              const SizedBox(height: 16),
-
-              // Content
-              Expanded(
-                child: days.isEmpty
-                    ? const Center(child: Text('No itinerary data'))
-                    : _buildDayContent(days[_selectedDayIndex]),
-              ),
-            ],
-          ),
-        ),
-      ),
-      // I've Landed Button (Phase 2 feature)
-      floatingActionButton: FloatingActionButton.extended(
+                if (days.isNotEmpty)
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _DaySelectorDelegate(
+                      days: days,
+                      selectedIndex: _selectedDayIndex,
+                      onSelect: (index) => setState(() => _selectedDayIndex = index),
+                    ),
+                  ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    child: days.isEmpty
+                        ? const SizedBox(height: 200, child: Center(child: Text('No itinerary data')))
+                        : _buildDayContent(days[_selectedDayIndex])
+                             .animate(key: ValueKey(_selectedDayIndex))
+                             .fadeIn(duration: 400.ms),
+                  ),
+                ),
+              ],
+            ),
+       floatingActionButton: FloatingActionButton.extended(
         onPressed: _notifyLanded,
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.flight_land_rounded),
@@ -185,6 +171,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       ),
     );
   }
+
 
   Widget _buildDayContent(dynamic dayData) {
     final day = dayData as Map<String, dynamic>;
@@ -230,7 +217,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       }
     }
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,5 +402,63 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         ],
       ),
     );
+  }
+}
+
+class _DaySelectorDelegate extends SliverPersistentHeaderDelegate {
+  final List<dynamic> days;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  _DaySelectorDelegate({
+    required this.days,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      height: 60,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: days.length,
+        itemBuilder: (context, index) {
+          final isSelected = index == selectedIndex;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text('Day ${index + 1}'),
+              selected: isSelected,
+              onSelected: (_) => onSelect(index),
+              selectedColor: AppTheme.primary,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              showCheckmark: false,
+              backgroundColor: Colors.grey[100],
+              side: BorderSide.none,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => 60;
+
+  @override
+  double get minExtent => 60;
+
+  @override
+  bool shouldRebuild(covariant _DaySelectorDelegate oldDelegate) {
+    return oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.days != days;
   }
 }

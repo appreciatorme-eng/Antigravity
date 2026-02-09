@@ -26,7 +26,9 @@ class NotificationService {
       iOS: initializationSettingsDarwin,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+    );
   }
 
   Future<void> showNotification({
@@ -53,10 +55,10 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      notificationDetails,
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: notificationDetails,
     );
   }
 }

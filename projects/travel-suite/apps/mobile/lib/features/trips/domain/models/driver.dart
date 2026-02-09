@@ -4,7 +4,7 @@ part 'driver.freezed.dart';
 part 'driver.g.dart';
 
 @freezed
-class Driver with _$Driver {
+abstract class Driver with _$Driver {
   const factory Driver({
     required String id,
     @JsonKey(name: 'full_name') required String fullName,
@@ -20,7 +20,7 @@ class Driver with _$Driver {
 }
 
 @freezed
-class DriverAssignment with _$DriverAssignment {
+abstract class DriverAssignment with _$DriverAssignment {
   const factory DriverAssignment({
     required String id,
     @JsonKey(name: 'trip_id') required String tripId,

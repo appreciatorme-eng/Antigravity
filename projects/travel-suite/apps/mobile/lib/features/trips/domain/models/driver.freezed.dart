@@ -299,7 +299,7 @@ as String?,
 /// @nodoc
 mixin _$DriverAssignment {
 
- String get id;@JsonKey(name: 'trip_id') String get tripId;@JsonKey(name: 'external_driver_id') String get driverId;@JsonKey(name: 'day_number') int get dayNumber;@JsonKey(name: 'pickup_time') String? get pickupTime;@JsonKey(name: 'pickup_location') String? get pickupLocation;@JsonKey(name: 'dropoff_location') String? get dropoffLocation;// We will manually populate this field after fetching the driver
+ String get id;@JsonKey(name: 'trip_id') String get tripId;@JsonKey(name: 'external_driver_id') String? get driverId;@JsonKey(name: 'day_number') int get dayNumber;@JsonKey(name: 'pickup_time') String? get pickupTime;@JsonKey(name: 'pickup_location') String? get pickupLocation;@JsonKey(name: 'dropoff_location') String? get dropoffLocation;// We will manually populate this field after fetching the driver
 @JsonKey(includeFromJson: false, includeToJson: false) Driver? get driver;
 /// Create a copy of DriverAssignment
 /// with the given fields replaced by the non-null parameter values.
@@ -333,7 +333,7 @@ abstract mixin class $DriverAssignmentCopyWith<$Res>  {
   factory $DriverAssignmentCopyWith(DriverAssignment value, $Res Function(DriverAssignment) _then) = _$DriverAssignmentCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(name: 'trip_id') String tripId,@JsonKey(name: 'external_driver_id') String driverId,@JsonKey(name: 'day_number') int dayNumber,@JsonKey(name: 'pickup_time') String? pickupTime,@JsonKey(name: 'pickup_location') String? pickupLocation,@JsonKey(name: 'dropoff_location') String? dropoffLocation,@JsonKey(includeFromJson: false, includeToJson: false) Driver? driver
+ String id,@JsonKey(name: 'trip_id') String tripId,@JsonKey(name: 'external_driver_id') String? driverId,@JsonKey(name: 'day_number') int dayNumber,@JsonKey(name: 'pickup_time') String? pickupTime,@JsonKey(name: 'pickup_location') String? pickupLocation,@JsonKey(name: 'dropoff_location') String? dropoffLocation,@JsonKey(includeFromJson: false, includeToJson: false) Driver? driver
 });
 
 
@@ -350,12 +350,12 @@ class _$DriverAssignmentCopyWithImpl<$Res>
 
 /// Create a copy of DriverAssignment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? driverId = null,Object? dayNumber = null,Object? pickupTime = freezed,Object? pickupLocation = freezed,Object? dropoffLocation = freezed,Object? driver = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? driverId = freezed,Object? dayNumber = null,Object? pickupTime = freezed,Object? pickupLocation = freezed,Object? dropoffLocation = freezed,Object? driver = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
-as String,driverId: null == driverId ? _self.driverId : driverId // ignore: cast_nullable_to_non_nullable
-as String,dayNumber: null == dayNumber ? _self.dayNumber : dayNumber // ignore: cast_nullable_to_non_nullable
+as String,driverId: freezed == driverId ? _self.driverId : driverId // ignore: cast_nullable_to_non_nullable
+as String?,dayNumber: null == dayNumber ? _self.dayNumber : dayNumber // ignore: cast_nullable_to_non_nullable
 as int,pickupTime: freezed == pickupTime ? _self.pickupTime : pickupTime // ignore: cast_nullable_to_non_nullable
 as String?,pickupLocation: freezed == pickupLocation ? _self.pickupLocation : pickupLocation // ignore: cast_nullable_to_non_nullable
 as String?,dropoffLocation: freezed == dropoffLocation ? _self.dropoffLocation : dropoffLocation // ignore: cast_nullable_to_non_nullable
@@ -457,7 +457,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String? driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DriverAssignment() when $default != null:
 return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.pickupTime,_that.pickupLocation,_that.dropoffLocation,_that.driver);case _:
@@ -478,7 +478,7 @@ return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.picku
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String? driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)  $default,) {final _that = this;
 switch (_that) {
 case _DriverAssignment():
 return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.pickupTime,_that.pickupLocation,_that.dropoffLocation,_that.driver);case _:
@@ -498,7 +498,7 @@ return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.picku
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'trip_id')  String tripId, @JsonKey(name: 'external_driver_id')  String? driverId, @JsonKey(name: 'day_number')  int dayNumber, @JsonKey(name: 'pickup_time')  String? pickupTime, @JsonKey(name: 'pickup_location')  String? pickupLocation, @JsonKey(name: 'dropoff_location')  String? dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false)  Driver? driver)?  $default,) {final _that = this;
 switch (_that) {
 case _DriverAssignment() when $default != null:
 return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.pickupTime,_that.pickupLocation,_that.dropoffLocation,_that.driver);case _:
@@ -513,12 +513,12 @@ return $default(_that.id,_that.tripId,_that.driverId,_that.dayNumber,_that.picku
 @JsonSerializable()
 
 class _DriverAssignment implements DriverAssignment {
-  const _DriverAssignment({required this.id, @JsonKey(name: 'trip_id') required this.tripId, @JsonKey(name: 'external_driver_id') required this.driverId, @JsonKey(name: 'day_number') required this.dayNumber, @JsonKey(name: 'pickup_time') this.pickupTime, @JsonKey(name: 'pickup_location') this.pickupLocation, @JsonKey(name: 'dropoff_location') this.dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false) this.driver});
+  const _DriverAssignment({required this.id, @JsonKey(name: 'trip_id') required this.tripId, @JsonKey(name: 'external_driver_id') this.driverId, @JsonKey(name: 'day_number') required this.dayNumber, @JsonKey(name: 'pickup_time') this.pickupTime, @JsonKey(name: 'pickup_location') this.pickupLocation, @JsonKey(name: 'dropoff_location') this.dropoffLocation, @JsonKey(includeFromJson: false, includeToJson: false) this.driver});
   factory _DriverAssignment.fromJson(Map<String, dynamic> json) => _$DriverAssignmentFromJson(json);
 
 @override final  String id;
 @override@JsonKey(name: 'trip_id') final  String tripId;
-@override@JsonKey(name: 'external_driver_id') final  String driverId;
+@override@JsonKey(name: 'external_driver_id') final  String? driverId;
 @override@JsonKey(name: 'day_number') final  int dayNumber;
 @override@JsonKey(name: 'pickup_time') final  String? pickupTime;
 @override@JsonKey(name: 'pickup_location') final  String? pickupLocation;
@@ -559,7 +559,7 @@ abstract mixin class _$DriverAssignmentCopyWith<$Res> implements $DriverAssignme
   factory _$DriverAssignmentCopyWith(_DriverAssignment value, $Res Function(_DriverAssignment) _then) = __$DriverAssignmentCopyWithImpl;
 @override @useResult
 $Res call({
- String id,@JsonKey(name: 'trip_id') String tripId,@JsonKey(name: 'external_driver_id') String driverId,@JsonKey(name: 'day_number') int dayNumber,@JsonKey(name: 'pickup_time') String? pickupTime,@JsonKey(name: 'pickup_location') String? pickupLocation,@JsonKey(name: 'dropoff_location') String? dropoffLocation,@JsonKey(includeFromJson: false, includeToJson: false) Driver? driver
+ String id,@JsonKey(name: 'trip_id') String tripId,@JsonKey(name: 'external_driver_id') String? driverId,@JsonKey(name: 'day_number') int dayNumber,@JsonKey(name: 'pickup_time') String? pickupTime,@JsonKey(name: 'pickup_location') String? pickupLocation,@JsonKey(name: 'dropoff_location') String? dropoffLocation,@JsonKey(includeFromJson: false, includeToJson: false) Driver? driver
 });
 
 
@@ -576,12 +576,12 @@ class __$DriverAssignmentCopyWithImpl<$Res>
 
 /// Create a copy of DriverAssignment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? driverId = null,Object? dayNumber = null,Object? pickupTime = freezed,Object? pickupLocation = freezed,Object? dropoffLocation = freezed,Object? driver = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? driverId = freezed,Object? dayNumber = null,Object? pickupTime = freezed,Object? pickupLocation = freezed,Object? dropoffLocation = freezed,Object? driver = freezed,}) {
   return _then(_DriverAssignment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
-as String,driverId: null == driverId ? _self.driverId : driverId // ignore: cast_nullable_to_non_nullable
-as String,dayNumber: null == dayNumber ? _self.dayNumber : dayNumber // ignore: cast_nullable_to_non_nullable
+as String,driverId: freezed == driverId ? _self.driverId : driverId // ignore: cast_nullable_to_non_nullable
+as String?,dayNumber: null == dayNumber ? _self.dayNumber : dayNumber // ignore: cast_nullable_to_non_nullable
 as int,pickupTime: freezed == pickupTime ? _self.pickupTime : pickupTime // ignore: cast_nullable_to_non_nullable
 as String?,pickupLocation: freezed == pickupLocation ? _self.pickupLocation : pickupLocation // ignore: cast_nullable_to_non_nullable
 as String?,dropoffLocation: freezed == dropoffLocation ? _self.dropoffLocation : dropoffLocation // ignore: cast_nullable_to_non_nullable
