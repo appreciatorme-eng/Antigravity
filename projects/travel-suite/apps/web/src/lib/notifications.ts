@@ -69,7 +69,7 @@ export async function sendNotificationToUser(payload: NotificationPayload): Prom
                 data: {
                     ...payload.data,
                     // FCM data values must be strings
-                    tripId: payload.data?.tripId || "",
+                    trip_id: payload.data?.tripId || "", // Changed to snake_case for mobile consistency
                     type: payload.data?.type || "general",
                 },
             },
@@ -84,10 +84,12 @@ export async function sendNotificationToUser(payload: NotificationPayload): Prom
         await supabaseAdmin.from("notification_logs").insert({
             trip_id: payload.data?.tripId,
             recipient_id: payload.userId,
+            recipient_type: "client",
             notification_type: payload.data?.type || "general",
             title: payload.title,
             body: payload.body,
             status: "sent",
+            sent_at: new Date().toISOString(),
         });
 
         return { success: true };

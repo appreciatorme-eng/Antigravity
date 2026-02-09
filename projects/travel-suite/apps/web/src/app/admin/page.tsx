@@ -11,6 +11,15 @@ interface DashboardStats {
     pendingNotifications: number;
 }
 
+interface ActivityItem {
+    id: string;
+    type: "trip" | "notification";
+    title: string;
+    description: string;
+    timestamp: string;
+    status: string;
+}
+
 export default function AdminDashboard() {
     const supabase = createClient();
     const [stats, setStats] = useState<DashboardStats>({
@@ -19,44 +28,85 @@ export default function AdminDashboard() {
         activeTrips: 0,
         pendingNotifications: 0,
     });
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            // Get driver count
-            const { count: driverCount } = await supabase
-                .from("external_drivers")
-                .select("*", { count: "exact", head: true })
-                .eq("is_active", true);
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                // Get driver count
+                const { count: driverCount } = await supabase
+                    .from("profiles")
+                    .select("*", { count: "exact", head: true })
+                    .eq("role", "driver");
 
-            // Get client count
-            const { count: clientCount } = await supabase
-                .from("profiles")
-                .select("*", { count: "exact", head: true })
-                .eq("role", "client");
+                // Get client count
+                const { count: clientCount } = await supabase
+                    .from("profiles")
+                    .select("*", { count: "exact", head: true })
+                    .eq("role", "client");
 
-            // Get active trips count
-            const { count: tripCount } = await supabase
-                .from("trips")
-                .select("*", { count: "exact", head: true })
-                .in("status", ["confirmed", "in_progress"]);
+                // Get active trips count
+                const { count: tripCount } = await supabase
+                    .from("trips")
+                    .select("*", { count: "exact", head: true })
+                    .in("status", ["confirmed", "in_progress"]);
 
-            // Get pending notifications count
-            const { count: notificationCount } = await supabase
-                .from("notification_logs")
-                .select("*", { count: "exact", head: true })
-                .eq("status", "pending");
+                // Get notifications
+                const { count: notificationCount } = await supabase
+                    .from("notification_logs")
+                    .select("*", { count: "exact", head: true });
 
-            setStats({
-                totalDrivers: driverCount || 0,
-                totalClients: clientCount || 0,
-                activeTrips: tripCount || 0,
-                pendingNotifications: notificationCount || 0,
-            });
-            setLoading(false);
+                setStats({
+                    totalDrivers: driverCount || 0,
+                    totalClients: clientCount || 0,
+                    activeTrips: tripCount || 0,
+                    pendingNotifications: notificationCount || 0,
+                });
+
+                // Fetch recent activity
+                const { data: recentTrips } = await supabase
+                    .from("trips")
+                    .select("id, status, created_at, itineraries(trip_title, destination)")
+                    .order("created_at", { ascending: false })
+                    .limit(5);
+
+                const { data: recentNotifications } = await supabase
+                    .from("notification_logs")
+                    .select("id, title, body, sent_at, status")
+                    .order("sent_at", { ascending: false })
+                    .limit(5);
+
+                const formattedActivities: ActivityItem[] = [
+                    ...(recentTrips || []).map((trip: any) => ({
+                        id: trip.id,
+                        type: "trip" as const,
+                        title: "New Trip Created",
+                        description: `${trip.itineraries?.trip_title || "Untitled Trip"} to ${trip.itineraries?.destination || "Unknown"}`,
+                        timestamp: trip.created_at,
+                        status: trip.status || "pending",
+                    })),
+                    ...(recentNotifications || []).map((notif: any) => ({
+                        id: notif.id,
+                        type: "notification" as const,
+                        title: notif.title,
+                        description: notif.body,
+                        timestamp: notif.sent_at,
+                        status: notif.status,
+                    })),
+                ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                    .slice(0, 8);
+
+                setActivities(formattedActivities);
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
         };
 
-        fetchStats();
+        fetchData();
     }, [supabase]);
 
     const statCards = [
@@ -169,17 +219,69 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Recent Activity Placeholder */}
+            {/* Recent Activity Feed */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-gray-900">
                         Recent Activity
                     </h2>
                     <TrendingUp className="w-5 h-5 text-gray-400" />
                 </div>
-                <div className="text-center py-8 text-gray-500">
-                    <p>Activity feed will appear here once you start managing trips.</p>
-                </div>
+
+                {loading ? (
+                    <div className="flex flex-col gap-4">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-16 bg-gray-50 animate-pulse rounded-lg" />
+                        ))}
+                    </div>
+                ) : activities.length > 0 ? (
+                    <div className="space-y-6">
+                        {activities.map((activity, idx) => (
+                            <div key={activity.id} className="relative flex items-start gap-4">
+                                {idx !== activities.length - 1 && (
+                                    <div className="absolute left-[1.125rem] top-8 bottom-[-1.5rem] w-px bg-gray-100" />
+                                )}
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${activity.type === "trip" ? "bg-blue-100" : "bg-orange-100"
+                                    }`}>
+                                    {activity.type === "trip" ? (
+                                        <MapPin className="w-4 h-4 text-blue-600" />
+                                    ) : (
+                                        <Bell className="w-4 h-4 text-orange-600" />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                            {activity.title}
+                                        </p>
+                                        <time className="text-xs text-gray-400 shrink-0">
+                                            {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </time>
+                                    </div>
+                                    <p className="text-sm text-gray-500 mt-0.5 truncate">
+                                        {activity.description}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${activity.status === "sent" || activity.status === "confirmed" || activity.status === "in_progress"
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-gray-100 text-gray-600"
+                                            }`}>
+                                            {activity.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 text-gray-500">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Calendar className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <p>No recent activity found.</p>
+                        <p className="text-sm">Activity feed will appear here as the system is used.</p>
+                    </div>
+                )}
             </div>
         </div>
     );

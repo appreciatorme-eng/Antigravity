@@ -50,32 +50,35 @@
 | Wikimedia | Location images | `api/images?query=X` |
 | Supabase Auth | Authentication | Built-in |
 
-### Notification Approach
-- Push notifications via Firebase Cloud Messaging (FCM)
-- Server-side triggers via Supabase Edge Functions
-- No external workflow automation (n8n not used)
+### Firebase Project Details
+- **Project ID:** `travel-suite-5d509`
+- **Android Package:** `com.gobuddy.gobuddy_mobile`
+- **iOS Bundle ID:** `com.gobuddy.gobuddyMobile`
+- **Admin SDK:** Service account key stored in `apps/web/firebase-service-account.json`.
+
+### Notification Architecture
+- **FCM V1:** Push notifications sent via Firebase Cloud Messaging Version 1.
+- **Supabase Edge Functions:** `send-notification` handles message construction and delivery.
+- **Secrets Management:** Firebase credentials stored as Supabase secrets (`FIREBASE_SERVICE_ACCOUNT`).
+- **Web App:** Next.js admin panel uses Firebase Admin SDK for server-side operations.
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
+| Supabase Edge Functions | Server-side security, avoids exposing Firebase keys to client |
+| FCM V1 over Legacy | Recommended by Google, better security, more features |
+| navigatorKey | Handles deep-linking in Flutter from background/terminated states |
 | Supabase over Firebase | Already in use, Postgres preferred, free tier sufficient |
 | Flutter over React Native | Company already using Flutter |
-| flutter_riverpod | Simpler than Bloc, good for medium apps |
-| freezed | Immutable data classes, auto-generated fromJson/toJson |
-| SliverAppBar | Native collapsing header, no custom implementation needed |
-| shimmer | Popular, maintained, simple API |
-| flutter_animate | Declarative, chainable, supports stagger |
-| Hero animations | Built-in Flutter, no extra dependency |
-| debugPrint | Stripped from release builds unlike print() |
+| ... | ... |
 
 ## Issues Encountered
-| Issue | Resolution |
-|-------|------------|
+| Notification navigation in background | Implemented global `navigatorKey` in `main.dart` |
+| FCM payload inconsistency | Standardized on `trip_id` (snake_case) for mobile deep-linking |
+| Supabase CLI Deno linting | Recognized as environment setup (Deno) rather than code errors |
 | Freezed 3.x syntax incompatibility | Changed from `@freezed class` to `abstract class X with _$X` |
-| Android SDK not available | Cannot build APK on current machine, need emulator or device |
-| Unused imports causing warnings | Removed unused url_launcher and flutter_local_notifications |
-| print() not production-safe | Replaced with debugPrint from foundation.dart |
-| Hardcoded Supabase keys | Identified as security concern, environment variables recommended |
+| android SDK not available | Cannot build APK on current machine |
+| `flutterfire configure` failed | Missing `xcodeproj` ruby gem. Resolved with `gem install xcodeproj`. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`

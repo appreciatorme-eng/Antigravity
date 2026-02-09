@@ -247,6 +247,128 @@ export type Database = {
                     },
                 ]
             }
+            organizations: {
+                Row: {
+                    id: string
+                    name: string
+                    slug: string
+                    logo_url: string | null
+                    primary_color: string | null
+                    subscription_tier: string | null
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    name: string
+                    slug: string
+                    logo_url?: string | null
+                    primary_color?: string | null
+                    subscription_tier?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    name?: string
+                    slug?: string
+                    logo_url?: string | null
+                    primary_color?: string | null
+                    subscription_tier?: string | null
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: []
+            }
+            notification_logs: {
+                Row: {
+                    id: string
+                    trip_id: string | null
+                    recipient_id: string
+                    recipient_type: string
+                    notification_type: string
+                    title: string
+                    body: string
+                    status: string
+                    sent_at: string
+                }
+                Insert: {
+                    id?: string
+                    trip_id?: string | null
+                    recipient_id: string
+                    recipient_type: string
+                    notification_type: string
+                    title: string
+                    body: string
+                    status?: string
+                    sent_at?: string
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string | null
+                    recipient_id?: string
+                    recipient_type?: string
+                    notification_type?: string
+                    title?: string
+                    body?: string
+                    status?: string
+                    sent_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "notification_logs_trip_id_fkey"
+                        columns: ["trip_id"]
+                        isOneToOne: false
+                        referencedRelation: "trips"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "notification_logs_recipient_id_fkey"
+                        columns: ["recipient_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
+            push_tokens: {
+                Row: {
+                    id: string
+                    user_id: string
+                    fcm_token: string
+                    platform: string
+                    is_active: boolean
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    fcm_token: string
+                    platform: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    fcm_token?: string
+                    platform?: string
+                    is_active?: boolean
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "push_tokens_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    }
+                ]
+            }
         }
         Views: {
             [_ in never]: never
