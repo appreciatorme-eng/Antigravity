@@ -2,12 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, Wallet, Clock, Plane } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
-    ssr: false,
-    loading: () => <div className="h-72 bg-gray-100 animate-pulse rounded-xl" />,
-});
+import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 
 export default async function SharedTripPage({
     params,
@@ -128,7 +123,7 @@ export default async function SharedTripPage({
                 {/* Map */}
                 {tripData?.days && (
                     <div className="h-72 rounded-xl overflow-hidden shadow-md border border-gray-200 mb-8">
-                        <ItineraryMap
+                        <ClientItineraryMap
                             activities={tripData.days.flatMap((day: any) => day.activities)}
                         />
                     </div>

@@ -67,33 +67,59 @@ export type Database = {
             }
             external_drivers: {
                 Row: {
-                    id: string
-                    full_name: string
-                    phone: string | null
-                    vehicle_type: string | null
-                    vehicle_plate: string | null
                     created_at: string | null
+                    full_name: string
+                    id: string
+                    is_active: boolean | null
+                    languages: string[] | null
+                    notes: string | null
+                    organization_id: string
+                    phone: string
+                    photo_url: string | null
                     updated_at: string | null
+                    vehicle_capacity: number | null
+                    vehicle_plate: string | null
+                    vehicle_type: string | null
                 }
                 Insert: {
-                    id?: string
-                    full_name: string
-                    phone?: string | null
-                    vehicle_type?: string | null
-                    vehicle_plate?: string | null
                     created_at?: string | null
+                    full_name: string
+                    id?: string
+                    is_active?: boolean | null
+                    languages?: string[] | null
+                    notes?: string | null
+                    organization_id: string
+                    phone: string
+                    photo_url?: string | null
                     updated_at?: string | null
+                    vehicle_capacity?: number | null
+                    vehicle_plate?: string | null
+                    vehicle_type?: string | null
                 }
                 Update: {
-                    id?: string
-                    full_name?: string
-                    phone?: string | null
-                    vehicle_type?: string | null
-                    vehicle_plate?: string | null
                     created_at?: string | null
+                    full_name?: string
+                    id?: string
+                    is_active?: boolean | null
+                    languages?: string[] | null
+                    notes?: string | null
+                    organization_id?: string
+                    phone?: string
+                    photo_url?: string | null
                     updated_at?: string | null
+                    vehicle_capacity?: number | null
+                    vehicle_plate?: string | null
+                    vehicle_type?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "external_drivers_organization_id_fkey"
+                        columns: ["organization_id"]
+                        isOneToOne: false
+                        referencedRelation: "organizations"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
             itineraries: {
                 Row: {
@@ -145,6 +171,113 @@ export type Database = {
                     },
                 ]
             }
+            notification_logs: {
+                Row: {
+                    body: string | null
+                    created_at: string | null
+                    error_message: string | null
+                    external_id: string | null
+                    id: string
+                    notification_type: string
+                    recipient_id: string | null
+                    recipient_phone: string | null
+                    recipient_type: string | null
+                    sent_at: string | null
+                    status: string | null
+                    title: string | null
+                    trip_id: string | null
+                }
+                Insert: {
+                    body?: string | null
+                    created_at?: string | null
+                    error_message?: string | null
+                    external_id?: string | null
+                    id?: string
+                    notification_type: string
+                    recipient_id?: string | null
+                    recipient_phone?: string | null
+                    recipient_type?: string | null
+                    sent_at?: string | null
+                    status?: string | null
+                    title?: string | null
+                    trip_id?: string | null
+                }
+                Update: {
+                    body?: string | null
+                    created_at?: string | null
+                    error_message?: string | null
+                    external_id?: string | null
+                    id?: string
+                    notification_type?: string
+                    recipient_id?: string | null
+                    recipient_phone?: string | null
+                    recipient_type?: string | null
+                    sent_at?: string | null
+                    status?: string | null
+                    title?: string | null
+                    trip_id?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "notification_logs_recipient_id_fkey"
+                        columns: ["recipient_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "notification_logs_trip_id_fkey"
+                        columns: ["trip_id"]
+                        isOneToOne: false
+                        referencedRelation: "trips"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            organizations: {
+                Row: {
+                    created_at: string | null
+                    id: string
+                    logo_url: string | null
+                    name: string
+                    owner_id: string | null
+                    primary_color: string | null
+                    slug: string
+                    subscription_tier: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    created_at?: string | null
+                    id?: string
+                    logo_url?: string | null
+                    name: string
+                    owner_id?: string | null
+                    primary_color?: string | null
+                    slug: string
+                    subscription_tier?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    created_at?: string | null
+                    id?: string
+                    logo_url?: string | null
+                    name?: string
+                    owner_id?: string | null
+                    primary_color?: string | null
+                    slug?: string
+                    subscription_tier?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "organizations_owner_id_fkey"
+                        columns: ["owner_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
             profiles: {
                 Row: {
                     avatar_url: string | null
@@ -152,6 +285,7 @@ export type Database = {
                     email: string | null
                     full_name: string | null
                     id: string
+                    organization_id: string | null
                     phone: string | null
                     role: string | null
                     updated_at: string | null
@@ -162,6 +296,7 @@ export type Database = {
                     email?: string | null
                     full_name?: string | null
                     id: string
+                    organization_id?: string | null
                     phone?: string | null
                     role?: string | null
                     updated_at?: string | null
@@ -172,11 +307,58 @@ export type Database = {
                     email?: string | null
                     full_name?: string | null
                     id?: string
+                    organization_id?: string | null
                     phone?: string | null
                     role?: string | null
                     updated_at?: string | null
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "profiles_organization_id_fkey"
+                        columns: ["organization_id"]
+                        isOneToOne: false
+                        referencedRelation: "organizations"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            push_tokens: {
+                Row: {
+                    created_at: string | null
+                    fcm_token: string
+                    id: string
+                    is_active: boolean | null
+                    platform: string | null
+                    updated_at: string | null
+                    user_id: string
+                }
+                Insert: {
+                    created_at?: string | null
+                    fcm_token: string
+                    id?: string
+                    is_active?: boolean | null
+                    platform?: string | null
+                    updated_at?: string | null
+                    user_id: string
+                }
+                Update: {
+                    created_at?: string | null
+                    fcm_token?: string
+                    id?: string
+                    is_active?: boolean | null
+                    platform?: string | null
+                    updated_at?: string | null
+                    user_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "push_tokens_user_id_fkey"
+                        columns: ["user_id"]
+                        isOneToOne: false
+                        referencedRelation: "profiles"
+                        referencedColumns: ["id"]
+                    },
+                ]
             }
             shared_itineraries: {
                 Row: {
@@ -212,6 +394,63 @@ export type Database = {
                         columns: ["itinerary_id"]
                         isOneToOne: false
                         referencedRelation: "itineraries"
+                        referencedColumns: ["id"]
+                    },
+                ]
+            }
+            trip_driver_assignments: {
+                Row: {
+                    created_at: string | null
+                    day_number: number
+                    dropoff_location: string | null
+                    external_driver_id: string | null
+                    id: string
+                    notes: string | null
+                    notification_sent_at: string | null
+                    pickup_coordinates: Json | null
+                    pickup_location: string | null
+                    pickup_time: string | null
+                    trip_id: string
+                }
+                Insert: {
+                    created_at?: string | null
+                    day_number: number
+                    dropoff_location?: string | null
+                    external_driver_id?: string | null
+                    id?: string
+                    notes?: string | null
+                    notification_sent_at?: string | null
+                    pickup_coordinates?: Json | null
+                    pickup_location?: string | null
+                    pickup_time?: string | null
+                    trip_id: string
+                }
+                Update: {
+                    created_at?: string | null
+                    day_number?: number
+                    dropoff_location?: string | null
+                    external_driver_id?: string | null
+                    id?: string
+                    notes?: string | null
+                    notification_sent_at?: string | null
+                    pickup_coordinates?: Json | null
+                    pickup_location?: string | null
+                    pickup_time?: string | null
+                    trip_id?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: "trip_driver_assignments_external_driver_id_fkey"
+                        columns: ["external_driver_id"]
+                        isOneToOne: false
+                        referencedRelation: "external_drivers"
+                        referencedColumns: ["id"]
+                    },
+                    {
+                        foreignKeyName: "trip_driver_assignments_trip_id_fkey"
+                        columns: ["trip_id"]
+                        isOneToOne: false
+                        referencedRelation: "trips"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -275,232 +514,6 @@ export type Database = {
                         referencedRelation: "itineraries"
                         referencedColumns: ["id"]
                     },
-                ]
-            }
-            trip_driver_assignments: {
-                Row: {
-                    id: string
-                    trip_id: string
-                    day_number: number
-                    external_driver_id: string | null
-                    pickup_time: string | null
-                    pickup_location: string | null
-                    notes: string | null
-                    created_at: string | null
-                    updated_at: string | null
-                }
-                Insert: {
-                    id?: string
-                    trip_id: string
-                    day_number: number
-                    external_driver_id?: string | null
-                    pickup_time?: string | null
-                    pickup_location?: string | null
-                    notes?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Update: {
-                    id?: string
-                    trip_id?: string
-                    day_number?: number
-                    external_driver_id?: string | null
-                    pickup_time?: string | null
-                    pickup_location?: string | null
-                    notes?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "trip_driver_assignments_trip_id_fkey"
-                        columns: ["trip_id"]
-                        isOneToOne: false
-                        referencedRelation: "trips"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "trip_driver_assignments_external_driver_id_fkey"
-                        columns: ["external_driver_id"]
-                        isOneToOne: false
-                        referencedRelation: "external_drivers"
-                        referencedColumns: ["id"]
-                    }
-                ]
-            }
-            trip_accommodations: {
-                Row: {
-                    id: string
-                    trip_id: string
-                    day_number: number
-                    hotel_name: string
-                    address: string | null
-                    check_in_time: string
-                    contact_phone: string | null
-                    created_at: string | null
-                    updated_at: string | null
-                }
-                Insert: {
-                    id?: string
-                    trip_id: string
-                    day_number: number
-                    hotel_name: string
-                    address?: string | null
-                    check_in_time: string
-                    contact_phone?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Update: {
-                    id?: string
-                    trip_id?: string
-                    day_number?: number
-                    hotel_name?: string
-                    address?: string | null
-                    check_in_time?: string
-                    contact_phone?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "trip_accommodations_trip_id_fkey"
-                        columns: ["trip_id"]
-                        isOneToOne: false
-                        referencedRelation: "trips"
-                        referencedColumns: ["id"]
-                    }
-                ]
-            }
-            organizations: {
-                Row: {
-                    id: string
-                    name: string
-                    slug: string
-                    logo_url: string | null
-                    primary_color: string | null
-                    subscription_tier: string | null
-                    created_at: string | null
-                    updated_at: string | null
-                }
-                Insert: {
-                    id?: string
-                    name: string
-                    slug: string
-                    logo_url?: string | null
-                    primary_color?: string | null
-                    subscription_tier?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Update: {
-                    id?: string
-                    name?: string
-                    slug?: string
-                    logo_url?: string | null
-                    primary_color?: string | null
-                    subscription_tier?: string | null
-                    created_at?: string | null
-                    updated_at?: string | null
-                }
-                Relationships: []
-            }
-            notification_logs: {
-                Row: {
-                    id: string
-                    trip_id: string | null
-                    recipient_id: string
-                    recipient_type: string
-                    notification_type: string
-                    title: string
-                    body: string
-                    status: string
-                    recipient_phone: string | null
-                    error_message: string | null
-                    sent_at: string | null
-                    created_at: string | null
-                }
-                Insert: {
-                    id?: string
-                    trip_id?: string | null
-                    recipient_id: string
-                    recipient_type: string
-                    notification_type: string
-                    title: string
-                    body: string
-                    status?: string
-                    recipient_phone?: string | null
-                    error_message?: string | null
-                    sent_at?: string | null
-                    created_at?: string | null
-                }
-                Update: {
-                    id?: string
-                    trip_id?: string | null
-                    recipient_id?: string
-                    recipient_type?: string
-                    notification_type?: string
-                    title?: string
-                    body?: string
-                    status?: string
-                    recipient_phone?: string | null
-                    error_message?: string | null
-                    sent_at?: string | null
-                    created_at?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "notification_logs_trip_id_fkey"
-                        columns: ["trip_id"]
-                        isOneToOne: false
-                        referencedRelation: "trips"
-                        referencedColumns: ["id"]
-                    },
-                    {
-                        foreignKeyName: "notification_logs_recipient_id_fkey"
-                        columns: ["recipient_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    }
-                ]
-            }
-            push_tokens: {
-                Row: {
-                    id: string
-                    user_id: string
-                    fcm_token: string
-                    platform: string
-                    is_active: boolean
-                    created_at: string
-                    updated_at: string
-                }
-                Insert: {
-                    id?: string
-                    user_id: string
-                    fcm_token: string
-                    platform: string
-                    is_active?: boolean
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    user_id?: string
-                    fcm_token?: string
-                    platform?: string
-                    is_active?: boolean
-                    created_at?: string
-                    updated_at?: string
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "push_tokens_user_id_fkey"
-                        columns: ["user_id"]
-                        isOneToOne: false
-                        referencedRelation: "profiles"
-                        referencedColumns: ["id"]
-                    }
                 ]
             }
         }

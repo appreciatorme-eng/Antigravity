@@ -14,7 +14,7 @@ import {
     Check,
     AlertCircle,
 } from "lucide-react";
-import type { Database } from "@/lib/supabase/types";
+import type { Database } from "@/lib/database.types";
 
 type ExternalDriver = Database["public"]["Tables"]["external_drivers"]["Row"];
 type NewDriver = Database["public"]["Tables"]["external_drivers"]["Insert"];
@@ -367,11 +367,10 @@ export default function DriversPage() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span
-                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                driver.is_active
+                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${driver.is_active
                                                     ? "bg-green-100 text-green-800"
                                                     : "bg-gray-100 text-gray-800"
-                                            }`}
+                                                }`}
                                         >
                                             {driver.is_active ? "Active" : "Inactive"}
                                         </span>
