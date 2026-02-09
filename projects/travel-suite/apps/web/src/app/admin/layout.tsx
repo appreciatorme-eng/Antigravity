@@ -128,7 +128,8 @@ export default function AdminLayout({
                 {/* Navigation */}
                 <nav className="flex-1 p-4 space-y-1">
                     {sidebarLinks.map((link) => {
-                        const isActive = pathname === link.href;
+                        const isActive = pathname === link.href ||
+                            (link.href !== "/admin" && pathname.startsWith(link.href));
                         return (
                             <Link
                                 key={link.href}
@@ -159,7 +160,7 @@ export default function AdminLayout({
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-auto">{children}</main>
+            <main className="flex-1 overflow-auto p-8">{children}</main>
         </div>
     );
 }
