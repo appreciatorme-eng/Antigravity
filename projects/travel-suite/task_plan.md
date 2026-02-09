@@ -1,59 +1,81 @@
-# Task Plan: Travel Suite - Review & Enhancement
+# Task Plan: Travel Suite Phase 2 Development
 
 ## Goal
-Conduct a comprehensive review of the Travel Suite project, identifying strengths/weaknesses, and implementing key improvements (mapcn integration, type safety).
+Build a complete tour operator notification system with a Flutter mobile app for clients, Next.js admin panel for travel agents, and automated push notification workflows.
+
+## Current Phase
+Phase 4
 
 ## Phases
 
-### Phase 1: Review & Analysis (Web/Backend)
-- [x] Review `apps/web` structure and stack
-- [x] Review `apps/agents` structure and endpoints
-- [x] Review `supabase/schema.sql` data model
-- [x] Document findings in `findings.md`
+### Phase 1: Foundation & Discovery ✓
+- [x] Understand existing project structure
+- [x] Review brand identity and design system
+- [x] Document database schema
+- [x] Identify technology stack
 - **Status:** complete
 
-### Phase 2: Mobile App Foundation
-- [x] Initialize Flutter project `apps/mobile`
-- [x] Configure Supabase integration (Auth, Config)
-- [x] Implement Navigation (GoRouter) and Theming
-- [x] Create Login Screen with Email Magic Link
+### Phase 2: Database & Types ✓
+- [x] Design Phase 2 schema (organizations, drivers, assignments)
+- [x] Create TypeScript types for web app
+- [x] Set up Freezed models for mobile app
+- [x] Configure Supabase RLS policies
 - **Status:** complete
 
-### Phase 3: Core Mobile Features - Trips
-- [x] Implement Trips List Screen (Fetch from Supabase)
-- [x] Implement Trip Detail Screen (Itinerary, Activities)
-- [x] Add Map Integration (`flutter_map`) for daily locations
+### Phase 3: Mobile App Core ✓
+- [x] Authentication (email/password + Google OAuth)
+- [x] Trips list screen with animations
+- [x] Trip detail screen with SliverAppBar
+- [x] Driver info card component
+- [x] Local notifications for "I've Landed"
+- [x] UI polish (shimmer, flutter_animate, Hero animations)
 - **Status:** complete
 
-### Phase 4: Driver & Notifications
-- [x] Implement Driver Assignment Data Model & Repository
-- [x] Create `DriverInfoCard` UI component
-- [x] Configure Deep Linking for Auth Redirects (Android/iOS)
-- [x] Implement "I've Landed" feature with Local Notifications
-- **Status:** complete
+### Phase 4: Push Notifications & Admin Panel
+- [ ] Integrate Firebase Cloud Messaging (FCM)
+- [ ] Create Supabase Edge Functions for notification triggers
+- [ ] Create admin dashboard for trip management
+- [ ] Build driver management CRUD
+- [ ] Implement trip assignment workflow
+- **Status:** in_progress
 
-### Phase 5: Refinement & Polish
-- [x] Add Loading States with Shimmer effects
-- [x] Add Hero animations on trip cards
-- [x] Implement SliverAppBar with collapsing header on Trip Detail
-- [x] Add flutter_animate entrance animations on card lists
-- [x] Polish UI/UX with modern design patterns
-- [ ] Implement Push Notifications (Firebase/Expo) integration
-- **Status:** in progress (UI polish complete, push notifications pending)
+### Phase 5: Testing & Deployment
+- [ ] Test push notification flow end-to-end
+- [ ] Test admin panel workflows
+- [ ] Configure App Store Connect
+- [ ] Configure Google Play Console
+- [ ] Submit for review
+- **Status:** pending
 
-## Current Phase
-Phase 5: Refinement & Polish
+## Key Questions
+1. ~~Which animation library for Flutter?~~ → **flutter_animate**
+2. ~~Which shimmer library?~~ → **shimmer: ^3.0.0**
+3. Which push notification service? → **Firebase FCM** (pending implementation)
+4. Map library for web? → **mapcn (MapLibre GL)** (identified, pending implementation)
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| Use `flutter_animate` | Provides declarative animation API with stagger support |
-| Use `shimmer` package | Standard loading skeleton pattern for professional UX |
-| Use `SliverAppBar` with Hero | Modern collapsing header pattern + smooth transitions |
-| Use `abstract class` for Freezed 3.x | Required syntax for Dart 3.10+ with freezed 3.2+ |
+| Flutter for mobile | Cross-platform, existing company expertise |
+| Next.js for web | SSR, React ecosystem, shadcn/ui compatibility |
+| Supabase for backend | Postgres, Auth, Realtime all-in-one, free tier |
+| flutter_animate | Declarative animations, staggered entrances, 2.3k stars |
+| shimmer 3.0.0 | Well-maintained, simple API for loading skeletons |
+| SliverAppBar | Native collapsing header behavior, Material 3 compliant |
+| Freezed 3.x syntax | Abstract class pattern for Dart 3.10+ compatibility |
+| debugPrint over print | Production-safe logging, stripped in release builds |
+| Hero animations | Seamless trip card → detail transitions |
 
 ## Errors Encountered
-| Error | Resolution |
-|-------|------------|
-| Freezed mixin abstract getter errors | Changed `class X with _$X` to `abstract class X with _$X` |
-| `@JsonKey` on factory params warnings | Expected behavior with freezed 3.x, doesn't affect compilation |
+| Error | Attempt | Resolution |
+|-------|---------|------------|
+| Freezed mixin error | 1 | Updated to abstract class syntax with `with _$Driver` |
+| @JsonKey warnings | 1 | Expected behavior with Freezed 3.x, not blocking |
+| Unused imports | 1 | Removed url_launcher, flutter_local_notifications from trip_detail_screen.dart |
+| print() linter warning | 1 | Replaced with debugPrint and added foundation import |
+
+## Notes
+- Update phase status as you progress: pending → in_progress → complete
+- Re-read this plan before major decisions (attention manipulation)
+- Log ALL errors - they help avoid repetition
+- Mobile app successfully analyzed with `flutter analyze` (0 errors)

@@ -1,42 +1,97 @@
 # Findings & Decisions
 
 ## Requirements
--
+<!-- Captured from implementation_plan.md and brand_identity.md -->
+- Mobile app for clients (Flutter) - iOS/Android
+- Admin panel for travel agents (Next.js)
+- Push notifications via Firebase FCM
+- Driver assignment and daily briefings
+- WhatsApp integration for drivers
+- Multi-tenant support (organizations)
+- GoBuddy Adventures brand identity
 
 ## Research Findings
-- **mapcn**: A beautiful, accessible, and customizable map component library built on MapLibre GL and Tailwind CSS.
-  - **Compatibility**: Integrates seamlessly with Shadcn UI and handles dark mode automatically.
-  - **Performance**: Vector-based (WebGL) for smooth interactions, ideal for real-time tracking (drivers).
-  - **Location**: Should be installed in `apps/web/src/components/ui/map`.
-  - **Installation**: `npx shadcn@latest add https://mapcn.dev/maps/map.json`.
+
+### Project Architecture
+- **Monorepo structure** at `projects/travel-suite/`
+- **apps/mobile/** - Flutter client app
+- **apps/web/** - Next.js admin + client portal
+- **apps/agents/** - Python AI agents (FastAPI)
+- **supabase/** - Database schema and migrations
+- **docs/** - Implementation plan, brand identity, setup guides
+
+### Mobile App Stack
+- **State management:** flutter_riverpod
+- **Data modeling:** freezed + json_serializable
+- **Backend:** supabase_flutter (Auth, Database, Realtime)
+- **Maps:** flutter_map with OpenStreetMap tiles
+- **Animations:** flutter_animate (stagger, scale, fade)
+- **Loading states:** shimmer (skeleton placeholders)
+- **Advanced layouts:** sliver_tools + SliverAppBar
+
+### Flutter Dart SDK
+- Requires SDK `^3.10.8`
+- Freezed 3.x uses `abstract class` pattern (not `@freezed class`)
+- `@JsonKey` on factory params produces warnings but works
+- `withOpacity` deprecated, prefer `withValues()` for color manipulation
+
+### Web App Stack
+- Next.js with React 19
+- shadcn/ui component library
+- @react-pdf/renderer for PDF export
+- Google Gemini 1.5 Flash for AI itinerary generation
+- Leaflet for maps (mapcn identified as upgrade path)
+
+### External APIs (All Free Tier)
+| Service | Purpose | Endpoint |
+|---------|---------|----------|
+| Open-Meteo | Weather forecasts | `api/weather?location=X&days=7` |
+| Frankfurter | Currency conversion | `api/currency?amount=X&from=USD&to=EUR` |
+| Wikimedia | Location images | `api/images?query=X` |
+| Supabase Auth | Authentication | Built-in |
+
+### Notification Approach
+- Push notifications via Firebase Cloud Messaging (FCM)
+- Server-side triggers via Supabase Edge Functions
+- No external workflow automation (n8n not used)
 
 ## Technical Decisions
 | Decision | Rationale |
 |----------|-----------|
-| **Install mapcn** | To replace or augment Leaflet for a more premium, vector-based map experience, especially for real-time driver tracking. Matches the tech stack (Next.js, Shadcn, Tailwind). |
-| **Add Supabase Types** | Recommend generating TypeScript types from the database schema to ensure type safety across the application. |
+| Supabase over Firebase | Already in use, Postgres preferred, free tier sufficient |
+| Flutter over React Native | Company already using Flutter |
+| flutter_riverpod | Simpler than Bloc, good for medium apps |
+| freezed | Immutable data classes, auto-generated fromJson/toJson |
+| SliverAppBar | Native collapsing header, no custom implementation needed |
+| shimmer | Popular, maintained, simple API |
+| flutter_animate | Declarative, chainable, supports stagger |
+| Hero animations | Built-in Flutter, no extra dependency |
+| debugPrint | Stripped from release builds unlike print() |
 
-## Project Review: Travel Suite
-- **Architecture**: Monorepo structure with `apps/web` (Next.js 16) and `apps/agents` (Python FastAPI/Agno).
-- **Backend**: Supabase (Postgres, Auth, Realtime, Vector). robust schema covering multi-tenant organizations, itineraries, and trips.
-- **Frontend (Web)**: Modern stack (React 19, Tailwind 4). Functional but could be more visually "premium".
-- **Frontend (Mobile)**: Flutter (Dart) app, leveraging `supabase_flutter` for auth/data, `flutter_riverpod` for state, and `flutter_map` for mapping.
-- **AI Integration**: Specific agents (TripPlanner, SupportBot) implemented via Python backend with RAG/Vector embeddings.
-- **Automation**: n8n workflows handle robust notifications (Trip Briefings, reminders).
-
-### Key Strengths
-1.  **Comprehensive Data Model**: The schema is well-designed for a travel platform, including real-time location and multi-tenancy.
-2.  **Full-Stack Pattern**: Leveraging Next.js for UI and Python for complex Agent logic is a solid architectural choice.
-3.  **Real-time Capabilities**: Schema supports driver tracking and notifications.
-
-### Action Plan
-1.  **Install `mapcn`** in `apps/web/src/components/ui/map`.
-2.  **Generate Types** for Supabase schema to improve type safety.
-3.  **Enhance UI**: Apply "premium" design principles (typography, animations) to key pages like `TripsPage`.
-4.  **Verify Agent Logic**: Ensure `apps/agents` has actual implementation logic beyond boilerplate.
-
+## Issues Encountered
 | Issue | Resolution |
 |-------|------------|
+| Freezed 3.x syntax incompatibility | Changed from `@freezed class` to `abstract class X with _$X` |
+| Android SDK not available | Cannot build APK on current machine, need emulator or device |
+| Unused imports causing warnings | Removed unused url_launcher and flutter_local_notifications |
+| print() not production-safe | Replaced with debugPrint from foundation.dart |
+| Hardcoded Supabase keys | Identified as security concern, environment variables recommended |
 
 ## Resources
--
+- Brand identity: `docs/brand_identity.md`
+- Implementation plan: `docs/implementation_plan.md`
+- Database schema: `supabase/schema.sql`
+- Google OAuth setup: `docs/GOOGLE_OAUTH_SETUP.md`
+- Mobile README: `apps/mobile/README.md`
+- GoBuddy website: https://gobuddyadventures.com/
+
+## Visual/Browser Findings
+- GoBuddy logo: https://gobuddyadventures.com/wp-content/uploads/2021/12/GoBuddy-Full-Logo-Transparent-1.png
+- Primary color: `#00d084` (Vivid Green)
+- Secondary color: `#124ea2` (Royal Blue)
+- Heading font: Cormorant Garamond (serif)
+- Body font: Poppins (sans-serif)
+
+---
+*Update this file after every 2 view/browser/search operations*
+*This prevents visual information from being lost*
