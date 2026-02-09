@@ -70,11 +70,21 @@
 - **Started:** 2026-02-09
 
 #### Actions Taken
-- **Firebase Project Setup:**
-    - Created Firebase project `travel-suite-5d509`.
-    - Registered Android (`com.gobuddy.gobuddy_mobile`) and iOS (`com.gobuddy.gobuddyMobile`) applications.
-    - Integrated `google-services.json` and `GoogleService-Info.plist` into the mobile project.
-    - Successfully configured `flutterfire` CLI after resolving `xcodeproj` gem dependency.
+- **Firebase Setup:**
+  - Project created: `travel-suite-5d509`
+  - Apps registered: Android (`com.gobuddy.gobuddy_mobile`), iOS (`com.gobuddy.gobuddyMobile`)
+  - Admin SDK key generated & secured.
+- **Push Notification Logic:**
+  - `PushNotificationService` implemented with deep linking support (`trip_id`).
+  - `TripDetailScreen` updated to handle deep links.
+  - `send-notification` Edge Function created.
+  - **Issue Identified:** Edge Function encountered `atob` decoding error with PEM key format.
+  - **Fix Applied:** Modified `send-notification/index.ts` to robustly sanitize PEM content before base64 decoding. Validated with local test script.
+  - **Deployment Status:** Deployment blocked by local Docker/CLI issues ("unexpected end of JSON input"). Fix is pending deployment.
+- **Next Steps:**
+  - Resolve Docker/CLI deployment issue.
+  - Verify E2E push notification delivery on physical devices.
+  - Proceed with App Store/Play Store build submission.
 - **Mobile Integration:**
     - Manually created `firebase_options.dart` with platform-specific configurations.
     - Updated `main.dart` to initialize Firebase using `DefaultFirebaseOptions`.

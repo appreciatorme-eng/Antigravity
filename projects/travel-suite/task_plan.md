@@ -39,9 +39,11 @@ Phase 4
 - [x] Implement trip assignment workflow and itinerary updates
 - **Status:** complete
 
-### Phase 5: Testing & Deployment ✓
-- [x] Deploy Supabase Edge Functions to production
-- [x] Configure environment variables (Firebase secrets, Supabase keys)
+### Phase 5: Testing & Deployment
+- [x] Push Notification Integration (Code complete, deployment pending)
+- [ ] End-to-End Testing (Push Notifications, Deep Linking)
+- [ ] App Store & Play Store Deployment Setup
+- [ ] Final Code Review & Refactoringets, Supabase keys)
 - [x] Integrate Firebase project with mobile & web apps
 - [x] Configure Supabase secrets for Edge Functions
 - [ ] Test push notification flow end-to-end (pending real device)

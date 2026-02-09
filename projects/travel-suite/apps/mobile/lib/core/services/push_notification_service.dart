@@ -191,16 +191,19 @@ class PushNotificationService {
 
   /// Helper to navigate to trip detail screen
   void _navigateToTripDetail(String tripId) {
-    final context = GoBuddyApp.navigatorKey.currentContext;
-    if (context != null) {
-      Navigator.push(
-        context,
+    // navigate to the trip detail screen
+    // We use the navigatorKey's currentState to push the new route
+    // This allows navigation without a context reference in the service
+    final navigatorState = GoBuddyApp.navigatorKey.currentState;
+    
+    if (navigatorState != null) {
+      navigatorState.push(
         MaterialPageRoute(
           builder: (context) => TripDetailScreen(tripId: tripId),
         ),
       );
     } else {
-      debugPrint('Navigator context is null, cannot navigate');
+      debugPrint('Navigator state is null, cannot navigate');
     }
   }
 

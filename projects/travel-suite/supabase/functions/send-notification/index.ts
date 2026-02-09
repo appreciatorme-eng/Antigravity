@@ -129,7 +129,7 @@ async function importPrivateKey(pem: string) {
         pem.indexOf(pemHeader) + pemHeader.length,
         pem.indexOf(pemFooter)
     );
-    const binaryDerString = atob(pemContents.replace(/\s/g, ""));
+    const binaryDerString = atob(pemContents.replace(/[^a-zA-Z0-9+/=]/g, ""));
     const binaryDer = new Uint8Array(binaryDerString.length);
     for (let i = 0; i < binaryDerString.length; i++) {
         binaryDer[i] = binaryDerString.charCodeAt(i);

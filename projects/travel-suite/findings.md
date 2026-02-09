@@ -79,6 +79,8 @@
 | Freezed 3.x syntax incompatibility | Changed from `@freezed class` to `abstract class X with _$X` |
 | android SDK not available | Cannot build APK on current machine |
 | `flutterfire configure` failed | Missing `xcodeproj` ruby gem. Resolved with `gem install xcodeproj`. |
+| Edge Function `atob` failure | `atob` failed on PEM key due to non-base64 characters. Fixed with regex sanitization. |
+| Docker deployment failed | `npx supabase functions deploy` failed with "unexpected end of JSON input" locally. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`
