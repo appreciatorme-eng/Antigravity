@@ -11,7 +11,7 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 **Directory**: `projects/travel-suite`
 ```text
 ├── apps
-│   ├── mobile/         # Expo (React Native) - scaffolded
+│   ├── mobile/         # Flutter (Dart) - iOS/Android ✅
 │   └── web/            # Next.js (Main App) ✅
 ├── packages
 │   └── shared/         # Shared types/utils (Future)
@@ -100,7 +100,7 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Client App    │     │   Admin Panel   │     │   Driver        │
-│  (React Native) │     │    (Next.js)    │     │  (WhatsApp)     │
+│    (Flutter)    │     │    (Next.js)    │     │  (WhatsApp)     │
 │                 │     │                 │     │                 │
 │ • View trips    │     │ • Manage trips  │     │ • Receives      │
 │ • Get notified  │     │ • Assign drivers│     │   pickup info   │
@@ -111,7 +111,7 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
                      ▼
             ┌─────────────────┐
             │    Supabase     │
-            │  + Expo Push    │
+            │  + Firebase FCM │
             └─────────────────┘
 ```
 
