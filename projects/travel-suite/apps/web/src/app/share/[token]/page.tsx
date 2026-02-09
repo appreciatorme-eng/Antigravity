@@ -21,7 +21,7 @@ export default async function SharedTripPage({
     const { data: share, error: shareError } = await supabase
         .from("shared_itineraries")
         .select("*, itineraries(*)")
-        .eq("share_token", token)
+        .eq("share_code", token)
         .single();
 
     if (shareError || !share) {
@@ -49,13 +49,18 @@ export default async function SharedTripPage({
         );
     }
 
-    // Update view count
+    // Update last viewed time
     await supabase
         .from("shared_itineraries")
-        .update({ view_count: (share.view_count || 0) + 1 })
+        .update({ viewed_at: new Date().toISOString() })
         .eq("id", share.id);
 
     const itinerary = share.itineraries;
+
+    if (!itinerary) {
+        notFound();
+    }
+
     const tripData = itinerary.raw_data as any;
 
     return (

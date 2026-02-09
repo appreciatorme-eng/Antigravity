@@ -82,18 +82,19 @@
   - **Fix Applied:** Modified `send-notification/index.ts` to robustly sanitize PEM content before base64 decoding. Validated with local test script.
   - **Deployment Status:** Deployment blocked by local Docker/CLI issues ("unexpected end of JSON input"). Fix is pending deployment.
 - **Next Steps:**
-  - Resolve Docker/CLI deployment issue.
+  - Execute deployment instructions.
   - Verify E2E push notification delivery on physical devices.
   - Proceed with App Store/Play Store build submission.
 - **Mobile Integration:**
     - Manually created `firebase_options.dart` with platform-specific configurations.
     - Updated `main.dart` to initialize Firebase using `DefaultFirebaseOptions`.
 - **Backend & Web Integration:**
-    - Secured Firebase Admin SDK service account key in `apps/web/firebase-service-account.json`.
-    - Configured `apps/web/.env.local` with `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
-    - Deployed `send-notification` Supabase Edge Function to production.
-    - Configured Supabase project secrets (`FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT`) via dashboard.
-- **Git commit:** `[pending]` - "feat: firebase push notification infrastructure setup"
+    - Secured Firebase Admin SDK service account key.
+    - Implemented `SendNotificationDialog` in Admin Panel.
+    - Configured `Info.plist` for iOS background modes.
+    - Verified `TripDetailScreen` deep linking logic.
+    - Provided `deployment_instructions.md` for final Edge Function and DB migration deployment.
+- **Git commit:** `[pending]` - "feat: complete notification system integration"
 
 #### Files Created/Modified
 - `apps/mobile/android/app/google-services.json` (added)

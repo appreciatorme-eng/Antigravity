@@ -10,7 +10,9 @@ import {
     ChevronRight,
     Search,
     Filter,
+    Plus
 } from "lucide-react";
+import CreateTripModal from "@/components/CreateTripModal";
 
 interface Trip {
     id: string;
@@ -34,6 +36,7 @@ export default function AdminTripsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -129,6 +132,13 @@ export default function AdminTripsPage() {
                         Manage client trips and assign drivers
                     </p>
                 </div>
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                >
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Trip
+                </button>
             </div>
 
             {/* Filters */}
@@ -199,7 +209,18 @@ export default function AdminTripsPage() {
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 {trips.length === 0 ? (
                     <div className="p-12 text-center">
-                        <p className="text-gray-500">No trips found</p>
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MapPin className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900">No trips found</h3>
+                        <p className="text-gray-500 mt-1 mb-6">Get started by creating a new trip for your clients.</p>
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create New Trip
+                        </button>
                     </div>
                 ) : (
                     <div className="divide-y divide-gray-100">
@@ -249,6 +270,14 @@ export default function AdminTripsPage() {
                     </div>
                 )}
             </div>
+
+            <CreateTripModal
+                open={isCreateModalOpen}
+                onOpenChange={setIsCreateModalOpen}
+                onSuccess={() => {
+                    fetchTrips();
+                }}
+            />
         </div>
     );
 }

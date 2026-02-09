@@ -61,6 +61,10 @@
 - **FCM V1:** Push notifications sent via Firebase Cloud Messaging Version 1.
 - **Supabase Edge Functions:** `send-notification` handles message construction and delivery.
 - **Secrets Management:** Firebase credentials stored as Supabase secrets (`FIREBASE_SERVICE_ACCOUNT`).
+- **Supabase Edge Functions**: `send-notification` function is correctly implemented to use `trip_id` (snake_case) for deep linking compatibility with the mobile app.
+- **Admin Panel**: Implemented `SendNotificationDialog` in trip details page to allow sending custom push notifications.
+- **Mobile**: Updated `Info.plist` with `UIBackgroundModes` to support background fetch and remote notifications.
+- **Database**: Created migration `20260206120000_notification_schema.sql` to ensure `push_tokens` and `notification_logs` tables are deployed correctly.
 - **Web App:** Next.js admin panel uses Firebase Admin SDK for server-side operations.
 
 ## Technical Decisions
@@ -82,6 +86,7 @@
 | `flutterfire configure` failed | Missing `xcodeproj` ruby gem. Resolved with `gem install xcodeproj`. |
 | Edge Function `atob` failure | `atob` failed on PEM key due to non-base64 characters. Fixed with regex sanitization. |
 | Docker deployment failed | `npx supabase functions deploy` failed with "unexpected end of JSON input" locally. |
+| Database Type Consistency | Fixed TypeScript errors in admin panel by updating `database.types.ts` to match schema (nullable fields). |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`
