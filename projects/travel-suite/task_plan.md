@@ -31,21 +31,23 @@ Phase 4
 - [x] UI polish (shimmer, flutter_animate, Hero animations)
 - **Status:** complete
 
-### Phase 4: Push Notifications & Admin Panel
-- [/] Integrate Firebase Cloud Messaging (FCM) (Code implemented, configuration pending)
-- [ ] Create Supabase Edge Functions for notification triggers
-- [ ] Create admin dashboard for trip management
-- [ ] Build driver management CRUD
-- [ ] Implement trip assignment workflow
-- **Status:** in_progress
+### Phase 4: Push Notifications & Admin Panel ✓
+- [x] Integrate Firebase Cloud Messaging (FCM)
+- [x] Create Supabase Edge Functions for notification triggers
+- [x] Create admin dashboard for trip management and notification history
+- [x] Build driver management CRUD (Implemented in previous sessions)
+- [x] Implement trip assignment workflow and itinerary updates
+- **Status:** complete
 
 ### Phase 5: Testing & Deployment
+- [ ] Deploy Supabase Edge Functions to production
+- [ ] Configure environment variables (Firebase secrets, Supabase keys)
 - [ ] Test push notification flow end-to-end
 - [ ] Test admin panel workflows
 - [ ] Configure App Store Connect
 - [ ] Configure Google Play Console
 - [ ] Submit for review
-- **Status:** pending
+- **Status:** in_progress
 
 ## Key Questions
 1. ~~Which animation library for Flutter?~~ → **flutter_animate**

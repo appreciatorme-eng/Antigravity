@@ -41,7 +41,7 @@
 - `progress.md` (recreated with planning-with-files template)
 
 ### Phase 4: Push Notifications & Admin Panel
-- **Status:** in_progress
+- **Status:** complete
 - **Started:** 2026-02-09
 
 #### Actions Taken
@@ -49,16 +49,25 @@
 - Created `PushNotificationService` in `lib/core/services/push_notification_service.dart` for FCM token management and notification handling
 - Integrated Firebase initialization and push notification setup in `main.dart`
 - Configured Android build files (`build.gradle.kts`, `settings.gradle.kts`) for Google Services
-- (Pending: Firebase configuration files `google-services.json` and `GoogleService-Info.plist`)
-- (Pending: Supabase Edge Functions for notification triggers)
-- (Pending: Admin dashboard)
+- Created Supabase Edge Function `send-notification` for FCM V1 message delivery
+- Refactored `TripDetailScreen` to support fetching trip data via ID for deep-linked notifications
+- Implemented global navigation logic for notification taps
+- Updated web notification service to invoke Edge Functions instead of Expo
+- Created "Notification History" admin dashboard for monitoring outgoing alerts
+- Fixed TypeScript lint errors in Supabase Edge Functions
 
 #### Files Created/Modified
 - `apps/mobile/pubspec.yaml` (modified)
 - `apps/mobile/lib/core/services/push_notification_service.dart` (created)
+- `apps/mobile/lib/features/trips/presentation/screens/trip_detail_screen.dart` (modified)
 - `apps/mobile/lib/main.dart` (modified)
 - `apps/mobile/android/app/build.gradle.kts` (modified)
 - `apps/mobile/android/settings.gradle.kts` (modified)
+- `supabase/functions/send-notification/index.ts` (created)
+- `apps/web/src/lib/notifications.ts` (modified)
+- `apps/web/src/app/admin/trips/[id]/page.tsx` (modified)
+- `apps/web/src/app/admin/notifications/page.tsx` (created)
+- `apps/web/src/app/admin/layout.tsx` (modified)
 - `task_plan.md` (updated)
 - `progress.md` (updated)
 
