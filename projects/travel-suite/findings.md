@@ -21,6 +21,7 @@
 - **docs/** - Implementation plan, brand identity, setup guides
 
 ### Mobile App Stack
+- **Platforms:** Android, iOS, Web (simulated via Chrome)
 - **State management:** flutter_riverpod
 - **Data modeling:** freezed + json_serializable
 - **Backend:** supabase_flutter (Auth, Database, Realtime)
