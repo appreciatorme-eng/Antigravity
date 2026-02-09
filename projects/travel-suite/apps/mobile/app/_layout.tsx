@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { supabase } from "../src/lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import { View, ActivityIndicator } from "react-native";
+import { NotificationHandler } from "../src/components/NotificationHandler";
 
 export default function RootLayout() {
     const [session, setSession] = useState<Session | null>(null);
@@ -63,6 +64,7 @@ export default function RootLayout() {
     return (
         <>
             <StatusBar style="dark" />
+            <NotificationHandler userId={session?.user?.id ?? null} />
             <Stack
                 screenOptions={{
                     headerStyle: {

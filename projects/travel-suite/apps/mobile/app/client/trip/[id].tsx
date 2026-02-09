@@ -21,7 +21,9 @@ import {
     ChevronDown,
     ChevronUp,
     MessageCircle,
+    Plane,
 } from "lucide-react-native";
+import { notifyClientLanded } from "../../../src/lib/notifications";
 
 interface Activity {
     time: string;
@@ -83,6 +85,8 @@ export default function TripDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [selectedDay, setSelectedDay] = useState(1);
     const [expandedDays, setExpandedDays] = useState<number[]>([1]);
+    const [landingInProgress, setLandingInProgress] = useState(false);
+    const [hasLanded, setHasLanded] = useState(false);
 
     useEffect(() => {
         fetchTripDetails();
@@ -169,6 +173,36 @@ export default function TripDetailScreen() {
         });
     };
 
+    const handleLanding = async () => {
+        if (!id || hasLanded) return;
+
+        Alert.alert(
+            "Confirm Landing",
+            "Let your driver know you've arrived?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Yes, I've Landed",
+                    onPress: async () => {
+                        setLandingInProgress(true);
+                        const result = await notifyClientLanded(id);
+                        setLandingInProgress(false);
+
+                        if (result.success) {
+                            setHasLanded(true);
+                            Alert.alert(
+                                "Welcome!",
+                                "Your driver has been notified. Check your notifications for their contact details."
+                            );
+                        } else {
+                            Alert.alert("Error", result.error || "Failed to send notification");
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
     const getDriverForDay = (dayNumber: number): DriverAssignment | undefined => {
         return trip?.driver_assignments?.find((a) => a.day_number === dayNumber);
     };
@@ -212,6 +246,31 @@ export default function TripDetailScreen() {
                             {trip.itinerary?.destination}
                         </Text>
                     </View>
+
+                    {/* I've Landed Button */}
+                    {trip.status === "confirmed" && !hasLanded && (
+                        <TouchableOpacity
+                            style={styles.landedButton}
+                            onPress={handleLanding}
+                            disabled={landingInProgress}
+                        >
+                            {landingInProgress ? (
+                                <ActivityIndicator size="small" color={Colors.primary} />
+                            ) : (
+                                <>
+                                    <Plane size={18} color={Colors.primary} />
+                                    <Text style={styles.landedButtonText}>I've Landed</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                    {hasLanded && (
+                        <View style={styles.landedConfirmation}>
+                            <Text style={styles.landedConfirmationText}>
+                                Driver notified - Have a great trip!
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
 
@@ -661,6 +720,39 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Colors.secondary,
         marginTop: 8,
+        fontWeight: "500",
+    },
+    landedButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: Colors.white,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
+        marginTop: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    landedButtonText: {
+        color: Colors.primary,
+        fontWeight: "bold",
+        fontSize: 16,
+    },
+    landedConfirmation: {
+        backgroundColor: "rgba(255,255,255,0.2)",
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        marginTop: 16,
+    },
+    landedConfirmationText: {
+        color: Colors.white,
+        fontSize: 14,
         fontWeight: "500",
     },
 });
