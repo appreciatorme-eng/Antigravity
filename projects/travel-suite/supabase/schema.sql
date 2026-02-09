@@ -459,6 +459,165 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ================================================
+-- AI AGENT TABLES (Agno Framework)
+-- ================================================
+
+-- Enable pgvector extension for RAG embeddings
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Vector embeddings for RAG (policies, FAQs, destination guides)
+CREATE TABLE IF NOT EXISTS public.policy_embeddings (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    content TEXT NOT NULL,
+    embedding vector(1536), -- OpenAI embedding dimension
+    source_type TEXT CHECK (source_type IN ('policy', 'faq', 'destination', 'trip')),
+    source_file TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.policy_embeddings ENABLE ROW LEVEL SECURITY;
+
+-- Index for vector similarity search
+CREATE INDEX IF NOT EXISTS idx_policy_embeddings_vector ON public.policy_embeddings USING ivfflat (embedding vector_cosine_ops);
+
+-- Embeddings policies (service role only for write, public read)
+CREATE POLICY "Anyone can search embeddings"
+    ON public.policy_embeddings FOR SELECT
+    USING (true);
+
+-- User preferences learned by AI agents
+CREATE TABLE IF NOT EXISTS public.user_preferences (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    preference_type TEXT NOT NULL CHECK (preference_type IN (
+        'travel_style', 'budget', 'interests', 'destinations',
+        'accommodation', 'dietary', 'accessibility', 'avoid', 'other'
+    )),
+    preference_value JSONB NOT NULL,
+    confidence FLOAT DEFAULT 0.5 CHECK (confidence >= 0 AND confidence <= 1),
+    source TEXT DEFAULT 'agent' CHECK (source IN ('agent', 'explicit', 'inferred')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON public.user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_preferences_type ON public.user_preferences(preference_type);
+
+-- User preferences policies
+CREATE POLICY "Users can view their own preferences"
+    ON public.user_preferences FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own preferences"
+    ON public.user_preferences FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own preferences"
+    ON public.user_preferences FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Trigger for updated_at
+CREATE TRIGGER set_updated_at_user_preferences
+    BEFORE UPDATE ON public.user_preferences
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+-- Agent conversation history
+CREATE TABLE IF NOT EXISTS public.agent_conversations (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    session_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL CHECK (agent_name IN ('TripPlanner', 'SupportBot', 'TravelRecommender')),
+    messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+    summary TEXT,
+    metadata JSONB,
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.agent_conversations ENABLE ROW LEVEL SECURITY;
+
+-- Index for fast lookups
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_user ON public.agent_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_session ON public.agent_conversations(session_id);
+CREATE INDEX IF NOT EXISTS idx_agent_conversations_agent ON public.agent_conversations(agent_name);
+
+-- Agent conversation policies
+CREATE POLICY "Users can view their own conversations"
+    ON public.agent_conversations FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create conversations"
+    ON public.agent_conversations FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all conversations"
+    ON public.agent_conversations FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+-- Scheduled notification queue (for n8n workflows)
+CREATE TABLE IF NOT EXISTS public.notification_queue (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE,
+    notification_type TEXT NOT NULL CHECK (notification_type IN (
+        'daily_briefing', 'trip_reminder', 'driver_assigned',
+        'pickup_reminder', 'custom'
+    )),
+    scheduled_for TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'sent', 'failed', 'cancelled')),
+    attempts INTEGER DEFAULT 0,
+    last_attempt_at TIMESTAMPTZ,
+    processed_at TIMESTAMPTZ,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.notification_queue ENABLE ROW LEVEL SECURITY;
+
+-- Indexes for scheduled notifications
+CREATE INDEX IF NOT EXISTS idx_notification_queue_scheduled ON public.notification_queue(scheduled_for, status);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_user ON public.notification_queue(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_trip ON public.notification_queue(trip_id);
+
+-- Notification queue policies (service role only for processing)
+CREATE POLICY "Admins can view notification queue"
+    ON public.notification_queue FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Admins can manage notification queue"
+    ON public.notification_queue FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+-- ================================================
 -- REALTIME SUBSCRIPTIONS
 -- ================================================
 -- Enable realtime for driver locations (for live tracking)
