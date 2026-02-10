@@ -55,9 +55,14 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { prompt, days } = RequestSchema.parse(body);
 
-        const apiKey = process.env.GOOGLE_API_KEY;
+        const apiKey =
+            process.env.GOOGLE_API_KEY ||
+            process.env.GOOGLE_GEMINI_API_KEY;
         if (!apiKey) {
-            return NextResponse.json({ error: "Missing Google API Key" }, { status: 500 });
+            return NextResponse.json(
+                { error: "Missing Google API Key (GOOGLE_API_KEY)" },
+                { status: 500 }
+            );
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
