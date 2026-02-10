@@ -20,6 +20,12 @@
 ### Testing
 - **Flutter Run (Android):** `flutter run -d emulator-5554` (debug build installed and app launched).
 
+## Session: 2026-02-10 (Android QA: Analyze + Tests)
+
+### Testing
+- **Flutter Analyze:** `flutter analyze` (warnings only: JsonKey placement, withOpacity deprecations, underscore lint).
+- **Flutter Test:** `flutter test` (1 test, all passed).
+
 ## Session: 2026-02-10 (SDK Verification)
 
 ### Tooling Checks
