@@ -22,15 +22,30 @@ interface Organization {
     subscription_tier: string | null;
 }
 
+const mockOrganization: Organization = {
+    id: "mock-org",
+    name: "GoBuddy Adventures",
+    slug: "gobuddy-adventures",
+    logo_url: "https://gobuddyadventures.com/wp-content/uploads/2021/12/GoBuddy-Full-Logo-Transparent-1.png",
+    primary_color: "#00D084",
+    subscription_tier: "pro",
+};
+
 export default function SettingsPage() {
     const supabase = createClient();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchSettings = useCallback(async () => {
         try {
+            if (useMockAdmin) {
+                setOrganization(mockOrganization);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from("organizations")
                 .select("*")
@@ -43,7 +58,7 @@ export default function SettingsPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, useMockAdmin]);
 
     useEffect(() => {
         void fetchSettings();
@@ -55,6 +70,12 @@ export default function SettingsPage() {
 
         setSaving(true);
         try {
+            if (useMockAdmin) {
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 3000);
+                return;
+            }
+
             const { error } = await supabase
                 .from("organizations")
                 .update({

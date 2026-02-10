@@ -26,15 +26,51 @@ interface Client {
     trips_count?: number;
 }
 
+const mockClients: Client[] = [
+    {
+        id: "mock-client-1",
+        full_name: "Ava Chen",
+        email: "ava.chen@example.com",
+        phone: "+1 (415) 555-1122",
+        avatar_url: null,
+        created_at: "2024-11-08T12:00:00Z",
+        trips_count: 3,
+    },
+    {
+        id: "mock-client-2",
+        full_name: "Liam Walker",
+        email: "liam.walker@example.com",
+        phone: "+44 20 7946 0901",
+        avatar_url: null,
+        created_at: "2025-02-19T09:30:00Z",
+        trips_count: 2,
+    },
+    {
+        id: "mock-client-3",
+        full_name: "Sofia Ramirez",
+        email: "sofia.ramirez@example.com",
+        phone: "+34 91 123 4567",
+        avatar_url: null,
+        created_at: "2025-06-04T15:15:00Z",
+        trips_count: 1,
+    },
+];
+
 export default function ClientsPage() {
     const supabase = createClient();
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchClients = useCallback(async () => {
         setLoading(true);
         try {
+            if (useMockAdmin) {
+                setClients(mockClients);
+                return;
+            }
+
             // First get profiles with role 'client'
             const { data: profiles, error: profilesError } = await supabase
                 .from("profiles")
@@ -63,7 +99,7 @@ export default function ClientsPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, useMockAdmin]);
 
     useEffect(() => {
         void fetchClients();
