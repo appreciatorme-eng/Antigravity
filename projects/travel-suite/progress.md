@@ -36,7 +36,6 @@
 
 ### Testing
 - **Flutter Analyze:** `flutter analyze` (clean, 0 issues).
-
 ## Session: 2026-02-10 (SDK Verification)
 
 ### Tooling Checks
@@ -46,7 +45,6 @@
 
 ### Testing
 - **Flutter Doctor:** `flutter doctor -v` (Android SDK missing, Xcode incomplete, CocoaPods missing).
-
 ## Session: 2026-02-10 (Web Lint & Hardening)
 
 ### Web App Fixes
@@ -107,7 +105,6 @@
 #### Files Modified
 - `apps/mobile/lib/features/trips/presentation/screens/trips_screen.dart`
 - `apps/mobile/lib/features/trips/presentation/screens/trip_detail_screen.dart`
-
 ## Session: 2026-02-10
 
 ### Documentation & Cleanup
