@@ -1,5 +1,16 @@
 # Progress Log
 
+## Session: 2026-02-10 (Deep Link Validation)
+
+### Mobile App Fixes
+- **Status:** complete
+- Fixed local notification API usage to match current flutter_local_notifications signature.
+- Ensured trip detail header uses resolved destination.
+- Corrected activity timeline connector logic.
+
+### Testing
+- **Flutter Analyze:** `flutter analyze` (0 errors, warnings for JsonKey + withOpacity + underscores).
+
 ## Session: 2026-02-10 (SDK Verification)
 
 ### Tooling Checks
@@ -207,7 +218,7 @@
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
-| Flutter analyze | `flutter analyze` | 0 errors | 0 errors | ✓ |
+| Flutter analyze | `flutter analyze` | 0 errors | Warnings only (no errors) | △ |
 | Admin Panel Lint | `npm run lint` | 0 errors | All resolved | ✓ |
 | Activity Feed | Supabase Query | Real data | Combine logs+trips | ✓ |
 

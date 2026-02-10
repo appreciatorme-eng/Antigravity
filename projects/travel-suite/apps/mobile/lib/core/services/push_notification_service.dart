@@ -125,7 +125,7 @@ class PushNotificationService {
     );
     
     await _localNotifications.initialize(
-      const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
     
@@ -149,10 +149,10 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification != null) {
       _localNotifications.show(
-        notification.hashCode,
-        notification.title ?? 'GoBuddy Adventures',
-        notification.body ?? '',
-        const NotificationDetails(
+        id: notification.hashCode,
+        title: notification.title ?? 'GoBuddy Adventures',
+        body: notification.body ?? '',
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'gobuddy_push',
             'GoBuddy Notifications',

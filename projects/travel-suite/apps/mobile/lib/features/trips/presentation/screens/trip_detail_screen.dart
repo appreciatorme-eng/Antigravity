@@ -200,8 +200,14 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
-                    title: Text(_trip!['destination'] ?? 'Trip', 
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    title: Text(
+                      destination,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     background: Hero(
                        tag: 'trip-bg-${_trip!['id']}',
                        child: Container(
@@ -359,7 +365,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           ...activities.asMap().entries.map((entry) {
             final index = entry.key;
             final activity = entry.value as Map<String, dynamic>;
-            return _buildActivityCard(activity, index);
+            return _buildActivityCard(activity, index, activities.length);
           }),
 
           const SizedBox(height: 100), // FAB clearance
@@ -368,7 +374,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     );
   }
 
-  Widget _buildActivityCard(Map<String, dynamic> activity, int index) {
+  Widget _buildActivityCard(Map<String, dynamic> activity, int index, int total) {
     final time = activity['time'] ?? '';
     final title = activity['title'] ?? 'Activity';
     final description = activity['description'] ?? '';
@@ -400,7 +406,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   ),
                 ),
               ),
-              if (index < activities.length - 1) // Show line between items
+              if (index < total - 1) // Show line between items
                 Container(
                   width: 2,
                   height: 60,

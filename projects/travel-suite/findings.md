@@ -92,6 +92,8 @@
 | “I’ve Landed” server sync | Mobile now calls `/api/notifications/client-landed` with user token to trigger backend notifications. |
 | Flutter doctor environment | Flutter SDK present but Android SDK missing, Xcode incomplete, and CocoaPods missing. |
 | Deep-link navigation timing | Added deferred navigation if `navigatorKey` is not ready, and validated `trip_id` payloads. |
+| flutter_local_notifications API change | Updated `show` to use `notificationDetails` named parameter for v20+. |
+| Flutter analyze warnings | Current warnings for `@JsonKey` placement, deprecated `withOpacity`, and underscores; no errors. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`
