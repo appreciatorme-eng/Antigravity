@@ -20,7 +20,7 @@ import {
     Trash,
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
-import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
+import { getDriverWhatsAppLink, formatDriverAssignmentMessage, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -562,6 +562,19 @@ export default function TripDetailPage() {
         });
     };
 
+    const clientWhatsAppLink = trip?.profiles?.phone
+        ? getDriverWhatsAppLink(
+            trip.profiles.phone,
+            formatClientWhatsAppMessage({
+                clientName: trip.profiles?.full_name || "there",
+                tripTitle: trip.itineraries?.trip_title,
+                destination: trip.destination,
+                startDate: trip.start_date ? formatDate(trip.start_date) : "",
+                body: notificationBody || "",
+            })
+        )
+        : null;
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -678,6 +691,26 @@ export default function TripDetailPage() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                    {clientWhatsAppLink ? (
+                        <a
+                            href={clientWhatsAppLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp Client
+                        </a>
+                    ) : (
+                        <button
+                            disabled
+                            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-400 rounded-lg cursor-not-allowed"
+                            title="Client phone not available"
+                        >
+                            <MessageCircle className="h-4 w-4" />
+                            WhatsApp Client
+                        </button>
+                    )}
                     <button
                         onClick={saveChanges}
                         disabled={saving}

@@ -77,3 +77,31 @@ ${activitiesList || "No activities scheduled."}
 
 Have a great day!`;
 }
+
+export function formatClientWhatsAppMessage(data: {
+    clientName: string;
+    tripTitle?: string | null;
+    destination?: string | null;
+    startDate?: string | null;
+    body?: string | null;
+}): string {
+    const greeting = `Hi ${data.clientName || "there"},`;
+    const tripLine = data.tripTitle || data.destination
+        ? `Trip: ${data.tripTitle || data.destination}`
+        : "Trip update";
+    const dateLine = data.startDate ? `Start date: ${data.startDate}` : "";
+    const bodyLine = data.body ? data.body : "We have an update on your itinerary.";
+
+    return [
+        greeting,
+        "",
+        tripLine,
+        dateLine,
+        "",
+        bodyLine,
+        "",
+        "Reply here if you have any questions.",
+    ]
+        .filter(Boolean)
+        .join("\n");
+}
