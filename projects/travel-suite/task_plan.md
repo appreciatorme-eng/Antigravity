@@ -43,7 +43,7 @@ Phase 5
 ### Phase 5: Testing & Deployment
 - [x] Fix Web App Build & Type Errors (Completed)
 - [x] Push Notification Integration (Code complete, deployment ready)
-- [x] Web lint pass (warnings only)
+- [x] Web lint pass (clean)
 - [ ] End-to-End Testing (Push Notifications, Deep Linking)
 - [ ] App Store & Play Store Deployment Setup
 - [ ] Final Code Review & Refactoring (security pass, keys, docs)
@@ -54,6 +54,13 @@ Phase 5
 - [ ] Configure Google Play Console
 - [ ] Submit for review
 - **Status:** in_progress
+
+### Phase 6: Monetization & SaaS Readiness
+- [ ] Document monetization plan and tiering
+- [ ] Add feature gating by `subscription_tier`
+- [ ] Implement usage tracking (AI, notifications)
+- [ ] Billing integration (Stripe) + invoicing flow
+- [ ] Admin organization settings for branding & white-label
 
 ## Key Questions
 1. ~~Which animation library for Flutter?~~ → **flutter_animate**

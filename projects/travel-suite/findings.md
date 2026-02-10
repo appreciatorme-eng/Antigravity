@@ -92,6 +92,7 @@
 ## Resources
 - Brand identity: `docs/brand_identity.md`
 - Implementation plan: `docs/implementation_plan.md`
+- Monetization plan: `docs/monetization.md`
 - Database schema: `supabase/schema.sql`
 - Google OAuth setup: `docs/GOOGLE_OAUTH_SETUP.md`
 - Mobile README: `apps/mobile/README.md`

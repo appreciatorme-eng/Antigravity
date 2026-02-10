@@ -70,6 +70,10 @@ python main.py
 - **Support Bot**: Answers travel questions via RAG
 - **Recommender**: Activity recommendations
 
+## 💼 Monetization
+
+Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered subscriptions. See `docs/monetization.md` for details.
+
 ## 🔔 Automation & Notifications
 
 - Supabase Edge Functions for FCM (push notifications)

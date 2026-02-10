@@ -91,6 +91,12 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 ### Goal
 Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with automated push notifications. Enable monetization to other travel agents.
 
+### Monetization Strategy (Summary)
+- Position Travel Suite as a **B2B SaaS platform** for travel agents/tour operators.
+- Offer tiered subscriptions (`free`, `pro`, `enterprise`) with feature gating and usage limits.
+- Provide white-label customization and advanced reporting in higher tiers.
+- See `docs/monetization.md` for the full plan.
+
 ### Cost: $124/year
 - Apple Developer: $99/year
 - Google Play: $25 one-time
@@ -172,4 +178,3 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
 4. ✅ **Currency API**: Converts amounts correctly
 5. ✅ **Map**: Displays activity pins
 6. ✅ **PDF**: Downloads correctly
-

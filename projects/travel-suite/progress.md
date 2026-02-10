@@ -39,6 +39,10 @@
 #### Files Removed
 - `apps/web/scripts/run-migration.js`
 
+### Monetization Planning
+- Added `docs/monetization.md` and linked it in `README.md` and `implementation_plan.md`.
+- Added Phase 6 (Monetization & SaaS Readiness) to the task plan.
+
 ## Session: 2026-02-10
 
 ### Documentation & Cleanup
