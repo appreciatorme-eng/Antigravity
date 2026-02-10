@@ -90,29 +90,20 @@ export default function ClientsPage() {
                 return;
             }
 
-            // First get profiles with role 'client'
-            const { data: profiles, error: profilesError } = await supabase
-                .from("profiles")
-                .select("id, full_name, email, phone, avatar_url, created_at")
-                .eq("role", "client")
-                .order("created_at", { ascending: false });
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                headers: {
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+            });
 
-            if (profilesError) throw profilesError;
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to fetch clients");
+            }
 
-            // Then for each client, get their trip count
-            const clientsWithTrips = await Promise.all((profiles || []).map(async (client: Client) => {
-                const { count } = await supabase
-                    .from("trips")
-                    .select("*", { count: 'exact', head: true })
-                    .eq("client_id", client.id);
-
-                return {
-                    ...client,
-                    trips_count: count || 0
-                };
-            }));
-
-            setClients(clientsWithTrips);
+            const payload = await response.json();
+            setClients(payload.clients || []);
         } catch (error) {
             console.error("Error fetching clients:", error);
         } finally {

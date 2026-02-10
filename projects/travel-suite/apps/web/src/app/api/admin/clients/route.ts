@@ -72,3 +72,57 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
+
+export async function GET(req: NextRequest) {
+    try {
+        const authHeader = req.headers.get("authorization");
+        const token = authHeader?.replace("Bearer ", "");
+
+        if (!token) {
+            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+        }
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !authData?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: adminProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("role, organization_id")
+            .eq("id", authData.user.id)
+            .single();
+
+        if (!adminProfile || adminProfile.role !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, full_name, email, phone, avatar_url, created_at")
+            .eq("role", "client")
+            .order("created_at", { ascending: false });
+
+        if (profilesError) {
+            return NextResponse.json({ error: profilesError.message }, { status: 400 });
+        }
+
+        const clientsWithTrips = await Promise.all(
+            (profiles || []).map(async (client) => {
+                const { count } = await supabaseAdmin
+                    .from("trips")
+                    .select("*", { count: "exact", head: true })
+                    .eq("client_id", client.id);
+
+                return {
+                    ...client,
+                    trips_count: count || 0,
+                };
+            })
+        );
+
+        return NextResponse.json({ clients: clientsWithTrips });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    }
+}
