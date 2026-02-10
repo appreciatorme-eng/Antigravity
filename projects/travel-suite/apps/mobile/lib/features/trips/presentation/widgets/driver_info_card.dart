@@ -17,7 +17,7 @@ class DriverInfoCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: Colors.black.withAlpha(13),
       color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -31,7 +31,7 @@ class DriverInfoCard extends StatelessWidget {
                     ? NetworkImage(driver.photoUrl!) 
                     : null,
                   radius: 24,
-                  backgroundColor: AppTheme.primary.withOpacity(0.1),
+                  backgroundColor: AppTheme.primary.withAlpha(26),
                   child: driver.photoUrl == null 
                     ? const Icon(Icons.person, color: AppTheme.primary) 
                     : null,

@@ -152,7 +152,7 @@ class _TripsScreenState extends State<TripsScreen> {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 3,
-        itemBuilder: (_, __) => Container(
+        itemBuilder: (context, index) => Container(
           margin: const EdgeInsets.only(bottom: 16),
           height: 240,
           decoration: BoxDecoration(
@@ -175,7 +175,7 @@ class _TripsScreenState extends State<TripsScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withAlpha(26),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -218,7 +218,7 @@ class _TripsScreenState extends State<TripsScreen> {
         borderRadius: BorderRadius.circular(16),
         color: Colors.white,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.08),
+        shadowColor: Colors.black.withAlpha(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
@@ -244,8 +244,8 @@ class _TripsScreenState extends State<TripsScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppTheme.primary.withOpacity(0.8),
-                        AppTheme.secondary.withOpacity(0.8),
+                        AppTheme.primary.withAlpha(204),
+                        AppTheme.secondary.withAlpha(204),
                       ],
                     ),
                   ),
@@ -265,7 +265,7 @@ class _TripsScreenState extends State<TripsScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withAlpha(230),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(

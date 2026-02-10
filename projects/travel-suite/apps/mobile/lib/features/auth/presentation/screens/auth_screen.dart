@@ -101,7 +101,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primary.withOpacity(0.3),
+                          color: AppTheme.primary.withAlpha(77),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -129,11 +129,11 @@ class _AuthScreenState extends State<AuthScreen> {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withAlpha(230),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: Colors.black.withAlpha(15),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -170,7 +170,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              color: AppTheme.error.withOpacity(0.1),
+                              color: AppTheme.error.withAlpha(26),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -226,7 +226,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               'https://www.google.com/favicon.ico',
                               height: 18,
                               width: 18,
-                              errorBuilder: (_, __, ___) =>
+                              errorBuilder: (context, error, stackTrace) =>
                                   const Icon(Icons.g_mobiledata, size: 20),
                             ),
                             label: const Text('Continue with Google'),

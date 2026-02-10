@@ -95,6 +95,7 @@
 | flutter_local_notifications API change | Updated `show` to use `notificationDetails` named parameter for v20+. |
 | Flutter analyze warnings | Current warnings for `@JsonKey` placement, deprecated `withOpacity`, and underscores; no errors. |
 | Android desugaring requirement | Enabled core library desugaring with `desugar_jdk_libs:2.1.4` for flutter_local_notifications. |
+| Android lint cleanup | Replaced `withOpacity` with `withAlpha`, fixed underscore lint, and silenced `JsonKey` annotation warnings. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`

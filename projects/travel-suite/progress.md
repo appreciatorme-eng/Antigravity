@@ -26,6 +26,17 @@
 - **Flutter Analyze:** `flutter analyze` (warnings only: JsonKey placement, withOpacity deprecations, underscore lint).
 - **Flutter Test:** `flutter test` (1 test, all passed).
 
+## Session: 2026-02-10 (Android Cleanup)
+
+### Mobile App Fixes
+- **Status:** complete
+- Replaced deprecated `withOpacity` usage with `withAlpha`.
+- Removed underscore lint warnings in builders.
+- Suppressed `JsonKey` annotation warnings in Freezed models.
+
+### Testing
+- **Flutter Analyze:** `flutter analyze` (clean, 0 issues).
+
 ## Session: 2026-02-10 (SDK Verification)
 
 ### Tooling Checks

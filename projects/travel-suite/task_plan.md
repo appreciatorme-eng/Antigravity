@@ -58,7 +58,7 @@ Phase 5
 ### Phase 5.1: Mobile App Hardening
 - [x] Align trips list/detail with `trips` + `itineraries` schema
 - [x] Confirm deep-link handling and driver assignment display
-- [x] Run `flutter analyze` (warnings remain for JsonKey + withOpacity + underscores)
+- [x] Run `flutter analyze` (clean, 0 issues)
 - [x] Wire “I’ve Landed” to backend notification endpoint
 
 ### Phase 6: Monetization & SaaS Readiness
@@ -99,4 +99,4 @@ Phase 5
 - Update phase status as you progress: pending → in_progress → complete
 - Re-read this plan before major decisions (attention manipulation)
 - Log ALL errors - they help avoid repetition
-- Mobile app `flutter analyze` currently reports warnings but no errors.
+- Mobile app `flutter analyze` now clean (0 issues).

@@ -289,7 +289,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withAlpha(51),
                       blurRadius: 4,
                     ),
                   ],
@@ -340,7 +340,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withAlpha(26),
                     blurRadius: 10,
                   ),
                 ],
@@ -410,7 +410,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 Container(
                   width: 2,
                   height: 60,
-                  color: AppTheme.primary.withOpacity(0.3),
+                  color: AppTheme.primary.withAlpha(77),
                 ),
             ],
           ),
@@ -424,7 +424,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha(13),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -438,7 +438,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.secondary.withOpacity(0.1),
+                        color: AppTheme.secondary.withAlpha(26),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

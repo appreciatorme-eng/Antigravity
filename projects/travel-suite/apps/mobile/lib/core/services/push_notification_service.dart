@@ -77,6 +77,9 @@ class PushNotificationService {
     try {
       _currentToken = await _messaging.getToken();
       if (_currentToken != null) {
+        if (kDebugMode) {
+          debugPrint('FCM Token (debug): $_currentToken');
+        }
         await _storeTokenInSupabase(_currentToken!);
         debugPrint('FCM Token obtained and stored');
       }
