@@ -75,6 +75,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           if (!_pushNotificationsInitialized) {
             _pushNotificationsInitialized = true;
             PushNotificationService().init();
+            PushNotificationService().flushPendingNavigation();
           }
           return const TripsScreen();
         }

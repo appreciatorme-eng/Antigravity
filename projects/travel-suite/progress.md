@@ -52,6 +52,7 @@
 - Corrected timeline rendering for activities.
 - Improved loading/error handling on trips list.
 - Wired “I’ve Landed” to call the web API and trigger server-side notifications.
+- Added deep-link validation and deferred navigation until navigator is ready.
 
 ### Testing
 - **Flutter Analyze:** not run (Flutter SDK unavailable in this environment).

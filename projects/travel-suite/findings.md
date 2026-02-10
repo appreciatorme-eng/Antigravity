@@ -90,6 +90,7 @@
 | Hardcoded DB credentials in web script | Removed `apps/web/scripts/run-migration.js` and deleted the scripts directory. |
 | Mobile trip data mismatch | Mobile was reading `itineraries` directly; updated to query `trips` with `itineraries` join. |
 | “I’ve Landed” server sync | Mobile now calls `/api/notifications/client-landed` with user token to trigger backend notifications. |
+| Deep-link navigation timing | Added deferred navigation if `navigatorKey` is not ready, and validated `trip_id` payloads. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`

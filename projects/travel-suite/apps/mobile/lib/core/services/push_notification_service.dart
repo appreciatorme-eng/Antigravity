@@ -25,6 +25,7 @@ class PushNotificationService {
   
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   String? _currentToken;
+  String? _pendingTripId;
 
   /// Initialize the push notification service.
   /// Call this after Firebase.initializeApp() in main.dart.
@@ -166,7 +167,7 @@ class PushNotificationService {
             presentSound: true,
           ),
         ),
-        payload: message.data['trip_id'],
+        payload: _extractTripId(message.data),
       );
     }
   }
@@ -174,19 +175,30 @@ class PushNotificationService {
   /// Handle notification taps (background/terminated state).
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.messageId}');
-    final tripId = message.data['trip_id'];
-    if (tripId != null) {
-      _navigateToTripDetail(tripId);
-    }
+    final tripId = _extractTripId(message.data);
+    _handleTripNavigation(tripId);
   }
 
   /// Handle local notification taps (foreground state).
   void _onLocalNotificationTap(NotificationResponse response) {
     debugPrint('Local notification tapped: ${response.payload}');
-    final tripId = response.payload;
-    if (tripId != null) {
-      _navigateToTripDetail(tripId);
+    _handleTripNavigation(response.payload);
+  }
+
+  String? _extractTripId(Map<String, dynamic> data) {
+    final tripId = data['trip_id'] ?? data['tripId'];
+    if (tripId is String && tripId.trim().isNotEmpty) {
+      return tripId;
     }
+    return null;
+  }
+
+  void _handleTripNavigation(String? tripId) {
+    if (tripId == null || tripId.isEmpty) {
+      debugPrint('Notification missing trip_id; skipping navigation');
+      return;
+    }
+    _navigateToTripDetail(tripId);
   }
 
   /// Helper to navigate to trip detail screen
@@ -203,8 +215,20 @@ class PushNotificationService {
         ),
       );
     } else {
-      debugPrint('Navigator state is null, cannot navigate');
+      _pendingTripId = tripId;
+      debugPrint('Navigator state is null, deferring navigation');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        flushPendingNavigation();
+      });
     }
+  }
+
+  /// Retry any deferred navigation once the navigator is ready.
+  void flushPendingNavigation() {
+    final pending = _pendingTripId;
+    if (pending == null || pending.isEmpty) return;
+    _pendingTripId = null;
+    _navigateToTripDetail(pending);
   }
 
   /// Get the current FCM token (useful for debugging).
