@@ -1,5 +1,15 @@
 # Progress Log
 
+## Session: 2026-02-10 (SDK Verification)
+
+### Tooling Checks
+- Ran `flutter doctor -v`.
+- Flutter SDK detected, but Android SDK missing and Xcode incomplete.
+- CocoaPods not installed.
+
+### Testing
+- **Flutter Doctor:** `flutter doctor -v` (Android SDK missing, Xcode incomplete, CocoaPods missing).
+
 ## Session: 2026-02-10 (Web Lint & Hardening)
 
 ### Web App Fixes

@@ -57,8 +57,8 @@ Phase 5
 
 ### Phase 5.1: Mobile App Hardening
 - [x] Align trips list/detail with `trips` + `itineraries` schema
- - [x] Confirm deep-link handling and driver assignment display
-- [ ] Run `flutter analyze` and fix warnings
+- [x] Confirm deep-link handling and driver assignment display
+- [ ] Run `flutter analyze` and fix warnings (blocked: Android SDK + Xcode + CocoaPods)
 - [x] Wire “I’ve Landed” to backend notification endpoint
 
 ### Phase 6: Monetization & SaaS Readiness
