@@ -10,7 +10,10 @@ import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
 import 'package:gobuddy_mobile/features/trips/presentation/widgets/driver_info_card.dart';
 
 import 'package:gobuddy_mobile/core/services/notification_service.dart';
+import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TripDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? trip;
@@ -86,13 +89,35 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
   Future<void> _notifyLanded() async {
     try {
-      // Update trip status to in_progress
-      await Supabase.instance.client
-          .from('trips')
-          .update({'status': 'in_progress'})
-          .eq('id', _trip!['id']);
+      final tripId = _trip?['id'] as String?;
+      if (tripId == null) {
+        throw Exception('Missing trip ID');
+      }
 
-      // Show local notification
+      final session = Supabase.instance.client.auth.currentSession;
+      final accessToken = session?.accessToken;
+      if (accessToken == null) {
+        throw Exception('User session expired');
+      }
+
+      final uri = Uri.parse(
+        '${SupabaseConfig.apiBaseUrl}/api/notifications/client-landed',
+      );
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({'tripId': tripId}),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Failed to notify server');
+      }
+
+      // Show local confirmation notification
       final itinerary = _trip?['itineraries'] as Map<String, dynamic>?;
       final destination = itinerary?['destination'] ??
           _trip?['destination'] ??

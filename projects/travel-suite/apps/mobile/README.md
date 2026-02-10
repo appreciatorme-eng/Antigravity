@@ -89,5 +89,5 @@ Ensure your Supabase Auth Redirect URLs include: `com.gobuddy.gobuddymobile://lo
 
 ## Notes
 
-*   **"I've Landed" Feature**: Currently simulates a backend update by directly modifying trip status and showing a local notification. In production, this trigger an Edge Function.
+*   **"I've Landed" Feature**: Calls the web API (`/api/notifications/client-landed`) with the user session token to trigger server-side notifications.
 *   **Maps**: Uses OpenStreetMap tiles. Ensure appropriate attribution is displayed.

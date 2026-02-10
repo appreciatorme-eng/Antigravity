@@ -56,9 +56,10 @@ Phase 5
 - **Status:** in_progress
 
 ### Phase 5.1: Mobile App Hardening
-- [ ] Align trips list/detail with `trips` + `itineraries` schema
+- [x] Align trips list/detail with `trips` + `itineraries` schema
 - [ ] Confirm deep-link handling and driver assignment display
 - [ ] Run `flutter analyze` and fix warnings
+- [x] Wire “I’ve Landed” to backend notification endpoint
 
 ### Phase 6: Monetization & SaaS Readiness
 - [ ] Document monetization plan and tiering

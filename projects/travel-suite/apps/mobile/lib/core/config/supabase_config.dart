@@ -2,4 +2,5 @@
 class SupabaseConfig {
   static const String url = 'https://rtdjmykkgmirxdyfckqi.supabase.co';
   static const String anonKey = 'sb_publishable_J18OyzAbBFTucB7-nq39YQ_fn5ECrxh';
+  static const String apiBaseUrl = 'https://your-app.vercel.app';
 }
