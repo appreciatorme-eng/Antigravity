@@ -1,29 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+async function getAdminUserId(req: NextRequest) {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (token) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (!authError && authData?.user) {
+            return authData.user.id;
+        }
+    }
+
+    const serverClient = await createServerClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+    return user?.id || null;
+}
+
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get("authorization");
-        const token = authHeader?.replace("Bearer ", "");
-
-        if (!token) {
-            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
-        }
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (authError || !authData?.user) {
+        const adminUserId = await getAdminUserId(req);
+        if (!adminUserId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const { data: adminProfile } = await supabaseAdmin
             .from("profiles")
             .select("role, organization_id")
-            .eq("id", authData.user.id)
+            .eq("id", adminUserId)
             .single();
 
         if (!adminProfile || adminProfile.role !== "admin") {
@@ -75,22 +85,15 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
-        const authHeader = req.headers.get("authorization");
-        const token = authHeader?.replace("Bearer ", "");
-
-        if (!token) {
-            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
-        }
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (authError || !authData?.user) {
+        const adminUserId = await getAdminUserId(req);
+        if (!adminUserId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const { data: adminProfile } = await supabaseAdmin
             .from("profiles")
             .select("role, organization_id")
-            .eq("id", authData.user.id)
+            .eq("id", adminUserId)
             .single();
 
         if (!adminProfile || adminProfile.role !== "admin") {
@@ -129,28 +132,22 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
     try {
-        const authHeader = req.headers.get("authorization");
-        const token = authHeader?.replace("Bearer ", "");
         const { searchParams } = new URL(req.url);
         const clientId = searchParams.get("id");
-
-        if (!token) {
-            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
-        }
 
         if (!clientId) {
             return NextResponse.json({ error: "Missing client id" }, { status: 400 });
         }
 
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (authError || !authData?.user) {
+        const adminUserId = await getAdminUserId(req);
+        if (!adminUserId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const { data: adminProfile } = await supabaseAdmin
             .from("profiles")
             .select("role")
-            .eq("id", authData.user.id)
+            .eq("id", adminUserId)
             .single();
 
         if (!adminProfile || adminProfile.role !== "admin") {

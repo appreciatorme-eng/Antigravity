@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -9,26 +10,38 @@ async function requireAdmin(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
-    if (!token) {
-        return { error: NextResponse.json({ error: "Missing auth token" }, { status: 401 }) };
+    if (token) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (!authError && authData?.user) {
+            const { data: adminProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("role")
+                .eq("id", authData.user.id)
+                .single();
+
+            if (adminProfile?.role === "admin") {
+                return { userId: authData.user.id };
+            }
+        }
     }
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData?.user) {
+    const serverClient = await createServerClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+    if (!user) {
         return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
     }
 
     const { data: adminProfile } = await supabaseAdmin
         .from("profiles")
         .select("role")
-        .eq("id", authData.user.id)
+        .eq("id", user.id)
         .single();
 
     if (!adminProfile || adminProfile.role !== "admin") {
         return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
 
-    return { userId: authData.user.id };
+    return { userId: user.id };
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
