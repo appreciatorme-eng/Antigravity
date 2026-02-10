@@ -26,12 +26,12 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
             // Check if share already exists
             const { data: existing } = await supabase
                 .from("shared_itineraries")
-                .select("share_token")
+                .select("share_code")
                 .eq("itinerary_id", itineraryId)
                 .single();
 
             if (existing) {
-                const url = `${window.location.origin}/share/${existing.share_token}`;
+                const url = `${window.location.origin}/share/${existing.share_code}`;
                 setShareUrl(url);
                 setLoading(false);
                 return;
@@ -46,7 +46,7 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
                 .from("shared_itineraries")
                 .insert({
                     itinerary_id: itineraryId,
-                    share_token: shareToken,
+                    share_code: shareToken,
                     expires_at: expiresAt.toISOString(),
                 });
 
@@ -158,8 +158,8 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
                             <button
                                 onClick={copyToClipboard}
                                 className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all ${copied
-                                        ? "bg-green-500 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                     }`}
                             >
                                 {copied ? (

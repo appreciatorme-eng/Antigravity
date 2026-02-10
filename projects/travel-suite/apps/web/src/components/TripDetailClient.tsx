@@ -28,10 +28,10 @@ interface TripDetailClientProps {
         id: string;
         trip_title: string;
         destination: string;
-        duration_days: number;
-        budget?: string;
-        interests?: string[];
-        summary?: string;
+        duration_days: number | null;
+        budget?: string | null;
+        interests?: string[] | null;
+        summary?: string | null;
         raw_data: ItineraryResult | any;
     };
 }
@@ -80,7 +80,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             </div>
                             <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm">
                                 <Calendar className="w-4 h-4 text-primary" />
-                                <span className="font-medium">{itinerary.duration_days} days</span>
+                                <span className="font-medium">{itinerary.duration_days || 0} days</span>
                             </div>
                             {itinerary.budget && (
                                 <div className="flex items-center gap-2 bg-white/60 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm">
@@ -224,7 +224,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                                     <CardContent className="pt-6 space-y-6">
                                         <WeatherWidget
                                             destination={itinerary.destination}
-                                            days={itinerary.duration_days}
+                                            days={itinerary.duration_days || 1}
                                         />
 
                                         <Separator />

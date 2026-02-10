@@ -398,6 +398,51 @@ export type Database = {
                     },
                 ]
             }
+            trip_accommodations: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address: string | null
+                    coordinates: Json | null
+                    check_in_time: string
+                    check_out_time: string
+                    confirmation_number: string | null
+                    contact_phone: string | null
+                    notes: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    day_number: number
+                    hotel_name: string
+                    address?: string | null
+                    coordinates?: Json | null
+                    check_in_time?: string
+                    check_out_time?: string
+                    confirmation_number?: string | null
+                    contact_phone?: string | null
+                    notes?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    day_number?: number
+                    hotel_name?: string
+                    address?: string | null
+                    coordinates?: Json | null
+                    check_in_time?: string
+                    check_out_time?: string
+                    confirmation_number?: string | null
+                    contact_phone?: string | null
+                    notes?: string | null
+                    created_at?: string
+                }
+                Relationships: []
+            }
             trip_driver_assignments: {
                 Row: {
                     created_at: string | null

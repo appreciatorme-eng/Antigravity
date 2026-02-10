@@ -21,11 +21,11 @@ interface NotificationLog {
     trip_id: string | null;
     recipient_id: string | null;
     recipient_phone: string | null;
-    recipient_type: string;
+    recipient_type: string | null;
     notification_type: string;
-    title: string;
-    body: string;
-    status: string;
+    title: string | null;
+    body: string | null;
+    status: string | null;
     error_message: string | null;
     sent_at: string | null;
     created_at: string | null;
@@ -75,7 +75,7 @@ export default function NotificationLogsPage() {
         }
     };
 
-    const getStatusIcon = (status: string) => {
+    const getStatusIcon = (status: string | null) => {
         switch (status) {
             case "sent":
             case "delivered":
@@ -198,7 +198,7 @@ export default function NotificationLogsPage() {
                                                         log.status === 'pending' ? 'text-amber-600' :
                                                             'text-slate-600'
                                                     }`}>
-                                                    {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
+                                                    {(log.status || 'unknown').charAt(0).toUpperCase() + (log.status || 'unknown').slice(1)}
                                                 </span>
                                             </div>
                                             {log.error_message && (

@@ -8,7 +8,7 @@ import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings } from 
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface UserProfile {
-    role: "client" | "driver" | "admin";
+    role: string | null;
 }
 
 export default function NavHeader() {

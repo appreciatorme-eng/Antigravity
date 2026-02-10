@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import { z } from 'zod';
 
 // Schema for input validation
@@ -9,7 +9,7 @@ const RequestSchema = z.object({
 });
 
 // JSON Schema for Gemini Structure Output
-const itinerarySchema = {
+const itinerarySchema: Schema = {
     description: "Travel itinerary",
     type: SchemaType.OBJECT,
     properties: {
