@@ -558,7 +558,7 @@ export default function ClientsPage() {
                                         {client.phone || 'No phone provided'}
                                     </span>
                                 </div>
-                                {(client.preferred_destination || client.budget_min || client.budget_max) && (
+                                {(client.preferred_destination || client.budget_min || client.budget_max || client.travelers_count || client.travel_style) && (
                                     <div className="text-xs text-slate-500 space-y-1">
                                         {client.preferred_destination && (
                                             <div>Destination: {client.preferred_destination}</div>
@@ -568,6 +568,39 @@ export default function ClientsPage() {
                                                 Budget: {client.budget_min ?? "—"} to {client.budget_max ?? "—"}
                                             </div>
                                         )}
+                                        {client.travelers_count && (
+                                            <div>Travelers: {client.travelers_count}</div>
+                                        )}
+                                        {client.travel_style && (
+                                            <div>Style: {client.travel_style}</div>
+                                        )}
+                                    </div>
+                                )}
+                                {(client.interests?.length || client.home_airport || client.lead_status || client.lifecycle_stage) && (
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        {client.lead_status && (
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-slate-100 text-slate-600">
+                                                {client.lead_status}
+                                            </span>
+                                        )}
+                                        {client.lifecycle_stage && (
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-primary/10 text-primary">
+                                                {client.lifecycle_stage}
+                                            </span>
+                                        )}
+                                        {client.home_airport && (
+                                            <span className="px-2 py-1 text-[10px] font-semibold rounded-full bg-amber-50 text-amber-700">
+                                                {client.home_airport}
+                                            </span>
+                                        )}
+                                        {(client.interests || []).slice(0, 3).map((interest) => (
+                                            <span
+                                                key={`${client.id}-${interest}`}
+                                                className="px-2 py-1 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700"
+                                            >
+                                                {interest}
+                                            </span>
+                                        ))}
                                     </div>
                                 )}
                             </div>

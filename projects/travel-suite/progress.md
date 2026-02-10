@@ -238,6 +238,7 @@
     - Added client preference fields to `profiles` (budget, travelers, destination, etc.).
     - Admin client creation form now captures optional travel preferences and tracking fields.
     - Added welcome email endpoint and mobile app trigger after successful auth.
+    - Improved admin client UI with preference badges and detailed mock profile section.
 - **Git commit:** `[pending]` - "feat: complete notification system integration"
 
 #### Files Created/Modified

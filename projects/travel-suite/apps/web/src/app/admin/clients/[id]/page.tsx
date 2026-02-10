@@ -9,6 +9,16 @@ const mockClientProfiles = {
         email: "ava.chen@example.com",
         phone: "+1 (415) 555-1122",
         loyalty: "Gold",
+        preferences: {
+            destination: "Kyoto, Japan",
+            travelers: 2,
+            budget: "$2,500 - $4,000",
+            travelStyle: "Cultural + Food",
+            interests: ["Onsen", "Tea ceremony", "Street food"],
+            homeAirport: "SFO",
+            leadStatus: "qualified",
+            lifecycleStage: "active",
+        },
         trips: [
             { id: "mock-trip-001", destination: "Kyoto, Japan", dates: "Mar 12 - Mar 17, 2026", status: "confirmed" },
             { id: "mock-trip-003", destination: "Osaka, Japan", dates: "Oct 02 - Oct 05, 2025", status: "completed" },
@@ -19,6 +29,16 @@ const mockClientProfiles = {
         email: "liam.walker@example.com",
         phone: "+44 20 7946 0901",
         loyalty: "Silver",
+        preferences: {
+            destination: "Reykjavik, Iceland",
+            travelers: 1,
+            budget: "$3,000 - $5,000",
+            travelStyle: "Adventure",
+            interests: ["Northern lights", "Hiking"],
+            homeAirport: "LHR",
+            leadStatus: "contacted",
+            lifecycleStage: "prospect",
+        },
         trips: [
             { id: "mock-trip-002", destination: "Reykjavik, Iceland", dates: "Feb 20 - Feb 27, 2026", status: "in_progress" },
         ],
@@ -28,6 +48,16 @@ const mockClientProfiles = {
         email: "sofia.ramirez@example.com",
         phone: "+34 91 123 4567",
         loyalty: "Bronze",
+        preferences: {
+            destination: "Lisbon, Portugal",
+            travelers: 4,
+            budget: "$1,200 - $2,500",
+            travelStyle: "Family",
+            interests: ["History", "Beaches"],
+            homeAirport: "MAD",
+            leadStatus: "new",
+            lifecycleStage: "lead",
+        },
         trips: [
             { id: "mock-trip-004", destination: "Lisbon, Portugal", dates: "Jun 10 - Jun 14, 2025", status: "completed" },
         ],
@@ -81,6 +111,53 @@ export default function ClientProfilePage() {
                             </div>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h2>
+                <div className="grid gap-3 text-sm text-gray-600">
+                    <div className="flex items-center justify-between">
+                        <span>Destination</span>
+                        <span className="font-medium text-gray-900">{profile.preferences.destination}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Travelers</span>
+                        <span className="font-medium text-gray-900">{profile.preferences.travelers}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Budget Range</span>
+                        <span className="font-medium text-gray-900">{profile.preferences.budget}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Travel Style</span>
+                        <span className="font-medium text-gray-900">{profile.preferences.travelStyle}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Home Airport</span>
+                        <span className="font-medium text-gray-900">{profile.preferences.homeAirport}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Lead Status</span>
+                        <span className="font-medium text-gray-900 capitalize">{profile.preferences.leadStatus}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span>Lifecycle Stage</span>
+                        <span className="font-medium text-gray-900 capitalize">{profile.preferences.lifecycleStage}</span>
+                    </div>
+                    <div>
+                        <span className="block mb-2">Interests</span>
+                        <div className="flex flex-wrap gap-2">
+                            {profile.preferences.interests.map((interest: string) => (
+                                <span
+                                    key={interest}
+                                    className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700"
+                                >
+                                    {interest}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
