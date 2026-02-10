@@ -284,106 +284,26 @@ export default function TripDetailPage() {
             return;
         }
 
-        // Fetch trip details
-        const { data: tripData, error: tripError } = await supabase
-            .from("trips")
-            .select(`
-                id,
-                status,
-                start_date,
-                end_date,
-                profiles!trips_user_id_fkey (
-                    id,
-                    full_name,
-                    email
-                ),
-                itineraries (
-                    id,
-                    trip_title,
-                    duration_days,
-                    destination,
-                    raw_data
-                )
-            `)
-            .eq("id", tripId)
-            .single();
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`/api/admin/trips/${tripId}`, {
+            headers: {
+                "Authorization": `Bearer ${session?.access_token}`,
+            },
+        });
 
-        if (tripError || !tripData) {
-            console.error("Error fetching trip:", tripError);
+        if (!response.ok) {
+            const error = await response.json();
+            console.error("Error fetching trip:", error);
             return;
         }
 
-        const tripRecord = tripData as TripRecord;
-
-        // Map destination from itineraries if not present in trip (it shouldn't be in trip table anymore)
-        const mappedTrip: Trip = {
-            ...tripRecord,
-            destination: tripRecord.itineraries?.destination || "TBD",
-            itineraries: tripRecord.itineraries
-                ? {
-                    ...tripRecord.itineraries,
-                    raw_data: {
-                        days: tripRecord.itineraries.raw_data?.days || [],
-                    },
-                }
-                : null,
-        };
-
+        const payload = await response.json();
+        const mappedTrip = payload.trip as Trip;
         setTrip(mappedTrip);
-        if (mappedTrip.itineraries?.raw_data?.days) {
-            setItineraryDays(mappedTrip.itineraries.raw_data.days);
-        }
-
-        // Fetch drivers
-        const { data: driversData } = await supabase
-            .from("external_drivers")
-            .select("*")
-            .eq("is_active", true)
-            .order("full_name");
-
-        setDrivers(driversData || []);
-
-        // Fetch existing assignments
-        const { data: assignmentsData } = await supabase
-            .from("trip_driver_assignments")
-            .select("*")
-            .eq("trip_id", tripId);
-
-        if (assignmentsData) {
-            const assignmentsMap: Record<number, DriverAssignment> = {};
-            (assignmentsData as AssignmentRow[]).forEach((a) => {
-                assignmentsMap[a.day_number] = {
-                    id: a.id,
-                    day_number: a.day_number,
-                    external_driver_id: a.external_driver_id,
-                    pickup_time: a.pickup_time || "",
-                    pickup_location: a.pickup_location || "",
-                    notes: a.notes || "",
-                };
-            });
-            setAssignments(assignmentsMap);
-        }
-
-        // Fetch existing accommodations
-        const { data: accommodationsData } = await supabase
-            .from("trip_accommodations")
-            .select("*")
-            .eq("trip_id", tripId);
-
-        if (accommodationsData) {
-            const accommodationsMap: Record<number, Accommodation> = {};
-            (accommodationsData as AccommodationRow[]).forEach((a) => {
-                accommodationsMap[a.day_number] = {
-                    id: a.id,
-                    day_number: a.day_number,
-                    hotel_name: a.hotel_name || "",
-                    address: a.address || "",
-                    check_in_time: a.check_in_time || "15:00",
-                    contact_phone: a.contact_phone || "",
-                };
-            });
-            setAccommodations(accommodationsMap);
-        }
+        setItineraryDays(mappedTrip.itineraries?.raw_data?.days || []);
+        setDrivers(payload.drivers || []);
+        setAssignments(payload.assignments || {});
+        setAccommodations(payload.accommodations || {});
 
         setLoading(false);
     }, [supabase, tripId, useMockAdmin]);
