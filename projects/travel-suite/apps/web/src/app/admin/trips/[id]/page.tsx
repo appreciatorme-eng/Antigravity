@@ -267,6 +267,8 @@ export default function TripDetailPage() {
     const [notificationOpen, setNotificationOpen] = useState(false);
     const [notificationTitle, setNotificationTitle] = useState("Trip Update");
     const [notificationBody, setNotificationBody] = useState("");
+    const [notificationEmail, setNotificationEmail] = useState("");
+    const [useEmailTarget, setUseEmailTarget] = useState(false);
 
     const supabase = createClient();
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
@@ -480,7 +482,7 @@ export default function TripDetailPage() {
     };
 
     const sendNotificationToClient = async () => {
-        if (!trip?.profiles?.id) return;
+        if (!trip?.profiles?.id && !notificationEmail.trim()) return;
 
         try {
             if (useMockAdmin) {
@@ -491,25 +493,34 @@ export default function TripDetailPage() {
             }
 
             const { data: { session } } = await supabase.auth.getSession();
+            const payload: Record<string, unknown> = {
+                tripId,
+                type: "itinerary_update",
+                title: notificationTitle,
+                body: notificationBody || `Your trip to ${trip.destination} has been updated with new details.`,
+            };
+
+            if (useEmailTarget) {
+                payload.email = notificationEmail.trim();
+            } else {
+                payload.userId = trip.profiles.id;
+            }
+
             const response = await fetch("/api/notifications/send", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${session?.access_token}`,
                 },
-                body: JSON.stringify({
-                    tripId,
-                    userId: trip.profiles.id,
-                    type: "itinerary_update",
-                    title: notificationTitle,
-                    body: notificationBody || `Your trip to ${trip.destination} has been updated with new details.`,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (response.ok) {
                 alert("Notification sent to client!");
                 setNotificationOpen(false);
-                setNotificationBody(""); // Reset body
+                setNotificationBody("");
+                setNotificationEmail("");
+                setUseEmailTarget(false);
             } else {
                 const error = await response.json();
                 alert(`Failed to send notification: ${error.error || "Unknown error"}`);
@@ -611,11 +622,37 @@ export default function TripDetailPage() {
                         <DialogContent className="sm:max-w-[425px]">
                             <DialogHeader>
                                 <DialogTitle>Send Notification</DialogTitle>
-                                <DialogDescription>
-                                    Send a push notification to the client regarding this trip.
-                                </DialogDescription>
+                            <DialogDescription>
+                                Send a push notification to the client regarding this trip. You can target by email to ensure it matches the mobile login.
+                            </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
+                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={useEmailTarget}
+                                        onChange={(e) => {
+                                            setUseEmailTarget(e.target.checked);
+                                            if (e.target.checked && !notificationEmail) {
+                                                setNotificationEmail(trip.profiles?.email || "");
+                                            }
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    Send by email instead of user ID
+                                </label>
+                                {useEmailTarget && (
+                                    <div className="grid gap-2">
+                                        <label htmlFor="email" className="text-sm font-medium leading-none">Client Email</label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={notificationEmail}
+                                            onChange={(e) => setNotificationEmail(e.target.value)}
+                                            placeholder={trip.profiles?.email || "client@example.com"}
+                                        />
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <label htmlFor="title" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Title</label>
                                     <Input
