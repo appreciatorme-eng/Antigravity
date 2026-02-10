@@ -46,7 +46,7 @@ export default function NavHeader() {
         );
 
         return () => subscription.unsubscribe();
-    }, [supabase.auth]);
+    }, [supabase]);
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();

@@ -10,7 +10,7 @@
 - Cleaned up planner/share/client-landed flows to use shared itinerary types.
 
 ### Testing
-- **Web Lint:** `npm run lint` (warnings only, no errors).
+- **Web Lint:** `npm run lint` (clean, 0 warnings, 0 errors).
 
 #### Files Modified
 - `apps/web/src/app/admin/trips/page.tsx`

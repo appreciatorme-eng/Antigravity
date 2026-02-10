@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Bell,
@@ -10,11 +10,7 @@ import {
     Clock,
     Search,
     RefreshCcw,
-    Filter,
-    ChevronLeft,
-    ChevronRight
 } from "lucide-react";
-import Link from "next/link";
 
 interface NotificationLog {
     id: string;
@@ -42,11 +38,7 @@ export default function NotificationLogsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
             let query = supabase
@@ -73,7 +65,11 @@ export default function NotificationLogsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [supabase, statusFilter]);
+
+    useEffect(() => {
+        void fetchLogs();
+    }, [fetchLogs]);
 
     const getStatusIcon = (status: string | null) => {
         switch (status) {

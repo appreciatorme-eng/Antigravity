@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Car,
@@ -49,7 +49,7 @@ export default function DriversPage() {
         notes: "",
     });
 
-    const fetchDrivers = async () => {
+    const fetchDrivers = useCallback(async () => {
         const { data: profile } = await supabase
             .from("profiles")
             .select("organization_id")
@@ -90,11 +90,11 @@ export default function DriversPage() {
 
         setDrivers(data || []);
         setLoading(false);
-    };
+    }, [supabase]);
 
     useEffect(() => {
-        fetchDrivers();
-    }, []);
+        void fetchDrivers();
+    }, [fetchDrivers]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

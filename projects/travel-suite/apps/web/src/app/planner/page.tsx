@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
+import Image from "next/image";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -311,9 +312,11 @@ export default function PlannerPage() {
 
                                                         {images[act.location] && (
                                                             <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100">
-                                                                <img
+                                                                <Image
                                                                     src={images[act.location]!}
                                                                     alt={act.location}
+                                                                    width={128}
+                                                                    height={96}
                                                                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                                                                 />
                                                             </div>

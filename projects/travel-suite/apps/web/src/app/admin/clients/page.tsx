@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Users,
@@ -11,10 +11,10 @@ import {
     Plus,
     MoreVertical,
     ExternalLink,
-    MapPin,
     RefreshCcw
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Client {
     id: string;
@@ -32,11 +32,7 @@ export default function ClientsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
-    useEffect(() => {
-        fetchClients();
-    }, []);
-
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setLoading(true);
         try {
             // First get profiles with role 'client'
@@ -67,7 +63,11 @@ export default function ClientsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [supabase]);
+
+    useEffect(() => {
+        void fetchClients();
+    }, [fetchClients]);
 
     const filteredClients = clients.filter(client =>
         client.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,9 +151,11 @@ export default function ClientsPage() {
                         <div key={client.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
                             <div className="flex items-center gap-4 mb-4">
                                 {client.avatar_url ? (
-                                    <img
+                                    <Image
                                         src={client.avatar_url}
                                         alt={client.full_name || ''}
+                                        width={56}
+                                        height={56}
                                         className="w-14 h-14 rounded-full object-cover border-2 border-slate-50"
                                     />
                                 ) : (

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Save, Check, LogIn } from "lucide-react";
+import { Save, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ItineraryResult } from "@/types/itinerary";
 

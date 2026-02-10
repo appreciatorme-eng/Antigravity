@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
     ArrowLeft,
@@ -14,12 +14,10 @@ import {
     Clock,
     Phone,
     MessageCircle,
-    Send,
     Save,
     Bell,
     Plus,
     Trash,
-    X,
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
@@ -141,7 +139,6 @@ interface AccommodationRow {
 
 export default function TripDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const tripId = params.id as string;
 
     const [trip, setTrip] = useState<Trip | null>(null);

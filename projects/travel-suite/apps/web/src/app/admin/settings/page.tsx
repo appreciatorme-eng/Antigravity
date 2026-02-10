@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Settings,
@@ -29,11 +29,7 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    useEffect(() => {
-        fetchSettings();
-    }, []);
-
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         try {
             const { data, error } = await supabase
                 .from("organizations")
@@ -47,7 +43,11 @@ export default function SettingsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [supabase]);
+
+    useEffect(() => {
+        void fetchSettings();
+    }, [fetchSettings]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();

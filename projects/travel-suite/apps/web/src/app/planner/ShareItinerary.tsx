@@ -6,10 +6,9 @@ import { Send, Check, Phone } from "lucide-react";
 
 interface ShareItineraryProps {
     tripTitle: string;
-    description: string;
 }
 
-export default function ShareItinerary({ tripTitle, description }: ShareItineraryProps) {
+export default function ShareItinerary({ tripTitle }: ShareItineraryProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [loading, setLoading] = useState(false);

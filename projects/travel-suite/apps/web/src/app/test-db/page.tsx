@@ -4,7 +4,7 @@ export default async function TestDBPage() {
     const supabase = await createClient()
 
     // Try to fetch something simple. Since tables might be empty, we just check for error.
-    const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true })
+    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true })
 
     return (
         <div className="p-10 font-sans">

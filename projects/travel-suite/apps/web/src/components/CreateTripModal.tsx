@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User, Search } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
@@ -39,26 +39,17 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [loadingClients, setLoadingClients] = useState(false);
     const [creating, setCreating] = useState(false);
 
-    useEffect(() => {
-        if (open) {
-            fetchClients();
-            // Reset state on open
-            setClientId("");
-            setStartDate("");
-            setEndDate("");
-            setPrompt("");
-            setGeneratedData(null);
-            setCreating(false);
-        }
-    }, [open]);
-
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setLoadingClients(true);
         const { data, error } = await supabase
             .from("profiles")
             .select("id, full_name, email")
             .eq("role", "client")
             .order("full_name");
+
+        if (error) {
+            console.error("Error fetching clients:", error);
+        }
 
         if (data) {
             setClients(data.map(client => ({
@@ -68,7 +59,20 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             })));
         }
         setLoadingClients(false);
-    };
+    }, [supabase]);
+
+    useEffect(() => {
+        if (open) {
+            void fetchClients();
+            // Reset state on open
+            setClientId("");
+            setStartDate("");
+            setEndDate("");
+            setPrompt("");
+            setGeneratedData(null);
+            setCreating(false);
+        }
+    }, [open, fetchClients]);
 
     const handleGenerateAI = async () => {
         if (!prompt) return;

@@ -6,22 +6,11 @@
  * https://developers.facebook.com/docs/whatsapp/cloud-api
  */
 
-interface WhatsAppMessagePayload {
-    messaging_product: "whatsapp";
-    to: string;
-    type: "template";
-    template: {
-        name: string;
-        language: {
-            code: string;
-        };
-        components?: unknown[];
-    };
-}
-
-// Mock configuration check
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "mock_token";
-const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "mock_phone_id";
+// Mock configuration check (placeholders for future real integration)
+const _WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "mock_token";
+const _WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "mock_phone_id";
+void _WHATSAPP_TOKEN;
+void _WHATSAPP_PHONE_ID;
 
 export async function sendItineraryToWhatsApp(phoneNumber: string, itineraryTitle: string, pdfUrl: string): Promise<boolean> {
     console.log(`[WhatsApp Mock] Preparing to send itinerary "${itineraryTitle}" to ${phoneNumber}`);

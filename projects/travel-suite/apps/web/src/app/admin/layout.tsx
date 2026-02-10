@@ -17,11 +17,6 @@ import {
     ShieldAlert,
 } from "lucide-react";
 
-interface Profile {
-    role: "client" | "driver" | "admin";
-    organization_id: string | null;
-}
-
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/drivers", label: "Drivers", icon: Car },
