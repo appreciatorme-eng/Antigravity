@@ -196,6 +196,60 @@ const mockTripsById: Record<string, Trip> = {
     },
 };
 
+const mockDriversList: Driver[] = [
+    {
+        id: "mock-driver-1",
+        full_name: "Kenji Sato",
+        phone: "+81 90 1234 5678",
+        vehicle_type: "sedan",
+        vehicle_plate: "KY-1204",
+    },
+    {
+        id: "mock-driver-2",
+        full_name: "Elena Petrova",
+        phone: "+354 770 5566",
+        vehicle_type: "suv",
+        vehicle_plate: "ICE-447",
+    },
+];
+
+const mockAssignments: Record<number, DriverAssignment> = {
+    1: {
+        day_number: 1,
+        external_driver_id: "mock-driver-1",
+        pickup_time: "08:30",
+        pickup_location: "Kyoto Station",
+        notes: "Meet at north exit.",
+    },
+};
+
+const mockAccommodations: Record<number, Accommodation> = {
+    1: {
+        day_number: 1,
+        hotel_name: "Hoshinoya Kyoto",
+        address: "Arashiyama, Kyoto",
+        check_in_time: "15:00",
+        contact_phone: "+81 75 871 0001",
+    },
+};
+
+const mockNotificationLog = [
+    {
+        id: "mock-log-1",
+        title: "Driver assigned",
+        body: "Kenji Sato confirmed for day 1 pickup.",
+        status: "delivered",
+        sent_at: "2026-02-10T09:45:00Z",
+    },
+    {
+        id: "mock-log-2",
+        title: "Itinerary update",
+        body: "Added tea ceremony timing and local guide details.",
+        status: "sent",
+        sent_at: "2026-02-09T16:30:00Z",
+    },
+];
+
 export default function TripDetailPage() {
     const params = useParams();
     const tripId = params.id as string;
@@ -223,9 +277,9 @@ export default function TripDetailPage() {
             const mockTrip = mockTripsById[tripId] ?? mockTripsById["mock-trip-001"];
             setTrip(mockTrip);
             setItineraryDays(mockTrip.itineraries?.raw_data?.days ?? []);
-            setDrivers([]);
-            setAssignments({});
-            setAccommodations({});
+            setDrivers(mockDriversList);
+            setAssignments(mockAssignments);
+            setAccommodations(mockAccommodations);
             setLoading(false);
             return;
         }
@@ -664,6 +718,32 @@ export default function TripDetailPage() {
                     </button>
                 </div>
             </div>
+
+            {useMockAdmin && (
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-semibold text-gray-900">Mock Notification Log</h2>
+                        <span className="text-xs text-gray-500">Demo only</span>
+                    </div>
+                    <div className="space-y-3">
+                        {mockNotificationLog.map((log) => (
+                            <div
+                                key={log.id}
+                                className="flex items-start justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                            >
+                                <div>
+                                    <div className="text-sm font-medium text-gray-900">{log.title}</div>
+                                    <div className="text-xs text-gray-500">{log.body}</div>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                    <div className="capitalize">{log.status}</div>
+                                    <div>{new Date(log.sent_at).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">

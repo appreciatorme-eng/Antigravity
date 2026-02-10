@@ -31,16 +31,97 @@ interface NotificationLog {
     } | null;
 }
 
+const mockLogs: NotificationLog[] = [
+    {
+        id: "mock-log-1",
+        trip_id: "mock-trip-001",
+        recipient_id: "mock-user-1",
+        recipient_phone: null,
+        recipient_type: "client",
+        notification_type: "itinerary_update",
+        title: "Kyoto updates ready",
+        body: "Your itinerary has been refreshed with cherry blossom timings.",
+        status: "delivered",
+        error_message: null,
+        sent_at: "2026-02-10T09:22:00Z",
+        created_at: "2026-02-10T09:20:00Z",
+        profiles: {
+            full_name: "Ava Chen",
+            email: "ava.chen@example.com",
+        },
+    },
+    {
+        id: "mock-log-2",
+        trip_id: "mock-trip-002",
+        recipient_id: "mock-user-2",
+        recipient_phone: null,
+        recipient_type: "client",
+        notification_type: "driver_assignment",
+        title: "Driver assigned",
+        body: "Your driver for day 2 has been confirmed. Pickup at 8:30 AM.",
+        status: "sent",
+        error_message: null,
+        sent_at: "2026-02-08T18:05:00Z",
+        created_at: "2026-02-08T18:05:00Z",
+        profiles: {
+            full_name: "Liam Walker",
+            email: "liam.walker@example.com",
+        },
+    },
+    {
+        id: "mock-log-3",
+        trip_id: "mock-trip-002",
+        recipient_id: "mock-user-2",
+        recipient_phone: null,
+        recipient_type: "client",
+        notification_type: "flight_update",
+        title: "Flight update pending",
+        body: "We are waiting on the airline confirmation for your return leg.",
+        status: "pending",
+        error_message: null,
+        sent_at: null,
+        created_at: "2026-02-08T17:40:00Z",
+        profiles: {
+            full_name: "Liam Walker",
+            email: "liam.walker@example.com",
+        },
+    },
+    {
+        id: "mock-log-4",
+        trip_id: "mock-trip-001",
+        recipient_id: "mock-user-1",
+        recipient_phone: null,
+        recipient_type: "client",
+        notification_type: "payment_reminder",
+        title: "Deposit reminder",
+        body: "Your deposit is due in 3 days. Tap to review the invoice.",
+        status: "failed",
+        error_message: "Device token expired",
+        sent_at: "2026-02-06T12:11:00Z",
+        created_at: "2026-02-06T12:11:00Z",
+        profiles: {
+            full_name: "Ava Chen",
+            email: "ava.chen@example.com",
+        },
+    },
+];
+
 export default function NotificationLogsPage() {
     const supabase = createClient();
     const [logs, setLogs] = useState<NotificationLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
+            if (useMockAdmin) {
+                setLogs(mockLogs);
+                return;
+            }
+
             let query = supabase
                 .from("notification_logs")
                 .select(`
@@ -65,7 +146,7 @@ export default function NotificationLogsPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase, statusFilter]);
+    }, [supabase, statusFilter, useMockAdmin]);
 
     useEffect(() => {
         void fetchLogs();
