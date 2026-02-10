@@ -43,6 +43,22 @@
 - Added `docs/monetization.md` and linked it in `README.md` and `implementation_plan.md`.
 - Added Phase 6 (Monetization & SaaS Readiness) to the task plan.
 
+## Session: 2026-02-10 (Mobile Trips Flow)
+
+### Mobile App Fixes
+- **Status:** in progress
+- Switched trips list to use `trips` with `itineraries` join for correct data.
+- Fixed trip detail to read itinerary destination/raw_data reliably.
+- Corrected timeline rendering for activities.
+- Improved loading/error handling on trips list.
+
+### Testing
+- **Flutter Analyze:** not run (Flutter SDK unavailable in this environment).
+
+#### Files Modified
+- `apps/mobile/lib/features/trips/presentation/screens/trips_screen.dart`
+- `apps/mobile/lib/features/trips/presentation/screens/trip_detail_screen.dart`
+
 ## Session: 2026-02-10
 
 ### Documentation & Cleanup

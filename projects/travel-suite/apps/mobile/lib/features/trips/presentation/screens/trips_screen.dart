@@ -33,13 +33,18 @@ class _TripsScreenState extends State<TripsScreen> {
     try {
       final supabase = Supabase.instance.client;
       final user = supabase.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        setState(() {
+          _loading = false;
+        });
+        return;
+      }
 
       final response = await supabase
-          .from('itineraries')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
+          .from('trips')
+          .select('*, itineraries(*)')
+          .eq('client_id', user.id)
+          .order('start_date', ascending: false);
 
       setState(() {
         _trips = List<Map<String, dynamic>>.from(response);
@@ -197,10 +202,15 @@ class _TripsScreenState extends State<TripsScreen> {
   }
 
   Widget _buildTripCard(Map<String, dynamic> trip) {
-    final rawData = trip['raw_data'] as Map<String, dynamic>?;
-    final destination = trip['destination'] ?? 'Unknown destination';
-    final duration = trip['duration_days'] ?? 1;
-    final summary = rawData?['summary'] ?? '';
+    final itinerary = trip['itineraries'] as Map<String, dynamic>?;
+    final rawData = itinerary?['raw_data'] as Map<String, dynamic>? ??
+        trip['raw_data'] as Map<String, dynamic>?;
+    final destination = itinerary?['destination'] ??
+        trip['destination'] ??
+        'Unknown destination';
+    final duration = itinerary?['duration_days'] ?? trip['duration_days'] ?? 1;
+    final summary =
+        itinerary?['summary'] ?? rawData?['summary'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

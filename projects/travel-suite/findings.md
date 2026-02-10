@@ -88,6 +88,7 @@
 | Docker deployment failed | `npx supabase functions deploy` failed with "unexpected end of JSON input" locally. |
 | Database Type Consistency | Fixed TypeScript errors in admin panel by updating `database.types.ts` to match schema (nullable fields). |
 | Hardcoded DB credentials in web script | Removed `apps/web/scripts/run-migration.js` and deleted the scripts directory. |
+| Mobile trip data mismatch | Mobile was reading `itineraries` directly; updated to query `trips` with `itineraries` join. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`

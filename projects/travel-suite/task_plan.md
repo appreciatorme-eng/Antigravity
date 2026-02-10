@@ -55,6 +55,11 @@ Phase 5
 - [ ] Submit for review
 - **Status:** in_progress
 
+### Phase 5.1: Mobile App Hardening
+- [ ] Align trips list/detail with `trips` + `itineraries` schema
+- [ ] Confirm deep-link handling and driver assignment display
+- [ ] Run `flutter analyze` and fix warnings
+
 ### Phase 6: Monetization & SaaS Readiness
 - [ ] Document monetization plan and tiering
 - [ ] Add feature gating by `subscription_tier`

@@ -93,9 +93,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           .eq('id', _trip!['id']);
 
       // Show local notification
+      final itinerary = _trip?['itineraries'] as Map<String, dynamic>?;
+      final destination = itinerary?['destination'] ??
+          _trip?['destination'] ??
+          'GoBuddy';
       await NotificationService().showNotification(
         id: 1,
-        title: 'Welcome to ${_trip!['destination'] ?? 'GoBuddy'}!',
+        title: 'Welcome to $destination!',
         body: 'Your driver has been notified of your arrival.',
       );
 
@@ -119,8 +123,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     }
   }
 
-  Map<String, dynamic> get rawData =>
-      _trip?['itineraries']?['raw_data'] as Map<String, dynamic>? ?? {};
+  Map<String, dynamic> get rawData {
+    final itinerary = _trip?['itineraries'] as Map<String, dynamic>?;
+    final itineraryRaw = itinerary?['raw_data'] as Map<String, dynamic>?;
+    final directRaw = _trip?['raw_data'] as Map<String, dynamic>?;
+    return itineraryRaw ?? directRaw ?? {};
+  }
 
   List<dynamic> get days => rawData['days'] as List<dynamic>? ?? [];
 
@@ -134,7 +142,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       );
     }
 
-    final destination = _trip!['destination'] ?? 'Trip Details';
+    final itinerary = _trip!['itineraries'] as Map<String, dynamic>?;
+    final destination = itinerary?['destination'] ??
+        _trip!['destination'] ??
+        'Trip Details';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -364,7 +375,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   ),
                 ),
               ),
-              if (index < 10) // Show line between items
+              if (index < activities.length - 1) // Show line between items
                 Container(
                   width: 2,
                   height: 60,
