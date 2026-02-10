@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ItineraryResult } from "@/types/itinerary";
+import { ItineraryResult, Day, Activity } from "@/types/itinerary";
 
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
     ssr: false,
@@ -32,14 +32,14 @@ interface TripDetailClientProps {
         budget?: string | null;
         interests?: string[] | null;
         summary?: string | null;
-        raw_data: ItineraryResult | any;
+        raw_data: ItineraryResult;
     };
 }
 
 export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const tripData = itinerary.raw_data as ItineraryResult;
+    const tripData = itinerary.raw_data;
 
     return (
         <>
@@ -122,7 +122,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             <div className="block lg:hidden h-80 rounded-xl overflow-hidden shadow-lg border border-gray-200">
                                 {tripData?.days && (
                                     <ItineraryMap
-                                        activities={tripData.days.flatMap((day: any) => day.activities)}
+                                        activities={tripData.days.flatMap((day: Day) => day.activities)}
                                     />
                                 )}
                             </div>
@@ -130,7 +130,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             {/* Day by Day */}
                             {tripData?.days && (
                                 <div className="space-y-6">
-                                    {tripData.days.map((day: any) => (
+                                    {tripData.days.map((day: Day) => (
                                         <Card key={day.day_number} className="overflow-hidden border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300">
                                             <div className="bg-gradient-to-r from-secondary/5 to-transparent px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                                                 <h2 className="text-xl font-bold text-secondary flex items-center gap-3">
@@ -143,7 +143,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
 
                                             <CardContent className="p-0">
                                                 <div className="divide-y divide-gray-100">
-                                                    {day.activities.map((activity: any, idx: number) => (
+                                                {day.activities.map((activity: Activity, idx: number) => (
                                                         <div key={idx} className="p-6 hover:bg-gray-50/50 transition-colors">
                                                             <div className="flex flex-col md:flex-row gap-5">
                                                                 {activity.image && (
@@ -208,7 +208,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                                     <div className="h-80 w-full relative">
                                         {tripData?.days && (
                                             <ItineraryMap
-                                                activities={tripData.days.flatMap((day: any) => day.activities)}
+                                                activities={tripData.days.flatMap((day: Day) => day.activities)}
                                             />
                                         )}
                                     </div>

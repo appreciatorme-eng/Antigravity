@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { Car, Users, MapPin, Bell, TrendingUp, Calendar } from "lucide-react";
 
 interface DashboardStats {
@@ -18,6 +19,24 @@ interface ActivityItem {
     description: string;
     timestamp: string;
     status: string;
+}
+
+interface RecentTrip {
+    id: string;
+    status: string | null;
+    created_at: string;
+    itineraries: {
+        trip_title: string | null;
+        destination: string | null;
+    } | null;
+}
+
+interface RecentNotification {
+    id: string;
+    title: string | null;
+    body: string | null;
+    sent_at: string | null;
+    status: string | null;
 }
 
 export default function AdminDashboard() {
@@ -79,7 +98,7 @@ export default function AdminDashboard() {
                     .limit(5);
 
                 const formattedActivities: ActivityItem[] = [
-                    ...(recentTrips || []).map((trip: any) => ({
+                    ...(recentTrips as RecentTrip[] | null || []).map((trip) => ({
                         id: trip.id,
                         type: "trip" as const,
                         title: "New Trip Created",
@@ -87,13 +106,13 @@ export default function AdminDashboard() {
                         timestamp: trip.created_at,
                         status: trip.status || "pending",
                     })),
-                    ...(recentNotifications || []).map((notif: any) => ({
+                    ...(recentNotifications as RecentNotification[] | null || []).map((notif) => ({
                         id: notif.id,
                         type: "notification" as const,
-                        title: notif.title,
-                        description: notif.body,
-                        timestamp: notif.sent_at,
-                        status: notif.status,
+                        title: notif.title || "Notification",
+                        description: notif.body || "",
+                        timestamp: notif.sent_at || new Date().toISOString(),
+                        status: notif.status || "sent",
                     })),
                 ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     .slice(0, 8);
@@ -180,7 +199,7 @@ export default function AdminDashboard() {
                     Quick Actions
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <a
+                    <Link
                         href="/admin/drivers"
                         className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
@@ -191,8 +210,8 @@ export default function AdminDashboard() {
                             <p className="font-medium text-gray-900">Add New Driver</p>
                             <p className="text-sm text-gray-500">Register a partner driver</p>
                         </div>
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                         href="/admin/trips"
                         className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
@@ -203,8 +222,8 @@ export default function AdminDashboard() {
                             <p className="font-medium text-gray-900">Manage Trips</p>
                             <p className="text-sm text-gray-500">Assign drivers to trips</p>
                         </div>
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                         href="/admin/notifications"
                         className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
@@ -215,7 +234,7 @@ export default function AdminDashboard() {
                             <p className="font-medium text-gray-900">Send Notifications</p>
                             <p className="text-sm text-gray-500">Notify clients & drivers</p>
                         </div>
-                    </a>
+                    </Link>
                 </div>
             </div>
 

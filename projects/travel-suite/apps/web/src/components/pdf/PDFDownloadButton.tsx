@@ -3,9 +3,10 @@
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { ItineraryResult } from "@/types/itinerary";
 
 interface PDFDownloadButtonProps {
-    itinerary: any;
+    itinerary: ItineraryResult;
     className?: string;
 }
 

@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import type { ItineraryResult } from '@/types/itinerary';
 
 // Register fonts if needed, but standard fonts work best for now to avoid loading issues.
 // Font.register({ family: 'Roboto', src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf' });
@@ -93,24 +94,8 @@ const styles = StyleSheet.create({
     }
 });
 
-interface ItineraryData {
-    trip_title: string;
-    destination: string;
-    summary: string;
-    days: {
-        day_number: number;
-        theme: string;
-        activities: {
-            time: string;
-            title: string;
-            location: string;
-            description: string;
-        }[];
-    }[];
-}
-
-interface ItineraryDocumentProps {
-    data: ItineraryData;
+export interface ItineraryDocumentProps {
+    data: ItineraryResult;
 }
 
 const ItineraryDocument: React.FC<ItineraryDocumentProps> = ({ data }) => (

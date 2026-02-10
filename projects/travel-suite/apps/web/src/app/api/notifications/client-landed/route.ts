@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import {
-    sendNotificationToUser,
-} from "@/lib/notifications";
+import { sendNotificationToUser } from "@/lib/notifications";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
+import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -78,11 +77,11 @@ export async function POST(request: NextRequest) {
             .single();
 
         // Get today's activities from the itinerary raw_data
-        const tripData = itinerary?.raw_data as any;
+        const tripData = itinerary?.raw_data as ItineraryResult | undefined;
         const dayData =
-            tripData?.days?.find((day: any) => day.day_number === dayNumber) ??
+            tripData?.days?.find((day: Day) => day.day_number === dayNumber) ??
             tripData?.days?.[dayNumber - 1];
-        const activities = Array.isArray(dayData?.activities) ? dayData.activities : [];
+        const activities: Activity[] = Array.isArray(dayData?.activities) ? dayData.activities : [];
 
         // Get today's accommodation
         const { data: accommodation } = await supabaseAdmin
@@ -120,7 +119,7 @@ export async function POST(request: NextRequest) {
                 clientName,
                 pickupTime: assignment.pickup_time || "TBD",
                 pickupLocation: assignment.pickup_location || destination,
-                activities: activities.map((activity: any) => ({
+                activities: activities.map((activity) => ({
                     title: activity.title,
                     duration_minutes: activity.duration_minutes,
                     duration: activity.duration,
@@ -148,8 +147,9 @@ export async function POST(request: NextRequest) {
             driverWhatsAppLink,
             dayNumber,
         });
-    } catch (error: any) {
-        console.error("Client landed error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Client landed error:", message);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

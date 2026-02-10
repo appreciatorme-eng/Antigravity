@@ -15,7 +15,7 @@ interface WhatsAppMessagePayload {
         language: {
             code: string;
         };
-        components?: any[];
+        components?: unknown[];
     };
 }
 

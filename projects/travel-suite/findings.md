@@ -87,6 +87,7 @@
 | Edge Function `atob` failure | `atob` failed on PEM key due to non-base64 characters. Fixed with regex sanitization. |
 | Docker deployment failed | `npx supabase functions deploy` failed with "unexpected end of JSON input" locally. |
 | Database Type Consistency | Fixed TypeScript errors in admin panel by updating `database.types.ts` to match schema (nullable fields). |
+| Hardcoded DB credentials in web script | Removed `apps/web/scripts/run-migration.js` and deleted the scripts directory. |
 
 ## Resources
 - Brand identity: `docs/brand_identity.md`

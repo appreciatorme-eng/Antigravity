@@ -63,8 +63,9 @@ export default function CurrencyConverter({
                 rate: data.rate,
                 formatted: data.toFormatted,
             });
-        } catch (err: any) {
-            setError(err.message || "Conversion failed");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Conversion failed";
+            setError(message);
         } finally {
             setLoading(false);
         }

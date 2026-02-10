@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Calendar, Wallet, Clock, Plane } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
+import type { Day, Activity, ItineraryResult } from "@/types/itinerary";
 
 export default async function SharedTripPage({
     params,
@@ -56,7 +57,7 @@ export default async function SharedTripPage({
         notFound();
     }
 
-    const tripData = itinerary.raw_data as any;
+    const tripData = itinerary.raw_data as ItineraryResult;
 
     return (
         <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50">
@@ -124,7 +125,7 @@ export default async function SharedTripPage({
                 {tripData?.days && (
                     <div className="h-72 rounded-xl overflow-hidden shadow-md border border-gray-200 mb-8">
                         <ClientItineraryMap
-                            activities={tripData.days.flatMap((day: any) => day.activities)}
+                            activities={tripData.days.flatMap((day: Day) => day.activities)}
                         />
                     </div>
                 )}
@@ -132,7 +133,7 @@ export default async function SharedTripPage({
                 {/* Day by Day */}
                 {tripData?.days && (
                     <div className="space-y-6">
-                        {tripData.days.map((day: any) => (
+                        {tripData.days.map((day: Day) => (
                             <div
                                 key={day.day_number}
                                 className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm"
@@ -141,7 +142,7 @@ export default async function SharedTripPage({
                                     Day {day.day_number}: {day.theme}
                                 </h2>
                                 <div className="space-y-4">
-                                    {day.activities.map((activity: any, idx: number) => (
+                                    {day.activities.map((activity: Activity, idx: number) => (
                                         <div
                                             key={idx}
                                             className="flex gap-4 p-4 bg-gray-50 rounded-lg"

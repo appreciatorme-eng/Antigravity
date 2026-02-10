@@ -54,8 +54,9 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
 
             const url = `${window.location.origin}/share/${shareToken}`;
             setShareUrl(url);
-        } catch (err: any) {
-            setError(err.message || "Failed to generate share link");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to generate share link";
+            setError(message);
         } finally {
             setLoading(false);
         }

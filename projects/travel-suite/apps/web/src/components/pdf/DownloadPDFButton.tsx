@@ -4,6 +4,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, Download } from "lucide-react";
+import type { ItineraryResult } from "@/types/itinerary";
 
 // Dynamically import PDFDownloadLink to avoid SSR issues with @react-pdf/renderer
 const PDFDownloadLink = dynamic(
@@ -21,7 +22,7 @@ const PDFDownloadLink = dynamic(
 import ItineraryDocument from './ItineraryDocument';
 
 interface DownloadPDFButtonProps {
-    data: any;
+    data: ItineraryResult;
     fileName?: string;
 }
 
@@ -31,7 +32,7 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName = 
             document={<ItineraryDocument data={data} />}
             fileName={fileName}
         >
-            {({ blob, url, loading, error }) =>
+            {({ loading }) =>
                 loading ? (
                     <button disabled className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" /> Generating PDF...

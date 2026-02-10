@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -81,8 +81,8 @@ interface Day {
 interface Trip {
     id: string;
     status: string;
-    start_date: string;
-    end_date: string;
+    start_date: string | null;
+    end_date: string | null;
     destination: string;
     profiles: {
         id: string;
@@ -93,10 +93,50 @@ interface Trip {
         id: string;
         trip_title: string;
         duration_days: number;
+        destination?: string | null;
         raw_data: {
             days: Day[];
         };
     } | null;
+}
+
+interface TripRecord {
+    id: string;
+    status: string;
+    start_date: string | null;
+    end_date: string | null;
+    profiles: {
+        id: string;
+        full_name: string;
+        email: string;
+    } | null;
+    itineraries: {
+        id: string;
+        trip_title: string;
+        duration_days: number;
+        destination?: string | null;
+        raw_data: {
+            days?: Day[];
+        } | null;
+    } | null;
+}
+
+interface AssignmentRow {
+    id: string;
+    day_number: number;
+    external_driver_id: string | null;
+    pickup_time: string | null;
+    pickup_location: string | null;
+    notes: string | null;
+}
+
+interface AccommodationRow {
+    id: string;
+    day_number: number;
+    hotel_name: string | null;
+    address: string | null;
+    check_in_time: string | null;
+    contact_phone: string | null;
 }
 
 export default function TripDetailPage() {
@@ -120,13 +160,8 @@ export default function TripDetailPage() {
 
     const supabase = createClient();
 
-    useEffect(() => {
-        if (tripId) {
-            fetchData();
-        }
-    }, [tripId]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        if (!tripId) return;
         // Fetch trip details
         const { data: tripData, error: tripError } = await supabase
             .from("trips")
@@ -151,21 +186,30 @@ export default function TripDetailPage() {
             .eq("id", tripId)
             .single();
 
-        if (tripError) {
+        if (tripError || !tripData) {
             console.error("Error fetching trip:", tripError);
             return;
         }
 
+        const tripRecord = tripData as TripRecord;
+
         // Map destination from itineraries if not present in trip (it shouldn't be in trip table anymore)
-        const mappedTrip = {
-            ...tripData,
-            destination: tripData.itineraries?.destination || "TBD"
+        const mappedTrip: Trip = {
+            ...tripRecord,
+            destination: tripRecord.itineraries?.destination || "TBD",
+            itineraries: tripRecord.itineraries
+                ? {
+                    ...tripRecord.itineraries,
+                    raw_data: {
+                        days: tripRecord.itineraries.raw_data?.days || [],
+                    },
+                }
+                : null,
         };
 
-        setTrip(mappedTrip as unknown as Trip);
-        if (tripData.itineraries?.raw_data && typeof tripData.itineraries.raw_data === 'object' && 'days' in tripData.itineraries.raw_data) {
-            // Safe cast or check
-            setItineraryDays((tripData.itineraries.raw_data as any).days || []);
+        setTrip(mappedTrip);
+        if (mappedTrip.itineraries?.raw_data?.days) {
+            setItineraryDays(mappedTrip.itineraries.raw_data.days);
         }
 
         // Fetch drivers
@@ -185,7 +229,7 @@ export default function TripDetailPage() {
 
         if (assignmentsData) {
             const assignmentsMap: Record<number, DriverAssignment> = {};
-            assignmentsData.forEach((a: any) => {
+            (assignmentsData as AssignmentRow[]).forEach((a) => {
                 assignmentsMap[a.day_number] = {
                     id: a.id,
                     day_number: a.day_number,
@@ -206,7 +250,7 @@ export default function TripDetailPage() {
 
         if (accommodationsData) {
             const accommodationsMap: Record<number, Accommodation> = {};
-            accommodationsData.forEach((a: any) => {
+            (accommodationsData as AccommodationRow[]).forEach((a) => {
                 accommodationsMap[a.day_number] = {
                     id: a.id,
                     day_number: a.day_number,
@@ -220,7 +264,12 @@ export default function TripDetailPage() {
         }
 
         setLoading(false);
-    };
+    }, [supabase, tripId]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchData();
+    }, [fetchData]);
 
     const updateAssignment = (dayNumber: number, field: keyof DriverAssignment, value: string) => {
         setAssignments((prev) => ({
@@ -359,7 +408,7 @@ export default function TripDetailPage() {
                 await supabase
                     .from("itineraries")
                     .update({
-                        raw_data: { days: itineraryDays } as unknown as any,
+                        raw_data: { days: itineraryDays },
                     })
                     .eq("id", trip.itineraries.id);
             }

@@ -1,5 +1,44 @@
 # Progress Log
 
+## Session: 2026-02-10 (Web Lint & Hardening)
+
+### Web App Fixes
+- **Status:** complete
+- Removed hardcoded DB migration script and cleaned empty scripts directory.
+- Typed itinerary flows and PDF generation components to eliminate `any`.
+- Updated admin trip list/detail data handling and fetch hooks.
+- Cleaned up planner/share/client-landed flows to use shared itinerary types.
+
+### Testing
+- **Web Lint:** `npm run lint` (warnings only, no errors).
+
+#### Files Modified
+- `apps/web/src/app/admin/trips/page.tsx`
+- `apps/web/src/app/admin/trips/[id]/page.tsx`
+- `apps/web/src/app/admin/page.tsx`
+- `apps/web/src/app/auth/page.tsx`
+- `apps/web/src/app/planner/page.tsx`
+- `apps/web/src/app/planner/SaveItineraryButton.tsx`
+- `apps/web/src/app/share/[token]/page.tsx`
+- `apps/web/src/app/api/notifications/send/route.ts`
+- `apps/web/src/app/api/notifications/client-landed/route.ts`
+- `apps/web/src/app/api/itinerary/share/route.ts`
+- `apps/web/src/components/CreateTripModal.tsx`
+- `apps/web/src/components/TripDetailClient.tsx`
+- `apps/web/src/components/CurrencyConverter.tsx`
+- `apps/web/src/components/ShareModal.tsx`
+- `apps/web/src/components/pdf/ItineraryDocument.tsx`
+- `apps/web/src/components/pdf/DownloadPDFButton.tsx`
+- `apps/web/src/components/pdf/PDFDownloadButton.tsx`
+- `apps/web/src/lib/external/wikimedia.ts`
+- `apps/web/src/lib/external/whatsapp.ts`
+- `apps/web/src/lib/notifications.ts`
+- `apps/web/e2e/fixtures/auth.ts`
+- `supabase/schema.sql`
+
+#### Files Removed
+- `apps/web/scripts/run-migration.js`
+
 ## Session: 2026-02-10
 
 ### Documentation & Cleanup

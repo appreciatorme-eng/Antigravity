@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
         } else {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
-    } catch (error: any) {
-        console.error("Send notification error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Send notification error:", message);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

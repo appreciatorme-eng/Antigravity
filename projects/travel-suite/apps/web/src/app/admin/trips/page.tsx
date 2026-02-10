@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
@@ -16,9 +16,9 @@ import CreateTripModal from "@/components/CreateTripModal";
 
 interface Trip {
     id: string;
-    status: string;
-    start_date: string;
-    end_date: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
     destination: string;
     created_at: string;
     profiles: {
@@ -28,6 +28,24 @@ interface Trip {
     itineraries: {
         trip_title: string;
         duration_days: number;
+        destination?: string | null;
+    } | null;
+}
+
+interface TripRecord {
+    id: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    created_at: string;
+    profiles: {
+        full_name: string;
+        email: string;
+    } | null;
+    itineraries: {
+        trip_title: string;
+        duration_days: number;
+        destination?: string | null;
     } | null;
 }
 
@@ -39,11 +57,7 @@ export default function AdminTripsPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const supabase = createClient();
 
-    useEffect(() => {
-        fetchTrips();
-    }, [statusFilter, searchQuery]); // Added dependencies for refetching on filter/search change
-
-    const fetchTrips = async () => {
+    const fetchTrips = useCallback(async () => {
         setLoading(true); // Set loading to true when fetching starts
         let query = supabase
             .from("trips")
@@ -80,14 +94,19 @@ export default function AdminTripsPage() {
             console.error("Error fetching trips:", error);
         } else {
             // Map the data to include destination from itinerary at the top level
-            const mappedData = (data || []).map((trip: any) => ({
+            const mappedData = ((data as TripRecord[] | null) || []).map((trip) => ({
                 ...trip,
                 destination: trip.itineraries?.destination || 'TBD'
             }));
             setTrips(mappedData);
         }
         setLoading(false);
-    };
+    }, [supabase, statusFilter, searchQuery]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        void fetchTrips();
+    }, [fetchTrips]);
 
     const formatDate = (dateString: string) => {
         if (!dateString) return "";

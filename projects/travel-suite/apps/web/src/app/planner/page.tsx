@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ItineraryResult } from "@/types/itinerary";
+import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -62,8 +62,8 @@ export default function PlannerPage() {
             try {
                 const url = await fetch(`/api/images?query=${encodeURIComponent(loc)}`).then(r => r.json()).then(d => d.url);
                 imageMap[loc] = url;
-            } catch (e) {
-                console.error("Failed to load image for", loc);
+            } catch (error) {
+                console.error("Failed to load image for", loc, error);
                 imageMap[loc] = null;
             }
         }));
@@ -107,8 +107,9 @@ export default function PlannerPage() {
             // Trigger image fetch non-blocking
             fetchImagesForItinerary(data);
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : "Failed to generate itinerary. Try again.";
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -130,7 +131,7 @@ export default function PlannerPage() {
                                 Start your adventure
                             </CardTitle>
                             <CardDescription>
-                                Tell us where you want to go, and we'll handle the rest.
+                                Tell us where you want to go, and we&apos;ll handle the rest.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-6 md:p-8 space-y-8">
@@ -268,7 +269,7 @@ export default function PlannerPage() {
                         <div className="grid lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 relative">
                                 <ItineraryMap
-                                    activities={result.days.flatMap((day: any) => day.activities)}
+                                    activities={result.days.flatMap((day: Day) => day.activities)}
                                 />
                             </div>
                             <div className="space-y-6">
@@ -287,7 +288,7 @@ export default function PlannerPage() {
 
                         {/* Day by Day */}
                         <div className="space-y-8">
-                            {result.days.map((day: any) => (
+                            {result.days.map((day: Day) => (
                                 <Card key={day.day_number} className="overflow-hidden border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
                                     <div className="bg-gradient-to-r from-secondary/5 to-transparent px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                                         <h3 className="text-xl font-bold text-secondary flex items-center gap-3">
@@ -299,7 +300,7 @@ export default function PlannerPage() {
                                     </div>
                                     <CardContent className="p-0">
                                         <div className="divide-y divide-gray-100">
-                                            {day.activities.map((act: any, idx: number) => (
+                                            {day.activities.map((act: Activity, idx: number) => (
                                                 <div key={idx} className="p-6 hover:bg-gray-50/50 transition-colors">
                                                     <div className="flex flex-col md:flex-row gap-5">
                                                         <div className="flex items-start gap-3 w-24 shrink-0 pt-1">

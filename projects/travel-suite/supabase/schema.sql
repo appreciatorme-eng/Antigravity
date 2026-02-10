@@ -569,7 +569,7 @@ CREATE POLICY "Admins can view all conversations"
         )
     );
 
--- Scheduled notification queue (for n8n workflows)
+-- Scheduled notification queue (for background workers)
 CREATE TABLE IF NOT EXISTS public.notification_queue (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,

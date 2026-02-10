@@ -15,8 +15,25 @@ export interface NotificationPayload {
         type: string;
         tripId?: string;
         dayNumber?: number;
-        [key: string]: any;
+        [key: string]: string | number | boolean | undefined;
     };
+}
+
+type NotificationDataPayload = Record<string, string>;
+
+function toStringRecord(data?: NotificationPayload["data"]): NotificationDataPayload {
+    if (!data) return {};
+    return Object.entries(data).reduce<NotificationDataPayload>((acc, [key, value]) => {
+        if (value === undefined) return acc;
+        acc[key] = String(value);
+        return acc;
+    }, {});
+}
+
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    return "Unknown error";
 }
 
 /**
@@ -24,14 +41,15 @@ export interface NotificationPayload {
  */
 export async function sendNotificationToUser(payload: NotificationPayload): Promise<{ success: boolean; error?: string }> {
     try {
+        const dataPayload = toStringRecord(payload.data);
         // We use the Supabase Edge Function which handles FCM V1
-        const { data, error } = await supabaseAdmin.functions.invoke("send-notification", {
+        const { error } = await supabaseAdmin.functions.invoke("send-notification", {
             body: {
                 user_id: payload.userId,
                 title: payload.title,
                 body: payload.body,
                 data: {
-                    ...payload.data,
+                    ...dataPayload,
                     // FCM data values must be strings
                     trip_id: payload.data?.tripId || "", // Changed to snake_case for mobile consistency
                     type: payload.data?.type || "general",
@@ -57,9 +75,10 @@ export async function sendNotificationToUser(payload: NotificationPayload): Prom
         });
 
         return { success: true };
-    } catch (error: any) {
-        console.error("Error sending notification:", error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const message = getErrorMessage(error);
+        console.error("Error sending notification:", message);
+        return { success: false, error: message };
     }
 }
 
@@ -96,7 +115,7 @@ export async function sendNotificationToTripUsers(
         });
 
         return { success: result.success, sentCount: result.success ? 1 : 0, error: result.error };
-    } catch (error: any) {
-        return { success: false, sentCount: 0, error: error.message };
+    } catch (error: unknown) {
+        return { success: false, sentCount: 0, error: getErrorMessage(error) };
     }
 }

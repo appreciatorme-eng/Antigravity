@@ -4,9 +4,10 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Save, Check, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { ItineraryResult } from "@/types/itinerary";
 
 interface SaveItineraryButtonProps {
-    itineraryData: any;
+    itineraryData: ItineraryResult;
     destination: string;
     days: number;
     budget: string;
@@ -59,9 +60,10 @@ export default function SaveItineraryButton({
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
 
-        } catch (err: any) {
-            console.error("Save error:", err);
-            setError(err.message || "Failed to save");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to save";
+            console.error("Save error:", message);
+            setError(message);
         } finally {
             setSaving(false);
         }

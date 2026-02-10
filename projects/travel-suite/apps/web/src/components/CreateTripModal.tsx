@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Sparkles, MapPin, Calendar, User, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
 interface Client {
     id: string;
@@ -31,7 +32,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     // AI State
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedData, setGeneratedData] = useState<any>(null);
+    const [generatedData, setGeneratedData] = useState<ItineraryResult | null>(null);
 
     // Clients Data
     const [clients, setClients] = useState<Client[]>([]);
@@ -87,7 +88,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to generate");
 
-            setGeneratedData(data);
+            setGeneratedData(data as ItineraryResult);
 
             // Auto-fill dates if possible (mock for now, usually AI returns relative days)
             // But we can set duration at least in the summary
@@ -268,11 +269,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                             </p>
 
                             <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                {generatedData.days?.map((day: any) => (
+                                {generatedData.days?.map((day: Day) => (
                                     <div key={day.day_number} className="text-sm border-l-2 border-purple-200 pl-3 py-1">
                                         <span className="font-semibold text-gray-700">Day {day.day_number}: {day.theme}</span>
                                         <ul className="mt-1 space-y-1">
-                                            {day.activities?.slice(0, 2).map((act: any, i: number) => (
+                                            {day.activities?.slice(0, 2).map((act: Activity, i: number) => (
                                                 <li key={i} className="text-gray-500 text-xs truncate">• {act.title}</li>
                                             ))}
                                             {day.activities?.length > 2 && <li className="text-gray-400 text-xs italic">+ {day.activities.length - 2} more</li>}

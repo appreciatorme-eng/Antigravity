@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, message: "Sent successfully" });
 
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message || "Internal Error" }, { status: 500 });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Internal Error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

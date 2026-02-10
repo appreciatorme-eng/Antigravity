@@ -23,21 +23,21 @@ export const test = base.extend<{
   clientPage: Page;
 }>({
   // Generic authenticated page (client role)
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page }, runFixture) => {
     await loginAs(page, 'client');
-    await use(page);
+    await runFixture(page);
   },
 
   // Admin authenticated page
-  adminPage: async ({ page }, use) => {
+  adminPage: async ({ page }, runFixture) => {
     await loginAs(page, 'admin');
-    await use(page);
+    await runFixture(page);
   },
 
   // Client authenticated page
-  clientPage: async ({ page }, use) => {
+  clientPage: async ({ page }, runFixture) => {
     await loginAs(page, 'client');
-    await use(page);
+    await runFixture(page);
   },
 });
 
