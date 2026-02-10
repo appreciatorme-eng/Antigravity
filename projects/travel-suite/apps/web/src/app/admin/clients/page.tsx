@@ -15,6 +15,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface Client {
     id: string;
@@ -61,6 +72,14 @@ export default function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [modalOpen, setModalOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+        full_name: "",
+        email: "",
+        phone: "",
+    });
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchClients = useCallback(async () => {
@@ -120,6 +139,66 @@ export default function ClientsPage() {
         });
     };
 
+    const resetForm = () => {
+        setFormData({
+            full_name: "",
+            email: "",
+            phone: "",
+        });
+        setFormError(null);
+    };
+
+    const handleCreateClient = async () => {
+        if (!formData.full_name.trim() || !formData.email.trim()) {
+            setFormError("Name and email are required.");
+            return;
+        }
+
+        setSaving(true);
+        setFormError(null);
+
+        try {
+            if (useMockAdmin) {
+                const newClient: Client = {
+                    id: `mock-client-${Date.now()}`,
+                    full_name: formData.full_name.trim(),
+                    email: formData.email.trim(),
+                    phone: formData.phone.trim() || null,
+                    avatar_url: null,
+                    created_at: new Date().toISOString(),
+                    trips_count: 0,
+                };
+                setClients((prev) => [newClient, ...prev]);
+                setModalOpen(false);
+                resetForm();
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to create client");
+            }
+
+            await fetchClients();
+            setModalOpen(false);
+            resetForm();
+        } catch (error) {
+            setFormError(error instanceof Error ? error.message : "Failed to create client");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -138,11 +217,63 @@ export default function ClientsPage() {
                     >
                         <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    {/* Add Client button - logic would go here */}
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all shadow-sm font-medium">
-                        <Plus className="w-4 h-4" />
-                        Add Client
-                    </button>
+                    <Dialog open={modalOpen} onOpenChange={(open) => {
+                        setModalOpen(open);
+                        if (!open) resetForm();
+                    }}>
+                        <DialogTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all shadow-sm font-medium">
+                                <Plus className="w-4 h-4" />
+                                Add Client
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[420px]">
+                            <DialogHeader>
+                                <DialogTitle>Add Client</DialogTitle>
+                                <DialogDescription>
+                                    Create a new client profile for trip planning and notifications.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-2">
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Full Name</label>
+                                    <Input
+                                        value={formData.full_name}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
+                                        placeholder="Ava Chen"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Email</label>
+                                    <Input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                                        placeholder="ava.chen@example.com"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Phone (optional)</label>
+                                    <Input
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                                        placeholder="+1 415 555 0192"
+                                    />
+                                </div>
+                                {formError && (
+                                    <p className="text-sm text-rose-600">{formError}</p>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    onClick={handleCreateClient}
+                                    disabled={saving}
+                                >
+                                    {saving ? "Creating..." : "Create Client"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
