@@ -11,6 +11,15 @@
 ### Testing
 - **Flutter Analyze:** `flutter analyze` (0 errors, warnings for JsonKey + withOpacity + underscores).
 
+## Session: 2026-02-10 (Android Emulator Run)
+
+### Mobile App Fixes
+- **Status:** complete
+- Enabled core library desugaring for Android to satisfy `flutter_local_notifications` requirements.
+
+### Testing
+- **Flutter Run (Android):** `flutter run -d emulator-5554` (debug build installed and app launched).
+
 ## Session: 2026-02-10 (SDK Verification)
 
 ### Tooling Checks
