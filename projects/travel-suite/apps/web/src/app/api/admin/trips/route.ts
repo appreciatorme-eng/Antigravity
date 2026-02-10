@@ -38,7 +38,7 @@ async function requireAdmin(req: NextRequest) {
         return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
 
-    return { userId: authData.user.id };
+    return { userId: adminUserId };
 }
 
 export async function GET(req: NextRequest) {

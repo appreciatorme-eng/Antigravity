@@ -289,16 +289,13 @@ export default function TripDetailPage() {
             await supabase.auth.refreshSession();
             ({ data: { session } } = await supabase.auth.getSession());
         }
-
-        if (!session?.access_token) {
-            console.error("Error fetching trip:", { error: "Missing auth token" });
-            return;
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+            headers.Authorization = `Bearer ${session.access_token}`;
         }
 
         const response = await fetch(`/api/admin/trips/${tripId}`, {
-            headers: {
-                "Authorization": `Bearer ${session?.access_token}`,
-            },
+            headers,
         });
 
         if (!response.ok) {
@@ -309,6 +306,7 @@ export default function TripDetailPage() {
                 error = { error: `HTTP ${response.status}` };
             }
             console.error("Error fetching trip:", error);
+            setLoading(false);
             return;
         }
 
