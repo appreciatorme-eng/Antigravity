@@ -130,45 +130,38 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
         setCreating(true);
         try {
-            // 1. Create Itinerary
-            const itineraryData = {
-                trip_title: generatedData?.trip_title || "New Trip",
-                destination: generatedData?.destination || "TBD",
-                summary: generatedData?.summary || "",
-                duration_days: generatedData?.days?.length || 0,
-                raw_data: { days: generatedData?.days || [] },
-                // user_id: clientId // Optional: associate itinerary with client directly too? 
-                // Schema says user_id is nullable profile FK. Let's start without it or use current admin? 
-                // Best to leave null or use admin ID if available.
-            };
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/trips", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({
+                    clientId,
+                    startDate,
+                    endDate,
+                    itinerary: {
+                        trip_title: generatedData?.trip_title || "New Trip",
+                        destination: generatedData?.destination || "TBD",
+                        summary: generatedData?.summary || "",
+                        duration_days: generatedData?.days?.length || 1,
+                        raw_data: { days: generatedData?.days || [] },
+                    },
+                }),
+            });
 
-            const { data: itinerary, error: itinError } = await supabase
-                .from("itineraries")
-                .insert(itineraryData)
-                .select()
-                .single();
-
-            if (itinError) throw itinError;
-
-            // 2. Create Trip
-            const { error: tripError } = await supabase
-                .from("trips")
-                .insert({
-                    client_id: clientId,
-                    start_date: startDate,
-                    end_date: endDate,
-                    status: "draft",
-                    itinerary_id: itinerary.id
-                });
-
-            if (tripError) throw tripError;
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to create trip");
+            }
 
             onSuccess();
             onOpenChange(false);
 
         } catch (error) {
             console.error("Error creating trip:", error);
-            alert("Failed to create trip. Please try again.");
+            alert(error instanceof Error ? error.message : "Failed to create trip. Please try again.");
         } finally {
             setCreating(false);
         }
