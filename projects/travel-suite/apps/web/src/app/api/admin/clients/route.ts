@@ -67,17 +67,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
         }
 
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-            email,
-            email_confirm: true,
-            user_metadata: {
-                full_name: fullName,
-            },
-        });
-
-        if (createError || !newUser?.user) {
-            return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 400 });
-        }
+        const { data: existingProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("email", email)
+            .single();
 
         const updates = {
             full_name: fullName,
@@ -98,6 +92,31 @@ export async function POST(req: NextRequest) {
             referral_source: referralSource || null,
             source_channel: sourceChannel || null,
         };
+
+        if (existingProfile?.id) {
+            const { error: profileError } = await supabaseAdmin
+                .from("profiles")
+                .update(updates)
+                .eq("id", existingProfile.id);
+
+            if (profileError) {
+                return NextResponse.json({ error: profileError.message }, { status: 400 });
+            }
+
+            return NextResponse.json({ success: true, userId: existingProfile.id, status: "updated_existing" });
+        }
+
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            email_confirm: true,
+            user_metadata: {
+                full_name: fullName,
+            },
+        });
+
+        if (createError || !newUser?.user) {
+            return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 400 });
+        }
 
         const { error: profileError } = await supabaseAdmin
             .from("profiles")
