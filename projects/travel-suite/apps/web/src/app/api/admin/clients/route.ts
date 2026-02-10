@@ -44,6 +44,24 @@ export async function POST(req: NextRequest) {
         const email = String(body.email || "").trim().toLowerCase();
         const fullName = String(body.full_name || "").trim();
         const phone = String(body.phone || "").trim();
+        const preferredDestination = String(body.preferredDestination || "").trim();
+        const travelStyle = String(body.travelStyle || "").trim();
+        const homeAirport = String(body.homeAirport || "").trim();
+        const notes = String(body.notes || "").trim();
+        const leadStatus = String(body.leadStatus || "").trim();
+        const lifecycleStage = String(body.lifecycleStage || "").trim();
+        const referralSource = String(body.referralSource || "").trim();
+        const sourceChannel = String(body.sourceChannel || "").trim();
+        const travelersCount = Number.isFinite(Number(body.travelersCount)) ? Number(body.travelersCount) : null;
+        const budgetMin = Number.isFinite(Number(body.budgetMin)) ? Number(body.budgetMin) : null;
+        const budgetMax = Number.isFinite(Number(body.budgetMax)) ? Number(body.budgetMax) : null;
+        const marketingOptIn = typeof body.marketingOptIn === "boolean" ? body.marketingOptIn : null;
+        const interests = Array.isArray(body.interests)
+            ? body.interests.map((item: unknown) => String(item).trim()).filter(Boolean)
+            : String(body.interests || "")
+                .split(",")
+                .map((item: string) => item.trim())
+                .filter(Boolean);
 
         if (!email || !fullName) {
             return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
@@ -66,6 +84,19 @@ export async function POST(req: NextRequest) {
             phone: phone || null,
             role: "client",
             organization_id: adminProfile.organization_id ?? null,
+            preferred_destination: preferredDestination || null,
+            travelers_count: travelersCount,
+            budget_min: budgetMin,
+            budget_max: budgetMax,
+            travel_style: travelStyle || null,
+            interests: interests.length ? interests : null,
+            home_airport: homeAirport || null,
+            notes: notes || null,
+            lead_status: leadStatus || "new",
+            lifecycle_stage: lifecycleStage || "lead",
+            marketing_opt_in: marketingOptIn,
+            referral_source: referralSource || null,
+            source_channel: sourceChannel || null,
         };
 
         const { error: profileError } = await supabaseAdmin
@@ -102,7 +133,7 @@ export async function GET(req: NextRequest) {
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
-            .select("id, full_name, email, phone, avatar_url, created_at")
+            .select("id, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
             .order("created_at", { ascending: false });
 

@@ -47,6 +47,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
+### Optional: Welcome Email Provider
+To enable welcome emails from the mobile app, configure an email provider for the web API:
+```
+RESEND_API_KEY=...
+WELCOME_FROM_EMAIL=...
+```
+*If these are missing, the welcome email endpoint returns a skipped response and does not block user signup.*
+
 ## 5. Build Mobile App
 Rebuild the mobile app to pick up the `Info.plist` changes:
 

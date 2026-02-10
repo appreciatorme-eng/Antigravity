@@ -34,6 +34,19 @@ interface Client {
     phone: string | null;
     avatar_url: string | null;
     created_at: string | null;
+    preferred_destination?: string | null;
+    travelers_count?: number | null;
+    budget_min?: number | null;
+    budget_max?: number | null;
+    travel_style?: string | null;
+    interests?: string[] | null;
+    home_airport?: string | null;
+    notes?: string | null;
+    lead_status?: string | null;
+    lifecycle_stage?: string | null;
+    marketing_opt_in?: boolean | null;
+    referral_source?: string | null;
+    source_channel?: string | null;
     trips_count?: number;
 }
 
@@ -79,6 +92,19 @@ export default function ClientsPage() {
         full_name: "",
         email: "",
         phone: "",
+        preferredDestination: "",
+        travelersCount: "",
+        budgetMin: "",
+        budgetMax: "",
+        travelStyle: "",
+        interests: "",
+        homeAirport: "",
+        notes: "",
+        leadStatus: "new",
+        lifecycleStage: "lead",
+        marketingOptIn: false,
+        referralSource: "",
+        sourceChannel: "",
     });
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
@@ -135,6 +161,19 @@ export default function ClientsPage() {
             full_name: "",
             email: "",
             phone: "",
+            preferredDestination: "",
+            travelersCount: "",
+            budgetMin: "",
+            budgetMax: "",
+            travelStyle: "",
+            interests: "",
+            homeAirport: "",
+            notes: "",
+            leadStatus: "new",
+            lifecycleStage: "lead",
+            marketingOptIn: false,
+            referralSource: "",
+            sourceChannel: "",
         });
         setFormError(null);
     };
@@ -157,6 +196,21 @@ export default function ClientsPage() {
                     phone: formData.phone.trim() || null,
                     avatar_url: null,
                     created_at: new Date().toISOString(),
+                    preferred_destination: formData.preferredDestination || null,
+                    travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
+                    budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
+                    budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
+                    travel_style: formData.travelStyle || null,
+                    interests: formData.interests
+                        ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
+                        : null,
+                    home_airport: formData.homeAirport || null,
+                    notes: formData.notes || null,
+                    lead_status: formData.leadStatus || "new",
+                    lifecycle_stage: formData.lifecycleStage || "lead",
+                    marketing_opt_in: formData.marketingOptIn,
+                    referral_source: formData.referralSource || null,
+                    source_channel: formData.sourceChannel || null,
                     trips_count: 0,
                 };
                 setClients((prev) => [newClient, ...prev]);
@@ -255,7 +309,7 @@ export default function ClientsPage() {
                                     Create a new client profile for trip planning and notifications.
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-2">
+                            <div className="grid gap-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
                                 <div className="grid gap-2">
                                     <label className="text-sm font-medium">Full Name</label>
                                     <Input
@@ -281,6 +335,132 @@ export default function ClientsPage() {
                                         placeholder="+1 415 555 0192"
                                     />
                                 </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Preferred Destination (optional)</label>
+                                    <Input
+                                        value={formData.preferredDestination}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, preferredDestination: e.target.value }))}
+                                        placeholder="Tokyo, Japan"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Travelers (optional)</label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        value={formData.travelersCount}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, travelersCount: e.target.value }))}
+                                        placeholder="2"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Budget Min (optional)</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.budgetMin}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMin: e.target.value }))}
+                                            placeholder="1500"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Budget Max (optional)</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.budgetMax}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMax: e.target.value }))}
+                                            placeholder="3500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Travel Style (optional)</label>
+                                    <Input
+                                        value={formData.travelStyle}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, travelStyle: e.target.value }))}
+                                        placeholder="Luxury, adventure, family..."
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Interests (optional)</label>
+                                    <Input
+                                        value={formData.interests}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, interests: e.target.value }))}
+                                        placeholder="Food, culture, hiking (comma separated)"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Home Airport (optional)</label>
+                                    <Input
+                                        value={formData.homeAirport}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, homeAirport: e.target.value }))}
+                                        placeholder="SFO"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Notes (optional)</label>
+                                    <textarea
+                                        value={formData.notes}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                                        placeholder="Allergies, accessibility needs, loyalty numbers..."
+                                        className="min-h-[90px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Lead Status</label>
+                                        <select
+                                            value={formData.leadStatus}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, leadStatus: e.target.value }))}
+                                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        >
+                                            <option value="new">New</option>
+                                            <option value="contacted">Contacted</option>
+                                            <option value="qualified">Qualified</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Lifecycle Stage</label>
+                                        <select
+                                            value={formData.lifecycleStage}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, lifecycleStage: e.target.value }))}
+                                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        >
+                                            <option value="lead">Lead</option>
+                                            <option value="prospect">Prospect</option>
+                                            <option value="active">Active</option>
+                                            <option value="past">Past</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Referral Source (optional)</label>
+                                    <Input
+                                        value={formData.referralSource}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, referralSource: e.target.value }))}
+                                        placeholder="Instagram, Partner, Word of mouth"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Acquisition Channel (optional)</label>
+                                    <Input
+                                        value={formData.sourceChannel}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, sourceChannel: e.target.value }))}
+                                        placeholder="Organic, Paid ads, Referral"
+                                    />
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.marketingOptIn}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, marketingOptIn: e.target.checked }))}
+                                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                    />
+                                    Marketing opt-in
+                                </label>
                                 {formError && (
                                     <p className="text-sm text-rose-600">{formError}</p>
                                 )}
@@ -378,6 +558,18 @@ export default function ClientsPage() {
                                         {client.phone || 'No phone provided'}
                                     </span>
                                 </div>
+                                {(client.preferred_destination || client.budget_min || client.budget_max) && (
+                                    <div className="text-xs text-slate-500 space-y-1">
+                                        {client.preferred_destination && (
+                                            <div>Destination: {client.preferred_destination}</div>
+                                        )}
+                                        {(client.budget_min || client.budget_max) && (
+                                            <div>
+                                                Budget: {client.budget_min ?? "—"} to {client.budget_max ?? "—"}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-6 flex items-center justify-between">

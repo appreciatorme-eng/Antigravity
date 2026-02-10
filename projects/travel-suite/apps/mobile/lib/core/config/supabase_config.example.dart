@@ -10,6 +10,6 @@
 class SupabaseConfig {
   static const String url = 'YOUR_SUPABASE_URL';
   static const String anonKey = 'YOUR_SUPABASE_ANON_KEY';
-  // Base URL for the web app API (e.g., https://your-app.vercel.app)
+  // Base URL for the web app API (used for welcome emails & notification hooks)
   static const String apiBaseUrl = 'YOUR_WEB_APP_BASE_URL';
 }

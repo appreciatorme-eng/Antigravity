@@ -234,6 +234,10 @@
     - Configured `Info.plist` for iOS background modes.
     - Verified `TripDetailScreen` deep linking logic.
     - Provided `deployment_instructions.md` for final Edge Function and DB migration deployment.
+- **Client & Email Enhancements (Feb 10, 2026):**
+    - Added client preference fields to `profiles` (budget, travelers, destination, etc.).
+    - Admin client creation form now captures optional travel preferences and tracking fields.
+    - Added welcome email endpoint and mobile app trigger after successful auth.
 - **Git commit:** `[pending]` - "feat: complete notification system integration"
 
 #### Files Created/Modified

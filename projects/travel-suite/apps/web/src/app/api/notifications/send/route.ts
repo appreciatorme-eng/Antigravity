@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { type, tripId, userId, title, body: messageBody, data } = body;
+        const { type, tripId, userId, email, title, body: messageBody, data } = body;
 
         if (!title || !messageBody) {
             return NextResponse.json({ error: "Title and body are required" }, { status: 400 });
@@ -41,13 +41,27 @@ export async function POST(request: NextRequest) {
 
         let result;
 
-        if (tripId && !userId) {
+        if (tripId && !userId && !email) {
             // Send to all trip users
             result = await sendNotificationToTripUsers(tripId, title, messageBody, type || "manual");
-        } else if (userId) {
+        } else {
+            let resolvedUserId = userId;
+            if (!resolvedUserId && email) {
+                const { data: targetProfile } = await supabaseAdmin
+                    .from("profiles")
+                    .select("id")
+                    .eq("email", String(email).trim().toLowerCase())
+                    .single();
+                resolvedUserId = targetProfile?.id;
+            }
+
+            if (!resolvedUserId) {
+                return NextResponse.json({ error: "Unable to resolve user for notification" }, { status: 400 });
+            }
+
             // Send to specific user
             result = await sendNotificationToUser({
-                userId,
+                userId: resolvedUserId,
                 title,
                 body: messageBody,
                 data: {
@@ -56,8 +70,6 @@ export async function POST(request: NextRequest) {
                     ...data,
                 },
             });
-        } else {
-            return NextResponse.json({ error: "Either tripId or userId is required" }, { status: 400 });
         }
 
         if (result.success) {

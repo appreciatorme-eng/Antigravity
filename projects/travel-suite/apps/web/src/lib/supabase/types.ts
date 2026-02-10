@@ -17,6 +17,21 @@ export interface Database {
                     avatar_url: string | null
                     role: 'client' | 'driver' | 'admin'
                     phone: string | null
+                    preferred_destination: string | null
+                    travelers_count: number | null
+                    budget_min: number | null
+                    budget_max: number | null
+                    travel_style: string | null
+                    interests: string[] | null
+                    home_airport: string | null
+                    notes: string | null
+                    lead_status: string | null
+                    lifecycle_stage: string | null
+                    last_contacted_at: string | null
+                    welcome_email_sent_at: string | null
+                    marketing_opt_in: boolean | null
+                    referral_source: string | null
+                    source_channel: string | null
                     organization_id: string | null
                     created_at: string
                     updated_at: string
@@ -28,6 +43,21 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    preferred_destination?: string | null
+                    travelers_count?: number | null
+                    budget_min?: number | null
+                    budget_max?: number | null
+                    travel_style?: string | null
+                    interests?: string[] | null
+                    home_airport?: string | null
+                    notes?: string | null
+                    lead_status?: string | null
+                    lifecycle_stage?: string | null
+                    last_contacted_at?: string | null
+                    welcome_email_sent_at?: string | null
+                    marketing_opt_in?: boolean | null
+                    referral_source?: string | null
+                    source_channel?: string | null
                     organization_id?: string | null
                     created_at?: string
                     updated_at?: string
@@ -39,6 +69,21 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    preferred_destination?: string | null
+                    travelers_count?: number | null
+                    budget_min?: number | null
+                    budget_max?: number | null
+                    travel_style?: string | null
+                    interests?: string[] | null
+                    home_airport?: string | null
+                    notes?: string | null
+                    lead_status?: string | null
+                    lifecycle_stage?: string | null
+                    last_contacted_at?: string | null
+                    welcome_email_sent_at?: string | null
+                    marketing_opt_in?: boolean | null
+                    referral_source?: string | null
+                    source_channel?: string | null
                     organization_id?: string | null
                     created_at?: string
                     updated_at?: string

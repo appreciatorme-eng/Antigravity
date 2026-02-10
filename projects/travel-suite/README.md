@@ -78,6 +78,7 @@ Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered
 
 - Supabase Edge Functions for FCM (push notifications)
 - Notification logging and admin-triggered sends
+- Welcome email sent on first successful mobile auth (via web API)
 - Scheduled jobs planned for daily briefings and reminders
 
 ## 🎨 Brand Identity
@@ -91,6 +92,7 @@ Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered
 
 Key tables:
 - `profiles` - User profiles
+- `profiles` now stores client travel preferences (budget, destination, travelers, etc.)
 - `itineraries` - AI-generated travel plans
 - `trips` - Booked trips
 - `external_drivers` - Driver information

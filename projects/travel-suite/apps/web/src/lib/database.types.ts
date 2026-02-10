@@ -281,36 +281,81 @@ export type Database = {
             profiles: {
                 Row: {
                     avatar_url: string | null
+                    budget_max: number | null
+                    budget_min: number | null
                     created_at: string | null
                     email: string | null
                     full_name: string | null
+                    home_airport: string | null
                     id: string
+                    interests: string[] | null
+                    last_contacted_at: string | null
+                    lead_status: string | null
+                    lifecycle_stage: string | null
+                    marketing_opt_in: boolean | null
+                    notes: string | null
                     organization_id: string | null
                     phone: string | null
+                    preferred_destination: string | null
+                    referral_source: string | null
                     role: string | null
+                    source_channel: string | null
+                    travel_style: string | null
+                    travelers_count: number | null
                     updated_at: string | null
+                    welcome_email_sent_at: string | null
                 }
                 Insert: {
                     avatar_url?: string | null
+                    budget_max?: number | null
+                    budget_min?: number | null
                     created_at?: string | null
                     email?: string | null
                     full_name?: string | null
+                    home_airport?: string | null
                     id: string
+                    interests?: string[] | null
+                    last_contacted_at?: string | null
+                    lead_status?: string | null
+                    lifecycle_stage?: string | null
+                    marketing_opt_in?: boolean | null
+                    notes?: string | null
                     organization_id?: string | null
                     phone?: string | null
+                    preferred_destination?: string | null
+                    referral_source?: string | null
                     role?: string | null
+                    source_channel?: string | null
+                    travel_style?: string | null
+                    travelers_count?: number | null
                     updated_at?: string | null
+                    welcome_email_sent_at?: string | null
                 }
                 Update: {
                     avatar_url?: string | null
+                    budget_max?: number | null
+                    budget_min?: number | null
                     created_at?: string | null
                     email?: string | null
                     full_name?: string | null
+                    home_airport?: string | null
                     id?: string
+                    interests?: string[] | null
+                    last_contacted_at?: string | null
+                    lead_status?: string | null
+                    lifecycle_stage?: string | null
+                    marketing_opt_in?: boolean | null
+                    notes?: string | null
                     organization_id?: string | null
                     phone?: string | null
+                    preferred_destination?: string | null
+                    referral_source?: string | null
                     role?: string | null
+                    source_channel?: string | null
+                    travel_style?: string | null
+                    travelers_count?: number | null
                     updated_at?: string | null
+                    welcome_email_sent_at?: string | null
                 }
                 Relationships: [
                     {

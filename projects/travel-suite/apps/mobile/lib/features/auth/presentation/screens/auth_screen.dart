@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/config/supabase_config.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -37,11 +39,13 @@ class _AuthScreenState extends State<AuthScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _sendWelcomeEmailIfNeeded();
       } else {
         await supabase.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _sendWelcomeEmailIfNeeded();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -57,6 +61,23 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() => _errorMessage = 'An unexpected error occurred');
     } finally {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendWelcomeEmailIfNeeded() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) return;
+
+      final url = Uri.parse('${SupabaseConfig.apiBaseUrl}/api/emails/welcome');
+      await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${session.accessToken}',
+        },
+      );
+    } catch (_) {
+      // Non-blocking: welcome email should not stop auth flow
     }
   }
 
