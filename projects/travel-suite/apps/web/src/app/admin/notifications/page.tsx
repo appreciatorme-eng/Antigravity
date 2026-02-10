@@ -10,6 +10,7 @@ import {
     Clock,
     Search,
     RefreshCcw,
+    MessageCircle,
 } from "lucide-react";
 
 interface NotificationLog {
@@ -112,6 +113,7 @@ export default function NotificationLogsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
+    const [whatsAppMessage, setWhatsAppMessage] = useState("");
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -177,6 +179,17 @@ export default function NotificationLogsPage() {
         log.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const normalizePhone = (phone?: string | null) => (phone ? phone.replace(/\D/g, "") : "");
+
+    const getWhatsAppLink = (phone?: string | null, message?: string | null) => {
+        const cleanPhone = normalizePhone(phone);
+        if (!cleanPhone) return null;
+        const text = encodeURIComponent(
+            message || whatsAppMessage || "Hi! We have an update for you from Travel Suite."
+        );
+        return `https://wa.me/${cleanPhone}?text=${text}`;
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -196,7 +209,7 @@ export default function NotificationLogsPage() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
                 <div className="md:col-span-2 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -220,6 +233,15 @@ export default function NotificationLogsPage() {
                         <option value="failed">Failed</option>
                     </select>
                 </div>
+                <div className="md:col-span-3">
+                    <input
+                        type="text"
+                        placeholder="Global WhatsApp message (optional)"
+                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                        value={whatsAppMessage}
+                        onChange={(e) => setWhatsAppMessage(e.target.value)}
+                    />
+                </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -228,6 +250,7 @@ export default function NotificationLogsPage() {
                         <thead>
                             <tr className="bg-slate-50 border-bottom border-slate-200 font-medium text-slate-600 text-sm">
                                 <th className="px-6 py-4">Recipient</th>
+                                <th className="px-6 py-4">WhatsApp</th>
                                 <th className="px-6 py-4">Type</th>
                                 <th className="px-6 py-4">Content</th>
                                 <th className="px-6 py-4">Status</th>
@@ -239,6 +262,7 @@ export default function NotificationLogsPage() {
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-12"></div></td>
                                         <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
                                         <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-48"></div><div className="h-3 bg-slate-100 rounded w-32 mt-2"></div></td>
                                         <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
@@ -247,48 +271,66 @@ export default function NotificationLogsPage() {
                                 ))
                             ) : filteredLogs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                                         No notification logs found.
                                     </td>
                                 </tr>
                             ) : (
-                                filteredLogs.map((log) => (
-                                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{log.profiles?.full_name || 'System User'}</div>
-                                            <div className="text-xs text-slate-500 uppercase tracking-wider mt-0.5">{log.recipient_type}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
-                                                {log.notification_type.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-slate-900 font-medium truncate max-w-xs">{log.title}</div>
-                                            <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">{log.body}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                {getStatusIcon(log.status)}
-                                                <span className={`text-sm font-medium ${log.status === 'sent' ? 'text-emerald-600' :
-                                                    log.status === 'failed' ? 'text-rose-600' :
-                                                        log.status === 'pending' ? 'text-amber-600' :
-                                                            'text-slate-600'
-                                                    }`}>
-                                                    {(log.status || 'unknown').charAt(0).toUpperCase() + (log.status || 'unknown').slice(1)}
+                                filteredLogs.map((log) => {
+                                    const whatsappLink = getWhatsAppLink(log.recipient_phone, log.body || log.title);
+                                    return (
+                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-slate-900">{log.profiles?.full_name || 'System User'}</div>
+                                                <div className="text-xs text-slate-500 uppercase tracking-wider mt-0.5">{log.recipient_type}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {whatsappLink ? (
+                                                    <a
+                                                        href={whatsappLink}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-1 text-emerald-700 text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50"
+                                                    >
+                                                        <MessageCircle className="w-3 h-3" />
+                                                        WhatsApp
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-xs text-slate-300">—</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
+                                                    {log.notification_type.replace('_', ' ')}
                                                 </span>
-                                            </div>
-                                            {log.error_message && (
-                                                <div className="text-[10px] text-rose-400 mt-1 max-w-[150px] truncate" title={log.error_message}>
-                                                    {log.error_message}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-slate-900 font-medium truncate max-w-xs">{log.title}</div>
+                                                <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">{log.body}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {getStatusIcon(log.status)}
+                                                    <span className={`text-sm font-medium ${log.status === 'sent' ? 'text-emerald-600' :
+                                                        log.status === 'failed' ? 'text-rose-600' :
+                                                            log.status === 'pending' ? 'text-amber-600' :
+                                                                'text-slate-600'
+                                                        }`}>
+                                                        {(log.status || 'unknown').charAt(0).toUpperCase() + (log.status || 'unknown').slice(1)}
+                                                    </span>
                                                 </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
-                                            {formatDate(log.sent_at || log.created_at)}
-                                        </td>
-                                    </tr>
-                                ))
+                                                {log.error_message && (
+                                                    <div className="text-[10px] text-rose-400 mt-1 max-w-[150px] truncate" title={log.error_message}>
+                                                        {log.error_message}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {formatDate(log.sent_at || log.created_at)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
