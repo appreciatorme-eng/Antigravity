@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         const email = String(body.email || "").trim().toLowerCase();
         const fullName = String(body.full_name || "").trim();
         const phone = String(body.phone || "").trim();
+        const normalizedPhone = phone ? phone.replace(/\D/g, "") : "";
         const preferredDestination = String(body.preferredDestination || "").trim();
         const travelStyle = String(body.travelStyle || "").trim();
         const homeAirport = String(body.homeAirport || "").trim();
@@ -67,15 +68,25 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
         }
 
-        const { data: existingProfile } = await supabaseAdmin
+        let { data: existingProfile } = await supabaseAdmin
             .from("profiles")
             .select("id")
             .eq("email", email)
             .single();
 
+        if (!existingProfile && normalizedPhone) {
+            const { data: phoneProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("id")
+                .eq("phone_normalized", normalizedPhone)
+                .maybeSingle();
+            existingProfile = phoneProfile ?? null;
+        }
+
         const updates = {
             full_name: fullName,
             phone: phone || null,
+            phone_normalized: normalizedPhone || null,
             role: "client",
             organization_id: adminProfile.organization_id ?? null,
             preferred_destination: preferredDestination || null,

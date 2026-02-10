@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url TEXT,
     role TEXT DEFAULT 'client' CHECK (role IN ('client', 'driver', 'admin')),
     phone TEXT,
+    phone_normalized TEXT,
     preferred_destination TEXT,
     travelers_count INTEGER,
     budget_min NUMERIC,

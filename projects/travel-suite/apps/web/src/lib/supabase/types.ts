@@ -17,6 +17,7 @@ export interface Database {
                     avatar_url: string | null
                     role: 'client' | 'driver' | 'admin'
                     phone: string | null
+                    phone_normalized: string | null
                     preferred_destination: string | null
                     travelers_count: number | null
                     budget_min: number | null
@@ -43,6 +44,7 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    phone_normalized?: string | null
                     preferred_destination?: string | null
                     travelers_count?: number | null
                     budget_min?: number | null
@@ -69,6 +71,7 @@ export interface Database {
                     avatar_url?: string | null
                     role?: 'client' | 'driver' | 'admin'
                     phone?: string | null
+                    phone_normalized?: string | null
                     preferred_destination?: string | null
                     travelers_count?: number | null
                     budget_min?: number | null
