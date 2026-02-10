@@ -117,11 +117,11 @@ export default function ClientsPage() {
             }
 
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-            });
+            const headers: Record<string, string> = {};
+            if (session?.access_token) {
+                headers.Authorization = `Bearer ${session.access_token}`;
+            }
+            const response = await fetch("/api/admin/clients", { headers });
 
             if (!response.ok) {
                 const error = await response.json();
