@@ -284,7 +284,17 @@ export default function TripDetailPage() {
             return;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
+        let { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            await supabase.auth.refreshSession();
+            ({ data: { session } } = await supabase.auth.getSession());
+        }
+
+        if (!session?.access_token) {
+            console.error("Error fetching trip:", { error: "Missing auth token" });
+            return;
+        }
+
         const response = await fetch(`/api/admin/trips/${tripId}`, {
             headers: {
                 "Authorization": `Bearer ${session?.access_token}`,
@@ -292,7 +302,12 @@ export default function TripDetailPage() {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            let error: any = {};
+            try {
+                error = await response.json();
+            } catch {
+                error = { error: `HTTP ${response.status}` };
+            }
             console.error("Error fetching trip:", error);
             return;
         }
