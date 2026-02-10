@@ -111,7 +111,8 @@ class PushNotificationService {
         'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id, platform');
-      
+
+      debugPrint('FCM Token (debug): $token');
       debugPrint('FCM token stored in Supabase');
     } catch (e) {
       debugPrint('Error storing FCM token: $e');
