@@ -44,12 +44,22 @@ async function requireAdmin(req: NextRequest) {
     return { userId: user.id };
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params?: { id?: string } }) {
     try {
         const admin = await requireAdmin(req);
         if ("error" in admin) return admin.error;
 
-        const tripId = params.id;
+        const pathId = req.nextUrl.pathname.split("/").pop();
+        const tripId = (params?.id || pathId || "").trim();
+
+        if (!tripId || tripId === "undefined") {
+            return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+        }
+
+        const uuidRegex = /^[0-9a-fA-F-]{36}$/;
+        if (!uuidRegex.test(tripId)) {
+            return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
+        }
 
         const { data: tripData, error: tripError } = await supabaseAdmin
             .from("trips")
