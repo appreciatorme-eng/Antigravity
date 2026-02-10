@@ -5,29 +5,89 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+async function requireAdmin(req: NextRequest) {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+        return { error: NextResponse.json({ error: "Missing auth token" }, { status: 401 }) };
+    }
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authData?.user) {
+        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    }
+
+    const { data: adminProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+    if (!adminProfile || adminProfile.role !== "admin") {
+        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+
+    return { userId: authData.user.id };
+}
+
+export async function GET(req: NextRequest) {
+    try {
+        const admin = await requireAdmin(req);
+        if ("error" in admin) return admin.error;
+
+        const { searchParams } = new URL(req.url);
+        const status = searchParams.get("status") || "all";
+        const search = searchParams.get("search") || "";
+
+        let query = supabaseAdmin
+            .from("trips")
+            .select(`
+                id,
+                status,
+                start_date,
+                end_date,
+                created_at,
+                profiles:client_id (
+                    full_name,
+                    email
+                ),
+                itineraries:itinerary_id (
+                    trip_title,
+                    duration_days,
+                    destination
+                )
+            `);
+
+        if (status !== "all") {
+            query = query.eq("status", status);
+        }
+
+        if (search) {
+            query = query.or(`itineraries.trip_title.ilike.%${search}%,profiles.full_name.ilike.%${search}%,itineraries.destination.ilike.%${search}%`);
+        }
+
+        const { data, error } = await query.order("created_at", { ascending: false });
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+
+        const trips = (data || []).map((trip: any) => ({
+            ...trip,
+            destination: trip.itineraries?.destination || "TBD",
+        }));
+
+        return NextResponse.json({ trips });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get("authorization");
-        const token = authHeader?.replace("Bearer ", "");
-
-        if (!token) {
-            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
-        }
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (authError || !authData?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role")
-            .eq("id", authData.user.id)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
+        const admin = await requireAdmin(req);
+        if ("error" in admin) return admin.error;
 
         const body = await req.json();
         const clientId = String(body.clientId || "");

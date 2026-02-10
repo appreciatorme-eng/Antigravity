@@ -103,47 +103,22 @@ export default function AdminTripsPage() {
             return;
         }
 
-        let query = supabase
-            .from("trips")
-            .select(`
-                id,
-                status,
-                start_date,
-                end_date,
-                created_at,
-                profiles:client_id (
-                    full_name,
-                    email
-                ),
-                itineraries:itinerary_id (
-                    trip_title,
-                    duration_days,
-                    destination
-                )
-            `);
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`/api/admin/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
+            headers: {
+                "Authorization": `Bearer ${session?.access_token}`,
+            },
+        });
 
-        if (statusFilter !== "all") {
-            query = query.eq("status", statusFilter);
-        }
-
-        if (searchQuery) {
-            query = query.or(`itineraries.trip_title.ilike.%${searchQuery}%,profiles.full_name.ilike.%${searchQuery}%,itineraries.destination.ilike.%${searchQuery}%`);
-        }
-
-        query = query.order("created_at", { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) {
+        if (!response.ok) {
+            const error = await response.json();
             console.error("Error fetching trips:", error);
-        } else {
-            // Map the data to include destination from itinerary at the top level
-            const mappedData = ((data as TripRecord[] | null) || []).map((trip) => ({
-                ...trip,
-                destination: trip.itineraries?.destination || 'TBD'
-            }));
-            setTrips(mappedData);
+            setLoading(false);
+            return;
         }
+
+        const payload = await response.json();
+        setTrips(payload.trips || []);
         setLoading(false);
     }, [supabase, statusFilter, searchQuery, useMockAdmin]);
 
