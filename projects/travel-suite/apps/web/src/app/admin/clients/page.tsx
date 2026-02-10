@@ -190,6 +190,36 @@ export default function ClientsPage() {
         }
     };
 
+    const handleDeleteClient = async (clientId: string) => {
+        if (!confirm("Delete this client? This will remove their user account.")) {
+            return;
+        }
+
+        try {
+            if (useMockAdmin) {
+                setClients((prev) => prev.filter((client) => client.id !== clientId));
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(`/api/admin/clients?id=${clientId}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to delete client");
+            }
+
+            setClients((prev) => prev.filter((client) => client.id !== clientId));
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to delete client");
+        }
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -359,13 +389,21 @@ export default function ClientsPage() {
                                         Total Trips
                                     </span>
                                 </div>
-                                <Link
-                                    href={`/admin/clients/${client.id}`}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 py-2 rounded-full"
-                                >
-                                    View Profile
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Link
+                                        href={`/admin/clients/${client.id}`}
+                                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 py-2 rounded-full"
+                                    >
+                                        View Profile
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </Link>
+                                    <button
+                                        onClick={() => handleDeleteClient(client.id)}
+                                        className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-3 py-2 rounded-full"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))

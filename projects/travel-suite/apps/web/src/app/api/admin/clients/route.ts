@@ -126,3 +126,46 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const authHeader = req.headers.get("authorization");
+        const token = authHeader?.replace("Bearer ", "");
+        const { searchParams } = new URL(req.url);
+        const clientId = searchParams.get("id");
+
+        if (!token) {
+            return NextResponse.json({ error: "Missing auth token" }, { status: 401 });
+        }
+
+        if (!clientId) {
+            return NextResponse.json({ error: "Missing client id" }, { status: 400 });
+        }
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+        if (authError || !authData?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: adminProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("role")
+            .eq("id", authData.user.id)
+            .single();
+
+        if (!adminProfile || adminProfile.role !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        await supabaseAdmin.from("profiles").delete().eq("id", clientId);
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
+
+        if (deleteError) {
+            return NextResponse.json({ error: deleteError.message }, { status: 400 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    }
+}
