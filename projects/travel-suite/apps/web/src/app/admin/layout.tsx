@@ -15,14 +15,26 @@ import {
     ChevronLeft,
     Loader2,
     ShieldAlert,
+    BarChart3,
+    FileText,
+    Inbox,
+    Wand2,
+    ClipboardList,
+    Compass,
 } from "lucide-react";
 
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/admin/planner", label: "Planner", icon: Compass },
     { href: "/admin/drivers", label: "Drivers", icon: Car },
     { href: "/admin/trips", label: "Trips", icon: MapPin },
     { href: "/admin/clients", label: "Clients", icon: Users },
+    { href: "/admin/activity", label: "Activity", icon: ClipboardList },
     { href: "/admin/notifications", label: "Notifications", icon: Bell },
+    { href: "/admin/templates", label: "Templates", icon: Wand2 },
+    { href: "/admin/billing", label: "Billing", icon: FileText },
+    { href: "/admin/support", label: "Support", icon: Inbox },
     { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

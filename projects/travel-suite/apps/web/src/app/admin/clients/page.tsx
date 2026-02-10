@@ -238,10 +238,10 @@ export default function ClientsPage() {
                                     </span>
                                 </div>
                                 <Link
-                                    href={`/admin/trips?client=${client.id}`}
+                                    href={`/admin/clients/${client.id}`}
                                     className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 py-2 rounded-full"
                                 >
-                                    View Trips
+                                    View Profile
                                     <ExternalLink className="w-3.5 h-3.5" />
                                 </Link>
                             </div>
