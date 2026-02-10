@@ -4,7 +4,7 @@ create table if not exists public.push_tokens (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references public.profiles(id) not null,
     fcm_token text not null,
-    platform text not null,
+    platform text not null check (platform in ('ios', 'android')),
     is_active boolean default true,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
@@ -36,13 +36,14 @@ create policy "Users can view own tokens"
 create table if not exists public.notification_logs (
     id uuid default gen_random_uuid() primary key,
     trip_id uuid references public.trips(id),
-    recipient_id uuid references public.profiles(id) not null,
-    recipient_type text not null,
-    notification_type text not null,
-    title text not null,
-    body text not null,
-    status text default 'pending',
+    recipient_id uuid references public.profiles(id),
     recipient_phone text,
+    recipient_type text check (recipient_type in ('client', 'driver')),
+    notification_type text not null,
+    title text,
+    body text,
+    status text default 'pending' check (status in ('pending', 'sent', 'delivered', 'failed')),
+    external_id text,
     error_message text,
     sent_at timestamptz,
     created_at timestamptz default now()
@@ -69,3 +70,7 @@ create policy "Admins can insert logs"
             and public.profiles.role = 'admin'
         )
     );
+
+create policy "Users can view their own notifications"
+    on public.notification_logs for select
+    using ( auth.uid() = recipient_id );

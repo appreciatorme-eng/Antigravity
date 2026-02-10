@@ -55,7 +55,7 @@
 - **Project ID:** `travel-suite-5d509`
 - **Android Package:** `com.gobuddy.gobuddy_mobile`
 - **iOS Bundle ID:** `com.gobuddy.gobuddyMobile`
-- **Admin SDK:** Service account key stored in `apps/web/firebase-service-account.json`.
+- **Admin SDK:** Service account key stored outside the repo and injected via secrets.
 
 ### Notification Architecture
 - **FCM V1:** Push notifications sent via Firebase Cloud Messaging Version 1.

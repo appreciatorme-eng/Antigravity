@@ -1,5 +1,34 @@
 # Progress Log
 
+## Session: 2026-02-10
+
+### Documentation & Cleanup
+- **Status:** in progress
+- Updated project README and task plan to reflect current architecture and testing status.
+- Removed legacy n8n workflows and local test scripts no longer used.
+- Clarified notification flow and schema alignment for FCM.
+
+### Backend & Web Fixes
+- Split server-only notification helpers from shared formatting utilities.
+- Fixed client-landed API route to use current schema and itinerary `raw_data`.
+- Aligned `push_tokens` and `notification_logs` definitions in schema + migration.
+
+#### Files Modified
+- `apps/web/src/lib/notifications.ts`
+- `apps/web/src/lib/notifications.shared.ts` (new)
+- `apps/web/src/app/admin/trips/[id]/page.tsx`
+- `apps/web/src/app/api/notifications/client-landed/route.ts`
+- `supabase/schema.sql`
+- `supabase/migrations/20260206120000_notification_schema.sql`
+- `README.md`
+- `task_plan.md`
+
+#### Files Removed
+- `n8n/README.md`
+- `n8n/workflows/*`
+- `test_notification.sh`
+- `test_key_import.js`
+
 ## Session: 2026-02-09
 
 ### Phase 3: Mobile App Core ✓
@@ -89,7 +118,7 @@
     - Manually created `firebase_options.dart` with platform-specific configurations.
     - Updated `main.dart` to initialize Firebase using `DefaultFirebaseOptions`.
 - **Backend & Web Integration:**
-    - Secured Firebase Admin SDK service account key.
+    - Secured Firebase Admin SDK service account key (stored outside repo).
     - Implemented `SendNotificationDialog` in Admin Panel.
     - Configured `Info.plist` for iOS background modes.
     - Verified `TripDetailScreen` deep linking logic.
@@ -101,7 +130,6 @@
 - `apps/mobile/ios/Runner/GoogleService-Info.plist` (added)
 - `apps/mobile/lib/firebase_options.dart` (created)
 - `apps/mobile/lib/main.dart` (modified)
-- `apps/web/firebase-service-account.json` (added)
 - `apps/web/.env.local` (modified)
 - `apps/web/.gitignore` (updated)
 

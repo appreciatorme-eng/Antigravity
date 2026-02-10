@@ -22,7 +22,7 @@ import {
     X,
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
-import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications";
+import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

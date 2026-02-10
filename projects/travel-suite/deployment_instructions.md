@@ -13,7 +13,7 @@ npx supabase db push
 
 You need to set the `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID` secrets for the `send-notification` function.
 
-1.  **Get your Firebase Service Account JSON:**
+1.  **Get your Firebase Service Account JSON (store outside repo):**
     *   Go to Firebase Console -> Project Settings -> Service accounts.
     *   Generate a new private key (JSON file).
     *   Copy the **entire content** of this JSON file.
@@ -37,8 +37,7 @@ Deploy the `send-notification` function to Supabase:
 ```bash
 npx supabase functions deploy send-notification --no-verify-jwt
 ```
-*Note: We use `--no-verify-jwt` if we want to skip standard JWT verification by the gateway, but our code does check for valid user role internally if needed. However, usually for admin-triggered functions, we might want to enforce JWT. The current implementation in `route.ts` calls it with the service role key or user token.*
-*Correction: The `route.ts` invokes it via `supabaseAdmin.functions.invoke`. This uses the Service Role Key, which bypasses RLS but the function itself doesn't explicitly check JWT for authorization in the code we reviewed—it relies on the caller being trusted (the Next.js API route).*
+*Note: The Next.js API route invokes the Edge Function using the service role key via `supabaseAdmin.functions.invoke`. This is intended for server-only usage and relies on the API route’s auth checks.*
 
 ## 4. Verify Next.js Environment
 Ensure your `apps/web/.env` (and Vercel/Production env) has:

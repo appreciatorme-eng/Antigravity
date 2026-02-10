@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
     sendNotificationToUser,
-    getDriverWhatsAppLink,
-    formatDriverAssignmentMessage,
 } from "@/lib/notifications";
+import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -32,25 +31,40 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "tripId is required" }, { status: 400 });
         }
 
-        // Get trip details
+        // Get trip details (scoped to the authenticated client)
         const { data: trip, error: tripError } = await supabaseAdmin
             .from("trips")
             .select(`
-                *,
-                profiles!trips_user_id_fkey(full_name, email)
+                id,
+                client_id,
+                start_date,
+                end_date,
+                itineraries (
+                    id,
+                    trip_title,
+                    destination,
+                    duration_days,
+                    raw_data
+                ),
+                profiles!trips_client_id_fkey(full_name, email)
             `)
             .eq("id", tripId)
-            .eq("user_id", user.id)
+            .eq("client_id", user.id)
             .single();
 
         if (tripError || !trip) {
             return NextResponse.json({ error: "Trip not found" }, { status: 404 });
         }
 
+        const itinerary = trip.itineraries;
+        const destination = itinerary?.destination || "your destination";
+
         // Calculate current day of trip
-        const startDate = new Date(trip.start_date);
+        const startDate = trip.start_date ? new Date(trip.start_date) : null;
         const today = new Date();
-        const dayNumber = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const dayNumber = startDate
+            ? Math.max(Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1, 1)
+            : 1;
 
         // Get today's driver assignment
         const { data: assignment } = await supabaseAdmin
@@ -63,13 +77,12 @@ export async function POST(request: NextRequest) {
             .eq("day_number", dayNumber)
             .single();
 
-        // Get today's activities
-        const { data: activities } = await supabaseAdmin
-            .from("activities")
-            .select("*")
-            .eq("trip_id", tripId)
-            .eq("day_number", dayNumber)
-            .order("start_time", { ascending: true });
+        // Get today's activities from the itinerary raw_data
+        const tripData = itinerary?.raw_data as any;
+        const dayData =
+            tripData?.days?.find((day: any) => day.day_number === dayNumber) ??
+            tripData?.days?.[dayNumber - 1];
+        const activities = Array.isArray(dayData?.activities) ? dayData.activities : [];
 
         // Get today's accommodation
         const { data: accommodation } = await supabaseAdmin
@@ -89,7 +102,7 @@ export async function POST(request: NextRequest) {
         await sendNotificationToUser({
             userId: user.id,
             title: "Welcome! You've landed",
-            body: `Your trip to ${trip.destination} begins now!${driverInfo}`,
+            body: `Your trip to ${destination} begins now!${driverInfo}`,
             data: {
                 type: "client_landed",
                 tripId,
@@ -106,10 +119,11 @@ export async function POST(request: NextRequest) {
             const message = formatDriverAssignmentMessage({
                 clientName,
                 pickupTime: assignment.pickup_time || "TBD",
-                pickupLocation: assignment.pickup_location || trip.destination,
-                activities: activities.map((a: any) => ({
-                    title: a.title,
-                    duration_minutes: a.duration_minutes,
+                pickupLocation: assignment.pickup_location || destination,
+                activities: activities.map((activity: any) => ({
+                    title: activity.title,
+                    duration_minutes: activity.duration_minutes,
+                    duration: activity.duration,
                 })),
                 hotelName: accommodation?.hotel_name || "TBD",
             });
@@ -123,8 +137,9 @@ export async function POST(request: NextRequest) {
             recipient_id: user.id,
             notification_type: "client_landed",
             title: "Client Landed",
-            body: `${trip.profiles?.full_name || "Client"} has landed for trip to ${trip.destination}`,
+            body: `${trip.profiles?.full_name || "Client"} has landed for trip to ${destination}`,
             status: "sent",
+            recipient_type: "client",
         });
 
         return NextResponse.json({

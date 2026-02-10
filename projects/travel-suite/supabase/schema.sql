@@ -338,17 +338,17 @@ CREATE POLICY "Clients can view their trip accommodations"
     );
 
 -- ================================================
--- PUSH TOKENS (Expo push notification tokens)
+-- PUSH TOKENS (FCM push notification tokens)
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.push_tokens (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-    expo_push_token TEXT NOT NULL,
-    device_type TEXT CHECK (device_type IN ('ios', 'android')),
+    fcm_token TEXT NOT NULL,
+    platform TEXT CHECK (platform IN ('ios', 'android')),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, expo_push_token)
+    UNIQUE(user_id, platform)
 );
 
 -- Enable RLS
@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS public.notification_logs (
     recipient_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     recipient_phone TEXT,
     recipient_type TEXT CHECK (recipient_type IN ('client', 'driver')),
-    notification_type TEXT NOT NULL CHECK (notification_type IN ('trip_confirmed', 'driver_assigned', 'daily_briefing', 'client_landed', 'itinerary_update')),
+    notification_type TEXT NOT NULL CHECK (notification_type IN ('trip_confirmed', 'driver_assigned', 'daily_briefing', 'client_landed', 'itinerary_update', 'manual', 'general')),
     title TEXT,
     body TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'delivered', 'failed')),

@@ -11,7 +11,6 @@ travel-suite/
 │   ├── web/             # Next.js web app + admin panel
 │   └── agents/          # Python AI agents (FastAPI)
 ├── docs/                # Project documentation
-├── n8n/                 # Automation workflows
 ├── supabase/            # Database schema & migrations
 └── packages/            # Shared code (future)
 ```
@@ -71,12 +70,11 @@ python main.py
 - **Support Bot**: Answers travel questions via RAG
 - **Recommender**: Activity recommendations
 
-## 🔔 Automation (n8n)
+## 🔔 Automation & Notifications
 
-- Daily briefing notifications
-- Pickup reminders
-- Trip reminders
-- Review requests
+- Supabase Edge Functions for FCM (push notifications)
+- Notification logging and admin-triggered sends
+- Scheduled jobs planned for daily briefings and reminders
 
 ## 🎨 Brand Identity
 
@@ -108,8 +106,8 @@ Key tables:
 - [x] Local notifications
 
 ### In Progress
-- [ ] Push notifications (Firebase FCM)
-- [ ] Admin panel for travel agents
+- [ ] End-to-end push notification validation on real devices
+- [ ] Admin panel hardening (audit logs, role-based access polish)
 - [ ] White-label support
 
 ### Future

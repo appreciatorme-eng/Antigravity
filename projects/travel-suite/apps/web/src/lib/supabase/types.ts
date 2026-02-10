@@ -358,8 +358,8 @@ export interface Database {
                 Row: {
                     id: string
                     user_id: string
-                    expo_push_token: string
-                    device_type: 'ios' | 'android' | null
+                    fcm_token: string
+                    platform: 'ios' | 'android'
                     is_active: boolean
                     created_at: string
                     updated_at: string
@@ -367,8 +367,8 @@ export interface Database {
                 Insert: {
                     id?: string
                     user_id: string
-                    expo_push_token: string
-                    device_type?: 'ios' | 'android' | null
+                    fcm_token: string
+                    platform: 'ios' | 'android'
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -376,8 +376,8 @@ export interface Database {
                 Update: {
                     id?: string
                     user_id?: string
-                    expo_push_token?: string
-                    device_type?: 'ios' | 'android' | null
+                    fcm_token?: string
+                    platform?: 'ios' | 'android'
                     is_active?: boolean
                     created_at?: string
                     updated_at?: string
@@ -390,7 +390,7 @@ export interface Database {
                     recipient_id: string | null
                     recipient_phone: string | null
                     recipient_type: 'client' | 'driver' | null
-                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update'
+                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update' | 'manual' | 'general'
                     title: string | null
                     body: string | null
                     status: 'pending' | 'sent' | 'delivered' | 'failed'
@@ -405,7 +405,7 @@ export interface Database {
                     recipient_id?: string | null
                     recipient_phone?: string | null
                     recipient_type?: 'client' | 'driver' | null
-                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update'
+                    notification_type: 'trip_confirmed' | 'driver_assigned' | 'daily_briefing' | 'client_landed' | 'itinerary_update' | 'manual' | 'general'
                     title?: string | null
                     body?: string | null
                     status?: 'pending' | 'sent' | 'delivered' | 'failed'

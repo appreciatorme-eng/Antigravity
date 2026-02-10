@@ -23,7 +23,7 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "⚠️  Remember to set your environment variables if you haven't already:"
     echo "supabase secrets set FIREBASE_PROJECT_ID=your-project-id"
-    echo "supabase secrets set FIREBASE_SERVICE_ACCOUNT='$(cat firebase-service-account.json)'"
+    echo "supabase secrets set FIREBASE_SERVICE_ACCOUNT='$(cat /path/to/service-account.json)'"
 else
     echo "❌ Deployment failed."
     exit 1
