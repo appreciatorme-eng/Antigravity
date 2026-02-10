@@ -137,6 +137,65 @@ interface AccommodationRow {
     contact_phone: string | null;
 }
 
+const mockTripsById: Record<string, Trip> = {
+    "mock-trip-001": {
+        id: "mock-trip-001",
+        status: "confirmed",
+        start_date: "2026-03-12",
+        end_date: "2026-03-17",
+        destination: "Kyoto, Japan",
+        profiles: {
+            id: "mock-user-1",
+            full_name: "Ava Chen",
+            email: "ava.chen@example.com",
+        },
+        itineraries: {
+            id: "mock-itinerary-1",
+            trip_title: "Kyoto Blossom Trail",
+            duration_days: 5,
+            destination: "Kyoto, Japan",
+            raw_data: {
+                days: [
+                    { day: 1, theme: "Arrival & Gion", activities: [] },
+                    { day: 2, theme: "Arashiyama & Bamboo", activities: [] },
+                    { day: 3, theme: "Fushimi Inari", activities: [] },
+                    { day: 4, theme: "Tea Ceremony", activities: [] },
+                    { day: 5, theme: "Departure", activities: [] },
+                ],
+            },
+        },
+    },
+    "mock-trip-002": {
+        id: "mock-trip-002",
+        status: "in_progress",
+        start_date: "2026-02-20",
+        end_date: "2026-02-27",
+        destination: "Reykjavik, Iceland",
+        profiles: {
+            id: "mock-user-2",
+            full_name: "Liam Walker",
+            email: "liam.walker@example.com",
+        },
+        itineraries: {
+            id: "mock-itinerary-2",
+            trip_title: "Northern Lights Escape",
+            duration_days: 7,
+            destination: "Reykjavik, Iceland",
+            raw_data: {
+                days: [
+                    { day: 1, theme: "Blue Lagoon", activities: [] },
+                    { day: 2, theme: "Golden Circle", activities: [] },
+                    { day: 3, theme: "Aurora Chase", activities: [] },
+                    { day: 4, theme: "Ice Caves", activities: [] },
+                    { day: 5, theme: "City Exploration", activities: [] },
+                    { day: 6, theme: "Whale Watching", activities: [] },
+                    { day: 7, theme: "Departure", activities: [] },
+                ],
+            },
+        },
+    },
+};
+
 export default function TripDetailPage() {
     const params = useParams();
     const tripId = params.id as string;
@@ -156,9 +215,21 @@ export default function TripDetailPage() {
     const [notificationBody, setNotificationBody] = useState("");
 
     const supabase = createClient();
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchData = useCallback(async () => {
         if (!tripId) return;
+        if (useMockAdmin) {
+            const mockTrip = mockTripsById[tripId] ?? mockTripsById["mock-trip-001"];
+            setTrip(mockTrip);
+            setItineraryDays(mockTrip.itineraries?.raw_data?.days ?? []);
+            setDrivers([]);
+            setAssignments({});
+            setAccommodations({});
+            setLoading(false);
+            return;
+        }
+
         // Fetch trip details
         const { data: tripData, error: tripError } = await supabase
             .from("trips")
@@ -261,7 +332,7 @@ export default function TripDetailPage() {
         }
 
         setLoading(false);
-    }, [supabase, tripId]);
+    }, [supabase, tripId, useMockAdmin]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -425,6 +496,13 @@ export default function TripDetailPage() {
         if (!trip?.profiles?.id) return;
 
         try {
+            if (useMockAdmin) {
+                alert("Mock notification sent to client!");
+                setNotificationOpen(false);
+                setNotificationBody("");
+                return;
+            }
+
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/notifications/send", {
                 method: "POST",

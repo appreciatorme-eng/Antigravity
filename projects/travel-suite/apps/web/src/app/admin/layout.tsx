@@ -37,9 +37,16 @@ export default function AdminLayout({
 
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     useEffect(() => {
         const checkAuth = async () => {
+            if (useMockAdmin) {
+                setAuthorized(true);
+                setLoading(false);
+                return;
+            }
+
             const {
                 data: { user },
             } = await supabase.auth.getUser();
@@ -67,7 +74,7 @@ export default function AdminLayout({
         };
 
         checkAuth();
-    }, [supabase, router]);
+    }, [supabase, router, useMockAdmin]);
 
     if (loading) {
         return (
@@ -155,7 +162,14 @@ export default function AdminLayout({
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-auto p-8">{children}</main>
+            <main className="flex-1 overflow-auto p-8">
+                {useMockAdmin && (
+                    <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        Mock mode enabled. Admin access and data are simulated for demo purposes.
+                    </div>
+                )}
+                {children}
+            </main>
         </div>
     );
 }

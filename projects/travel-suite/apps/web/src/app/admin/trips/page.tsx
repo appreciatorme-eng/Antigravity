@@ -49,6 +49,43 @@ interface TripRecord {
     } | null;
 }
 
+const mockTrips: Trip[] = [
+    {
+        id: "mock-trip-001",
+        status: "confirmed",
+        start_date: "2026-03-12",
+        end_date: "2026-03-17",
+        destination: "Kyoto, Japan",
+        created_at: "2026-02-01T10:00:00Z",
+        profiles: {
+            full_name: "Ava Chen",
+            email: "ava.chen@example.com",
+        },
+        itineraries: {
+            trip_title: "Kyoto Blossom Trail",
+            duration_days: 5,
+            destination: "Kyoto, Japan",
+        },
+    },
+    {
+        id: "mock-trip-002",
+        status: "in_progress",
+        start_date: "2026-02-20",
+        end_date: "2026-02-27",
+        destination: "Reykjavik, Iceland",
+        created_at: "2026-01-15T14:30:00Z",
+        profiles: {
+            full_name: "Liam Walker",
+            email: "liam.walker@example.com",
+        },
+        itineraries: {
+            trip_title: "Northern Lights Escape",
+            duration_days: 7,
+            destination: "Reykjavik, Iceland",
+        },
+    },
+];
+
 export default function AdminTripsPage() {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,9 +93,16 @@ export default function AdminTripsPage() {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const supabase = createClient();
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchTrips = useCallback(async () => {
         setLoading(true); // Set loading to true when fetching starts
+        if (useMockAdmin) {
+            setTrips(mockTrips);
+            setLoading(false);
+            return;
+        }
+
         let query = supabase
             .from("trips")
             .select(`
@@ -101,7 +145,7 @@ export default function AdminTripsPage() {
             setTrips(mappedData);
         }
         setLoading(false);
-    }, [supabase, statusFilter, searchQuery]);
+    }, [supabase, statusFilter, searchQuery, useMockAdmin]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
