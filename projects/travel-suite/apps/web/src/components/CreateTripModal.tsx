@@ -15,6 +15,11 @@ interface Client {
     email: string;
 }
 
+const mockClients: Client[] = [
+    { id: "mock-client-1", full_name: "Ava Chen", email: "ava.chen@example.com" },
+    { id: "mock-client-2", full_name: "Liam Walker", email: "liam.walker@example.com" },
+];
+
 interface CreateTripModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -23,6 +28,7 @@ interface CreateTripModalProps {
 
 export default function CreateTripModal({ open, onOpenChange, onSuccess }: CreateTripModalProps) {
     const supabase = createClient();
+    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     // Form State
     const [clientId, setClientId] = useState("");
@@ -41,25 +47,36 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
     const fetchClients = useCallback(async () => {
         setLoadingClients(true);
-        const { data, error } = await supabase
-            .from("profiles")
-            .select("id, full_name, email")
-            .eq("role", "client")
-            .order("full_name");
-
-        if (error) {
-            console.error("Error fetching clients:", error);
+        if (useMockAdmin) {
+            setClients(mockClients);
+            setLoadingClients(false);
+            return;
         }
 
-        if (data) {
-            setClients(data.map(client => ({
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch("/api/admin/clients", {
+            headers: {
+                "Authorization": `Bearer ${session?.access_token}`,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error("Error fetching clients:", error);
+            setLoadingClients(false);
+            return;
+        }
+
+        const payload = await response.json();
+        setClients(
+            (payload.clients || []).map((client: Client) => ({
                 id: client.id,
                 full_name: client.full_name || "Unknown",
-                email: client.email || "No Email"
-            })));
-        }
+                email: client.email || "No Email",
+            }))
+        );
         setLoadingClients(false);
-    }, [supabase]);
+    }, [supabase, useMockAdmin]);
 
     useEffect(() => {
         if (open) {
