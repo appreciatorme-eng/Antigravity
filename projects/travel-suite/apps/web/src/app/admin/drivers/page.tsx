@@ -334,7 +334,7 @@ export default function DriversPage() {
 
             const { data: profile, error: profileError } = await supabase
                 .from("profiles")
-                .select("id,email,full_name")
+                .select("id,email,full_name,role")
                 .eq("email", email)
                 .maybeSingle();
 
@@ -359,6 +359,17 @@ export default function DriversPage() {
                 throw upsertError ?? new Error("Failed to link driver account.");
             }
 
+            if (profile.role !== "driver") {
+                const { error: roleError } = await supabase
+                    .from("profiles")
+                    .update({ role: "driver" })
+                    .eq("id", profile.id);
+
+                if (roleError) {
+                    throw new Error(`Linked account but failed to set driver role: ${roleError.message}`);
+                }
+            }
+
             setDriverAccountLinks((prev) => ({
                 ...prev,
                 [driver.id]: {
@@ -370,7 +381,7 @@ export default function DriversPage() {
                     profile_name: profile.full_name,
                 },
             }));
-            setSuccess("Driver linked to app account.");
+            setSuccess("Driver linked to app account and role synced.");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to link driver account.");
         } finally {

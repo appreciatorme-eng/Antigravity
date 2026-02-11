@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 
 interface Client {
     id: string;
+    role?: "client" | "driver" | "admin" | null;
     full_name: string | null;
     email: string | null;
     phone: string | null;
@@ -53,6 +54,7 @@ interface Client {
 const mockClients: Client[] = [
     {
         id: "mock-client-1",
+        role: "client",
         full_name: "Ava Chen",
         email: "ava.chen@example.com",
         phone: "+1 (415) 555-1122",
@@ -62,6 +64,7 @@ const mockClients: Client[] = [
     },
     {
         id: "mock-client-2",
+        role: "client",
         full_name: "Liam Walker",
         email: "liam.walker@example.com",
         phone: "+44 20 7946 0901",
@@ -71,6 +74,7 @@ const mockClients: Client[] = [
     },
     {
         id: "mock-client-3",
+        role: "client",
         full_name: "Sofia Ramirez",
         email: "sofia.ramirez@example.com",
         phone: "+34 91 123 4567",
@@ -88,6 +92,7 @@ export default function ClientsPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+    const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         full_name: "",
         email: "",
@@ -271,6 +276,49 @@ export default function ClientsPage() {
             setClients((prev) => prev.filter((client) => client.id !== clientId));
         } catch (error) {
             alert(error instanceof Error ? error.message : "Failed to delete client");
+        }
+    };
+
+    const handleRoleOverride = async (clientId: string, role: "client" | "driver") => {
+        setRoleUpdatingId(clientId);
+        try {
+            if (useMockAdmin) {
+                if (role === "driver") {
+                    setClients((prev) => prev.filter((client) => client.id !== clientId));
+                } else {
+                    setClients((prev) => prev.map((client) => (
+                        client.id === clientId ? { ...client, role } : client
+                    )));
+                }
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ id: clientId, role }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to update role");
+            }
+
+            if (role === "driver") {
+                setClients((prev) => prev.filter((client) => client.id !== clientId));
+            } else {
+                setClients((prev) => prev.map((client) => (
+                    client.id === clientId ? { ...client, role } : client
+                )));
+            }
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to update role");
+        } finally {
+            setRoleUpdatingId(null);
         }
     };
 
@@ -559,6 +607,21 @@ export default function ClientsPage() {
                                         {client.phone || 'No phone provided'}
                                     </span>
                                 </div>
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Role</span>
+                                    <select
+                                        value={(client.role === "driver" ? "driver" : "client")}
+                                        onChange={(e) => void handleRoleOverride(client.id, e.target.value as "client" | "driver")}
+                                        disabled={roleUpdatingId === client.id}
+                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
+                                    >
+                                        <option value="client">Client</option>
+                                        <option value="driver">Driver</option>
+                                    </select>
+                                </div>
+                                {roleUpdatingId === client.id && (
+                                    <p className="text-[11px] text-[#9c7c46]">Updating role…</p>
+                                )}
                                 {(client.preferred_destination || client.budget_min || client.budget_max || client.travelers_count || client.travel_style) && (
                                     <div className="text-xs text-slate-500 space-y-1">
                                         {client.preferred_destination && (

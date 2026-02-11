@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
-            .select("id, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
+            .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
             .order("created_at", { ascending: false });
 
@@ -223,6 +223,50 @@ export async function DELETE(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    }
+}
+
+export async function PATCH(req: NextRequest) {
+    try {
+        const adminUserId = await getAdminUserId(req);
+        if (!adminUserId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: adminProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("role")
+            .eq("id", adminUserId)
+            .single();
+
+        if (!adminProfile || adminProfile.role !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const body = await req.json();
+        const profileId = String(body.id || "").trim();
+        const role = String(body.role || "").trim();
+
+        if (!profileId) {
+            return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
+        }
+
+        if (role !== "client" && role !== "driver") {
+            return NextResponse.json({ error: "Role must be client or driver" }, { status: 400 });
+        }
+
+        const { error } = await supabaseAdmin
+            .from("profiles")
+            .update({ role })
+            .eq("id", profileId);
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+
+        return NextResponse.json({ success: true, id: profileId, role });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }

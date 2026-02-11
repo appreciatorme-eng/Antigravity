@@ -55,6 +55,8 @@
 - Trips mobile screen now loads role-aware trip data:
   - clients -> `trips.client_id`
   - drivers -> `trips.driver_id` plus mapped `driver_accounts` + `trip_driver_assignments`
+- Added admin role override controls in clients admin UI (`Client` <-> `Driver`) with secure API endpoint.
+- Driver linking flow now auto-syncs linked app user's profile role to `driver`.
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

@@ -73,6 +73,10 @@ python main.py
   - Nearby hotel suggestions with one-click autofill (name/address/phone)
   - Tokenized live-location links per trip/day (`/live/:token`)
   - Reminder queue + driver ping visibility per day
+- **Admin User Controls**:
+  - Client creation with travel preference metadata
+  - Role override (`client` ↔ `driver`) from Clients panel
+  - Driver account linking auto-syncs linked app user role to `driver`
 
 ## 🤖 AI Agents
 
