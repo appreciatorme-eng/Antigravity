@@ -139,17 +139,17 @@ export default function AdminTripsPage() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "confirmed":
-                return "bg-green-100 text-green-800";
+                return "bg-[#f1e4d2] text-[#9c7c46]";
             case "pending":
-                return "bg-yellow-100 text-yellow-800";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
             case "draft":
-                return "bg-gray-100 text-gray-800";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
             case "completed":
-                return "bg-blue-100 text-blue-800";
+                return "bg-[#efe2cf] text-[#7b5f31]";
             case "cancelled":
-                return "bg-red-100 text-red-800";
+                return "bg-rose-100 text-rose-700";
             default:
-                return "bg-gray-100 text-gray-800";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
         }
     };
 
@@ -165,14 +165,15 @@ export default function AdminTripsPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Trips</h1>
-                    <p className="text-gray-600 mt-1">
-                        Manage client trips and assign drivers
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Trips</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2">Trips</h1>
+                    <p className="text-[#6f5b3e] mt-1">
+                        Manage client trips and assign drivers.
                     </p>
                 </div>
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-md shadow-sm text-[#f5e7c6] bg-[#1b140a] hover:bg-[#2a2217] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#c4a870]"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     New Trip
@@ -188,15 +189,15 @@ export default function AdminTripsPage() {
                         placeholder="Search by destination, client, or title..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full pl-10 pr-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c4a870]/20 focus:border-[#c4a870] bg-white/90"
                     />
                 </div>
                 <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-gray-400" />
+                    <Filter className="h-4 w-4 text-[#bda87f]" />
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c4a870]/20 focus:border-[#c4a870] bg-white/90 text-[#1b140a]"
                     >
                         <option value="all">All Status</option>
                         <option value="draft">Draft</option>
@@ -210,25 +211,25 @@ export default function AdminTripsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-gray-100">
-                    <p className="text-sm text-gray-500">Total Trips</p>
-                    <p className="text-2xl font-bold text-gray-900">{trips.length}</p>
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Total Trips</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#1b140a]">{trips.length}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-100">
-                    <p className="text-sm text-gray-500">Confirmed</p>
-                    <p className="text-2xl font-bold text-green-600">
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Confirmed</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#9c7c46]">
                         {trips.filter((t) => t.status === "confirmed").length}
                     </p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-100">
-                    <p className="text-sm text-gray-500">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-600">
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Pending</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#6f5b3e]">
                         {trips.filter((t) => t.status === "pending").length}
                     </p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-100">
-                    <p className="text-sm text-gray-500">This Month</p>
-                    <p className="text-2xl font-bold text-primary">
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">This Month</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#1b140a]">
                         {
                             trips.filter((t) => {
                                 const tripDate = new Date(t.start_date);
@@ -244,39 +245,39 @@ export default function AdminTripsPage() {
             </div>
 
             {/* Trips List */}
-            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="bg-white/90 rounded-2xl border border-[#eadfcd] overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 {trips.length === 0 ? (
                     <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <MapPin className="w-8 h-8 text-gray-300" />
+                        <div className="w-16 h-16 bg-[#f6efe4] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MapPin className="w-8 h-8 text-[#bda87f]" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900">No trips found</h3>
-                        <p className="text-gray-500 mt-1 mb-6">Get started by creating a new trip for your clients.</p>
+                        <h3 className="text-lg font-medium text-[#1b140a]">No trips found</h3>
+                        <p className="text-[#6f5b3e] mt-1 mb-6">Get started by creating a new trip for your clients.</p>
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-md shadow-sm text-[#f5e7c6] bg-[#1b140a] hover:bg-[#2a2217] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#c4a870]"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Create New Trip
                         </button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-[#efe2cf]">
                         {trips.map((trip) => (
                             <Link
                                 key={trip.id}
                                 href={`/admin/trips/${trip.id}`}
-                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                                className="flex items-center justify-between p-4 hover:bg-[#f8f1e6] transition-colors"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                                        <MapPin className="h-6 w-6 text-primary" />
+                                    <div className="w-12 h-12 bg-[#f6efe4] rounded-xl flex items-center justify-center border border-[#eadfcd]">
+                                        <MapPin className="h-6 w-6 text-[#9c7c46]" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-900">
+                                        <h3 className="font-semibold text-[#1b140a]">
                                             {trip.itineraries?.trip_title || trip.destination || "Untitled Trip"}
                                         </h3>
-                                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                                        <div className="flex items-center gap-4 mt-1 text-sm text-[#6f5b3e]">
                                             <span className="flex items-center gap-1">
                                                 <User className="h-3 w-3" />
                                                 {trip.profiles?.full_name || "Unknown"}
@@ -301,7 +302,7 @@ export default function AdminTripsPage() {
                                     >
                                         {trip.status}
                                     </span>
-                                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                                    <ChevronRight className="h-5 w-5 text-[#bda87f]" />
                                 </div>
                             </Link>
                         ))}

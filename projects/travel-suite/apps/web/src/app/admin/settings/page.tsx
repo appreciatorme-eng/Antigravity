@@ -106,18 +106,19 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                    <Settings className="w-8 h-8 text-slate-400" />
+        <div className="space-y-6 max-w-4xl mx-auto">
+            <div>
+                <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Settings</span>
+                <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                    <Settings className="w-8 h-8 text-[#c4a870]" />
                     Settings
                 </h1>
-                <p className="text-slate-500 mt-1">Manage your organization details and application preferences.</p>
+                <p className="text-[#6f5b3e] mt-1">Manage your organization details and application preferences.</p>
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
                 {/* Organization Details */}
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-white/90 border border-[#eadfcd] rounded-2xl overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                     <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                         <Building2 className="w-5 h-5 text-primary" />
                         <h2 className="font-bold text-slate-900">Organization Details</h2>

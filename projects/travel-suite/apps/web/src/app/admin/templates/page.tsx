@@ -28,36 +28,37 @@ const templates = [
 
 export default function TemplatesPage() {
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-8">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Wand2 className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 rounded-xl bg-[#f6efe4] flex items-center justify-center">
+                    <Wand2 className="w-5 h-5 text-[#9c7c46]" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Notification Templates</h1>
-                    <p className="text-sm text-gray-500">Mock templates for push, email, and WhatsApp.</p>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Templates</span>
+                    <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a] mt-1">Notification Templates</h1>
+                    <p className="text-sm text-[#6f5b3e]">Mock templates for push, email, and WhatsApp.</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {templates.map((template) => (
-                    <div key={template.id} className="rounded-2xl border border-gray-200 bg-white p-6">
+                    <div key={template.id} className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
                         <div className="flex items-center justify-between mb-3">
                             <div>
-                                <p className="text-sm font-semibold text-gray-900">{template.title}</p>
-                                <p className="text-xs text-gray-400">{template.channel}</p>
+                                <p className="text-sm font-semibold text-[#1b140a]">{template.title}</p>
+                                <p className="text-xs text-[#bda87f]">{template.channel}</p>
                             </div>
                             {template.channel === "Push" ? (
-                                <Bell className="w-4 h-4 text-indigo-500" />
+                                <Bell className="w-4 h-4 text-[#9c7c46]" />
                             ) : (
-                                <MessageCircle className="w-4 h-4 text-emerald-500" />
+                                <MessageCircle className="w-4 h-4 text-[#9c7c46]" />
                             )}
                         </div>
-                        <div className="text-xs text-gray-500">Subject</div>
-                        <div className="text-sm text-gray-900 mb-3">{template.subject}</div>
-                        <div className="text-xs text-gray-500">Body</div>
-                        <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{template.body}</div>
-                        <button className="mt-4 w-full rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 flex items-center justify-center gap-2">
+                        <div className="text-xs text-[#bda87f]">Subject</div>
+                        <div className="text-sm text-[#1b140a] mb-3">{template.subject}</div>
+                        <div className="text-xs text-[#bda87f]">Body</div>
+                        <div className="text-sm text-[#6f5b3e] bg-[#f8f1e6] rounded-lg p-3">{template.body}</div>
+                        <button className="mt-4 w-full rounded-lg border border-[#eadfcd] px-4 py-2 text-sm font-semibold text-[#6f5b3e] flex items-center justify-center gap-2">
                             <Save className="w-4 h-4" />
                             Save Template
                         </button>

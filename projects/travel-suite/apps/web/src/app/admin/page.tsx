@@ -174,60 +174,63 @@ export default function AdminDashboard() {
             label: "Active Drivers",
             value: stats.totalDrivers,
             icon: Car,
-            color: "bg-blue-500",
-            bgColor: "bg-blue-50",
+            accent: "text-[#c4a870]",
         },
         {
             label: "Total Clients",
             value: stats.totalClients,
             icon: Users,
-            color: "bg-green-500",
-            bgColor: "bg-green-50",
+            accent: "text-[#b8904d]",
         },
         {
             label: "Active Trips",
             value: stats.activeTrips,
             icon: MapPin,
-            color: "bg-purple-500",
-            bgColor: "bg-purple-50",
+            accent: "text-[#d1b27a]",
         },
         {
             label: "Pending Notifications",
             value: stats.pendingNotifications,
             icon: Bell,
-            color: "bg-orange-500",
-            bgColor: "bg-orange-50",
+            accent: "text-[#9c7c46]",
         },
     ];
 
     return (
-        <div className="p-8">
+        <div className="space-y-8">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-serif text-gray-900 mb-1">Dashboard</h1>
-                <p className="text-gray-600">
-                    Welcome to your tour operator admin panel
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Overview</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2">Dashboard</h1>
+                    <p className="text-[#6f5b3e] mt-1">
+                        Curated operational signals for your travel concierge team.
+                    </p>
+                </div>
+                <div className="hidden md:flex items-center gap-2 text-sm text-[#8c7754]">
+                    <Calendar className="w-4 h-4" />
+                    {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((stat) => (
                     <div
                         key={stat.label}
-                        className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                        className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6 shadow-[0_10px_30px_rgba(20,16,12,0.08)]"
                     >
                         <div className="flex items-start justify-between">
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">{stat.label}</p>
-                                <p className="text-3xl font-semibold text-gray-900">
+                                <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f] mb-2">{stat.label}</p>
+                                <p className="text-3xl font-[var(--font-display)] text-[#1b140a]">
                                     {loading ? "-" : stat.value}
                                 </p>
                             </div>
                             <div
-                                className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center`}
+                                className="w-12 h-12 rounded-2xl bg-[#f6efe4] flex items-center justify-center shadow-[inset_0_0_0_1px_rgba(196,168,112,0.2)]"
                             >
-                                <stat.icon className={`w-6 h-6 text-${stat.color.replace("bg-", "")}`} style={{ color: stat.color.includes("blue") ? "#3b82f6" : stat.color.includes("green") ? "#22c55e" : stat.color.includes("purple") ? "#a855f7" : "#f97316" }} />
+                                <stat.icon className={`w-6 h-6 ${stat.accent}`} />
                             </div>
                         </div>
                     </div>
@@ -235,57 +238,57 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4">
                     Quick Actions
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Link
                         href="/admin/drivers"
-                        className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="group flex items-center gap-3 p-4 rounded-xl bg-[#f8f1e6] hover:bg-[#f1e4d2] transition-colors"
                     >
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Car className="w-5 h-5 text-primary" />
+                        <div className="w-10 h-10 bg-[#1b140a] rounded-xl flex items-center justify-center">
+                            <Car className="w-5 h-5 text-[#f5e7c6]" />
                         </div>
                         <div>
-                            <p className="font-medium text-gray-900">Add New Driver</p>
-                            <p className="text-sm text-gray-500">Register a partner driver</p>
+                            <p className="font-semibold text-[#1b140a]">Add New Driver</p>
+                            <p className="text-sm text-[#6f5b3e]">Register a partner driver</p>
                         </div>
                     </Link>
                     <Link
                         href="/admin/trips"
-                        className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="group flex items-center gap-3 p-4 rounded-xl bg-[#f8f1e6] hover:bg-[#f1e4d2] transition-colors"
                     >
-                        <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-secondary" />
+                        <div className="w-10 h-10 bg-[#1b140a] rounded-xl flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-[#f5e7c6]" />
                         </div>
                         <div>
-                            <p className="font-medium text-gray-900">Manage Trips</p>
-                            <p className="text-sm text-gray-500">Assign drivers to trips</p>
+                            <p className="font-semibold text-[#1b140a]">Manage Trips</p>
+                            <p className="text-sm text-[#6f5b3e]">Assign drivers to trips</p>
                         </div>
                     </Link>
                     <Link
                         href="/admin/notifications"
-                        className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="group flex items-center gap-3 p-4 rounded-xl bg-[#f8f1e6] hover:bg-[#f1e4d2] transition-colors"
                     >
-                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <Bell className="w-5 h-5 text-orange-600" />
+                        <div className="w-10 h-10 bg-[#1b140a] rounded-xl flex items-center justify-center">
+                            <Bell className="w-5 h-5 text-[#f5e7c6]" />
                         </div>
                         <div>
-                            <p className="font-medium text-gray-900">Send Notifications</p>
-                            <p className="text-sm text-gray-500">Notify clients & drivers</p>
+                            <p className="font-semibold text-[#1b140a]">Send Notifications</p>
+                            <p className="text-sm text-[#6f5b3e]">Notify clients & drivers</p>
                         </div>
                     </Link>
                 </div>
             </div>
 
             {/* Recent Activity Feed */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">
                         Recent Activity
                     </h2>
-                    <TrendingUp className="w-5 h-5 text-gray-400" />
+                    <TrendingUp className="w-5 h-5 text-[#bda87f]" />
                 </div>
 
                 {loading ? (
@@ -301,30 +304,30 @@ export default function AdminDashboard() {
                                 {idx !== activities.length - 1 && (
                                     <div className="absolute left-[1.125rem] top-8 bottom-[-1.5rem] w-px bg-gray-100" />
                                 )}
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${activity.type === "trip" ? "bg-blue-100" : "bg-orange-100"
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${activity.type === "trip" ? "bg-[#f8f1e6]" : "bg-[#f1e4d2]"
                                     }`}>
                                     {activity.type === "trip" ? (
-                                        <MapPin className="w-4 h-4 text-blue-600" />
+                                        <MapPin className="w-4 h-4 text-[#9c7c46]" />
                                     ) : (
-                                        <Bell className="w-4 h-4 text-orange-600" />
+                                        <Bell className="w-4 h-4 text-[#9c7c46]" />
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                        <p className="text-sm font-semibold text-[#1b140a] truncate">
                                             {activity.title}
                                         </p>
-                                        <time className="text-xs text-gray-400 shrink-0">
+                                        <time className="text-xs text-[#bda87f] shrink-0">
                                             {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </time>
                                     </div>
-                                    <p className="text-sm text-gray-500 mt-0.5 truncate">
+                                    <p className="text-sm text-[#6f5b3e] mt-0.5 truncate">
                                         {activity.description}
                                     </p>
                                     <div className="flex items-center gap-2 mt-2">
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${activity.status === "sent" || activity.status === "confirmed" || activity.status === "in_progress"
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-gray-100 text-gray-600"
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${activity.status === "sent" || activity.status === "confirmed" || activity.status === "in_progress"
+                                                ? "bg-[#f1e4d2] text-[#9c7c46]"
+                                                : "bg-[#f6efe4] text-[#6f5b3e]"
                                             }`}>
                                             {activity.status}
                                         </span>
@@ -334,9 +337,9 @@ export default function AdminDashboard() {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12 text-gray-500">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Calendar className="w-8 h-8 text-gray-300" />
+                    <div className="text-center py-12 text-[#6f5b3e]">
+                        <div className="w-16 h-16 bg-[#f6efe4] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Calendar className="w-8 h-8 text-[#bda87f]" />
                         </div>
                         <p>No recent activity found.</p>
                         <p className="text-sm">Activity feed will appear here as the system is used.</p>

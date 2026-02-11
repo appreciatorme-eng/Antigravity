@@ -70,12 +70,12 @@ export default function ClientProfilePage() {
     const profile = mockClientProfiles[clientId as keyof typeof mockClientProfiles] ?? mockClientProfiles["mock-client-1"];
 
     return (
-        <div className="p-8 space-y-8">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+        <div className="space-y-8">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold text-gray-900">{profile.name}</h1>
-                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
+                        <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">{profile.name}</h1>
+                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-[#6f5b3e]">
                             <span className="flex items-center gap-2">
                                 <Mail className="w-4 h-4" />
                                 {profile.email}
@@ -86,64 +86,64 @@ export default function ClientProfilePage() {
                             </span>
                         </div>
                     </div>
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-primary/10 text-primary">
+                    <span className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-[#f6efe4] text-[#9c7c46]">
                         <BadgeCheck className="w-4 h-4" />
                         {profile.loyalty} tier
                     </span>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Trips</h2>
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
+                <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4">Trips</h2>
                 <div className="space-y-3">
                     {profile.trips.map((trip) => (
-                        <div key={trip.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                        <div key={trip.id} className="flex items-center justify-between rounded-lg border border-[#efe2cf] bg-[#f8f1e6] px-4 py-3">
                             <div>
-                                <p className="text-sm font-semibold text-gray-900">{trip.destination}</p>
-                                <p className="text-xs text-gray-500 flex items-center gap-2">
+                                <p className="text-sm font-semibold text-[#1b140a]">{trip.destination}</p>
+                                <p className="text-xs text-[#6f5b3e] flex items-center gap-2">
                                     <CalendarDays className="w-3 h-3" />
                                     {trip.dates}
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 text-xs font-semibold">
-                                <MapPin className="w-3 h-3 text-gray-400" />
-                                <span className="capitalize text-gray-600">{trip.status}</span>
+                                <MapPin className="w-3 h-3 text-[#bda87f]" />
+                                <span className="capitalize text-[#6f5b3e]">{trip.status}</span>
                             </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h2>
-                <div className="grid gap-3 text-sm text-gray-600">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
+                <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4">Preferences</h2>
+                <div className="grid gap-3 text-sm text-[#6f5b3e]">
                     <div className="flex items-center justify-between">
                         <span>Destination</span>
-                        <span className="font-medium text-gray-900">{profile.preferences.destination}</span>
+                        <span className="font-medium text-[#1b140a]">{profile.preferences.destination}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Travelers</span>
-                        <span className="font-medium text-gray-900">{profile.preferences.travelers}</span>
+                        <span className="font-medium text-[#1b140a]">{profile.preferences.travelers}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Budget Range</span>
-                        <span className="font-medium text-gray-900">{profile.preferences.budget}</span>
+                        <span className="font-medium text-[#1b140a]">{profile.preferences.budget}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Travel Style</span>
-                        <span className="font-medium text-gray-900">{profile.preferences.travelStyle}</span>
+                        <span className="font-medium text-[#1b140a]">{profile.preferences.travelStyle}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Home Airport</span>
-                        <span className="font-medium text-gray-900">{profile.preferences.homeAirport}</span>
+                        <span className="font-medium text-[#1b140a]">{profile.preferences.homeAirport}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Lead Status</span>
-                        <span className="font-medium text-gray-900 capitalize">{profile.preferences.leadStatus}</span>
+                        <span className="font-medium text-[#1b140a] capitalize">{profile.preferences.leadStatus}</span>
                     </div>
                     <div className="flex items-center justify-between">
                         <span>Lifecycle Stage</span>
-                        <span className="font-medium text-gray-900 capitalize">{profile.preferences.lifecycleStage}</span>
+                        <span className="font-medium text-[#1b140a] capitalize">{profile.preferences.lifecycleStage}</span>
                     </div>
                     <div>
                         <span className="block mb-2">Interests</span>

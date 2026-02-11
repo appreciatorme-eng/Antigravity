@@ -191,38 +191,39 @@ export default function NotificationLogsPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                        <Bell className="w-8 h-8 text-indigo-600" />
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Notifications</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                        <Bell className="w-8 h-8 text-[#c4a870]" />
                         Notification History
                     </h1>
-                    <p className="text-slate-500 mt-1">Monitor all sent and pending push notifications.</p>
+                    <p className="text-[#6f5b3e] mt-1">Monitor all sent and pending push notifications.</p>
                 </div>
                 <button
                     onClick={fetchLogs}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                 >
                     <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="md:col-span-2 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="text"
                         placeholder="Search logs by title, message or recipient..."
-                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] focus:border-transparent outline-none transition-all bg-white/90"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <div>
                     <select
-                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none appearance-none bg-white"
+                        className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] outline-none appearance-none bg-white text-[#1b140a]"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -237,18 +238,18 @@ export default function NotificationLogsPage() {
                     <input
                         type="text"
                         placeholder="Global WhatsApp message (optional)"
-                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                        className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] focus:border-transparent outline-none transition-all bg-white/90"
                         value={whatsAppMessage}
                         onChange={(e) => setWhatsAppMessage(e.target.value)}
                     />
                 </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-white/90 border border-[#eadfcd] rounded-2xl shadow-[0_12px_30px_rgba(20,16,12,0.06)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-50 border-bottom border-slate-200 font-medium text-slate-600 text-sm">
+                            <tr className="bg-[#f8f1e6] border-bottom border-[#eadfcd] font-medium text-[#6f5b3e] text-sm">
                                 <th className="px-6 py-4">Recipient</th>
                                 <th className="px-6 py-4">WhatsApp</th>
                                 <th className="px-6 py-4">Type</th>

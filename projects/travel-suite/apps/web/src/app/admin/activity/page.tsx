@@ -43,18 +43,19 @@ const activityFeed = [
 
 export default function AdminActivityPage() {
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-8">
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 rounded-xl bg-[#f6efe4] flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-[#9c7c46]" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Activity Feed</h1>
-                    <p className="text-sm text-gray-500">Mock timeline for operational activity.</p>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Activity</span>
+                    <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a] mt-1">Activity Feed</h1>
+                    <p className="text-sm text-[#6f5b3e]">Mock timeline for operational activity.</p>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
                 <div className="space-y-6">
                     {activityFeed.map((item) => (
                         <div key={item.id} className="flex items-start gap-4">
@@ -63,10 +64,10 @@ export default function AdminActivityPage() {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center justify-between">
-                                    <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-                                    <span className="text-xs text-gray-400">{item.time}</span>
+                                    <p className="text-sm font-semibold text-[#1b140a]">{item.title}</p>
+                                    <span className="text-xs text-[#bda87f]">{item.time}</span>
                                 </div>
-                                <p className="text-sm text-gray-500 mt-1">{item.detail}</p>
+                                <p className="text-sm text-[#6f5b3e] mt-1">{item.detail}</p>
                             </div>
                         </div>
                     ))}

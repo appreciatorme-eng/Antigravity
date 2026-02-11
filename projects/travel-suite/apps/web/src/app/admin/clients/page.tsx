@@ -275,19 +275,20 @@ export default function ClientsPage() {
     };
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                        <Users className="w-8 h-8 text-primary" />
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Clients</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                        <Users className="w-8 h-8 text-[#c4a870]" />
                         Clients
                     </h1>
-                    <p className="text-slate-500 mt-1">Manage your tour customers and view their travel history.</p>
+                    <p className="text-[#6f5b3e] mt-1">Manage your tour customers and view their travel history.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={fetchClients}
-                        className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+                        className="p-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                         title="Refresh"
                     >
                         <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -297,7 +298,7 @@ export default function ClientsPage() {
                         if (!open) resetForm();
                     }}>
                         <DialogTrigger asChild>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all shadow-sm font-medium">
+                            <button className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-all shadow-sm font-semibold">
                                 <Plus className="w-4 h-4" />
                                 Add Client
                             </button>
@@ -484,7 +485,7 @@ export default function ClientsPage() {
                 <input
                     type="text"
                     placeholder="Search clients by name, email or phone..."
-                    className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all shadow-sm"
+                    className="w-full pl-11 pr-4 py-3 border border-[#eadfcd] rounded-xl focus:ring-2 focus:ring-[#c4a870]/30 focus:border-[#c4a870] outline-none transition-all shadow-sm bg-white/90"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -516,7 +517,7 @@ export default function ClientsPage() {
                     </div>
                 ) : (
                     filteredClients.map((client) => (
-                        <div key={client.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                        <div key={client.id} className="bg-white/90 border border-[#eadfcd] rounded-2xl p-6 shadow-[0_12px_30px_rgba(20,16,12,0.06)] hover:shadow-[0_20px_40px_rgba(20,16,12,0.08)] transition-all group relative overflow-hidden">
                             <div className="flex items-center gap-4 mb-4">
                                 {client.avatar_url ? (
                                     <Image
@@ -527,33 +528,33 @@ export default function ClientsPage() {
                                         className="w-14 h-14 rounded-full object-cover border-2 border-slate-50"
                                     />
                                 ) : (
-                                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl border-2 border-primary/5">
+                                    <div className="w-14 h-14 rounded-full bg-[#f6efe4] flex items-center justify-center text-[#9c7c46] font-bold text-xl border-2 border-[#eadfcd]">
                                         {client.full_name?.charAt(0) || 'U'}
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-bold text-slate-900 truncate group-hover:text-primary transition-colors">
+                                    <h3 className="text-lg font-bold text-[#1b140a] truncate group-hover:text-[#9c7c46] transition-colors">
                                         {client.full_name || 'Anonymous Client'}
                                     </h3>
-                                    <p className="text-sm text-slate-500 flex items-center gap-1">
+                                    <p className="text-sm text-[#6f5b3e] flex items-center gap-1">
                                         <Calendar className="w-3.5 h-3.5" />
                                         Since {formatDate(client.created_at)}
                                     </p>
                                 </div>
-                                <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                                <button className="p-1.5 text-[#bda87f] hover:text-[#9c7c46] rounded-lg hover:bg-[#f6efe4] transition-colors">
                                     <MoreVertical className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="space-y-3 pt-4 border-t border-slate-100/50">
-                                <div className="flex items-center gap-3 text-slate-600">
-                                    <Mail className="w-4 h-4 text-slate-400" />
+                            <div className="space-y-3 pt-4 border-t border-[#eadfcd]">
+                                <div className="flex items-center gap-3 text-[#6f5b3e]">
+                                    <Mail className="w-4 h-4 text-[#bda87f]" />
                                     <span className="text-sm truncate" title={client.email || ''}>
                                         {client.email || 'No email provided'}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-3 text-slate-600">
-                                    <Phone className="w-4 h-4 text-slate-400" />
+                                <div className="flex items-center gap-3 text-[#6f5b3e]">
+                                    <Phone className="w-4 h-4 text-[#bda87f]" />
                                     <span className="text-sm">
                                         {client.phone || 'No phone provided'}
                                     </span>
@@ -607,24 +608,24 @@ export default function ClientsPage() {
 
                             <div className="mt-6 flex items-center justify-between">
                                 <div className="flex flex-col">
-                                    <span className="text-2xl font-black text-slate-900 leading-tight">
+                                    <span className="text-2xl font-black text-[#1b140a] leading-tight">
                                         {client.trips_count}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                    <span className="text-[10px] uppercase tracking-wider font-bold text-[#bda87f]">
                                         Total Trips
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Link
                                         href={`/admin/clients/${client.id}`}
-                                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 px-3 py-2 rounded-full"
+                                        className="flex items-center gap-1.5 text-xs font-bold text-[#9c7c46] hover:text-[#7b5f31] transition-colors bg-[#f6efe4] px-3 py-2 rounded-full"
                                     >
                                         View Profile
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </Link>
                                     <button
                                         onClick={() => handleDeleteClient(client.id)}
-                                        className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-3 py-2 rounded-full"
+                                        className="text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 px-3 py-2 rounded-full"
                                     >
                                         Delete
                                     </button>

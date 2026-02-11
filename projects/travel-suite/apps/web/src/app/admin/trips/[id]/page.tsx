@@ -601,15 +601,15 @@ export default function TripDetailPage() {
                 <div className="flex items-center gap-4">
                     <Link
                         href="/admin/trips"
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 hover:bg-[#f6efe4] rounded-lg transition-colors"
                     >
-                        <ArrowLeft className="h-5 w-5 text-gray-600" />
+                        <ArrowLeft className="h-5 w-5 text-[#6f5b3e]" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
+                        <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
                             {trip.itineraries?.trip_title || trip.destination}
                         </h1>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 mt-1 text-sm text-[#6f5b3e]">
                             <span className="flex items-center gap-1">
                                 <User className="h-4 w-4" />
                                 {trip.profiles?.full_name}
@@ -626,7 +626,7 @@ export default function TripDetailPage() {
                     <Dialog open={notificationOpen} onOpenChange={setNotificationOpen}>
                         <DialogTrigger asChild>
                             <button
-                                className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] rounded-lg hover:bg-[#f6efe4] transition-colors text-[#6f5b3e]"
                             >
                                 <Bell className="h-4 w-4" />
                                 Notify Client
@@ -696,7 +696,7 @@ export default function TripDetailPage() {
                             href={clientWhatsAppLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
                         >
                             <MessageCircle className="h-4 w-4" />
                             WhatsApp Client
@@ -704,7 +704,7 @@ export default function TripDetailPage() {
                     ) : (
                         <button
                             disabled
-                            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-400 rounded-lg cursor-not-allowed"
+                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#cbb68e] rounded-lg cursor-not-allowed"
                             title="Client phone not available"
                         >
                             <MessageCircle className="h-4 w-4" />
@@ -714,7 +714,7 @@ export default function TripDetailPage() {
                     <button
                         onClick={saveChanges}
                         disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-colors disabled:opacity-50"
                     >
                         <Save className="h-4 w-4" />
                         {saving ? "Saving..." : "Save Changes"}
