@@ -77,6 +77,7 @@ python main.py
   - Client creation with travel preference metadata
   - Lifecycle stages include payment and review phases (`payment_pending`, `payment_confirmed`, `review`)
   - Kanban lifecycle board with stage movement controls (`lead` → `past`)
+  - Dedicated Kanban page (`/admin/kanban`) with drag/drop and transition timeline
   - Role override (`client` ↔ `driver`) from Clients panel
   - Driver account linking auto-syncs linked app user role to `driver`
 

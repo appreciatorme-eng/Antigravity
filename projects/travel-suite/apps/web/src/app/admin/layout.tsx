@@ -22,6 +22,7 @@ import {
     Wand2,
     ClipboardList,
     Compass,
+    Columns3,
 } from "lucide-react";
 
 const displayFont = Playfair_Display({
@@ -41,6 +42,7 @@ const sidebarLinks = [
     { href: "/admin/drivers", label: "Drivers", icon: Car },
     { href: "/admin/trips", label: "Trips", icon: MapPin },
     { href: "/admin/clients", label: "Clients", icon: Users },
+    { href: "/admin/kanban", label: "Kanban", icon: Columns3 },
     { href: "/admin/activity", label: "Activity", icon: ClipboardList },
     { href: "/admin/notifications", label: "Notifications", icon: Bell },
     { href: "/admin/templates", label: "Templates", icon: Wand2 },

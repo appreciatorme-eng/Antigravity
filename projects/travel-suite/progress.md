@@ -75,6 +75,10 @@
   - stage columns from `lead` to `past` including `review`
   - one-click left/right movement per client card
   - lifecycle stage transitions are audit logged to `workflow_stage_events`
+- Added dedicated admin Kanban page (`/admin/kanban`):
+  - drag/drop stage movement + arrow controls
+  - recent transition timeline fed by `workflow_stage_events`
+  - new admin API endpoint: `/api/admin/workflow/events`
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
