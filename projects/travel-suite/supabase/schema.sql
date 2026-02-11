@@ -1312,3 +1312,90 @@ CREATE POLICY "Admins can manage invoice payments"
     ON public.invoice_payments FOR ALL
     USING (public.is_org_admin(organization_id))
     WITH CHECK (public.is_org_admin(organization_id));
+
+-- ================================================
+-- NOTIFICATION DELIVERY STATUS (Channel-level tracking)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.notification_delivery_status (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+    queue_id UUID REFERENCES public.notification_queue(id) ON DELETE CASCADE,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    recipient_phone TEXT,
+    recipient_type TEXT CHECK (recipient_type IN ('client', 'driver', 'admin')),
+    channel TEXT NOT NULL CHECK (channel IN ('whatsapp', 'push', 'email')),
+    provider TEXT,
+    provider_message_id TEXT,
+    notification_type TEXT,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'processing', 'sent', 'failed', 'skipped', 'retrying')),
+    attempt_number INTEGER NOT NULL DEFAULT 1,
+    error_message TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    sent_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_status_queue
+    ON public.notification_delivery_status(queue_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_status_status
+    ON public.notification_delivery_status(status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_status_org
+    ON public.notification_delivery_status(organization_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_status_trip
+    ON public.notification_delivery_status(trip_id, created_at DESC);
+
+ALTER TABLE public.notification_delivery_status ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can view notification delivery status"
+    ON public.notification_delivery_status FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  notification_delivery_status.organization_id,
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_delivery_status.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_delivery_status.user_id)
+              )
+        )
+    );
+
+CREATE POLICY "Users can view own delivery status"
+    ON public.notification_delivery_status FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage notification delivery status"
+    ON public.notification_delivery_status FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  notification_delivery_status.organization_id,
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_delivery_status.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_delivery_status.user_id)
+              )
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  notification_delivery_status.organization_id,
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_delivery_status.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_delivery_status.user_id)
+              )
+        )
+    );

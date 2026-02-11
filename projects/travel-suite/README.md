@@ -150,6 +150,7 @@ Key tables:
 - `trip_driver_assignments` - Driver assignments per day
 - `workflow_stage_events.organization_id` - tenant-safe lifecycle audit logs
 - `invoices` / `invoice_payments` - billing and payment tracking foundation
+- `notification_delivery_status` - per-channel delivery tracking (`whatsapp`/`push`/`email`) for queue processing
 
 Security baseline:
 - Organization-scoped RLS hardening is applied across workflow, CRM, queue, billing, trips, and itinerary-access policies.

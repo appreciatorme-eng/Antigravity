@@ -23,6 +23,60 @@ interface QueueItem {
     status: QueueStatus;
 }
 
+async function resolveOrganizationIdForQueueItem(item: QueueItem): Promise<string | null> {
+    if (item.trip_id) {
+        const { data: trip } = await supabaseAdmin
+            .from("trips")
+            .select("organization_id")
+            .eq("id", item.trip_id)
+            .maybeSingle();
+        if (trip?.organization_id) return trip.organization_id;
+    }
+
+    if (item.user_id) {
+        const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", item.user_id)
+            .maybeSingle();
+        if (profile?.organization_id) return profile.organization_id;
+    }
+
+    return null;
+}
+
+async function trackDeliveryStatus(params: {
+    organizationId: string | null;
+    item: QueueItem;
+    channel: "whatsapp" | "push" | "email";
+    provider: string;
+    status: "sent" | "failed" | "skipped" | "retrying";
+    attemptNumber: number;
+    errorMessage?: string | null;
+    providerMessageId?: string | null;
+    metadata?: Record<string, unknown>;
+}) {
+    const nowIso = new Date().toISOString();
+    await supabaseAdmin.from("notification_delivery_status").insert({
+        organization_id: params.organizationId,
+        queue_id: params.item.id,
+        trip_id: params.item.trip_id,
+        user_id: params.item.user_id,
+        recipient_phone: params.item.recipient_phone,
+        recipient_type: params.item.recipient_type,
+        channel: params.channel,
+        provider: params.provider,
+        provider_message_id: params.providerMessageId || null,
+        notification_type: params.item.notification_type,
+        status: params.status,
+        attempt_number: params.attemptNumber,
+        error_message: params.errorMessage || null,
+        metadata: params.metadata || {},
+        sent_at: params.status === "sent" ? nowIso : null,
+        failed_at: params.status === "failed" ? nowIso : null,
+    });
+}
+
 function getStringPayloadValue(payload: Record<string, unknown> | null, key: string): string {
     const value = payload?.[key];
     return typeof value === "string" ? value : "";
@@ -145,6 +199,7 @@ export async function POST(request: NextRequest) {
             }
 
             const attempts = Number(row.attempts || 0) + 1;
+            const organizationId = await resolveOrganizationIdForQueueItem(row);
             const payload = row.payload || {};
             const templateKey = getStringPayloadValue(payload, "template_key");
             const templateVars = ((payload.template_vars as TemplateVars | undefined) || {}) as TemplateVars;
@@ -195,6 +250,19 @@ export async function POST(request: NextRequest) {
                     channelErrors.push(`whatsapp: ${waResult.error}`);
                 }
 
+                await trackDeliveryStatus({
+                    organizationId,
+                    item: row,
+                    channel: "whatsapp",
+                    provider: "meta_whatsapp_cloud",
+                    status: waResult.success ? "sent" : "failed",
+                    attemptNumber: attempts,
+                    errorMessage: waResult.success ? null : waResult.error || null,
+                    metadata: {
+                        template_key: templateKey || null,
+                    },
+                });
+
                 await supabaseAdmin.from("notification_logs").insert({
                     trip_id: row.trip_id,
                     recipient_id: row.user_id,
@@ -206,6 +274,16 @@ export async function POST(request: NextRequest) {
                     status: waResult.success ? "sent" : "failed",
                     error_message: waResult.success ? null : waResult.error,
                     sent_at: new Date().toISOString(),
+                });
+            } else {
+                await trackDeliveryStatus({
+                    organizationId,
+                    item: row,
+                    channel: "whatsapp",
+                    provider: "meta_whatsapp_cloud",
+                    status: "skipped",
+                    attemptNumber: attempts,
+                    errorMessage: "Recipient phone is missing",
                 });
             }
 
@@ -224,6 +302,26 @@ export async function POST(request: NextRequest) {
                 if (!pushResult.success && pushResult.error) {
                     channelErrors.push(`push: ${pushResult.error}`);
                 }
+
+                await trackDeliveryStatus({
+                    organizationId,
+                    item: row,
+                    channel: "push",
+                    provider: "firebase_fcm",
+                    status: pushResult.success ? "sent" : "failed",
+                    attemptNumber: attempts,
+                    errorMessage: pushResult.success ? null : pushResult.error || null,
+                });
+            } else {
+                await trackDeliveryStatus({
+                    organizationId,
+                    item: row,
+                    channel: "push",
+                    provider: "firebase_fcm",
+                    status: "skipped",
+                    attemptNumber: attempts,
+                    errorMessage: "Recipient user_id is missing",
+                });
             }
 
             const isSuccess = whatsappSuccess || pushSuccess;

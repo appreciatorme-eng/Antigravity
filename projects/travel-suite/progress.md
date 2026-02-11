@@ -456,3 +456,14 @@
 - Added README section documenting the health endpoint.
 - Added admin dashboard health card (auto-refresh every 60s):
   - `apps/web/src/app/admin/page.tsx`
+
+## 2026-02-11 - Notification Delivery Tracking
+
+### Completed
+- Added migration:
+  - `supabase/migrations/20260212004000_notification_delivery_status.sql`
+- Added new table `notification_delivery_status` with indexes + RLS policies.
+- Enhanced queue processor to write per-channel delivery outcomes:
+  - `apps/web/src/app/api/notifications/process-queue/route.ts`
+  - tracks `whatsapp` and `push` statuses per attempt (`sent`, `failed`, `skipped`)
+  - includes provider metadata and error details
