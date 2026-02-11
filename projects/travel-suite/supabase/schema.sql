@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     notes TEXT,
     lead_status TEXT DEFAULT 'new',
     client_tag TEXT DEFAULT 'standard',
+    phase_notifications_enabled BOOLEAN NOT NULL DEFAULT true,
     lifecycle_stage TEXT DEFAULT 'lead',
     last_contacted_at TIMESTAMPTZ,
     welcome_email_sent_at TIMESTAMPTZ,
@@ -626,7 +627,7 @@ CREATE TRIGGER set_updated_at_trip_location_shares
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name, avatar_url, lead_status, lifecycle_stage, client_tag)
+    INSERT INTO public.profiles (id, email, full_name, avatar_url, lead_status, lifecycle_stage, client_tag, phase_notifications_enabled)
     VALUES (
         NEW.id,
         NEW.email,
@@ -634,7 +635,8 @@ BEGIN
         NEW.raw_user_meta_data->>'avatar_url',
         'new',
         'lead',
-        'standard'
+        'standard',
+        true
     );
     RETURN NEW;
 END;

@@ -45,6 +45,7 @@ interface Client {
     notes?: string | null;
     lead_status?: string | null;
     client_tag?: string | null;
+    phase_notifications_enabled?: boolean | null;
     lifecycle_stage?: string | null;
     marketing_opt_in?: boolean | null;
     referral_source?: string | null;
@@ -132,6 +133,7 @@ export default function ClientsPage() {
         notes: "",
         leadStatus: "new",
         clientTag: "standard",
+        phaseNotificationsEnabled: true,
         lifecycleStage: "lead",
         marketingOptIn: false,
         referralSource: "",
@@ -220,6 +222,7 @@ export default function ClientsPage() {
             notes: "",
             leadStatus: "new",
             clientTag: "standard",
+            phaseNotificationsEnabled: true,
             lifecycleStage: "lead",
             marketingOptIn: false,
             referralSource: "",
@@ -258,6 +261,7 @@ export default function ClientsPage() {
                     notes: formData.notes || null,
                     lead_status: formData.leadStatus || "new",
                     client_tag: formData.clientTag || "standard",
+                    phase_notifications_enabled: formData.phaseNotificationsEnabled,
                     lifecycle_stage: formData.lifecycleStage || "lead",
                     marketing_opt_in: formData.marketingOptIn,
                     referral_source: formData.referralSource || null,

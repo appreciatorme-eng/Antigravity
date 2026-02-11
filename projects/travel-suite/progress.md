@@ -93,6 +93,10 @@
   - backfill migration to enforce `lead`/`new`/`standard` defaults for existing client rows
   - signup profile trigger now explicitly writes default lifecycle fields
   - clients page includes `Next` action next to stage dropdown for one-click progression
+- Added per-client phase notification toggle (default ON):
+  - new `profiles.phase_notifications_enabled` boolean
+  - Kanban card toggle for each client
+  - lifecycle auto-notify now respects both stage-level rule and client-level toggle
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

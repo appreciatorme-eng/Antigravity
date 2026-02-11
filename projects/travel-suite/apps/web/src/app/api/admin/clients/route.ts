@@ -63,6 +63,10 @@ export async function POST(req: NextRequest) {
         const leadStatus = String(body.leadStatus || "").trim();
         const clientTag = String(body.clientTag || "").trim();
         const lifecycleStage = String(body.lifecycleStage || "").trim();
+        const phaseNotificationsEnabled =
+            typeof body.phaseNotificationsEnabled === "boolean"
+                ? body.phaseNotificationsEnabled
+                : true;
         const referralSource = String(body.referralSource || "").trim();
         const sourceChannel = String(body.sourceChannel || "").trim();
         const travelersCount = Number.isFinite(Number(body.travelersCount)) ? Number(body.travelersCount) : null;
@@ -111,6 +115,7 @@ export async function POST(req: NextRequest) {
             notes: notes || null,
             lead_status: leadStatus || "new",
             client_tag: clientTag || "standard",
+            phase_notifications_enabled: phaseNotificationsEnabled,
             lifecycle_stage: lifecycleStage || "lead",
             marketing_opt_in: marketingOptIn,
             referral_source: referralSource || null,
@@ -176,7 +181,7 @@ export async function GET(req: NextRequest) {
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
-            .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
+            .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, phase_notifications_enabled, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
             .order("created_at", { ascending: false });
 
@@ -263,13 +268,17 @@ export async function PATCH(req: NextRequest) {
         const role = typeof body.role === "string" ? body.role.trim() : "";
         const lifecycleStage = typeof body.lifecycle_stage === "string" ? body.lifecycle_stage.trim() : "";
         const clientTag = typeof body.client_tag === "string" ? body.client_tag.trim() : "";
+        const phaseNotificationsEnabled =
+            typeof body.phase_notifications_enabled === "boolean"
+                ? body.phase_notifications_enabled
+                : null;
 
         if (!profileId) {
             return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
         }
 
-        if (!role && !lifecycleStage && !clientTag) {
-            return NextResponse.json({ error: "Provide role, lifecycle_stage, or client_tag" }, { status: 400 });
+        if (!role && !lifecycleStage && !clientTag && phaseNotificationsEnabled === null) {
+            return NextResponse.json({ error: "Provide role, lifecycle_stage, client_tag, or phase_notifications_enabled" }, { status: 400 });
         }
 
         if (role && role !== "client" && role !== "driver") {
@@ -305,7 +314,7 @@ export async function PATCH(req: NextRequest) {
 
         const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
-            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination")
+            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination,phase_notifications_enabled")
             .eq("id", profileId)
             .maybeSingle();
 
@@ -313,10 +322,11 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Profile not found" }, { status: 404 });
         }
 
-        const updates: Record<string, string> = {};
+        const updates: Record<string, string | boolean> = {};
         if (role) updates.role = role;
         if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
         if (clientTag) updates.client_tag = clientTag;
+        if (phaseNotificationsEnabled !== null) updates.phase_notifications_enabled = phaseNotificationsEnabled;
         if (role === "client" && !lifecycleStage && !existingProfile.lifecycle_stage) {
             updates.lifecycle_stage = "lead";
         }
@@ -360,7 +370,8 @@ export async function PATCH(req: NextRequest) {
                 notifyClient = stageRule?.notify_client ?? true;
             }
 
-            if (!notifyClient) {
+            const clientNotificationsEnabled = existingProfile.phase_notifications_enabled ?? true;
+            if (!notifyClient || !clientNotificationsEnabled) {
                 return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
             }
 

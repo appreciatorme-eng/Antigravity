@@ -19,6 +19,7 @@ interface ClientCard {
     full_name: string | null;
     email: string | null;
     phone: string | null;
+    phase_notifications_enabled?: boolean | null;
     lifecycle_stage: LifecycleStage | null;
     lead_status: string | null;
 }
@@ -62,9 +63,9 @@ const STAGE_LABELS: Record<LifecycleStage, string> = {
 };
 
 const mockClients: ClientCard[] = [
-    { id: "c1", full_name: "Ava Chen", email: "ava@example.com", phone: "+1 415 555 1010", lifecycle_stage: "lead", lead_status: "new" },
-    { id: "c2", full_name: "Liam Walker", email: "liam@example.com", phone: "+44 20 7000 1000", lifecycle_stage: "payment_pending", lead_status: "qualified" },
-    { id: "c3", full_name: "Sofia Ramirez", email: "sofia@example.com", phone: "+34 91 123 4567", lifecycle_stage: "review", lead_status: "contacted" },
+    { id: "c1", full_name: "Ava Chen", email: "ava@example.com", phone: "+1 415 555 1010", phase_notifications_enabled: true, lifecycle_stage: "lead", lead_status: "new" },
+    { id: "c2", full_name: "Liam Walker", email: "liam@example.com", phone: "+44 20 7000 1000", phase_notifications_enabled: true, lifecycle_stage: "payment_pending", lead_status: "qualified" },
+    { id: "c3", full_name: "Sofia Ramirez", email: "sofia@example.com", phone: "+34 91 123 4567", phase_notifications_enabled: false, lifecycle_stage: "review", lead_status: "contacted" },
 ];
 
 const mockEvents: StageEvent[] = [
@@ -194,6 +195,41 @@ export default function AdminKanbanPage() {
         }
     };
 
+    const toggleClientPhaseNotifications = async (client: ClientCard, enabled: boolean) => {
+        setMovingClientId(client.id);
+        try {
+            if (useMockAdmin) {
+                setClients((prev) => prev.map((row) => (
+                    row.id === client.id ? { ...row, phase_notifications_enabled: enabled } : row
+                )));
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify({ id: client.id, phase_notifications_enabled: enabled }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error || "Failed to update client notification toggle");
+            }
+
+            setClients((prev) => prev.map((row) => (
+                row.id === client.id ? { ...row, phase_notifications_enabled: enabled } : row
+            )));
+        } catch (error) {
+            console.error("Toggle phase notifications failed:", error);
+            alert(error instanceof Error ? error.message : "Failed to update client notification toggle");
+        } finally {
+            setMovingClientId(null);
+        }
+    };
+
     const handleDrop = async (stage: LifecycleStage) => {
         if (!draggingClientId) return;
         const client = clients.find((row) => row.id === draggingClientId);
@@ -278,6 +314,17 @@ export default function AdminKanbanPage() {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
+                                        <div className="mt-2 flex items-center justify-between rounded-md border border-[#eadfcd] bg-[#fcf8f1] px-2 py-1.5">
+                                            <span className="text-[10px] uppercase tracking-wide text-[#8d7650]">Phase Notify</span>
+                                            <button
+                                                onClick={() => void toggleClientPhaseNotifications(client, !(client.phase_notifications_enabled ?? true))}
+                                                disabled={movingClientId === client.id}
+                                                className={`w-10 h-5 rounded-full relative transition-colors ${(client.phase_notifications_enabled ?? true) ? "bg-emerald-500" : "bg-slate-300"} disabled:opacity-60`}
+                                                type="button"
+                                            >
+                                                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${(client.phase_notifications_enabled ?? true) ? "right-0.5" : "left-0.5"}`} />
+                                            </button>
                                         </div>
                                         <div className="flex items-center gap-2 mt-2">
                                             <button
