@@ -594,6 +594,10 @@ CREATE TABLE IF NOT EXISTS public.notification_queue (
         'daily_briefing', 'trip_reminder', 'driver_assigned',
         'pickup_reminder', 'custom'
     )),
+    recipient_phone TEXT,
+    recipient_type TEXT CHECK (recipient_type IN ('client', 'driver', 'admin')),
+    channel_preference TEXT DEFAULT 'whatsapp_first',
+    idempotency_key TEXT,
     scheduled_for TIMESTAMPTZ NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'sent', 'failed', 'cancelled')),
@@ -611,6 +615,7 @@ ALTER TABLE public.notification_queue ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_notification_queue_scheduled ON public.notification_queue(scheduled_for, status);
 CREATE INDEX IF NOT EXISTS idx_notification_queue_user ON public.notification_queue(user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_queue_trip ON public.notification_queue(trip_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_queue_idempotency ON public.notification_queue(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 -- Notification queue policies (service role only for processing)
 CREATE POLICY "Admins can view notification queue"
@@ -632,6 +637,214 @@ CREATE POLICY "Admins can manage notification queue"
             AND profiles.role = 'admin'
         )
     );
+
+-- Queue pickup reminder notifications whenever driver assignments are changed.
+CREATE OR REPLACE FUNCTION public.queue_pickup_reminders_from_assignment()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+    trip_rec record;
+    driver_rec record;
+    pickup_ts timestamptz;
+    reminder_ts timestamptz;
+    pickup_time_text text;
+    pickup_location_text text;
+    destination_text text;
+BEGIN
+    SELECT
+        t.id,
+        t.client_id,
+        t.start_date,
+        i.trip_title,
+        COALESCE(i.destination, '') AS destination,
+        p.full_name AS client_name,
+        COALESCE(p.phone_normalized, p.phone, '') AS client_phone
+    INTO trip_rec
+    FROM public.trips t
+    LEFT JOIN public.itineraries i ON i.id = t.itinerary_id
+    LEFT JOIN public.profiles p ON p.id = t.client_id
+    WHERE t.id = NEW.trip_id;
+
+    IF NOT FOUND THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.pickup_time IS NULL THEN
+        UPDATE public.notification_queue
+        SET
+            status = 'cancelled',
+            processed_at = NOW(),
+            error_message = 'Pickup time removed by assignment update'
+        WHERE idempotency_key IN (
+            NEW.id::text || ':client:pickup',
+            NEW.id::text || ':driver:pickup'
+        )
+        AND status IN ('pending', 'processing');
+        RETURN NEW;
+    END IF;
+
+    pickup_ts := (
+        (trip_rec.start_date::date + (NEW.day_number - 1))::timestamp
+        + NEW.pickup_time
+    )::timestamptz;
+    reminder_ts := GREATEST(pickup_ts - INTERVAL '60 minutes', NOW());
+
+    pickup_time_text := TO_CHAR(NEW.pickup_time, 'HH24:MI');
+    pickup_location_text := COALESCE(NULLIF(NEW.pickup_location, ''), 'Hotel lobby');
+    destination_text := COALESCE(NULLIF(trip_rec.destination, ''), 'your destination');
+
+    INSERT INTO public.notification_queue (
+        user_id,
+        trip_id,
+        notification_type,
+        recipient_phone,
+        recipient_type,
+        scheduled_for,
+        payload,
+        status,
+        idempotency_key
+    ) VALUES (
+        trip_rec.client_id,
+        NEW.trip_id,
+        'pickup_reminder',
+        NULLIF(trip_rec.client_phone, ''),
+        'client',
+        reminder_ts,
+        jsonb_build_object(
+            'title', 'Pickup Reminder',
+            'body', format(
+                'Your pickup is in 1 hour (%s) at %s for Day %s.',
+                pickup_time_text,
+                pickup_location_text,
+                NEW.day_number
+            ),
+            'trip_id', NEW.trip_id::text,
+            'day_number', NEW.day_number,
+            'pickup_time', pickup_time_text,
+            'pickup_location', pickup_location_text,
+            'destination', destination_text,
+            'trip_title', COALESCE(trip_rec.trip_title, destination_text),
+            'recipient', 'client'
+        ),
+        'pending',
+        NEW.id::text || ':client:pickup'
+    )
+    ON CONFLICT (idempotency_key)
+    DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        recipient_phone = EXCLUDED.recipient_phone,
+        scheduled_for = EXCLUDED.scheduled_for,
+        payload = EXCLUDED.payload,
+        status = 'pending',
+        attempts = 0,
+        error_message = NULL,
+        last_attempt_at = NULL,
+        processed_at = NULL;
+
+    IF NEW.external_driver_id IS NOT NULL THEN
+        SELECT d.full_name, d.phone
+        INTO driver_rec
+        FROM public.external_drivers d
+        WHERE d.id = NEW.external_driver_id;
+
+        INSERT INTO public.notification_queue (
+            user_id,
+            trip_id,
+            notification_type,
+            recipient_phone,
+            recipient_type,
+            scheduled_for,
+            payload,
+            status,
+            idempotency_key
+        ) VALUES (
+            NULL,
+            NEW.trip_id,
+            'pickup_reminder',
+            COALESCE(driver_rec.phone, ''),
+            'driver',
+            reminder_ts,
+            jsonb_build_object(
+                'title', 'Upcoming Pickup',
+                'body', format(
+                    'Pickup in 1 hour (%s) at %s. Client: %s.',
+                    pickup_time_text,
+                    pickup_location_text,
+                    COALESCE(trip_rec.client_name, 'Client')
+                ),
+                'trip_id', NEW.trip_id::text,
+                'day_number', NEW.day_number,
+                'pickup_time', pickup_time_text,
+                'pickup_location', pickup_location_text,
+                'destination', destination_text,
+                'trip_title', COALESCE(trip_rec.trip_title, destination_text),
+                'recipient', 'driver'
+            ),
+            'pending',
+            NEW.id::text || ':driver:pickup'
+        )
+        ON CONFLICT (idempotency_key)
+        DO UPDATE SET
+            recipient_phone = EXCLUDED.recipient_phone,
+            scheduled_for = EXCLUDED.scheduled_for,
+            payload = EXCLUDED.payload,
+            status = 'pending',
+            attempts = 0,
+            error_message = NULL,
+            last_attempt_at = NULL,
+            processed_at = NULL;
+    ELSE
+        UPDATE public.notification_queue
+        SET
+            status = 'cancelled',
+            processed_at = NOW(),
+            error_message = 'Driver removed from assignment'
+        WHERE idempotency_key = NEW.id::text || ':driver:pickup'
+        AND status IN ('pending', 'processing');
+    END IF;
+
+    RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.cancel_pickup_reminders_on_assignment_delete()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+    UPDATE public.notification_queue
+    SET
+        status = 'cancelled',
+        processed_at = NOW(),
+        error_message = 'Assignment deleted'
+    WHERE idempotency_key IN (
+        OLD.id::text || ':client:pickup',
+        OLD.id::text || ':driver:pickup'
+    )
+    AND status IN ('pending', 'processing');
+
+    RETURN OLD;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_queue_pickup_reminders ON public.trip_driver_assignments;
+CREATE TRIGGER trg_queue_pickup_reminders
+AFTER INSERT OR UPDATE OF pickup_time, pickup_location, external_driver_id, day_number
+ON public.trip_driver_assignments
+FOR EACH ROW
+EXECUTE FUNCTION public.queue_pickup_reminders_from_assignment();
+
+DROP TRIGGER IF EXISTS trg_cancel_pickup_reminders_delete ON public.trip_driver_assignments;
+CREATE TRIGGER trg_cancel_pickup_reminders_delete
+AFTER DELETE
+ON public.trip_driver_assignments
+FOR EACH ROW
+EXECUTE FUNCTION public.cancel_pickup_reminders_on_assignment_delete();
 
 -- ================================================
 -- REALTIME SUBSCRIPTIONS

@@ -1,5 +1,25 @@
 # Progress Log
 
+## Session: 2026-02-11 (Pickup Reminder Automation Foundation)
+
+### Backend & Notification Automation
+- **Status:** in progress
+- Added DB migration for reminder queue extensibility:
+  - `recipient_phone`, `recipient_type`, `channel_preference`, `idempotency_key`
+  - unique idempotency index
+- Added assignment-triggered reminder queueing:
+  - queue client + driver reminders at `pickup_time - 60 min`
+  - auto-cancel queue rows when pickup time is removed, driver removed, or assignment deleted
+- Added queue processing API endpoint:
+  - `POST /api/notifications/process-queue`
+  - secret-gated using `NOTIFICATION_CRON_SECRET`
+  - WhatsApp-first attempt + push fallback for app users
+  - retries failed sends (up to 3 attempts)
+- Added WhatsApp server integration helper for Meta Cloud API.
+
+### Documentation
+- Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
+
 ## Session: 2026-02-11 (Admin Trip UX + Routing + Hotels)
 
 ### Web App Fixes

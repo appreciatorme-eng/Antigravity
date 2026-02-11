@@ -1,9 +1,9 @@
 # Deployment Instructions for Notification System
 
-Follow these steps to deploy the backend components required for the push notification system.
+Follow these steps to deploy the backend components required for push notifications and scheduled pickup reminders.
 
 ## 1. Database Migration
-Apply the new schema for `push_tokens` and `notification_logs`:
+Apply the latest schema/migrations (`push_tokens`, `notification_logs`, reminder queue triggers):
 
 ```bash
 npx supabase db push
@@ -45,6 +45,30 @@ Ensure your `apps/web/.env` (and Vercel/Production env) has:
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+NOTIFICATION_CRON_SECRET=... # Strong random secret for queue processor endpoint
+```
+
+### Optional: WhatsApp Cloud API (Recommended)
+To send real WhatsApp reminders (instead of push-only fallback), configure:
+```
+WHATSAPP_TOKEN=...
+WHATSAPP_PHONE_ID=...
+```
+If missing, scheduled reminders still run and will use push where possible, but WhatsApp delivery will fail and retry.
+
+## 5. Configure Scheduled Queue Processing
+The reminder queue is auto-populated from `trip_driver_assignments` updates via DB triggers.
+
+Run a scheduler every minute (Vercel Cron, external cron, or Supabase scheduled call) to invoke:
+```
+POST /api/notifications/process-queue
+Header: x-notification-cron-secret: <NOTIFICATION_CRON_SECRET>
+```
+
+Example curl:
+```bash
+curl -X POST "https://<your-web-domain>/api/notifications/process-queue" \
+  -H "x-notification-cron-secret: <NOTIFICATION_CRON_SECRET>"
 ```
 
 ### Optional: Welcome Email Provider
@@ -55,7 +79,7 @@ WELCOME_FROM_EMAIL=...
 ```
 *If these are missing, the welcome email endpoint returns a skipped response and does not block user signup.*
 
-## 5. Build Mobile App
+## 6. Build Mobile App
 Rebuild the mobile app to pick up the `Info.plist` changes:
 
 ```bash
