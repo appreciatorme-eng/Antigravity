@@ -194,10 +194,42 @@ export default function AdminLayout({
                         Mock mode enabled. Admin access and data are simulated for demo purposes.
                     </div>
                 )}
-                <div className="rounded-[32px] bg-white/85 shadow-[0_24px_60px_rgba(20,16,12,0.08)] ring-1 ring-[#eadfcd] p-8 backdrop-blur">
+                <div className="rounded-[32px] bg-white/85 shadow-[0_24px_60px_rgba(20,16,12,0.08)] ring-1 ring-[#eadfcd] p-8 backdrop-blur lux-fade-up lux-stagger">
                     {children}
                 </div>
             </main>
+            <style jsx global>{`
+                @keyframes luxFadeUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(12px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                .lux-fade-up {
+                    animation: luxFadeUp 420ms ease-out both;
+                }
+                .lux-stagger > * {
+                    animation: luxFadeUp 480ms ease-out both;
+                }
+                .lux-stagger > *:nth-child(1) { animation-delay: 40ms; }
+                .lux-stagger > *:nth-child(2) { animation-delay: 90ms; }
+                .lux-stagger > *:nth-child(3) { animation-delay: 140ms; }
+                .lux-stagger > *:nth-child(4) { animation-delay: 190ms; }
+                .lux-stagger > *:nth-child(5) { animation-delay: 240ms; }
+                .lux-stagger > *:nth-child(6) { animation-delay: 290ms; }
+                .lux-stagger > *:nth-child(7) { animation-delay: 340ms; }
+                .lux-stagger > *:nth-child(8) { animation-delay: 390ms; }
+                @media (prefers-reduced-motion: reduce) {
+                    .lux-fade-up,
+                    .lux-stagger > * {
+                        animation: none;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

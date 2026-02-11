@@ -63,6 +63,11 @@ python main.py
 - **PDF Export**: @react-pdf/renderer
 - **Maps**: mapcn (MapLibre GL)
 - **Authentication**: Supabase Auth with Google OAuth
+- **Admin Trip Editor**:
+  - Route-optimized day sequencing from itinerary locations
+  - Numbered map markers + route distance labels
+  - Auto-calculated start/end times (30-minute slots, travel-time aware)
+  - Nearby hotel suggestions with one-click autofill (name/address/phone)
 
 ## 🤖 AI Agents
 
@@ -114,6 +119,8 @@ Key tables:
 ### In Progress
 - [ ] End-to-end push notification validation on real devices
 - [ ] Admin panel hardening (audit logs, role-based access polish)
+- [ ] Automated pickup reminders (T-60 min): WhatsApp + push fallback
+- [ ] Driver/client live location sharing workflow
 - [ ] White-label support
 
 ### Future

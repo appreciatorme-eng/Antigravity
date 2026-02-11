@@ -1,5 +1,27 @@
 # Progress Log
 
+## Session: 2026-02-11 (Admin Trip UX + Routing + Hotels)
+
+### Web App Fixes
+- **Status:** complete
+- Fixed itinerary schedule readability and removed time overlap in admin trip day editor.
+- Enforced 30-minute time slots for day planning and monotonic time progression.
+- Added route visualization improvements in trip map:
+  - numbered stop markers
+  - route line and segment distance labels
+  - total route distance badge
+- Added route order optimization for daily activities based on coordinates.
+- Added location-driven hotel assistance in accommodation card:
+  - nearby hotel suggestions
+  - one-click autofill for hotel name, address, and contact phone
+- Added duration UX improvements:
+  - replaced cramped duration input with fixed duration selector options
+  - reduced legacy “always 60 mins” behavior by inferring activity duration from context
+
+### Documentation
+- Updated core project docs to reflect itinerary routing, scheduling, and hotel autofill features.
+- Documented next milestone scope for pickup reminders (WhatsApp-first + push fallback) and location sharing.
+
 ## Session: 2026-02-10 (Deep Link Validation)
 
 ### Mobile App Fixes

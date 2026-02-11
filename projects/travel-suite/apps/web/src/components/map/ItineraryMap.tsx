@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Map, MapControls, MapMarker, MarkerPopup, useMap } from "@/components/ui/map";
 import maplibregl from "maplibre-gl";
 import { MapPin } from "lucide-react";
@@ -43,6 +43,59 @@ function MapBoundsController({ bounds }: { bounds: maplibregl.LngLatBounds }) {
     return null;
 }
 
+function MapRouteLine({ coordinates }: { coordinates: [number, number][] }) {
+    const { map, isLoaded } = useMap();
+    const sourceId = "itinerary-route";
+    const layerId = "itinerary-route-line";
+
+    useEffect(() => {
+        if (!map || !isLoaded) return;
+
+        const data = {
+            type: "Feature",
+            geometry: {
+                type: "LineString",
+                coordinates,
+            },
+            properties: {},
+        };
+
+        if (map.getSource(sourceId)) {
+            const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
+            source.setData(data);
+            return;
+        }
+
+        map.addSource(sourceId, {
+            type: "geojson",
+            data,
+        });
+
+        map.addLayer({
+            id: layerId,
+            type: "line",
+            source: sourceId,
+            paint: {
+                "line-color": "#c4a870",
+                "line-width": 3,
+                "line-opacity": 0.8,
+                "line-dasharray": [1.5, 1.5],
+            },
+        });
+
+        return () => {
+            if (map.getLayer(layerId)) {
+                map.removeLayer(layerId);
+            }
+            if (map.getSource(sourceId)) {
+                map.removeSource(sourceId);
+            }
+        };
+    }, [map, isLoaded, coordinates]);
+
+    return null;
+}
+
 export default function ItineraryMap({ activities }: ItineraryMapProps) {
     // Filter out activities without valid coordinates
     const validActivities = activities.filter(a =>
@@ -61,11 +114,13 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
         );
     }
 
+    const routeCoordinates = useMemo<[number, number][]>(
+        () => validActivities.map(act => [act.coordinates!.lng, act.coordinates!.lat]),
+        [validActivities]
+    );
+
     // Default center (will be overridden by fitBounds)
-    const initialCenter: [number, number] = [
-        validActivities[0].coordinates!.lng,
-        validActivities[0].coordinates!.lat
-    ];
+    const initialCenter: [number, number] = routeCoordinates[0];
 
     // Calculate bounds
     const bounds = new maplibregl.LngLatBounds();
@@ -84,6 +139,7 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
         >
             <MapControls position="bottom-right" showCompass={false} />
             <MapBoundsController bounds={bounds} />
+            {routeCoordinates.length > 1 && <MapRouteLine coordinates={routeCoordinates} />}
 
             {validActivities.map((act, idx) => (
                 <MapMarker

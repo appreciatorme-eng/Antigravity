@@ -61,6 +61,18 @@ Phase 5
 - [x] Run `flutter analyze` (clean, 0 issues)
 - [x] Wire “I’ve Landed” to backend notification endpoint
 
+### Phase 5.2: Admin Trip Operations (Web)
+- [x] Fix trip detail loading/auth issues in admin flows
+- [x] Add robust day scheduling with non-overlapping start/end times
+- [x] Enforce 30-minute interval planning and monotonic sequencing
+- [x] Add route rendering and numbered stop markers in itinerary map
+- [x] Show per-segment and total route distance labels
+- [x] Auto-optimize activity order by proximity (nearest-neighbor + 2-opt pass)
+- [x] Auto-geocode activity locations on edit/blur
+- [x] Add nearby hotel lookup and one-click accommodation autofill
+- [ ] Add scheduled reminder engine (T-60 min pickup) with WhatsApp-first delivery
+- [ ] Add live location sharing between driver and client per trip/day
+
 ### Phase 6: Monetization & SaaS Readiness
 - [ ] Document monetization plan and tiering
 - [ ] Add feature gating by `subscription_tier`

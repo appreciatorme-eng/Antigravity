@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -269,6 +269,7 @@ export default function TripDetailPage() {
     const [notificationBody, setNotificationBody] = useState("");
     const [notificationEmail, setNotificationEmail] = useState("");
     const [useEmailTarget, setUseEmailTarget] = useState(false);
+    const geocodeCacheRef = useRef(new Map<string, { lat: number; lng: number }>());
 
     const supabase = createClient();
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
@@ -328,6 +329,22 @@ export default function TripDetailPage() {
         void fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        const activeDayData = itineraryDays.find((d) => d.day_number === activeDay);
+        if (!activeDayData) return;
+
+        activeDayData.activities.forEach((activity, index) => {
+            if (activity.location && !activity.coordinates) {
+                void (async () => {
+                    const coords = await geocodeLocation(activity.location || "", trip?.destination);
+                    if (coords) {
+                        updateActivityCoordinates(activeDay, index, coords);
+                    }
+                })();
+            }
+        });
+    }, [activeDay, itineraryDays, trip?.destination]);
+
     const updateAssignment = (dayNumber: number, field: keyof DriverAssignment, value: string) => {
         setAssignments((prev) => ({
             ...prev,
@@ -379,6 +396,73 @@ export default function TripDetailPage() {
         );
     };
 
+    const updateActivityCoordinates = (
+        dayNumber: number,
+        activityIndex: number,
+        coordinates: { lat: number; lng: number } | undefined
+    ) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    const newActivities = [...day.activities];
+                    newActivities[activityIndex] = {
+                        ...newActivities[activityIndex],
+                        coordinates,
+                    };
+                    return { ...day, activities: newActivities };
+                }
+                return day;
+            })
+        );
+    };
+
+    const geocodeLocation = async (location: string, destinationHint?: string) => {
+        const query = [location, destinationHint].filter(Boolean).join(", ");
+        if (!query.trim()) return undefined;
+
+        const cached = geocodeCacheRef.current.get(query);
+        if (cached) return cached;
+
+        try {
+            const url = new URL("https://nominatim.openstreetmap.org/search");
+            url.searchParams.set("format", "json");
+            url.searchParams.set("limit", "1");
+            url.searchParams.set("q", query);
+
+            const response = await fetch(url.toString(), {
+                headers: {
+                    "Accept": "application/json",
+                },
+            });
+            if (!response.ok) return undefined;
+            const data = await response.json();
+            if (!Array.isArray(data) || data.length === 0) return undefined;
+
+            const lat = Number(data[0].lat);
+            const lng = Number(data[0].lon);
+            if (Number.isNaN(lat) || Number.isNaN(lng)) return undefined;
+
+            const coords = { lat, lng };
+            geocodeCacheRef.current.set(query, coords);
+            return coords;
+        } catch (error) {
+            console.error("Geocode error:", error);
+            return undefined;
+        }
+    };
+
+    const handleLocationBlur = async (dayNumber: number, activityIndex: number, location?: string) => {
+        const cleanLocation = (location || "").trim();
+        if (!cleanLocation) {
+            updateActivityCoordinates(dayNumber, activityIndex, undefined);
+            return;
+        }
+        const coords = await geocodeLocation(cleanLocation, trip?.destination);
+        if (coords) {
+            updateActivityCoordinates(dayNumber, activityIndex, coords);
+        }
+    };
+
     const addActivity = (dayNumber: number) => {
         setItineraryDays((prev) =>
             prev.map((day) => {
@@ -387,7 +471,7 @@ export default function TripDetailPage() {
                         ...day,
                         activities: [
                             ...day.activities,
-                            { title: "New Activity", duration_minutes: 60 },
+                            { title: "New Activity", duration_minutes: 60, location: "" },
                         ],
                     };
                 }
@@ -985,12 +1069,26 @@ export default function TripDetailPage() {
                                                         className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5"
                                                         placeholder="Activity title"
                                                     />
-                                                    {activity.location && (
-                                                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                            <MapPin className="w-3 h-3" />
-                                                            {activity.location}
-                                                        </div>
-                                                    )}
+                                                    <div className="mt-2 flex items-center gap-2">
+                                                        <MapPin className="w-3.5 h-3.5 text-[#bda87f]" />
+                                                        <input
+                                                            type="text"
+                                                            value={activity.location || ""}
+                                                            onChange={(e) =>
+                                                                updateActivity(
+                                                                    activeDay,
+                                                                    index,
+                                                                    "location",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            onBlur={(e) =>
+                                                                handleLocationBlur(activeDay, index, e.target.value)
+                                                            }
+                                                            className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-sm text-[#6f5b3e]"
+                                                            placeholder="Location (auto-mapped)"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <input
@@ -1033,10 +1131,7 @@ export default function TripDetailPage() {
                         activities={
                             itineraryDays
                                 .find(d => d.day_number === activeDay)
-                                ?.activities.map(a => ({
-                                    ...a,
-                                    location: a.location || "Unknown Location"
-                                })) || []
+                                ?.activities || []
                         }
                     />
                 </div>
