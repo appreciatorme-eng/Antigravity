@@ -76,3 +76,12 @@ This update implements the highest-priority hardening work for Travel Suite admi
 ### Why it matters
 - Reduces risk of cross-tenant exposure at DB policy layer.
 - Adds defensive security even if an API route check regresses.
+
+### Verification
+- Added SQL verification script:
+  - `scripts/verify_rls_policies.sql`
+- Script checks:
+  - RLS enabled on critical tables
+  - expected policy presence
+  - helper function existence (`is_org_admin`)
+  - optional runtime cross-org deny template

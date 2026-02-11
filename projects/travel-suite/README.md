@@ -143,6 +143,7 @@ Key tables:
 
 Security baseline:
 - Organization-scoped RLS hardening is applied across workflow, CRM, queue, billing, trips, and itinerary-access policies.
+- Verification script: `scripts/verify_rls_policies.sql`
 
 ## 🛠️ Development Status
 

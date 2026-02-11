@@ -440,3 +440,4 @@
 ### Notes
 - Admin APIs still use service-role server client by design for operational routes.
 - RLS hardening is applied as defense-in-depth for direct DB access paths and future API refactors.
+- Added RLS verification script: `scripts/verify_rls_policies.sql` for policy regression checks in Supabase SQL Editor.
