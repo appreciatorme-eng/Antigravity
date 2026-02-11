@@ -103,6 +103,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - Scheduled jobs planned for daily briefings and reminders
 - WhatsApp template sends for operational reminders with push fallback
 - WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
+- Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)
 
 ## 🎨 Brand Identity
 

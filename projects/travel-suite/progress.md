@@ -60,6 +60,10 @@
 - Added WhatsApp template envelope rendering and queue delivery via Meta template API (with text fallback).
 - Added WhatsApp webhook endpoint (`/api/whatsapp/webhook`) with verification + inbound location parsing.
 - Inbound WhatsApp location messages now map to driver profiles by `phone_normalized` and write to `driver_locations`.
+- Added admin WhatsApp webhook health endpoint (`/api/admin/whatsapp/health`) and dashboard panel in Notifications page:
+  - ping throughput (1h/24h), stale active driver trips, unmapped external drivers
+  - latest driver ping ages
+  - drivers missing `phone_normalized` mapping
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

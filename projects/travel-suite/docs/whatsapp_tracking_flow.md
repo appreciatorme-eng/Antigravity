@@ -51,6 +51,16 @@ Current processing behavior:
 - if profile role is `driver`, save location to `driver_locations`
 - attach active trip when available (`driver_id` match + date window)
 
+Admin diagnostics:
+- Endpoint: `GET /api/admin/whatsapp/health`
+- Surface in admin notifications page as **WhatsApp Webhook Health** card
+- Shows:
+  - location ping volume (1h, 24h)
+  - stale active driver trips
+  - unmapped external drivers
+  - latest driver ping ages
+  - driver profiles missing `phone_normalized`
+
 ## Hybrid Channel Strategy (Implemented)
 
 1. Queue sends WhatsApp first for operational reliability.
@@ -82,4 +92,3 @@ Even after app-first:
 - `WHATSAPP_TEMPLATE_PICKUP_DRIVER`
 - `WHATSAPP_TEMPLATE_TRIP_DELAY`
 - `WHATSAPP_TEMPLATE_DRIVER_REASSIGNED`
-

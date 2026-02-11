@@ -11,6 +11,7 @@ import {
     Search,
     RefreshCcw,
     MessageCircle,
+    Activity,
 } from "lucide-react";
 
 interface NotificationLog {
@@ -38,6 +39,36 @@ interface QueueHealth {
     sent: number;
     failed: number;
     upcomingHour: number;
+}
+
+interface WhatsAppHealthSummary {
+    total_driver_profiles: number;
+    drivers_with_phone: number;
+    drivers_missing_phone: number;
+    active_trips_with_driver: number;
+    stale_active_driver_trips: number;
+    location_pings_last_1h: number;
+    location_pings_last_24h: number;
+    unmapped_external_drivers: number;
+}
+
+interface WhatsAppHealthPing {
+    driver_id: string;
+    driver_name: string;
+    trip_id: string | null;
+    recorded_at: string | null;
+    age_minutes: number | null;
+    status: "fresh" | "stale";
+}
+
+interface WhatsAppHealthPayload {
+    summary: WhatsAppHealthSummary;
+    latest_pings: WhatsAppHealthPing[];
+    drivers_missing_phone_list: Array<{
+        id: string;
+        full_name: string | null;
+        email: string | null;
+    }>;
 }
 
 const mockLogs: NotificationLog[] = [
@@ -115,6 +146,44 @@ const mockLogs: NotificationLog[] = [
     },
 ];
 
+const mockWhatsAppHealth: WhatsAppHealthPayload = {
+    summary: {
+        total_driver_profiles: 6,
+        drivers_with_phone: 5,
+        drivers_missing_phone: 1,
+        active_trips_with_driver: 4,
+        stale_active_driver_trips: 1,
+        location_pings_last_1h: 18,
+        location_pings_last_24h: 163,
+        unmapped_external_drivers: 2,
+    },
+    latest_pings: [
+        {
+            driver_id: "mock-driver-1",
+            driver_name: "Kenji Sato",
+            trip_id: "mock-trip-001",
+            recorded_at: new Date().toISOString(),
+            age_minutes: 1,
+            status: "fresh",
+        },
+        {
+            driver_id: "mock-driver-2",
+            driver_name: "Elena Petrova",
+            trip_id: "mock-trip-002",
+            recorded_at: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
+            age_minutes: 22,
+            status: "stale",
+        },
+    ],
+    drivers_missing_phone_list: [
+        {
+            id: "mock-driver-missing-1",
+            full_name: "Driver Missing Phone",
+            email: "driver.missing@example.com",
+        },
+    ],
+};
+
 export default function NotificationLogsPage() {
     const supabase = createClient();
     const [logs, setLogs] = useState<NotificationLog[]>([]);
@@ -134,6 +203,8 @@ export default function NotificationLogsPage() {
     const [cleaningShares, setCleaningShares] = useState(false);
     const [actionMessage, setActionMessage] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [healthLoading, setHealthLoading] = useState(false);
+    const [whatsAppHealth, setWhatsAppHealth] = useState<WhatsAppHealthPayload | null>(null);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -211,6 +282,36 @@ export default function NotificationLogsPage() {
     useEffect(() => {
         void fetchLogs();
     }, [fetchLogs]);
+
+    const fetchWhatsAppHealth = useCallback(async () => {
+        setHealthLoading(true);
+        try {
+            if (useMockAdmin) {
+                setWhatsAppHealth(mockWhatsAppHealth);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/whatsapp/health", {
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error || "Failed to fetch WhatsApp health");
+            }
+            setWhatsAppHealth(payload);
+        } catch (error) {
+            console.error("Error fetching WhatsApp health:", error);
+        } finally {
+            setHealthLoading(false);
+        }
+    }, [supabase, useMockAdmin]);
+
+    useEffect(() => {
+        void fetchWhatsAppHealth();
+    }, [fetchWhatsAppHealth]);
 
     useEffect(() => {
         if (!actionMessage && !actionError) return;
@@ -372,6 +473,13 @@ export default function NotificationLogsPage() {
                     Refresh
                 </button>
                 <button
+                    onClick={fetchWhatsAppHealth}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
+                >
+                    <Activity className={`w-4 h-4 ${healthLoading ? "animate-spin" : ""}`} />
+                    Webhook Health
+                </button>
+                <button
                     onClick={runQueueNow}
                     disabled={runningQueue}
                     className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-colors shadow-sm disabled:opacity-60"
@@ -464,6 +572,86 @@ export default function NotificationLogsPage() {
                     <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Due in 1h</p>
                     <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.upcomingHour}</p>
                 </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-[#9c7c46]" />
+                        WhatsApp Webhook Health
+                    </h2>
+                    <span className="text-xs text-[#8d7650]">
+                        {healthLoading ? "Refreshing..." : "Live diagnostics"}
+                    </span>
+                </div>
+
+                {!whatsAppHealth ? (
+                    <p className="text-sm text-[#8d7650]">No webhook data available yet.</p>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Pings 1h</p>
+                                <p className="text-xl font-semibold text-[#1b140a]">{whatsAppHealth.summary.location_pings_last_1h}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Pings 24h</p>
+                                <p className="text-xl font-semibold text-[#1b140a]">{whatsAppHealth.summary.location_pings_last_24h}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Stale Driver Trips</p>
+                                <p className="text-xl font-semibold text-rose-600">{whatsAppHealth.summary.stale_active_driver_trips}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Unmapped Ext Drivers</p>
+                                <p className="text-xl font-semibold text-amber-600">{whatsAppHealth.summary.unmapped_external_drivers}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="rounded-xl border border-[#eadfcd] p-4">
+                                <p className="text-sm font-semibold text-[#1b140a] mb-2">Latest Driver Pings</p>
+                                {whatsAppHealth.latest_pings.length === 0 ? (
+                                    <p className="text-sm text-slate-500">No active driver pings yet.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {whatsAppHealth.latest_pings.map((item) => (
+                                            <div key={item.driver_id} className="flex items-center justify-between text-sm">
+                                                <div>
+                                                    <p className="font-medium text-[#1b140a]">{item.driver_name}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        Trip {item.trip_id ? item.trip_id.slice(0, 8) : "unassigned"} • {item.recorded_at ? new Date(item.recorded_at).toLocaleTimeString() : "never"}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${item.status === "fresh" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                                                    {item.age_minutes == null ? "No ping" : `${item.age_minutes}m`}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="rounded-xl border border-[#eadfcd] p-4">
+                                <p className="text-sm font-semibold text-[#1b140a] mb-2">Drivers Missing Phone Mapping</p>
+                                <p className="text-xs text-[#8d7650] mb-3">
+                                    WhatsApp inbound location can map only if `phone_normalized` exists.
+                                </p>
+                                {whatsAppHealth.drivers_missing_phone_list.length === 0 ? (
+                                    <p className="text-sm text-emerald-700">All driver profiles have normalized phone numbers.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {whatsAppHealth.drivers_missing_phone_list.map((driver) => (
+                                            <div key={driver.id} className="text-sm rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+                                                <p className="font-medium text-amber-900">{driver.full_name || "Unnamed driver"}</p>
+                                                <p className="text-xs text-amber-700">{driver.email || "No email"}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="bg-white/90 border border-[#eadfcd] rounded-2xl shadow-[0_12px_30px_rgba(20,16,12,0.06)] overflow-hidden">
