@@ -106,6 +106,7 @@ export default function AdminKanbanPage() {
     const [contactSearch, setContactSearch] = useState("");
     const [importingContacts, setImportingContacts] = useState(false);
     const [promotingContactId, setPromotingContactId] = useState<string | null>(null);
+    const [contactsError, setContactsError] = useState<string | null>(null);
     const csvInputRef = useRef<HTMLInputElement | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -124,29 +125,45 @@ export default function AdminKanbanPage() {
                 headers.Authorization = `Bearer ${session.access_token}`;
             }
 
-            const [clientsRes, contactsRes, eventsRes] = await Promise.all([
+            const [clientsResult, contactsResult, eventsResult] = await Promise.allSettled([
                 fetch("/api/admin/clients", { headers }),
                 fetch("/api/admin/contacts", { headers }),
                 fetch("/api/admin/workflow/events?limit=40", { headers }),
             ]);
 
-            const clientsPayload = await clientsRes.json();
-            const contactsPayload = await contactsRes.json();
-            const eventsPayload = await eventsRes.json();
+            if (clientsResult.status !== "fulfilled") {
+                throw new Error("Failed to fetch clients");
+            }
 
+            const clientsRes = clientsResult.value;
+            const clientsPayload = await clientsRes.json();
             if (!clientsRes.ok) {
                 throw new Error(clientsPayload?.error || "Failed to fetch clients");
             }
-            if (!eventsRes.ok) {
-                throw new Error(eventsPayload?.error || "Failed to fetch stage events");
-            }
-            if (!contactsRes.ok) {
-                throw new Error(contactsPayload?.error || "Failed to fetch contacts");
+            setClients((clientsPayload.clients || []) as ClientCard[]);
+
+            if (eventsResult.status === "fulfilled") {
+                const eventsRes = eventsResult.value;
+                const eventsPayload = await eventsRes.json();
+                if (eventsRes.ok) {
+                    setEvents((eventsPayload.events || []) as StageEvent[]);
+                }
             }
 
-            setClients((clientsPayload.clients || []) as ClientCard[]);
-            setContacts((contactsPayload.contacts || []) as ContactItem[]);
-            setEvents((eventsPayload.events || []) as StageEvent[]);
+            if (contactsResult.status === "fulfilled") {
+                const contactsRes = contactsResult.value;
+                const contactsPayload = await contactsRes.json();
+                if (contactsRes.ok) {
+                    setContacts((contactsPayload.contacts || []) as ContactItem[]);
+                    setContactsError(null);
+                } else {
+                    setContacts([]);
+                    setContactsError(contactsPayload?.error || "Contacts unavailable");
+                }
+            } else {
+                setContacts([]);
+                setContactsError("Contacts unavailable");
+            }
         } catch (error) {
             console.error("Kanban data fetch failed:", error);
         } finally {
@@ -517,6 +534,11 @@ export default function AdminKanbanPage() {
                         </button>
                     </div>
                 </div>
+                {contactsError ? (
+                    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Contacts inbox unavailable: {contactsError}
+                    </div>
+                ) : null}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {filteredContacts.length === 0 ? (
                         <p className="text-xs text-[#8d7650]">No pre-lead contacts found.</p>
