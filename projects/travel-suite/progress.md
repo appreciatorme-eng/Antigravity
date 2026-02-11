@@ -71,6 +71,10 @@
   - new stages: `proposal`, `payment_pending`, `payment_confirmed`
   - stage update API via `/api/admin/clients` (`PATCH` with `lifecycle_stage`)
   - moving client to `payment_confirmed` queues confirmation notification (WhatsApp template + push fallback)
+- Added Kanban-style lifecycle operations in admin clients page:
+  - stage columns from `lead` to `past` including `review`
+  - one-click left/right movement per client card
+  - lifecycle stage transitions are audit logged to `workflow_stage_events`
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

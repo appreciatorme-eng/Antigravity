@@ -47,6 +47,37 @@ CREATE POLICY "Users can update their own profile"
     USING (auth.uid() = id);
 
 -- ================================================
+-- WORKFLOW STAGE EVENTS (Kanban transition audit)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.workflow_stage_events (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    from_stage TEXT NOT NULL,
+    to_stage TEXT NOT NULL,
+    changed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.workflow_stage_events ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_workflow_stage_events_profile ON public.workflow_stage_events(profile_id, created_at DESC);
+
+CREATE POLICY "Admins can manage workflow stage events"
+    ON public.workflow_stage_events FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Users can view own workflow stage events"
+    ON public.workflow_stage_events FOR SELECT
+    USING (auth.uid() = profile_id);
+
+-- ================================================
 -- ITINERARIES
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.itineraries (

@@ -84,6 +84,28 @@ const mockClients: Client[] = [
     },
 ];
 
+const LIFECYCLE_STAGES = [
+    "lead",
+    "prospect",
+    "proposal",
+    "payment_pending",
+    "payment_confirmed",
+    "active",
+    "review",
+    "past",
+] as const;
+
+const LIFECYCLE_STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> = {
+    lead: "Lead",
+    prospect: "Prospect",
+    proposal: "Proposal",
+    payment_pending: "Payment Pending",
+    payment_confirmed: "Payment Confirmed",
+    active: "Active Trip",
+    review: "Review",
+    past: "Closed",
+};
+
 export default function ClientsPage() {
     const supabase = createClient();
     const [clients, setClients] = useState<Client[]>([]);
@@ -152,6 +174,24 @@ export default function ClientsPage() {
         client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.phone?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const getNextStage = (stage?: string | null) => {
+        const current = LIFECYCLE_STAGES.indexOf((stage || "lead") as (typeof LIFECYCLE_STAGES)[number]);
+        if (current < 0 || current >= LIFECYCLE_STAGES.length - 1) return null;
+        return LIFECYCLE_STAGES[current + 1];
+    };
+
+    const getPrevStage = (stage?: string | null) => {
+        const current = LIFECYCLE_STAGES.indexOf((stage || "lead") as (typeof LIFECYCLE_STAGES)[number]);
+        if (current <= 0) return null;
+        return LIFECYCLE_STAGES[current - 1];
+    };
+
+    const clientsByLifecycleStage = LIFECYCLE_STAGES.map((stage) => ({
+        stage,
+        label: LIFECYCLE_STAGE_LABELS[stage],
+        clients: filteredClients.filter((client) => (client.lifecycle_stage || "lead") === stage),
+    }));
 
     const formatDate = (dateString: string | null) => {
         if (!dateString) return "N/A";
@@ -520,6 +560,7 @@ export default function ClientsPage() {
                                             <option value="payment_pending">Payment Pending</option>
                                             <option value="payment_confirmed">Payment Confirmed</option>
                                             <option value="active">Active</option>
+                                            <option value="review">Review</option>
                                             <option value="past">Past</option>
                                         </select>
                                     </div>
@@ -563,6 +604,67 @@ export default function ClientsPage() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-4 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">Lifecycle Kanban</h2>
+                    <p className="text-xs text-[#8d7650]">Move clients from lead to review with one click.</p>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                    {clientsByLifecycleStage.map((column) => (
+                        <div
+                            key={column.stage}
+                            className="min-w-[240px] max-w-[240px] rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-3"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">
+                                    {column.label}
+                                </p>
+                                <span className="text-xs font-semibold text-[#6f5b3e]">{column.clients.length}</span>
+                            </div>
+                            <div className="space-y-2">
+                                {column.clients.length === 0 ? (
+                                    <p className="text-xs text-[#b09a74]">No clients in this stage.</p>
+                                ) : (
+                                    column.clients.map((client) => {
+                                        const prevStage = getPrevStage(client.lifecycle_stage);
+                                        const nextStage = getNextStage(client.lifecycle_stage);
+                                        return (
+                                            <div key={`${column.stage}-${client.id}`} className="rounded-lg border border-[#eadfcd] bg-white p-2">
+                                                <p className="text-sm font-semibold text-[#1b140a] truncate">
+                                                    {client.full_name || "Unnamed Client"}
+                                                </p>
+                                                <p className="text-xs text-[#8d7650] truncate">
+                                                    {client.email || "No email"}
+                                                </p>
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => prevStage && void handleLifecycleStageChange(client.id, prevStage)}
+                                                        disabled={!prevStage || stageUpdatingId === client.id}
+                                                        className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
+                                                    >
+                                                        ←
+                                                    </button>
+                                                    <button
+                                                        onClick={() => nextStage && void handleLifecycleStageChange(client.id, nextStage)}
+                                                        disabled={!nextStage || stageUpdatingId === client.id}
+                                                        className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
+                                                    >
+                                                        →
+                                                    </button>
+                                                    {stageUpdatingId === client.id && (
+                                                        <span className="text-[10px] text-[#9c7c46]">Saving…</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -675,6 +777,7 @@ export default function ClientsPage() {
                                         <option value="payment_pending">Payment Pending</option>
                                         <option value="payment_confirmed">Payment Confirmed</option>
                                         <option value="active">Active</option>
+                                        <option value="review">Review</option>
                                         <option value="past">Past</option>
                                     </select>
                                 </div>

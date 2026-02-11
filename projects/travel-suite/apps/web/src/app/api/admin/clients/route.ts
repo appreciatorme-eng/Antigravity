@@ -269,6 +269,7 @@ export async function PATCH(req: NextRequest) {
             "payment_pending",
             "payment_confirmed",
             "active",
+            "review",
             "past",
         ]);
         if (lifecycleStage && !validLifecycleStages.has(lifecycleStage)) {
@@ -296,6 +297,19 @@ export async function PATCH(req: NextRequest) {
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+
+        const lifecycleChanged =
+            !!lifecycleStage &&
+            existingProfile.lifecycle_stage !== lifecycleStage;
+
+        if (lifecycleChanged) {
+            await supabaseAdmin.from("workflow_stage_events").insert({
+                profile_id: existingProfile.id,
+                from_stage: existingProfile.lifecycle_stage || "lead",
+                to_stage: lifecycleStage,
+                changed_by: adminUserId,
+            });
         }
 
         if (
