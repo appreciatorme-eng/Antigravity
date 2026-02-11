@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Playfair_Display, Manrope } from "next/font/google";
 import {
     LayoutDashboard,
     Users,
@@ -22,6 +23,16 @@ import {
     ClipboardList,
     Compass,
 } from "lucide-react";
+
+const displayFont = Playfair_Display({
+    subsets: ["latin"],
+    variable: "--font-display",
+});
+
+const bodyFont = Manrope({
+    subsets: ["latin"],
+    variable: "--font-body",
+});
 
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -90,7 +101,7 @@ export default function AdminLayout({
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className={`min-h-screen flex items-center justify-center bg-[#f5efe6] ${bodyFont.className} ${displayFont.variable}`}>
                 <div className="text-center">
                     <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
                     <p className="text-gray-600">Loading admin panel...</p>
@@ -101,12 +112,12 @@ export default function AdminLayout({
 
     if (!authorized) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className={`min-h-screen flex items-center justify-center bg-[#f5efe6] ${bodyFont.className} ${displayFont.variable}`}>
                 <div className="text-center max-w-md mx-auto px-4">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <ShieldAlert className="w-8 h-8 text-red-600" />
                     </div>
-                    <h1 className="text-2xl font-serif text-gray-900 mb-2">
+                    <h1 className="text-2xl font-[var(--font-display)] text-gray-900 mb-2">
                         Access Denied
                     </h1>
                     <p className="text-gray-600 mb-6">
@@ -126,16 +137,19 @@ export default function AdminLayout({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className={`min-h-screen flex bg-[radial-gradient(circle_at_top,_#fbf4e9_0%,_#f5efe6_45%,_#efe6d9_100%)] ${bodyFont.className} ${displayFont.variable}`}>
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+            <aside className="w-64 bg-[#0f0d0b] border-r border-[#1f1a14] flex flex-col">
                 {/* Logo */}
-                <div className="p-4 border-b border-gray-100">
+                <div className="p-5 border-b border-[#1f1a14]">
                     <Link href="/admin" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
-                            <LayoutDashboard className="w-4 h-4 text-white" />
+                        <div className="w-10 h-10 rounded-xl bg-[#c4a870] flex items-center justify-center shadow-[0_6px_18px_rgba(196,168,112,0.35)]">
+                            <LayoutDashboard className="w-5 h-5 text-[#1b140a]" />
                         </div>
-                        <span className="font-semibold text-gray-900">Admin Panel</span>
+                        <div className="leading-tight">
+                            <span className="block text-xs uppercase tracking-[0.25em] text-[#cbb68e]">Travel Suite</span>
+                            <span className="block text-base font-[var(--font-display)] text-[#f5e9d2]">Admin Atelier</span>
+                        </div>
                     </Link>
                 </div>
 
@@ -148,13 +162,13 @@ export default function AdminLayout({
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                                     isActive
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        ? "bg-[#2a2217] text-[#f5e7c6] shadow-[inset_0_0_0_1px_rgba(196,168,112,0.35)]"
+                                        : "text-[#bda87f] hover:bg-[#1b1712] hover:text-[#f5e7c6]"
                                 }`}
                             >
-                                <link.icon className="w-5 h-5" />
+                                <link.icon className={`w-5 h-5 ${isActive ? "text-[#c4a870]" : ""}`} />
                                 {link.label}
                             </Link>
                         );
@@ -162,10 +176,10 @@ export default function AdminLayout({
                 </nav>
 
                 {/* Back to site */}
-                <div className="p-4 border-t border-gray-100">
+                <div className="p-4 border-t border-[#1f1a14]">
                     <Link
                         href="/"
-                        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                        className="flex items-center gap-2 text-sm text-[#bda87f] hover:text-[#f5e7c6] transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />
                         Back to site
@@ -176,11 +190,13 @@ export default function AdminLayout({
             {/* Main content */}
             <main className="flex-1 overflow-auto p-8">
                 {useMockAdmin && (
-                    <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <div className="mb-6 rounded-xl border border-amber-200/60 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 shadow-sm">
                         Mock mode enabled. Admin access and data are simulated for demo purposes.
                     </div>
                 )}
-                {children}
+                <div className="rounded-[32px] bg-white/85 shadow-[0_24px_60px_rgba(20,16,12,0.08)] ring-1 ring-[#eadfcd] p-8 backdrop-blur">
+                    {children}
+                </div>
             </main>
         </div>
     );
