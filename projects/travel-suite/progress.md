@@ -441,3 +441,16 @@
 - Admin APIs still use service-role server client by design for operational routes.
 - RLS hardening is applied as defense-in-depth for direct DB access paths and future API refactors.
 - Added RLS verification script: `scripts/verify_rls_policies.sql` for policy regression checks in Supabase SQL Editor.
+
+## 2026-02-11 - Runtime Health Endpoint
+
+### Completed
+- Added `/api/health` endpoint:
+  - `apps/web/src/app/api/health/route.ts`
+- Health payload now reports:
+  - database connectivity
+  - Supabase Edge Functions reachability
+  - Firebase FCM endpoint reachability
+  - WhatsApp API availability
+  - external API health (Open-Meteo weather, Frankfurter currency)
+- Added README section documenting the health endpoint.

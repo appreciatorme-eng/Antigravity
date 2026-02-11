@@ -121,6 +121,16 @@ Post-confirmation client experience flow and automation checklist are documented
 - Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)
 - Admin one-click driver phone normalization for WhatsApp mapping (`/api/admin/whatsapp/normalize-driver-phones`)
 
+## ❤️ Health Check
+
+- System health endpoint: `/api/health`
+- Includes dependency checks for:
+  - Database connectivity
+  - Supabase Edge Functions reachability
+  - Firebase FCM endpoint reachability
+  - WhatsApp API availability
+  - External APIs (Open-Meteo weather, Frankfurter currency)
+
 ## 🎨 Brand Identity
 
 - **Primary**: `#00d084` (Vivid Green)
