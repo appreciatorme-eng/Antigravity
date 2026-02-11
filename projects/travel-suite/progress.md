@@ -57,6 +57,9 @@
   - drivers -> `trips.driver_id` plus mapped `driver_accounts` + `trip_driver_assignments`
 - Added admin role override controls in clients admin UI (`Client` <-> `Driver`) with secure API endpoint.
 - Driver linking flow now auto-syncs linked app user's profile role to `driver`.
+- Added WhatsApp template envelope rendering and queue delivery via Meta template API (with text fallback).
+- Added WhatsApp webhook endpoint (`/api/whatsapp/webhook`) with verification + inbound location parsing.
+- Inbound WhatsApp location messages now map to driver profiles by `phone_normalized` and write to `driver_locations`.
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

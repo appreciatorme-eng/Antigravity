@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendNotificationToUser } from "@/lib/notifications";
-import { sendWhatsAppText } from "@/lib/whatsapp.server";
-import { renderTemplate, type NotificationTemplateKey, type TemplateVars } from "@/lib/notification-templates";
+import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
+import { renderTemplate, renderWhatsAppTemplate, type NotificationTemplateKey, type TemplateVars } from "@/lib/notification-templates";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -147,11 +147,11 @@ export async function POST(request: NextRequest) {
             const attempts = Number(row.attempts || 0) + 1;
             const payload = row.payload || {};
             const templateKey = getStringPayloadValue(payload, "template_key");
+            const templateVars = ((payload.template_vars as TemplateVars | undefined) || {}) as TemplateVars;
             let title = getStringPayloadValue(payload, "title") || "Trip Notification";
             let body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
 
             if (templateKey) {
-                const templateVars = (payload.template_vars as TemplateVars | undefined) || {};
                 const rendered = renderTemplate(templateKey as NotificationTemplateKey, templateVars);
                 title = rendered.title;
                 body = rendered.body;
@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
                     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
                     const liveUrl = `${appUrl.replace(/\/$/, "")}/live/${token}`;
                     body = `${body}\n\nTrack live location:\n${liveUrl}`;
+                    templateVars.live_link = liveUrl;
                 }
             }
 
@@ -171,8 +172,24 @@ export async function POST(request: NextRequest) {
             const channelErrors: string[] = [];
 
             if (row.recipient_phone) {
-                const message = `${title}\n\n${body}`;
-                const waResult = await sendWhatsAppText(row.recipient_phone, message);
+                let waResult;
+                if (templateKey) {
+                    const waTemplate = renderWhatsAppTemplate(templateKey as NotificationTemplateKey, templateVars);
+                    if (waTemplate) {
+                        waResult = await sendWhatsAppTemplate(
+                            row.recipient_phone,
+                            waTemplate.name,
+                            waTemplate.bodyParams,
+                            waTemplate.languageCode
+                        );
+                    } else {
+                        const message = `${title}\n\n${body}`;
+                        waResult = await sendWhatsAppText(row.recipient_phone, message);
+                    }
+                } else {
+                    const message = `${title}\n\n${body}`;
+                    waResult = await sendWhatsAppText(row.recipient_phone, message);
+                }
                 whatsappSuccess = waResult.success;
                 if (!waResult.success && waResult.error) {
                     channelErrors.push(`whatsapp: ${waResult.error}`);

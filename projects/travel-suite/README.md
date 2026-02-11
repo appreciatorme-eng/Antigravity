@@ -93,6 +93,7 @@ Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered
 Post-confirmation client experience flow and automation checklist are documented in:
 - `docs/client_experience_sop.md`
 - `docs/e2e_release_checklist.md` (pre-release validation runbook)
+- `docs/whatsapp_tracking_flow.md` (template catalog + webhook/location flow)
 
 ## 🔔 Automation & Notifications
 
@@ -100,6 +101,8 @@ Post-confirmation client experience flow and automation checklist are documented
 - Notification logging and admin-triggered sends
 - Welcome email sent on first successful mobile auth (via web API)
 - Scheduled jobs planned for daily briefings and reminders
+- WhatsApp template sends for operational reminders with push fallback
+- WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
 
 ## 🎨 Brand Identity
 
