@@ -31,6 +31,21 @@ function addMinutes(date: Date, minutes: number): string {
     return new Date(date.getTime() + minutes * 60_000).toISOString();
 }
 
+async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
+    if (!authHeader?.startsWith("Bearer ")) return false;
+    const token = authHeader.substring(7);
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authData?.user) return false;
+
+    const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+    return profile?.role === "admin";
+}
+
 async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
     const tripId = item.trip_id;
     if (!tripId) return null;
@@ -77,7 +92,12 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
 export async function POST(request: NextRequest) {
     try {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
-        if (!queueSecret || headerSecret !== queueSecret) {
+        const authHeader = request.headers.get("authorization");
+
+        const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
+        const adminAuthorized = await isAdminBearerToken(authHeader);
+
+        if (!secretAuthorized && !adminAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

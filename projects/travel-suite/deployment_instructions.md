@@ -71,6 +71,10 @@ curl -X POST "https://<your-web-domain>/api/notifications/process-queue" \
   -H "x-notification-cron-secret: <NOTIFICATION_CRON_SECRET>"
 ```
 
+Manual testing path (admin UI):
+- Admin can trigger the same processor from **Admin → Notifications → Run Queue Now**.
+- This uses admin bearer auth (no cron secret required in browser flow).
+
 ## 6. Live Location Sharing Endpoints
 Live location is now supported with tokenized links:
 - `POST /api/location/share` (admin auth required): create/reuse live link for trip/day

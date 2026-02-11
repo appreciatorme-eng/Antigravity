@@ -129,6 +129,7 @@ export default function NotificationLogsPage() {
         failed: 0,
         upcomingHour: 0,
     });
+    const [runningQueue, setRunningQueue] = useState(false);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -243,6 +244,39 @@ export default function NotificationLogsPage() {
         return `https://wa.me/${cleanPhone}?text=${text}`;
     };
 
+    const runQueueNow = async () => {
+        try {
+            setRunningQueue(true);
+            if (useMockAdmin) {
+                alert("Mock queue run complete.");
+                await fetchLogs();
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/notifications/process-queue", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                alert(payload?.error || "Failed to run queue");
+                return;
+            }
+
+            alert(`Queue processed: ${payload.processed}, sent: ${payload.sent}, failed: ${payload.failed}`);
+            await fetchLogs();
+        } catch (error) {
+            console.error("Run queue error:", error);
+            alert("Failed to run queue");
+        } finally {
+            setRunningQueue(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -260,6 +294,14 @@ export default function NotificationLogsPage() {
                 >
                     <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
+                </button>
+                <button
+                    onClick={runQueueNow}
+                    disabled={runningQueue}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-colors shadow-sm disabled:opacity-60"
+                >
+                    <Bell className="w-4 h-4" />
+                    {runningQueue ? "Running Queue..." : "Run Queue Now"}
                 </button>
             </div>
 

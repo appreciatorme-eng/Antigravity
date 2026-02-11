@@ -24,6 +24,10 @@
   - admin trip UI action to generate/copy/open live links
   - queue processor now auto-includes live location URL in pickup reminders
 - Added admin notification queue health cards (pending/processing/sent/failed/due soon).
+- Added manual queue execution from admin notifications page for rapid ops/testing.
+- Updated queue processor auth to allow either:
+  - cron secret header (scheduler mode), or
+  - admin bearer token (manual trigger mode).
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
