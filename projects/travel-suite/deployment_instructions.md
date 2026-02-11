@@ -46,6 +46,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 NOTIFICATION_CRON_SECRET=... # Strong random secret for queue processor endpoint
+NOTIFICATION_SIGNING_SECRET=... # Optional HMAC signing secret for cron replay protection
 ```
 
 ### Optional: WhatsApp Cloud API (Recommended)
@@ -71,6 +72,12 @@ curl -X POST "https://<your-web-domain>/api/notifications/process-queue" \
   -H "x-notification-cron-secret: <NOTIFICATION_CRON_SECRET>"
 ```
 
+Stronger option (recommended): signed cron requests.
+- Headers:
+  - `x-cron-ts`: current unix epoch milliseconds
+  - `x-cron-signature`: `hex(hmac_sha256(NOTIFICATION_SIGNING_SECRET, "<ts>:POST:/api/notifications/process-queue"))`
+- Endpoint also accepts `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` for internal service calls.
+
 Manual testing path (admin UI):
 - Admin can trigger the same processor from **Admin → Notifications → Run Queue Now**.
 - This uses admin bearer auth (no cron secret required in browser flow).
@@ -83,7 +90,7 @@ Live location is now supported with tokenized links:
 - `DELETE /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): revoke active live link(s)
 - `GET /api/location/client-share?tripId=<id>&dayNumber=<n>` (client auth required): create/reuse live link for mobile client view
 - `POST /api/location/ping` (driver auth required): write GPS ping to `driver_locations`
-- `POST /api/location/cleanup-expired` (cron secret or admin auth): deactivate expired active live links
+- `POST /api/location/cleanup-expired` (cron secret / signed cron / service-role bearer / admin auth): deactivate expired active live links
 - `GET /api/location/live/:token` (public by token): read latest location payload
 - `GET /live/:token` (web page): client/driver-friendly live map view
 
@@ -91,6 +98,11 @@ No extra environment variable is required for live-link creation.
 Use `NEXT_PUBLIC_APP_URL` if you need absolute URLs in generated share links.
 
 Pickup reminder queue processor now auto-attaches a live location URL for pickup reminders by creating/reusing `trip_location_shares` records.
+
+Live-share security controls:
+- Links are time-limited (`expires_at`) and checked on every access.
+- Links are revocable (`DELETE /api/location/share` and cleanup job).
+- Public token endpoint now has per-IP+token rate limiting to reduce enumeration abuse.
 
 ### Optional: Welcome Email Provider
 To enable welcome emails from the mobile app, configure an email provider for the web API:

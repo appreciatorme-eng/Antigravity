@@ -1,16 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const SHARE_RATE_LIMIT_WINDOW_MS = 60_000;
+const SHARE_RATE_LIMIT_MAX_REQUESTS = 40;
+
+function sha256(value: string): string {
+    return createHash("sha256").update(value).digest("hex");
+}
+
+function getClientIp(req: NextRequest): string {
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) {
+        return forwarded.split(",")[0]?.trim() || "unknown";
+    }
+    return req.headers.get("x-real-ip") || "unknown";
+}
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     { params }: { params: { token: string } }
 ) {
     try {
         const { token } = params;
+        if (!/^[a-f0-9]{32}$/i.test(token)) {
+            return NextResponse.json({ error: "Invalid share token format" }, { status: 400 });
+        }
+
+        const ipHash = sha256(getClientIp(req));
+        const tokenHash = sha256(token);
+        const windowStartIso = new Date(Date.now() - SHARE_RATE_LIMIT_WINDOW_MS).toISOString();
+
+        const { count: recentCount } = await supabaseAdmin
+            .from("trip_location_share_access_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("share_token_hash", tokenHash)
+            .eq("ip_hash", ipHash)
+            .gte("created_at", windowStartIso);
+
+        if ((recentCount || 0) >= SHARE_RATE_LIMIT_MAX_REQUESTS) {
+            return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+        }
+
+        void supabaseAdmin.from("trip_location_share_access_logs").insert({
+            share_token_hash: tokenHash,
+            ip_hash: ipHash,
+        });
 
         const { data: share, error: shareError } = await supabaseAdmin
             .from("trip_location_shares")

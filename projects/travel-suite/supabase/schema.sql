@@ -1399,3 +1399,32 @@ CREATE POLICY "Admins can manage notification delivery status"
               )
         )
     );
+
+-- ================================================
+-- LIVE SHARE ACCESS LOGS (Rate limiting support)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.trip_location_share_access_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    share_token_hash TEXT NOT NULL,
+    ip_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trip_share_access_token_ip_created
+    ON public.trip_location_share_access_logs(share_token_hash, ip_hash, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_trip_share_access_created
+    ON public.trip_location_share_access_logs(created_at DESC);
+
+ALTER TABLE public.trip_location_share_access_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can view share access logs"
+    ON public.trip_location_share_access_logs FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin'
+        )
+    );

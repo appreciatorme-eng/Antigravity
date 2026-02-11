@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { renderTemplate, renderWhatsAppTemplate, type NotificationTemplateKey, type TemplateVars } from "@/lib/notification-templates";
@@ -7,6 +8,7 @@ import { renderTemplate, renderWhatsAppTemplate, type NotificationTemplateKey, t
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const queueSecret = process.env.NOTIFICATION_CRON_SECRET || "";
+const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 type QueueStatus = "pending" | "processing" | "sent" | "failed" | "cancelled";
@@ -114,6 +116,32 @@ async function getAdminUserId(authHeader: string | null): Promise<string | null>
     return profile?.role === "admin" ? authData.user.id : null;
 }
 
+function isServiceRoleBearer(authHeader: string | null): boolean {
+    if (!authHeader?.startsWith("Bearer ")) return false;
+    const token = authHeader.substring(7);
+    return token === supabaseServiceKey;
+}
+
+function isSignedCronRequest(request: NextRequest): boolean {
+    if (!signingSecret) return false;
+
+    const ts = request.headers.get("x-cron-ts") || "";
+    const signature = request.headers.get("x-cron-signature") || "";
+    const tsMs = Number(ts);
+    if (!ts || !signature || !Number.isFinite(tsMs)) return false;
+
+    const now = Date.now();
+    if (Math.abs(now - tsMs) > 5 * 60_000) return false;
+
+    const payload = `${ts}:${request.method}:${request.nextUrl.pathname}`;
+    const expected = createHmac("sha256", signingSecret).update(payload).digest("hex");
+
+    const sigBuf = Buffer.from(signature, "utf8");
+    const expectedBuf = Buffer.from(expected, "utf8");
+    if (sigBuf.length !== expectedBuf.length) return false;
+    return timingSafeEqual(sigBuf, expectedBuf);
+}
+
 async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
     const tripId = item.trip_id;
     if (!tripId) return null;
@@ -163,10 +191,12 @@ export async function POST(request: NextRequest) {
         const authHeader = request.headers.get("authorization");
 
         const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
+        const signedAuthorized = isSignedCronRequest(request);
+        const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
         const adminAuthorized = await isAdminBearerToken(authHeader);
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
 
-        if (!secretAuthorized && !adminAuthorized) {
+        if (!secretAuthorized && !signedAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

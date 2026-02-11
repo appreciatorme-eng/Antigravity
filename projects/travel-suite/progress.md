@@ -478,3 +478,21 @@
 - Added E2E auth/authorization coverage for delivery APIs:
   - `apps/web/e2e/tests/admin-notification-delivery.spec.ts`
   - covers unauthenticated, non-admin forbidden, admin success, and retry payload validation
+
+## 2026-02-11 - Security Hardening Follow-up
+
+### Completed
+- Strengthened queue auth paths:
+  - `apps/web/src/app/api/notifications/process-queue/route.ts`
+  - `apps/web/src/app/api/location/cleanup-expired/route.ts`
+  - supports signed cron headers (`x-cron-ts`, `x-cron-signature`) and service-role bearer in addition to legacy secret.
+- Added live-share public endpoint rate limiting support:
+  - migration `supabase/migrations/20260212005500_share_access_rate_limit.sql`
+  - table `trip_location_share_access_logs`
+  - `apps/web/src/app/api/location/live/[token]/route.ts` now enforces per-IP+token request cap.
+- Hardened Firebase private key import parsing for edge function:
+  - `supabase/functions/send-notification/index.ts`
+  - supports escaped newlines and raw base64 DER fallback with explicit validation error.
+- Updated deployment/security docs:
+  - `deployment_instructions.md`
+  - `README.md`

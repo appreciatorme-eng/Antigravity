@@ -205,12 +205,25 @@ async function getGoogleAccessToken(): Promise<string> {
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
     const pemHeader = "-----BEGIN PRIVATE KEY-----";
     const pemFooter = "-----END PRIVATE KEY-----";
-    const pemContents = pem.substring(
-        pem.indexOf(pemHeader) + pemHeader.length,
-        pem.indexOf(pemFooter)
-    );
-    // Remove all whitespace / newlines and decode base64
-    const binaryDerString = atob(pemContents.replace(/[\s\r\n]/g, ""));
+    const normalizedPem = pem.replace(/\\n/g, "\n").trim();
+
+    let base64Der = "";
+    if (normalizedPem.includes(pemHeader) && normalizedPem.includes(pemFooter)) {
+        base64Der = normalizedPem.substring(
+            normalizedPem.indexOf(pemHeader) + pemHeader.length,
+            normalizedPem.indexOf(pemFooter)
+        );
+    } else {
+        // Allow raw base64 DER fallback for secret formats that strip PEM headers.
+        base64Der = normalizedPem;
+    }
+
+    const sanitized = base64Der.replace(/[\s\r\n]/g, "");
+    if (!sanitized) {
+        throw new Error("Invalid FIREBASE_SERVICE_ACCOUNT private_key format");
+    }
+
+    const binaryDerString = atob(sanitized);
     const binaryDer = new Uint8Array(binaryDerString.length);
     for (let i = 0; i < binaryDerString.length; i++) {
         binaryDer[i] = binaryDerString.charCodeAt(i);
