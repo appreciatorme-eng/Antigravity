@@ -194,6 +194,46 @@ CREATE POLICY "Owners can create shares"
     );
 
 -- ================================================
+-- LIVE LOCATION SHARES (tokenized trip/day links)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.trip_location_shares (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE NOT NULL,
+    day_number INTEGER,
+    share_token TEXT UNIQUE NOT NULL,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT true,
+    expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours'),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.trip_location_shares ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_trip_location_shares_trip_day ON public.trip_location_shares(trip_id, day_number);
+CREATE INDEX IF NOT EXISTS idx_trip_location_shares_token ON public.trip_location_shares(share_token);
+
+CREATE POLICY "Admins can manage trip location shares"
+    ON public.trip_location_shares FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Clients can view own trip location shares"
+    ON public.trip_location_shares FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.trips
+            WHERE trips.id = trip_location_shares.trip_id
+            AND trips.client_id = auth.uid()
+        )
+    );
+
+-- ================================================
 -- ORGANIZATIONS (Multi-tenant for travel agents)
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.organizations (
@@ -452,6 +492,10 @@ CREATE TRIGGER set_updated_at_external_drivers
 
 CREATE TRIGGER set_updated_at_push_tokens
     BEFORE UPDATE ON public.push_tokens
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER set_updated_at_trip_location_shares
+    BEFORE UPDATE ON public.trip_location_shares
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- Auto-create profile on signup

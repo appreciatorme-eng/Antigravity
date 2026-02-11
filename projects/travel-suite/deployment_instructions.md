@@ -71,6 +71,17 @@ curl -X POST "https://<your-web-domain>/api/notifications/process-queue" \
   -H "x-notification-cron-secret: <NOTIFICATION_CRON_SECRET>"
 ```
 
+## 6. Live Location Sharing Endpoints
+Live location is now supported with tokenized links:
+- `POST /api/location/share` (admin auth required): create/reuse live link for trip/day
+- `GET /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): fetch existing link
+- `POST /api/location/ping` (driver auth required): write GPS ping to `driver_locations`
+- `GET /api/location/live/:token` (public by token): read latest location payload
+- `GET /live/:token` (web page): client/driver-friendly live map view
+
+No extra environment variable is required for live-link creation.
+Use `NEXT_PUBLIC_APP_URL` if you need absolute URLs in generated share links.
+
 ### Optional: Welcome Email Provider
 To enable welcome emails from the mobile app, configure an email provider for the web API:
 ```
@@ -79,7 +90,7 @@ WELCOME_FROM_EMAIL=...
 ```
 *If these are missing, the welcome email endpoint returns a skipped response and does not block user signup.*
 
-## 6. Build Mobile App
+## 7. Build Mobile App
 Rebuild the mobile app to pick up the `Info.plist` changes:
 
 ```bash

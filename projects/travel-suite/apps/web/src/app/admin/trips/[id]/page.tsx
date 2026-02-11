@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import {
     Clock,
     Phone,
     MessageCircle,
+    Link2,
     Save,
     Bell,
     Plus,
@@ -61,6 +62,8 @@ interface Accommodation {
 
 interface Activity {
     title: string;
+    start_time?: string;
+    end_time?: string;
     duration_minutes: number;
     location?: string;
     coordinates?: {
@@ -76,6 +79,216 @@ interface Day {
     activities: Activity[];
 }
 
+interface HotelSuggestion {
+    name: string;
+    address: string;
+    phone?: string;
+    lat: number;
+    lng: number;
+    distanceKm: number;
+}
+
+function isValidTime(value?: string) {
+    return !!value && /^\d{2}:\d{2}$/.test(value);
+}
+
+function timeToMinutes(value: string) {
+    const [h, m] = value.split(":").map(Number);
+    return h * 60 + m;
+}
+
+function minutesToTime(totalMinutes: number) {
+    const clamped = Math.max(0, Math.min(totalMinutes, (24 * 60) - 30));
+    const h = Math.floor(clamped / 60);
+    const m = clamped % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function roundToNearestThirty(totalMinutes: number) {
+    return Math.round(totalMinutes / 30) * 30;
+}
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+
+    const h =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    return earthRadiusKm * c;
+}
+
+function estimateTravelMinutes(previous?: Activity, current?: Activity) {
+    if (!previous || !current) return 0;
+    if (previous.location && current.location && previous.location.trim() === current.location.trim()) {
+        return 0;
+    }
+
+    if (previous.coordinates && current.coordinates) {
+        const distanceKm = haversineKm(previous.coordinates, current.coordinates);
+        const averageCitySpeedKmh = 28;
+        const driveMinutes = (distanceKm / averageCitySpeedKmh) * 60;
+        const buffered = Math.round(driveMinutes + 10); // buffer for parking/transfers
+        return Math.max(10, Math.min(buffered, 180));
+    }
+
+    // Fallback when coordinates are not available yet
+    return 20;
+}
+
+function inferExploreDurationMinutes(activity: Activity) {
+    const text = `${activity.title || ""} ${activity.location || ""}`.toLowerCase();
+    if (!text.trim()) return 90;
+
+    if (/(flight|airport|transfer|pickup|drop)/.test(text)) return 45;
+    if (/(walk|market|bazaar|street)/.test(text)) return 120;
+    if (/(museum|fort|palace|temple|tomb|mosque|cathedral|monument|heritage)/.test(text)) return 90;
+    if (/(meal|lunch|dinner|breakfast|food|restaurant|cafe|tea)/.test(text)) return 60;
+    if (/(sunset|sunrise|golden hour|viewpoint|photo)/.test(text)) return 60;
+    if (/(shopping)/.test(text)) return 90;
+
+    return 75;
+}
+
+function enrichDayDurations(day: Day) {
+    return {
+        ...day,
+        activities: day.activities.map((activity) => ({
+            ...activity,
+            // Keep explicitly customized values, but replace legacy/default 60-minute placeholders.
+            duration_minutes: (() => {
+                const duration = Number(activity.duration_minutes) || 0;
+                if (duration > 0 && duration !== 60) return duration;
+                return inferExploreDurationMinutes(activity);
+            })(),
+        })),
+    };
+}
+
+function optimizeActivitiesForRoute(activities: Activity[]) {
+    if (activities.length <= 2) return activities;
+
+    const anchor = activities[0];
+    const remaining = activities.slice(1);
+    const withCoordinates = remaining.filter((activity) => !!activity.coordinates);
+    const withoutCoordinates = remaining.filter((activity) => !activity.coordinates);
+
+    if (withCoordinates.length <= 1) {
+        return activities;
+    }
+
+    const orderedByRoute: Activity[] = [];
+    const unvisited = [...withCoordinates];
+
+    let currentPoint = anchor.coordinates ?? unvisited[0]?.coordinates;
+    if (!currentPoint) return activities;
+
+    while (unvisited.length > 0) {
+        let nearestIndex = 0;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+
+        for (let i = 0; i < unvisited.length; i++) {
+            const candidate = unvisited[i];
+            if (!candidate.coordinates) continue;
+            const distance = haversineKm(currentPoint, candidate.coordinates);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+
+        const [next] = unvisited.splice(nearestIndex, 1);
+        orderedByRoute.push(next);
+        if (next.coordinates) {
+            currentPoint = next.coordinates;
+        }
+    }
+
+    const routeDistanceKm = (route: Activity[]) => {
+        if (route.length <= 1) return 0;
+
+        let total = 0;
+        if (anchor.coordinates && route[0]?.coordinates) {
+            total += haversineKm(anchor.coordinates, route[0].coordinates);
+        }
+
+        for (let i = 1; i < route.length; i++) {
+            const prev = route[i - 1].coordinates;
+            const current = route[i].coordinates;
+            if (prev && current) {
+                total += haversineKm(prev, current);
+            }
+        }
+
+        return total;
+    };
+
+    // 2-opt improvement pass for a better shortest-path approximation.
+    const improvedRoute = [...orderedByRoute];
+    if (improvedRoute.length >= 4) {
+        let improved = true;
+        while (improved) {
+            improved = false;
+            for (let i = 0; i < improvedRoute.length - 2; i++) {
+                for (let k = i + 1; k < improvedRoute.length - 1; k++) {
+                    const candidate = [
+                        ...improvedRoute.slice(0, i),
+                        ...improvedRoute.slice(i, k + 1).reverse(),
+                        ...improvedRoute.slice(k + 1),
+                    ];
+                    if (routeDistanceKm(candidate) + 0.001 < routeDistanceKm(improvedRoute)) {
+                        improvedRoute.splice(0, improvedRoute.length, ...candidate);
+                        improved = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return [anchor, ...improvedRoute, ...withoutCoordinates];
+}
+
+function buildDaySchedule(day: Day) {
+    const optimizedActivities = optimizeActivitiesForRoute(day.activities);
+    const firstStart = isValidTime(optimizedActivities[0]?.start_time) ? optimizedActivities[0]!.start_time! : "09:00";
+    const dayEnd = (24 * 60) - 30;
+    let cursor = Math.max(0, Math.min(roundToNearestThirty(timeToMinutes(firstStart)), dayEnd));
+
+    const activities = optimizedActivities.map((activity, index) => {
+        const travelMinutes = index > 0 ? estimateTravelMinutes(optimizedActivities[index - 1], activity) : 0;
+        const proposedStart = index === 0
+            ? (isValidTime(activity.start_time) ? timeToMinutes(activity.start_time!) : cursor)
+            : cursor + travelMinutes;
+        const roundedStart = roundToNearestThirty(proposedStart);
+        const startMinutes = Math.max(cursor, Math.min(roundedStart, dayEnd));
+        const suggestedDuration = inferExploreDurationMinutes(activity);
+        const duration = Math.max(30, Number(activity.duration_minutes) || suggestedDuration);
+        let endMinutes = roundToNearestThirty(startMinutes + duration);
+        if (endMinutes <= startMinutes) {
+            endMinutes = startMinutes + 30;
+        }
+        endMinutes = Math.min(endMinutes, dayEnd);
+        cursor = endMinutes;
+
+        return {
+            ...activity,
+            start_time: minutesToTime(startMinutes),
+            end_time: minutesToTime(endMinutes),
+            duration_minutes: duration,
+        };
+    });
+
+    return {
+        ...day,
+        activities,
+    };
+}
+
 interface Trip {
     id: string;
     status: string;
@@ -86,6 +299,7 @@ interface Trip {
         id: string;
         full_name: string;
         email: string;
+        phone?: string | null;
     } | null;
     itineraries: {
         id: string;
@@ -107,6 +321,7 @@ interface TripRecord {
         id: string;
         full_name: string;
         email: string;
+        phone?: string | null;
     } | null;
     itineraries: {
         id: string;
@@ -262,6 +477,10 @@ export default function TripDetailPage() {
     const [saving, setSaving] = useState(false);
     const [activeDay, setActiveDay] = useState(1);
     const [itineraryDays, setItineraryDays] = useState<Day[]>([]);
+    const [hotelSuggestions, setHotelSuggestions] = useState<Record<number, HotelSuggestion[]>>({});
+    const [hotelLoadingByDay, setHotelLoadingByDay] = useState<Record<number, boolean>>({});
+    const [liveLocationUrl, setLiveLocationUrl] = useState<string>("");
+    const [creatingLiveLink, setCreatingLiveLink] = useState(false);
 
     // Notification state
     const [notificationOpen, setNotificationOpen] = useState(false);
@@ -270,6 +489,14 @@ export default function TripDetailPage() {
     const [notificationEmail, setNotificationEmail] = useState("");
     const [useEmailTarget, setUseEmailTarget] = useState(false);
     const geocodeCacheRef = useRef(new Map<string, { lat: number; lng: number }>());
+    const hotelSearchDebounceRef = useRef<Record<number, number | null>>({});
+    const timeOptions = useMemo(
+        () => Array.from({ length: 48 }, (_, i) => {
+            const minutes = i * 30;
+            return minutesToTime(minutes);
+        }),
+        []
+    );
 
     const supabase = createClient();
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
@@ -279,7 +506,7 @@ export default function TripDetailPage() {
         if (useMockAdmin) {
             const mockTrip = mockTripsById[tripId] ?? mockTripsById["mock-trip-001"];
             setTrip(mockTrip);
-            setItineraryDays(mockTrip.itineraries?.raw_data?.days ?? []);
+            setItineraryDays((mockTrip.itineraries?.raw_data?.days ?? []).map(enrichDayDurations).map(buildDaySchedule));
             setDrivers(mockDriversList);
             setAssignments(mockAssignments);
             setAccommodations(mockAccommodations);
@@ -316,7 +543,7 @@ export default function TripDetailPage() {
         const payload = await response.json();
         const mappedTrip = payload.trip as Trip;
         setTrip(mappedTrip);
-        setItineraryDays(mappedTrip.itineraries?.raw_data?.days || []);
+        setItineraryDays((mappedTrip.itineraries?.raw_data?.days || []).map(enrichDayDurations).map(buildDaySchedule));
         setDrivers(payload.drivers || []);
         setAssignments(payload.assignments || {});
         setAccommodations(payload.accommodations || {});
@@ -328,6 +555,36 @@ export default function TripDetailPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchData();
     }, [fetchData]);
+
+    useEffect(() => {
+        const loadExistingShare = async () => {
+            if (!tripId || useMockAdmin) return;
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch(`/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`, {
+                    headers: {
+                        Authorization: `Bearer ${session?.access_token || ""}`,
+                    },
+                });
+
+                if (!response.ok) return;
+                const payload = await response.json();
+                setLiveLocationUrl(payload?.share?.live_url || "");
+            } catch {
+                // non-blocking
+            }
+        };
+
+        void loadExistingShare();
+    }, [activeDay, tripId, useMockAdmin, supabase.auth]);
+
+    useEffect(() => {
+        return () => {
+            Object.values(hotelSearchDebounceRef.current).forEach((timerId) => {
+                if (timerId) window.clearTimeout(timerId);
+            });
+        };
+    }, []);
 
     useEffect(() => {
         const activeDayData = itineraryDays.find((d) => d.day_number === activeDay);
@@ -389,7 +646,7 @@ export default function TripDetailPage() {
                         ...newActivities[activityIndex],
                         [field]: value,
                     };
-                    return { ...day, activities: newActivities };
+                    return buildDaySchedule({ ...day, activities: newActivities });
                 }
                 return day;
             })
@@ -409,7 +666,7 @@ export default function TripDetailPage() {
                         ...newActivities[activityIndex],
                         coordinates,
                     };
-                    return { ...day, activities: newActivities };
+                    return buildDaySchedule({ ...day, activities: newActivities });
                 }
                 return day;
             })
@@ -463,17 +720,118 @@ export default function TripDetailPage() {
         }
     };
 
+    const fillAccommodationFromSuggestion = (dayNumber: number, suggestion: HotelSuggestion) => {
+        updateAccommodation(dayNumber, "hotel_name", suggestion.name);
+        updateAccommodation(dayNumber, "address", suggestion.address);
+        if (suggestion.phone) {
+            updateAccommodation(dayNumber, "contact_phone", suggestion.phone);
+        }
+    };
+
+    const fetchNearbyHotels = async (dayNumber: number, searchTerm?: string) => {
+            const day = itineraryDays.find((d) => d.day_number === dayNumber);
+            if (!day) return;
+
+            const cleanSearchTerm = (searchTerm || "").trim().toLowerCase();
+
+            let center: { lat: number; lng: number } | undefined =
+                day.activities.find((a) => a.coordinates)?.coordinates;
+
+            if (!center) {
+                const firstLocation = day.activities.find((a) => a.location?.trim())?.location;
+                if (firstLocation) {
+                    center = await geocodeLocation(firstLocation, trip?.destination);
+                }
+            }
+
+            if (!center && trip?.destination) {
+                center = await geocodeLocation(trip.destination);
+            }
+
+            if (!center) return;
+
+            setHotelLoadingByDay((prev) => ({ ...prev, [dayNumber]: true }));
+            try {
+                const overpassQuery = `
+[out:json][timeout:25];
+(
+  node["tourism"="hotel"](around:9000,${center.lat},${center.lng});
+  way["tourism"="hotel"](around:9000,${center.lat},${center.lng});
+  node["tourism"="guest_house"](around:9000,${center.lat},${center.lng});
+  way["tourism"="guest_house"](around:9000,${center.lat},${center.lng});
+);
+out center tags 80;
+                `.trim();
+
+                const response = await fetch("https://overpass-api.de/api/interpreter", {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                    body: overpassQuery,
+                });
+
+                if (!response.ok) return;
+                const payload = await response.json();
+                const elements = Array.isArray(payload?.elements) ? payload.elements : [];
+
+                const suggestions: HotelSuggestion[] = elements
+                    .map((element: any) => {
+                        const tags = element.tags || {};
+                        const name = String(tags.name || "").trim();
+                        if (!name) return null;
+
+                        const lat = Number(element.lat ?? element.center?.lat);
+                        const lng = Number(element.lon ?? element.center?.lon);
+                        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+                        const addressParts = [
+                            tags["addr:housenumber"],
+                            tags["addr:street"],
+                            tags["addr:suburb"],
+                            tags["addr:city"],
+                        ].filter(Boolean);
+                        const address =
+                            String(tags["addr:full"] || "").trim() ||
+                            (addressParts.length ? addressParts.join(", ") : "Address not available");
+
+                        return {
+                            name,
+                            address,
+                            phone: String(tags.phone || tags["contact:phone"] || "").trim() || undefined,
+                            lat,
+                            lng,
+                            distanceKm: haversineKm(center!, { lat, lng }),
+                        } as HotelSuggestion;
+                    })
+                    .filter((item: HotelSuggestion | null): item is HotelSuggestion => !!item)
+                    .filter((item) =>
+                        cleanSearchTerm ? item.name.toLowerCase().includes(cleanSearchTerm) : true
+                    )
+                    .sort((a, b) => a.distanceKm - b.distanceKm)
+                    .slice(0, 8);
+
+                setHotelSuggestions((prev) => ({ ...prev, [dayNumber]: suggestions }));
+
+                if (!searchTerm && suggestions[0]) {
+                    fillAccommodationFromSuggestion(dayNumber, suggestions[0]);
+                }
+            } catch (error) {
+                console.error("Hotel lookup error:", error);
+            } finally {
+                setHotelLoadingByDay((prev) => ({ ...prev, [dayNumber]: false }));
+            }
+    };
+
     const addActivity = (dayNumber: number) => {
         setItineraryDays((prev) =>
             prev.map((day) => {
                 if (day.day_number === dayNumber) {
-                    return {
+                    return buildDaySchedule({
                         ...day,
                         activities: [
                             ...day.activities,
-                            { title: "New Activity", duration_minutes: 60, location: "" },
+                            { title: "New Activity", start_time: "", duration_minutes: 90, location: "" },
                         ],
-                    };
+                    });
                 }
                 return day;
             })
@@ -487,7 +845,7 @@ export default function TripDetailPage() {
                     const newActivities = day.activities.filter(
                         (_, index) => index !== activityIndex
                     );
-                    return { ...day, activities: newActivities };
+                    return buildDaySchedule({ ...day, activities: newActivities });
                 }
                 return day;
             })
@@ -615,6 +973,51 @@ export default function TripDetailPage() {
         }
     };
 
+    const createLiveLocationShare = async () => {
+        if (!tripId) return;
+        if (useMockAdmin) {
+            const mockUrl = `http://localhost:3000/live/mock-${tripId}-d${activeDay}`;
+            setLiveLocationUrl(mockUrl);
+            alert(`Mock live location link created:\n${mockUrl}`);
+            return;
+        }
+
+        setCreatingLiveLink(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/location/share", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify({
+                    tripId,
+                    dayNumber: activeDay,
+                    expiresHours: 48,
+                }),
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                alert(payload?.error || "Failed to create live location link");
+                return;
+            }
+
+            const url = payload?.share?.live_url || "";
+            setLiveLocationUrl(url);
+            if (url) {
+                await navigator.clipboard.writeText(url);
+                alert("Live location link created and copied to clipboard.");
+            }
+        } catch (error) {
+            console.error("Live location share error:", error);
+            alert("Failed to create live location share");
+        } finally {
+            setCreatingLiveLink(false);
+        }
+    };
+
     const getWhatsAppLinkForDay = (dayNumber: number) => {
         const assignment = assignments[dayNumber];
         if (!assignment?.external_driver_id) return null;
@@ -625,13 +1028,20 @@ export default function TripDetailPage() {
         const day = trip?.itineraries?.raw_data?.days?.find((d) => d.day_number === dayNumber);
         const accommodation = accommodations[dayNumber];
 
-        const message = formatDriverAssignmentMessage({
+        const baseMessage = formatDriverAssignmentMessage({
             clientName: trip?.profiles?.full_name || "Client",
             pickupTime: assignment.pickup_time || "TBD",
             pickupLocation: assignment.pickup_location || trip?.destination || "TBD",
             activities: day?.activities || [],
             hotelName: accommodation?.hotel_name || "TBD",
         });
+
+        const liveLinkSuffix =
+            liveLocationUrl && dayNumber === activeDay
+                ? `\n\nLive location link:\n${liveLocationUrl}`
+                : "";
+
+        const message = `${baseMessage}${liveLinkSuffix}`;
 
         return getDriverWhatsAppLink(driver.phone, message);
     };
@@ -707,6 +1117,14 @@ export default function TripDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={createLiveLocationShare}
+                        disabled={creatingLiveLink}
+                        className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] rounded-lg hover:bg-[#f6efe4] transition-colors text-[#6f5b3e] disabled:opacity-60"
+                    >
+                        <Link2 className="h-4 w-4" />
+                        {creatingLiveLink ? "Creating..." : "Live Link"}
+                    </button>
                     <Dialog open={notificationOpen} onOpenChange={setNotificationOpen}>
                         <DialogTrigger asChild>
                             <button
@@ -795,6 +1213,18 @@ export default function TripDetailPage() {
                             WhatsApp Client
                         </button>
                     )}
+                    {liveLocationUrl ? (
+                        <a
+                            href={liveLocationUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
+                            title="Open live location page"
+                        >
+                            <MapPin className="h-4 w-4" />
+                            Open Live
+                        </a>
+                    ) : null}
                     <button
                         onClick={saveChanges}
                         disabled={saving}
@@ -960,12 +1390,60 @@ export default function TripDetailPage() {
                                     <input
                                         type="text"
                                         value={accommodations[activeDay]?.hotel_name || ""}
-                                        onChange={(e) =>
-                                            updateAccommodation(activeDay, "hotel_name", e.target.value)
-                                        }
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            updateAccommodation(activeDay, "hotel_name", value);
+
+                                            const existingTimer = hotelSearchDebounceRef.current[activeDay];
+                                            if (existingTimer) {
+                                                window.clearTimeout(existingTimer);
+                                            }
+
+                                            if (value.trim().length >= 3) {
+                                                hotelSearchDebounceRef.current[activeDay] = window.setTimeout(() => {
+                                                    void fetchNearbyHotels(activeDay, value.trim());
+                                                }, 350);
+                                            }
+                                        }}
+                                        onFocus={() => {
+                                            if (!hotelSuggestions[activeDay]?.length) {
+                                                void fetchNearbyHotels(activeDay);
+                                            }
+                                        }}
                                         placeholder="Enter hotel name"
                                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                     />
+                                    <div className="mt-2 flex items-center justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void fetchNearbyHotels(activeDay)}
+                                            className="text-xs font-medium text-primary hover:underline"
+                                        >
+                                            {hotelLoadingByDay[activeDay] ? "Finding nearby hotels..." : "Auto-pick nearest hotel"}
+                                        </button>
+                                        {hotelSuggestions[activeDay]?.length ? (
+                                            <span className="text-xs text-gray-500">
+                                                {hotelSuggestions[activeDay].length} nearby options
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {hotelSuggestions[activeDay]?.length ? (
+                                        <div className="mt-2 max-h-36 overflow-auto rounded-lg border border-gray-200 bg-white">
+                                            {hotelSuggestions[activeDay].map((hotel, i) => (
+                                                <button
+                                                    key={`${hotel.name}-${hotel.lat}-${hotel.lng}-${i}`}
+                                                    type="button"
+                                                    onClick={() => fillAccommodationFromSuggestion(activeDay, hotel)}
+                                                    className="w-full border-b border-gray-100 px-3 py-2 text-left last:border-b-0 hover:bg-gray-50"
+                                                >
+                                                    <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {hotel.address} • {hotel.distanceKm.toFixed(1)} km
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </div>
 
                                 <div>
@@ -1053,7 +1531,7 @@ export default function TripDetailPage() {
                                             className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg group"
                                         >
                                             <div className="mt-3 w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
-                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
                                                 <div className="md:col-span-2">
                                                     <input
                                                         type="text"
@@ -1090,21 +1568,66 @@ export default function TripDetailPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        value={activity.duration_minutes}
-                                                        onChange={(e) =>
-                                                            updateActivity(
-                                                                activeDay,
-                                                                index,
-                                                                "duration_minutes",
-                                                                parseInt(e.target.value) || 0
-                                                            )
-                                                        }
-                                                        className="w-20 bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-right"
-                                                    />
-                                                    <span className="text-sm text-gray-500">mins</span>
+                                                <div className="w-[210px] rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-2">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">Start</p>
+                                                            {index === 0 ? (
+                                                                <select
+                                                                    value={activity.start_time || "09:00"}
+                                                                    onChange={(e) =>
+                                                                        updateActivity(
+                                                                            activeDay,
+                                                                            index,
+                                                                            "start_time",
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                    className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] focus:outline-none focus:ring-2 focus:ring-[#c4a870]/25"
+                                                                >
+                                                                    {timeOptions.map((time) => (
+                                                                        <option key={time} value={time}>
+                                                                            {time}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : (
+                                                                <div className="rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] text-center">
+                                                                    {activity.start_time || "--:--"}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">End</p>
+                                                            <div className="rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] text-center">
+                                                                {activity.end_time || "--:--"}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="w-[132px] rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-2">
+                                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">Duration</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select
+                                                            value={activity.duration_minutes}
+                                                            onChange={(e) =>
+                                                                updateActivity(
+                                                                    activeDay,
+                                                                    index,
+                                                                    "duration_minutes",
+                                                                    parseInt(e.target.value, 10) || 60
+                                                                )
+                                                            }
+                                                            className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] focus:outline-none focus:ring-2 focus:ring-[#c4a870]/25"
+                                                        >
+                                                            {[30, 45, 60, 75, 90, 120, 150, 180].map((mins) => (
+                                                                <option key={mins} value={mins}>
+                                                                    {mins}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <span className="text-xs text-[#8a7351]">mins</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <button

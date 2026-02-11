@@ -16,6 +16,12 @@
   - WhatsApp-first attempt + push fallback for app users
   - retries failed sends (up to 3 attempts)
 - Added WhatsApp server integration helper for Meta Cloud API.
+- Added live location share foundation:
+  - new `trip_location_shares` table + policies + migration
+  - admin APIs to create/reuse live share links by trip/day
+  - public API + page (`/live/:token`) for live map viewing
+  - driver location ingest API (`POST /api/location/ping`)
+  - admin trip UI action to generate/copy/open live links
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
