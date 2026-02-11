@@ -1428,3 +1428,103 @@ CREATE POLICY "Admins can view share access logs"
               AND profiles.role = 'admin'
         )
     );
+
+-- ================================================
+-- SECURITY DIAGNOSTICS HELPER
+-- ================================================
+CREATE OR REPLACE FUNCTION public.get_rls_diagnostics()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_catalog
+AS $$
+DECLARE
+  result jsonb;
+BEGIN
+  WITH required_tables AS (
+    SELECT unnest(array[
+      'trips',
+      'itineraries',
+      'workflow_stage_events',
+      'crm_contacts',
+      'workflow_notification_rules',
+      'notification_logs',
+      'notification_queue',
+      'invoices',
+      'invoice_payments',
+      'notification_delivery_status',
+      'trip_location_shares',
+      'trip_location_share_access_logs'
+    ]) AS table_name
+  ),
+  table_stats AS (
+    SELECT
+      rt.table_name,
+      coalesce(c.relrowsecurity, false) AS rls_enabled,
+      coalesce((
+        SELECT count(*)
+        FROM pg_policies p
+        WHERE p.schemaname = 'public'
+          AND p.tablename = rt.table_name
+      ), 0)::int AS policy_count
+    FROM required_tables rt
+    LEFT JOIN pg_class c ON c.relname = rt.table_name
+    LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+  ),
+  required_policies AS (
+    SELECT * FROM (VALUES
+      ('trips', 'Admins can manage org trips'),
+      ('itineraries', 'Admins can view org itineraries'),
+      ('workflow_stage_events', 'Admins can manage workflow stage events'),
+      ('crm_contacts', 'Admins can manage crm contacts'),
+      ('workflow_notification_rules', 'Admins can manage workflow notification rules'),
+      ('notification_queue', 'Admins can view notification queue'),
+      ('notification_queue', 'Admins can manage notification queue'),
+      ('invoices', 'Admins can manage invoices'),
+      ('invoice_payments', 'Admins can manage invoice payments'),
+      ('notification_delivery_status', 'Admins can manage notification delivery status')
+    ) AS t(table_name, policy_name)
+  ),
+  policy_checks AS (
+    SELECT
+      rp.table_name,
+      rp.policy_name,
+      EXISTS(
+        SELECT 1
+        FROM pg_policies p
+        WHERE p.schemaname = 'public'
+          AND p.tablename = rp.table_name
+          AND p.policyname = rp.policy_name
+      ) AS present
+    FROM required_policies rp
+  )
+  SELECT jsonb_build_object(
+    'summary', jsonb_build_object(
+      'tables_expected', (SELECT count(*) FROM table_stats),
+      'tables_with_rls', (SELECT count(*) FROM table_stats WHERE rls_enabled),
+      'missing_policy_count', (SELECT count(*) FROM policy_checks WHERE NOT present)
+    ),
+    'tables', (
+      SELECT coalesce(jsonb_agg(jsonb_build_object(
+        'table_name', table_name,
+        'rls_enabled', rls_enabled,
+        'policy_count', policy_count
+      ) ORDER BY table_name), '[]'::jsonb)
+      FROM table_stats
+    ),
+    'required_policies', (
+      SELECT coalesce(jsonb_agg(jsonb_build_object(
+        'table_name', table_name,
+        'policy_name', policy_name,
+        'present', present
+      ) ORDER BY table_name, policy_name), '[]'::jsonb)
+      FROM policy_checks
+    )
+  ) INTO result;
+
+  RETURN result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_rls_diagnostics() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_rls_diagnostics() TO service_role;

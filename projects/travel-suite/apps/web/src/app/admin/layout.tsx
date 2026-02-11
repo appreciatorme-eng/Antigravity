@@ -16,6 +16,7 @@ import {
     ChevronLeft,
     Loader2,
     ShieldAlert,
+    ShieldCheck,
     BarChart3,
     FileText,
     Inbox,
@@ -47,6 +48,7 @@ const sidebarLinks = [
     { href: "/admin/notifications", label: "Notifications", icon: Bell },
     { href: "/admin/templates", label: "Templates", icon: Wand2 },
     { href: "/admin/billing", label: "Billing", icon: FileText },
+    { href: "/admin/security", label: "Security", icon: ShieldCheck },
     { href: "/admin/support", label: "Support", icon: Inbox },
     { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

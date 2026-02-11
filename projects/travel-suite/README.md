@@ -153,6 +153,8 @@ Key tables:
 - `notification_delivery_status` - per-channel delivery tracking (`whatsapp`/`push`/`email`) for queue processing
 - Admin API for delivery tracking: `/api/admin/notifications/delivery`
 - Admin API for single-item retry: `/api/admin/notifications/delivery/retry`
+- Admin security diagnostics API: `/api/admin/security/diagnostics`
+- Admin security diagnostics UI: `/admin/security`
 
 Security baseline:
 - Organization-scoped RLS hardening is applied across workflow, CRM, queue, billing, trips, and itinerary-access policies.

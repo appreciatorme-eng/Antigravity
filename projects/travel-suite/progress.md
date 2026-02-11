@@ -496,3 +496,8 @@
 - Updated deployment/security docs:
   - `deployment_instructions.md`
   - `README.md`
+- Added admin security diagnostics:
+  - API: `apps/web/src/app/api/admin/security/diagnostics/route.ts`
+  - UI: `apps/web/src/app/admin/security/page.tsx`
+  - Nav: `apps/web/src/app/admin/layout.tsx`
+  - DB helper function migration: `supabase/migrations/20260212012000_security_diagnostics_function.sql`
