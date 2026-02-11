@@ -1185,3 +1185,130 @@ CREATE POLICY "Admins can manage invoice payments"
               AND profiles.organization_id = invoice_payments.organization_id
         )
     );
+
+-- ================================================
+-- RLS ORG HARDENING
+-- ================================================
+CREATE OR REPLACE FUNCTION public.is_org_admin(target_org UUID)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.role = 'admin'
+          AND p.organization_id = target_org
+    );
+$$;
+
+DROP POLICY IF EXISTS "Admins can manage workflow stage events" ON public.workflow_stage_events;
+CREATE POLICY "Admins can manage workflow stage events"
+    ON public.workflow_stage_events FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));
+
+DROP POLICY IF EXISTS "Admins can manage crm contacts" ON public.crm_contacts;
+CREATE POLICY "Admins can manage crm contacts"
+    ON public.crm_contacts FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));
+
+DROP POLICY IF EXISTS "Admins can manage workflow notification rules" ON public.workflow_notification_rules;
+CREATE POLICY "Admins can manage workflow notification rules"
+    ON public.workflow_notification_rules FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));
+
+DROP POLICY IF EXISTS "Admins can view all notification logs" ON public.notification_logs;
+CREATE POLICY "Admins can view all notification logs"
+    ON public.notification_logs FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_logs.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_logs.recipient_id)
+              )
+        )
+    );
+
+DROP POLICY IF EXISTS "Admins can view notification queue" ON public.notification_queue;
+CREATE POLICY "Admins can view notification queue"
+    ON public.notification_queue FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_queue.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_queue.user_id)
+              )
+        )
+    );
+
+DROP POLICY IF EXISTS "Admins can manage notification queue" ON public.notification_queue;
+CREATE POLICY "Admins can manage notification queue"
+    ON public.notification_queue FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_queue.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_queue.user_id)
+              )
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = COALESCE(
+                  (SELECT t.organization_id FROM public.trips t WHERE t.id = notification_queue.trip_id),
+                  (SELECT p.organization_id FROM public.profiles p WHERE p.id = notification_queue.user_id)
+              )
+        )
+    );
+
+CREATE POLICY "Admins can manage org trips"
+    ON public.trips FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));
+
+CREATE POLICY "Admins can view org itineraries"
+    ON public.itineraries FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles admin
+            JOIN public.profiles owner ON owner.id = itineraries.user_id
+            WHERE admin.id = auth.uid()
+              AND admin.role = 'admin'
+              AND admin.organization_id = owner.organization_id
+        )
+    );
+
+DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices;
+CREATE POLICY "Admins can manage invoices"
+    ON public.invoices FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));
+
+DROP POLICY IF EXISTS "Admins can manage invoice payments" ON public.invoice_payments;
+CREATE POLICY "Admins can manage invoice payments"
+    ON public.invoice_payments FOR ALL
+    USING (public.is_org_admin(organization_id))
+    WITH CHECK (public.is_org_admin(organization_id));

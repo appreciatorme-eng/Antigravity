@@ -56,3 +56,23 @@ This update implements the highest-priority hardening work for Travel Suite admi
 3. Add test coverage for admin API auth + org isolation.
 4. Add notification queue ops dashboard (pending/failed by channel).
 5. Add webhook signature verification for WhatsApp inbound events.
+
+## 5) RLS Hardening Pass (Added)
+
+### What changed
+- Added helper function `public.is_org_admin(target_org uuid)`.
+- Tightened org-scoped RLS policies for:
+  - `workflow_stage_events`
+  - `crm_contacts`
+  - `workflow_notification_rules`
+  - `notification_logs`
+  - `notification_queue`
+  - `invoices`
+  - `invoice_payments`
+- Added admin-org policies for:
+  - `trips` (`Admins can manage org trips`)
+  - `itineraries` (`Admins can view org itineraries`)
+
+### Why it matters
+- Reduces risk of cross-tenant exposure at DB policy layer.
+- Adds defensive security even if an API route check regresses.

@@ -420,3 +420,23 @@
 - Apply latest migrations in remote Supabase project.
 - Add billing admin UI and payment confirmation flow.
 - Add API tests for organization isolation and admin auth.
+
+## 2026-02-11 - RLS Security Hardening
+
+### Completed
+- Added migration: `supabase/migrations/20260212001000_rls_org_hardening.sql`
+- Added `public.is_org_admin(target_org uuid)` helper function for policy reuse.
+- Replaced broad admin policies with org-scoped policies on:
+  - `workflow_stage_events`
+  - `crm_contacts`
+  - `workflow_notification_rules`
+  - `notification_logs`
+  - `notification_queue`
+  - `invoices`
+  - `invoice_payments`
+- Added org-admin RLS access policies for `trips` and org-linked `itineraries`.
+- Updated schema snapshot and architecture docs.
+
+### Notes
+- Admin APIs still use service-role server client by design for operational routes.
+- RLS hardening is applied as defense-in-depth for direct DB access paths and future API refactors.

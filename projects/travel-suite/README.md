@@ -141,6 +141,9 @@ Key tables:
 - `workflow_stage_events.organization_id` - tenant-safe lifecycle audit logs
 - `invoices` / `invoice_payments` - billing and payment tracking foundation
 
+Security baseline:
+- Organization-scoped RLS hardening is applied across workflow, CRM, queue, billing, trips, and itinerary-access policies.
+
 ## 🛠️ Development Status
 
 ### Completed
