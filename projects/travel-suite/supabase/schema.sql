@@ -80,6 +80,44 @@ CREATE POLICY "Users can view own workflow stage events"
     USING (auth.uid() = profile_id);
 
 -- ================================================
+-- CRM CONTACTS (Pre-lead contact inbox)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.crm_contacts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+    full_name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    phone_normalized TEXT,
+    source TEXT DEFAULT 'manual',
+    notes TEXT,
+    converted_profile_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    converted_at TIMESTAMPTZ,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_crm_contacts_org_created
+    ON public.crm_contacts(organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crm_contacts_org_phone
+    ON public.crm_contacts(organization_id, phone_normalized);
+CREATE INDEX IF NOT EXISTS idx_crm_contacts_org_email
+    ON public.crm_contacts(organization_id, lower(email));
+
+ALTER TABLE public.crm_contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage crm contacts"
+    ON public.crm_contacts FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+-- ================================================
 -- WORKFLOW NOTIFICATION RULES (per-stage toggles)
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.workflow_notification_rules (

@@ -80,6 +80,7 @@ python main.py
   - Lifecycle stages include payment and review phases (`payment_pending`, `payment_confirmed`, `review`)
   - Kanban lifecycle board with stage movement controls (`lead` → `past`)
   - Dedicated Kanban page (`/admin/kanban`) with drag/drop and transition timeline
+  - Pre-lead contact inbox with search + import (phone picker/CSV) and one-click “Move to Lead”
   - Per-client phase notification toggle in Kanban (default ON)
   - Per-stage notification toggles in Settings (enable/disable auto client notifications by phase)
   - Role override (`client` ↔ `driver`) from Clients panel

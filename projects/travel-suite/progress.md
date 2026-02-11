@@ -97,6 +97,11 @@
   - new `profiles.phase_notifications_enabled` boolean
   - Kanban card toggle for each client
   - lifecycle auto-notify now respects both stage-level rule and client-level toggle
+- Added pre-lead contact inbox workflow:
+  - new `crm_contacts` table + admin APIs (`/api/admin/contacts`, `/api/admin/contacts/[id]/promote`)
+  - Kanban contact search bar and contact cards before lead phase
+  - import contacts via phone contact picker (when browser supports Contacts API) and CSV upload
+  - one-click “Move to Lead” promotion from contact to client profile
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

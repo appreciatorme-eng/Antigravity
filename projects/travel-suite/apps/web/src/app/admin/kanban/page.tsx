@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Columns3, RefreshCcw, ArrowRight, ArrowLeft, Clock3, Search } from "lucide-react";
+import { Columns3, RefreshCcw, ArrowRight, ArrowLeft, Clock3, Search, Phone, Upload, UserPlus } from "lucide-react";
 
 type LifecycleStage =
     | "lead"
@@ -38,6 +38,14 @@ interface StageEvent {
         full_name: string | null;
         email: string | null;
     } | null;
+}
+
+interface ContactItem {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    source: string | null;
 }
 
 const LIFECYCLE_STAGES: LifecycleStage[] = [
@@ -80,21 +88,32 @@ const mockEvents: StageEvent[] = [
     },
 ];
 
+const mockContacts: ContactItem[] = [
+    { id: "ct1", full_name: "Nora Patel", email: "nora@example.com", phone: "+1 650 555 2211", source: "phone_import" },
+    { id: "ct2", full_name: "Raj Kumar", email: null, phone: "+91 98 7654 3210", source: "manual" },
+];
+
 export default function AdminKanbanPage() {
     const supabase = createClient();
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
     const [clients, setClients] = useState<ClientCard[]>([]);
+    const [contacts, setContacts] = useState<ContactItem[]>([]);
     const [events, setEvents] = useState<StageEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [movingClientId, setMovingClientId] = useState<string | null>(null);
     const [draggingClientId, setDraggingClientId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [contactSearch, setContactSearch] = useState("");
+    const [importingContacts, setImportingContacts] = useState(false);
+    const [promotingContactId, setPromotingContactId] = useState<string | null>(null);
+    const csvInputRef = useRef<HTMLInputElement | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             if (useMockAdmin) {
                 setClients(mockClients);
+                setContacts(mockContacts);
                 setEvents(mockEvents);
                 return;
             }
@@ -105,12 +124,14 @@ export default function AdminKanbanPage() {
                 headers.Authorization = `Bearer ${session.access_token}`;
             }
 
-            const [clientsRes, eventsRes] = await Promise.all([
+            const [clientsRes, contactsRes, eventsRes] = await Promise.all([
                 fetch("/api/admin/clients", { headers }),
+                fetch("/api/admin/contacts", { headers }),
                 fetch("/api/admin/workflow/events?limit=40", { headers }),
             ]);
 
             const clientsPayload = await clientsRes.json();
+            const contactsPayload = await contactsRes.json();
             const eventsPayload = await eventsRes.json();
 
             if (!clientsRes.ok) {
@@ -119,8 +140,12 @@ export default function AdminKanbanPage() {
             if (!eventsRes.ok) {
                 throw new Error(eventsPayload?.error || "Failed to fetch stage events");
             }
+            if (!contactsRes.ok) {
+                throw new Error(contactsPayload?.error || "Failed to fetch contacts");
+            }
 
             setClients((clientsPayload.clients || []) as ClientCard[]);
+            setContacts((contactsPayload.contacts || []) as ContactItem[]);
             setEvents((eventsPayload.events || []) as StageEvent[]);
         } catch (error) {
             console.error("Kanban data fetch failed:", error);
@@ -156,6 +181,16 @@ export default function AdminKanbanPage() {
             })),
         [filteredClients]
     );
+
+    const filteredContacts = useMemo(() => {
+        const q = contactSearch.trim().toLowerCase();
+        if (!q) return contacts;
+        return contacts.filter((item) => (
+            item.full_name?.toLowerCase().includes(q) ||
+            item.email?.toLowerCase().includes(q) ||
+            item.phone?.toLowerCase().includes(q)
+        ));
+    }, [contacts, contactSearch]);
 
     const stageIndex = (stage?: string | null) => {
         const idx = LIFECYCLE_STAGES.indexOf((stage || "lead") as LifecycleStage);
@@ -238,6 +273,175 @@ export default function AdminKanbanPage() {
         await moveToStage(client, stage);
     };
 
+    const promoteContactToLead = async (contact: ContactItem) => {
+        setPromotingContactId(contact.id);
+        try {
+            if (useMockAdmin) {
+                setContacts((prev) => prev.filter((item) => item.id !== contact.id));
+                setClients((prev) => [
+                    {
+                        id: `new-${contact.id}`,
+                        full_name: contact.full_name,
+                        email: contact.email,
+                        phone: contact.phone,
+                        phase_notifications_enabled: true,
+                        lifecycle_stage: "lead",
+                        lead_status: "new",
+                    },
+                    ...prev,
+                ]);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(`/api/admin/contacts/${contact.id}/promote`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error || "Failed to promote contact");
+            }
+            await fetchData();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to move contact to lead");
+        } finally {
+            setPromotingContactId(null);
+        }
+    };
+
+    const importFromPhone = async () => {
+        const contactsApi = (navigator as Navigator & {
+            contacts?: {
+                select: (
+                    properties: string[],
+                    options?: { multiple?: boolean }
+                ) => Promise<Array<{ name?: string[]; email?: string[]; tel?: string[] }>>;
+            };
+        }).contacts;
+
+        if (!contactsApi?.select) {
+            alert("Phone contact picker is not supported in this browser. Use CSV import.");
+            return;
+        }
+
+        try {
+            setImportingContacts(true);
+            const picked = await contactsApi.select(["name", "email", "tel"], { multiple: true });
+            if (!picked || picked.length === 0) return;
+
+            const payloadContacts = picked.map((item) => ({
+                full_name: item.name?.[0] || "",
+                email: item.email?.[0] || "",
+                phone: item.tel?.[0] || "",
+            }));
+
+            if (useMockAdmin) {
+                setContacts((prev) => [
+                    ...payloadContacts.map((c, idx) => ({
+                        id: `mock-import-${Date.now()}-${idx}`,
+                        full_name: c.full_name || "Imported Contact",
+                        email: c.email || null,
+                        phone: c.phone || null,
+                        source: "phone_import",
+                    })),
+                    ...prev,
+                ]);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/contacts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify({
+                    source: "phone_import",
+                    contacts: payloadContacts,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload?.error || "Failed to import contacts");
+            await fetchData();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to import phone contacts");
+        } finally {
+            setImportingContacts(false);
+        }
+    };
+
+    const importCsvContacts = async (file: File) => {
+        try {
+            setImportingContacts(true);
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).filter(Boolean);
+            if (lines.length < 2) {
+                alert("CSV needs headers and at least one contact row.");
+                return;
+            }
+
+            const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+            const nameIdx = headers.findIndex((h) => ["name", "full_name", "fullname"].includes(h));
+            const emailIdx = headers.findIndex((h) => h === "email");
+            const phoneIdx = headers.findIndex((h) => ["phone", "mobile", "tel", "telephone"].includes(h));
+
+            const contactsPayload = lines.slice(1).map((line) => {
+                const cols = line.split(",").map((c) => c.trim());
+                return {
+                    full_name: nameIdx >= 0 ? cols[nameIdx] || "" : "",
+                    email: emailIdx >= 0 ? cols[emailIdx] || "" : "",
+                    phone: phoneIdx >= 0 ? cols[phoneIdx] || "" : "",
+                };
+            }).filter((item) => item.full_name || item.email || item.phone);
+
+            if (contactsPayload.length === 0) {
+                alert("No valid contact rows found in CSV.");
+                return;
+            }
+
+            if (useMockAdmin) {
+                setContacts((prev) => [
+                    ...contactsPayload.map((c, idx) => ({
+                        id: `mock-csv-${Date.now()}-${idx}`,
+                        full_name: c.full_name || "Imported Contact",
+                        email: c.email || null,
+                        phone: c.phone || null,
+                        source: "csv_import",
+                    })),
+                    ...prev,
+                ]);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/contacts", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify({
+                    source: "csv_import",
+                    contacts: contactsPayload,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload?.error || "Failed to import CSV contacts");
+            await fetchData();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to import CSV contacts");
+        } finally {
+            setImportingContacts(false);
+            if (csvInputRef.current) {
+                csvInputRef.current.value = "";
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-[1400px] mx-auto">
             <div className="flex items-center justify-between">
@@ -266,6 +470,76 @@ export default function AdminKanbanPage() {
                         <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                         Refresh
                     </button>
+                </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-4 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                    <div>
+                        <p className="text-sm font-semibold text-[#1b140a]">Pre-Lead Contacts</p>
+                        <p className="text-xs text-[#8d7650]">Search/import contacts and promote them to Lead when ready.</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#b09a74]" />
+                            <input
+                                value={contactSearch}
+                                onChange={(e) => setContactSearch(e.target.value)}
+                                placeholder="Search contacts..."
+                                className="pl-9 pr-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#1b140a] w-[220px]"
+                            />
+                        </div>
+                        <button
+                            onClick={() => void importFromPhone()}
+                            disabled={importingContacts}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-60"
+                        >
+                            <Phone className={`w-4 h-4 ${importingContacts ? "animate-spin" : ""}`} />
+                            Import Phone
+                        </button>
+                        <input
+                            ref={csvInputRef}
+                            type="file"
+                            accept=".csv,text/csv"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) void importCsvContacts(file);
+                            }}
+                        />
+                        <button
+                            onClick={() => csvInputRef.current?.click()}
+                            disabled={importingContacts}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-60"
+                        >
+                            <Upload className={`w-4 h-4 ${importingContacts ? "animate-spin" : ""}`} />
+                            Import CSV
+                        </button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {filteredContacts.length === 0 ? (
+                        <p className="text-xs text-[#8d7650]">No pre-lead contacts found.</p>
+                    ) : (
+                        filteredContacts.slice(0, 24).map((contact) => (
+                            <div key={contact.id} className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] px-3 py-2">
+                                <p className="text-sm font-semibold text-[#1b140a] truncate">{contact.full_name || "Unnamed Contact"}</p>
+                                <p className="text-xs text-[#8d7650] truncate">{contact.email || "No email"}</p>
+                                <p className="text-xs text-[#8d7650] truncate">{contact.phone || "No phone"}</p>
+                                <div className="mt-2 flex items-center justify-between">
+                                    <span className="text-[10px] uppercase tracking-wide text-[#b09a74]">{contact.source || "manual"}</span>
+                                    <button
+                                        onClick={() => void promoteContactToLead(contact)}
+                                        disabled={promotingContactId === contact.id}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[#eadfcd] bg-white text-[11px] font-semibold text-[#6f5b3e] disabled:opacity-60"
+                                    >
+                                        <UserPlus className="w-3 h-3" />
+                                        {promotingContactId === contact.id ? "Moving..." : "Move to Lead"}
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
