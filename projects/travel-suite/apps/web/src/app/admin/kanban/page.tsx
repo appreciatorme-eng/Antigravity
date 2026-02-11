@@ -265,6 +265,20 @@ export default function AdminKanbanPage() {
                                             <span className="text-[10px] text-[#8d7650]">•</span>
                                             <p className="text-[10px] text-[#8d7650]">{client.phone || "No phone"}</p>
                                         </div>
+                                        <div className="mt-2">
+                                            <select
+                                                value={(client.lifecycle_stage || "lead")}
+                                                onChange={(e) => void moveToStage(client, e.target.value as LifecycleStage)}
+                                                disabled={movingClientId === client.id}
+                                                className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
+                                            >
+                                                {LIFECYCLE_STAGES.map((stage) => (
+                                                    <option key={`${client.id}-${stage}`} value={stage}>
+                                                        {STAGE_LABELS[stage]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         <div className="flex items-center gap-2 mt-2">
                                             <button
                                                 onClick={() => prev && void moveToStage(client, prev)}
