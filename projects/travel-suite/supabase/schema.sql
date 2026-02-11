@@ -1080,3 +1080,108 @@ EXECUTE FUNCTION public.cancel_pickup_reminders_on_assignment_delete();
 -- Enable realtime for driver locations (for live tracking)
 ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.trips;
+
+-- ================================================
+-- TENANT ISOLATION HARDENING
+-- ================================================
+ALTER TABLE public.workflow_stage_events
+    ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+UPDATE public.workflow_stage_events e
+SET organization_id = p.organization_id
+FROM public.profiles p
+WHERE e.profile_id = p.id
+  AND e.organization_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_workflow_stage_events_org_created
+    ON public.workflow_stage_events(organization_id, created_at DESC);
+
+ALTER TABLE public.trips
+    ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
+
+UPDATE public.trips t
+SET organization_id = p.organization_id
+FROM public.profiles p
+WHERE t.client_id = p.id
+  AND t.organization_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_trips_organization_created
+    ON public.trips(organization_id, created_at DESC);
+
+-- ================================================
+-- BILLING FOUNDATION
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.invoices (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+    trip_id UUID REFERENCES public.trips(id) ON DELETE SET NULL,
+    client_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    invoice_number TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    subtotal_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    tax_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    paid_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    balance_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'issued', 'partially_paid', 'paid', 'overdue', 'cancelled')),
+    due_date DATE,
+    issued_at TIMESTAMPTZ,
+    paid_at TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (organization_id, invoice_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoices_org_status_created
+    ON public.invoices(organization_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_invoices_trip
+    ON public.invoices(trip_id);
+
+CREATE TABLE IF NOT EXISTS public.invoice_payments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+    invoice_id UUID REFERENCES public.invoices(id) ON DELETE CASCADE NOT NULL,
+    amount NUMERIC(12,2) NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    method TEXT,
+    reference TEXT,
+    payment_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+    notes TEXT,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice
+    ON public.invoice_payments(invoice_id, payment_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_org_created
+    ON public.invoice_payments(organization_id, created_at DESC);
+
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoice_payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage invoices"
+    ON public.invoices FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin'
+              AND profiles.organization_id = invoices.organization_id
+        )
+    );
+
+CREATE POLICY "Admins can manage invoice payments"
+    ON public.invoice_payments FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin'
+              AND profiles.organization_id = invoice_payments.organization_id
+        )
+    );

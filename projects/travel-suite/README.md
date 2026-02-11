@@ -102,6 +102,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - `docs/client_experience_sop.md`
 - `docs/e2e_release_checklist.md` (pre-release validation runbook)
 - `docs/whatsapp_tracking_flow.md` (template catalog + webhook/location flow)
+- `docs/critical_foundations_2026-02-11.md` (tenant isolation + CI + billing foundation)
 
 ## 🔔 Automation & Notifications
 
@@ -132,8 +133,11 @@ Key tables:
 - `profiles` now stores client travel preferences (budget, destination, travelers, etc.)
 - `itineraries` - AI-generated travel plans
 - `trips` - Booked trips
+- `trips.organization_id` - tenant-safe admin filtering
 - `external_drivers` - Driver information
 - `trip_driver_assignments` - Driver assignments per day
+- `workflow_stage_events.organization_id` - tenant-safe lifecycle audit logs
+- `invoices` / `invoice_payments` - billing and payment tracking foundation
 
 ## 🛠️ Development Status
 
@@ -150,7 +154,7 @@ Key tables:
 
 ### In Progress
 - [ ] End-to-end push notification validation on real devices
-- [ ] Admin panel hardening (audit logs, role-based access polish)
+- [ ] Admin panel hardening (final RLS tightening + access tests)
 - [ ] Automated pickup reminders (T-60 min): WhatsApp + push fallback
 - [ ] Driver/client live location sharing workflow
 - [ ] White-label support

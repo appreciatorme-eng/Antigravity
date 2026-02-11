@@ -396,3 +396,29 @@
 
 ---
 *Update after completing each phase or encountering errors*
+
+## 2026-02-11 - Critical Foundations Pass
+
+### Completed
+- Hardened tenant isolation in admin APIs:
+  - `apps/web/src/app/api/admin/clients/route.ts`
+  - `apps/web/src/app/api/admin/trips/route.ts`
+  - `apps/web/src/app/api/admin/trips/[id]/route.ts`
+  - `apps/web/src/app/api/admin/workflow/events/route.ts`
+- Added migration: `supabase/migrations/20260211233000_tenant_isolation_hardening.sql`
+  - `workflow_stage_events.organization_id` + backfill + index
+  - `trips.organization_id` + backfill + index
+- Added billing schema foundation migration:
+  - `supabase/migrations/20260211234500_billing_foundation.sql`
+  - new tables: `invoices`, `invoice_payments` with org-scoped RLS
+- Added CI pipeline:
+  - `.github/workflows/travel-suite-ci.yml`
+  - web lint/build + mobile flutter analyze
+- Updated docs:
+  - `docs/critical_foundations_2026-02-11.md`
+  - `README.md` (database + docs + status updates)
+
+### Pending
+- Apply latest migrations in remote Supabase project.
+- Add billing admin UI and payment confirmation flow.
+- Add API tests for organization isolation and admin auth.

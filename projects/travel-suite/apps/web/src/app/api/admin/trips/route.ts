@@ -30,15 +30,18 @@ async function requireAdmin(req: NextRequest) {
 
     const { data: adminProfile } = await supabaseAdmin
         .from("profiles")
-        .select("role")
+        .select("role, organization_id")
         .eq("id", adminUserId)
         .single();
 
     if (!adminProfile || adminProfile.role !== "admin") {
         return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
+    if (!adminProfile.organization_id) {
+        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
+    }
 
-    return { userId: adminUserId };
+    return { userId: adminUserId, organizationId: adminProfile.organization_id };
 }
 
 export async function GET(req: NextRequest) {
@@ -58,6 +61,7 @@ export async function GET(req: NextRequest) {
                 start_date,
                 end_date,
                 created_at,
+                organization_id,
                 profiles:client_id (
                     full_name,
                     email
@@ -67,7 +71,8 @@ export async function GET(req: NextRequest) {
                     duration_days,
                     destination
                 )
-            `);
+            `)
+            .eq("organization_id", admin.organizationId);
 
         if (status !== "all") {
             query = query.eq("status", status);
@@ -109,6 +114,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        const { data: clientProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", clientId)
+            .maybeSingle();
+        if (!clientProfile || clientProfile.organization_id !== admin.organizationId) {
+            return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+        }
+
         const itineraryPayload = {
             user_id: clientId,
             trip_title: itinerary.trip_title || "New Trip",
@@ -132,6 +146,7 @@ export async function POST(req: NextRequest) {
             .from("trips")
             .insert({
                 client_id: clientId,
+                organization_id: admin.organizationId,
                 start_date: startDate,
                 end_date: endDate,
                 status: "pending",

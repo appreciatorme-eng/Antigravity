@@ -15,12 +15,12 @@ async function requireAdmin(req: NextRequest) {
         if (!authError && authData?.user) {
             const { data: adminProfile } = await supabaseAdmin
                 .from("profiles")
-                .select("role")
+                .select("role, organization_id")
                 .eq("id", authData.user.id)
                 .single();
 
-            if (adminProfile?.role === "admin") {
-                return { userId: authData.user.id };
+            if (adminProfile?.role === "admin" && adminProfile.organization_id) {
+                return { userId: authData.user.id, organizationId: adminProfile.organization_id };
             }
         }
     }
@@ -33,15 +33,18 @@ async function requireAdmin(req: NextRequest) {
 
     const { data: adminProfile } = await supabaseAdmin
         .from("profiles")
-        .select("role")
+        .select("role, organization_id")
         .eq("id", user.id)
         .single();
 
     if (!adminProfile || adminProfile.role !== "admin") {
         return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
+    if (!adminProfile.organization_id) {
+        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
+    }
 
-    return { userId: user.id };
+    return { userId: user.id, organizationId: adminProfile.organization_id };
 }
 
 export async function GET(req: NextRequest, { params }: { params?: { id?: string } }) {
@@ -68,6 +71,7 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
                 status,
                 start_date,
                 end_date,
+                organization_id,
                 profiles:client_id (
                     id,
                     full_name,
@@ -83,6 +87,7 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
                 )
             `)
             .eq("id", tripId)
+            .eq("organization_id", admin.organizationId)
             .single();
 
         if (tripError || !tripData) {

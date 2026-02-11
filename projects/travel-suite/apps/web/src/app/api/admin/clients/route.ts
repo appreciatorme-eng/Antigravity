@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
         if (!adminProfile || adminProfile.role !== "admin") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        if (!adminProfile.organization_id) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        }
 
         const body = await req.json();
         const email = String(body.email || "").trim().toLowerCase();
@@ -123,6 +126,18 @@ export async function POST(req: NextRequest) {
         };
 
         if (existingProfile?.id) {
+            const { data: existingOrgProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("organization_id")
+                .eq("id", existingProfile.id)
+                .maybeSingle();
+            if (
+                existingOrgProfile?.organization_id &&
+                existingOrgProfile.organization_id !== adminProfile.organization_id
+            ) {
+                return NextResponse.json({ error: "User belongs to a different organization" }, { status: 403 });
+            }
+
             const { error: profileError } = await supabaseAdmin
                 .from("profiles")
                 .update(updates)
@@ -178,11 +193,15 @@ export async function GET(req: NextRequest) {
         if (!adminProfile || adminProfile.role !== "admin") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        if (!adminProfile.organization_id) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        }
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
             .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, phase_notifications_enabled, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
+            .eq("organization_id", adminProfile.organization_id)
             .order("created_at", { ascending: false });
 
         if (profilesError) {
@@ -232,6 +251,18 @@ export async function DELETE(req: NextRequest) {
         if (!adminProfile || adminProfile.role !== "admin") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        if (!adminProfile.organization_id) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        }
+
+        const { data: targetProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", clientId)
+            .maybeSingle();
+        if (!targetProfile || targetProfile.organization_id !== adminProfile.organization_id) {
+            return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+        }
 
         await supabaseAdmin.from("profiles").delete().eq("id", clientId);
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
@@ -255,12 +286,15 @@ export async function PATCH(req: NextRequest) {
 
         const { data: adminProfile } = await supabaseAdmin
             .from("profiles")
-            .select("role")
+            .select("role, organization_id")
             .eq("id", adminUserId)
             .single();
 
         if (!adminProfile || adminProfile.role !== "admin") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        if (!adminProfile.organization_id) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
         }
 
         const body = await req.json();
@@ -314,12 +348,15 @@ export async function PATCH(req: NextRequest) {
 
         const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
-            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination,phase_notifications_enabled")
+            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination,phase_notifications_enabled,organization_id")
             .eq("id", profileId)
             .maybeSingle();
 
         if (!existingProfile) {
             return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+        }
+        if (existingProfile.organization_id !== adminProfile.organization_id) {
+            return NextResponse.json({ error: "Profile not found in your organization" }, { status: 404 });
         }
 
         const updates: Record<string, string | boolean> = {};
@@ -349,6 +386,7 @@ export async function PATCH(req: NextRequest) {
 
         if (lifecycleChanged) {
             await supabaseAdmin.from("workflow_stage_events").insert({
+                organization_id: adminProfile.organization_id,
                 profile_id: existingProfile.id,
                 from_stage: existingProfile.lifecycle_stage || "lead",
                 to_stage: lifecycleStage,

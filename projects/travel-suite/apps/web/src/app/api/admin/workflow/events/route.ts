@@ -29,12 +29,22 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const { data: adminProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", adminUserId)
+            .maybeSingle();
+        if (!adminProfile?.organization_id) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        }
+
         const { searchParams } = new URL(req.url);
         const limit = Math.min(Number(searchParams.get("limit") || 30), 100);
 
         const { data, error } = await supabaseAdmin
             .from("workflow_stage_events")
-            .select("id,profile_id,from_stage,to_stage,changed_by,created_at")
+            .select("id,profile_id,from_stage,to_stage,changed_by,created_at,organization_id")
+            .eq("organization_id", adminProfile.organization_id)
             .order("created_at", { ascending: false })
             .limit(limit);
 
