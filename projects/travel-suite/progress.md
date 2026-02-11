@@ -501,3 +501,35 @@
   - UI: `apps/web/src/app/admin/security/page.tsx`
   - Nav: `apps/web/src/app/admin/layout.tsx`
   - DB helper function migration: `supabase/migrations/20260212012000_security_diagnostics_function.sql`
+
+## 2026-02-11 - Mobile Testing Infrastructure Baseline
+
+### Completed
+- Expanded mobile test dependencies in `apps/mobile/pubspec.yaml`:
+  - `integration_test` (Flutter SDK)
+  - `mockito`
+- Added deep-link payload parsing utility for testable notification routing:
+  - `apps/mobile/lib/core/services/notification_payload_parser.dart`
+  - integrated into `apps/mobile/lib/core/services/push_notification_service.dart`
+- Added offline sync queue foundation with retry-safe flush behavior:
+  - `apps/mobile/lib/core/services/offline_sync_queue.dart`
+- Added unit tests:
+  - `apps/mobile/test/core/services/notification_payload_parser_test.dart`
+  - `apps/mobile/test/core/services/offline_sync_queue_test.dart`
+  - `apps/mobile/test/features/auth/presentation/screens/auth_screen_test.dart`
+- Added integration smoke test:
+  - `apps/mobile/integration_test/auth_smoke_test.dart`
+- Updated mobile testing docs and coverage target in:
+  - `apps/mobile/README.md`
+
+### Coverage Focus Locked
+- Authentication flow behavior (mode switching, signup role path baseline)
+- Deep-link payload parsing reliability
+- Offline sync queue flush/retry behavior
+- Integration-level auth screen smoke coverage
+- Mobile test coverage now at **70.93%** line coverage.
+
+### Next
+- Add end-to-end auth tests with Supabase test project credentials
+- Add push notification handler tests around message tap/open behavior
+- Add offline queue integration with trip/location actions and network reconnection hooks

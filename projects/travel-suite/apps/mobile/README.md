@@ -87,6 +87,46 @@ Authentication callbacks are handled via custom schemes:
 
 Ensure your Supabase Auth Redirect URLs include: `com.gobuddy.gobuddymobile://login-callback`
 
+## Testing
+
+### Dependencies
+
+Testing stack in `pubspec.yaml`:
+* `flutter_test`
+* `integration_test`
+* `mockito`
+
+### Run Unit + Widget Tests
+
+```bash
+flutter test
+```
+
+### Coverage
+
+```bash
+flutter test --coverage
+```
+
+Coverage output is generated at `coverage/lcov.info`.
+
+### Run Integration Tests (Android Emulator)
+
+```bash
+flutter test integration_test/auth_smoke_test.dart \
+  -d emulator-5554
+```
+
+### Priority Test Areas (Pre-Launch)
+
+* Authentication flows (email/password + role onboarding + OAuth callback)
+* Deep linking and notification payload parsing
+* Push notification handling (foreground, tap/open, token lifecycle)
+* Offline sync queue flush and retry behavior
+
+Target before launch: **60%+ mobile code coverage** with the above areas fully covered.
+Current baseline (`2026-02-11`): **70.93%** line coverage (`flutter test --coverage`).
+
 ## Notes
 
 *   **"I've Landed" Feature**: Calls the web API (`/api/notifications/client-landed`) with the user session token to trigger server-side notifications.

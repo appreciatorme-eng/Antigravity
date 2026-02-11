@@ -8,21 +8,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gobuddy_mobile/main.dart';
 import 'package:gobuddy_mobile/features/trips/presentation/screens/trip_detail_screen.dart';
 
+import 'notification_payload_parser.dart';
+
 /// Handles Firebase Cloud Messaging for push notifications.
-/// 
+///
 /// This service:
 /// - Requests notification permissions
 /// - Gets and stores FCM tokens in Supabase
 /// - Handles foreground, background, and terminated state messages
 /// - Displays local notifications for foreground messages
 class PushNotificationService {
-  static final PushNotificationService _instance = PushNotificationService._internal();
+  static final PushNotificationService _instance =
+      PushNotificationService._internal();
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   String? _currentToken;
   String? _pendingTripId;
@@ -32,28 +36,30 @@ class PushNotificationService {
   Future<void> init() async {
     // Request permission (iOS requires explicit permission)
     await _requestPermission();
-    
+
     // Get FCM token and store it
     await _getAndStoreToken();
-    
+
     // Listen for token refresh
     _messaging.onTokenRefresh.listen(_onTokenRefresh);
-    
+
     // Initialize local notifications for foreground messages
     await _initLocalNotifications();
-    
+
     // Handle foreground messages
-    _foregroundSubscription = FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen(
+      _handleForegroundMessage,
+    );
+
     // Handle notification taps when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-    
+
     // Check if app was opened from a notification (terminated state)
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationTap(initialMessage);
     }
-    
+
     debugPrint('PushNotificationService initialized');
   }
 
@@ -68,8 +74,10 @@ class PushNotificationService {
       provisional: false,
       sound: true,
     );
-    
-    debugPrint('Notification permission status: ${settings.authorizationStatus}');
+
+    debugPrint(
+      'Notification permission status: ${settings.authorizationStatus}',
+    );
   }
 
   /// Get the FCM token and store it in Supabase.
@@ -108,7 +116,9 @@ class PushNotificationService {
       await Supabase.instance.client.from('push_tokens').upsert({
         'user_id': userId,
         'fcm_token': token,
-        'platform': defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+        'platform': defaultTargetPlatform == TargetPlatform.iOS
+            ? 'ios'
+            : 'android',
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id, platform');
 
@@ -121,13 +131,15 @@ class PushNotificationService {
 
   /// Initialize local notifications for displaying foreground messages.
   Future<void> _initLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false, // Already requested via FCM
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    
+
     await _localNotifications.initialize(
       settings: const InitializationSettings(
         android: androidSettings,
@@ -135,10 +147,12 @@ class PushNotificationService {
       ),
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
-    
+
     // Create notification channel for Android
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(
           const AndroidNotificationChannel(
             'gobuddy_push',
@@ -152,7 +166,7 @@ class PushNotificationService {
   /// Handle foreground messages by displaying a local notification.
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('Received foreground message: ${message.messageId}');
-    
+
     final notification = message.notification;
     if (notification != null) {
       _localNotifications.show(
@@ -193,11 +207,7 @@ class PushNotificationService {
   }
 
   String? _extractTripId(Map<String, dynamic> data) {
-    final tripId = data['trip_id'] ?? data['tripId'];
-    if (tripId is String && tripId.trim().isNotEmpty) {
-      return tripId;
-    }
-    return null;
+    return NotificationPayloadParser.tripIdFromPayload(data);
   }
 
   void _handleTripNavigation(String? tripId) {
@@ -214,7 +224,7 @@ class PushNotificationService {
     // We use the navigatorKey's currentState to push the new route
     // This allows navigation without a context reference in the service
     final navigatorState = GoBuddyApp.navigatorKey.currentState;
-    
+
     if (navigatorState != null) {
       navigatorState.push(
         MaterialPageRoute(
