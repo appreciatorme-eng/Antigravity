@@ -46,6 +46,7 @@ python main.py
 - **Driver Info**: View assigned driver details
 - **Notifications**: Local notifications for "I've Landed" feature
 - **Maps**: Interactive OpenStreetMap via flutter_map
+- **Driver Live Location**: Driver-mode users can publish real-time location pings
 
 ### Key Dependencies
 - `supabase_flutter` - Backend integration

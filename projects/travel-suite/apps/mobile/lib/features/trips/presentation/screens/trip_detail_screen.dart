@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
@@ -14,16 +14,17 @@ import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class TripDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? trip;
   final String? tripId;
 
-  const TripDetailScreen({
-    super.key,
-    this.trip,
-    this.tripId,
-  }) : assert(trip != null || tripId != null, 'Either trip or tripId must be provided');
+  const TripDetailScreen({super.key, this.trip, this.tripId})
+    : assert(
+        trip != null || tripId != null,
+        'Either trip or tripId must be provided',
+      );
 
   @override
   State<TripDetailScreen> createState() => _TripDetailScreenState();
@@ -35,6 +36,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   bool _loadingDriver = true;
   bool _loadingTrip = false;
   Map<String, dynamic>? _trip;
+  bool _isDriverForTrip = false;
+  bool _sharingLocation = false;
+  bool _startingLocationShare = false;
+  Timer? _locationTimer;
 
   @override
   void initState() {
@@ -43,6 +48,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     if (_trip == null && widget.tripId != null) {
       _fetchTripDetails();
     } else {
+      _updateDriverMode();
       _loadDriverAssignments();
     }
   }
@@ -55,12 +61,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           .select('*, itineraries(*)')
           .eq('id', widget.tripId!)
           .single();
-      
+
       if (mounted) {
         setState(() {
           _trip = response;
           _loadingTrip = false;
         });
+        _updateDriverMode();
         _loadDriverAssignments();
       }
     } catch (e) {
@@ -71,7 +78,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
   Future<void> _loadDriverAssignments() async {
     if (_trip == null) return;
-    
+
     final repo = DriverRepository(Supabase.instance.client);
     final tripId = _trip!['id'];
     if (tripId != null) {
@@ -83,7 +90,124 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         });
       }
     } else {
-        if (mounted) setState(() => _loadingDriver = false);
+      if (mounted) setState(() => _loadingDriver = false);
+    }
+  }
+
+  void _updateDriverMode() {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final driverId = _trip?['driver_id'] as String?;
+    final isDriver =
+        currentUserId != null && driverId != null && currentUserId == driverId;
+
+    if (!mounted) return;
+    setState(() {
+      _isDriverForTrip = isDriver;
+    });
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _toggleLocationSharing() async {
+    if (!_isDriverForTrip) return;
+
+    if (_sharingLocation) {
+      _stopLocationSharing();
+      return;
+    }
+
+    setState(() => _startingLocationShare = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission denied');
+      }
+
+      await _sendCurrentLocationPing();
+      _locationTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+        await _sendCurrentLocationPing();
+      });
+
+      if (mounted) {
+        setState(() => _sharingLocation = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Live location sharing started'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to start location sharing: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _startingLocationShare = false);
+    }
+  }
+
+  void _stopLocationSharing() {
+    _locationTimer?.cancel();
+    _locationTimer = null;
+    if (!mounted) return;
+    setState(() => _sharingLocation = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Live location sharing stopped'),
+        backgroundColor: Colors.black87,
+      ),
+    );
+  }
+
+  Future<void> _sendCurrentLocationPing() async {
+    final tripId = _trip?['id'] as String?;
+    if (tripId == null) return;
+
+    final session = Supabase.instance.client.auth.currentSession;
+    final accessToken = session?.accessToken;
+    if (accessToken == null) return;
+
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+
+    final uri = Uri.parse('${SupabaseConfig.apiBaseUrl}/api/location/ping');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
+      body: jsonEncode({
+        'tripId': tripId,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'heading': position.heading,
+        'speed': position.speed,
+        'accuracy': position.accuracy,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Ping failed (${response.statusCode})');
     }
   }
 
@@ -119,9 +243,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
       // Show local confirmation notification
       final itinerary = _trip?['itineraries'] as Map<String, dynamic>?;
-      final destination = itinerary?['destination'] ??
-          _trip?['destination'] ??
-          'GoBuddy';
+      final destination =
+          itinerary?['destination'] ?? _trip?['destination'] ?? 'GoBuddy';
       await NotificationService().showNotification(
         id: 1,
         title: 'Welcome to $destination!',
@@ -161,16 +284,13 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Widget build(BuildContext context) {
     if (_loadingTrip || _trip == null) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppTheme.primary),
-        ),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
       );
     }
 
     final itinerary = _trip!['itineraries'] as Map<String, dynamic>?;
-    final destination = itinerary?['destination'] ??
-        _trip!['destination'] ??
-        'Trip Details';
+    final destination =
+        itinerary?['destination'] ?? _trip!['destination'] ?? 'Trip Details';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -192,11 +312,28 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   actions: [
+                    if (_isDriverForTrip)
+                      IconButton(
+                        icon: Icon(
+                          _sharingLocation
+                              ? Icons.location_off_rounded
+                              : Icons.location_searching_rounded,
+                          color: _sharingLocation
+                              ? Colors.amber.shade100
+                              : Colors.white,
+                        ),
+                        tooltip: _sharingLocation
+                            ? 'Stop live location'
+                            : 'Start live location',
+                        onPressed: _startingLocationShare
+                            ? null
+                            : _toggleLocationSharing,
+                      ),
                     IconButton(
-                        icon: const Icon(Icons.share_rounded),
-                        onPressed: () {
-                          // TODO: Share
-                        },
+                      icon: const Icon(Icons.share_rounded),
+                      onPressed: () {
+                        // TODO: Share
+                      },
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
@@ -209,22 +346,23 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                       ),
                     ),
                     background: Hero(
-                       tag: 'trip-bg-${_trip!['id']}',
-                       child: Container(
-                          decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                      AppTheme.primary,
-                                      AppTheme.secondary,
-                                  ],
-                              ),
+                      tag: 'trip-bg-${_trip!['id']}',
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [AppTheme.primary, AppTheme.secondary],
                           ),
-                          child: const Center(
-                             child: Icon(Icons.landscape_rounded, size: 64, color: Colors.white24),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.landscape_rounded,
+                            size: 64,
+                            color: Colors.white24,
                           ),
-                       ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -234,22 +372,26 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     delegate: _DaySelectorDelegate(
                       days: days,
                       selectedIndex: _selectedDayIndex,
-                      onSelect: (index) => setState(() => _selectedDayIndex = index),
+                      onSelect: (index) =>
+                          setState(() => _selectedDayIndex = index),
                     ),
                   ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 80),
                     child: days.isEmpty
-                        ? const SizedBox(height: 200, child: Center(child: Text('No itinerary data')))
+                        ? const SizedBox(
+                            height: 200,
+                            child: Center(child: Text('No itinerary data')),
+                          )
                         : _buildDayContent(days[_selectedDayIndex])
-                             .animate(key: ValueKey(_selectedDayIndex))
-                             .fadeIn(duration: 400.ms),
+                              .animate(key: ValueKey(_selectedDayIndex))
+                              .fadeIn(duration: 400.ms),
                   ),
                 ),
               ],
             ),
-       floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _notifyLanded,
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.flight_land_rounded),
@@ -257,7 +399,6 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       ),
     );
   }
-
 
   Widget _buildDayContent(dynamic dayData) {
     final day = dayData as Map<String, dynamic>;
@@ -267,7 +408,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     // Check for driver assignment for this day (1-based index)
     final assignment = _assignments.firstWhere(
       (a) => a.dayNumber == _selectedDayIndex + 1,
-      orElse: () => const DriverAssignment(id: '', tripId: '', driverId: '', dayNumber: -1),
+      orElse: () => const DriverAssignment(
+        id: '',
+        tripId: '',
+        driverId: '',
+        dayNumber: -1,
+      ),
     );
     final hasDriver = assignment.dayNumber != -1;
 
@@ -288,10 +434,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(51),
-                      blurRadius: 4,
-                    ),
+                    BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 4),
                   ],
                 ),
                 padding: const EdgeInsets.all(8),
@@ -325,10 +468,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               ),
             ),
           const SizedBox(height: 16),
-          
+
           if (hasDriver) ...[
-             DriverInfoCard(assignment: assignment),
-             const SizedBox(height: 16),
+            DriverInfoCard(assignment: assignment),
+            const SizedBox(height: 16),
           ],
 
           // Map
@@ -339,10 +482,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(26),
-                    blurRadius: 10,
-                  ),
+                  BoxShadow(color: Colors.black.withAlpha(26), blurRadius: 10),
                 ],
               ),
               clipBehavior: Clip.antiAlias,
@@ -374,7 +514,11 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     );
   }
 
-  Widget _buildActivityCard(Map<String, dynamic> activity, int index, int total) {
+  Widget _buildActivityCard(
+    Map<String, dynamic> activity,
+    int index,
+    int total,
+  ) {
     final time = activity['time'] ?? '';
     final title = activity['title'] ?? 'Activity';
     final description = activity['description'] ?? '';
@@ -436,7 +580,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   if (time.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.secondary.withAlpha(26),
                         borderRadius: BorderRadius.circular(4),
@@ -451,10 +597,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                       ),
                     ),
                   const SizedBox(height: 8),
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -466,8 +609,11 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined,
-                            size: 14, color: Colors.grey.shade500),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: Colors.grey.shade500,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -504,7 +650,10 @@ class _DaySelectorDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: Colors.white,
       height: 60,
@@ -528,7 +677,9 @@ class _DaySelectorDelegate extends SliverPersistentHeaderDelegate {
               showCheckmark: false,
               backgroundColor: Colors.grey[100],
               side: BorderSide.none,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
           );
         },

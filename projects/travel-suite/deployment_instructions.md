@@ -108,3 +108,10 @@ pod install
 cd ..
 flutter run
 ```
+
+### Mobile live-location publishing
+- Driver app now calls `POST /api/location/ping` every ~20 seconds when live sharing is enabled in trip detail.
+- Ensure `apps/mobile/lib/core/config/supabase_config.dart` has a real deployed web base URL:
+```
+static const String apiBaseUrl = 'https://<your-deployed-web-domain>';
+```

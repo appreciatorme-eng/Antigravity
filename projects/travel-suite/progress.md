@@ -28,6 +28,11 @@
 - Updated queue processor auth to allow either:
   - cron secret header (scheduler mode), or
   - admin bearer token (manual trigger mode).
+- Added mobile driver live-location publishing:
+  - driver-mode detection on trip detail (`trip.driver_id == auth user`)
+  - start/stop sharing action in trip detail app bar
+  - 20-second location ping loop to `/api/location/ping`
+  - Android/iOS location permissions updated
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

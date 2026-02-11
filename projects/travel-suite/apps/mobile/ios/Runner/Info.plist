@@ -50,6 +50,10 @@
 			<string>fetch</string>
 			<string>remote-notification</string>
 		</array>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>We use your location to share real-time trip tracking with your client.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>We use your location to share real-time trip tracking with your client.</string>
 		<!-- Deep linking for authentication -->
 		<key>CFBundleURLTypes</key>
 		<array>
