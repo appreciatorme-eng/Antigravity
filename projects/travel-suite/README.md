@@ -87,6 +87,7 @@ Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered
 
 Post-confirmation client experience flow and automation checklist are documented in:
 - `docs/client_experience_sop.md`
+- `docs/e2e_release_checklist.md` (pre-release validation runbook)
 
 ## 🔔 Automation & Notifications
 

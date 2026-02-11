@@ -83,6 +83,7 @@ Live location is now supported with tokenized links:
 - `DELETE /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): revoke active live link(s)
 - `GET /api/location/client-share?tripId=<id>&dayNumber=<n>` (client auth required): create/reuse live link for mobile client view
 - `POST /api/location/ping` (driver auth required): write GPS ping to `driver_locations`
+- `POST /api/location/cleanup-expired` (cron secret or admin auth): deactivate expired active live links
 - `GET /api/location/live/:token` (public by token): read latest location payload
 - `GET /live/:token` (web page): client/driver-friendly live map view
 

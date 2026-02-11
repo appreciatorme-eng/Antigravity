@@ -47,6 +47,10 @@
   - latest driver ping + stale badge in trip detail
   - retry-failed queue action in notifications
 - Added notification template rendering engine with variable payload support.
+- Added admin driver-account linking workflow (`external_drivers` <-> app `profiles`) in Drivers page.
+- Added driver location ping throttling to reduce high-frequency write noise.
+- Added expired live-link cleanup endpoint + admin trigger action.
+- Added admin audit log entries for manual queue run, retry-failed, revoke-live, cleanup-expired.
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

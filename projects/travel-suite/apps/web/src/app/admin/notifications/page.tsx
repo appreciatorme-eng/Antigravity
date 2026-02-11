@@ -131,6 +131,9 @@ export default function NotificationLogsPage() {
     });
     const [runningQueue, setRunningQueue] = useState(false);
     const [retryingFailed, setRetryingFailed] = useState(false);
+    const [cleaningShares, setCleaningShares] = useState(false);
+    const [actionMessage, setActionMessage] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -209,6 +212,15 @@ export default function NotificationLogsPage() {
         void fetchLogs();
     }, [fetchLogs]);
 
+    useEffect(() => {
+        if (!actionMessage && !actionError) return;
+        const timer = window.setTimeout(() => {
+            setActionMessage(null);
+            setActionError(null);
+        }, 4000);
+        return () => window.clearTimeout(timer);
+    }, [actionMessage, actionError]);
+
     const getStatusIcon = (status: string | null) => {
         switch (status) {
             case "sent":
@@ -249,7 +261,7 @@ export default function NotificationLogsPage() {
         try {
             setRunningQueue(true);
             if (useMockAdmin) {
-                alert("Mock queue run complete.");
+                setActionMessage("Mock queue run complete.");
                 await fetchLogs();
                 return;
             }
@@ -264,15 +276,17 @@ export default function NotificationLogsPage() {
 
             const payload = await response.json();
             if (!response.ok) {
-                alert(payload?.error || "Failed to run queue");
+                setActionError(payload?.error || "Failed to run queue");
                 return;
             }
 
-            alert(`Queue processed: ${payload.processed}, sent: ${payload.sent}, failed: ${payload.failed}`);
+            setActionMessage(
+                `Queue processed: ${payload.processed}, sent: ${payload.sent}, failed: ${payload.failed}`
+            );
             await fetchLogs();
         } catch (error) {
             console.error("Run queue error:", error);
-            alert("Failed to run queue");
+            setActionError("Failed to run queue");
         } finally {
             setRunningQueue(false);
         }
@@ -282,7 +296,7 @@ export default function NotificationLogsPage() {
         try {
             setRetryingFailed(true);
             if (useMockAdmin) {
-                alert("Mock retry complete.");
+                setActionMessage("Mock retry complete.");
                 await fetchLogs();
                 return;
             }
@@ -296,17 +310,46 @@ export default function NotificationLogsPage() {
             });
             const payload = await response.json();
             if (!response.ok) {
-                alert(payload?.error || "Failed to retry failed queue items");
+                setActionError(payload?.error || "Failed to retry failed queue items");
                 return;
             }
 
-            alert(`Moved ${payload.retried || 0} failed item(s) back to pending.`);
+            setActionMessage(`Moved ${payload.retried || 0} failed item(s) back to pending.`);
             await fetchLogs();
         } catch (error) {
             console.error("Retry failed queue error:", error);
-            alert("Failed to retry failed queue items");
+            setActionError("Failed to retry failed queue items");
         } finally {
             setRetryingFailed(false);
+        }
+    };
+
+    const cleanupExpiredShares = async () => {
+        try {
+            setCleaningShares(true);
+            if (useMockAdmin) {
+                setActionMessage("Mock cleanup complete.");
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/location/cleanup-expired", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setActionError(payload?.error || "Failed to clean expired shares");
+                return;
+            }
+            setActionMessage(`Deactivated ${payload.cleaned || 0} expired live share link(s).`);
+        } catch (error) {
+            console.error("Cleanup expired shares error:", error);
+            setActionError("Failed to clean expired shares");
+        } finally {
+            setCleaningShares(false);
         }
     };
 
@@ -344,7 +387,26 @@ export default function NotificationLogsPage() {
                     <RefreshCcw className={`w-4 h-4 ${retryingFailed ? 'animate-spin' : ''}`} />
                     {retryingFailed ? "Retrying Failed..." : "Retry Failed"}
                 </button>
+                <button
+                    onClick={cleanupExpiredShares}
+                    disabled={cleaningShares}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
+                >
+                    <Clock className={`w-4 h-4 ${cleaningShares ? 'animate-spin' : ''}`} />
+                    {cleaningShares ? "Cleaning..." : "Cleanup Expired Live Links"}
+                </button>
             </div>
+
+            {actionMessage ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    {actionMessage}
+                </div>
+            ) : null}
+            {actionError ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {actionError}
+                </div>
+            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="md:col-span-2 relative">

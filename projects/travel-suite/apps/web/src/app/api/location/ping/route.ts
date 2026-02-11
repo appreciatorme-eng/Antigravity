@@ -86,6 +86,23 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Driver access required" }, { status: 403 });
         }
 
+        // Basic write throttling to reduce noisy high-frequency pings.
+        const { data: latestPing } = await supabaseAdmin
+            .from("driver_locations")
+            .select("recorded_at")
+            .eq("trip_id", tripId)
+            .eq("driver_id", resolvedDriverId)
+            .order("recorded_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (latestPing?.recorded_at) {
+            const sinceMs = Date.now() - new Date(latestPing.recorded_at).getTime();
+            if (sinceMs < 5000) {
+                return NextResponse.json({ ok: true, throttled: true });
+            }
+        }
+
         const { error: insertError } = await supabaseAdmin
             .from("driver_locations")
             .insert({

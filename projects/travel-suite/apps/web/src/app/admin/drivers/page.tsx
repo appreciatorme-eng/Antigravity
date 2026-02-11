@@ -13,11 +13,22 @@ import {
     Loader2,
     Check,
     AlertCircle,
+    Link2,
+    Link2Off,
 } from "lucide-react";
 import type { Database } from "@/lib/database.types";
 
 type ExternalDriver = Database["public"]["Tables"]["external_drivers"]["Row"];
 type NewDriver = Database["public"]["Tables"]["external_drivers"]["Insert"];
+
+interface DriverAccountLink {
+    id: string;
+    external_driver_id: string;
+    profile_id: string;
+    is_active: boolean;
+    profile_email?: string | null;
+    profile_name?: string | null;
+}
 
 const mockDrivers: ExternalDriver[] = [
     {
@@ -66,8 +77,11 @@ export default function DriversPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingDriver, setEditingDriver] = useState<ExternalDriver | null>(null);
     const [saving, setSaving] = useState(false);
+    const [linking, setLinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [driverAccountLinks, setDriverAccountLinks] = useState<Record<string, DriverAccountLink>>({});
+    const [linkEmailByDriver, setLinkEmailByDriver] = useState<Record<string, string>>({});
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     // Form state
@@ -127,6 +141,32 @@ export default function DriversPage() {
         }
 
         setDrivers(data || []);
+
+        const { data: links } = await supabase
+            .from("driver_accounts")
+            .select(`
+                id,
+                external_driver_id,
+                profile_id,
+                is_active,
+                profiles:profile_id (
+                    email,
+                    full_name
+                )
+            `);
+
+        const mapping: Record<string, DriverAccountLink> = {};
+        (links || []).forEach((item: any) => {
+            mapping[item.external_driver_id] = {
+                id: item.id,
+                external_driver_id: item.external_driver_id,
+                profile_id: item.profile_id,
+                is_active: item.is_active,
+                profile_email: item.profiles?.email || null,
+                profile_name: item.profiles?.full_name || null,
+            };
+        });
+        setDriverAccountLinks(mapping);
         setLoading(false);
     }, [supabase, useMockAdmin]);
 
@@ -263,6 +303,117 @@ export default function DriversPage() {
 
         setSuccess("Driver deleted successfully");
         fetchDrivers();
+    };
+
+    const handleLinkDriverAccount = async (driver: ExternalDriver) => {
+        const email = (linkEmailByDriver[driver.id] || "").trim().toLowerCase();
+        if (!email) {
+            setError("Enter app user email to link this driver.");
+            return;
+        }
+
+        setLinking(true);
+        setError(null);
+
+        try {
+            if (useMockAdmin) {
+                setDriverAccountLinks((prev) => ({
+                    ...prev,
+                    [driver.id]: {
+                        id: `mock-link-${driver.id}`,
+                        external_driver_id: driver.id,
+                        profile_id: "mock-profile-id",
+                        is_active: true,
+                        profile_email: email,
+                        profile_name: "Mock Driver User",
+                    },
+                }));
+                setSuccess("Driver linked to app account (mock).");
+                return;
+            }
+
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("id,email,full_name")
+                .eq("email", email)
+                .maybeSingle();
+
+            if (profileError || !profile) {
+                throw new Error("No app user found with that email.");
+            }
+
+            const { data: upserted, error: upsertError } = await supabase
+                .from("driver_accounts")
+                .upsert(
+                    {
+                        external_driver_id: driver.id,
+                        profile_id: profile.id,
+                        is_active: true,
+                    },
+                    { onConflict: "external_driver_id" }
+                )
+                .select("id,external_driver_id,profile_id,is_active")
+                .single();
+
+            if (upsertError || !upserted) {
+                throw upsertError ?? new Error("Failed to link driver account.");
+            }
+
+            setDriverAccountLinks((prev) => ({
+                ...prev,
+                [driver.id]: {
+                    id: upserted.id,
+                    external_driver_id: upserted.external_driver_id,
+                    profile_id: upserted.profile_id,
+                    is_active: upserted.is_active,
+                    profile_email: profile.email,
+                    profile_name: profile.full_name,
+                },
+            }));
+            setSuccess("Driver linked to app account.");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to link driver account.");
+        } finally {
+            setLinking(false);
+        }
+    };
+
+    const handleUnlinkDriverAccount = async (driver: ExternalDriver) => {
+        const existing = driverAccountLinks[driver.id];
+        if (!existing) return;
+
+        setLinking(true);
+        setError(null);
+
+        try {
+            if (useMockAdmin) {
+                setDriverAccountLinks((prev) => {
+                    const clone = { ...prev };
+                    delete clone[driver.id];
+                    return clone;
+                });
+                setSuccess("Driver link removed (mock).");
+                return;
+            }
+
+            const { error } = await supabase
+                .from("driver_accounts")
+                .delete()
+                .eq("id", existing.id);
+
+            if (error) throw error;
+
+            setDriverAccountLinks((prev) => {
+                const clone = { ...prev };
+                delete clone[driver.id];
+                return clone;
+            });
+            setSuccess("Driver link removed.");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to unlink driver account.");
+        } finally {
+            setLinking(false);
+        }
     };
 
     const handleEdit = (driver: ExternalDriver) => {
@@ -404,6 +555,9 @@ export default function DriversPage() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6f5b3e] uppercase tracking-wider">
                                     Status
                                 </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-[#6f5b3e] uppercase tracking-wider">
+                                    App Link
+                                </th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-[#6f5b3e] uppercase tracking-wider">
                                     Actions
                                 </th>
@@ -464,6 +618,46 @@ export default function DriversPage() {
                                         >
                                             {driver.is_active ? "Active" : "Inactive"}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {driverAccountLinks[driver.id] ? (
+                                            <div className="space-y-2">
+                                                <div className="text-xs text-emerald-700 font-medium">
+                                                    Linked: {driverAccountLinks[driver.id].profile_email || "app user"}
+                                                </div>
+                                                <button
+                                                    onClick={() => void handleUnlinkDriverAccount(driver)}
+                                                    disabled={linking}
+                                                    className="inline-flex items-center gap-1 text-xs text-rose-600 hover:underline disabled:opacity-60"
+                                                >
+                                                    <Link2Off className="w-3.5 h-3.5" />
+                                                    Unlink
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <input
+                                                    type="email"
+                                                    placeholder="driver app email"
+                                                    value={linkEmailByDriver[driver.id] || ""}
+                                                    onChange={(e) =>
+                                                        setLinkEmailByDriver((prev) => ({
+                                                            ...prev,
+                                                            [driver.id]: e.target.value,
+                                                        }))
+                                                    }
+                                                    className="w-44 rounded border border-[#eadfcd] px-2 py-1 text-xs"
+                                                />
+                                                <button
+                                                    onClick={() => void handleLinkDriverAccount(driver)}
+                                                    disabled={linking}
+                                                    className="inline-flex items-center gap-1 text-xs text-[#6f5b3e] hover:underline disabled:opacity-60"
+                                                >
+                                                    <Link2 className="w-3.5 h-3.5" />
+                                                    Link
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">

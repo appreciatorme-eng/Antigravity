@@ -187,6 +187,17 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        await supabaseAdmin.from("notification_logs").insert({
+            trip_id: tripId || null,
+            notification_type: "manual",
+            recipient_type: "admin",
+            recipient_id: admin.userId,
+            title: "Live Link Revoked",
+            body: `Revoked ${data?.length || 0} active live location link(s).`,
+            status: "sent",
+            sent_at: new Date().toISOString(),
+        });
+
         return NextResponse.json({
             ok: true,
             revoked: data?.length || 0,

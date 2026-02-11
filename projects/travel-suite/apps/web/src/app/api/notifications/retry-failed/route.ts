@@ -42,6 +42,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        await supabaseAdmin.from("notification_logs").insert({
+            notification_type: "manual",
+            recipient_type: "admin",
+            recipient_id: authData.user.id,
+            title: "Queue Retry Failed",
+            body: `Moved ${data?.length || 0} failed queue item(s) back to pending.`,
+            status: "sent",
+            sent_at: new Date().toISOString(),
+        });
+
         return NextResponse.json({
             ok: true,
             retried: data?.length || 0,

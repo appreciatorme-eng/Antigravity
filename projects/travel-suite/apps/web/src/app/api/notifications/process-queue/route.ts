@@ -47,6 +47,19 @@ async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
     return profile?.role === "admin";
 }
 
+async function getAdminUserId(authHeader: string | null): Promise<string | null> {
+    if (!authHeader?.startsWith("Bearer ")) return null;
+    const token = authHeader.substring(7);
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !authData?.user) return null;
+    const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+    return profile?.role === "admin" ? authData.user.id : null;
+}
+
 async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
     const tripId = item.trip_id;
     if (!tripId) return null;
@@ -97,6 +110,7 @@ export async function POST(request: NextRequest) {
 
         const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
         const adminAuthorized = await isAdminBearerToken(authHeader);
+        const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
 
         if (!secretAuthorized && !adminAuthorized) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -231,6 +245,18 @@ export async function POST(request: NextRequest) {
                         .eq("id", row.id);
                 }
             }
+        }
+
+        if (adminUserId) {
+            await supabaseAdmin.from("notification_logs").insert({
+                notification_type: "manual",
+                recipient_type: "admin",
+                recipient_id: adminUserId,
+                title: "Queue Run (Manual)",
+                body: `Processed ${rows.length} queued notification(s): sent ${sent}, failed ${failed}.`,
+                status: "sent",
+                sent_at: new Date().toISOString(),
+            });
         }
 
         return NextResponse.json({
