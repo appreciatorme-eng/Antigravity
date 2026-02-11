@@ -533,3 +533,27 @@
 - Add end-to-end auth tests with Supabase test project credentials
 - Add push notification handler tests around message tap/open behavior
 - Add offline queue integration with trip/location actions and network reconnection hooks
+
+## 2026-02-11 - Structured Logging & Observability Baseline
+
+### Completed
+- Added centralized structured logging helper:
+  - `apps/web/src/lib/observability/logger.ts`
+- Added optional PostHog metric capture helper:
+  - `apps/web/src/lib/observability/metrics.ts`
+- Integrated structured logs + request IDs into:
+  - `apps/web/src/app/api/health/route.ts`
+  - `apps/web/src/app/api/notifications/process-queue/route.ts`
+  - `apps/web/src/app/api/notifications/send/route.ts`
+- Added observability stack status into `/api/health`:
+  - Sentry DSN configured/unconfigured
+  - PostHog API key configured/unconfigured
+  - uptime heartbeat URL configured/unconfigured
+- Updated Supabase Edge Function (`send-notification`) to emit structured JSON logs.
+- Added implementation + roadmap doc:
+  - `docs/observability_and_notification_architecture_2026-02-11.md`
+- Updated root README health section with observability status note.
+
+### Notes
+- Metrics logging is best-effort and never blocks request flow.
+- This is the production debugging baseline; next phase is splitting queue processor into per-channel workers.

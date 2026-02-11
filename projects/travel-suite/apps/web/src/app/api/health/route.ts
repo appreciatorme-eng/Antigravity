@@ -1,5 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 type CheckStatus = "healthy" | "degraded" | "down" | "unconfigured";
 
@@ -58,6 +65,36 @@ function mapHttpStatus(code: number, options: {
     if (options.degraded?.includes(code)) return "degraded";
     if (code >= 500) return "down";
     return "degraded";
+}
+
+function checkObservabilityStack(): {
+    status: CheckStatus;
+    sentry: CheckResult;
+    posthog: CheckResult;
+    uptime_monitor: CheckResult;
+} {
+    const sentry: CheckResult = process.env.SENTRY_DSN
+        ? { status: "healthy", detail: "SENTRY_DSN configured" }
+        : { status: "unconfigured", detail: "SENTRY_DSN missing" };
+
+    const posthog: CheckResult = process.env.POSTHOG_API_KEY
+        ? {
+            status: "healthy",
+            detail: `POSTHOG_HOST=${process.env.POSTHOG_HOST || "https://app.posthog.com"}`,
+        }
+        : { status: "unconfigured", detail: "POSTHOG_API_KEY missing" };
+
+    const uptime_monitor: CheckResult =
+        process.env.HEALTHCHECK_PING_URL || process.env.UPTIMEROBOT_HEARTBEAT_URL
+            ? { status: "healthy", detail: "Heartbeat URL configured" }
+            : { status: "unconfigured", detail: "No heartbeat monitor URL configured" };
+
+    return {
+        status: aggregateStatus([sentry.status, posthog.status, uptime_monitor.status]),
+        sentry,
+        posthog,
+        uptime_monitor,
+    };
 }
 
 async function checkDatabase(): Promise<CheckResult> {
@@ -247,38 +284,82 @@ async function checkExternalApis(): Promise<{ status: CheckStatus; weather: Chec
     };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
 
-    const [database, supabaseEdgeFunctions, firebaseFcm, whatsappApi, externalApis] = await Promise.all([
-        checkDatabase(),
-        checkSupabaseEdgeFunctions(),
-        checkFirebaseFcm(),
-        checkWhatsappApi(),
-        checkExternalApis(),
-    ]);
+    logEvent("info", "Health check requested", requestContext);
 
-    const status = aggregateStatus([
-        database.status,
-        supabaseEdgeFunctions.status,
-        firebaseFcm.status,
-        whatsappApi.status,
-        externalApis.status,
-    ]);
+    try {
+        const [database, supabaseEdgeFunctions, firebaseFcm, whatsappApi, externalApis] = await Promise.all([
+            checkDatabase(),
+            checkSupabaseEdgeFunctions(),
+            checkFirebaseFcm(),
+            checkWhatsappApi(),
+            checkExternalApis(),
+        ]);
 
-    return NextResponse.json(
-        {
+        const observability = checkObservabilityStack();
+
+        const status = aggregateStatus([
+            database.status,
+            supabaseEdgeFunctions.status,
+            firebaseFcm.status,
+            whatsappApi.status,
+            externalApis.status,
+            observability.status,
+        ]);
+
+        const durationMs = Date.now() - startedAt;
+        void captureOperationalMetric("api.health.checked", {
+            request_id: requestId,
             status,
-            checked_at: new Date().toISOString(),
-            duration_ms: Date.now() - startedAt,
-            checks: {
-                database,
-                supabase_edge_functions: supabaseEdgeFunctions,
-                firebase_fcm: firebaseFcm,
-                whatsapp_api: whatsappApi,
-                external_apis: externalApis,
+            duration_ms: durationMs,
+        });
+
+        if (status !== "healthy") {
+            logEvent("warn", "Health check is degraded", {
+                ...requestContext,
+                status,
+                durationMs,
+            });
+        } else {
+            logEvent("info", "Health check completed", {
+                ...requestContext,
+                status,
+                durationMs,
+            });
+        }
+
+        const response = NextResponse.json(
+            {
+                status,
+                request_id: requestId,
+                checked_at: new Date().toISOString(),
+                duration_ms: durationMs,
+                checks: {
+                    database,
+                    supabase_edge_functions: supabaseEdgeFunctions,
+                    firebase_fcm: firebaseFcm,
+                    whatsapp_api: whatsappApi,
+                    external_apis: externalApis,
+                    observability,
+                },
             },
-        },
-        { status: status === "down" ? 503 : 200 }
-    );
+            { status: status === "down" ? 503 : 200 }
+        );
+        response.headers.set("x-request-id", requestId);
+        return response;
+    } catch (error) {
+        logError("Health check crashed", error, requestContext);
+        return NextResponse.json(
+            {
+                status: "down",
+                request_id: requestId,
+                error: error instanceof Error ? error.message : "Unknown health check error",
+            },
+            { status: 503 }
+        );
+    }
 }

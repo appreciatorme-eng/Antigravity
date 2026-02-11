@@ -3,7 +3,19 @@ import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
-import { renderTemplate, renderWhatsAppTemplate, type NotificationTemplateKey, type TemplateVars } from "@/lib/notification-templates";
+import {
+    renderTemplate,
+    renderWhatsAppTemplate,
+    type NotificationTemplateKey,
+    type TemplateVars,
+} from "@/lib/notification-templates";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -186,6 +198,10 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
 }
 
 export async function POST(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
+
     try {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
         const authHeader = request.headers.get("authorization");
@@ -197,7 +213,8 @@ export async function POST(request: NextRequest) {
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
 
         if (!secretAuthorized && !signedAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Notification queue run unauthorized", requestContext);
+            return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
         }
 
         const { data: dueRows, error: dueError } = await supabaseAdmin
@@ -209,7 +226,8 @@ export async function POST(request: NextRequest) {
             .limit(25);
 
         if (dueError) {
-            return NextResponse.json({ error: dueError.message }, { status: 500 });
+            logError("Notification queue fetch failed", dueError, requestContext);
+            return NextResponse.json({ error: dueError.message, request_id: requestId }, { status: 500 });
         }
 
         const rows = (dueRows || []) as QueueItem[];
@@ -368,6 +386,15 @@ export async function POST(request: NextRequest) {
                     .eq("id", row.id);
             } else {
                 failed += 1;
+                const reason = channelErrors.join(" | ") || "All channels failed";
+                logEvent("warn", "Queue item delivery failed on all channels", {
+                    ...requestContext,
+                    queue_id: row.id,
+                    trip_id: row.trip_id,
+                    attempts,
+                    reason,
+                });
+
                 if (attempts >= 3) {
                     await supabaseAdmin
                         .from("notification_queue")
@@ -375,7 +402,7 @@ export async function POST(request: NextRequest) {
                             status: "failed",
                             attempts,
                             processed_at: new Date().toISOString(),
-                            error_message: channelErrors.join(" | ") || "All channels failed",
+                            error_message: reason,
                         })
                         .eq("id", row.id);
                 } else {
@@ -385,7 +412,7 @@ export async function POST(request: NextRequest) {
                             status: "pending",
                             attempts,
                             scheduled_for: addMinutes(new Date(), 5),
-                            error_message: channelErrors.join(" | ") || "All channels failed",
+                            error_message: reason,
                         })
                         .eq("id", row.id);
                 }
@@ -404,15 +431,42 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return NextResponse.json({
+        const durationMs = Date.now() - startedAt;
+        void captureOperationalMetric("api.notifications.queue.processed", {
+            request_id: requestId,
+            processed: rows.length,
+            sent,
+            failed,
+            duration_ms: durationMs,
+        });
+
+        logEvent("info", "Notification queue run completed", {
+            ...requestContext,
+            processed: rows.length,
+            sent,
+            failed,
+            durationMs,
+        });
+
+        const response = NextResponse.json({
             ok: true,
+            request_id: requestId,
             processed: rows.length,
             sent,
             failed,
         });
+        response.headers.set("x-request-id", requestId);
+        return response;
     } catch (error) {
+        logError("Notification queue run crashed", error, requestContext);
+        void captureOperationalMetric("api.notifications.queue.error", {
+            request_id: requestId,
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+
         return NextResponse.json(
             {
+                request_id: requestId,
                 error: error instanceof Error ? error.message : "Unknown error",
             },
             { status: 500 }

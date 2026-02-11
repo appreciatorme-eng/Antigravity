@@ -8,6 +8,18 @@ const FIREBASE_SERVICE_ACCOUNT = Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+
+function logEvent(level: "info" | "warn" | "error", message: string, context: Record<string, unknown> = {}) {
+    console.log(
+        JSON.stringify({
+            level,
+            message,
+            timestamp: new Date().toISOString(),
+            ...context,
+        })
+    );
+}
+
 interface NotificationPayload {
     user_id: string;
     title: string;
@@ -46,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
         if (tokenError) throw tokenError;
         if (!tokens || tokens.length === 0) {
-            console.log(`No active tokens for user ${user_id}`);
+            logEvent("warn", "No active tokens for user", { user_id });
             // Log that we couldn't deliver
             if (trip_id) {
                 await supabase.from("notification_logs").insert({
@@ -106,7 +118,7 @@ Deno.serve(async (req: Request) => {
 
             // Deactivate invalid tokens
             if (result.error?.code === 404 || result.error?.code === 400) {
-                console.log(`Deactivating invalid FCM token for user ${user_id}`);
+                logEvent("warn", "Deactivating invalid FCM token", { user_id });
                 await supabase
                     .from("push_tokens")
                     .update({ is_active: false })
@@ -130,12 +142,21 @@ Deno.serve(async (req: Request) => {
             });
         }
 
+        logEvent("info", "Notification send completed", {
+            user_id,
+            trip_id: trip_id || null,
+            success,
+            delivery_count: tokens.length,
+        });
+
         return new Response(JSON.stringify({ success, results }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
         });
     } catch (error: unknown) {
-        console.error("Error sending notification:", error);
+        logEvent("error", "Notification send failed", {
+            error_message: error instanceof Error ? error.message : String(error),
+        });
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
         return new Response(JSON.stringify({ error: errorMessage }), {
             headers: { "Content-Type": "application/json" },
