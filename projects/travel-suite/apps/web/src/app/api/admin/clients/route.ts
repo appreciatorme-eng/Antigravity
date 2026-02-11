@@ -7,6 +7,17 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+const lifecycleTemplateByStage: Record<string, string> = {
+    lead: "lifecycle_lead",
+    prospect: "lifecycle_prospect",
+    proposal: "lifecycle_proposal",
+    payment_pending: "lifecycle_payment_pending",
+    payment_confirmed: "lifecycle_payment_confirmed",
+    active: "lifecycle_active",
+    review: "lifecycle_review",
+    past: "lifecycle_past",
+};
+
 async function getAdminUserId(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -278,7 +289,7 @@ export async function PATCH(req: NextRequest) {
 
         const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
-            .select("id,full_name,phone,phone_normalized,lifecycle_stage")
+            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination")
             .eq("id", profileId)
             .maybeSingle();
 
@@ -313,9 +324,9 @@ export async function PATCH(req: NextRequest) {
         }
 
         if (
-            lifecycleStage === "payment_confirmed" &&
-            existingProfile.lifecycle_stage !== "payment_confirmed"
+            lifecycleChanged
         ) {
+            const templateKey = lifecycleTemplateByStage[lifecycleStage];
             const recipientPhone = existingProfile.phone_normalized || existingProfile.phone || null;
             await supabaseAdmin.from("notification_queue").insert({
                 user_id: existingProfile.id,
@@ -323,13 +334,14 @@ export async function PATCH(req: NextRequest) {
                 recipient_phone: recipientPhone,
                 recipient_type: "client",
                 scheduled_for: new Date().toISOString(),
-                idempotency_key: `payment-confirmed:${existingProfile.id}:${new Date().toISOString().slice(0, 10)}`,
+                idempotency_key: `lifecycle-stage:${existingProfile.id}:${existingProfile.lifecycle_stage || "lead"}:${lifecycleStage}:${Date.now()}`,
                 payload: {
-                    title: "Payment Confirmed",
-                    body: `Hi ${existingProfile.full_name || "Traveler"}, your payment is confirmed. Your trip booking is now secured.`,
-                    template_key: "payment_confirmed",
+                    title: "Stage Update",
+                    body: `Hi ${existingProfile.full_name || "Traveler"}, your trip stage is now ${lifecycleStage.replace(/_/g, " ")}.`,
+                    template_key: templateKey,
                     template_vars: {
                         client_name: existingProfile.full_name || "Traveler",
+                        destination: existingProfile.preferred_destination || "your destination",
                     },
                 },
                 status: "pending",

@@ -106,6 +106,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - Scheduled jobs planned for daily briefings and reminders
 - WhatsApp template sends for operational reminders with push fallback
 - Payment-confirmed stage trigger queues WhatsApp + push confirmation
+- All lifecycle stage transitions (`lead` → `past`) now auto-queue client notifications (WhatsApp template + push fallback)
 - Lifecycle stage transitions are audit-logged in `workflow_stage_events`
 - WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
 - Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)

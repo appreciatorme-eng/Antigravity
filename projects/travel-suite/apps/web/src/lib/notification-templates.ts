@@ -3,7 +3,15 @@ export type NotificationTemplateKey =
     | "pickup_reminder_driver"
     | "trip_delay_update"
     | "driver_reassigned"
-    | "payment_confirmed";
+    | "payment_confirmed"
+    | "lifecycle_lead"
+    | "lifecycle_prospect"
+    | "lifecycle_proposal"
+    | "lifecycle_payment_pending"
+    | "lifecycle_payment_confirmed"
+    | "lifecycle_active"
+    | "lifecycle_review"
+    | "lifecycle_past";
 
 export interface TemplateVars {
     pickup_time?: string;
@@ -64,6 +72,46 @@ export function renderTemplate(template: NotificationTemplateKey, vars: Template
                 title: "Payment Confirmed",
                 body: `Hi ${clientName}, your payment is confirmed. Your booking is secured and trip operations will proceed as scheduled.`,
             };
+        case "lifecycle_lead":
+            return {
+                title: "Welcome to Trip Planning",
+                body: `Hi ${clientName}, we have opened your planning profile. We will contact you with the next steps shortly.`,
+            };
+        case "lifecycle_prospect":
+            return {
+                title: "Consultation In Progress",
+                body: `Hi ${clientName}, your trip request is now in consultation. We are refining your preferences for ${destination}.`,
+            };
+        case "lifecycle_proposal":
+            return {
+                title: "Trip Proposal Ready",
+                body: `Hi ${clientName}, your proposal for ${destination} is ready for review. Please check and confirm any updates.`,
+            };
+        case "lifecycle_payment_pending":
+            return {
+                title: "Payment Action Required",
+                body: `Hi ${clientName}, your booking is reserved. Please complete payment to confirm your trip to ${destination}.`,
+            };
+        case "lifecycle_payment_confirmed":
+            return {
+                title: "Payment Confirmed",
+                body: `Hi ${clientName}, your payment is confirmed. Your booking is secured and trip operations will proceed as scheduled.`,
+            };
+        case "lifecycle_active":
+            return {
+                title: "Trip Is Active",
+                body: `Hi ${clientName}, your trip is now active. We'll continue sharing live updates and key reminders.`,
+            };
+        case "lifecycle_review":
+            return {
+                title: "How Was Your Trip?",
+                body: `Hi ${clientName}, we hope you had a great experience. Please share your feedback so we can improve further.`,
+            };
+        case "lifecycle_past":
+            return {
+                title: "Trip Closed",
+                body: `Hi ${clientName}, your trip file is now closed. Thank you for traveling with us.`,
+            };
         default:
             return {
                 title: "Trip Update",
@@ -114,6 +162,54 @@ export function renderWhatsAppTemplate(
                 name: process.env.WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED || "payment_confirmed_v1",
                 languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
                 bodyParams: [clientName, destination],
+            };
+        case "lifecycle_lead":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_LEAD || "lifecycle_lead_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName],
+            };
+        case "lifecycle_prospect":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_PROSPECT || "lifecycle_prospect_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "lifecycle_proposal":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_PROPOSAL || "lifecycle_proposal_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "lifecycle_payment_pending":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_PAYMENT_PENDING || "lifecycle_payment_pending_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "lifecycle_payment_confirmed":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED || "payment_confirmed_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "lifecycle_active":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_ACTIVE || "lifecycle_active_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName],
+            };
+        case "lifecycle_review":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_REVIEW || "lifecycle_review_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName],
+            };
+        case "lifecycle_past":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_LIFECYCLE_PAST || "lifecycle_past_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName],
             };
         default:
             return null;

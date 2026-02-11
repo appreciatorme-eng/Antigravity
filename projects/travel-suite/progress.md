@@ -79,6 +79,9 @@
   - drag/drop stage movement + arrow controls
   - recent transition timeline fed by `workflow_stage_events`
   - new admin API endpoint: `/api/admin/workflow/events`
+- Added lifecycle-phase notification automation for every stage transition:
+  - `lead`, `prospect`, `proposal`, `payment_pending`, `payment_confirmed`, `active`, `review`, `past`
+  - queued as WhatsApp-template-first + push fallback via existing queue processor
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

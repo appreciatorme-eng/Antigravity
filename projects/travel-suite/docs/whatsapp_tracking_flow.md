@@ -39,6 +39,16 @@ Configure these in Meta WhatsApp Manager and keep names aligned with `.env.local
 1) `client_name`
 2) `destination`
 
+6. Lifecycle transition templates (kanban stage updates)
+- `lifecycle_lead_v1` -> params: `client_name`
+- `lifecycle_prospect_v1` -> params: `client_name`, `destination`
+- `lifecycle_proposal_v1` -> params: `client_name`, `destination`
+- `lifecycle_payment_pending_v1` -> params: `client_name`, `destination`
+- `payment_confirmed_v1` -> params: `client_name`, `destination`
+- `lifecycle_active_v1` -> params: `client_name`
+- `lifecycle_review_v1` -> params: `client_name`
+- `lifecycle_past_v1` -> params: `client_name`
+
 ## Webhook Location Parsing
 
 - Endpoint: `GET/POST /api/whatsapp/webhook`
@@ -84,6 +94,7 @@ Phone mapping repair:
 - push success
 4. Automatic retries for failures (max 3 attempts).
 5. Pickup reminders include live tracking URL when available.
+6. Lifecycle stage transitions now auto-queue client notifications for every phase move.
 
 ## When to Move Users from WhatsApp to App-First
 
@@ -107,3 +118,10 @@ Even after app-first:
 - `WHATSAPP_TEMPLATE_TRIP_DELAY`
 - `WHATSAPP_TEMPLATE_DRIVER_REASSIGNED`
 - `WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_LEAD`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_PROSPECT`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_PROPOSAL`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_PAYMENT_PENDING`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_ACTIVE`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_REVIEW`
+- `WHATSAPP_TEMPLATE_LIFECYCLE_PAST`
