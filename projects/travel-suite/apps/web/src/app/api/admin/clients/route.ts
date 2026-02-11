@@ -218,7 +218,7 @@ export async function DELETE(req: NextRequest) {
 
         const { data: adminProfile } = await supabaseAdmin
             .from("profiles")
-            .select("role")
+            .select("role, organization_id")
             .eq("id", adminUserId)
             .single();
 
@@ -326,6 +326,21 @@ export async function PATCH(req: NextRequest) {
         if (
             lifecycleChanged
         ) {
+            let notifyClient = true;
+            if (adminProfile.organization_id) {
+                const { data: stageRule } = await supabaseAdmin
+                    .from("workflow_notification_rules")
+                    .select("notify_client")
+                    .eq("organization_id", adminProfile.organization_id)
+                    .eq("lifecycle_stage", lifecycleStage)
+                    .maybeSingle();
+                notifyClient = stageRule?.notify_client ?? true;
+            }
+
+            if (!notifyClient) {
+                return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null });
+            }
+
             const templateKey = lifecycleTemplateByStage[lifecycleStage];
             const recipientPhone = existingProfile.phone_normalized || existingProfile.phone || null;
             await supabaseAdmin.from("notification_queue").insert({

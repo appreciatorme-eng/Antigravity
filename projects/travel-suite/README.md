@@ -78,6 +78,7 @@ python main.py
   - Lifecycle stages include payment and review phases (`payment_pending`, `payment_confirmed`, `review`)
   - Kanban lifecycle board with stage movement controls (`lead` → `past`)
   - Dedicated Kanban page (`/admin/kanban`) with drag/drop and transition timeline
+  - Per-stage notification toggles in Settings (enable/disable auto client notifications by phase)
   - Role override (`client` ↔ `driver`) from Clients panel
   - Driver account linking auto-syncs linked app user role to `driver`
 
@@ -107,6 +108,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - WhatsApp template sends for operational reminders with push fallback
 - Payment-confirmed stage trigger queues WhatsApp + push confirmation
 - All lifecycle stage transitions (`lead` → `past`) now auto-queue client notifications (WhatsApp template + push fallback)
+- Lifecycle auto-notifications can be toggled per stage via `/api/admin/workflow/rules`
 - Lifecycle stage transitions are audit-logged in `workflow_stage_events`
 - WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
 - Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)

@@ -82,6 +82,10 @@
 - Added lifecycle-phase notification automation for every stage transition:
   - `lead`, `prospect`, `proposal`, `payment_pending`, `payment_confirmed`, `active`, `review`, `past`
   - queued as WhatsApp-template-first + push fallback via existing queue processor
+- Added admin-configurable stage notification toggles:
+  - new table `workflow_notification_rules`
+  - new endpoint `/api/admin/workflow/rules`
+  - new Settings UI section to enable/disable client notifications per lifecycle phase
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

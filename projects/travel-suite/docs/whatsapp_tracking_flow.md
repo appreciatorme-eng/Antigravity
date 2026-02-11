@@ -95,6 +95,7 @@ Phone mapping repair:
 4. Automatic retries for failures (max 3 attempts).
 5. Pickup reminders include live tracking URL when available.
 6. Lifecycle stage transitions now auto-queue client notifications for every phase move.
+7. Stage auto-notifications can be enabled/disabled per phase via admin workflow rules.
 
 ## When to Move Users from WhatsApp to App-First
 
@@ -125,3 +126,9 @@ Even after app-first:
 - `WHATSAPP_TEMPLATE_LIFECYCLE_ACTIVE`
 - `WHATSAPP_TEMPLATE_LIFECYCLE_REVIEW`
 - `WHATSAPP_TEMPLATE_LIFECYCLE_PAST`
+
+## Stage Notification Toggles
+
+- Endpoint: `GET/POST /api/admin/workflow/rules`
+- Backed by: `workflow_notification_rules` table
+- Admin settings page includes toggle switches for each lifecycle stage.

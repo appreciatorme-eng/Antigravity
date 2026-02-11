@@ -78,6 +78,36 @@ CREATE POLICY "Users can view own workflow stage events"
     USING (auth.uid() = profile_id);
 
 -- ================================================
+-- WORKFLOW NOTIFICATION RULES (per-stage toggles)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.workflow_notification_rules (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE,
+    lifecycle_stage TEXT NOT NULL,
+    notify_client BOOLEAN NOT NULL DEFAULT true,
+    updated_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_notification_rules_org
+    ON public.workflow_notification_rules(organization_id, lifecycle_stage);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_workflow_notification_rules_org_stage
+    ON public.workflow_notification_rules(organization_id, lifecycle_stage);
+
+ALTER TABLE public.workflow_notification_rules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage workflow notification rules"
+    ON public.workflow_notification_rules FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.role = 'admin'
+        )
+    );
+
+-- ================================================
 -- ITINERARIES
 -- ================================================
 CREATE TABLE IF NOT EXISTS public.itineraries (

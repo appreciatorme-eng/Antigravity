@@ -22,6 +22,22 @@ interface Organization {
     subscription_tier: string | null;
 }
 
+interface WorkflowRule {
+    lifecycle_stage: string;
+    notify_client: boolean;
+}
+
+const workflowStageLabels: Record<string, string> = {
+    lead: "Lead",
+    prospect: "Prospect",
+    proposal: "Proposal",
+    payment_pending: "Payment Pending",
+    payment_confirmed: "Payment Confirmed",
+    active: "Active Trip",
+    review: "Review",
+    past: "Closed",
+};
+
 const mockOrganization: Organization = {
     id: "mock-org",
     name: "GoBuddy Adventures",
@@ -37,12 +53,20 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [workflowRules, setWorkflowRules] = useState<WorkflowRule[]>([]);
+    const [rulesSaving, setRulesSaving] = useState(false);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchSettings = useCallback(async () => {
         try {
             if (useMockAdmin) {
                 setOrganization(mockOrganization);
+                setWorkflowRules(
+                    Object.keys(workflowStageLabels).map((stage) => ({
+                        lifecycle_stage: stage,
+                        notify_client: true,
+                    }))
+                );
                 return;
             }
 
@@ -53,6 +77,17 @@ export default function SettingsPage() {
 
             if (error) throw error;
             setOrganization(data);
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const rulesResponse = await fetch("/api/admin/workflow/rules", {
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const rulesPayload = await rulesResponse.json();
+            if (rulesResponse.ok) {
+                setWorkflowRules(rulesPayload.rules || []);
+            }
         } catch (error) {
             console.error("Error fetching settings:", error);
         } finally {
@@ -94,6 +129,51 @@ export default function SettingsPage() {
             alert("Failed to save settings. Please try again.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const toggleWorkflowRule = (stage: string) => {
+        setWorkflowRules((prev) =>
+            prev.map((rule) =>
+                rule.lifecycle_stage === stage
+                    ? { ...rule, notify_client: !rule.notify_client }
+                    : rule
+            )
+        );
+    };
+
+    const saveWorkflowRules = async () => {
+        setRulesSaving(true);
+        try {
+            if (useMockAdmin) {
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 3000);
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            for (const rule of workflowRules) {
+                const response = await fetch("/api/admin/workflow/rules", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.access_token || ""}`,
+                    },
+                    body: JSON.stringify(rule),
+                });
+                if (!response.ok) {
+                    const payload = await response.json();
+                    throw new Error(payload?.error || "Failed to save workflow rules");
+                }
+            }
+
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error saving workflow rules:", error);
+            alert(error instanceof Error ? error.message : "Failed to save workflow rules");
+        } finally {
+            setRulesSaving(false);
         }
     };
 
@@ -194,6 +274,54 @@ export default function SettingsPage() {
                                     Primary Color Preview
                                 </span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lifecycle Notification Rules */}
+                <div className="bg-white/90 border border-[#eadfcd] rounded-2xl overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                    <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                        <Bell className="w-5 h-5 text-primary" />
+                        <h2 className="font-bold text-slate-900">Lifecycle Notification Rules</h2>
+                    </div>
+                    <div className="p-6 space-y-3">
+                        <p className="text-sm text-slate-600">
+                            Control whether clients receive automatic WhatsApp + app notifications when moved to each lifecycle stage.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {workflowRules.map((rule) => (
+                                <div key={rule.lifecycle_stage} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800">
+                                            {workflowStageLabels[rule.lifecycle_stage] || rule.lifecycle_stage}
+                                        </p>
+                                        <p className="text-xs text-slate-500">{rule.lifecycle_stage}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleWorkflowRule(rule.lifecycle_stage)}
+                                        className={`w-12 h-7 rounded-full relative transition-colors ${rule.notify_client ? "bg-emerald-500" : "bg-slate-300"}`}
+                                        aria-label={`Toggle ${rule.lifecycle_stage}`}
+                                    >
+                                        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${rule.notify_client ? "right-1" : "left-1"}`} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={saveWorkflowRules}
+                                disabled={rulesSaving}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1b140a] text-[#f5e7c6] font-semibold hover:bg-[#2a2217] transition-colors disabled:opacity-60"
+                            >
+                                {rulesSaving ? (
+                                    <div className="w-4 h-4 border-2 border-[#f5e7c6]/40 border-t-[#f5e7c6] rounded-full animate-spin" />
+                                ) : (
+                                    <Save className="w-4 h-4" />
+                                )}
+                                Save Notification Rules
+                            </button>
                         </div>
                     </div>
                 </div>
