@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Clock3, MapPin, Navigation, RefreshCw } from "lucide-react";
 import { Map, MapControls, MapMarker, MarkerContent } from "@/components/ui/map";
+import { createClient } from "@/lib/supabase/client";
 
 interface LivePayload {
     share: {
@@ -41,6 +42,7 @@ interface LivePayload {
 export default function LiveLocationPage() {
     const params = useParams();
     const token = String(params.token || "");
+    const supabase = useMemo(() => createClient(), []);
 
     const [data, setData] = useState<LivePayload | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,49 @@ export default function LiveLocationPage() {
         }, 15000);
         return () => window.clearInterval(timer);
     }, [token, fetchLive]);
+
+    useEffect(() => {
+        const tripId = data?.share.trip_id;
+        if (!tripId) return undefined;
+
+        const channel = supabase
+            .channel(`live-trip-${tripId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "driver_locations",
+                    filter: `trip_id=eq.${tripId}`,
+                },
+                (payload) => {
+                    const row = payload.new as Record<string, unknown>;
+                    const latitude = Number(row.latitude);
+                    const longitude = Number(row.longitude);
+                    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+                    setData((prev) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            location: {
+                                latitude,
+                                longitude,
+                                heading: row.heading == null ? null : Number(row.heading),
+                                speed: row.speed == null ? null : Number(row.speed),
+                                accuracy: row.accuracy == null ? null : Number(row.accuracy),
+                                recorded_at: String(row.recorded_at || new Date().toISOString()),
+                            },
+                        };
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(channel);
+        };
+    }, [data?.share.trip_id, supabase]);
 
     const mapCenter = useMemo<[number, number]>(() => {
         if (data?.location) return [data.location.longitude, data.location.latitude];

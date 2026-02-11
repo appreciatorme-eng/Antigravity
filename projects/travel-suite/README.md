@@ -47,6 +47,7 @@ python main.py
 - **Notifications**: Local notifications for "I've Landed" feature
 - **Maps**: Interactive OpenStreetMap via flutter_map
 - **Driver Live Location**: Driver-mode users can publish real-time location pings
+- **Client Live Tracking**: Open current live driver route from trip detail
 
 ### Key Dependencies
 - `supabase_flutter` - Backend integration
@@ -70,6 +71,7 @@ python main.py
   - Auto-calculated start/end times (30-minute slots, travel-time aware)
   - Nearby hotel suggestions with one-click autofill (name/address/phone)
   - Tokenized live-location links per trip/day (`/live/:token`)
+  - Reminder queue + driver ping visibility per day
 
 ## 🤖 AI Agents
 

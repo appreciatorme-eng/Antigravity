@@ -71,7 +71,8 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
                 profiles:client_id (
                     id,
                     full_name,
-                    email
+                    email,
+                    phone
                 ),
                 itineraries (
                     id,
@@ -141,11 +142,63 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
             };
         });
 
+        const { data: reminderRows } = await supabaseAdmin
+            .from("notification_queue")
+            .select("id,status,scheduled_for,payload,recipient_type")
+            .eq("trip_id", tripId)
+            .eq("notification_type", "pickup_reminder")
+            .order("scheduled_for", { ascending: false });
+
+        const reminderStatusByDay: Record<number, {
+            pending: number;
+            processing: number;
+            sent: number;
+            failed: number;
+            lastScheduledFor: string | null;
+        }> = {};
+
+        (reminderRows || []).forEach((row: any) => {
+            const dayNumber = Number(row?.payload?.day_number || 0);
+            if (!dayNumber) return;
+            if (!reminderStatusByDay[dayNumber]) {
+                reminderStatusByDay[dayNumber] = {
+                    pending: 0,
+                    processing: 0,
+                    sent: 0,
+                    failed: 0,
+                    lastScheduledFor: null,
+                };
+            }
+
+            if (row.status === "pending") reminderStatusByDay[dayNumber].pending += 1;
+            if (row.status === "processing") reminderStatusByDay[dayNumber].processing += 1;
+            if (row.status === "sent") reminderStatusByDay[dayNumber].sent += 1;
+            if (row.status === "failed") reminderStatusByDay[dayNumber].failed += 1;
+
+            if (
+                row.scheduled_for &&
+                (!reminderStatusByDay[dayNumber].lastScheduledFor ||
+                    row.scheduled_for > reminderStatusByDay[dayNumber].lastScheduledFor)
+            ) {
+                reminderStatusByDay[dayNumber].lastScheduledFor = row.scheduled_for;
+            }
+        });
+
+        const { data: latestLocation } = await supabaseAdmin
+            .from("driver_locations")
+            .select("latitude,longitude,recorded_at,speed,heading,accuracy")
+            .eq("trip_id", tripId)
+            .order("recorded_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         return NextResponse.json({
             trip: mappedTrip,
             drivers: driversData || [],
             assignments: assignmentsMap,
             accommodations: accommodationsMap,
+            reminderStatusByDay,
+            latestDriverLocation: latestLocation || null,
         });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

@@ -36,6 +36,17 @@
 - Added client-side live-location access from mobile trip detail:
   - "View Live Driver Location" action for assigned day
   - new client-auth API endpoint to create/reuse live tokenized link
+- Added driver identity hardening for live pings:
+  - `driver_accounts` mapping table (external driver -> app profile)
+  - stronger location publish auth in DB policy/function and API checks
+- Added live-link lifecycle controls:
+  - admin revoke endpoint for trip/day live links
+  - admin trip page "Revoke Live" control
+- Added admin operational observability:
+  - day-level reminder queue status in trip detail
+  - latest driver ping + stale badge in trip detail
+  - retry-failed queue action in notifications
+- Added notification template rendering engine with variable payload support.
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

@@ -352,6 +352,23 @@ interface AccommodationRow {
     contact_phone: string | null;
 }
 
+interface ReminderDayStatus {
+    pending: number;
+    processing: number;
+    sent: number;
+    failed: number;
+    lastScheduledFor: string | null;
+}
+
+interface DriverLocationSnapshot {
+    latitude: number;
+    longitude: number;
+    recorded_at: string;
+    speed?: number | null;
+    heading?: number | null;
+    accuracy?: number | null;
+}
+
 const mockTripsById: Record<string, Trip> = {
     "mock-trip-001": {
         id: "mock-trip-001",
@@ -481,6 +498,8 @@ export default function TripDetailPage() {
     const [hotelLoadingByDay, setHotelLoadingByDay] = useState<Record<number, boolean>>({});
     const [liveLocationUrl, setLiveLocationUrl] = useState<string>("");
     const [creatingLiveLink, setCreatingLiveLink] = useState(false);
+    const [reminderStatusByDay, setReminderStatusByDay] = useState<Record<number, ReminderDayStatus>>({});
+    const [latestDriverLocation, setLatestDriverLocation] = useState<DriverLocationSnapshot | null>(null);
 
     // Notification state
     const [notificationOpen, setNotificationOpen] = useState(false);
@@ -547,6 +566,8 @@ export default function TripDetailPage() {
         setDrivers(payload.drivers || []);
         setAssignments(payload.assignments || {});
         setAccommodations(payload.accommodations || {});
+        setReminderStatusByDay(payload.reminderStatusByDay || {});
+        setLatestDriverLocation(payload.latestDriverLocation || null);
 
         setLoading(false);
     }, [supabase, tripId, useMockAdmin]);
@@ -1018,6 +1039,39 @@ out center tags 80;
         }
     };
 
+    const revokeLiveLocationShare = async () => {
+        if (!tripId || !liveLocationUrl) return;
+        if (useMockAdmin) {
+            setLiveLocationUrl("");
+            alert("Mock live link revoked");
+            return;
+        }
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(
+                `/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${session?.access_token || ""}`,
+                    },
+                }
+            );
+
+            const payload = await response.json();
+            if (!response.ok) {
+                alert(payload?.error || "Failed to revoke live link");
+                return;
+            }
+            setLiveLocationUrl("");
+            alert(`Revoked ${payload.revoked || 0} active live link(s)`);
+        } catch (error) {
+            console.error("Revoke live link error:", error);
+            alert("Failed to revoke live link");
+        }
+    };
+
     const getWhatsAppLinkForDay = (dayNumber: number) => {
         const assignment = assignments[dayNumber];
         if (!assignment?.external_driver_id) return null;
@@ -1214,16 +1268,25 @@ out center tags 80;
                         </button>
                     )}
                     {liveLocationUrl ? (
-                        <a
-                            href={liveLocationUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
-                            title="Open live location page"
-                        >
-                            <MapPin className="h-4 w-4" />
-                            Open Live
-                        </a>
+                        <>
+                            <a
+                                href={liveLocationUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
+                                title="Open live location page"
+                            >
+                                <MapPin className="h-4 w-4" />
+                                Open Live
+                            </a>
+                            <button
+                                onClick={revokeLiveLocationShare}
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-[#f6efe4] transition-colors"
+                                title="Disable active live links"
+                            >
+                                Revoke Live
+                            </button>
+                        </>
                     ) : null}
                     <button
                         onClick={saveChanges}
@@ -1523,6 +1586,40 @@ out center tags 80;
                             </div>
 
                             <div className="space-y-3">
+                                <div className="rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-3">
+                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46]">Reminder Queue</p>
+                                    {reminderStatusByDay[activeDay] ? (
+                                        <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">P {reminderStatusByDay[activeDay].pending}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">W {reminderStatusByDay[activeDay].processing}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">S {reminderStatusByDay[activeDay].sent}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">F {reminderStatusByDay[activeDay].failed}</span>
+                                        </div>
+                                    ) : (
+                                        <p className="mt-2 text-xs text-[#6f5b3e]">No reminders queued for this day yet.</p>
+                                    )}
+                                </div>
+
+                                <div className="rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-3">
+                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46]">Driver Ping</p>
+                                    {latestDriverLocation?.recorded_at ? (
+                                        <>
+                                            <p className="mt-2 text-xs text-[#1b140a]">
+                                                Last ping: {new Date(latestDriverLocation.recorded_at).toLocaleString()}
+                                            </p>
+                                            <p className="text-xs text-[#6f5b3e]">
+                                                {latestDriverLocation.latitude.toFixed(5)}, {latestDriverLocation.longitude.toFixed(5)}
+                                            </p>
+                                            {Date.now() - new Date(latestDriverLocation.recorded_at).getTime() > 10 * 60 * 1000 ? (
+                                                <p className="mt-1 text-xs font-semibold text-rose-600">Stale: no recent location in last 10 min</p>
+                                            ) : (
+                                                <p className="mt-1 text-xs font-semibold text-emerald-600">Live: recent location available</p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className="mt-2 text-xs text-[#6f5b3e]">No driver location ping received yet.</p>
+                                    )}
+                                </div>
                                 {itineraryDays
                                     .find((d) => d.day_number === activeDay)
                                     ?.activities.map((activity, index) => (

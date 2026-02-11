@@ -137,10 +137,38 @@ ALTER TABLE public.driver_locations ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_driver_locations_driver_id ON public.driver_locations(driver_id);
 CREATE INDEX IF NOT EXISTS idx_driver_locations_recorded_at ON public.driver_locations(recorded_at DESC);
 
+CREATE OR REPLACE FUNCTION public.can_publish_driver_location(target_trip_id UUID, actor_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+    SELECT
+      EXISTS (
+          SELECT 1
+          FROM public.trips t
+          WHERE t.id = target_trip_id
+            AND t.driver_id = actor_user_id
+      )
+      OR EXISTS (
+          SELECT 1
+          FROM public.trip_driver_assignments a
+          JOIN public.driver_accounts da
+            ON da.external_driver_id = a.external_driver_id
+           AND da.is_active = true
+          WHERE a.trip_id = target_trip_id
+            AND da.profile_id = actor_user_id
+      );
+$$;
+
 -- Location policies
-CREATE POLICY "Drivers can insert their own locations" 
+CREATE POLICY "Drivers can insert assigned trip locations" 
     ON public.driver_locations FOR INSERT 
-    WITH CHECK (auth.uid() = driver_id);
+    WITH CHECK (
+        auth.uid() = driver_id
+        AND public.can_publish_driver_location(trip_id, auth.uid())
+    );
 
 CREATE POLICY "Drivers can view their own locations" 
     ON public.driver_locations FOR SELECT 
@@ -303,6 +331,36 @@ CREATE POLICY "Admins can manage external drivers"
             AND profiles.organization_id = external_drivers.organization_id
         )
     );
+
+-- ================================================
+-- DRIVER ACCOUNTS (maps app users to external drivers)
+-- ================================================
+CREATE TABLE IF NOT EXISTS public.driver_accounts (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    external_driver_id UUID REFERENCES public.external_drivers(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.driver_accounts ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_driver_accounts_profile ON public.driver_accounts(profile_id);
+
+CREATE POLICY "Admins can manage driver accounts"
+    ON public.driver_accounts FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Drivers can view own mapping"
+    ON public.driver_accounts FOR SELECT
+    USING (profile_id = auth.uid());
 
 -- ================================================
 -- TRIP DRIVER ASSIGNMENTS (Driver per trip day)
@@ -488,6 +546,10 @@ CREATE TRIGGER set_updated_at_organizations
 
 CREATE TRIGGER set_updated_at_external_drivers
     BEFORE UPDATE ON public.external_drivers
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE TRIGGER set_updated_at_driver_accounts
+    BEFORE UPDATE ON public.driver_accounts
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 CREATE TRIGGER set_updated_at_push_tokens
@@ -765,6 +827,14 @@ BEGIN
                 pickup_location_text,
                 NEW.day_number
             ),
+            'template_key', 'pickup_reminder_client',
+            'template_vars', jsonb_build_object(
+                'pickup_time', pickup_time_text,
+                'pickup_location', pickup_location_text,
+                'day_number', NEW.day_number,
+                'destination', destination_text,
+                'trip_title', COALESCE(trip_rec.trip_title, destination_text)
+            ),
             'trip_id', NEW.trip_id::text,
             'day_number', NEW.day_number,
             'pickup_time', pickup_time_text,
@@ -818,6 +888,15 @@ BEGIN
                     pickup_time_text,
                     pickup_location_text,
                     COALESCE(trip_rec.client_name, 'Client')
+                ),
+                'template_key', 'pickup_reminder_driver',
+                'template_vars', jsonb_build_object(
+                    'pickup_time', pickup_time_text,
+                    'pickup_location', pickup_location_text,
+                    'day_number', NEW.day_number,
+                    'client_name', COALESCE(trip_rec.client_name, 'Client'),
+                    'destination', destination_text,
+                    'trip_title', COALESCE(trip_rec.trip_title, destination_text)
                 ),
                 'trip_id', NEW.trip_id::text,
                 'day_number', NEW.day_number,

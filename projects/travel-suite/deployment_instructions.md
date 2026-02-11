@@ -74,11 +74,13 @@ curl -X POST "https://<your-web-domain>/api/notifications/process-queue" \
 Manual testing path (admin UI):
 - Admin can trigger the same processor from **Admin → Notifications → Run Queue Now**.
 - This uses admin bearer auth (no cron secret required in browser flow).
+- Admin can move failed queue rows back to pending via **Admin → Notifications → Retry Failed**.
 
 ## 6. Live Location Sharing Endpoints
 Live location is now supported with tokenized links:
 - `POST /api/location/share` (admin auth required): create/reuse live link for trip/day
 - `GET /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): fetch existing link
+- `DELETE /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): revoke active live link(s)
 - `GET /api/location/client-share?tripId=<id>&dayNumber=<n>` (client auth required): create/reuse live link for mobile client view
 - `POST /api/location/ping` (driver auth required): write GPS ping to `driver_locations`
 - `GET /api/location/live/:token` (public by token): read latest location payload
@@ -116,3 +118,7 @@ flutter run
 ```
 static const String apiBaseUrl = 'https://<your-deployed-web-domain>';
 ```
+
+### Driver identity mapping (important)
+For external-driver assignments with app-based live pings, map the app user to the external driver in:
+- `public.driver_accounts` (`external_driver_id`, `profile_id`, `is_active`)

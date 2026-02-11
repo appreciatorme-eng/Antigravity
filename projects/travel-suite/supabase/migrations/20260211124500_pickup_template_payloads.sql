@@ -1,27 +1,4 @@
--- Pickup reminder queue extensions + assignment triggers
-
-alter table public.notification_queue
-    add column if not exists recipient_phone text,
-    add column if not exists recipient_type text,
-    add column if not exists channel_preference text default 'whatsapp_first',
-    add column if not exists idempotency_key text;
-
-do $$
-begin
-    if not exists (
-        select 1
-        from pg_constraint
-        where conname = 'notification_queue_recipient_type_check'
-    ) then
-        alter table public.notification_queue
-            add constraint notification_queue_recipient_type_check
-            check (recipient_type is null or recipient_type in ('client', 'driver', 'admin'));
-    end if;
-end $$;
-
-create unique index if not exists idx_notification_queue_idempotency
-    on public.notification_queue(idempotency_key)
-    where idempotency_key is not null;
+-- Add template metadata into queued pickup reminder payloads.
 
 create or replace function public.queue_pickup_reminders_from_assignment()
 returns trigger
@@ -56,7 +33,6 @@ begin
         return new;
     end if;
 
-    -- Cancel pending reminders if assignment is incomplete.
     if new.pickup_time is null then
         update public.notification_queue
         set
@@ -68,7 +44,6 @@ begin
             new.id::text || ':driver:pickup'
         )
         and status in ('pending', 'processing');
-
         return new;
     end if;
 
@@ -76,8 +51,8 @@ begin
         (trip_rec.start_date::date + (new.day_number - 1))::timestamp
         + new.pickup_time
     )::timestamptz;
-
     reminder_ts := greatest(pickup_ts - interval '60 minutes', now());
+
     pickup_time_text := to_char(new.pickup_time, 'HH24:MI');
     pickup_location_text := coalesce(nullif(new.pickup_location, ''), 'Hotel lobby');
     destination_text := coalesce(nullif(trip_rec.destination, ''), 'your destination');
@@ -140,9 +115,7 @@ begin
         processed_at = null;
 
     if new.external_driver_id is not null then
-        select
-            d.full_name,
-            d.phone
+        select d.full_name, d.phone
         into driver_rec
         from public.external_drivers d
         where d.id = new.external_driver_id;
@@ -216,39 +189,3 @@ begin
     return new;
 end;
 $function$;
-
-create or replace function public.cancel_pickup_reminders_on_assignment_delete()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $function$
-begin
-    update public.notification_queue
-    set
-        status = 'cancelled',
-        processed_at = now(),
-        error_message = 'Assignment deleted'
-    where idempotency_key in (
-        old.id::text || ':client:pickup',
-        old.id::text || ':driver:pickup'
-    )
-    and status in ('pending', 'processing');
-
-    return old;
-end;
-$function$;
-
-drop trigger if exists trg_queue_pickup_reminders on public.trip_driver_assignments;
-create trigger trg_queue_pickup_reminders
-after insert or update of pickup_time, pickup_location, external_driver_id, day_number
-on public.trip_driver_assignments
-for each row
-execute function public.queue_pickup_reminders_from_assignment();
-
-drop trigger if exists trg_cancel_pickup_reminders_delete on public.trip_driver_assignments;
-create trigger trg_cancel_pickup_reminders_delete
-after delete
-on public.trip_driver_assignments
-for each row
-execute function public.cancel_pickup_reminders_on_assignment_delete();

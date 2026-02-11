@@ -151,3 +151,50 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const admin = await requireAdmin(req);
+        if ("error" in admin) return admin.error;
+
+        const tripId = req.nextUrl.searchParams.get("tripId") || "";
+        const dayNumber = Number(req.nextUrl.searchParams.get("dayNumber") || 0) || null;
+        const shareId = req.nextUrl.searchParams.get("shareId") || "";
+
+        if (!tripId && !shareId) {
+            return NextResponse.json(
+                { error: "shareId or tripId is required" },
+                { status: 400 }
+            );
+        }
+
+        let query = supabaseAdmin.from("trip_location_shares").update({
+            is_active: false,
+            expires_at: new Date().toISOString(),
+        });
+
+        if (shareId) {
+            query = query.eq("id", shareId);
+        } else {
+            query = query.eq("trip_id", tripId).eq("is_active", true);
+            if (dayNumber) {
+                query = query.eq("day_number", dayNumber);
+            }
+        }
+
+        const { data, error } = await query.select("id");
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({
+            ok: true,
+            revoked: data?.length || 0,
+        });
+    } catch (error) {
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : "Unknown error" },
+            { status: 500 }
+        );
+    }
+}

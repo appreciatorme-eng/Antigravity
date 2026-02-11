@@ -130,6 +130,7 @@ export default function NotificationLogsPage() {
         upcomingHour: 0,
     });
     const [runningQueue, setRunningQueue] = useState(false);
+    const [retryingFailed, setRetryingFailed] = useState(false);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -277,6 +278,38 @@ export default function NotificationLogsPage() {
         }
     };
 
+    const retryFailedQueue = async () => {
+        try {
+            setRetryingFailed(true);
+            if (useMockAdmin) {
+                alert("Mock retry complete.");
+                await fetchLogs();
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/notifications/retry-failed", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                alert(payload?.error || "Failed to retry failed queue items");
+                return;
+            }
+
+            alert(`Moved ${payload.retried || 0} failed item(s) back to pending.`);
+            await fetchLogs();
+        } catch (error) {
+            console.error("Retry failed queue error:", error);
+            alert("Failed to retry failed queue items");
+        } finally {
+            setRetryingFailed(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -302,6 +335,14 @@ export default function NotificationLogsPage() {
                 >
                     <Bell className="w-4 h-4" />
                     {runningQueue ? "Running Queue..." : "Run Queue Now"}
+                </button>
+                <button
+                    onClick={retryFailedQueue}
+                    disabled={retryingFailed}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
+                >
+                    <RefreshCcw className={`w-4 h-4 ${retryingFailed ? 'animate-spin' : ''}`} />
+                    {retryingFailed ? "Retrying Failed..." : "Retry Failed"}
                 </button>
             </div>
 

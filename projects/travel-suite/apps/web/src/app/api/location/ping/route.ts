@@ -57,7 +57,30 @@ export async function POST(req: NextRequest) {
 
         const isAdmin = profile?.role === "admin";
         const resolvedDriverId = isAdmin && explicitDriverId ? explicitDriverId : userId;
-        const isAssignedDriver = trip.driver_id === userId;
+
+        const isPrimaryTripDriver = trip.driver_id === userId;
+        const { data: assignmentRows } = await supabaseAdmin
+            .from("trip_driver_assignments")
+            .select("external_driver_id")
+            .eq("trip_id", tripId);
+
+        const assignmentDriverIds = (assignmentRows || [])
+            .map((row: { external_driver_id: string | null }) => row.external_driver_id)
+            .filter((id: string | null): id is string => !!id);
+
+        let hasMappedExternalDriverAssignment = false;
+        if (assignmentDriverIds.length > 0) {
+            const { data: driverAccount } = await supabaseAdmin
+                .from("driver_accounts")
+                .select("id")
+                .eq("profile_id", userId)
+                .eq("is_active", true)
+                .in("external_driver_id", assignmentDriverIds)
+                .maybeSingle();
+            hasMappedExternalDriverAssignment = !!driverAccount;
+        }
+
+        const isAssignedDriver = isPrimaryTripDriver || hasMappedExternalDriverAssignment;
 
         if (!isAdmin && !isAssignedDriver) {
             return NextResponse.json({ error: "Driver access required" }, { status: 403 });

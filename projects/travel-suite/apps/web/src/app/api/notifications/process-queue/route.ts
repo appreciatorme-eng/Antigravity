@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
+import { renderTemplate, type NotificationTemplateKey, type TemplateVars } from "@/lib/notification-templates";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -131,8 +132,16 @@ export async function POST(request: NextRequest) {
 
             const attempts = Number(row.attempts || 0) + 1;
             const payload = row.payload || {};
-            const title = getStringPayloadValue(payload, "title") || "Trip Notification";
+            const templateKey = getStringPayloadValue(payload, "template_key");
+            let title = getStringPayloadValue(payload, "title") || "Trip Notification";
             let body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
+
+            if (templateKey) {
+                const templateVars = (payload.template_vars as TemplateVars | undefined) || {};
+                const rendered = renderTemplate(templateKey as NotificationTemplateKey, templateVars);
+                title = rendered.title;
+                body = rendered.body;
+            }
 
             if (row.notification_type === "pickup_reminder") {
                 const token = await resolveLiveLinkForQueueItem(row, payload);

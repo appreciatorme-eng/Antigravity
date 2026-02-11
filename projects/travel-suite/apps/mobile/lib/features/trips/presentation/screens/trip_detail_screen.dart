@@ -68,7 +68,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           _trip = response;
           _loadingTrip = false;
         });
-        _updateDriverMode();
+        await _updateDriverMode();
         _loadDriverAssignments();
       }
     } catch (e) {
@@ -95,11 +95,38 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     }
   }
 
-  void _updateDriverMode() {
+  Future<void> _updateDriverMode() async {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final driverId = _trip?['driver_id'] as String?;
-    final isDriver =
+    final tripId = _trip?['id'] as String?;
+    var isDriver =
         currentUserId != null && driverId != null && currentUserId == driverId;
+
+    if (!isDriver && currentUserId != null && tripId != null) {
+      try {
+        final driverAccount = await Supabase.instance.client
+            .from('driver_accounts')
+            .select('external_driver_id')
+            .eq('profile_id', currentUserId)
+            .eq('is_active', true)
+            .maybeSingle();
+
+        final externalDriverId =
+            driverAccount?['external_driver_id'] as String?;
+        if (externalDriverId != null && externalDriverId.isNotEmpty) {
+          final assignment = await Supabase.instance.client
+              .from('trip_driver_assignments')
+              .select('id')
+              .eq('trip_id', tripId)
+              .eq('external_driver_id', externalDriverId)
+              .limit(1)
+              .maybeSingle();
+          isDriver = assignment != null;
+        }
+      } catch (_) {
+        // Fallback to direct trip.driver_id detection only.
+      }
+    }
 
     if (!mounted) return;
     setState(() {
