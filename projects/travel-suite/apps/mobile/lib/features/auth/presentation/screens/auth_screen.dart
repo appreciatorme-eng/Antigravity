@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/config/supabase_config.dart';
+import '../../../../core/services/profile_role_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -18,6 +19,8 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
   bool _loading = false;
   String? _errorMessage;
+  String _selectedRole = 'client';
+  final ProfileRoleService _profileRoleService = ProfileRoleService();
 
   @override
   void dispose() {
@@ -39,12 +42,18 @@ class _AuthScreenState extends State<AuthScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _profileRoleService.applyPendingRoleForCurrentUser();
         await _sendWelcomeEmailIfNeeded();
       } else {
-        await supabase.auth.signUp(
+        final authResponse = await supabase.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _profileRoleService.savePendingRole(_selectedRole);
+
+        if (authResponse.session != null) {
+          await _profileRoleService.applyPendingRoleForCurrentUser();
+        }
         await _sendWelcomeEmailIfNeeded();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -72,9 +81,7 @@ class _AuthScreenState extends State<AuthScreen> {
       final url = Uri.parse('${SupabaseConfig.apiBaseUrl}/api/emails/welcome');
       await http.post(
         url,
-        headers: {
-          'Authorization': 'Bearer ${session.accessToken}',
-        },
+        headers: {'Authorization': 'Bearer ${session.accessToken}'},
       );
     } catch (_) {
       // Non-blocking: welcome email should not stop auth flow
@@ -88,6 +95,9 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     try {
+      if (!_isLogin) {
+        await _profileRoleService.savePendingRole(_selectedRole);
+      }
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'com.gobuddy.gobuddymobile://login-callback',
@@ -173,6 +183,59 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 16),
 
+                        if (!_isLogin) ...[
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'I am signing up as',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ChoiceChip(
+                                  label: const Text('Client'),
+                                  selected: _selectedRole == 'client',
+                                  onSelected: (_) =>
+                                      setState(() => _selectedRole = 'client'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ChoiceChip(
+                                  label: const Text('Driver'),
+                                  selected: _selectedRole == 'driver',
+                                  onSelected: (_) =>
+                                      setState(() => _selectedRole = 'driver'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (_selectedRole == 'driver')
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withAlpha(20),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Driver accounts must be linked by admin before live trip operations are available.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                        ],
+
                         // Password Field
                         TextField(
                           controller: _passwordController,
@@ -225,15 +288,21 @@ class _AuthScreenState extends State<AuthScreen> {
                         // Divider
                         Row(
                           children: [
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Expanded(
+                              child: Divider(color: Colors.grey.shade300),
+                            ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               child: Text(
                                 'or',
                                 style: TextStyle(color: Colors.grey.shade500),
                               ),
                             ),
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Expanded(
+                              child: Divider(color: Colors.grey.shade300),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),

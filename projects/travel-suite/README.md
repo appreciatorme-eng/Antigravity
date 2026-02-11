@@ -41,6 +41,7 @@ python main.py
 ## 📱 Mobile App Features
 
 - **Authentication**: Email/password + Google OAuth via Supabase
+- **Role Onboarding**: New users choose `Client` or `Driver` during signup
 - **Trips Overview**: Animated card list with shimmer loading
 - **Trip Detail**: Collapsing header (SliverAppBar), day selector, activity timeline
 - **Driver Info**: View assigned driver details

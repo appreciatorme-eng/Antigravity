@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'core/config/supabase_config.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/profile_role_service.dart';
 import 'features/trips/presentation/screens/trips_screen.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 
@@ -16,10 +17,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase first
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -36,8 +35,9 @@ void main() async {
 }
 
 class GoBuddyApp extends StatelessWidget {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   const GoBuddyApp({super.key});
 
   @override
@@ -61,6 +61,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _pushNotificationsInitialized = false;
+  String? _lastRoleSyncUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +69,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         final session = snapshot.data?.session;
-        
+
         if (session != null) {
+          final userId = session.user.id;
+          if (_lastRoleSyncUserId != userId) {
+            _lastRoleSyncUserId = userId;
+            ProfileRoleService().applyPendingRoleForCurrentUser();
+          }
+
           // Initialize push notifications once user is authenticated
           // This ensures we can store the FCM token with the user ID
           if (!_pushNotificationsInitialized) {
@@ -79,9 +86,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
           }
           return const TripsScreen();
         }
-        
+
         // Reset flag when logged out so it reinitializes on next login
         _pushNotificationsInitialized = false;
+        _lastRoleSyncUserId = null;
         return const AuthScreen();
       },
     );

@@ -51,6 +51,10 @@
 - Added driver location ping throttling to reduce high-frequency write noise.
 - Added expired live-link cleanup endpoint + admin trigger action.
 - Added admin audit log entries for manual queue run, retry-failed, revoke-live, cleanup-expired.
+- Added explicit role onboarding in mobile signup (`Client` vs `Driver`) with persisted role application after auth.
+- Trips mobile screen now loads role-aware trip data:
+  - clients -> `trips.client_id`
+  - drivers -> `trips.driver_id` plus mapped `driver_accounts` + `trip_driver_assignments`
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
