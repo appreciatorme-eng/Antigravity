@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     home_airport TEXT,
     notes TEXT,
     lead_status TEXT DEFAULT 'new',
+    client_tag TEXT DEFAULT 'standard',
     lifecycle_stage TEXT DEFAULT 'lead',
     last_contacted_at TIMESTAMPTZ,
     welcome_email_sent_at TIMESTAMPTZ,

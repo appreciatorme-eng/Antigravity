@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
         const homeAirport = String(body.homeAirport || "").trim();
         const notes = String(body.notes || "").trim();
         const leadStatus = String(body.leadStatus || "").trim();
+        const clientTag = String(body.clientTag || "").trim();
         const lifecycleStage = String(body.lifecycleStage || "").trim();
         const referralSource = String(body.referralSource || "").trim();
         const sourceChannel = String(body.sourceChannel || "").trim();
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
             home_airport: homeAirport || null,
             notes: notes || null,
             lead_status: leadStatus || "new",
+            client_tag: clientTag || "standard",
             lifecycle_stage: lifecycleStage || "lead",
             marketing_opt_in: marketingOptIn,
             referral_source: referralSource || null,
@@ -174,7 +176,7 @@ export async function GET(req: NextRequest) {
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
-            .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
+            .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
             .order("created_at", { ascending: false });
 
@@ -260,13 +262,14 @@ export async function PATCH(req: NextRequest) {
         const profileId = String(body.id || "").trim();
         const role = typeof body.role === "string" ? body.role.trim() : "";
         const lifecycleStage = typeof body.lifecycle_stage === "string" ? body.lifecycle_stage.trim() : "";
+        const clientTag = typeof body.client_tag === "string" ? body.client_tag.trim() : "";
 
         if (!profileId) {
             return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
         }
 
-        if (!role && !lifecycleStage) {
-            return NextResponse.json({ error: "Provide role or lifecycle_stage" }, { status: 400 });
+        if (!role && !lifecycleStage && !clientTag) {
+            return NextResponse.json({ error: "Provide role, lifecycle_stage, or client_tag" }, { status: 400 });
         }
 
         if (role && role !== "client" && role !== "driver") {
@@ -287,6 +290,19 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Invalid lifecycle_stage" }, { status: 400 });
         }
 
+        const validClientTags = new Set([
+            "standard",
+            "vip",
+            "repeat",
+            "corporate",
+            "family",
+            "honeymoon",
+            "high_priority",
+        ]);
+        if (clientTag && !validClientTags.has(clientTag)) {
+            return NextResponse.json({ error: "Invalid client_tag" }, { status: 400 });
+        }
+
         const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
             .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination")
@@ -300,6 +316,7 @@ export async function PATCH(req: NextRequest) {
         const updates: Record<string, string> = {};
         if (role) updates.role = role;
         if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
+        if (clientTag) updates.client_tag = clientTag;
 
         const { error } = await supabaseAdmin
             .from("profiles")
@@ -338,7 +355,7 @@ export async function PATCH(req: NextRequest) {
             }
 
             if (!notifyClient) {
-                return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null });
+                return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
             }
 
             const templateKey = lifecycleTemplateByStage[lifecycleStage];
@@ -363,7 +380,7 @@ export async function PATCH(req: NextRequest) {
             });
         }
 
-        return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null });
+        return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }

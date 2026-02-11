@@ -86,6 +86,9 @@
   - new table `workflow_notification_rules`
   - new endpoint `/api/admin/workflow/rules`
   - new Settings UI section to enable/disable client notifications per lifecycle phase
+- Added per-client tag selection support:
+  - new `profiles.client_tag` field (`standard`, `vip`, `repeat`, `corporate`, `family`, `honeymoon`, `high_priority`)
+  - client create/edit dropdowns and inline tag updates in Clients admin UI
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

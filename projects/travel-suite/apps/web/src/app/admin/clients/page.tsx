@@ -44,6 +44,7 @@ interface Client {
     home_airport?: string | null;
     notes?: string | null;
     lead_status?: string | null;
+    client_tag?: string | null;
     lifecycle_stage?: string | null;
     marketing_opt_in?: boolean | null;
     referral_source?: string | null;
@@ -116,6 +117,7 @@ export default function ClientsPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
     const [stageUpdatingId, setStageUpdatingId] = useState<string | null>(null);
+    const [tagUpdatingId, setTagUpdatingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         full_name: "",
         email: "",
@@ -129,6 +131,7 @@ export default function ClientsPage() {
         homeAirport: "",
         notes: "",
         leadStatus: "new",
+        clientTag: "standard",
         lifecycleStage: "lead",
         marketingOptIn: false,
         referralSource: "",
@@ -216,6 +219,7 @@ export default function ClientsPage() {
             homeAirport: "",
             notes: "",
             leadStatus: "new",
+            clientTag: "standard",
             lifecycleStage: "lead",
             marketingOptIn: false,
             referralSource: "",
@@ -253,6 +257,7 @@ export default function ClientsPage() {
                     home_airport: formData.homeAirport || null,
                     notes: formData.notes || null,
                     lead_status: formData.leadStatus || "new",
+                    client_tag: formData.clientTag || "standard",
                     lifecycle_stage: formData.lifecycleStage || "lead",
                     marketing_opt_in: formData.marketingOptIn,
                     referral_source: formData.referralSource || null,
@@ -395,6 +400,41 @@ export default function ClientsPage() {
             alert(error instanceof Error ? error.message : "Failed to update lifecycle stage");
         } finally {
             setStageUpdatingId(null);
+        }
+    };
+
+    const handleClientTagChange = async (clientId: string, clientTag: string) => {
+        setTagUpdatingId(clientId);
+        try {
+            if (useMockAdmin) {
+                setClients((prev) => prev.map((client) => (
+                    client.id === clientId ? { ...client, client_tag: clientTag } : client
+                )));
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ id: clientId, client_tag: clientTag }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to update client tag");
+            }
+
+            setClients((prev) => prev.map((client) => (
+                client.id === clientId ? { ...client, client_tag: clientTag } : client
+            )));
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to update client tag");
+        } finally {
+            setTagUpdatingId(null);
         }
     };
 
@@ -564,6 +604,22 @@ export default function ClientsPage() {
                                             <option value="past">Past</option>
                                         </select>
                                     </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Client Tag</label>
+                                    <select
+                                        value={formData.clientTag}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, clientTag: e.target.value }))}
+                                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    >
+                                        <option value="standard">Standard</option>
+                                        <option value="vip">VIP</option>
+                                        <option value="repeat">Repeat</option>
+                                        <option value="corporate">Corporate</option>
+                                        <option value="family">Family</option>
+                                        <option value="honeymoon">Honeymoon</option>
+                                        <option value="high_priority">High Priority</option>
+                                    </select>
                                 </div>
                                 <div className="grid gap-2">
                                     <label className="text-sm font-medium">Referral Source (optional)</label>
@@ -784,6 +840,26 @@ export default function ClientsPage() {
                                 {stageUpdatingId === client.id && (
                                     <p className="text-[11px] text-[#9c7c46]">Updating stage…</p>
                                 )}
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Tag</span>
+                                    <select
+                                        value={client.client_tag || "standard"}
+                                        onChange={(e) => void handleClientTagChange(client.id, e.target.value)}
+                                        disabled={tagUpdatingId === client.id}
+                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
+                                    >
+                                        <option value="standard">Standard</option>
+                                        <option value="vip">VIP</option>
+                                        <option value="repeat">Repeat</option>
+                                        <option value="corporate">Corporate</option>
+                                        <option value="family">Family</option>
+                                        <option value="honeymoon">Honeymoon</option>
+                                        <option value="high_priority">High Priority</option>
+                                    </select>
+                                </div>
+                                {tagUpdatingId === client.id && (
+                                    <p className="text-[11px] text-[#9c7c46]">Updating tag…</p>
+                                )}
                                 {(client.preferred_destination || client.budget_min || client.budget_max || client.travelers_count || client.travel_style) && (
                                     <div className="text-xs text-slate-500 space-y-1">
                                         {client.preferred_destination && (
@@ -804,6 +880,11 @@ export default function ClientsPage() {
                                 )}
                                 {(client.interests?.length || client.home_airport || client.lead_status || client.lifecycle_stage) && (
                                     <div className="flex flex-wrap gap-2 pt-2">
+                                        {client.client_tag && (
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-[#f6efe4] text-[#7b5f31]">
+                                                {client.client_tag.replace(/_/g, " ")}
+                                            </span>
+                                        )}
                                         {client.lead_status && (
                                             <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-slate-100 text-slate-600">
                                                 {client.lead_status}
