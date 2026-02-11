@@ -76,6 +76,7 @@ python main.py
 - **Admin User Controls**:
   - Client creation with travel preference metadata
   - Per-client tag dropdown (`standard`, `vip`, `repeat`, `corporate`, `family`, `honeymoon`, `high_priority`)
+  - New clients default to `lead` stage (with backfill migration for existing client records)
   - Lifecycle stages include payment and review phases (`payment_pending`, `payment_confirmed`, `review`)
   - Kanban lifecycle board with stage movement controls (`lead` → `past`)
   - Dedicated Kanban page (`/admin/kanban`) with drag/drop and transition timeline

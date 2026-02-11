@@ -317,6 +317,12 @@ export async function PATCH(req: NextRequest) {
         if (role) updates.role = role;
         if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
         if (clientTag) updates.client_tag = clientTag;
+        if (role === "client" && !lifecycleStage && !existingProfile.lifecycle_stage) {
+            updates.lifecycle_stage = "lead";
+        }
+        if (role === "client" && !clientTag) {
+            updates.client_tag = "standard";
+        }
 
         const { error } = await supabaseAdmin
             .from("profiles")

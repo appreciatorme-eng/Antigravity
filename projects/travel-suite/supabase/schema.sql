@@ -626,12 +626,15 @@ CREATE TRIGGER set_updated_at_trip_location_shares
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name, avatar_url)
+    INSERT INTO public.profiles (id, email, full_name, avatar_url, lead_status, lifecycle_stage, client_tag)
     VALUES (
         NEW.id,
         NEW.email,
         NEW.raw_user_meta_data->>'full_name',
-        NEW.raw_user_meta_data->>'avatar_url'
+        NEW.raw_user_meta_data->>'avatar_url',
+        'new',
+        'lead',
+        'standard'
     );
     RETURN NEW;
 END;

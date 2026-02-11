@@ -89,6 +89,10 @@
 - Added per-client tag selection support:
   - new `profiles.client_tag` field (`standard`, `vip`, `repeat`, `corporate`, `family`, `honeymoon`, `high_priority`)
   - client create/edit dropdowns and inline tag updates in Clients admin UI
+- Added client default stage hardening and fast stage progression:
+  - backfill migration to enforce `lead`/`new`/`standard` defaults for existing client rows
+  - signup profile trigger now explicitly writes default lifecycle fields
+  - clients page includes `Next` action next to stage dropdown for one-click progression
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

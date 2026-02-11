@@ -821,21 +821,33 @@ export default function ClientsPage() {
                                 )}
                                 <div className="flex items-center justify-between gap-3">
                                     <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Stage</span>
-                                    <select
-                                        value={client.lifecycle_stage || "lead"}
-                                        onChange={(e) => void handleLifecycleStageChange(client.id, e.target.value)}
-                                        disabled={stageUpdatingId === client.id}
-                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
-                                    >
-                                        <option value="lead">Lead</option>
-                                        <option value="prospect">Prospect</option>
-                                        <option value="proposal">Proposal</option>
-                                        <option value="payment_pending">Payment Pending</option>
-                                        <option value="payment_confirmed">Payment Confirmed</option>
-                                        <option value="active">Active</option>
-                                        <option value="review">Review</option>
-                                        <option value="past">Past</option>
-                                    </select>
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={client.lifecycle_stage || "lead"}
+                                            onChange={(e) => void handleLifecycleStageChange(client.id, e.target.value)}
+                                            disabled={stageUpdatingId === client.id}
+                                            className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
+                                        >
+                                            <option value="lead">Lead</option>
+                                            <option value="prospect">Prospect</option>
+                                            <option value="proposal">Proposal</option>
+                                            <option value="payment_pending">Payment Pending</option>
+                                            <option value="payment_confirmed">Payment Confirmed</option>
+                                            <option value="active">Active</option>
+                                            <option value="review">Review</option>
+                                            <option value="past">Past</option>
+                                        </select>
+                                        <button
+                                            onClick={() => {
+                                                const next = getNextStage(client.lifecycle_stage);
+                                                if (next) void handleLifecycleStageChange(client.id, next);
+                                            }}
+                                            disabled={stageUpdatingId === client.id || !getNextStage(client.lifecycle_stage)}
+                                            className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-[11px] font-semibold text-[#6f5b3e] disabled:opacity-40"
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
                                 </div>
                                 {stageUpdatingId === client.id && (
                                     <p className="text-[11px] text-[#9c7c46]">Updating stage…</p>
