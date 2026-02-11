@@ -32,6 +32,14 @@ interface NotificationLog {
     } | null;
 }
 
+interface QueueHealth {
+    pending: number;
+    processing: number;
+    sent: number;
+    failed: number;
+    upcomingHour: number;
+}
+
 const mockLogs: NotificationLog[] = [
     {
         id: "mock-log-1",
@@ -114,6 +122,13 @@ export default function NotificationLogsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [whatsAppMessage, setWhatsAppMessage] = useState("");
+    const [queueHealth, setQueueHealth] = useState<QueueHealth>({
+        pending: 0,
+        processing: 0,
+        sent: 0,
+        failed: 0,
+        upcomingHour: 0,
+    });
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -121,6 +136,13 @@ export default function NotificationLogsPage() {
         try {
             if (useMockAdmin) {
                 setLogs(mockLogs);
+                setQueueHealth({
+                    pending: 3,
+                    processing: 1,
+                    sent: 24,
+                    failed: 2,
+                    upcomingHour: 2,
+                });
                 return;
             }
 
@@ -143,6 +165,37 @@ export default function NotificationLogsPage() {
 
             if (error) throw error;
             setLogs(data || []);
+
+            const now = new Date();
+            const inOneHourIso = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+            const nowIso = now.toISOString();
+
+            const [
+                { count: pendingCount = 0 },
+                { count: processingCount = 0 },
+                { count: sentCount = 0 },
+                { count: failedCount = 0 },
+                { count: upcomingHourCount = 0 },
+            ] = await Promise.all([
+                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "pending"),
+                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "processing"),
+                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "sent"),
+                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "failed"),
+                supabase
+                    .from("notification_queue")
+                    .select("*", { count: "exact", head: true })
+                    .eq("status", "pending")
+                    .gte("scheduled_for", nowIso)
+                    .lte("scheduled_for", inOneHourIso),
+            ]);
+
+            setQueueHealth({
+                pending: Number(pendingCount || 0),
+                processing: Number(processingCount || 0),
+                sent: Number(sentCount || 0),
+                failed: Number(failedCount || 0),
+                upcomingHour: Number(upcomingHourCount || 0),
+            });
         } catch (error) {
             console.error("Error fetching logs:", error);
         } finally {
@@ -242,6 +295,29 @@ export default function NotificationLogsPage() {
                         value={whatsAppMessage}
                         onChange={(e) => setWhatsAppMessage(e.target.value)}
                     />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Pending</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.pending}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Processing</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.processing}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Sent</p>
+                    <p className="text-2xl font-semibold text-emerald-600 mt-1">{queueHealth.sent}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Failed</p>
+                    <p className="text-2xl font-semibold text-rose-600 mt-1">{queueHealth.failed}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Due in 1h</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.upcomingHour}</p>
                 </div>
             </div>
 

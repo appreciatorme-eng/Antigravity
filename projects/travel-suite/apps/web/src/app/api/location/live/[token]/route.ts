@@ -7,10 +7,10 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(
     _req: NextRequest,
-    { params }: { params: Promise<{ token: string }> }
+    { params }: { params: { token: string } }
 ) {
     try {
-        const { token } = await params;
+        const { token } = params;
 
         const { data: share, error: shareError } = await supabaseAdmin
             .from("trip_location_shares")

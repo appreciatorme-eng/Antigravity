@@ -82,6 +82,8 @@ Live location is now supported with tokenized links:
 No extra environment variable is required for live-link creation.
 Use `NEXT_PUBLIC_APP_URL` if you need absolute URLs in generated share links.
 
+Pickup reminder queue processor now auto-attaches a live location URL for pickup reminders by creating/reusing `trip_location_shares` records.
+
 ### Optional: Welcome Email Provider
 To enable welcome emails from the mobile app, configure an email provider for the web API:
 ```

@@ -31,6 +31,49 @@ function addMinutes(date: Date, minutes: number): string {
     return new Date(date.getTime() + minutes * 60_000).toISOString();
 }
 
+async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
+    const tripId = item.trip_id;
+    if (!tripId) return null;
+
+    const dayNumber = Number(payload.day_number || 0) || null;
+    const nowIso = new Date().toISOString();
+
+    let existingQuery = supabaseAdmin
+        .from("trip_location_shares")
+        .select("share_token")
+        .eq("trip_id", tripId)
+        .eq("is_active", true)
+        .gt("expires_at", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+    if (dayNumber) {
+        existingQuery = existingQuery.eq("day_number", dayNumber);
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle();
+    if (existing?.share_token) {
+        return existing.share_token;
+    }
+
+    const shareToken = crypto.randomUUID().replace(/-/g, "");
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    const { data: inserted } = await supabaseAdmin
+        .from("trip_location_shares")
+        .insert({
+            trip_id: tripId,
+            day_number: dayNumber,
+            share_token: shareToken,
+            is_active: true,
+            expires_at: expiresAt,
+        })
+        .select("share_token")
+        .single();
+
+    return inserted?.share_token || null;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
@@ -69,7 +112,16 @@ export async function POST(request: NextRequest) {
             const attempts = Number(row.attempts || 0) + 1;
             const payload = row.payload || {};
             const title = getStringPayloadValue(payload, "title") || "Trip Notification";
-            const body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
+            let body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
+
+            if (row.notification_type === "pickup_reminder") {
+                const token = await resolveLiveLinkForQueueItem(row, payload);
+                if (token) {
+                    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+                    const liveUrl = `${appUrl.replace(/\/$/, "")}/live/${token}`;
+                    body = `${body}\n\nTrack live location:\n${liveUrl}`;
+                }
+            }
 
             let whatsappSuccess = false;
             let pushSuccess = false;

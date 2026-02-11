@@ -22,6 +22,8 @@
   - public API + page (`/live/:token`) for live map viewing
   - driver location ingest API (`POST /api/location/ping`)
   - admin trip UI action to generate/copy/open live links
+  - queue processor now auto-includes live location URL in pickup reminders
+- Added admin notification queue health cards (pending/processing/sent/failed/due soon).
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.
