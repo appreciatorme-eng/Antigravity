@@ -79,6 +79,11 @@ python main.py
 
 Travel Suite is designed as a **B2B SaaS product for travel agents** with tiered subscriptions. See `docs/monetization.md` for details.
 
+## 🧭 Client Operations SOP
+
+Post-confirmation client experience flow and automation checklist are documented in:
+- `docs/client_experience_sop.md`
+
 ## 🔔 Automation & Notifications
 
 - Supabase Edge Functions for FCM (push notifications)
