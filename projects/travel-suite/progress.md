@@ -244,7 +244,7 @@
 ### Documentation & Cleanup
 - **Status:** in progress
 - Updated project README and task plan to reflect current architecture and testing status.
-- Removed legacy n8n workflows and local test scripts no longer used.
+- Removed legacy workflow references and local test scripts no longer used.
 - Clarified notification flow and schema alignment for FCM.
 
 ### Backend & Web Fixes
@@ -263,8 +263,6 @@
 - `task_plan.md`
 
 #### Files Removed
-- `n8n/README.md`
-- `n8n/workflows/*`
 - `test_notification.sh`
 - `test_key_import.js`
 
@@ -290,7 +288,7 @@
 
 #### Project Cleanup (Current Session)
 - Recreated `task_plan.md`, `findings.md`, `progress.md` using planning-with-files skill
-- Removed n8n references (using Supabase Edge Functions instead)
+- Standardized automation references to Supabase Edge Functions
 - Created consolidated `README.md` at project root
 - Updated `supabase_config.example.dart` with clearer instructions
 - **Git commit:** `818e9cb` - "chore: restructure planning docs & cleanup mobile app"

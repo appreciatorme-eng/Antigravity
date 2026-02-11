@@ -103,9 +103,11 @@ Post-confirmation client experience flow and automation checklist are documented
 - `docs/e2e_release_checklist.md` (pre-release validation runbook)
 - `docs/whatsapp_tracking_flow.md` (template catalog + webhook/location flow)
 - `docs/critical_foundations_2026-02-11.md` (tenant isolation + CI + billing foundation)
+- `docs/next_critical_steps_2026-02-11.md` (execution roadmap for current sprint)
 
 ## 🔔 Automation & Notifications
 
+- Automation runtime is standardized on **Supabase Edge Functions + queue tables + scheduled workers**.
 - Supabase Edge Functions for FCM (push notifications)
 - Notification logging and admin-triggered sends
 - Welcome email sent on first successful mobile auth (via web API)
