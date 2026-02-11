@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { Car, Users, MapPin, Bell, TrendingUp, Calendar } from "lucide-react";
+import { Car, Users, MapPin, Bell, TrendingUp, Calendar, Activity } from "lucide-react";
 
 interface DashboardStats {
     totalDrivers: number;
@@ -37,6 +37,21 @@ interface RecentNotification {
     body: string | null;
     sent_at: string | null;
     status: string | null;
+}
+
+type HealthStatus = "healthy" | "degraded" | "down" | "unconfigured";
+
+interface HealthResponse {
+    status: HealthStatus;
+    checked_at: string;
+    duration_ms: number;
+    checks: {
+        database: { status: HealthStatus };
+        supabase_edge_functions: { status: HealthStatus };
+        firebase_fcm: { status: HealthStatus };
+        whatsapp_api: { status: HealthStatus };
+        external_apis: { status: HealthStatus };
+    };
 }
 
 const mockStats: DashboardStats = {
@@ -83,6 +98,8 @@ export default function AdminDashboard() {
     });
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [health, setHealth] = useState<HealthResponse | null>(null);
+    const [healthLoading, setHealthLoading] = useState(true);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     useEffect(() => {
@@ -168,6 +185,51 @@ export default function AdminDashboard() {
 
         fetchData();
     }, [supabase, useMockAdmin]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchHealth = async () => {
+            try {
+                if (!mounted) return;
+                setHealthLoading(true);
+                const res = await fetch("/api/health", { cache: "no-store" });
+                const data = (await res.json()) as HealthResponse;
+                if (mounted) setHealth(data);
+            } catch {
+                if (mounted) {
+                    setHealth({
+                        status: "down",
+                        checked_at: new Date().toISOString(),
+                        duration_ms: 0,
+                        checks: {
+                            database: { status: "down" },
+                            supabase_edge_functions: { status: "down" },
+                            firebase_fcm: { status: "down" },
+                            whatsapp_api: { status: "down" },
+                            external_apis: { status: "down" },
+                        },
+                    });
+                }
+            } finally {
+                if (mounted) setHealthLoading(false);
+            }
+        };
+
+        fetchHealth();
+        const intervalId = setInterval(fetchHealth, 60_000);
+        return () => {
+            mounted = false;
+            clearInterval(intervalId);
+        };
+    }, []);
+
+    const statusClass: Record<HealthStatus, string> = {
+        healthy: "bg-emerald-100 text-emerald-700",
+        degraded: "bg-amber-100 text-amber-700",
+        down: "bg-rose-100 text-rose-700",
+        unconfigured: "bg-slate-100 text-slate-600",
+    };
 
     const statCards = [
         {
@@ -279,6 +341,38 @@ export default function AdminDashboard() {
                             <p className="text-sm text-[#6f5b3e]">Notify clients & drivers</p>
                         </div>
                     </Link>
+                </div>
+            </div>
+
+            {/* System Health */}
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">System Health</h2>
+                    <Activity className="w-5 h-5 text-[#bda87f]" />
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${health ? statusClass[health.status] : "bg-slate-100 text-slate-600"}`}>
+                        {healthLoading ? "checking" : (health?.status ?? "unknown")}
+                    </span>
+                    <span className="text-xs text-[#8c7754]">
+                        {health?.checked_at ? `Last check ${new Date(health.checked_at).toLocaleTimeString()}` : ""}
+                    </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                        { label: "Database", value: health?.checks.database.status },
+                        { label: "Edge Functions", value: health?.checks.supabase_edge_functions.status },
+                        { label: "Firebase FCM", value: health?.checks.firebase_fcm.status },
+                        { label: "WhatsApp API", value: health?.checks.whatsapp_api.status },
+                        { label: "Weather/Currency", value: health?.checks.external_apis.status },
+                    ].map((item) => (
+                        <div key={item.label} className="rounded-xl border border-[#eadfcd] bg-[#fffdf8] px-3 py-3">
+                            <p className="text-[11px] uppercase tracking-[0.14em] text-[#9d8862] mb-2">{item.label}</p>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${item.value ? statusClass[item.value] : "bg-slate-100 text-slate-600"}`}>
+                                {healthLoading ? "checking" : (item.value ?? "unknown")}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
 

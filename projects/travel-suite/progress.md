@@ -454,3 +454,5 @@
   - WhatsApp API availability
   - external API health (Open-Meteo weather, Frankfurter currency)
 - Added README section documenting the health endpoint.
+- Added admin dashboard health card (auto-refresh every 60s):
+  - `apps/web/src/app/admin/page.tsx`
