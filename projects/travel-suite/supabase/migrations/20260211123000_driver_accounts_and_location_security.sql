@@ -1,7 +1,7 @@
 -- Driver account mapping + stronger location publish authorization.
 
 create table if not exists public.driver_accounts (
-    id uuid default uuid_generate_v4() primary key,
+    id uuid default gen_random_uuid() primary key,
     external_driver_id uuid references public.external_drivers(id) on delete cascade not null unique,
     profile_id uuid references public.profiles(id) on delete cascade not null unique,
     is_active boolean default true,

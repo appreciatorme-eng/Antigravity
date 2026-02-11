@@ -1,7 +1,7 @@
 -- Live location share sessions for client/driver visibility.
 
 create table if not exists public.trip_location_shares (
-    id uuid default uuid_generate_v4() primary key,
+    id uuid default gen_random_uuid() primary key,
     trip_id uuid references public.trips(id) on delete cascade not null,
     day_number integer,
     share_token text unique not null,

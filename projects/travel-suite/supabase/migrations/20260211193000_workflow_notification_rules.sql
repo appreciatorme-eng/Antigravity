@@ -1,6 +1,6 @@
 -- Configurable notification toggles for lifecycle stage transitions
 create table if not exists public.workflow_notification_rules (
-    id uuid default uuid_generate_v4() primary key,
+    id uuid default gen_random_uuid() primary key,
     organization_id uuid references public.organizations(id) on delete cascade,
     lifecycle_stage text not null,
     notify_client boolean not null default true,

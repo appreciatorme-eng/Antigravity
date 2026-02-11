@@ -1,5 +1,75 @@
 -- Pickup reminder queue extensions + assignment triggers
 
+create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
+
+create table if not exists public.notification_queue (
+    id uuid default gen_random_uuid() primary key,
+    user_id uuid references public.profiles(id) on delete cascade,
+    trip_id uuid references public.trips(id) on delete cascade,
+    notification_type text not null check (notification_type in (
+        'daily_briefing', 'trip_reminder', 'driver_assigned',
+        'pickup_reminder', 'custom'
+    )),
+    recipient_phone text,
+    recipient_type text check (recipient_type in ('client', 'driver', 'admin')),
+    channel_preference text default 'whatsapp_first',
+    idempotency_key text,
+    scheduled_for timestamptz not null,
+    payload jsonb not null default '{}'::jsonb,
+    status text default 'pending' check (status in ('pending', 'processing', 'sent', 'failed', 'cancelled')),
+    attempts integer default 0,
+    last_attempt_at timestamptz,
+    processed_at timestamptz,
+    error_message text,
+    created_at timestamptz default now()
+);
+
+alter table public.notification_queue enable row level security;
+
+create index if not exists idx_notification_queue_scheduled on public.notification_queue(scheduled_for, status);
+create index if not exists idx_notification_queue_user on public.notification_queue(user_id);
+create index if not exists idx_notification_queue_trip on public.notification_queue(trip_id);
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_policies
+        where schemaname = 'public'
+          and tablename = 'notification_queue'
+          and policyname = 'Admins can view notification queue'
+    ) then
+        create policy "Admins can view notification queue"
+            on public.notification_queue for select
+            using (
+                exists (
+                    select 1 from public.profiles
+                    where profiles.id = auth.uid()
+                      and profiles.role = 'admin'
+                )
+            );
+    end if;
+
+    if not exists (
+        select 1
+        from pg_policies
+        where schemaname = 'public'
+          and tablename = 'notification_queue'
+          and policyname = 'Admins can manage notification queue'
+    ) then
+        create policy "Admins can manage notification queue"
+            on public.notification_queue for all
+            using (
+                exists (
+                    select 1 from public.profiles
+                    where profiles.id = auth.uid()
+                      and profiles.role = 'admin'
+                )
+            );
+    end if;
+end $$;
+
 alter table public.notification_queue
     add column if not exists recipient_phone text,
     add column if not exists recipient_type text,
