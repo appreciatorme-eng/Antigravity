@@ -64,6 +64,9 @@
   - ping throughput (1h/24h), stale active driver trips, unmapped external drivers
   - latest driver ping ages
   - drivers missing `phone_normalized` mapping
+- Added admin phone-mapping repair endpoint (`/api/admin/whatsapp/normalize-driver-phones`) and UI actions:
+  - bulk "Fix All Phone Mapping"
+  - per-driver "Fix" action in webhook health panel
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

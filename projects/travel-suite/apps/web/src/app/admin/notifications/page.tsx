@@ -68,6 +68,7 @@ interface WhatsAppHealthPayload {
         id: string;
         full_name: string | null;
         email: string | null;
+        phone?: string | null;
     }>;
 }
 
@@ -180,6 +181,7 @@ const mockWhatsAppHealth: WhatsAppHealthPayload = {
             id: "mock-driver-missing-1",
             full_name: "Driver Missing Phone",
             email: "driver.missing@example.com",
+            phone: "+1 415 555 0100",
         },
     ],
 };
@@ -205,6 +207,8 @@ export default function NotificationLogsPage() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [healthLoading, setHealthLoading] = useState(false);
     const [whatsAppHealth, setWhatsAppHealth] = useState<WhatsAppHealthPayload | null>(null);
+    const [normalizingDriverId, setNormalizingDriverId] = useState<string | null>(null);
+    const [normalizingAllDrivers, setNormalizingAllDrivers] = useState(false);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -454,6 +458,52 @@ export default function NotificationLogsPage() {
         }
     };
 
+    const normalizeDriverPhoneMappings = async (driverId?: string) => {
+        try {
+            setActionError(null);
+            if (driverId) {
+                setNormalizingDriverId(driverId);
+            } else {
+                setNormalizingAllDrivers(true);
+            }
+
+            if (useMockAdmin) {
+                setActionMessage("Mock normalization complete.");
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/whatsapp/normalize-driver-phones", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify(driverId ? { driver_id: driverId } : {}),
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                setActionError(payload?.error || "Failed to normalize driver phone mapping");
+                return;
+            }
+
+            setActionMessage(
+                `Phone mapping updated: ${payload.updated || 0} updated, ${payload.skipped || 0} skipped.`
+            );
+            await fetchWhatsAppHealth();
+        } catch (error) {
+            console.error("Normalize driver mapping error:", error);
+            setActionError("Failed to normalize driver phone mapping");
+        } finally {
+            if (driverId) {
+                setNormalizingDriverId(null);
+            } else {
+                setNormalizingAllDrivers(false);
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -478,6 +528,14 @@ export default function NotificationLogsPage() {
                 >
                     <Activity className={`w-4 h-4 ${healthLoading ? "animate-spin" : ""}`} />
                     Webhook Health
+                </button>
+                <button
+                    onClick={() => void normalizeDriverPhoneMappings()}
+                    disabled={normalizingAllDrivers}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
+                >
+                    <Phone className={`w-4 h-4 ${normalizingAllDrivers ? "animate-spin" : ""}`} />
+                    {normalizingAllDrivers ? "Fixing..." : "Fix All Phone Mapping"}
                 </button>
                 <button
                     onClick={runQueueNow}
@@ -641,9 +699,19 @@ export default function NotificationLogsPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {whatsAppHealth.drivers_missing_phone_list.map((driver) => (
-                                            <div key={driver.id} className="text-sm rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
-                                                <p className="font-medium text-amber-900">{driver.full_name || "Unnamed driver"}</p>
-                                                <p className="text-xs text-amber-700">{driver.email || "No email"}</p>
+                                            <div key={driver.id} className="text-sm rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 flex items-center justify-between gap-3">
+                                                <div>
+                                                    <p className="font-medium text-amber-900">{driver.full_name || "Unnamed driver"}</p>
+                                                    <p className="text-xs text-amber-700">{driver.email || "No email"}</p>
+                                                    <p className="text-xs text-amber-700">{driver.phone || "No phone in profile"}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => void normalizeDriverPhoneMappings(driver.id)}
+                                                    disabled={normalizingDriverId === driver.id}
+                                                    className="text-xs font-semibold px-2 py-1 rounded-md bg-white border border-amber-200 text-amber-800 disabled:opacity-50"
+                                                >
+                                                    {normalizingDriverId === driver.id ? "Fixing..." : "Fix"}
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

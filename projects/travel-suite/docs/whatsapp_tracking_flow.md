@@ -61,6 +61,15 @@ Admin diagnostics:
   - latest driver ping ages
   - driver profiles missing `phone_normalized`
 
+Phone mapping repair:
+- Endpoint: `POST /api/admin/whatsapp/normalize-driver-phones`
+- Supports:
+  - bulk repair (`{}` body)
+  - single driver repair (`{ "driver_id": "<uuid>" }`)
+- Admin UI includes:
+  - **Fix All Phone Mapping**
+  - per-driver **Fix** action in missing mapping list
+
 ## Hybrid Channel Strategy (Implemented)
 
 1. Queue sends WhatsApp first for operational reliability.

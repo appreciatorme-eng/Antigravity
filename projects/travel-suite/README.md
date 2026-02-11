@@ -104,6 +104,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - WhatsApp template sends for operational reminders with push fallback
 - WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
 - Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)
+- Admin one-click driver phone normalization for WhatsApp mapping (`/api/admin/whatsapp/normalize-driver-phones`)
 
 ## 🎨 Brand Identity
 

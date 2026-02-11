@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         ] = await Promise.all([
             supabaseAdmin
                 .from("profiles")
-                .select("id,full_name,email,phone_normalized")
+                .select("id,full_name,email,phone,phone_normalized")
                 .eq("role", "driver"),
             supabaseAdmin
                 .from("driver_locations")
@@ -136,6 +136,7 @@ export async function GET(req: NextRequest) {
                 id: driver.id,
                 full_name: driver.full_name,
                 email: driver.email,
+                phone: driver.phone,
             }))
             .slice(0, 8);
 
@@ -166,4 +167,3 @@ export async function GET(req: NextRequest) {
         );
     }
 }
-
