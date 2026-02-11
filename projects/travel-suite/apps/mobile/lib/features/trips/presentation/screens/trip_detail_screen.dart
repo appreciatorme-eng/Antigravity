@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
 import 'package:gobuddy_mobile/features/trips/presentation/widgets/driver_info_card.dart';
@@ -208,6 +209,59 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Ping failed (${response.statusCode})');
+    }
+  }
+
+  Future<void> _openLiveLocationForDay() async {
+    try {
+      final tripId = _trip?['id'] as String?;
+      if (tripId == null) {
+        throw Exception('Missing trip ID');
+      }
+
+      final session = Supabase.instance.client.auth.currentSession;
+      final accessToken = session?.accessToken;
+      if (accessToken == null) {
+        throw Exception('User session expired');
+      }
+
+      final dayNumber = _selectedDayIndex + 1;
+      final uri = Uri.parse(
+        '${SupabaseConfig.apiBaseUrl}/api/location/client-share?tripId=$tripId&dayNumber=$dayNumber',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(payload['error'] ?? 'Failed to get live location link');
+      }
+
+      final liveUrl =
+          (payload['share'] as Map<String, dynamic>?)?['live_url'] as String?;
+      if (liveUrl == null || liveUrl.isEmpty) {
+        throw Exception('Live location link unavailable');
+      }
+
+      final liveUri = Uri.parse(liveUrl);
+      final launched = await launchUrl(
+        liveUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Could not open live location link');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to open live location: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -471,6 +525,26 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
           if (hasDriver) ...[
             DriverInfoCard(assignment: assignment),
+            if (!_isDriverForTrip)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _openLiveLocationForDay,
+                    icon: const Icon(Icons.navigation_rounded),
+                    label: const Text('View Live Driver Location'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      side: BorderSide(color: AppTheme.primary.withAlpha(120)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
           ],
 

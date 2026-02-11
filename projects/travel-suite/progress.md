@@ -33,6 +33,9 @@
   - start/stop sharing action in trip detail app bar
   - 20-second location ping loop to `/api/location/ping`
   - Android/iOS location permissions updated
+- Added client-side live-location access from mobile trip detail:
+  - "View Live Driver Location" action for assigned day
+  - new client-auth API endpoint to create/reuse live tokenized link
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

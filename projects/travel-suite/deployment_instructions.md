@@ -79,6 +79,7 @@ Manual testing path (admin UI):
 Live location is now supported with tokenized links:
 - `POST /api/location/share` (admin auth required): create/reuse live link for trip/day
 - `GET /api/location/share?tripId=<id>&dayNumber=<n>` (admin auth required): fetch existing link
+- `GET /api/location/client-share?tripId=<id>&dayNumber=<n>` (client auth required): create/reuse live link for mobile client view
 - `POST /api/location/ping` (driver auth required): write GPS ping to `driver_locations`
 - `GET /api/location/live/:token` (public by token): read latest location payload
 - `GET /live/:token` (web page): client/driver-friendly live map view
