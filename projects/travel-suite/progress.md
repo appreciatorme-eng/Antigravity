@@ -470,3 +470,8 @@
 - Added admin delivery tracking endpoint:
   - `apps/web/src/app/api/admin/notifications/delivery/route.ts`
   - supports filters: `status`, `channel`, `trip_id`, `failed_only`, `limit`, `offset`
+- Added delivery retry endpoint:
+  - `apps/web/src/app/api/admin/notifications/delivery/retry/route.ts`
+  - retries individual failed queue records with org checks
+- Added admin Notifications UI section for delivery tracking + failed retry action:
+  - `apps/web/src/app/admin/notifications/page.tsx`

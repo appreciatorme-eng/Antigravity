@@ -12,6 +12,7 @@ import {
     RefreshCcw,
     MessageCircle,
     Activity,
+    Phone,
 } from "lucide-react";
 
 interface NotificationLog {
@@ -39,6 +40,29 @@ interface QueueHealth {
     sent: number;
     failed: number;
     upcomingHour: number;
+}
+
+interface DeliveryRow {
+    id: string;
+    queue_id: string | null;
+    trip_id: string | null;
+    channel: "whatsapp" | "push" | "email";
+    status: "queued" | "processing" | "sent" | "failed" | "skipped" | "retrying";
+    attempt_number: number;
+    error_message: string | null;
+    created_at: string;
+}
+
+interface DeliveryResponse {
+    rows: DeliveryRow[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+    };
+    summary: {
+        counts_by_status: Record<string, number>;
+    };
 }
 
 interface WhatsAppHealthSummary {
@@ -209,6 +233,12 @@ export default function NotificationLogsPage() {
     const [whatsAppHealth, setWhatsAppHealth] = useState<WhatsAppHealthPayload | null>(null);
     const [normalizingDriverId, setNormalizingDriverId] = useState<string | null>(null);
     const [normalizingAllDrivers, setNormalizingAllDrivers] = useState(false);
+    const [deliveryRows, setDeliveryRows] = useState<DeliveryRow[]>([]);
+    const [deliveryLoading, setDeliveryLoading] = useState(false);
+    const [deliveryChannel, setDeliveryChannel] = useState<"all" | "whatsapp" | "push" | "email">("all");
+    const [deliveryFailedOnly, setDeliveryFailedOnly] = useState(true);
+    const [deliverySummary, setDeliverySummary] = useState<Record<string, number>>({});
+    const [retryingQueueId, setRetryingQueueId] = useState<string | null>(null);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
@@ -316,6 +346,65 @@ export default function NotificationLogsPage() {
     useEffect(() => {
         void fetchWhatsAppHealth();
     }, [fetchWhatsAppHealth]);
+
+    const fetchDeliveryTracking = useCallback(async () => {
+        setDeliveryLoading(true);
+        try {
+            if (useMockAdmin) {
+                setDeliveryRows([
+                    {
+                        id: "mock-delivery-1",
+                        queue_id: "mock-queue-1",
+                        trip_id: "mock-trip-001",
+                        channel: "whatsapp",
+                        status: "failed",
+                        attempt_number: 2,
+                        error_message: "Template not approved",
+                        created_at: new Date().toISOString(),
+                    },
+                    {
+                        id: "mock-delivery-2",
+                        queue_id: "mock-queue-2",
+                        trip_id: "mock-trip-002",
+                        channel: "push",
+                        status: "sent",
+                        attempt_number: 1,
+                        error_message: null,
+                        created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+                    },
+                ]);
+                setDeliverySummary({ sent: 12, failed: 3, skipped: 1 });
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const params = new URLSearchParams();
+            params.set("limit", "40");
+            if (deliveryChannel !== "all") params.set("channel", deliveryChannel);
+            if (deliveryFailedOnly) params.set("failed_only", "true");
+
+            const response = await fetch(`/api/admin/notifications/delivery?${params.toString()}`, {
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = (await response.json()) as DeliveryResponse & { error?: string };
+            if (!response.ok) {
+                throw new Error(payload.error || "Failed to fetch delivery tracking");
+            }
+
+            setDeliveryRows(payload.rows || []);
+            setDeliverySummary(payload.summary?.counts_by_status || {});
+        } catch (error) {
+            console.error("Error fetching delivery tracking:", error);
+        } finally {
+            setDeliveryLoading(false);
+        }
+    }, [supabase, useMockAdmin, deliveryChannel, deliveryFailedOnly]);
+
+    useEffect(() => {
+        void fetchDeliveryTracking();
+    }, [fetchDeliveryTracking]);
 
     useEffect(() => {
         if (!actionMessage && !actionError) return;
@@ -504,6 +593,42 @@ export default function NotificationLogsPage() {
         }
     };
 
+    const retrySingleQueueItem = async (queueId: string) => {
+        try {
+            setRetryingQueueId(queueId);
+            if (useMockAdmin) {
+                setActionMessage("Mock retry queued.");
+                await fetchDeliveryTracking();
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/notifications/delivery/retry", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+                body: JSON.stringify({ queue_id: queueId }),
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                setActionError(payload?.error || "Failed to retry delivery");
+                return;
+            }
+
+            setActionMessage("Delivery item moved back to pending queue.");
+            await fetchLogs();
+            await fetchDeliveryTracking();
+        } catch (error) {
+            console.error("Retry delivery error:", error);
+            setActionError("Failed to retry delivery");
+        } finally {
+            setRetryingQueueId(null);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -629,6 +754,110 @@ export default function NotificationLogsPage() {
                 <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
                     <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Due in 1h</p>
                     <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.upcomingHour}</p>
+                </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">
+                        Delivery Tracking
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <select
+                            className="px-3 py-2 border border-[#eadfcd] rounded-lg text-sm bg-white"
+                            value={deliveryChannel}
+                            onChange={(e) => setDeliveryChannel(e.target.value as "all" | "whatsapp" | "push" | "email")}
+                        >
+                            <option value="all">All channels</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="push">Push</option>
+                            <option value="email">Email</option>
+                        </select>
+                        <label className="flex items-center gap-2 text-sm text-[#6f5b3e] px-3 py-2 border border-[#eadfcd] rounded-lg bg-white">
+                            <input
+                                type="checkbox"
+                                checked={deliveryFailedOnly}
+                                onChange={(e) => setDeliveryFailedOnly(e.target.checked)}
+                            />
+                            Failed only
+                        </label>
+                        <button
+                            onClick={() => void fetchDeliveryTracking()}
+                            className="px-3 py-2 border border-[#eadfcd] rounded-lg bg-white text-sm text-[#6f5b3e]"
+                        >
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {Object.entries(deliverySummary).map(([key, value]) => (
+                        <span key={key} className="text-xs px-2 py-1 rounded-full bg-[#f8f1e6] text-[#7a613a]">
+                            {key}: {value}
+                        </span>
+                    ))}
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead>
+                            <tr className="border-b border-[#eadfcd] text-[#8d7650]">
+                                <th className="py-2 pr-3">Channel</th>
+                                <th className="py-2 pr-3">Status</th>
+                                <th className="py-2 pr-3">Attempt</th>
+                                <th className="py-2 pr-3">Trip</th>
+                                <th className="py-2 pr-3">Error</th>
+                                <th className="py-2 pr-3">Time</th>
+                                <th className="py-2">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {deliveryLoading ? (
+                                <tr>
+                                    <td colSpan={7} className="py-6 text-center text-slate-500">Loading delivery rows...</td>
+                                </tr>
+                            ) : deliveryRows.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="py-6 text-center text-slate-500">No delivery records found.</td>
+                                </tr>
+                            ) : (
+                                deliveryRows.map((row) => (
+                                    <tr key={row.id} className="border-b border-slate-100">
+                                        <td className="py-2 pr-3 uppercase">{row.channel}</td>
+                                        <td className="py-2 pr-3">
+                                            <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${row.status === "sent"
+                                                    ? "bg-emerald-50 text-emerald-700"
+                                                    : row.status === "failed"
+                                                        ? "bg-rose-50 text-rose-700"
+                                                        : "bg-amber-50 text-amber-700"
+                                                }`}>
+                                                {row.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-2 pr-3">{row.attempt_number}</td>
+                                        <td className="py-2 pr-3">{row.trip_id ? row.trip_id.slice(0, 8) : "-"}</td>
+                                        <td className="py-2 pr-3 text-xs text-[#8d7650] max-w-[320px] truncate">
+                                            {row.error_message || "-"}
+                                        </td>
+                                        <td className="py-2 pr-3">{formatDate(row.created_at)}</td>
+                                        <td className="py-2">
+                                            {(row.status === "failed" || row.status === "retrying") && row.queue_id ? (
+                                                <button
+                                                    onClick={() => void retrySingleQueueItem(row.queue_id!)}
+                                                    disabled={retryingQueueId === row.queue_id}
+                                                    className="text-xs px-2 py-1 rounded-md border border-[#eadfcd] bg-white text-[#6f5b3e] disabled:opacity-50"
+                                                >
+                                                    {retryingQueueId === row.queue_id ? "Retrying..." : "Retry"}
+                                                </button>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
