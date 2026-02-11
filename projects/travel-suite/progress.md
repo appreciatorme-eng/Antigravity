@@ -475,3 +475,6 @@
   - retries individual failed queue records with org checks
 - Added admin Notifications UI section for delivery tracking + failed retry action:
   - `apps/web/src/app/admin/notifications/page.tsx`
+- Added E2E auth/authorization coverage for delivery APIs:
+  - `apps/web/e2e/tests/admin-notification-delivery.spec.ts`
+  - covers unauthenticated, non-admin forbidden, admin success, and retry payload validation
