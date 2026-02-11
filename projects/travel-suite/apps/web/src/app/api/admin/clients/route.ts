@@ -247,26 +247,82 @@ export async function PATCH(req: NextRequest) {
 
         const body = await req.json();
         const profileId = String(body.id || "").trim();
-        const role = String(body.role || "").trim();
+        const role = typeof body.role === "string" ? body.role.trim() : "";
+        const lifecycleStage = typeof body.lifecycle_stage === "string" ? body.lifecycle_stage.trim() : "";
 
         if (!profileId) {
             return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
         }
 
-        if (role !== "client" && role !== "driver") {
+        if (!role && !lifecycleStage) {
+            return NextResponse.json({ error: "Provide role or lifecycle_stage" }, { status: 400 });
+        }
+
+        if (role && role !== "client" && role !== "driver") {
             return NextResponse.json({ error: "Role must be client or driver" }, { status: 400 });
         }
 
+        const validLifecycleStages = new Set([
+            "lead",
+            "prospect",
+            "proposal",
+            "payment_pending",
+            "payment_confirmed",
+            "active",
+            "past",
+        ]);
+        if (lifecycleStage && !validLifecycleStages.has(lifecycleStage)) {
+            return NextResponse.json({ error: "Invalid lifecycle_stage" }, { status: 400 });
+        }
+
+        const { data: existingProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("id,full_name,phone,phone_normalized,lifecycle_stage")
+            .eq("id", profileId)
+            .maybeSingle();
+
+        if (!existingProfile) {
+            return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+        }
+
+        const updates: Record<string, string> = {};
+        if (role) updates.role = role;
+        if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
+
         const { error } = await supabaseAdmin
             .from("profiles")
-            .update({ role })
+            .update(updates)
             .eq("id", profileId);
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, id: profileId, role });
+        if (
+            lifecycleStage === "payment_confirmed" &&
+            existingProfile.lifecycle_stage !== "payment_confirmed"
+        ) {
+            const recipientPhone = existingProfile.phone_normalized || existingProfile.phone || null;
+            await supabaseAdmin.from("notification_queue").insert({
+                user_id: existingProfile.id,
+                notification_type: "custom",
+                recipient_phone: recipientPhone,
+                recipient_type: "client",
+                scheduled_for: new Date().toISOString(),
+                idempotency_key: `payment-confirmed:${existingProfile.id}:${new Date().toISOString().slice(0, 10)}`,
+                payload: {
+                    title: "Payment Confirmed",
+                    body: `Hi ${existingProfile.full_name || "Traveler"}, your payment is confirmed. Your trip booking is now secured.`,
+                    template_key: "payment_confirmed",
+                    template_vars: {
+                        client_name: existingProfile.full_name || "Traveler",
+                    },
+                },
+                status: "pending",
+            });
+        }
+
+        return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }

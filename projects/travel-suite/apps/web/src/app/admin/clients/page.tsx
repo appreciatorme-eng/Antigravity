@@ -93,6 +93,7 @@ export default function ClientsPage() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
+    const [stageUpdatingId, setStageUpdatingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         full_name: "",
         email: "",
@@ -322,6 +323,41 @@ export default function ClientsPage() {
         }
     };
 
+    const handleLifecycleStageChange = async (clientId: string, lifecycleStage: string) => {
+        setStageUpdatingId(clientId);
+        try {
+            if (useMockAdmin) {
+                setClients((prev) => prev.map((client) => (
+                    client.id === clientId ? { ...client, lifecycle_stage: lifecycleStage } : client
+                )));
+                return;
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ id: clientId, lifecycle_stage: lifecycleStage }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to update lifecycle stage");
+            }
+
+            setClients((prev) => prev.map((client) => (
+                client.id === clientId ? { ...client, lifecycle_stage: lifecycleStage } : client
+            )));
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to update lifecycle stage");
+        } finally {
+            setStageUpdatingId(null);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -480,6 +516,9 @@ export default function ClientsPage() {
                                         >
                                             <option value="lead">Lead</option>
                                             <option value="prospect">Prospect</option>
+                                            <option value="proposal">Proposal</option>
+                                            <option value="payment_pending">Payment Pending</option>
+                                            <option value="payment_confirmed">Payment Confirmed</option>
                                             <option value="active">Active</option>
                                             <option value="past">Past</option>
                                         </select>
@@ -621,6 +660,26 @@ export default function ClientsPage() {
                                 </div>
                                 {roleUpdatingId === client.id && (
                                     <p className="text-[11px] text-[#9c7c46]">Updating role…</p>
+                                )}
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Stage</span>
+                                    <select
+                                        value={client.lifecycle_stage || "lead"}
+                                        onChange={(e) => void handleLifecycleStageChange(client.id, e.target.value)}
+                                        disabled={stageUpdatingId === client.id}
+                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
+                                    >
+                                        <option value="lead">Lead</option>
+                                        <option value="prospect">Prospect</option>
+                                        <option value="proposal">Proposal</option>
+                                        <option value="payment_pending">Payment Pending</option>
+                                        <option value="payment_confirmed">Payment Confirmed</option>
+                                        <option value="active">Active</option>
+                                        <option value="past">Past</option>
+                                    </select>
+                                </div>
+                                {stageUpdatingId === client.id && (
+                                    <p className="text-[11px] text-[#9c7c46]">Updating stage…</p>
                                 )}
                                 {(client.preferred_destination || client.budget_min || client.budget_max || client.travelers_count || client.travel_style) && (
                                     <div className="text-xs text-slate-500 space-y-1">

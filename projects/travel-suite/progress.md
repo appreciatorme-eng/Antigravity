@@ -67,6 +67,10 @@
 - Added admin phone-mapping repair endpoint (`/api/admin/whatsapp/normalize-driver-phones`) and UI actions:
   - bulk "Fix All Phone Mapping"
   - per-driver "Fix" action in webhook health panel
+- Added payment lifecycle phase support in admin clients workflow:
+  - new stages: `proposal`, `payment_pending`, `payment_confirmed`
+  - stage update API via `/api/admin/clients` (`PATCH` with `lifecycle_stage`)
+  - moving client to `payment_confirmed` queues confirmation notification (WhatsApp template + push fallback)
 
 ### Documentation
 - Updated deployment instructions with scheduler + env setup for queue processing and WhatsApp.

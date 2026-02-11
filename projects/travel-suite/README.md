@@ -75,6 +75,7 @@ python main.py
   - Reminder queue + driver ping visibility per day
 - **Admin User Controls**:
   - Client creation with travel preference metadata
+  - Lifecycle stages include payment phases (`payment_pending`, `payment_confirmed`)
   - Role override (`client` ↔ `driver`) from Clients panel
   - Driver account linking auto-syncs linked app user role to `driver`
 
@@ -102,6 +103,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - Welcome email sent on first successful mobile auth (via web API)
 - Scheduled jobs planned for daily briefings and reminders
 - WhatsApp template sends for operational reminders with push fallback
+- Payment-confirmed stage trigger queues WhatsApp + push confirmation
 - WhatsApp webhook endpoint for inbound live-location payloads (`/api/whatsapp/webhook`)
 - Admin webhook health diagnostics for WhatsApp/location ingestion (`/api/admin/whatsapp/health`)
 - Admin one-click driver phone normalization for WhatsApp mapping (`/api/admin/whatsapp/normalize-driver-phones`)

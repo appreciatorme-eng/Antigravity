@@ -34,6 +34,11 @@ Configure these in Meta WhatsApp Manager and keep names aligned with `.env.local
 3) `pickup_time`
 4) `pickup_location`
 
+5. `payment_confirmed_v1`
+- Params order:
+1) `client_name`
+2) `destination`
+
 ## Webhook Location Parsing
 
 - Endpoint: `GET/POST /api/whatsapp/webhook`
@@ -101,3 +106,4 @@ Even after app-first:
 - `WHATSAPP_TEMPLATE_PICKUP_DRIVER`
 - `WHATSAPP_TEMPLATE_TRIP_DELAY`
 - `WHATSAPP_TEMPLATE_DRIVER_REASSIGNED`
+- `WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED`

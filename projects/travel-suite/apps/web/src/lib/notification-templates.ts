@@ -2,7 +2,8 @@ export type NotificationTemplateKey =
     | "pickup_reminder_client"
     | "pickup_reminder_driver"
     | "trip_delay_update"
-    | "driver_reassigned";
+    | "driver_reassigned"
+    | "payment_confirmed";
 
 export interface TemplateVars {
     pickup_time?: string;
@@ -58,6 +59,11 @@ export function renderTemplate(template: NotificationTemplateKey, vars: Template
                 title: "Driver Reassigned",
                 body: `${toStringValue(vars.new_driver_name, "A new driver")} has been assigned for ${tripTitle} (Day ${dayNumber}) at ${pickupTime}.`,
             };
+        case "payment_confirmed":
+            return {
+                title: "Payment Confirmed",
+                body: `Hi ${clientName}, your payment is confirmed. Your booking is secured and trip operations will proceed as scheduled.`,
+            };
         default:
             return {
                 title: "Trip Update",
@@ -102,6 +108,12 @@ export function renderWhatsAppTemplate(
                 name: process.env.WHATSAPP_TEMPLATE_DRIVER_REASSIGNED || "driver_reassigned_v1",
                 languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
                 bodyParams: [clientName, toStringValue(vars.new_driver_name, "a new driver"), pickupTime, pickupLocation],
+            };
+        case "payment_confirmed":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED || "payment_confirmed_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
             };
         default:
             return null;
