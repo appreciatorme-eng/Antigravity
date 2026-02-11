@@ -151,6 +151,7 @@ Key tables:
 - `workflow_stage_events.organization_id` - tenant-safe lifecycle audit logs
 - `invoices` / `invoice_payments` - billing and payment tracking foundation
 - `notification_delivery_status` - per-channel delivery tracking (`whatsapp`/`push`/`email`) for queue processing
+- Admin API for delivery tracking: `/api/admin/notifications/delivery`
 
 Security baseline:
 - Organization-scoped RLS hardening is applied across workflow, CRM, queue, billing, trips, and itinerary-access policies.

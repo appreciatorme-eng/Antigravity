@@ -467,3 +467,6 @@
   - `apps/web/src/app/api/notifications/process-queue/route.ts`
   - tracks `whatsapp` and `push` statuses per attempt (`sent`, `failed`, `skipped`)
   - includes provider metadata and error details
+- Added admin delivery tracking endpoint:
+  - `apps/web/src/app/api/admin/notifications/delivery/route.ts`
+  - supports filters: `status`, `channel`, `trip_id`, `failed_only`, `limit`, `offset`
