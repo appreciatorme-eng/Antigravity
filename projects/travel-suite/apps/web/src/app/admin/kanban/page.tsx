@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Columns3, RefreshCcw, ArrowRight, ArrowLeft, Clock3 } from "lucide-react";
+import { Columns3, RefreshCcw, ArrowRight, ArrowLeft, Clock3, Search } from "lucide-react";
 
 type LifecycleStage =
     | "lead"
@@ -87,6 +87,7 @@ export default function AdminKanbanPage() {
     const [loading, setLoading] = useState(true);
     const [movingClientId, setMovingClientId] = useState<string | null>(null);
     const [draggingClientId, setDraggingClientId] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -131,14 +132,28 @@ export default function AdminKanbanPage() {
         void fetchData();
     }, [fetchData]);
 
+    const filteredClients = useMemo(
+        () =>
+            clients.filter((client) => {
+                const q = searchTerm.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                    client.full_name?.toLowerCase().includes(q) ||
+                    client.email?.toLowerCase().includes(q) ||
+                    client.phone?.toLowerCase().includes(q)
+                );
+            }),
+        [clients, searchTerm]
+    );
+
     const clientsByStage = useMemo(
         () =>
             LIFECYCLE_STAGES.map((stage) => ({
                 stage,
                 label: STAGE_LABELS[stage],
-                clients: clients.filter((client) => (client.lifecycle_stage || "lead") === stage),
+                clients: filteredClients.filter((client) => (client.lifecycle_stage || "lead") === stage),
             })),
-        [clients]
+        [filteredClients]
     );
 
     const stageIndex = (stage?: string | null) => {
@@ -198,26 +213,37 @@ export default function AdminKanbanPage() {
                     </h1>
                     <p className="text-[#6f5b3e] mt-1">Drag or move clients between stages. Notifications run on configured transitions.</p>
                 </div>
-                <button
-                    onClick={() => void fetchData()}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
-                >
-                    <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                    Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#b09a74]" />
+                        <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search client..."
+                            className="pl-9 pr-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#1b140a] w-[220px]"
+                        />
+                    </div>
+                    <button
+                        onClick={() => void fetchData()}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
+                    >
+                        <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </button>
+                </div>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 overflow-x-auto pb-2 items-start">
                 {clientsByStage.map((column) => (
                     <div
                         key={column.stage}
-                        className="min-w-[270px] max-w-[270px] rounded-2xl border border-[#eadfcd] bg-[#fcf8f1] p-3"
+                        className="min-w-[290px] max-w-[290px] rounded-2xl border border-[#eadfcd] bg-gradient-to-b from-[#fffaf2] to-[#f8efe0] p-3 shadow-[0_10px_24px_rgba(20,16,12,0.06)] self-start"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => void handleDrop(column.stage)}
                     >
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#fff8ec]/90 backdrop-blur rounded-lg px-2 py-1 border border-[#f1e4cf]">
                             <p className="text-xs uppercase tracking-wide font-semibold text-[#9c7c46]">{column.label}</p>
-                            <span className="text-xs font-semibold text-[#6f5b3e]">{column.clients.length}</span>
+                            <span className="text-xs font-semibold text-[#6f5b3e] bg-white px-2 py-0.5 rounded-full border border-[#eadfcd]">{column.clients.length}</span>
                         </div>
                         <div className="space-y-2 min-h-[120px]">
                             {column.clients.map((client) => {
@@ -230,11 +256,15 @@ export default function AdminKanbanPage() {
                                         draggable
                                         onDragStart={() => setDraggingClientId(client.id)}
                                         onDragEnd={() => setDraggingClientId(null)}
-                                        className="rounded-xl border border-[#eadfcd] bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing"
+                                        className="rounded-xl border border-[#eadfcd] bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-[0_12px_18px_rgba(20,16,12,0.08)] transition-shadow"
                                     >
                                         <p className="text-sm font-semibold text-[#1b140a] truncate">{client.full_name || "Unnamed Client"}</p>
                                         <p className="text-xs text-[#8d7650] truncate">{client.email || "No email"}</p>
-                                        <p className="text-[10px] text-[#b09a74] uppercase tracking-wide mt-1">{client.lead_status || "new"}</p>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <p className="text-[10px] text-[#b09a74] uppercase tracking-wide">{client.lead_status || "new"}</p>
+                                            <span className="text-[10px] text-[#8d7650]">•</span>
+                                            <p className="text-[10px] text-[#8d7650]">{client.phone || "No phone"}</p>
+                                        </div>
                                         <div className="flex items-center gap-2 mt-2">
                                             <button
                                                 onClick={() => prev && void moveToStage(client, prev)}
@@ -294,4 +324,3 @@ export default function AdminKanbanPage() {
         </div>
     );
 }
-
