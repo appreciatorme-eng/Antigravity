@@ -1,13 +1,19 @@
 # GoBuddy Adventures – CI Pipeline
 # Runs lint + build checks on every push and pull request to main
 
-name: CI
+name: Travel Suite CI
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'projects/travel-suite/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'projects/travel-suite/**'
+      - '.github/workflows/ci.yml'
 
 concurrency:
   group: ci-${{ github.ref }}
