@@ -3,6 +3,7 @@ Support Bot Agent with RAG
 Answers customer questions using knowledge base of policies, FAQs, and trip information
 """
 import os
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,8 @@ from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from agno.knowledge.text import TextKnowledge
 from agno.knowledge.combined import CombinedKnowledge
+
+logger = logging.getLogger("gobuddy.support_bot")
 
 # Knowledge base paths
 KNOWLEDGE_DIR = Path(__file__).parent.parent / "knowledge"
@@ -66,7 +69,7 @@ async def load_knowledge():
     global knowledge
     if knowledge:
         await knowledge.aload(recreate=False)
-        print(f"Loaded {len(knowledge_sources)} knowledge sources")
+        logger.info("Loaded %d knowledge sources", len(knowledge_sources))
 
 
 async def answer_question(

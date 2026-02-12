@@ -40,6 +40,44 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
+        // --- JWT Verification ---
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return new Response(JSON.stringify({ error: "Missing or invalid Authorization header" }), {
+                headers: { "Content-Type": "application/json" },
+                status: 401,
+            });
+        }
+
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+        if (authError || !user) {
+            logEvent("warn", "Unauthorized notification request", { error: authError?.message });
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                headers: { "Content-Type": "application/json" },
+                status: 401,
+            });
+        }
+
+        // Verify caller is admin
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+
+        if (!profile || profile.role !== "admin") {
+            logEvent("warn", "Non-admin attempted to send notification", { user_id: user.id });
+            return new Response(JSON.stringify({ error: "Forbidden: admin access required" }), {
+                headers: { "Content-Type": "application/json" },
+                status: 403,
+            });
+        }
+
+        logEvent("info", "Authenticated notification request", { admin_id: user.id });
+        // --- End JWT Verification ---
+
         const { user_id, title, body, trip_id, notification_type, data } = await req.json() as NotificationPayload;
 
         if (!user_id || !title || !body) {

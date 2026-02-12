@@ -3,6 +3,7 @@ GoBuddy AI Agents - FastAPI Server
 Multi-agent travel assistance powered by Agno framework
 """
 import os
+import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -10,6 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+logger = logging.getLogger("gobuddy")
 
 # Import agents
 from agents.trip_planner import trip_planner_team
@@ -22,18 +31,18 @@ from api.routes import router
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
     # Startup: Load knowledge base for RAG
-    print("Loading knowledge base...")
+    logger.info("Loading knowledge base...")
     try:
         from agents.support_bot import load_knowledge
         await load_knowledge()
-        print("Knowledge base loaded successfully")
+        logger.info("Knowledge base loaded successfully")
     except Exception as e:
-        print(f"Warning: Could not load knowledge base: {e}")
+        logger.warning("Could not load knowledge base: %s", e)
 
     yield
 
     # Shutdown
-    print("Shutting down AI agents...")
+    logger.info("Shutting down AI agents...")
 
 
 # Create FastAPI app
@@ -44,18 +53,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware for frontend access
+# Build allowed origins from env vars (restrict in production)
+_allowed_origins = list(filter(None, [
+    os.getenv("WEB_APP_URL"),
+    os.getenv("MOBILE_APP_URL"),
+]))
+if os.getenv("ENV", "development") == "development":
+    _allowed_origins += ["http://localhost:3000", "http://localhost:8081"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        os.getenv("WEB_APP_URL", "http://localhost:3000"),
-        os.getenv("MOBILE_APP_URL", "exp://localhost:8081"),
-        "http://localhost:3000",
-        "http://localhost:8081",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Client-Info", "apikey"],
 )
 
 # Include API routes

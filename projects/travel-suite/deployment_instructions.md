@@ -35,9 +35,9 @@ npx supabase secrets set FIREBASE_SERVICE_ACCOUNT='<YOUR_SERVICE_ACCOUNT_JSON>'
 Deploy the `send-notification` function to Supabase:
 
 ```bash
-npx supabase functions deploy send-notification --no-verify-jwt
+npx supabase functions deploy send-notification
 ```
-*Note: The Next.js API route invokes the Edge Function using the service role key via `supabaseAdmin.functions.invoke`. This is intended for server-only usage and relies on the API route’s auth checks.*
+*Note: The Edge Function now verifies JWT tokens and admin role internally. It checks the `Authorization: Bearer <token>` header against Supabase Auth and confirms the caller has `admin` role in `profiles`. The `--no-verify-jwt` flag is no longer used.*
 
 ## 4. Verify Next.js Environment
 Ensure your `apps/web/.env` (and Vercel/Production env) has:

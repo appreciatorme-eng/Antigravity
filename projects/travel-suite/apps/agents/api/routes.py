@@ -1,6 +1,7 @@
 """
 API Routes for GoBuddy AI Agents
 """
+import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
@@ -12,6 +13,9 @@ from agents.recommender import (
     update_preferences,
     provide_feedback,
 )
+from api.auth import verify_supabase_token, get_user_id
+
+logger = logging.getLogger("gobuddy.routes")
 
 router = APIRouter()
 
@@ -78,7 +82,7 @@ class FeedbackRequest(BaseModel):
 @router.post("/chat/trip-planner")
 async def chat_trip_planner(
     request: TripPlanRequest,
-    user_id: Optional[str] = None,
+    user_id: str = Depends(get_user_id),
 ):
     """
     Plan a trip using the multi-agent Trip Planner team.
@@ -89,6 +93,8 @@ async def chat_trip_planner(
     - Budgeter: Optimizes costs and estimates expenses
     """
     try:
+        logger.info("Trip plan request: %s for %d days by user %s",
+                     request.destination, request.duration_days, user_id)
         if request.structured:
             result = await plan_trip_structured(
                 destination=request.destination,
@@ -109,6 +115,7 @@ async def chat_trip_planner(
             )
             return {"success": True, "data": result}
     except Exception as e:
+        logger.error("Trip planning failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -116,7 +123,7 @@ async def chat_trip_planner(
 @router.post("/chat/support")
 async def chat_support(
     request: ChatMessage,
-    user_id: Optional[str] = None,
+    user_id: str = Depends(get_user_id),
 ):
     """
     Chat with the Support Bot agent.
@@ -145,6 +152,7 @@ async def chat_support(
         )
         return {"success": True, "data": result}
     except Exception as e:
+        logger.error("Support chat failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -152,7 +160,7 @@ async def chat_support(
 @router.post("/chat/recommend")
 async def chat_recommend(
     request: RecommendationRequest,
-    user_id: str,
+    user_id: str = Depends(get_user_id),
 ):
     """
     Get personalized destination recommendations.
@@ -160,12 +168,6 @@ async def chat_recommend(
     The Recommender agent learns user preferences over time and
     provides increasingly personalized suggestions.
     """
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="user_id is required for personalized recommendations",
-        )
-
     try:
         result = await get_recommendations(
             user_id=user_id,
@@ -175,20 +177,18 @@ async def chat_recommend(
         )
         return {"success": True, "data": result}
     except Exception as e:
+        logger.error("Recommendation failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/recommend/preferences")
 async def update_user_preferences(
     request: PreferenceUpdate,
-    user_id: str,
+    user_id: str = Depends(get_user_id),
 ):
     """
     Update user preferences for better recommendations.
     """
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required")
-
     try:
         result = await update_preferences(
             user_id=user_id,
@@ -197,20 +197,18 @@ async def update_user_preferences(
         )
         return {"success": True, "data": result}
     except Exception as e:
+        logger.error("Preference update failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/recommend/feedback")
 async def submit_feedback(
     request: FeedbackRequest,
-    user_id: str,
+    user_id: str = Depends(get_user_id),
 ):
     """
     Submit feedback about a destination for learning.
     """
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required")
-
     try:
         result = await provide_feedback(
             user_id=user_id,
@@ -220,12 +218,17 @@ async def submit_feedback(
         )
         return {"success": True, "data": result}
     except Exception as e:
+        logger.error("Feedback submission failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Conversation History (optional endpoint)
 @router.get("/conversations/{user_id}")
-async def get_conversations(user_id: str, limit: int = 10):
+async def get_conversations(
+    user_id: str,
+    limit: int = 10,
+    _current_user: str = Depends(get_user_id),
+):
     """
     Get conversation history for a user (if stored in database).
     """
