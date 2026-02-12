@@ -1,7 +1,12 @@
 # Agent Antigravity Repository Overview
 
-> **Last Updated:** February 9, 2026  
+> **Last Updated:** February 12, 2026  
 > **Focus:** Deep dive into Travel Suite project
+
+> [!NOTE]
+> This repo is a multi-project workspace. Some older documentation originally referenced React Native + n8n for Travel Suite.
+> As of 2026-02-12, **Travel Suite mobile is Flutter** and **Travel Suite automation is handled via Supabase (Edge Functions + queue tables)**.
+> n8n is still present in the repo for *other projects* (e.g. AI Newsletter), not as a Travel Suite runtime dependency.
 
 ## Executive Summary
 
@@ -34,7 +39,7 @@ Agent_Antigravity/
 Travel Suite is a comprehensive travel planning and management platform consisting of three main applications that work together:
 
 1. **Web Application** - Next.js-based trip planner and admin dashboard
-2. **Mobile Application** - React Native app for clients and drivers
+2. **Mobile Application** - Flutter app for clients and drivers
 3. **Agents API** - FastAPI backend with multi-agent AI assistance
 
 ### Architecture Overview
@@ -43,7 +48,7 @@ Travel Suite is a comprehensive travel planning and management platform consisti
 graph TB
     subgraph "Client Layer"
         Web[Web App<br/>Next.js 16]
-        Mobile[Mobile App<br/>React Native]
+        Mobile[Mobile App<br/>Flutter]
     end
     
     subgraph "API Layer"
@@ -63,7 +68,7 @@ graph TB
     end
     
     subgraph "Automation"
-        N8N[n8n Workflows<br/>Notifications & Reminders]
+        Queue[Supabase Queue + Edge Functions<br/>Notifications & Reminders]
     end
     
     Web --> WebAPI
@@ -75,15 +80,15 @@ graph TB
     AgentsAPI --> SupportBot
     AgentsAPI --> Recommender
     SupportBot --> Knowledge
-    N8N --> Supabase
-    N8N --> Mobile
+    Queue --> Supabase
+    Queue --> Mobile
 ```
 
 **Key Integration Points:**
 - Web and Mobile apps share the same Supabase database
 - Web app uses Next.js API routes for itinerary generation (Google Gemini)
 - Mobile app can call Agents API for AI assistance
-- n8n workflows automate notifications and reminders
+- Supabase queue + Edge Functions automate notifications and reminders (Travel Suite runtime)
 - All apps use Supabase Auth for authentication
 
 ---
@@ -97,7 +102,7 @@ graph TB
 - **TypeScript:** 5.x
 - **Styling:** Tailwind CSS 4, shadcn/ui components
 - **Database:** Supabase (PostgreSQL) via `@supabase/ssr`
-- **Maps:** Leaflet, MapLibre GL, react-leaflet
+- **Maps:** MapLibre GL
 - **PDF:** `@react-pdf/renderer`
 - **AI:** Google Generative AI (Gemini Flash) for itinerary generation
 - **Testing:** Playwright (E2E tests)
