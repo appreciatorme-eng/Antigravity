@@ -127,6 +127,21 @@ flutter test integration_test/auth_smoke_test.dart \
 Target before launch: **60%+ mobile code coverage** with the above areas fully covered.
 Current baseline (`2026-02-11`): **70.93%** line coverage (`flutter test --coverage`).
 
+## Android Release Sign-Off
+
+1. Copy `android/key.properties.example` to `android/key.properties` and fill release keystore values.
+2. Run automated Android sign-off checks:
+
+```bash
+bash scripts/android_signoff.sh
+```
+
+3. Complete manual real-device matrix:
+   - push in foreground/background/terminated
+   - deep-link open from notification
+   - role onboarding (client/driver)
+   - driver live location + client live view
+
 ## Notes
 
 *   **"I've Landed" Feature**: Calls the web API (`/api/notifications/client-landed`) with the user session token to trigger server-side notifications.
