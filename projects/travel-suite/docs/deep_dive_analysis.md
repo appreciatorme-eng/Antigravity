@@ -158,6 +158,7 @@ Organization-scoped RLS hardening has been applied across all sensitive tables:
 20260212004000 — notification_delivery_status
 20260212005500 — share_access_rate_limit
 20260212012000 — security_diagnostics_function
+20260212090000 — profile_onboarding
 ```
 
 **Pending migrations (in local `supabase/migrations/` but not yet applied):**
@@ -207,6 +208,7 @@ Organization-scoped RLS hardening has been applied across all sensitive tables:
 - **Maps**: `flutter_map` with OpenStreetMap
 - **Notifications**: `firebase_messaging` + `flutter_local_notifications`
 - **Architecture**: Feature-based (`auth/`, `trips/`, `notifications/`) + core (`config/`, `constants/`, `services/`, `theme/`, `utils/`)
+- **Onboarding**: Role-based progressive profiling (Client: Diet/Mobility, Driver: Vehicle/License)
 - **Linting**: Modernized `analysis_options.yaml` with strict rules
 
 ### AI Agents (`apps/agents/`)

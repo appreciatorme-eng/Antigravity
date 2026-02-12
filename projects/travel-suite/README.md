@@ -10,7 +10,7 @@ travel-suite/
 │   ├── mobile/          # Flutter client app (iOS/Android)
 │   ├── web/             # Next.js 16 web app + admin panel
 │   └── agents/          # Python AI agents (FastAPI + Agno)
-├── docs/                # Project documentation (17 docs)
+├── docs/                # Project documentation (18 docs), including `manual_testing_guide.md`
 ├── scripts/             # Utility scripts (RLS verification)
 ├── supabase/            # Edge Functions + 24 migrations
 │   ├── functions/       # send-notification (v8)
@@ -46,7 +46,7 @@ python main.py
 ## 📱 Mobile App Features
 
 - **Authentication**: Email/password + Google OAuth via Supabase
-- **Role Onboarding**: New users choose `Client` or `Driver` during signup
+- **Role Onboarding**: Progressive profile setup with specific fields for `Client` (Bio, Diet, Mobility) and `Driver` (Vehicle, License)
 - **Trips Overview**: Animated card list with shimmer loading
 - **Trip Detail**: Collapsing header (SliverAppBar), day selector, activity timeline
 - **Driver Info**: View assigned driver details

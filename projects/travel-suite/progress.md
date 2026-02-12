@@ -47,6 +47,17 @@
 - Updated `docs/implementation_plan.md`: Fixed maps section from Leaflet to MapLibre GL
 - Updated `deployment_instructions.md`: Added HNSW migration note
 
+## Session: 2026-02-12 (P2 - Mobile Onboarding Flow)
+- **Status:** complete
+- **Main Goal:** Implement progressive onboarding for Clients and Drivers.
+- **Database:**
+  - Added `onboarding_step`, `bio`, `phone_whatsapp`, `dietary_requirements`, `mobility_needs`, `driver_info`, `client_info` to `profiles` table.
+  - Migration: `20260212090000_profile_onboarding.sql`
+- **Mobile App:**
+  - Created `OnboardingScreen` with role-specific steps.
+  - Implemented `OnboardingGuard` to enforce profile completion (or explicit skip).
+  - Added "Complete Profile" banner to `TripsScreen` for skipped users.
+
 ## Session: 2026-02-12 (P1 - Observability Finalization)
 
 ### Observability
