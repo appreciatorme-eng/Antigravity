@@ -30,6 +30,17 @@ interface DriverAccountLink {
     profile_name?: string | null;
 }
 
+interface DriverAccountJoinRow {
+    id: string;
+    external_driver_id: string;
+    profile_id: string;
+    is_active: boolean;
+    profiles: {
+        email: string | null;
+        full_name: string | null;
+    } | null;
+}
+
 const mockDrivers: ExternalDriver[] = [
     {
         id: "mock-driver-1",
@@ -156,7 +167,7 @@ export default function DriversPage() {
             `);
 
         const mapping: Record<string, DriverAccountLink> = {};
-        (links || []).forEach((item: any) => {
+        (links as DriverAccountJoinRow[] | null || []).forEach((item) => {
             mapping[item.external_driver_id] = {
                 id: item.id,
                 external_driver_id: item.external_driver_id,

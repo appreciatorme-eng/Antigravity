@@ -312,46 +312,6 @@ interface Trip {
     } | null;
 }
 
-interface TripRecord {
-    id: string;
-    status: string;
-    start_date: string | null;
-    end_date: string | null;
-    profiles: {
-        id: string;
-        full_name: string;
-        email: string;
-        phone?: string | null;
-    } | null;
-    itineraries: {
-        id: string;
-        trip_title: string;
-        duration_days: number;
-        destination?: string | null;
-        raw_data: {
-            days?: Day[];
-        } | null;
-    } | null;
-}
-
-interface AssignmentRow {
-    id: string;
-    day_number: number;
-    external_driver_id: string | null;
-    pickup_time: string | null;
-    pickup_location: string | null;
-    notes: string | null;
-}
-
-interface AccommodationRow {
-    id: string;
-    day_number: number;
-    hotel_name: string | null;
-    address: string | null;
-    check_in_time: string | null;
-    contact_phone: string | null;
-}
-
 interface ReminderDayStatus {
     pending: number;
     processing: number;
@@ -367,6 +327,33 @@ interface DriverLocationSnapshot {
     speed?: number | null;
     heading?: number | null;
     accuracy?: number | null;
+}
+
+interface TripDetailApiPayload {
+    trip: Trip;
+    drivers?: Driver[];
+    assignments?: Record<number, DriverAssignment>;
+    accommodations?: Record<number, Accommodation>;
+    reminderStatusByDay?: Record<number, ReminderDayStatus>;
+    latestDriverLocation?: DriverLocationSnapshot | null;
+}
+
+type ErrorPayload = {
+    error?: string;
+};
+
+interface OverpassElement {
+    tags?: Record<string, string | undefined>;
+    lat?: number | string;
+    lon?: number | string;
+    center?: {
+        lat?: number | string;
+        lon?: number | string;
+    };
+}
+
+interface OverpassResponse {
+    elements?: OverpassElement[];
 }
 
 const mockTripsById: Record<string, Trip> = {
@@ -548,9 +535,9 @@ export default function TripDetailPage() {
         });
 
         if (!response.ok) {
-            let error: any = {};
+            let error: ErrorPayload = {};
             try {
-                error = await response.json();
+                error = (await response.json()) as ErrorPayload;
             } catch {
                 error = { error: `HTTP ${response.status}` };
             }
@@ -559,7 +546,7 @@ export default function TripDetailPage() {
             return;
         }
 
-        const payload = await response.json();
+        const payload = (await response.json()) as TripDetailApiPayload;
         const mappedTrip = payload.trip as Trip;
         setTrip(mappedTrip);
         setItineraryDays((mappedTrip.itineraries?.raw_data?.days || []).map(enrichDayDurations).map(buildDaySchedule));
@@ -573,7 +560,6 @@ export default function TripDetailPage() {
     }, [supabase, tripId, useMockAdmin]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchData();
     }, [fetchData]);
 
@@ -600,8 +586,9 @@ export default function TripDetailPage() {
     }, [activeDay, tripId, useMockAdmin, supabase.auth]);
 
     useEffect(() => {
+        const timers = hotelSearchDebounceRef.current;
         return () => {
-            Object.values(hotelSearchDebounceRef.current).forEach((timerId) => {
+            Object.values(timers).forEach((timerId) => {
                 if (timerId) window.clearTimeout(timerId);
             });
         };
@@ -791,11 +778,11 @@ out center tags 80;
                 });
 
                 if (!response.ok) return;
-                const payload = await response.json();
+                const payload = (await response.json()) as OverpassResponse;
                 const elements = Array.isArray(payload?.elements) ? payload.elements : [];
 
                 const suggestions: HotelSuggestion[] = elements
-                    .map((element: any) => {
+                    .map((element) => {
                         const tags = element.tags || {};
                         const name = String(tags.name || "").trim();
                         if (!name) return null;

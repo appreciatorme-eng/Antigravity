@@ -6,6 +6,40 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+interface AssignmentRow {
+    id: string;
+    day_number: number;
+    external_driver_id: string | null;
+    pickup_time: string | null;
+    pickup_location: string | null;
+    notes: string | null;
+}
+
+interface AccommodationRow {
+    id: string;
+    day_number: number;
+    hotel_name: string | null;
+    address: string | null;
+    check_in_time: string | null;
+    contact_phone: string | null;
+}
+
+interface ReminderQueueRow {
+    status: "pending" | "processing" | "sent" | "failed" | string;
+    scheduled_for: string | null;
+    payload: {
+        day_number?: number | string;
+    } | null;
+}
+
+interface ReminderDayStatus {
+    pending: number;
+    processing: number;
+    sent: number;
+    failed: number;
+    lastScheduledFor: string | null;
+}
+
 async function requireAdmin(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -118,8 +152,8 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
             .select("*")
             .eq("trip_id", tripId);
 
-        const assignmentsMap: Record<number, any> = {};
-        (assignmentsData || []).forEach((a: any) => {
+        const assignmentsMap: Record<number, AssignmentRow> = {};
+        ((assignmentsData || []) as AssignmentRow[]).forEach((a) => {
             assignmentsMap[a.day_number] = {
                 id: a.id,
                 day_number: a.day_number,
@@ -135,8 +169,8 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
             .select("*")
             .eq("trip_id", tripId);
 
-        const accommodationsMap: Record<number, any> = {};
-        (accommodationsData || []).forEach((a: any) => {
+        const accommodationsMap: Record<number, AccommodationRow> = {};
+        ((accommodationsData || []) as AccommodationRow[]).forEach((a) => {
             accommodationsMap[a.day_number] = {
                 id: a.id,
                 day_number: a.day_number,
@@ -154,15 +188,9 @@ export async function GET(req: NextRequest, { params }: { params?: { id?: string
             .eq("notification_type", "pickup_reminder")
             .order("scheduled_for", { ascending: false });
 
-        const reminderStatusByDay: Record<number, {
-            pending: number;
-            processing: number;
-            sent: number;
-            failed: number;
-            lastScheduledFor: string | null;
-        }> = {};
+        const reminderStatusByDay: Record<number, ReminderDayStatus> = {};
 
-        (reminderRows || []).forEach((row: any) => {
+        ((reminderRows || []) as ReminderQueueRow[]).forEach((row) => {
             const dayNumber = Number(row?.payload?.day_number || 0);
             if (!dayNumber) return;
             if (!reminderStatusByDay[dayNumber]) {

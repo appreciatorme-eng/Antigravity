@@ -32,23 +32,6 @@ interface Trip {
     } | null;
 }
 
-interface TripRecord {
-    id: string;
-    status: string | null;
-    start_date: string | null;
-    end_date: string | null;
-    created_at: string;
-    profiles: {
-        full_name: string;
-        email: string;
-    } | null;
-    itineraries: {
-        trip_title: string;
-        duration_days: number;
-        destination?: string | null;
-    } | null;
-}
-
 const mockTrips: Trip[] = [
     {
         id: "mock-trip-001",

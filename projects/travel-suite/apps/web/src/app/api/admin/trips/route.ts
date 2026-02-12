@@ -6,6 +6,24 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+interface TripListRow {
+    id: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    created_at: string;
+    organization_id: string;
+    profiles: {
+        full_name: string | null;
+        email: string | null;
+    } | null;
+    itineraries: {
+        trip_title: string | null;
+        duration_days: number | null;
+        destination: string | null;
+    } | null;
+}
+
 async function getAdminUserId(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -88,7 +106,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
-        const trips = (data || []).map((trip: any) => ({
+        const trips = ((data || []) as TripListRow[]).map((trip) => ({
             ...trip,
             destination: trip.itineraries?.destination || "TBD",
         }));

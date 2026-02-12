@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
         const driverIds = Array.from(new Set((activeTrips || []).map((trip) => trip.driver_id).filter(Boolean)));
 
-        let latestByDriver = new Map<string, { recorded_at: string; trip_id: string | null }>();
+        const latestByDriver = new Map<string, { recorded_at: string; trip_id: string | null }>();
         if (driverIds.length > 0) {
             const { data: locationRows = [] } = await supabaseAdmin
                 .from("driver_locations")
