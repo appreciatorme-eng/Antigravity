@@ -83,9 +83,11 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 - **API**: `GET /api/currency?amount=100&from=USD&to=EUR`
 
 #### 7. Maps Integration ✅
-- **Library**: Leaflet (OSM tiles, free)
+- **Library**: MapLibre GL JS (via mapcn)
 - **Component**: `ItineraryMap.tsx`
-- **Features**: Interactive pins for activities
+- **Features**: Interactive pins for activities, route visualization, numbered markers
+
+> *Note: Unused `leaflet` and `react-leaflet` dependencies were removed in the security/quality pass (2026-02-12).*
 
 #### 8. Image Integration ✅
 - **Source**: Wikimedia Commons

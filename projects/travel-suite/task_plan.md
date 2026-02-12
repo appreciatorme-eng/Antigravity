@@ -46,7 +46,7 @@ Phase 5
 - [x] Web lint pass (clean)
 - [ ] End-to-End Testing (Push Notifications, Deep Linking)
 - [ ] App Store & Play Store Deployment Setup
-- [ ] Final Code Review & Refactoring (security pass, keys, docs)
+- [x] Final Code Review & Refactoring (security pass, keys, docs)
 - [x] Integrate Firebase project with mobile & web apps
 - [x] Configure Supabase secrets for Edge Functions
 - [ ] Test push notification flow end-to-end (pending real device)
@@ -72,6 +72,18 @@ Phase 5
 - [x] Add nearby hotel lookup and one-click accommodation autofill
 - [ ] Add scheduled reminder engine (T-60 min pickup) with WhatsApp-first delivery
 - [ ] Add live location sharing between driver and client per trip/day
+
+### Phase 5.3: Security & Code Quality Hardening ✓
+- [x] Add GitHub Actions CI pipeline (web lint/build, agents test, mobile analyze)
+- [x] Add JWT auth + rate limiting to AI agent endpoints
+- [x] Tighten CORS on AI agents (specific methods + headers)
+- [x] Replace `print()` with `logging` module in agents
+- [x] Remove unused Leaflet/react-leaflet dependencies
+- [x] Switch `policy_embeddings` index from IVFFlat to HNSW
+- [x] Modernize Flutter `analysis_options.yaml` with strict lints
+- [x] Update `.env.example` for agents (add `SUPABASE_ANON_KEY`)
+- [x] Update all project docs to reflect changes
+- **Status:** complete
 
 ### Phase 6: Monetization & SaaS Readiness
 - [ ] Document monetization plan and tiering

@@ -1,5 +1,52 @@
 # Progress Log
 
+## Session: 2026-02-12 (Security & Code Quality Hardening Pass)
+
+### High-Impact Fixes
+- **Status:** complete
+- Added JWT authentication + sliding-window rate limiting to all AI agent endpoints:
+  - AI endpoints: 5 req/min, 60 req/hr per user
+  - General endpoints: 30 req/min, 500 req/hr
+  - `apps/agents/api/rate_limit.py` (new)
+  - `apps/agents/api/routes.py` (updated)
+- Replaced all `print()` with `logging` module in agents:
+  - `apps/agents/main.py`
+  - `apps/agents/agents/support_bot.py`
+- Restricted CORS on AI agents to specific methods (GET, POST, OPTIONS) and headers.
+- Removed unused `leaflet`, `react-leaflet`, `@types/leaflet` from `apps/web/package.json`.
+- Created GitHub Actions CI pipeline (`.github/workflows/ci.yml`):
+  - Web: lint → type-check → build
+  - Agents: syntax check + pytest
+  - Mobile: `flutter analyze`
+  - Migrations: SQL file syntax check
+
+### Medium-Impact Fixes
+- **Status:** complete
+- Added migration `20260212070000_switch_ivfflat_to_hnsw.sql`:
+  - Switches `policy_embeddings` vector index from IVFFlat (broken on empty tables) to HNSW (m=16, ef_construction=64)
+- Updated `apps/agents/.env.example`:
+  - Added `SUPABASE_ANON_KEY` (needed by new JWT auth middleware)
+  - Fixed `MOBILE_APP_URL` from `exp://` to `http://`
+- Modernized `apps/mobile/analysis_options.yaml`:
+  - Enabled `avoid_print`, `prefer_const_constructors`, `prefer_single_quotes`
+  - Added generated file exclusions (`*.g.dart`, `*.freezed.dart`)
+  - Added safety rules (`cancel_subscriptions`, `close_sinks`)
+
+### Documentation Updates
+- **Status:** complete
+- Updated `docs/deep_dive_analysis.md`:
+  - Marked 12+ resolved issues (CI/CD, auth, rate limiting, CORS, Leaflet, HNSW, lints, n8n removal, Expo naming)
+  - Removed n8n from architecture diagram and cost table
+  - Updated deployment readiness checklist
+- Updated `README.md`:
+  - Added CI/CD section with pipeline details
+  - Added "Recently Completed" section with security/quality items
+  - Added AI agent security info (JWT + rate limiting)
+- Updated `task_plan.md`: Added Phase 5.3 (Security & Quality Hardening) as complete
+- Updated `findings.md`: Added Leaflet removal note
+- Updated `docs/implementation_plan.md`: Fixed maps section from Leaflet to MapLibre GL
+- Updated `deployment_instructions.md`: Added HNSW migration note
+
 ## Session: 2026-02-12 (P1 - Observability Finalization)
 
 ### Observability

@@ -43,6 +43,8 @@
 - Google Gemini 1.5 Flash for AI itinerary generation
 - Leaflet for maps (mapcn identified as upgrade path)
 
+> **Update (2026-02-12):** Unused Leaflet packages removed; MapLibre GL (mapcn) is now the sole map library.
+
 ### External APIs (All Free Tier)
 | Service | Purpose | Endpoint |
 |---------|---------|----------|

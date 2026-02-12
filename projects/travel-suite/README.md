@@ -37,6 +37,7 @@ cd apps/agents
 pip install -r requirements.txt
 python main.py
 ```
+> **Note**: All AI endpoints require JWT authentication and are rate-limited (5 req/min, 60 req/hr per user).
 
 ## 📱 Mobile App Features
 
@@ -91,6 +92,8 @@ python main.py
 - **Trip Planner**: Generates personalized itineraries
 - **Support Bot**: Answers travel questions via RAG
 - **Recommender**: Activity recommendations
+- **Security**: JWT auth + sliding-window rate limiting on all endpoints
+- **Logging**: Structured logging via Python `logging` module
 
 ## 💼 Monetization
 
@@ -168,6 +171,16 @@ Security baseline:
 - Verification script: `scripts/verify_rls_policies.sql`
 - Queue processor supports signed cron HMAC headers and service-role bearer in addition to legacy shared-secret header.
 - Public live-share endpoint has per-IP/token rate limiting, plus token expiry and revocation controls.
+- AI agent endpoints protected by JWT auth + per-user rate limiting.
+
+## 🔄 CI/CD
+
+- **GitHub Actions**: `.github/workflows/ci.yml` runs on every push/PR to `main`
+  - **Web**: lint → type-check → build
+  - **Agents**: Python syntax check + pytest
+  - **Mobile**: `flutter analyze`
+  - **Migrations**: SQL file syntax check
+- Requires GitHub secrets: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ## 🛠️ Development Status
 
@@ -188,6 +201,16 @@ Security baseline:
 - [ ] Automated pickup reminders (T-60 min): WhatsApp + push fallback
 - [ ] Driver/client live location sharing workflow
 - [ ] White-label support
+
+### Recently Completed (Security & Quality Pass)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] AI agent JWT auth + rate limiting
+- [x] CORS restriction on AI agents
+- [x] Structured logging in AI agents
+- [x] Removed unused Leaflet dependencies (MapLibre GL only)
+- [x] HNSW index migration for `policy_embeddings`
+- [x] Modernized Flutter `analysis_options.yaml`
+- [x] `.env.example` files updated for agents
 
 ### Future
 - [ ] Offline support

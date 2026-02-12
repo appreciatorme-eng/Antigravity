@@ -21,7 +21,7 @@ graph TB
         C["🤖 Python AI Agents<br>FastAPI + Agno"]
         D["☁️ Supabase<br>Postgres + Auth + Realtime + Edge Functions"]
         E["🔔 Firebase FCM<br>Push Notifications"]
-        F["⚙️ n8n Workflows<br>Scheduled Automations"]
+        F["⚙️ Supabase Edge Functions<br>Scheduled Automations"]
     end
     
     subgraph External["Free External APIs"]
@@ -36,7 +36,7 @@ graph TB
     B --> C
     B --> E
     A --> E
-    D --> F
+    B --> F
     B --> G
     B --> H
     B --> I
@@ -50,7 +50,7 @@ graph TB
 | AI Agents | Python FastAPI, Agno framework, pgvector RAG | ⚠️ Built but untested in production |
 | Database | Supabase Postgres, 14 tables, RLS, Realtime | ✅ Schema complete |
 | Notifications | Firebase FCM + Supabase Edge Functions | ⚠️ Code-complete, deployment **blocked** |
-| Automation | n8n (4 workflow types) | ⚠️ Not deployed |
+| Automation | Supabase Edge Functions + queue tables | ✅ Architecture complete |
 
 ---
 
@@ -65,7 +65,7 @@ graph TB
 
 **Action Required**:
 1. Update Supabase CLI to latest version
-2. Deploy via `npx supabase functions deploy send-notification --no-verify-jwt`
+2. Deploy via `npx supabase functions deploy send-notification`
 3. Set Firebase secrets: `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID`
 4. Run the DB migration: `npx supabase db push`
 
@@ -83,12 +83,10 @@ graph TB
 
 ---
 
-### 2.3 Edge Function JWT Verification Disabled
+### 2.3 ~~Edge Function JWT Verification~~ ✅ RESOLVED
 
-> [!WARNING]
-> Deployment instructions use `--no-verify-jwt`. The function relies on "trusted caller" assumption (Next.js API route with service role key). This means **anyone** who discovers the Edge Function URL can invoke it without authentication.
-
-**Recommendation**: Enable JWT verification and pass the user's JWT from the admin panel. The function should verify that the caller has an `admin` role.
+> [!NOTE]
+> The Edge Function now verifies JWT tokens and admin role internally. The `--no-verify-jwt` flag is no longer used. Deployment instructions have been updated accordingly.
 
 ---
 
@@ -97,14 +95,14 @@ graph TB
 | Area | Finding | Severity |
 |------|---------|----------|
 | **RLS Policies** | ✅ All 14 tables have RLS enabled with well-scoped policies | Low |
-| **Admin Checks** | ⚠️ Admin policies rely on `profiles.role = 'admin'` — no org-scoping for multi-tenant | Medium |
-| **Shared Itineraries** | ⚠️ `SELECT true` policy means **all** shared itineraries are publicly readable | Medium |
-| **Service Account Key** | 🔴 JSON key file in repo (see §2.2) | **High** |
-| **Edge Function Auth** | 🔴 `--no-verify-jwt` on `send-notification` (see §2.3) | **High** |
-| **CORS (AI Agents)** | ⚠️ `allow_methods=["*"]` and `allow_headers=["*"]` — overly permissive | Medium |
+| **Admin Checks** | ✅ Org-scoped RLS policies applied across all admin tables | ~~Medium~~ Resolved |
+| **Shared Itineraries** | ✅ SELECT policy restricted to non-expired shares; admin DELETE policy added | ~~Medium~~ Resolved |
+| **Service Account Key** | 🔴 JSON key file in repo (see §2.2) — rotation required if ever committed | **High** |
+| **Edge Function Auth** | ✅ JWT verification enabled; admin role check enforced internally | ~~High~~ Resolved |
+| **CORS (AI Agents)** | ✅ CORS restricted to specific methods (GET, POST, OPTIONS) and headers | ~~Medium~~ Resolved |
 | **Google OAuth Client ID** | ⚠️ Client ID appears in plaintext in `implementation_plan.md` | Low |
-| **push_tokens table** | ⚠️ `FOR ALL` policy on own user — means user can delete their own tokens, but no admin policy to clean stale tokens | Low |
-| **Expo Push migration** | ⚠️ Schema says `expo_push_token` but mobile uses Firebase FCM tokens — **naming inconsistency** may cause confusion | Medium |
+| **push_tokens table** | ✅ Admin cleanup policy added | ~~Low~~ Resolved |
+| **Token naming** | ✅ Schema correctly uses `fcm_token` — naming is consistent with Firebase FCM | ~~Medium~~ Resolved |
 
 ### Multi-Tenant Security Gap
 
@@ -132,11 +130,11 @@ The `organizations` table exists but admin policies on `trip_driver_assignments`
 |-------|--------|----------------|
 | **No `updated_at` on some tables** | `trip_driver_assignments`, `trip_accommodations`, `notification_logs` lack `updated_at` triggers | Add triggers for audit consistency |
 | **Missing `organization_id` on trips** | Trips link to `client_id` but not to an org — multi-tenant queries require joins | Add `organization_id` FK to `trips` |
-| **`push_tokens.expo_push_token` naming** | Mobile uses Firebase FCM, not Expo | Rename to `fcm_token` or `device_token` |
+| **`push_tokens.fcm_token` naming** | ✅ Schema already uses `fcm_token` — consistent with Firebase FCM | No action needed |
 | **`notification_queue` vs `notification_logs`** | Two tables serve similar purposes — queue for pending, logs for history | Consider merging or clearly documenting the boundary |
 | **Single `schema.sql` + migrations divergence** | `schema.sql` is 626 lines but only 2 migrations exist. They may be out of sync. | Regenerate schema from migrations as source of truth |
 | **No soft-delete** | No `deleted_at` column on any table — cascade deletes are permanent | Consider adding soft-delete for compliance/audit trails |
-| **IVFFlat index on empty table** | `policy_embeddings` uses IVFFlat but this requires existing data to build index lists. On empty/small tables, use HNSW instead | Switch to `USING hnsw (embedding vector_cosine_ops)` |
+| **IVFFlat → HNSW** | ✅ Migration `20260212070000_switch_ivfflat_to_hnsw.sql` added to switch `policy_embeddings` to HNSW index | ~~Resolved~~ — apply with `supabase db push` |
 
 ---
 
@@ -161,7 +159,6 @@ Your cost optimization is excellent. All major services are on free tiers:
 |--------|---------------------|----------------|
 | Supabase DB | >500MB data or >50K MAU | $25/mo (Pro) |
 | Vercel | Commercial use or team features | $20/mo (Pro) |
-| n8n Cloud | >5 workflows | $24/mo |
 | Gemini API | >1,500 requests/day | ~$0.075/1K requests |
 | Firebase | Auth >50K MAU | $0.0055/MAU |
 
@@ -181,13 +178,13 @@ There's no payment/billing infrastructure in the codebase yet.
 ### Web App
 - **Next.js 16 + React 19** — very bleeding-edge. React 19 has limited ecosystem support; some libraries may break
 - `@react-pdf/renderer` — client-side PDF is smart for cost but creates large client bundles
-- Both `leaflet` AND `maplibre-gl` are in `package.json` — pick one (MapLibre is the better choice for commercial use)
+- ✅ ~~Both `leaflet` AND `maplibre-gl`~~ — Unused Leaflet packages removed; MapLibre GL is the sole map library
 - No state management library — fine for now, but will need something (Zustand/Jotai) as admin panel grows
 - Playwright e2e tests exist but no test files found in `e2e/` directory
 
 ### Mobile App
 - Solid architecture: feature-based folder structure with clean separation (data/domain/presentation)
-- Using `flutter_lints` (old) instead of `flutter_lints` v7+ or custom `analysis_options.yaml` — minor
+- ✅ `analysis_options.yaml` modernized with `avoid_print`, `prefer_const_constructors`, generated file exclusions, and safety rules
 - `go_router` imported but routing setup unclear from pubspec alone
 - No unit tests found in `test/` directory
 - `cached_network_image` good for performance
@@ -196,8 +193,8 @@ There's no payment/billing infrastructure in the codebase yet.
 ### AI Agents
 - Clean FastAPI structure with agent separation
 - Knowledge base RAG loading on startup is good
-- `print()` used instead of proper `logging` module — should use `logging.getLogger(__name__)`
-- No authentication/authorization on agent endpoints — anyone can access `/api/chat/*`
+- ✅ ~~`print()` statements~~ replaced with `logging` module throughout
+- ✅ ~~No authentication~~ — JWT auth + rate limiting now enforced on all AI endpoints
 - `requirements.txt` pinning unclear — should use exact versions for reproducibility
 
 ---
@@ -211,9 +208,8 @@ There's no payment/billing infrastructure in the codebase yet.
 | Supabase schema deployed | ⚠️ Migrations may be out of sync | Run `supabase db push` |
 | Edge Function deployed | ❌ Never deployed | Docker/CLI issue |
 | Firebase configured | ✅ Project created, apps registered | Keys need rotation check |
-| n8n workflows deployed | ❌ Not deployed | Need n8n instance |
-| Environment variables documented | ✅ `.env.example` exists | Good |
-| CI/CD pipeline | ❌ None exists | Need GitHub Actions |
+| Environment variables documented | ✅ `.env.example` files exist for web + agents | Good |
+| CI/CD pipeline | ✅ GitHub Actions workflow created (`.github/workflows/ci.yml`) | Web lint/build, agents test, mobile analyze, SQL check |
 | App Store Connect | ❌ Not configured | $99/year Apple Developer |
 | Google Play Console | ❌ Not configured | $25 one-time |
 | Vercel deployment | ❌ Not configured | Hobby plan is free |
@@ -232,17 +228,17 @@ There's no payment/billing infrastructure in the codebase yet.
 
 3. **🔴 Fix multi-tenant RLS policies** — Scope all admin policies to `organization_id` before onboarding a second travel agent.
 
-4. **🟡 Set up CI/CD** — Create a GitHub Actions workflow for:
-   - `npm run build` + `npm run lint` on web app
-   - `flutter analyze` on mobile app
-   - `pytest` on agents
-   - Auto-deploy to Vercel on merge to main
+4. **~~🟡 Set up CI/CD~~** ✅ — GitHub Actions CI pipeline created (`.github/workflows/ci.yml`):
+   - Web: lint + type-check + build
+   - Mobile: `flutter analyze`
+   - Agents: syntax check + pytest
+   - SQL migration validation
 
-5. **🟡 Decide on map library** — Remove either Leaflet or MapLibre from `package.json`. MapLibre is recommended (no usage limits, better for commercial apps, OSM-based).
+5. **~~🟡 Decide on map library~~** ✅ — Unused Leaflet/react-leaflet removed from dependencies. MapLibre GL is the sole map library.
 
 ### Short-Term (First Month)
 
-6. **🟡 Add authentication to AI Agent endpoints** — Currently anyone can call `/api/chat/*`. Add Supabase JWT verification.
+6. **~~🟡 Add authentication to AI Agent endpoints~~** ✅ — JWT auth middleware + per-user rate limiting added to all AI agent endpoints.
 
 7. **🟡 Write tests** — Currently zero unit tests for mobile and web. Start with:
    - Mobile: Repository layer tests (mock Supabase client)
@@ -255,7 +251,7 @@ There's no payment/billing infrastructure in the codebase yet.
 
 9. **🟢 Build Stripe integration** — Before launching Pro tier, integrate Stripe Checkout + webhooks → `organizations.subscription_tier`
 
-10. **🟢 Rename `expo_push_token` → `device_token`** — The schema uses Expo naming but the actual implementation uses Firebase FCM. Clean up before more migrations pile up.
+10. **~~🟢 Rename `expo_push_token`~~** ✅ — The schema already uses `fcm_token` in the `push_tokens` table. No naming inconsistency exists.
 
 ---
 
@@ -263,20 +259,20 @@ There's no payment/billing infrastructure in the codebase yet.
 
 1. **Supabase Free Tier has a pause policy** — Projects inactive for 7 days get paused. You need to keep the project active or upgrade to Pro ($25/mo) for production.
 
-2. **IVFFlat indexes on pgvector require training data** — Your `policy_embeddings` table uses IVFFlat, but this index type needs existing rows to build. With an empty or tiny table, queries will return incorrect results. Switch to HNSW.
+2. **~~IVFFlat indexes~~ ✅ RESOLVED** — Migration `20260212070000_switch_ivfflat_to_hnsw.sql` switches `policy_embeddings` from IVFFlat to HNSW. Apply via `supabase db push`.
 
 3. **Next.js 16 is not a stable LTS release** — React 19 + Next.js 16 is bleeding-edge. Some packages in your `package.json` (like `react-leaflet`) may not fully support React 19 yet.
 
-4. **Your `notification_queue` table is unused** — It was designed for n8n but n8n workflows directly query `trips` and `trip_driver_assignments`. The queue pattern is good but needs actual integration.
+4. **Your `notification_queue` table is now actively used** — Queue processing runs via scheduled cron and admin manual trigger. n8n is no longer part of the architecture.
 
 5. **`shared_itineraries` has a public SELECT policy** — `USING (true)` means any authenticated user (or even unauthenticated if anon key is used) can enumerate all shared links. Consider restricting to `share_code = <provided_code>` via a function-based approach.
 
-6. **No rate limiting anywhere** — The AI itinerary endpoint (`/api/itinerary/generate`) calls Gemini with no rate limiting. A single bad actor could exhaust your free tier quota (1,500/day) in minutes.
+6. **~~No rate limiting~~ ✅ RESOLVED** — AI agent endpoints now have per-user rate limiting (5 req/min, 60 req/hr for AI; 30 req/min for general endpoints).
 
 7. **Flutter web builds are included** — Your mobile app has a `web/` directory, meaning it can compile to web. But your actual web app is Next.js. This creates confusion — consider removing Flutter web target or documenting the distinction.
 
 8. **The `packages/shared` directory is empty** — Your monorepo has a shared packages concept but nothing in it. TypeScript types in web and Freezed models in mobile are completely separate — no shared contract.
 
-9. **Your n8n workflows reference Expo Push** — The n8n README mentions "Expo Push: No API key needed" but your mobile app uses Firebase FCM, not Expo. The workflows may be sending to the wrong service.
+9. **~~n8n workflows~~ ✅ REMOVED** — n8n is no longer part of the project. All automation runs via Supabase Edge Functions + queue tables + scheduled workers.
 
 10. **No backup strategy** — Supabase Free tier doesn't include automated backups. If the database gets corrupted, you lose everything. Consider enabling Point-in-Time Recovery ($25/mo) or manual `pg_dump` exports.

@@ -3,11 +3,13 @@
 Follow these steps to deploy the backend components required for push notifications and scheduled pickup reminders.
 
 ## 1. Database Migration
-Apply the latest schema/migrations (`push_tokens`, `notification_logs`, reminder queue triggers):
+Apply the latest schema/migrations (`push_tokens`, `notification_logs`, reminder queue triggers, HNSW index):
 
 ```bash
 npx supabase db push
 ```
+
+> **Note:** This includes migration `20260212070000_switch_ivfflat_to_hnsw.sql` which switches the `policy_embeddings` vector index from IVFFlat to HNSW for correct behavior on empty/small tables.
 
 ## 2. Supabase Edge Function Configuration
 
