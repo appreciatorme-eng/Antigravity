@@ -163,7 +163,8 @@ Organization-scoped RLS hardening has been applied across all sensitive tables:
 
 **Pending migrations (in local `supabase/migrations/` but not yet applied):**
 - `20260212060000_fix_shared_itineraries_policy.sql` — improved RLS for shared itineraries
-- `20260212070000_switch_ivfflat_to_hnsw.sql` — HNSW index (requires `policy_embeddings` table to exist first)
+- `20260212065000_create_policy_embeddings.sql` — **NEW** creates table required for HNSW migration
+- `20260212070000_switch_ivfflat_to_hnsw.sql` — HNSW index (now safe to run)
 - `20260212123000_webhook_and_notification_reliability.sql` — webhook reliability improvements
 
 ### What's Good
@@ -180,8 +181,8 @@ Organization-scoped RLS hardening has been applied across all sensitive tables:
 
 | Issue | Detail | Recommendation |
 |-------|--------|----------------|
-| **3 pending local migrations** | `fix_shared_itineraries`, `switch_ivfflat_to_hnsw`, `webhook_reliability` not yet applied | Run `npx supabase db push` |
-| **HNSW migration dependency** | Requires `policy_embeddings` table to exist first | Create table or defer |
+| **4 pending local migrations** | `fix_shared_itineraries`, `create_policy_embeddings`, `switch_ivfflat_to_hnsw`, `webhook_reliability` | Run `npx supabase db push` |
+| **HNSW migration dependency** | FIXED: `create_policy_embeddings` migration added | Ready to apply |
 | **`schema.sql` may be stale** | Master `schema.sql` (55KB) may be out of sync with 24 migration files | Regenerate from migrations |
 | **No soft-delete** | No `deleted_at` on any table — cascade deletes are permanent | Consider for compliance |
 | **No backup strategy** | Supabase Free tier has no automated backups | Enable PITR ($25/mo) or manual `pg_dump` |
