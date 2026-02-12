@@ -5,7 +5,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import 'trip_detail_screen.dart';
-import '../../auth/presentation/screens/onboarding_screen.dart';
+import '../../../auth/presentation/screens/onboarding_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
