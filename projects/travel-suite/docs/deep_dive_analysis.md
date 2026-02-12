@@ -174,6 +174,7 @@ Organization-scoped RLS hardening has been applied across all sensitive tables:
 - Realtime enabled for `driver_locations` and `trips`
 - Proper indexing on frequently queried columns
 - Org-scoped RLS on all multi-tenant tables
+- Driver assignment conflict detection (prevention of double-booking)
 
 ### What Needs Attention
 

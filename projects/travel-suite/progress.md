@@ -1,5 +1,22 @@
 # Progress Log
 
+## Session: 2026-02-12 (Driver Assignment Enhancements)
+- **Status:** complete
+- **Main Goal:** Enhance admin trip assignment with conflict detection.
+- **Backend:**
+  - Implemented overlapping trip detection query.
+  - Added `busyDriversByDay` logic to identifying daily conflicts.
+  - Fixed `itineraries` type handling and date/duration calculations.
+- **Frontend web:**
+  - Updated Trip Detail page to disable busy drivers in dropdown.
+  - Added visual "Unavailable" indicator.
+  - Fixed mock data `day_number` schema issues.
+  - Cleaned up duplicate state/types.
+- **Files Modified:**
+  - `apps/web/src/app/api/admin/trips/[id]/route.ts`
+  - `apps/web/src/app/admin/trips/[id]/page.tsx`
+  - `apps/web/src/components/map/ItineraryMap.tsx`
+
 ## Session: 2026-02-12 (Security & Code Quality Hardening Pass)
 
 ### High-Impact Fixes

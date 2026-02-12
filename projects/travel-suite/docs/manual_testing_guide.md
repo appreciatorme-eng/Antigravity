@@ -48,3 +48,36 @@ npx supabase db push
     - Complete the flow.
     - Returned to Home Screen.
     - The banner should **disappear**.
+
+## 2. Admin - Trip Driver Assignment
+
+### Prerequisites
+
+- Create at least two trips with **overlapping dates** (e.g., Trip A: Feb 1-5, Trip B: Feb 3-7).
+- Have at least one driver created in the system.
+
+### Scenario A: Assign Available Driver
+
+1.  **Action**: Open **Trip A** detail page.
+2.  **Action**: Navigate to "Day 1" (Feb 1).
+3.  **Action**: Select "Driver X" from the assignment dropdown.
+4.  **Action**: Click **Save Changes**.
+5.  **Expected Behavior**:
+    - The driver is successfully assigned.
+    - No warning or error is displayed.
+    - The UI reflects "Driver X" is assigned to Day 1.
+
+### Scenario B: Detect Busy Driver (Conflict)
+
+1.  **Action**: Open **Trip B** detail page.
+2.  **Action**: Navigate to "Day 1" (Feb 3).
+    - Note: If Trip A is Feb 1-5, then Feb 3 is Day 3 of Trip A.
+    - Ensure "Driver X" is assigned to Day 3 of Trip A (or whatever date overlaps with Trip B Day 1).
+3.  **Action**: Click the Driver Assignment dropdown for Trip B Day 1.
+4.  **Expected Behavior**:
+    - "Driver X" should appear in the list but be **disabled** (grayed out).
+    - The text should include `(Unavailable - Assigned to another trip)`.
+    - You should NOT be able to select this driver.
+5.  **Validation**:
+    - Attempt to force selection (if possible via devtools) or observe that UI prevents it.
+    - Verify that un-assigning the driver from Trip A immediately makes them available in Trip B (after refresh).

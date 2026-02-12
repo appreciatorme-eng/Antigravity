@@ -78,6 +78,7 @@ python main.py
   - Numbered map markers + route distance labels
   - Auto-calculated start/end times (30-minute slots, travel-time aware)
   - Nearby hotel suggestions with one-click autofill (name/address/phone)
+  - Driver assignment conflict detection (visual busy indicators)
   - Tokenized live-location links per trip/day (`/live/:token`)
   - Reminder queue + driver ping visibility per day
 - **Admin User Controls**:
