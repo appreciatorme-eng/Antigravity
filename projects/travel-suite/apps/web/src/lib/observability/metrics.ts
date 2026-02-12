@@ -2,7 +2,7 @@ export async function captureOperationalMetric(
     event: string,
     properties: Record<string, unknown>
 ): Promise<void> {
-    const apiKey = process.env.POSTHOG_API_KEY;
+    const apiKey = process.env.POSTHOG_PROJECT_API_KEY || process.env.POSTHOG_API_KEY;
     const host = process.env.POSTHOG_HOST || "https://app.posthog.com";
 
     if (!apiKey) return;

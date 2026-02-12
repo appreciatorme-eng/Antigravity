@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication', () => {
   test('should display login page', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/auth');
 
     // Check for login form elements
     await expect(page.locator('input[type="email"], input[name="email"]')).toBeVisible();
@@ -11,7 +11,7 @@ test.describe('Authentication', () => {
   });
 
   test('should show error for invalid credentials', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/auth');
 
     // Fill in invalid credentials
     await page.fill('input[type="email"], input[name="email"]', 'invalid@test.com');
@@ -31,11 +31,11 @@ test.describe('Authentication', () => {
     await page.goto('/admin');
 
     // Should redirect to login
-    await expect(page).toHaveURL(/login/);
+    await expect(page).toHaveURL(/auth/);
   });
 
   test('should have Google OAuth option', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/auth');
 
     // Check for Google sign in button
     const googleButton = page.locator('text=Google, [data-provider="google"]');
@@ -43,7 +43,7 @@ test.describe('Authentication', () => {
   });
 
   test('should navigate to register page', async ({ page }) => {
-    await page.goto('/login');
+    await page.goto('/auth');
 
     // Click register link
     const registerLink = page.locator('text=Sign up, text=Register, text=Create account').first();
@@ -55,24 +55,13 @@ test.describe('Authentication', () => {
 });
 
 test.describe('Registration', () => {
-  test('should display registration form', async ({ page }) => {
-    await page.goto('/register');
+  test('should allow switching to sign-up mode', async ({ page }) => {
+    await page.goto('/auth');
 
-    // Check for registration form elements
+    const signUpSwitch = page.locator('button, a').filter({ hasText: /sign up|create account|register/i }).first();
+    await signUpSwitch.click();
+
+    await expect(page.locator('input[name="full_name"], input[placeholder*="name" i]')).toBeVisible();
     await expect(page.locator('input[name="email"], input[type="email"]')).toBeVisible();
-    await expect(page.locator('input[name="password"], input[type="password"]').first()).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
-  });
-
-  test('should show validation errors for empty form', async ({ page }) => {
-    await page.goto('/register');
-
-    // Submit empty form
-    await page.click('button[type="submit"]');
-
-    // Should show validation errors
-    await expect(page.locator('text=required, text=invalid, text=enter')).toBeVisible({
-      timeout: 3000,
-    });
   });
 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import {
@@ -48,6 +49,7 @@ async function timedFetch(
         const response = await fetch(url, { ...init, signal: controller.signal });
         return { response, latency: Date.now() - startedAt };
     } catch (error) {
+        Sentry.captureException(error);
         return {
             latency: Date.now() - startedAt,
             error: error instanceof Error ? error.message : "Network error",
@@ -77,12 +79,12 @@ function checkObservabilityStack(): {
         ? { status: "healthy", detail: "SENTRY_DSN configured" }
         : { status: "unconfigured", detail: "SENTRY_DSN missing" };
 
-    const posthog: CheckResult = process.env.POSTHOG_API_KEY
+    const posthog: CheckResult = (process.env.POSTHOG_PROJECT_API_KEY || process.env.POSTHOG_API_KEY)
         ? {
             status: "healthy",
             detail: `POSTHOG_HOST=${process.env.POSTHOG_HOST || "https://app.posthog.com"}`,
         }
-        : { status: "unconfigured", detail: "POSTHOG_API_KEY missing" };
+        : { status: "unconfigured", detail: "POSTHOG_PROJECT_API_KEY/POSTHOG_API_KEY missing" };
 
     const uptime_monitor: CheckResult =
         process.env.HEALTHCHECK_PING_URL || process.env.UPTIMEROBOT_HEARTBEAT_URL
@@ -284,6 +286,76 @@ async function checkExternalApis(): Promise<{ status: CheckStatus; weather: Chec
     };
 }
 
+async function checkNotificationPipeline(): Promise<{
+    status: CheckStatus;
+    pending_count?: number;
+    failed_count?: number;
+    dead_letter_count?: number;
+    oldest_pending_minutes?: number | null;
+    detail?: string;
+}> {
+    if (!supabaseAdmin) {
+        return { status: "unconfigured", detail: "Supabase env vars are missing" };
+    }
+
+    const [pendingResult, failedResult, deadLetterResult, oldestPendingResult] = await Promise.all([
+        supabaseAdmin
+            .from("notification_queue")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending"),
+        supabaseAdmin
+            .from("notification_queue")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "failed"),
+        supabaseAdmin
+            .from("notification_dead_letters")
+            .select("id", { count: "exact", head: true }),
+        supabaseAdmin
+            .from("notification_queue")
+            .select("scheduled_for")
+            .eq("status", "pending")
+            .order("scheduled_for", { ascending: true })
+            .limit(1)
+            .maybeSingle(),
+    ]);
+
+    const errors = [pendingResult.error, failedResult.error, deadLetterResult.error, oldestPendingResult.error].filter(Boolean);
+    if (errors.length > 0) {
+        return {
+            status: "down",
+            detail: errors.map((error) => error?.message).filter(Boolean).join(" | "),
+        };
+    }
+
+    const pendingCount = pendingResult.count ?? 0;
+    const failedCount = failedResult.count ?? 0;
+    const deadLetterCount = deadLetterResult.count ?? 0;
+    const oldestPendingIso = oldestPendingResult.data?.scheduled_for;
+    const oldestPendingMinutes = oldestPendingIso
+        ? Math.max(0, Math.round((Date.now() - new Date(oldestPendingIso).getTime()) / 60000))
+        : null;
+
+    const pendingThreshold = Number(process.env.HEALTH_PENDING_QUEUE_THRESHOLD || "100");
+    const deadLetterThreshold = Number(process.env.HEALTH_DEAD_LETTER_THRESHOLD || "20");
+    const oldestPendingThresholdMinutes = Number(process.env.HEALTH_OLDEST_PENDING_THRESHOLD_MINUTES || "30");
+
+    const status = (
+        pendingCount > pendingThreshold ||
+        deadLetterCount > deadLetterThreshold ||
+        (oldestPendingMinutes !== null && oldestPendingMinutes > oldestPendingThresholdMinutes)
+    )
+        ? "degraded"
+        : "healthy";
+
+    return {
+        status,
+        pending_count: pendingCount,
+        failed_count: failedCount,
+        dead_letter_count: deadLetterCount,
+        oldest_pending_minutes: oldestPendingMinutes,
+    };
+}
+
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();
     const requestId = getRequestId(request);
@@ -292,12 +364,13 @@ export async function GET(request: NextRequest) {
     logEvent("info", "Health check requested", requestContext);
 
     try {
-        const [database, supabaseEdgeFunctions, firebaseFcm, whatsappApi, externalApis] = await Promise.all([
+        const [database, supabaseEdgeFunctions, firebaseFcm, whatsappApi, externalApis, notificationPipeline] = await Promise.all([
             checkDatabase(),
             checkSupabaseEdgeFunctions(),
             checkFirebaseFcm(),
             checkWhatsappApi(),
             checkExternalApis(),
+            checkNotificationPipeline(),
         ]);
 
         const observability = checkObservabilityStack();
@@ -308,6 +381,7 @@ export async function GET(request: NextRequest) {
             firebaseFcm.status,
             whatsappApi.status,
             externalApis.status,
+            notificationPipeline.status,
             observability.status,
         ]);
 
@@ -344,6 +418,7 @@ export async function GET(request: NextRequest) {
                     firebase_fcm: firebaseFcm,
                     whatsapp_api: whatsappApi,
                     external_apis: externalApis,
+                    notification_pipeline: notificationPipeline,
                     observability,
                 },
             },
@@ -352,6 +427,7 @@ export async function GET(request: NextRequest) {
         response.headers.set("x-request-id", requestId);
         return response;
     } catch (error) {
+        Sentry.captureException(error);
         logError("Health check crashed", error, requestContext);
         return NextResponse.json(
             {

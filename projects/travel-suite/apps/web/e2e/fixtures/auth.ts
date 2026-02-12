@@ -47,8 +47,8 @@ export const test = base.extend<{
 async function loginAs(page: Page, userType: 'client' | 'admin' | 'driver') {
   const user = TEST_USERS[userType];
 
-  // Go to login page
-  await page.goto('/login');
+  // Go to auth page
+  await page.goto('/auth');
 
   // Fill in credentials
   await page.fill('input[name="email"], input[type="email"]', user.email);
@@ -57,8 +57,8 @@ async function loginAs(page: Page, userType: 'client' | 'admin' | 'driver') {
   // Submit form
   await page.click('button[type="submit"]');
 
-  // Wait for successful login (redirect away from login page)
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+  // Wait for successful login (redirect away from auth page)
+  await page.waitForURL((url) => !url.pathname.includes('/auth'), {
     timeout: 10000,
   });
 }
@@ -84,9 +84,9 @@ export async function logout(page: Page) {
     await logoutButton.click();
   }
 
-  // Wait for redirect to login or home
+  // Wait for redirect to auth or home
   await page.waitForURL((url) =>
-    url.pathname === '/' || url.pathname.includes('/login')
+    url.pathname === '/' || url.pathname.includes('/auth')
   );
 }
 

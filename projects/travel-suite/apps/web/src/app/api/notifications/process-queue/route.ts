@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
@@ -36,6 +37,10 @@ interface QueueItem {
     attempts: number;
     status: QueueStatus;
 }
+
+const DEFAULT_MAX_ATTEMPTS = Number(process.env.NOTIFICATION_QUEUE_MAX_ATTEMPTS || "5");
+const BASE_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_BASE_MINUTES || "5");
+const MAX_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_MAX_MINUTES || "60");
 
 async function resolveOrganizationIdForQueueItem(item: QueueItem): Promise<string | null> {
     if (item.trip_id) {
@@ -98,6 +103,34 @@ function getStringPayloadValue(payload: Record<string, unknown> | null, key: str
 
 function addMinutes(date: Date, minutes: number): string {
     return new Date(date.getTime() + minutes * 60_000).toISOString();
+}
+
+function calculateNextRetryDelayMinutes(attempts: number): number {
+    const safeAttempts = Math.max(1, attempts);
+    const calculated = BASE_BACKOFF_MINUTES * Math.pow(2, safeAttempts - 1);
+    return Math.min(calculated, MAX_BACKOFF_MINUTES);
+}
+
+async function moveToDeadLetter(params: {
+    item: QueueItem;
+    organizationId: string | null;
+    attempts: number;
+    reason: string;
+    failedChannels: string[];
+}) {
+    await supabaseAdmin.from("notification_dead_letters").insert({
+        queue_id: params.item.id,
+        organization_id: params.organizationId,
+        trip_id: params.item.trip_id,
+        user_id: params.item.user_id,
+        recipient_phone: params.item.recipient_phone,
+        recipient_type: params.item.recipient_type,
+        notification_type: params.item.notification_type,
+        payload: params.item.payload || {},
+        attempts: params.attempts,
+        error_message: params.reason,
+        failed_channels: params.failedChannels,
+    });
 }
 
 async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
@@ -395,7 +428,15 @@ export async function POST(request: NextRequest) {
                     reason,
                 });
 
-                if (attempts >= 3) {
+                if (attempts >= DEFAULT_MAX_ATTEMPTS) {
+                    await moveToDeadLetter({
+                        item: row,
+                        organizationId,
+                        attempts,
+                        reason,
+                        failedChannels: channelErrors,
+                    });
+
                     await supabaseAdmin
                         .from("notification_queue")
                         .update({
@@ -406,15 +447,30 @@ export async function POST(request: NextRequest) {
                         })
                         .eq("id", row.id);
                 } else {
+                    const retryInMinutes = calculateNextRetryDelayMinutes(attempts);
                     await supabaseAdmin
                         .from("notification_queue")
                         .update({
                             status: "pending",
                             attempts,
-                            scheduled_for: addMinutes(new Date(), 5),
+                            scheduled_for: addMinutes(new Date(), retryInMinutes),
                             error_message: reason,
                         })
                         .eq("id", row.id);
+
+                    await trackDeliveryStatus({
+                        organizationId,
+                        item: row,
+                        channel: "email",
+                        provider: "queue_retry_policy",
+                        status: "retrying",
+                        attemptNumber: attempts,
+                        errorMessage: `Retry scheduled in ${retryInMinutes} minute(s): ${reason}`,
+                        metadata: {
+                            retry_in_minutes: retryInMinutes,
+                            max_attempts: DEFAULT_MAX_ATTEMPTS,
+                        },
+                    });
                 }
             }
         }
@@ -458,6 +514,7 @@ export async function POST(request: NextRequest) {
         response.headers.set("x-request-id", requestId);
         return response;
     } catch (error) {
+        Sentry.captureException(error);
         logError("Notification queue run crashed", error, requestContext);
         void captureOperationalMetric("api.notifications.queue.error", {
             request_id: requestId,

@@ -2,6 +2,20 @@
 
 This is the immediate execution roadmap after the tenant hardening + billing foundation pass.
 
+## P0 Status Update (Feb 12, 2026)
+
+- Completed:
+  - Admin API auth/authorization regression coverage expanded (`/api/admin/clients`, `/api/admin/trips`, `/api/admin/workflow/events`, `/api/admin/contacts`).
+  - WhatsApp webhook signature validation + replay protection (`whatsapp_webhook_events`).
+  - Notification queue reliability hardening:
+    - exponential retry backoff
+    - configurable max attempts
+    - dead-letter capture (`notification_dead_letters`)
+  - `/api/health` now includes notification pipeline health (pending/failed/dead-letter pressure).
+- Deferred by decision:
+  - Secret/password rotation is intentionally deferred until pre-production hardening.
+  - Rotation remains a mandatory release gate before production.
+
 ## 1) Billing Admin UI (Highest)
 
 - Build `/admin/billing` with:

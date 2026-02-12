@@ -55,3 +55,26 @@
   - `/api/notifications/retry-failed`
 - Non-driver user cannot publish to `/api/location/ping`.
 - Client cannot fetch share link for another client’s trip (`/api/location/client-share`).
+
+## 10. WhatsApp Webhook Hardening
+- Ensure `WHATSAPP_APP_SECRET` is configured.
+- Send unsigned payload to `/api/whatsapp/webhook` and verify `401`.
+- Send correctly signed payload and verify `200`.
+- Verify duplicate inbound WhatsApp location payloads are ignored:
+  - `whatsapp_webhook_events.provider_message_id` remains unique
+  - API response includes `duplicate_messages > 0` on replay.
+
+## 11. Queue Reliability and Dead Letters
+- Force queue delivery failures (invalid WhatsApp token / invalid push target).
+- Verify retry schedule uses exponential backoff (`5 -> 10 -> 20 ...` minutes).
+- Verify terminal failures are moved to `notification_dead_letters`.
+- Verify `/api/health` includes `checks.notification_pipeline` with queue and dead-letter counts.
+
+## 12. Password Rotation Gate (Pre-Production)
+- During active development, credentials may remain stable for velocity.
+- Before production cutover, rotate:
+  - Supabase service role and anon keys (if exposed in dev workflows)
+  - Firebase service account key
+  - WhatsApp token/app secret
+  - Google API keys used by server-side endpoints
+  - Any admin test account passwords used during development

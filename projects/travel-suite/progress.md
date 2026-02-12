@@ -1,5 +1,37 @@
 # Progress Log
 
+## Session: 2026-02-12 (P0 Security + Reliability Hardening)
+
+### Backend Hardening
+- **Status:** complete
+- Hardened WhatsApp inbound webhook:
+  - HMAC signature verification via `x-hub-signature-256` and `WHATSAPP_APP_SECRET`
+  - optional local-dev override via `WHATSAPP_ALLOW_UNSIGNED_WEBHOOK=true`
+  - replay protection with `whatsapp_webhook_events.provider_message_id` unique constraint
+  - rejected event auditing (invalid signature / unknown driver / insert failures)
+- Hardened queue reliability:
+  - added exponential retry backoff
+  - retry limits made configurable via env
+  - terminal failures now copied to `notification_dead_letters`
+- Expanded system health visibility:
+  - `/api/health` now includes `notification_pipeline` pressure checks
+  - queue pending/failed/dead-letter counters and oldest pending age surfaced in health response
+
+### Testing
+- Added Playwright API tests for admin auth/authz critical paths:
+  - unauthenticated rejection checks
+  - non-admin rejection checks
+- Added WhatsApp webhook security tests for unsigned and signed payload behavior.
+- Updated auth E2E fixture routes to `/auth` to align with current app routing.
+
+### Documentation
+- Updated `.env.example` with new webhook + queue reliability env variables.
+- Updated release checklist with:
+  - webhook signature/replay validation checks
+  - dead-letter and retry verification
+  - explicit pre-production credential rotation gate
+- Added explicit note: password/secret rotation deferred during active development and required before production.
+
 ## Session: 2026-02-11 (Pickup Reminder Automation Foundation)
 
 ### Backend & Notification Automation
@@ -552,8 +584,34 @@
 - Updated Supabase Edge Function (`send-notification`) to emit structured JSON logs.
 - Added implementation + roadmap doc:
   - `docs/observability_and_notification_architecture_2026-02-11.md`
+- Added PostHog self-host minimal setup doc:
+  - `docs/posthog_self_host_minimal.md`
+- Updated PostHog env support to prefer `POSTHOG_PROJECT_API_KEY` with `POSTHOG_API_KEY` fallback.
 - Updated root README health section with observability status note.
 
 ### Notes
 - Metrics logging is best-effort and never blocks request flow.
 - This is the production debugging baseline; next phase is splitting queue processor into per-channel workers.
+
+## 2026-02-11 - Sentry Integration Baseline (Web)
+
+### Completed
+- Added Sentry config scaffolding for Next.js web app:
+  - `apps/web/instrumentation.ts`
+  - `apps/web/instrumentation-client.ts`
+  - `apps/web/sentry.server.config.ts`
+  - `apps/web/sentry.edge.config.ts`
+  - `apps/web/src/app/global-error.tsx`
+  - `apps/web/src/app/api/debug-sentry/route.ts`
+- Wrapped Next config with Sentry plugin:
+  - `apps/web/next.config.ts`
+- Added Sentry dependency declaration:
+  - `apps/web/package.json`
+- Added Sentry env template keys:
+  - `apps/web/.env.example`
+- Added runtime DSN in local env:
+  - `apps/web/.env.local`
+
+### Pending local install action
+- Install dependency in web app: `npm install @sentry/nextjs`
+- Current machine uses Node `v25.5.0`; if install is unstable, switch to Node `20 LTS` and reinstall.

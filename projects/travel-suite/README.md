@@ -105,6 +105,7 @@ Post-confirmation client experience flow and automation checklist are documented
 - `docs/critical_foundations_2026-02-11.md` (tenant isolation + CI + billing foundation)
 - `docs/next_critical_steps_2026-02-11.md` (execution roadmap for current sprint)
 - `docs/observability_and_notification_architecture_2026-02-11.md` (logging, metrics, uptime, and notification refactor plan)
+- `docs/posthog_self_host_minimal.md` (minimal self-host PostHog setup for this project)
 
 ## 🔔 Automation & Notifications
 
@@ -131,7 +132,7 @@ Post-confirmation client experience flow and automation checklist are documented
   - Firebase FCM endpoint reachability
   - WhatsApp API availability
   - External APIs (Open-Meteo weather, Frankfurter currency)
-  - Observability stack configuration (`SENTRY_DSN`, `POSTHOG_API_KEY`, uptime heartbeat URL)
+  - Observability stack configuration (`SENTRY_DSN`, `POSTHOG_PROJECT_API_KEY`/`POSTHOG_API_KEY`, uptime heartbeat URL)
 - Response includes `request_id` and the API now emits structured JSON logs for queue + notification routes.
 
 ## 🎨 Brand Identity
