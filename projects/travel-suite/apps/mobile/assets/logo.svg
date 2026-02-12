@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="512" cy="512" r="512" fill="#2196F3"/>
+
+  <!-- Gradient Background -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1976D2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#42A5F5;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="planeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E3F2FD;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background with gradient -->
+  <circle cx="512" cy="512" r="512" fill="url(#bgGradient)"/>
+
+  <!-- Globe/World representation -->
+  <circle cx="512" cy="512" r="350" fill="none" stroke="#FFFFFF" stroke-width="8" opacity="0.3"/>
+  <circle cx="512" cy="512" r="280" fill="none" stroke="#FFFFFF" stroke-width="6" opacity="0.2"/>
+
+  <!-- Latitude lines -->
+  <ellipse cx="512" cy="512" rx="350" ry="100" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.2"/>
+  <ellipse cx="512" cy="512" rx="350" ry="180" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.2"/>
+
+  <!-- Longitude lines -->
+  <ellipse cx="512" cy="512" rx="100" ry="350" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.2"/>
+  <ellipse cx="512" cy="512" rx="180" ry="350" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.2"/>
+
+  <!-- Airplane (simplified, modern design) -->
+  <g transform="translate(512, 350) rotate(-30) scale(2.5)">
+    <!-- Airplane body -->
+    <path d="M 0,-40 L 5,-20 L 5,20 L 0,30 L -5,20 L -5,-20 Z" fill="url(#planeGradient)" stroke="#1976D2" stroke-width="1"/>
+
+    <!-- Wings -->
+    <path d="M -5,-10 L -60,-5 L -65,0 L -60,5 L -5,0 Z" fill="url(#planeGradient)" stroke="#1976D2" stroke-width="1"/>
+    <path d="M 5,-10 L 60,-5 L 65,0 L 60,5 L 5,0 Z" fill="url(#planeGradient)" stroke="#1976D2" stroke-width="1"/>
+
+    <!-- Tail -->
+    <path d="M -5,20 L -20,25 L -20,30 L -5,27 Z" fill="url(#planeGradient)" stroke="#1976D2" stroke-width="1"/>
+    <path d="M -3,15 L -3,35 L 3,35 L 3,15 Z" fill="url(#planeGradient)" stroke="#1976D2" stroke-width="1"/>
+  </g>
+
+  <!-- Location pin (destination marker) -->
+  <g transform="translate(680, 620)">
+    <path d="M 0,-40 C -15,-40 -25,-30 -25,-15 C -25,0 0,40 0,40 C 0,40 25,0 25,-15 C 25,-30 15,-40 0,-40 Z"
+          fill="#FF5722" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="0" cy="-15" r="8" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Travel path/route (dotted line) -->
+  <path d="M 380 380 Q 450 280, 550 320"
+        fill="none" stroke="#FFFFFF" stroke-width="6"
+        stroke-dasharray="15,15" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Small location dots along route -->
+  <circle cx="380" cy="380" r="10" fill="#FFC107" stroke="#FFFFFF" stroke-width="3"/>
+  <circle cx="450" cy="280" r="8" fill="#4CAF50" stroke="#FFFFFF" stroke-width="2.5"/>
+  <circle cx="550" cy="320" r="8" fill="#4CAF50" stroke="#FFFFFF" stroke-width="2.5"/>
+
+  <!-- Accent elements (stars/sparkles for adventure theme) -->
+  <circle cx="280" cy="280" r="6" fill="#FFFFFF" opacity="0.9"/>
+  <circle cx="300" cy="240" r="4" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="740" cy="280" r="5" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="760" cy="320" r="3" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="320" cy="720" r="4" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="280" cy="680" r="5" fill="#FFFFFF" opacity="0.8"/>
+</svg>
