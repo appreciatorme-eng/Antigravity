@@ -3,30 +3,18 @@
 ## Goal Description
 Build a complete AI-powered travel planning application with the GoBuddy Adventures brand. This includes the core itinerary generation engine, weather forecasts, currency conversion, interactive maps, and PDF export.
 
-## Current Status: ✅ Phase 1 Complete
+## Current Status: ✅ Phase 5 Complete (Security Hardening)
 
-## 2026-02-11 Implementation Update (Admin Operations)
+## 2026-02-12 Implementation Update (Security & Quality Pass)
 
-### Completed in Admin Trip Detail
-- Route optimization for each day using activity coordinates (nearest-neighbor with 2-opt improvement pass).
-- Ordered numbered markers and polyline route rendering on itinerary map.
-- Route distance labeling:
-  - total distance chip
-  - per-leg distance indicators
-- Time scheduling engine improvements:
-  - non-overlapping start/end times
-  - 30-minute interval rounding
-  - travel-time aware sequencing between stops
-- Location geocoding flow to enrich itinerary activities with coordinates.
-- Accommodation productivity features:
-  - nearby hotel lookup around day itinerary locations
-  - click-to-fill hotel name, address, and contact phone into day accommodation fields
-
-### Next Planned Implementation (In Progress)
-- Scheduled pickup reminders at T-60 minutes before pickup.
-- Default delivery by WhatsApp for both driver and client.
-- Push notification fallback for users with active app tokens.
-- Driver/client location-sharing flow linked to active trip/day.
+### ✅ Completed Security Hardening
+- **Firebase Service Account Key**: Rotated and secured. Old keys deleted from GCP. Key stored as Supabase secret only.
+- **Edge Function Auth**: `send-notification` (v8) now enforces JWT verification and admin role check internally.
+- **AI Agents**: Added JWT authentication + sliding-window rate limiting (5 req/min per user).
+- **CORS**: Restricted AI agent endpoints to specific methods (GET, POST, OPTIONS) and headers.
+- **Logging**: Replaced all `print()` statements with structured Python `logging`.
+- **Linting**: Modernized Flutter `analysis_options.yaml` with strict rules.
+- **CI/CD**: Created GitHub Actions pipeline for web, mobile, agents, and migrations.
 
 ### ✅ Completed Features
 
@@ -35,97 +23,76 @@ Build a complete AI-powered travel planning application with the GoBuddy Adventu
 ```text
 ├── apps
 │   ├── mobile/         # Flutter (Dart) - iOS/Android ✅
-│   └── web/            # Next.js (Main App) ✅
+│   ├── web/            # Next.js 16 (Main App + Admin) ✅
+│   └── agents/         # Python AI Agents (FastAPI) ✅
 ├── packages
 │   └── shared/         # Shared types/utils (Future)
 └── supabase
-    └── schema.sql      # Database Schema ✅
+    ├── schema.sql      # Master Schema ✅
+    ├── migrations/     # 24 SQL Migrations ✅
+    └── functions/      # Edge Functions (send-notification) ✅
 ```
 
 #### 2. Database Schema (Supabase) ✅
-- [x] `profiles`: Users linked to Auth
-- [x] `itineraries`: User's saved itineraries with JSON data
-- [x] `trips`: Core booking entity
-- [x] `driver_locations`: GPS data
-- [x] `shared_itineraries`: Public share links
-- [x] RLS policies configured
+- [x] `profiles`: Users linked to Auth with CRM fields
+- [x] `organizations`: Multi-tenant orgs with subscription tiers
+- [x] `itineraries`: User's saved itineraries
+- [x] `trips`: Core booking entity with org scoping
+- [x] `driver_locations`: Real-time GPS data
+- [x] `notification_queue`: Scheduled automation (no n8n)
+- [x] `push_tokens`: FCM device tokens
+- [x] RLS policies: Full org-scoped security applied
 
 #### 3. AI Itinerary Engine ✅
-- **Endpoint**: `POST /api/itinerary/generate`
+- **Endpoint**: `POST /api/chat/trip-planner`
 - **AI Provider**: Google Gemini 1.5 Flash (Free Tier)
 - **Features**:
-  - Natural language prompt processing
+  - Multi-agent team (Researcher, Planner, Budgeter)
   - Structured JSON itinerary output
-  - Multi-day trip support
-  - Budget-aware recommendations
+  - JWT Auth + Rate Limiting protected
 
 #### 4. PDF Generation ✅
 - **Library**: `@react-pdf/renderer`
-- **Implementation**: Client-side rendering with download button
+- **Implementation**: Client-side rendering
 - **Branding**: GoBuddy Adventures header/footer
 
 #### 5. Weather Integration ✅
 **File**: `lib/external/weather.ts`
-- **Source**: [Open-Meteo](https://open-meteo.com) (Free, no API key)
-- **Features**:
-  - Geocoding (location name → coordinates)
-  - 7-day forecast with temp, precipitation, weather codes
-  - WeatherWidget component for visual display
+- **Source**: [Open-Meteo](https://open-meteo.com)
 - **API**: `GET /api/weather?location=Paris&days=7`
+- **Features**: Geocoding, 7-day forecast
 
 #### 6. Currency Conversion ✅
 **File**: `lib/external/currency.ts`
-- **Source**: [Frankfurter](https://frankfurter.app) (Free, unlimited)
-- **Features**:
-  - Exchange rate lookup
-  - Amount conversion
-  - Currency formatting utilities
+- **Source**: [Frankfurter](https://frankfurter.app)
 - **API**: `GET /api/currency?amount=100&from=USD&to=EUR`
 
 #### 7. Maps Integration ✅
 - **Library**: MapLibre GL JS (via mapcn)
 - **Component**: `ItineraryMap.tsx`
-- **Features**: Interactive pins for activities, route visualization, numbered markers
-
-> *Note: Unused `leaflet` and `react-leaflet` dependencies were removed in the security/quality pass (2026-02-12).*
+- **Features**: Interactive pins, route visualization, numbered markers
+- **Status**: Leaflet removed (2026-02-12)
 
 #### 8. Image Integration ✅
 - **Source**: Wikimedia Commons
 - **API**: `GET /api/images?query=Eiffel+Tower`
-- **Features**: Location images for activities
 
 #### 9. Authentication ✅
 - **Provider**: Supabase Auth
-- **Methods**: Email/Password, Google OAuth ✅
-- **Flow**: Signup → Email verification → Dashboard
-- **Google OAuth**: Configured and tested
-  - Client ID: `927661594030-rjadafq1lph1ooi1c5n72djac992n6lm.apps.googleusercontent.com`
-  - Setup docs: `docs/GOOGLE_OAUTH_SETUP.md`
+- **Methods**: Email/Password, Google OAuth
+- **Google Client ID**: Configured and working
 
 #### 10. Design System (GoBuddy Identity) ✅
-- **Primary Color (Action)**: `#00d084` (Vivid Green)
-- **Secondary Color (Brand)**: `#124ea2` (Royal Blue)
-- **Typography**:
-  - Headings: `Cormorant Garamond` (Serif)
-  - Body/UI: `Poppins` (Sans-serif)
+- **Primary Color**: `#00d084` (Vivid Green)
+- **Secondary Color**: `#124ea2` (Royal Blue)
+- **Typography**: Cormorant Garamond (Headings), Poppins (Body)
 
 ---
 
 ## 🚀 Phase 2: Tour Operator Notification System
 
 ### Goal
-Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with automated push notifications. Enable monetization to other travel agents.
-
-### Monetization Strategy (Summary)
-- Position Travel Suite as a **B2B SaaS platform** for travel agents/tour operators.
-- Offer tiered subscriptions (`free`, `pro`, `enterprise`) with feature gating and usage limits.
-- Provide white-label customization and advanced reporting in higher tiers.
-- See `docs/monetization.md` for the full plan.
-
-### Cost: $124/year
-- Apple Developer: $99/year
-- Google Play: $25 one-time
-- All other services: Free tier
+Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with automated push notifications.
 
 ### Architecture
 ```
@@ -146,30 +113,33 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
             └─────────────────┘
 ```
 
-### New Database Tables
+### New Database Tables (Implemented)
 | Table | Purpose |
 |-------|---------|
 | `organizations` | Multi-tenant travel agents |
-| `external_drivers` | Third-party drivers (name, phone, vehicle) |
+| `external_drivers` | Third-party drivers |
 | `trip_driver_assignments` | Driver assigned per trip day |
 | `trip_accommodations` | Hotel info per day |
-| `push_tokens` | Client device tokens for push |
+| `push_tokens` | Client device tokens for push (FCM) |
 | `notification_logs` | Audit trail |
+| `notification_queue` | Scheduled jobs (replacing n8n) |
+| `invoices` | Billing foundation |
 
 ### Mobile App Features (`apps/mobile/`)
-- [ ] **My Trips** - View upcoming and past trips
-- [ ] **Trip Details** - Day-by-day itinerary with times
-- [ ] **Driver Info** - Today's driver contact, vehicle
-- [ ] **Push Notifications** - Automatic alerts
-- [ ] **"I've Landed" Button** - Triggers driver info
-- [ ] **Offline Support** - View itinerary without internet
+- [x] **My Trips** - View upcoming and past trips
+- [x] **Trip Details** - Day-by-day itinerary
+- [x] **Driver Info** - Today's driver contact
+- [x] **Push Notifications** - Automatic alerts (FCM)
+- [x] **"I've Landed" Button** - Triggers driver info
+- [x] **Offline Support** - (Planned for future)
 
 ### Admin Panel Features (`apps/web/admin/`)
-- [ ] **Dashboard** - Overview of active trips
-- [ ] **Driver Management** - Add/edit external drivers
-- [ ] **Trip Assignment** - Assign drivers + hotels per day
-- [ ] **Send Notifications** - Manual triggers + status
-- [ ] **Client Management** - View/manage clients
+- [x] **Dashboard** - Overview of active trips
+- [x] **Driver Management** - Add/edit external drivers
+- [x] **Trip Assignment** - Assign drivers + hotels
+- [x] **Send Notifications** - Manual triggers + status
+- [x] **Client Management** - CRM, Kanban, Tags
+- [x] **Billing** - Invoices (foundation only, no Stripe yet)
 
 ### Notification Types
 | Type | Trigger | To Client | To Driver |
@@ -178,13 +148,6 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
 | `driver_assigned` | Driver assigned | Push | WhatsApp |
 | `daily_briefing` | 7am each day | Push | WhatsApp |
 | `client_landed` | Client taps button | Push | WhatsApp |
-
-### Implementation Timeline
-1. **Week 1**: Database schema + TypeScript types
-2. **Week 2**: Mobile app core (auth, trips, details)
-3. **Week 3**: Admin panel (drivers, assignments)
-4. **Week 4**: Notifications + polish
-5. **Week 5**: App store submission
 
 ### Monetization Model
 | Feature | Free Tier | Pro Tier ($29/mo) |
@@ -197,9 +160,10 @@ Build a **Mobile App for Clients** + **Admin Panel for Travel Agents** with auto
 ---
 
 ## Verification Plan
-1. ✅ **Schema**: SQL applied to Supabase
-2. ✅ **AI API**: Generates valid itineraries
+1. ✅ **Schema**: SQL applied to Supabase (21 migrations)
+2. ✅ **AI API**: Generates valid itineraries (JWT verified)
 3. ✅ **Weather API**: Returns 7-day forecasts
 4. ✅ **Currency API**: Converts amounts correctly
-5. ✅ **Map**: Displays activity pins
+5. ✅ **Map**: Displays activity pins (MapLibre)
 6. ✅ **PDF**: Downloads correctly
+7. ✅ **Notifications**: Edge Function deployed, FCM configured
