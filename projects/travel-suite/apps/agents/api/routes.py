@@ -3,7 +3,7 @@ API Routes for GoBuddy AI Agents
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 
 from agents.trip_planner import plan_trip, plan_trip_structured
@@ -14,6 +14,7 @@ from agents.recommender import (
     provide_feedback,
 )
 from api.auth import verify_supabase_token, get_user_id
+from api.rate_limit import ai_limiter, general_limiter, get_client_key
 
 logger = logging.getLogger("gobuddy.routes")
 
@@ -82,6 +83,7 @@ class FeedbackRequest(BaseModel):
 @router.post("/chat/trip-planner")
 async def chat_trip_planner(
     request: TripPlanRequest,
+    raw_request: Request,
     user_id: str = Depends(get_user_id),
 ):
     """
@@ -93,6 +95,7 @@ async def chat_trip_planner(
     - Budgeter: Optimizes costs and estimates expenses
     """
     try:
+        ai_limiter.check(get_client_key(raw_request, user_id))
         logger.info("Trip plan request: %s for %d days by user %s",
                      request.destination, request.duration_days, user_id)
         if request.structured:
@@ -123,6 +126,7 @@ async def chat_trip_planner(
 @router.post("/chat/support")
 async def chat_support(
     request: ChatMessage,
+    raw_request: Request,
     user_id: str = Depends(get_user_id),
 ):
     """
@@ -132,6 +136,7 @@ async def chat_support(
     Handles FAQs, policies, booking questions, and general support.
     """
     try:
+        ai_limiter.check(get_client_key(raw_request, user_id))
         # Check for quick response first
         quick = get_quick_response(request.message)
         if quick:
@@ -160,6 +165,7 @@ async def chat_support(
 @router.post("/chat/recommend")
 async def chat_recommend(
     request: RecommendationRequest,
+    raw_request: Request,
     user_id: str = Depends(get_user_id),
 ):
     """
@@ -169,6 +175,7 @@ async def chat_recommend(
     provides increasingly personalized suggestions.
     """
     try:
+        ai_limiter.check(get_client_key(raw_request, user_id))
         result = await get_recommendations(
             user_id=user_id,
             query=request.query,
