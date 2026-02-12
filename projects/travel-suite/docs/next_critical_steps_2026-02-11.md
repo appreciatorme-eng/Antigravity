@@ -16,6 +16,21 @@ This is the immediate execution roadmap after the tenant hardening + billing fou
   - Secret/password rotation is intentionally deferred until pre-production hardening.
   - Rotation remains a mandatory release gate before production.
 
+## P1 Status Update (Feb 12, 2026)
+
+- Completed:
+  - Observability finalization for CRM/Kanban APIs:
+    - request ids in response payload/header
+    - structured logs + operational metrics
+    - Sentry crash capture
+  - Admin dashboard health now shows notification pipeline status.
+  - Android production readiness sign-off package:
+    - release signing config via `android/key.properties`
+    - release shrink/minify hardening
+    - proguard baseline rules
+    - repeatable `apps/mobile/scripts/android_signoff.sh`
+    - release sign-off docs + checklist updates
+
 ## 1) Billing Admin UI (Highest)
 
 - Build `/admin/billing` with:

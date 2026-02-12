@@ -1,5 +1,39 @@
 # Progress Log
 
+## Session: 2026-02-12 (P1 - Observability Finalization)
+
+### Observability
+- **Status:** complete
+- Added request-level observability for CRM/Kanban APIs:
+  - `GET/POST /api/admin/contacts`
+  - `POST /api/admin/contacts/[id]/promote`
+  - `GET /api/admin/workflow/events`
+- Added `request_id` JSON field and `x-request-id` response header to these routes.
+- Added structured logs + PostHog metrics for list/import/promote/events calls.
+- Added Sentry exception capture for crash paths in these routes.
+- Updated admin dashboard health panel to include `Notify Pipeline` check.
+- Added threshold env examples for queue/dead-letter pressure checks.
+
+## Session: 2026-02-12 (P1 - Android Production Readiness Sign-Off)
+
+### Mobile Android Release Hardening
+- **Status:** complete
+- Updated `android/app/build.gradle.kts` release config:
+  - supports signing via `android/key.properties`
+  - debug-signing fallback for local non-keystore builds
+  - enabled `isMinifyEnabled` + `isShrinkResources`
+  - wired `proguard-rules.pro`
+- Added:
+  - `android/key.properties.example`
+  - `android/app/proguard-rules.pro`
+  - `scripts/android_signoff.sh` (repeatable sign-off command sequence)
+- Added release/sign-off docs:
+  - `docs/android_production_signoff_2026-02-12.md`
+  - `apps/mobile/README.md` Android sign-off section
+
+### Testing
+- `android_signoff.sh` added but full run not executed in this session due local environment instability and active process saturation.
+
 ## Session: 2026-02-12 (P0 Security + Reliability Hardening)
 
 ### Backend Hardening

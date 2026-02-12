@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {
+    const response = NextResponse.json({ ...body, request_id: requestId }, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
 
 function normalizePhone(phone?: string | null): string | null {
     if (!phone) return null;
@@ -29,10 +38,14 @@ async function getAdminProfile(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest, { params }: { params?: { id?: string } }) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
+
     try {
         const adminProfile = await getAdminProfile(req);
-        if (!adminProfile) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        if (!adminProfile.organization_id) return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        if (!adminProfile) return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        if (!adminProfile.organization_id) return withRequestId({ error: "Admin organization not configured" }, requestId, { status: 400 });
 
         const id = (params?.id || "").trim();
         const { data: contact } = await supabaseAdmin
@@ -42,11 +55,11 @@ export async function POST(req: NextRequest, { params }: { params?: { id?: strin
             .maybeSingle();
 
         if (!contact || contact.organization_id !== adminProfile.organization_id) {
-            return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+            return withRequestId({ error: "Contact not found" }, requestId, { status: 404 });
         }
 
         if (contact.converted_profile_id) {
-            return NextResponse.json({ ok: true, profile_id: contact.converted_profile_id, already_converted: true });
+            return withRequestId({ ok: true, profile_id: contact.converted_profile_id, already_converted: true }, requestId);
         }
 
         const normalizedPhone = contact.phone_normalized || normalizePhone(contact.phone);
@@ -72,8 +85,9 @@ export async function POST(req: NextRequest, { params }: { params?: { id?: strin
 
         if (!profileId) {
             if (!contact.email) {
-                return NextResponse.json(
+                return withRequestId(
                     { error: "Cannot promote contact without email unless phone is already linked to an existing user profile." },
+                    requestId,
                     { status: 400 }
                 );
             }
@@ -86,7 +100,7 @@ export async function POST(req: NextRequest, { params }: { params?: { id?: strin
                 },
             });
             if (createError || !created?.user?.id) {
-                return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 400 });
+                return withRequestId({ error: createError?.message || "Failed to create user" }, requestId, { status: 400 });
             }
             profileId = created.user.id;
         }
@@ -108,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params?: { id?: strin
             .eq("id", profileId);
 
         if (updateError) {
-            return NextResponse.json({ error: updateError.message }, { status: 400 });
+            return withRequestId({ error: updateError.message }, requestId, { status: 400 });
         }
 
         await supabaseAdmin
@@ -120,10 +134,35 @@ export async function POST(req: NextRequest, { params }: { params?: { id?: strin
             })
             .eq("id", contact.id);
 
-        return NextResponse.json({ ok: true, profile_id: profileId });
+        await supabaseAdmin.from("workflow_stage_events").insert({
+            organization_id: adminProfile.organization_id,
+            profile_id: profileId,
+            from_stage: "pre_lead",
+            to_stage: "lead",
+            changed_by: adminProfile.id,
+        });
+
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Contact promoted to lead", {
+            ...requestContext,
+            contact_id: contact.id,
+            profile_id: profileId,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.contacts.promote", {
+            request_id: requestId,
+            contact_id: contact.id,
+            profile_id: profileId,
+            duration_ms: durationMs,
+        });
+
+        return withRequestId({ ok: true, profile_id: profileId }, requestId);
     } catch (error) {
-        return NextResponse.json(
+        Sentry.captureException(error);
+        logError("Contact promote crashed", error, requestContext);
+        return withRequestId(
             { error: error instanceof Error ? error.message : "Unknown error" },
+            requestId,
             { status: 500 }
         );
     }

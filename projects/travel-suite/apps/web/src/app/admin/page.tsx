@@ -51,6 +51,7 @@ interface HealthResponse {
         firebase_fcm: { status: HealthStatus };
         whatsapp_api: { status: HealthStatus };
         external_apis: { status: HealthStatus };
+        notification_pipeline: { status: HealthStatus };
     };
 }
 
@@ -208,6 +209,7 @@ export default function AdminDashboard() {
                             firebase_fcm: { status: "down" },
                             whatsapp_api: { status: "down" },
                             external_apis: { status: "down" },
+                            notification_pipeline: { status: "down" },
                         },
                     });
                 }
@@ -358,13 +360,14 @@ export default function AdminDashboard() {
                         {health?.checked_at ? `Last check ${new Date(health.checked_at).toLocaleTimeString()}` : ""}
                     </span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
                     {[
                         { label: "Database", value: health?.checks.database.status },
                         { label: "Edge Functions", value: health?.checks.supabase_edge_functions.status },
                         { label: "Firebase FCM", value: health?.checks.firebase_fcm.status },
                         { label: "WhatsApp API", value: health?.checks.whatsapp_api.status },
                         { label: "Weather/Currency", value: health?.checks.external_apis.status },
+                        { label: "Notify Pipeline", value: health?.checks.notification_pipeline.status },
                     ].map((item) => (
                         <div key={item.label} className="rounded-xl border border-[#eadfcd] bg-[#fffdf8] px-3 py-3">
                             <p className="text-[11px] uppercase tracking-[0.14em] text-[#9d8862] mb-2">{item.label}</p>

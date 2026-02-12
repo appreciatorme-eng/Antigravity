@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {
+    const response = NextResponse.json({ ...body, request_id: requestId }, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
 
 async function getAdminUserId(req: NextRequest): Promise<string | null> {
     const authHeader = req.headers.get("authorization");
@@ -23,10 +32,14 @@ async function getAdminUserId(req: NextRequest): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
+
     try {
         const adminUserId = await getAdminUserId(req);
         if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const { data: adminProfile } = await supabaseAdmin
@@ -35,7 +48,7 @@ export async function GET(req: NextRequest) {
             .eq("id", adminUserId)
             .maybeSingle();
         if (!adminProfile?.organization_id) {
-            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            return withRequestId({ error: "Admin organization not configured" }, requestId, { status: 400 });
         }
 
         const { searchParams } = new URL(req.url);
@@ -49,7 +62,8 @@ export async function GET(req: NextRequest) {
             .limit(limit);
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            logError("Workflow events query failed", error, requestContext);
+            return withRequestId({ error: error.message }, requestId, { status: 500 });
         }
 
         const rows = data || [];
@@ -80,10 +94,25 @@ export async function GET(req: NextRequest) {
             changed_by_profile: row.changed_by ? profileMap.get(row.changed_by) || null : null,
         }));
 
-        return NextResponse.json({ events });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Workflow events fetched", {
+            ...requestContext,
+            rows: events.length,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.workflow.events", {
+            request_id: requestId,
+            rows: events.length,
+            duration_ms: durationMs,
+        });
+
+        return withRequestId({ events }, requestId);
     } catch (error) {
-        return NextResponse.json(
+        Sentry.captureException(error);
+        logError("Workflow events crashed", error, requestContext);
+        return withRequestId(
             { error: error instanceof Error ? error.message : "Unknown error" },
+            requestId,
             { status: 500 }
         );
     }

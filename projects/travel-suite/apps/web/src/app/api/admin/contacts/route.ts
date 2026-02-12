@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {
+    const response = NextResponse.json({ ...body, request_id: requestId }, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
 
 function normalizePhone(phone?: string | null): string | null {
     if (!phone) return null;
@@ -29,10 +38,14 @@ async function getAdminProfile(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
+
     try {
         const adminProfile = await getAdminProfile(req);
-        if (!adminProfile) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        if (!adminProfile.organization_id) return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        if (!adminProfile) return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        if (!adminProfile.organization_id) return withRequestId({ error: "Admin organization not configured" }, requestId, { status: 400 });
 
         const { searchParams } = new URL(req.url);
         const search = (searchParams.get("search") || "").trim().toLowerCase();
@@ -50,22 +63,44 @@ export async function GET(req: NextRequest) {
         }
 
         const { data, error } = await query;
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) {
+            logError("Contacts list query failed", error, requestContext);
+            return withRequestId({ error: error.message }, requestId, { status: 500 });
+        }
 
-        return NextResponse.json({ contacts: data || [] });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Contacts list fetched", {
+            ...requestContext,
+            rows: data?.length || 0,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.contacts.list", {
+            request_id: requestId,
+            rows: data?.length || 0,
+            duration_ms: durationMs,
+        });
+
+        return withRequestId({ contacts: data || [] }, requestId);
     } catch (error) {
-        return NextResponse.json(
+        Sentry.captureException(error);
+        logError("Contacts list crashed", error, requestContext);
+        return withRequestId(
             { error: error instanceof Error ? error.message : "Unknown error" },
+            requestId,
             { status: 500 }
         );
     }
 }
 
 export async function POST(req: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
+
     try {
         const adminProfile = await getAdminProfile(req);
-        if (!adminProfile) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        if (!adminProfile.organization_id) return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        if (!adminProfile) return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        if (!adminProfile.organization_id) return withRequestId({ error: "Admin organization not configured" }, requestId, { status: 400 });
 
         const body = await req.json();
         const source = String(body.source || "manual").trim();
@@ -141,12 +176,27 @@ export async function POST(req: NextRequest) {
             if (!error) imported += 1;
         }
 
-        return NextResponse.json({ ok: true, imported });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Contacts imported", {
+            ...requestContext,
+            imported,
+            source,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.contacts.import", {
+            request_id: requestId,
+            imported,
+            source,
+            duration_ms: durationMs,
+        });
+        return withRequestId({ ok: true, imported }, requestId);
     } catch (error) {
-        return NextResponse.json(
+        Sentry.captureException(error);
+        logError("Contacts import crashed", error, requestContext);
+        return withRequestId(
             { error: error instanceof Error ? error.message : "Unknown error" },
+            requestId,
             { status: 500 }
         );
     }
 }
-
