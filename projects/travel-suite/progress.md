@@ -34,6 +34,20 @@
 ### Testing
 - `android_signoff.sh` added but full run not executed in this session due local environment instability and active process saturation.
 
+## Session: 2026-02-12 (P2 - Kanban/CRM Operational Consistency)
+
+### Web Admin Kanban/CRM
+- **Status:** complete
+- Added operational snapshot chips on Kanban:
+  - visible clients count
+  - pre-lead contacts count
+- Improved pre-lead contacts operability:
+  - full filtered list now shown
+  - scrollable contact panel for high-volume operations
+- Promotion consistency improvements:
+  - promoting contact now writes explicit lifecycle event `pre_lead -> lead`
+  - transition timeline now renders `Pre-Lead` label cleanly
+
 ## Session: 2026-02-12 (P0 Security + Reliability Hardening)
 
 ### Backend Hardening

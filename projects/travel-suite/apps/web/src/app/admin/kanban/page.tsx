@@ -70,6 +70,12 @@ const STAGE_LABELS: Record<LifecycleStage, string> = {
     past: "Closed",
 };
 
+function getStageLabel(value: string | null | undefined): string {
+    if (!value) return "Unknown";
+    if (value === "pre_lead") return "Pre-Lead";
+    return STAGE_LABELS[value as LifecycleStage] || value;
+}
+
 const mockClients: ClientCard[] = [
     { id: "c1", full_name: "Ava Chen", email: "ava@example.com", phone: "+1 415 555 1010", phase_notifications_enabled: true, lifecycle_stage: "lead", lead_status: "new" },
     { id: "c2", full_name: "Liam Walker", email: "liam@example.com", phone: "+44 20 7000 1000", phase_notifications_enabled: true, lifecycle_stage: "payment_pending", lead_status: "qualified" },
@@ -208,6 +214,9 @@ export default function AdminKanbanPage() {
             item.phone?.toLowerCase().includes(q)
         ));
     }, [contacts, contactSearch]);
+
+    const totalVisibleClients = filteredClients.length;
+    const totalPreLeadContacts = filteredContacts.length;
 
     const stageIndex = (stage?: string | null) => {
         const idx = LIFECYCLE_STAGES.indexOf((stage || "lead") as LifecycleStage);
@@ -490,6 +499,16 @@ export default function AdminKanbanPage() {
                 </div>
             </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-[#8d7650]">Operational Snapshot</span>
+                <span className="rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-xs text-[#6f5b3e]">
+                    Visible Clients: <span className="font-semibold text-[#1b140a]">{totalVisibleClients}</span>
+                </span>
+                <span className="rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-xs text-[#6f5b3e]">
+                    Pre-Lead Contacts: <span className="font-semibold text-[#1b140a]">{totalPreLeadContacts}</span>
+                </span>
+            </div>
+
             <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-4 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                     <div>
@@ -539,11 +558,11 @@ export default function AdminKanbanPage() {
                         Contacts inbox unavailable: {contactsError}
                     </div>
                 ) : null}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-1">
                     {filteredContacts.length === 0 ? (
                         <p className="text-xs text-[#8d7650]">No pre-lead contacts found.</p>
                     ) : (
-                        filteredContacts.slice(0, 24).map((contact) => (
+                        filteredContacts.map((contact) => (
                             <div key={contact.id} className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] px-3 py-2">
                                 <p className="text-sm font-semibold text-[#1b140a] truncate">{contact.full_name || "Unnamed Contact"}</p>
                                 <p className="text-xs text-[#8d7650] truncate">{contact.email || "No email"}</p>
@@ -666,9 +685,9 @@ export default function AdminKanbanPage() {
                                 <p className="text-sm text-[#1b140a]">
                                     <span className="font-semibold">{event.profile?.full_name || event.profile?.email || "Client"}</span>
                                     {" moved "}
-                                    <span className="font-semibold">{STAGE_LABELS[(event.from_stage as LifecycleStage)] || event.from_stage}</span>
+                                    <span className="font-semibold">{getStageLabel(event.from_stage)}</span>
                                     {" → "}
-                                    <span className="font-semibold">{STAGE_LABELS[(event.to_stage as LifecycleStage)] || event.to_stage}</span>
+                                    <span className="font-semibold">{getStageLabel(event.to_stage)}</span>
                                 </p>
                                 <p className="text-xs text-[#8d7650]">
                                     {new Date(event.created_at).toLocaleString()} by {event.changed_by_profile?.full_name || event.changed_by_profile?.email || "Admin"}
