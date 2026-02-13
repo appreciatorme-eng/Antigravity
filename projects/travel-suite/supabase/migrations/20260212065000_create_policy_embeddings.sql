@@ -24,6 +24,7 @@ ALTER TABLE public.policy_embeddings ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_policy_embeddings_vector ON public.policy_embeddings USING ivfflat (embedding vector_cosine_ops);
 
 -- Embeddings policies (service role only for write, public read)
+DROP POLICY IF EXISTS "Anyone can search embeddings" ON public.policy_embeddings;
 CREATE POLICY "Anyone can search embeddings"
     ON public.policy_embeddings FOR SELECT
     USING (true);
