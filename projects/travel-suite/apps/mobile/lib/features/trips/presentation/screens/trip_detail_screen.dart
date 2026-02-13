@@ -1,10 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:gobuddy_mobile/core/ui/app_icon.dart';
+import 'package:gobuddy_mobile/core/ui/glass/glass.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:heroicons/heroicons.dart';
+import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
@@ -15,8 +23,9 @@ import 'package:gobuddy_mobile/core/services/notification_service.dart';
 import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:async';
+import 'inbox_screen.dart';
+import 'profile_screen.dart';
+import 'support_screen.dart';
 
 class TripDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? trip;
@@ -391,118 +400,352 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Widget build(BuildContext context) {
     if (_loadingTrip || _trip == null) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        backgroundColor: Colors.transparent,
+        body: DecoratedBox(
+          decoration: BoxDecoration(gradient: AppTheme.backgroundGradient),
+          child: SafeArea(
+            child: Center(
+              child: CircularProgressIndicator(color: AppTheme.primary),
+            ),
+          ),
+        ),
       );
+    }
+
+    DateTime? parseDate(Object? v) {
+      if (v == null) return null;
+      final s = v.toString().trim();
+      if (s.isEmpty) return null;
+      try {
+        return DateTime.parse(s);
+      } catch (_) {
+        return null;
+      }
     }
 
     final itinerary = _trip!['itineraries'] as Map<String, dynamic>?;
     final destination =
         itinerary?['destination'] ?? _trip!['destination'] ?? 'Trip Details';
+    final startDate = parseDate(_trip!['start_date']);
+
+    DateTime dayDate(int dayIndex) {
+      final base = startDate ?? DateTime.now();
+      return DateTime(
+        base.year,
+        base.month,
+        base.day,
+      ).add(Duration(days: dayIndex));
+    }
+
+    void goHome() => Navigator.of(context).popUntil((r) => r.isFirst);
+
+    void handleClientNav(int index) {
+      switch (index) {
+        case 0:
+          return goHome();
+        case 1:
+          return;
+        case 2:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SupportScreen()),
+          );
+          return;
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+          return;
+      }
+    }
+
+    void handleDriverNav(int index) {
+      switch (index) {
+        case 0:
+          return goHome();
+        case 1:
+          return;
+        case 2:
+          return goHome();
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const InboxScreen()),
+          );
+          return;
+        case 4:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+          return;
+      }
+    }
+
+    final dayList = days;
+    final hasDays = dayList.isNotEmpty;
+    final safeDayIndex = hasDays
+        ? _selectedDayIndex.clamp(0, (dayList.length - 1).clamp(0, 9999))
+        : 0;
+
+    final day = hasDays
+        ? (dayList[safeDayIndex] as Map<String, dynamic>? ?? const {})
+        : const <String, dynamic>{};
+    final theme = (day['theme'] ?? '').toString().trim();
+    final activities = day['activities'] as List<dynamic>? ?? const [];
+
+    Widget dayTabs() {
+      if (!hasDays) return const SizedBox.shrink();
+      return SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: dayList.length,
+          padding: EdgeInsets.zero,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, i) {
+            final selected = i == safeDayIndex;
+            final dt = dayDate(i);
+            final label = DateFormat.MMMd().format(dt);
+            return InkWell(
+              onTap: () => setState(() => _selectedDayIndex = i),
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppTheme.primary
+                      : AppTheme.primary.withAlpha(18),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: selected
+                        ? AppTheme.primary.withAlpha(60)
+                        : AppTheme.primary.withAlpha(40),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppTheme.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    Widget timeline() {
+      if (!hasDays) {
+        return const GlassCard(
+          child: Text(
+            'No itinerary data yet.',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      }
+
+      final list = activities
+          .map((a) => a as Map<String, dynamic>? ?? const <String, dynamic>{})
+          .where(
+            (a) => (a['title'] ?? a['name'] ?? '').toString().trim().isNotEmpty,
+          )
+          .toList();
+
+      if (list.isEmpty) {
+        return const GlassCard(
+          child: Text(
+            'No activities for this day yet.',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      }
+
+      return Column(
+        children: [
+          if (theme.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GlassPill(
+                color: AppTheme.primary.withAlpha(18),
+                borderColor: AppTheme.primary.withAlpha(40),
+                child: Text(
+                  theme,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          ...List.generate(list.length, (i) {
+            final a = list[i];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _StitchTimelineItem(
+                index: i,
+                total: list.length,
+                time: (a['time'] ?? '').toString().trim(),
+                title: (a['title'] ?? a['name'] ?? '').toString().trim(),
+                description: (a['description'] ?? '').toString().trim(),
+                location: (a['location'] ?? a['address'] ?? '')
+                    .toString()
+                    .trim(),
+              ),
+            );
+          }),
+        ],
+      );
+    }
+
+    final nav = _isDriverForTrip
+        ? GlassDriverFloatingNavBar(activeIndex: 1, onTap: handleDriverNav)
+        : GlassFloatingNavBar(activeIndex: 1, onTap: handleClientNav);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: _loadingDriver
-          ? Center(
-              child: Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
-                child: Container(color: Colors.white),
+      backgroundColor: Colors.transparent,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.fromLTRB(24, 96, 24, 120),
+                children: [
+                  dayTabs(),
+                  if (hasDays) const SizedBox(height: 16),
+                  timeline()
+                      .animate(key: ValueKey(safeDayIndex))
+                      .fadeIn(duration: 400.ms),
+                ],
               ),
-            )
-          : CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  expandedHeight: 200,
-                  pinned: true,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  actions: [
-                    if (_isDriverForTrip)
-                      IconButton(
-                        icon: Icon(
-                          _sharingLocation
-                              ? Icons.location_off_rounded
-                              : Icons.location_searching_rounded,
-                          color: _sharingLocation
-                              ? Colors.amber.shade100
-                              : Colors.white,
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.glassNavSurface,
+                        border: Border(
+                          bottom: BorderSide(color: AppTheme.glassBorder),
                         ),
-                        tooltip: _sharingLocation
-                            ? 'Stop live location'
-                            : 'Start live location',
-                        onPressed: _startingLocationShare
-                            ? null
-                            : _toggleLocationSharing,
                       ),
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded),
-                      onPressed: () {
-                        // TODO: Share
-                      },
-                    ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      destination,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    background: Hero(
-                      tag: 'trip-bg-${_trip!['id']}',
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [AppTheme.primary, AppTheme.secondary],
+                      child: Row(
+                        children: [
+                          GlassIconButton(
+                            onPressed: () => Navigator.pop(context),
+                            size: 34,
+                            background: AppTheme.secondary.withAlpha(18),
+                            icon: const AppIcon(
+                              HeroIcons.arrowLeft,
+                              size: 18,
+                              color: AppTheme.secondary,
+                            ),
                           ),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.landscape_rounded,
-                            size: 64,
-                            color: Colors.white24,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              destination,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                            ),
                           ),
-                        ),
+                          if (_isDriverForTrip)
+                            GlassIconButton(
+                              onPressed: _startingLocationShare
+                                  ? null
+                                  : _toggleLocationSharing,
+                              size: 34,
+                              background: _sharingLocation
+                                  ? AppTheme.success.withAlpha(26)
+                                  : AppTheme.primary.withAlpha(18),
+                              icon: AppIcon(
+                                _sharingLocation
+                                    ? HeroIcons.signalSlash
+                                    : HeroIcons.signal,
+                                size: 18,
+                                color: _sharingLocation
+                                    ? AppTheme.success
+                                    : AppTheme.primary,
+                              ),
+                            ),
+                          const SizedBox(width: 10),
+                          GlassIconButton(
+                            onPressed: () {
+                              // placeholder for future share/menu actions
+                            },
+                            size: 34,
+                            background: AppTheme.secondary.withAlpha(18),
+                            icon: const AppIcon(
+                              HeroIcons.ellipsisHorizontal,
+                              size: 18,
+                              color: AppTheme.secondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                if (days.isNotEmpty)
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _DaySelectorDelegate(
-                      days: days,
-                      selectedIndex: _selectedDayIndex,
-                      onSelect: (index) =>
-                          setState(() => _selectedDayIndex = index),
+              ),
+              Positioned(left: 0, right: 0, bottom: 0, child: nav),
+              if (!_isDriverForTrip)
+                Positioned(
+                  right: 16,
+                  bottom: 84,
+                  child: ElevatedButton.icon(
+                    onPressed: _notifyLanded,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      elevation: 8,
+                      shadowColor: AppTheme.primary.withAlpha(77),
+                    ),
+                    icon: const AppIcon(
+                      HeroIcons.paperAirplane,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: const Text(
+                      "I've Landed",
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 80),
-                    child: days.isEmpty
-                        ? const SizedBox(
-                            height: 200,
-                            child: Center(child: Text('No itinerary data')),
-                          )
-                        : _buildDayContent(days[_selectedDayIndex])
-                              .animate(key: ValueKey(_selectedDayIndex))
-                              .fadeIn(duration: 400.ms),
-                  ),
                 ),
-              ],
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _notifyLanded,
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.flight_land_rounded),
-        label: const Text("I've Landed"),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -800,6 +1043,141 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StitchTimelineItem extends StatelessWidget {
+  final int index;
+  final int total;
+  final String time;
+  final String title;
+  final String description;
+  final String location;
+
+  const _StitchTimelineItem({
+    required this.index,
+    required this.total,
+    required this.time,
+    required this.title,
+    required this.description,
+    required this.location,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasTime = time.trim().isNotEmpty;
+    final hasLocation = location.trim().isNotEmpty;
+    final hasDescription = description.trim().isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 34,
+          child: Column(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withAlpha(24),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.primary.withAlpha(70)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+              if (index < total - 1)
+                Container(
+                  width: 2,
+                  height: 86,
+                  margin: const EdgeInsets.only(top: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withAlpha(50),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GlassCard(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasTime)
+                  GlassPill(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    color: AppTheme.secondary.withAlpha(18),
+                    borderColor: AppTheme.secondary.withAlpha(40),
+                    child: Text(
+                      time,
+                      style: const TextStyle(
+                        color: AppTheme.secondary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (hasTime) const SizedBox(height: 10),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                if (hasDescription) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (hasLocation) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      AppIcon(
+                        HeroIcons.mapPin,
+                        size: 18,
+                        color: AppTheme.textSecondary.withAlpha(180),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          location,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

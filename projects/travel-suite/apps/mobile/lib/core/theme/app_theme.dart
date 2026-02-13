@@ -8,12 +8,19 @@ class AppTheme {
   // Brand Colors
   static const Color primary = Color(0xFF00D084);
   static const Color secondary = Color(0xFF124EA2);
-  static const Color background = Color(0xFFF8FAFC);
+  // Soft Glass background base (used when gradient isn't applied).
+  static const Color background = Color(0xFFF5F5F5);
   static const Color surface = Colors.white;
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
+  // Stitch "Soft Glass Premium" leans on deep-blue for primary text.
+  static const Color textPrimary = secondary;
+  static const Color textSecondary = Color(0xFF6B7280);
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF22C55E);
+
+  // Glass surfaces
+  static const Color glassSurface = Color(0xA6FFFFFF); // ~65%
+  static const Color glassNavSurface = Color(0xD9FFFFFF); // ~85%
+  static const Color glassBorder = Color(0x99FFFFFF); // ~60%
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -25,7 +32,7 @@ class AppTheme {
   static const LinearGradient backgroundGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFF0FDF4), Color(0xFFF8FAFC), Color(0xFFF0F9FF)],
+    colors: [Color(0xFFE0F7FA), Color(0xFFF5F5F5), Color(0xFFE3F2FD)],
   );
 
   // Light Theme

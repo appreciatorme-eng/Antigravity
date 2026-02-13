@@ -1,15 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gobuddy_mobile/core/config/supabase_config.dart';
+import 'package:gobuddy_mobile/core/ui/app_icon.dart';
+import 'package:gobuddy_mobile/core/ui/glass/glass.dart';
 import 'package:gobuddy_mobile/core/services/geocoding_service.dart';
 import 'package:gobuddy_mobile/core/services/traveler_prefs.dart';
 import 'package:gobuddy_mobile/core/theme/app_theme.dart';
 import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repository.dart';
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
+import 'package:heroicons/heroicons.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
@@ -22,6 +26,7 @@ class TravelerDashboard extends StatefulWidget {
   final ValueChanged<int> onSelectTrip;
   final void Function(Map<String, dynamic> trip, {int initialDayIndex})
   onOpenTrip;
+  final Future<void> Function()? onRefresh;
 
   const TravelerDashboard({
     super.key,
@@ -29,6 +34,7 @@ class TravelerDashboard extends StatefulWidget {
     required this.activeTripIndex,
     required this.onSelectTrip,
     required this.onOpenTrip,
+    this.onRefresh,
   });
 
   @override
@@ -498,6 +504,140 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
     await _openUrl('tel:$phone');
   }
 
+  void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.black87),
+    );
+  }
+
+  void _openUpdatesSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.35,
+          maxChildSize: 0.92,
+          builder: (ctx, controller) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: GlassCard(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                borderRadius: BorderRadius.circular(28),
+                child: ListView(
+                  controller: controller,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withAlpha(18),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Updates',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (_loadingUpdates)
+                      const LinearProgressIndicator(minHeight: 2),
+                    if (!_loadingUpdates && _updates.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 12),
+                        child: Text(
+                          'No updates yet.',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ..._updates.map((u) {
+                      final title = (u['title'] ?? 'Update').toString().trim();
+                      final body = (u['body'] ?? '').toString().trim();
+                      final sent = (u['sent_at'] ?? u['created_at'])
+                          ?.toString();
+                      String whenLabel = '';
+                      if (sent != null) {
+                        try {
+                          final dt = DateTime.parse(sent);
+                          whenLabel = DateFormat('MMM d • h:mm a').format(dt);
+                        } catch (_) {}
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: GlassCard(
+                          padding: const EdgeInsets.all(14),
+                          borderRadius: BorderRadius.circular(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (whenLabel.isNotEmpty)
+                                    Text(
+                                      whenLabel,
+                                      style: const TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (body.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  body,
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Color _parseHexColor(String? hex, {Color fallback = AppTheme.primary}) {
     if (hex == null) return fallback;
     final s = hex.trim().replaceAll('#', '');
@@ -565,401 +705,640 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
     if (trip == null) return const SizedBox.shrink();
 
     final now = DateTime.now();
-    final dayIndex = _computeDayIndex(now);
     final days = _rawData['days'] as List<dynamic>? ?? [];
+    final dayIndex = _computeDayIndex(now);
     final clampedDayIndex = days.isEmpty
         ? 0
         : dayIndex.clamp(0, days.length - 1);
     final dayNumber = clampedDayIndex + 1;
     final assignment = _assignmentForDay(dayNumber);
-    final hotel = _accommodation ?? _extractHotel(_rawData, clampedDayIndex);
+    final driver = assignment?.driver;
 
     final next = _nextActivity(now, clampedDayIndex);
     final nextAct = next.activity;
     final nextWhen = next.when;
 
-    final orgName = (_org?['name'] ?? 'Your operator').toString();
-    final orgColor = _parseHexColor(_org?['primary_color']?.toString());
-
     final startDate = _parseDate(trip['start_date']?.toString());
     final endDate = _parseDate(trip['end_date']?.toString());
-    final dateRange = (startDate != null && endDate != null)
-        ? '${DateFormat.MMMd().format(startDate)} - ${DateFormat.MMMd().format(endDate)}'
-        : null;
+    final destCity = _destination.split(',').first.trim();
+    final kicker = (startDate != null && endDate != null)
+        ? '${DateFormat.MMM().format(startDate)} ${startDate.day}-${endDate.day} • ${destCity.isEmpty ? 'Trip' : destCity}'
+        : destCity.isEmpty
+        ? 'Your trip'
+        : destCity;
 
-    final activities = _activitiesForDayIndex(clampedDayIndex);
-    final markers = <Marker>[];
-    var hasPotentialMapData = false;
-
-    Marker buildMarker(LatLng point) {
-      return Marker(
-        point: point,
-        child: Container(
-          decoration: BoxDecoration(
-            color: orgColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 4),
-            ],
-          ),
-          padding: const EdgeInsets.all(7),
-          child: const Icon(Icons.place, color: Colors.white, size: 14),
-        ),
-      );
+    String currentLabel() {
+      String? theme;
+      if (days.isNotEmpty && clampedDayIndex < days.length) {
+        final day = days[clampedDayIndex] as Map<String, dynamic>;
+        theme = day['theme']?.toString();
+      }
+      final suffix = (theme != null && theme.trim().isNotEmpty)
+          ? ' - ${theme.trim()}'
+          : '';
+      return 'Current: Day $dayNumber$suffix';
     }
 
-    for (final a in activities.take(8)) {
-      final coords = a['coordinates'] as Map<String, dynamic>?;
-      final lat = coords?['lat'] as num?;
-      final lng = coords?['lng'] as num?;
-      if (lat != null && lng != null) {
-        hasPotentialMapData = true;
-        markers.add(buildMarker(LatLng(lat.toDouble(), lng.toDouble())));
-        continue;
-      }
-      final loc = a['location']?.toString();
-      if (loc != null && loc.trim().isNotEmpty) {
-        hasPotentialMapData = true;
-        final cached = GeocodingService.instance.getCached(loc);
-        if (cached != null) {
-          markers.add(buildMarker(cached));
-        } else {
-          _ensureGeocoded(loc);
-        }
-      }
-    }
+    final timeLabel = nextWhen != null
+        ? DateFormat.Hm().format(nextWhen)
+        : (nextAct?['time']?.toString() ?? '--:--');
+    final nextTitle = (nextAct?['title'] ?? 'Up next').toString();
+    final nextLocation = (nextAct?['location'] ?? '').toString();
 
-    final destCurrency = _inferDestCurrency(_destination);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final list = ListView(
+      padding: const EdgeInsets.fromLTRB(24, 130, 24, 96),
       children: [
-        _TripSwitchRow(
-          trips: widget.trips,
-          activeIndex: widget.activeTripIndex,
-          onSelect: widget.onSelectTrip,
-        ),
-        const SizedBox(height: 12),
+        if (widget.trips.length > 1) ...[
+          _TripSwitchRow(
+            trips: widget.trips,
+            activeIndex: widget.activeTripIndex,
+            onSelect: widget.onSelectTrip,
+          ),
+          const SizedBox(height: 14),
+        ],
 
-        _SectionCard(
-          title: orgName,
-          subtitle: dateRange ?? 'Trip dashboard',
-          leading: const Icon(Icons.verified_rounded, color: AppTheme.primary),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _destination,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: GlassPill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => widget.onOpenTrip(
-                      trip,
-                      initialDayIndex: clampedDayIndex,
-                    ),
-                    style: FilledButton.styleFrom(backgroundColor: orgColor),
-                    icon: const Icon(Icons.today_rounded),
-                    label: const Text("View Today"),
+                const SizedBox(width: 10),
+                Text(
+                  currentLabel(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
                   ),
-                  OutlinedButton.icon(
-                    onPressed:
-                        (_orgOwner?['phone'] != null ||
-                            _orgOwner?['phone_normalized'] != null)
-                        ? _openSupportWhatsApp
-                        : null,
-                    icon: const Icon(Icons.chat_bubble_rounded),
-                    label: const Text('Message Support'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed:
-                        (_orgOwner?['phone'] != null ||
-                            _orgOwner?['phone_normalized'] != null)
-                        ? _openSupportCall
-                        : null,
-                    icon: const Icon(Icons.call_rounded),
-                    label: const Text('Call'),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
-        _SectionCard(
-          title: 'Next moment',
-          subtitle: nextAct == null
-              ? 'No scheduled activities found'
-              : (nextWhen == null
-                    ? (nextAct['time']?.toString() ?? 'Upcoming')
-                    : 'In ${_humanize(nextWhen.difference(now))}'),
-          leading: const Icon(Icons.schedule_rounded, color: AppTheme.primary),
-          child: nextAct == null
-              ? const Text(
-                  'Your itinerary will show up here once it is generated.',
-                  style: TextStyle(color: AppTheme.textSecondary),
-                )
-              : Column(
+        GlassCard(
+          padding: const EdgeInsets.all(18),
+          borderRadius: BorderRadius.circular(24),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.secondary.withAlpha(18),
+                  border: Border.all(color: Colors.white, width: 2),
+                  image: driver?.photoUrl == null
+                      ? null
+                      : DecorationImage(
+                          image: NetworkImage(driver!.photoUrl!),
+                          fit: BoxFit.cover,
+                        ),
+                ),
+                child: driver?.photoUrl == null
+                    ? const Center(
+                        child: AppIcon(
+                          HeroIcons.user,
+                          color: AppTheme.secondary,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (nextAct['title'] ?? 'Next stop').toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                      driver?.fullName ?? 'Driver status',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
-                      (nextAct['location'] ?? '').toString(),
-                      style: const TextStyle(color: AppTheme.textSecondary),
+                      driver == null
+                          ? 'No driver assigned yet'
+                          : [
+                              if (driver.vehicleType != null &&
+                                  driver.vehicleType!.trim().isNotEmpty)
+                                driver.vehicleType!.trim(),
+                              if (driver.vehiclePlate != null &&
+                                  driver.vehiclePlate!.trim().isNotEmpty)
+                                driver.vehiclePlate!.trim(),
+                            ].join(' • '),
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
-                    if (assignment?.pickupLocation != null ||
-                        assignment?.pickupTime != null) ...[
-                      const SizedBox(height: 10),
-                      _InfoPillRow(
-                        items: [
-                          if (assignment?.pickupTime != null)
-                            _InfoPill(
-                              icon: Icons.directions_car_rounded,
-                              label:
-                                  'Pickup ${_formatPickupTime(assignment!.pickupTime)}',
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                children: [
+                  GlassIconButton(
+                    onPressed: driver?.phone == null
+                        ? null
+                        : () => _openUrl('tel:${driver!.phone}'),
+                    icon: const AppIcon(
+                      HeroIcons.phone,
+                      size: 20,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GlassIconButton(
+                    onPressed: driver?.phone == null
+                        ? null
+                        : () {
+                            final digits = _normalizeForWhatsApp(driver!.phone);
+                            if (digits.isEmpty) return;
+                            _openUrl('https://wa.me/$digits');
+                          },
+                    icon: const AppIcon(
+                      HeroIcons.chatBubbleOvalLeftEllipsis,
+                      size: 20,
+                      color: AppTheme.secondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        Builder(
+          builder: (context) {
+            final hotel = _accommodation;
+            final name = (hotel?['hotel_name'] ?? '').toString().trim();
+            final address = (hotel?['address'] ?? '').toString().trim();
+            final phone = (hotel?['contact_phone'] ?? '').toString().trim();
+            final confirmation = (hotel?['confirmation_number'] ?? '')
+                .toString()
+                .trim();
+            final notes = (hotel?['notes'] ?? '').toString().trim();
+
+            String fmtTime(Object? v) {
+              if (v == null) return '';
+              final s = v.toString();
+              final m = RegExp(r'^(\\d{2}:\\d{2})').firstMatch(s);
+              return m?.group(1) ?? s;
+            }
+
+            final checkIn = fmtTime(hotel?['check_in_time']);
+            final checkOut = fmtTime(hotel?['check_out_time']);
+
+            final subtitleParts = <String>[
+              if (checkIn.isNotEmpty) 'Check-in $checkIn',
+              if (checkOut.isNotEmpty) 'Check-out $checkOut',
+            ];
+
+            final subtitle = subtitleParts.isEmpty
+                ? null
+                : subtitleParts.join(' • ');
+
+            return GlassCard(
+              padding: const EdgeInsets.all(18),
+              borderRadius: BorderRadius.circular(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const AppIcon(
+                        HeroIcons.buildingOffice2,
+                        size: 18,
+                        color: AppTheme.secondary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Hotel',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                        ),
+                      ),
+                      if (_loadingAccommodation)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  if (name.isEmpty)
+                    const Text(
+                      'Hotel details will appear here once your operator adds them.',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  else ...[
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    if (address.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          AppIcon(
+                            HeroIcons.mapPin,
+                            size: 18,
+                            color: AppTheme.textSecondary.withAlpha(180),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              address,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          if (assignment?.pickupLocation != null)
-                            _InfoPill(
-                              icon: Icons.place_rounded,
-                              label: assignment!.pickupLocation!,
-                            ),
+                          ),
                         ],
                       ),
                     ],
-                  ],
-                ),
-        ),
-
-        const SizedBox(height: 12),
-
-        _HotelCard(
-          hotel: hotel,
-          startDate: startDate,
-          endDate: endDate,
-          onOpenMaps: (query) async {
-            final encoded = Uri.encodeComponent(query);
-            await _openUrl(
-              'https://www.google.com/maps/search/?api=1&query=$encoded',
-            );
-          },
-          onCopy: _copyText,
-          onCall: (phone) => _openUrl('tel:$phone'),
-        ),
-
-        const SizedBox(height: 12),
-
-        _SectionCard(
-          title: 'Today at a glance',
-          subtitle: 'Day $dayNumber',
-          leading: const Icon(Icons.list_alt_rounded, color: AppTheme.primary),
-          child: activities.isEmpty
-              ? const Text(
-                  'No itinerary activities found for today.',
-                  style: TextStyle(color: AppTheme.textSecondary),
-                )
-              : Column(
-                  children: activities.take(3).map((a) {
-                    final t = (a['time'] ?? '').toString();
-                    final title = (a['title'] ?? 'Activity').toString();
-                    final loc = (a['location'] ?? '').toString();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 54,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            alignment: Alignment.topLeft,
-                            child: Text(
-                              t.isEmpty ? 'Next' : t,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (loc.isNotEmpty)
-                                  Text(
-                                    loc,
-                                    style: const TextStyle(
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-        ),
-
-        const SizedBox(height: 12),
-
-        if (hasPotentialMapData)
-          _SectionCard(
-            title: 'Map',
-            subtitle: 'Route preview',
-            leading: const Icon(Icons.map_rounded, color: AppTheme.primary),
-            child: Container(
-              height: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withAlpha(18), blurRadius: 10),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: markers.isEmpty
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppTheme.primary),
-                    )
-                  : FlutterMap(
-                      options: MapOptions(
-                        initialCenter: markers.first.point,
-                        initialZoom: 12.8,
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.none,
+                    if (confirmation.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Confirmation: $confirmation',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                    ],
+                    if (notes.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        notes,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
                       children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png?app=com.gobuddy.gobuddy_mobile',
-                          userAgentPackageName: 'com.gobuddy.gobuddy_mobile',
-                          tileProvider: NetworkTileProvider(
-                            headers: {
-                              'User-Agent':
-                                  'com.gobuddy.gobuddy_mobile (Travel Suite dev)',
-                            },
-                          ),
+                        OutlinedButton.icon(
+                          onPressed: address.isEmpty
+                              ? null
+                              : () => _openUrl(
+                                  'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}',
+                                ),
+                          icon: const AppIcon(HeroIcons.map),
+                          label: const Text('Directions'),
                         ),
-                        MarkerLayer(markers: markers),
+                        OutlinedButton.icon(
+                          onPressed: phone.isEmpty
+                              ? null
+                              : () => _openUrl('tel:$phone'),
+                          icon: const AppIcon(HeroIcons.phone),
+                          label: const Text('Call'),
+                        ),
                       ],
                     ),
-            ),
-          ),
-
-        const SizedBox(height: 12),
-
-        _SectionCard(
-          title: 'Your driver',
-          subtitle: assignment == null ? 'Pickup and contact' : 'Today',
-          leading: const Icon(
-            Icons.directions_car_filled,
-            color: AppTheme.primary,
-          ),
-          child: _loadingAssignments
-              ? const LinearProgressIndicator(minHeight: 2)
-              : (assignment == null
-                    ? _DriverNotAssignedCard(
-                        onContactSupport: _openSupportWhatsApp,
-                      )
-                    : (assignment.driver == null
-                          ? _DriverPendingCard(
-                              assignment: assignment,
-                              pickupTimeLabel: _formatPickupTime(
-                                assignment.pickupTime,
-                              ),
-                              onContactSupport: _openSupportWhatsApp,
-                              onLiveLocation: () =>
-                                  _openLiveLocationForDay(dayNumber),
-                            )
-                          : _DriverCard(
-                              assignment: assignment,
-                              pickupTimeLabel: _formatPickupTime(
-                                assignment.pickupTime,
-                              ),
-                              onWhatsApp: () {
-                                final digits = _normalizeForWhatsApp(
-                                  assignment.driver!.phone,
-                                );
-                                if (digits.isEmpty) return;
-                                _openUrl('https://wa.me/$digits');
-                              },
-                              onLiveLocation: () =>
-                                  _openLiveLocationForDay(dayNumber),
-                            ))),
-        ),
-
-        const SizedBox(height: 12),
-
-        _ChecklistCard(tripId: _tripId, rawData: _rawData),
-
-        const SizedBox(height: 12),
-
-        _DocumentsCard(
-          itineraryId: _itinerary?['id']?.toString(),
-          destination: _destination,
-        ),
-
-        const SizedBox(height: 12),
-
-        _PaymentsCard(tripId: _tripId),
-
-        const SizedBox(height: 12),
-
-        _EssentialsCard(
-          destination: _destination,
-          destCurrency: destCurrency,
-          markers: markers,
-          fetchWeather: _fetchWeather,
-          fetchFx: _fetchFxRate,
-        ),
-
-        const SizedBox(height: 12),
-
-        _TipsCard(destination: _destination),
-
-        const SizedBox(height: 12),
-
-        _UpdatesCard(updates: _updates, loading: _loadingUpdates),
-
-        const SizedBox(height: 12),
-
-        _PostTripCard(
-          tripId: _tripId,
-          startDate: startDate,
-          endDate: endDate,
-          existingRating: _reviewRating,
-          onRated: (r) async {
-            final id = _tripId;
-            if (id == null) return;
-            await TravelerPrefs.instance.setReviewRating(id, r);
-            if (!mounted) return;
-            setState(() => _reviewRating = r);
+                  ],
+                ],
+              ),
+            );
           },
         ),
+
+        const SizedBox(height: 16),
+
+        GlassCard(
+          padding: const EdgeInsets.all(20),
+          borderRadius: BorderRadius.circular(32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'UP NEXT',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                      color: AppTheme.textSecondary.withAlpha(200),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _openUpdatesSheet(context),
+                    child: AppIcon(
+                      HeroIcons.ellipsisHorizontal,
+                      size: 18,
+                      color: AppTheme.secondary.withAlpha(110),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                timeLabel,
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  color: AppTheme.primary,
+                  fontSize: 44,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                nextTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              if (nextLocation.trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    AppIcon(
+                      HeroIcons.mapPin,
+                      size: 18,
+                      color: AppTheme.textSecondary.withAlpha(180),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        nextLocation,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 14),
+              Divider(color: AppTheme.secondary.withAlpha(20), height: 1),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: nextLocation.trim().isEmpty
+                      ? null
+                      : () async {
+                          final encoded = Uri.encodeComponent(nextLocation);
+                          await _openUrl(
+                            'https://www.google.com/maps/search/?api=1&query=$encoded',
+                          );
+                        },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'Get Directions',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.secondary,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      AppIcon(
+                        HeroIcons.arrowRight,
+                        size: 16,
+                        color: AppTheme.secondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 1,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _ToolTile(
+              icon: HeroIcons.documentText,
+              label: 'Itinerary',
+              onTap: () =>
+                  widget.onOpenTrip(trip, initialDayIndex: clampedDayIndex),
+            ),
+            _ToolTile(
+              icon: HeroIcons.creditCard,
+              label: 'Expenses',
+              onTap: () => _showSnack(context, 'Expenses are managed on web'),
+            ),
+            _ToolTile(
+              icon: HeroIcons.cloud,
+              label: 'Weather',
+              subtitle: destCity.isEmpty ? null : destCity,
+              onTap: () => _openUpdatesSheet(context),
+            ),
+            _ToolTile(
+              icon: HeroIcons.chatBubbleLeftRight,
+              label: 'Concierge',
+              onTap: _openSupportWhatsApp,
+            ),
+          ],
+        ),
       ],
+    );
+
+    final scroll = widget.onRefresh == null
+        ? list
+        : RefreshIndicator(onRefresh: widget.onRefresh!, child: list);
+
+    return Stack(
+      children: [
+        scroll,
+        _TravelerHeader(
+          kicker: kicker,
+          onBell: () => _openUpdatesSheet(context),
+        ),
+      ],
+    );
+  }
+}
+
+class _TravelerHeader extends StatelessWidget {
+  final String kicker;
+  final VoidCallback onBell;
+
+  const _TravelerHeader({required this.kicker, required this.onBell});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+            decoration: BoxDecoration(
+              color: AppTheme.glassNavSurface,
+              border: Border(bottom: BorderSide(color: AppTheme.glassBorder)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        kicker.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                    GlassIconButton(
+                      onPressed: onBell,
+                      size: 34,
+                      background: AppTheme.secondary.withAlpha(18),
+                      icon: const AppIcon(
+                        HeroIcons.bell,
+                        size: 18,
+                        color: AppTheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'My Journeys',
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolTile extends StatelessWidget {
+  final HeroIcons icon;
+  final String label;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  const _ToolTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: GlassCard(
+        padding: const EdgeInsets.all(14),
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppTheme.secondary.withAlpha(12),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: AppIcon(icon, size: 24, color: AppTheme.secondary),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 3),
+              Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:gobuddy_mobile/core/ui/app_icon.dart';
+import 'package:gobuddy_mobile/core/ui/glass/glass.dart';
+import 'package:heroicons/heroicons.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,12 +17,14 @@ class DriverDashboard extends StatefulWidget {
   final List<Map<String, dynamic>> trips;
   final int activeTripIndex;
   final ValueChanged<int> onSelectTrip;
+  final Future<void> Function()? onRefresh;
 
   const DriverDashboard({
     super.key,
     required this.trips,
     required this.activeTripIndex,
     required this.onSelectTrip,
+    this.onRefresh,
   });
 
   @override
@@ -302,18 +308,9 @@ class _DriverDashboardState extends State<DriverDashboard> {
     final destination = _destinationForTrip(trip);
     final start = _parseDate(trip['start_date']);
     final end = _parseDate(trip['end_date']);
-    final dateRange = (start != null && end != null)
-        ? '${DateFormat.MMMd().format(start)} \u2192 ${DateFormat.MMMd().format(end)}'
-        : null;
-
-    final next = _nextActivityForTrip(trip, now);
-    final nextAct = next.activity;
-    final nextWhen = next.when;
-    final nextTitle = (nextAct?['title'] ?? nextAct?['name'] ?? 'Next stop')
-        .toString();
-    final nextLocation = (nextAct?['location'] ?? nextAct?['address'] ?? '')
-        .toString();
-    final nextTime = nextWhen == null ? '' : DateFormat.jm().format(nextWhen);
+    final kicker = (start != null && end != null)
+        ? '${DateFormat.MMM().format(start).toUpperCase()} ${start.day}-${end.day} • ${destination.split(',').first.trim()}'
+        : destination;
 
     final raw = _rawDataForTrip(trip);
     final days = raw['days'] as List<dynamic>? ?? const [];
@@ -326,281 +323,439 @@ class _DriverDashboardState extends State<DriverDashboard> {
     final pickupTime = _formatTimeOfDay(a?['pickup_time']);
     final pickupLocation = (a?['pickup_location'] ?? '').toString().trim();
     final dropoffLocation = (a?['dropoff_location'] ?? '').toString().trim();
-    final pickupNotes = (a?['notes'] ?? '').toString().trim();
-
     final driverInfo = (_profile?['driver_info'] is Map)
         ? Map<String, dynamic>.from(_profile?['driver_info'] as Map)
         : _decodeJsonObject(_profile?['driver_info']);
     final vehicle = (driverInfo?['vehicle_details'] ?? '').toString().trim();
-    final license = (driverInfo?['license_number'] ?? '').toString().trim();
+    final vehicleRangeKm =
+        (driverInfo?['range_km'] ?? driverInfo?['vehicle_range_km'])
+            ?.toString()
+            .trim();
 
-    final activeTodayCount = widget.trips
-        .where((t) => _isActiveToday(t, now))
-        .length;
+    String passengerName() {
+      final v =
+          (raw['traveler_name'] ??
+                  raw['client_name'] ??
+                  raw['guest_name'] ??
+                  (raw['traveler'] is Map
+                      ? (raw['traveler'] as Map)['name']
+                      : null) ??
+                  (raw['guest'] is Map ? (raw['guest'] as Map)['name'] : null))
+              ?.toString()
+              .trim();
+      return (v == null || v.isEmpty) ? 'Traveler' : v;
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    List<Map<String, String>> upcomingRoute() {
+      if (days.isEmpty) return const [];
+      final day = days[dayIndex] as Map<String, dynamic>? ?? const {};
+      final activities = day['activities'] as List<dynamic>? ?? const [];
+      final base = DateTime(now.year, now.month, now.day);
+      final out = <Map<String, String>>[];
+
+      for (final a0 in activities) {
+        final a = a0 as Map<String, dynamic>? ?? const {};
+        final title = (a['title'] ?? a['name'] ?? '').toString().trim();
+        final loc = (a['location'] ?? a['address'] ?? '').toString().trim();
+        final timeLabel = (a['time'] ?? '').toString().trim();
+        if (title.isEmpty) continue;
+
+        final when = _parseActivityTimeOn(base, timeLabel);
+        if (when != null && when.isBefore(now)) continue;
+
+        out.add({
+          'time': when == null ? timeLabel : DateFormat.Hm().format(when),
+          'title': title,
+          'location': loc,
+        });
+        if (out.length >= 3) break;
+      }
+
+      if (out.isNotEmpty) return out.take(3).toList();
+
+      for (final a0 in activities.take(3)) {
+        final a = a0 as Map<String, dynamic>? ?? const {};
+        final title = (a['title'] ?? a['name'] ?? '').toString().trim();
+        final loc = (a['location'] ?? a['address'] ?? '').toString().trim();
+        final timeLabel = (a['time'] ?? '').toString().trim();
+        if (title.isEmpty) continue;
+        out.add({'time': timeLabel, 'title': title, 'location': loc});
+      }
+      return out;
+    }
+
+    final currentTimeLabel = pickupTime.isNotEmpty
+        ? pickupTime
+        : DateFormat.Hm().format(now);
+    final upcoming = upcomingRoute();
+
+    final list = ListView(
+      padding: const EdgeInsets.fromLTRB(24, 120, 24, 96),
       children: [
-        _TripSwitchRow(
-          trips: widget.trips,
-          activeIndex: widget.activeTripIndex,
-          onSelect: widget.onSelectTrip,
-        ),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: 'Today',
-          subtitle: DateFormat.EEEE().format(now),
-          leading: const Icon(Icons.badge_rounded, color: AppTheme.primary),
+        if (widget.trips.length > 1) ...[
+          _TripSwitchRow(
+            trips: widget.trips,
+            activeIndex: widget.activeTripIndex,
+            onSelect: widget.onSelectTrip,
+          ),
+          const SizedBox(height: 14),
+        ],
+        GlassCard(
+          padding: const EdgeInsets.all(18),
+          borderRadius: BorderRadius.circular(28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                destination,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              if (dateRange != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  dateRange,
-                  style: const TextStyle(color: AppTheme.textSecondary),
-                ),
-              ],
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _InfoPill(icon: Icons.today_rounded, label: 'Day $dayNumber'),
-                  _InfoPill(
-                    icon: Icons.directions_car_rounded,
-                    label: '$activeTodayCount active today',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withAlpha(16),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _onDuty
-                                ? Icons.check_circle_rounded
-                                : Icons.pause_circle_rounded,
-                            color: _onDuty
-                                ? AppTheme.success
-                                : AppTheme.textSecondary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _onDuty ? 'On duty' : 'Off duty',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
+                  GlassPill(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _loadingDuty
-                      ? const SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Switch(value: _onDuty, onChanged: _toggleDuty),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _openTrip(trip),
-                    icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Open trip'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _openTrip(trip, autoStartLive: true),
-                    icon: const Icon(Icons.navigation_rounded),
-                    label: const Text('Start live location'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: 'Next job',
-          subtitle: nextTime.isEmpty ? 'Schedule' : nextTime,
-          leading: const Icon(Icons.schedule_rounded, color: AppTheme.primary),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                nextTitle,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                nextLocation.isEmpty
-                    ? 'Location will appear once added to itinerary.'
-                    : nextLocation,
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: nextLocation.isEmpty
-                        ? null
-                        : () => _openMaps(nextLocation),
-                    icon: const Icon(Icons.map_rounded),
-                    label: const Text('Navigate'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _openTrip(trip),
-                    icon: const Icon(Icons.list_alt_rounded),
-                    label: const Text('View full day'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: 'Pickup',
-          subtitle: 'Operator-provided details',
-          leading: const Icon(Icons.place_rounded, color: AppTheme.primary),
-          child: _loadingAssignment
-              ? const LinearProgressIndicator(minHeight: 2)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (pickupTime.isNotEmpty)
-                      Text(
-                        'Pickup $pickupTime',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      )
-                    else
-                      const Text(
-                        'Pickup time will appear once the operator adds it.',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    const SizedBox(height: 6),
-                    if (pickupLocation.isNotEmpty)
-                      Text(
-                        pickupLocation,
-                        style: const TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    if (dropoffLocation.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Dropoff: $dropoffLocation',
-                        style: const TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    ],
-                    if (pickupNotes.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        pickupNotes,
-                        style: const TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                    color: AppTheme.primary.withAlpha(22),
+                    borderColor: AppTheme.primary.withAlpha(40),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        OutlinedButton.icon(
-                          onPressed: pickupLocation.isEmpty
-                              ? null
-                              : () => _openMaps(pickupLocation),
-                          icon: const Icon(Icons.map_rounded),
-                          label: const Text('Navigate to pickup'),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: () => _openTrip(trip),
-                          icon: const Icon(Icons.open_in_new_rounded),
-                          label: const Text('Open trip'),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Current: Day $dayNumber',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
+                  const Spacer(),
+                  GlassIconButton(
+                    onPressed: () => _openTrip(trip, autoStartLive: true),
+                    size: 36,
+                    background: AppTheme.secondary.withAlpha(18),
+                    icon: const AppIcon(
+                      HeroIcons.signal,
+                      size: 18,
+                      color: AppTheme.secondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                currentTimeLabel,
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  color: AppTheme.primary,
+                  fontSize: 44,
+                  height: 1,
                 ),
-        ),
-        const SizedBox(height: 12),
-        _SectionCard(
-          title: 'Vehicle',
-          subtitle: 'Your details',
-          leading: const Icon(
-            Icons.car_rental_rounded,
-            color: AppTheme.primary,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Today, ${DateFormat.MMMd().format(now)}',
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'PASSENGER',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                  color: AppTheme.textSecondary.withAlpha(200),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                passengerName(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'PICKUP LOCATION',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                  color: AppTheme.textSecondary.withAlpha(200),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  AppIcon(
+                    HeroIcons.mapPin,
+                    size: 18,
+                    color: AppTheme.textSecondary.withAlpha(180),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      pickupLocation.isEmpty
+                          ? 'Pickup details will appear once assigned.'
+                          : pickupLocation,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (dropoffLocation.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Drop-off: $dropoffLocation',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: pickupLocation.isEmpty
+                      ? null
+                      : () => _openMaps(pickupLocation),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.secondary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AppIcon(HeroIcons.arrowUpRight, color: Colors.white),
+                      SizedBox(width: 10),
+                      Text(
+                        'Start Navigation',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          child: _loadingProfile
-              ? const LinearProgressIndicator(minHeight: 2)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (vehicle.isNotEmpty)
-                      Text(
-                        vehicle,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      )
-                    else
-                      const Text(
-                        'Add vehicle details in onboarding to show them here.',
-                        style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 16),
+        GlassCard(
+          padding: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Upcoming Route',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Today',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.secondary.withAlpha(180),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ...upcoming.map((it) {
+                final time = (it['time'] ?? '').trim();
+                final title = (it['title'] ?? '').trim();
+                final loc = (it['location'] ?? '').trim();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 64,
+                        child: Text(
+                          time.isEmpty ? '--:--' : time,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
                       ),
-                    const SizedBox(height: 6),
-                    if (license.isNotEmpty)
-                      Text(
-                        'License: $license',
-                        style: const TextStyle(color: AppTheme.textSecondary),
-                      ),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        if (!mounted) return;
-                        await ScaffoldMessenger.of(context)
-                            .showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Vehicle details are managed in your profile',
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            if (loc.isNotEmpty)
+                              Text(
+                                loc,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            )
-                            .closed;
-                      },
-                      icon: const Icon(Icons.person_rounded),
-                      label: const Text('Profile'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GlassIconButton(
+                        onPressed: loc.isEmpty ? null : () => _openMaps(loc),
+                        size: 34,
+                        background: AppTheme.primary.withAlpha(18),
+                        icon: const AppIcon(
+                          HeroIcons.arrowUpRight,
+                          size: 18,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (upcoming.isEmpty)
+                const Text(
+                  'Route will appear once itinerary activities are added.',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        GlassCard(
+          padding: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Vehicle Status',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
                     ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _onDuty ? 'ON DUTY' : 'OFF DUTY',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                      letterSpacing: 1.2,
+                      color: _onDuty
+                          ? AppTheme.success
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_loadingProfile)
+                const LinearProgressIndicator(minHeight: 2)
+              else ...[
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondary.withAlpha(18),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const AppIcon(
+                        HeroIcons.truck,
+                        size: 18,
+                        color: AppTheme.secondary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        vehicle.isEmpty ? 'Vehicle details' : vehicle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (vehicleRangeKm != null && vehicleRangeKm.isNotEmpty)
+                      Text(
+                        'Range: $vehicleRangeKm km',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
                 ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        _DriverChecklistCard(
-          tripId: (trip['id'] ?? '').toString(),
-          dayNumber: dayNumber,
+      ],
+    );
+
+    final scroll = widget.onRefresh == null
+        ? list
+        : RefreshIndicator(onRefresh: widget.onRefresh!, child: list);
+
+    return Stack(
+      children: [
+        scroll,
+        _DriverHeader(
+          kicker: kicker,
+          name: (_profile?['full_name'] ?? 'Driver').toString(),
+          onDuty: _onDuty,
+          loadingDuty: _loadingDuty,
+          onToggleDuty: () => _toggleDuty(!_onDuty),
         ),
       ],
     );
@@ -618,6 +773,138 @@ class _DriverDashboardState extends State<DriverDashboard> {
       }
     }
     return null;
+  }
+}
+
+class _DriverHeader extends StatelessWidget {
+  final String kicker;
+  final String name;
+  final bool onDuty;
+  final bool loadingDuty;
+  final VoidCallback onToggleDuty;
+
+  const _DriverHeader({
+    required this.kicker,
+    required this.name,
+    required this.onDuty,
+    required this.loadingDuty,
+    required this.onToggleDuty,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+            decoration: BoxDecoration(
+              color: AppTheme.glassNavSurface,
+              border: Border(bottom: BorderSide(color: AppTheme.glassBorder)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        kicker.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                    if (loadingDuty)
+                      const SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Padding(
+                          padding: EdgeInsets.all(7),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else
+                      GlassIconButton(
+                        onPressed: onToggleDuty,
+                        size: 34,
+                        background: onDuty
+                            ? AppTheme.success.withAlpha(28)
+                            : AppTheme.textSecondary.withAlpha(18),
+                        icon: AppIcon(
+                          HeroIcons.power,
+                          size: 18,
+                          color: onDuty
+                              ? AppTheme.success
+                              : AppTheme.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.secondary.withAlpha(18),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: const AppIcon(
+                        HeroIcons.user,
+                        size: 18,
+                        color: AppTheme.secondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            onDuty ? 'On duty' : 'Off duty',
+                            style: TextStyle(
+                              color: onDuty
+                                  ? AppTheme.success
+                                  : AppTheme.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

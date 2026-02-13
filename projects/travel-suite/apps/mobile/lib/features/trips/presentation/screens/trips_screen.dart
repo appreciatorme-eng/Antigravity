@@ -4,8 +4,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/ui/glass/glass.dart';
 import 'trip_detail_screen.dart';
 import '../../../auth/presentation/screens/onboarding_screen.dart';
+import 'inbox_screen.dart';
+import 'profile_screen.dart';
+import 'support_screen.dart';
 import '../widgets/driver_dashboard.dart';
 import '../widgets/traveler_dashboard.dart';
 
@@ -158,208 +162,193 @@ class _TripsScreenState extends State<TripsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Map<String, dynamic>? activeTrip() {
+      if (_activeTripIndex < 0 || _activeTripIndex >= _trips.length)
+        return null;
+      return _trips[_activeTripIndex];
+    }
+
+    void openTrip({int initialDayIndex = 0, bool autoStartLive = false}) {
+      final trip = activeTrip();
+      if (trip == null) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TripDetailScreen(
+            trip: trip,
+            initialDayIndex: initialDayIndex,
+            autoStartLocationSharing: autoStartLive,
+          ),
+        ),
+      );
+    }
+
+    Future<void> openOnboarding() async {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OnboardingScreen(
+            onOnboardingComplete: () {
+              Navigator.pop(context);
+              _loadTrips();
+            },
+          ),
+        ),
+      );
+    }
+
+    void handleClientNav(int index) {
+      switch (index) {
+        case 0:
+          return;
+        case 1:
+          return openTrip();
+        case 2:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SupportScreen()),
+          );
+          return;
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+          return;
+      }
+    }
+
+    void handleDriverNav(int index) {
+      switch (index) {
+        case 0:
+          return;
+        case 1:
+          return openTrip(autoStartLive: true);
+        case 2:
+          return;
+        case 3:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const InboxScreen()),
+          );
+          return;
+        case 4:
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+          return;
+      }
+    }
+
+    final content = _loading
+        ? _buildLoadingList()
+        : _error != null
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(_error!),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadTrips,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          )
+        : _trips.isEmpty
+        ? _buildEmptyState()
+        : (_userRole == 'driver'
+              ? DriverDashboard(
+                  trips: _trips,
+                  activeTripIndex: _activeTripIndex,
+                  onSelectTrip: (i) => setState(() => _activeTripIndex = i),
+                  onRefresh: _loadTrips,
+                )
+              : TravelerDashboard(
+                  trips: _trips,
+                  activeTripIndex: _activeTripIndex,
+                  onSelectTrip: (i) => setState(() => _activeTripIndex = i),
+                  onOpenTrip: (trip, {initialDayIndex = 0}) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TripDetailScreen(
+                          trip: trip,
+                          initialDayIndex: initialDayIndex,
+                        ),
+                      ),
+                    );
+                  },
+                  onRefresh: _loadTrips,
+                ));
+
     return Scaffold(
-      body: Container(
+      backgroundColor: Colors.transparent,
+      body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'My Journeys',
-                            style: Theme.of(context).textTheme.headlineLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_trips.length} adventures planned',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _signOut,
-                      icon: const Icon(Icons.logout_rounded),
-                      tooltip: 'Sign out',
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_userRole == 'driver' && !_driverMapped)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withAlpha(20),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Driver account is not linked by admin yet. Ask admin to map your account in Drivers page.',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-              if (_userRole == 'driver') const SizedBox(height: 8),
-
-              if (_onboardingStep < 2)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  child: InkWell(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => OnboardingScreen(
-                            onOnboardingComplete: () {
-                              Navigator.pop(context);
-                              _loadTrips(); // Refresh to update banner
-                            },
-                          ),
+              content,
+              if (!_loading && _error == null && _trips.isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _userRole == 'driver'
+                      ? GlassDriverFloatingNavBar(
+                          activeIndex: 2,
+                          onTap: handleDriverNav,
+                        )
+                      : GlassFloatingNavBar(
+                          activeIndex: 0,
+                          onTap: handleClientNav,
                         ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondary.withAlpha(20),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.secondary.withAlpha(50),
-                        ),
-                      ),
+                ),
+              if (_onboardingStep < 2 && !_loading && _error == null)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 84,
+                  child: GestureDetector(
+                    onTap: openOnboarding,
+                    child: GlassCard(
+                      padding: const EdgeInsets.all(14),
+                      borderRadius: BorderRadius.circular(18),
                       child: Row(
                         children: [
                           const Icon(
                             Icons.person_outline,
                             color: AppTheme.secondary,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Complete your profile',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.secondary,
-                                  ),
-                                ),
-                                Text(
-                                  'Add details to get better recommendations.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              'Complete your profile to unlock better trip details.',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward_ios,
                             size: 14,
-                            color: AppTheme.secondary,
+                            color: AppTheme.secondary.withAlpha(200),
                           ),
                         ],
                       ),
                     ),
                   ),
                 ),
-
-              // Content
-              Expanded(
-                child: _loading
-                    ? _buildLoadingList()
-                    : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(_error!),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _loadTrips,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _trips.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadTrips,
-                        child: ListView(
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            if (_userRole == 'client')
-                              TravelerDashboard(
-                                trips: _trips,
-                                activeTripIndex: _activeTripIndex,
-                                onSelectTrip: (i) =>
-                                    setState(() => _activeTripIndex = i),
-                                onOpenTrip: (trip, {initialDayIndex = 0}) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => TripDetailScreen(
-                                        trip: trip,
-                                        initialDayIndex: initialDayIndex,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            if (_userRole == 'client')
-                              const SizedBox(height: 14),
-                            if (_userRole == 'driver') ...[
-                              DriverDashboard(
-                                trips: _trips,
-                                activeTripIndex: _activeTripIndex,
-                                onSelectTrip: (i) =>
-                                    setState(() => _activeTripIndex = i),
-                              ),
-                              const SizedBox(height: 14),
-                            ],
-                            ..._trips.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final trip = entry.value;
-                              return _buildTripCard(trip)
-                                  .animate(delay: (100 * index).ms)
-                                  .fadeIn(
-                                    duration: 600.ms,
-                                    curve: Curves.easeOutQuad,
-                                  )
-                                  .slideY(begin: 0.2, end: 0);
-                            }),
-                          ],
-                        ),
-                      ),
-              ),
             ],
           ),
         ),
