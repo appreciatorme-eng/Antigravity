@@ -43,6 +43,11 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
   List<DriverAssignment> _assignments = [];
   bool _loadingAssignments = false;
 
+  Map<String, dynamic>? _accommodation;
+  bool _loadingAccommodation = false;
+  String? _accommodationTripId;
+  int? _accommodationDayNumber;
+
   List<Map<String, dynamic>> _updates = [];
   bool _loadingUpdates = false;
 
@@ -97,6 +102,7 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
 
   void _reloadTripData() {
     _loadAssignments();
+    _loadAccommodationForToday();
     _loadUpdates();
     _loadReviewState();
   }
@@ -155,6 +161,54 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
     } finally {
       if (!mounted) return;
       setState(() => _loadingAssignments = false);
+    }
+  }
+
+  Future<void> _loadAccommodationForToday() async {
+    final tripId = _tripId;
+    if (tripId == null) return;
+    if (_loadingAccommodation) return;
+
+    final now = DateTime.now();
+    final dayIndex = _computeDayIndex(now);
+    final days = _rawData['days'] as List<dynamic>? ?? [];
+    final clampedDayIndex = days.isEmpty
+        ? 0
+        : dayIndex.clamp(0, (days.length - 1).clamp(0, 9999));
+    final dayNumber = clampedDayIndex + 1;
+
+    if (_accommodationTripId == tripId &&
+        _accommodationDayNumber == dayNumber) {
+      return;
+    }
+
+    setState(() => _loadingAccommodation = true);
+    try {
+      final row = await Supabase.instance.client
+          .from('trip_accommodations')
+          .select(
+            'hotel_name,address,check_in_time,check_out_time,confirmation_number,contact_phone,notes,day_number',
+          )
+          .eq('trip_id', tripId)
+          .eq('day_number', dayNumber)
+          .maybeSingle();
+
+      if (!mounted) return;
+      setState(() {
+        _accommodationTripId = tripId;
+        _accommodationDayNumber = dayNumber;
+        _accommodation = row == null ? null : Map<String, dynamic>.from(row);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _accommodationTripId = tripId;
+        _accommodationDayNumber = dayNumber;
+        _accommodation = null;
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() => _loadingAccommodation = false);
     }
   }
 
@@ -518,7 +572,7 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
         : dayIndex.clamp(0, days.length - 1);
     final dayNumber = clampedDayIndex + 1;
     final assignment = _assignmentForDay(dayNumber);
-    final hotel = _extractHotel(_rawData, clampedDayIndex);
+    final hotel = _accommodation ?? _extractHotel(_rawData, clampedDayIndex);
 
     final next = _nextActivity(now, clampedDayIndex);
     final nextAct = next.activity;
@@ -819,7 +873,7 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
 
         if (_loadingAssignments)
           const SizedBox.shrink()
-        else if (assignment?.driver != null)
+        else if (assignment != null)
           _SectionCard(
             title: 'Your driver',
             subtitle: 'Today',
@@ -827,16 +881,25 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
               Icons.directions_car_filled,
               color: AppTheme.primary,
             ),
-            child: _DriverCard(
-              assignment: assignment!,
-              pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
-              onWhatsApp: () {
-                final digits = _normalizeForWhatsApp(assignment.driver!.phone);
-                if (digits.isEmpty) return;
-                _openUrl('https://wa.me/$digits');
-              },
-              onLiveLocation: () => _openLiveLocationForDay(dayNumber),
-            ),
+            child: assignment.driver == null
+                ? _DriverPendingCard(
+                    assignment: assignment,
+                    pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
+                    onContactSupport: _openSupportWhatsApp,
+                    onLiveLocation: () => _openLiveLocationForDay(dayNumber),
+                  )
+                : _DriverCard(
+                    assignment: assignment,
+                    pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
+                    onWhatsApp: () {
+                      final digits = _normalizeForWhatsApp(
+                        assignment.driver!.phone,
+                      );
+                      if (digits.isEmpty) return;
+                      _openUrl('https://wa.me/$digits');
+                    },
+                    onLiveLocation: () => _openLiveLocationForDay(dayNumber),
+                  ),
           ),
 
         const SizedBox(height: 12),
@@ -1203,6 +1266,90 @@ class _DriverCard extends StatelessWidget {
           onPressed: onLiveLocation,
           icon: const Icon(Icons.navigation_rounded),
           label: const Text('View live location'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DriverPendingCard extends StatelessWidget {
+  final DriverAssignment assignment;
+  final String pickupTimeLabel;
+  final Future<void> Function() onContactSupport;
+  final VoidCallback onLiveLocation;
+
+  const _DriverPendingCard({
+    required this.assignment,
+    required this.pickupTimeLabel,
+    required this.onContactSupport,
+    required this.onLiveLocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pickupPills = <_InfoPill>[
+      if (pickupTimeLabel.isNotEmpty)
+        _InfoPill(
+          icon: Icons.schedule_rounded,
+          label: 'Pickup $pickupTimeLabel',
+        ),
+      if (assignment.pickupLocation != null &&
+          assignment.pickupLocation!.trim().isNotEmpty)
+        _InfoPill(
+          icon: Icons.place_rounded,
+          label: assignment.pickupLocation!.trim(),
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppTheme.primary.withAlpha(28),
+              child: const Icon(Icons.person, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Driver assigned',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Details will appear once shared by your operator.',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (pickupPills.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _InfoPillRow(items: pickupPills),
+        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () async => onContactSupport(),
+              icon: const Icon(Icons.chat_bubble_rounded),
+              label: const Text('Message support'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onLiveLocation,
+              icon: const Icon(Icons.navigation_rounded),
+              label: const Text('View live location'),
+            ),
+          ],
         ),
       ],
     );
