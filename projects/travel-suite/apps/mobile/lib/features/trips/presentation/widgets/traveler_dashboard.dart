@@ -282,18 +282,19 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
       final now = DateTime.now().toUtc();
 
       Future<Map<String, dynamic>?> fetchForDay(int? day) async {
-        final base = Supabase.instance.client
+        var q = Supabase.instance.client
             .from('trip_location_shares')
             .select('share_token, expires_at, is_active, created_at')
             .eq('trip_id', tripId)
-            .eq('is_active', true)
-            .order('created_at', ascending: false)
-            .limit(1);
+            .eq('is_active', true);
 
         if (day == null) {
-          return base.isFilter('day_number', null).maybeSingle();
+          q = q.isFilter('day_number', null);
+        } else {
+          q = q.eq('day_number', day);
         }
-        return base.eq('day_number', day).maybeSingle();
+
+        return q.order('created_at', ascending: false).limit(1).maybeSingle();
       }
 
       Map<String, dynamic>? row = await fetchForDay(dayNumber);
