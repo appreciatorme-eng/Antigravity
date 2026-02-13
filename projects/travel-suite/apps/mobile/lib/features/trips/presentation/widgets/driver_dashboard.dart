@@ -30,18 +30,26 @@ class _DriverDashboardState extends State<DriverDashboard> {
   bool _loadingProfile = false;
   bool _onDuty = false;
   bool _loadingDuty = false;
+  Map<String, dynamic>? _todayAssignment;
+  bool _loadingAssignment = false;
+  String? _assignmentTripId;
+  int? _assignmentDayNumber;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
     _loadDuty();
+    _loadTodayAssignment();
   }
 
   @override
   void didUpdateWidget(covariant DriverDashboard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Nothing to reload yet.
+    if (oldWidget.activeTripIndex != widget.activeTripIndex ||
+        oldWidget.trips.length != widget.trips.length) {
+      _loadTodayAssignment();
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -75,6 +83,55 @@ class _DriverDashboardState extends State<DriverDashboard> {
     } finally {
       if (!mounted) return;
       setState(() => _loadingDuty = false);
+    }
+  }
+
+  Future<void> _loadTodayAssignment() async {
+    final trip = _activeTrip();
+    final tripId = trip?['id']?.toString();
+    if (tripId == null || tripId.isEmpty) return;
+    if (_loadingAssignment) return;
+
+    final now = DateTime.now();
+    final raw = trip == null
+        ? const <String, dynamic>{}
+        : _rawDataForTrip(trip);
+    final days = raw['days'] as List<dynamic>? ?? const [];
+    final dayIndex = days.isEmpty
+        ? 0
+        : _dayIndexForTrip(trip!, now).clamp(0, days.length - 1);
+    final dayNumber = dayIndex + 1;
+
+    if (_assignmentTripId == tripId && _assignmentDayNumber == dayNumber)
+      return;
+
+    setState(() => _loadingAssignment = true);
+    try {
+      final row = await Supabase.instance.client
+          .from('trip_driver_assignments')
+          .select(
+            'pickup_time,pickup_location,dropoff_location,notes,day_number',
+          )
+          .eq('trip_id', tripId)
+          .eq('day_number', dayNumber)
+          .maybeSingle();
+
+      if (!mounted) return;
+      setState(() {
+        _assignmentTripId = tripId;
+        _assignmentDayNumber = dayNumber;
+        _todayAssignment = row == null ? null : Map<String, dynamic>.from(row);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _assignmentTripId = tripId;
+        _assignmentDayNumber = dayNumber;
+        _todayAssignment = null;
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() => _loadingAssignment = false);
     }
   }
 
@@ -205,6 +262,21 @@ class _DriverDashboardState extends State<DriverDashboard> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  String _formatTimeOfDay(Object? v) {
+    if (v == null) return '';
+    if (v is String) {
+      // Supabase TIME often comes as "HH:MM:SS" or "HH:MM:SS+00".
+      final m = RegExp(r'^(\\d{2}):(\\d{2})').firstMatch(v);
+      if (m != null) {
+        final hh = int.tryParse(m.group(1)!) ?? 0;
+        final mm = int.tryParse(m.group(2)!) ?? 0;
+        final dt = DateTime(2000, 1, 1, hh, mm);
+        return DateFormat.jm().format(dt);
+      }
+    }
+    return v.toString();
+  }
+
   Future<void> _openTrip(
     Map<String, dynamic> trip, {
     bool autoStartLive = false,
@@ -249,6 +321,12 @@ class _DriverDashboardState extends State<DriverDashboard> {
         ? 0
         : _dayIndexForTrip(trip, now).clamp(0, days.length - 1);
     final dayNumber = dayIndex + 1;
+
+    final a = _todayAssignment;
+    final pickupTime = _formatTimeOfDay(a?['pickup_time']);
+    final pickupLocation = (a?['pickup_location'] ?? '').toString().trim();
+    final dropoffLocation = (a?['dropoff_location'] ?? '').toString().trim();
+    final pickupNotes = (a?['notes'] ?? '').toString().trim();
 
     final driverInfo = (_profile?['driver_info'] is Map)
         ? Map<String, dynamic>.from(_profile?['driver_info'] as Map)
@@ -407,6 +485,68 @@ class _DriverDashboardState extends State<DriverDashboard> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 12),
+        _SectionCard(
+          title: 'Pickup',
+          subtitle: 'Operator-provided details',
+          leading: const Icon(Icons.place_rounded, color: AppTheme.primary),
+          child: _loadingAssignment
+              ? const LinearProgressIndicator(minHeight: 2)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (pickupTime.isNotEmpty)
+                      Text(
+                        'Pickup $pickupTime',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      )
+                    else
+                      const Text(
+                        'Pickup time will appear once the operator adds it.',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    const SizedBox(height: 6),
+                    if (pickupLocation.isNotEmpty)
+                      Text(
+                        pickupLocation,
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    if (dropoffLocation.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Dropoff: $dropoffLocation',
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                    if (pickupNotes.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        pickupNotes,
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: pickupLocation.isEmpty
+                              ? null
+                              : () => _openMaps(pickupLocation),
+                          icon: const Icon(Icons.map_rounded),
+                          label: const Text('Navigate to pickup'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _openTrip(trip),
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('Open trip'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
         ),
         const SizedBox(height: 12),
         _SectionCard(
