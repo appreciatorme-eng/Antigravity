@@ -871,36 +871,45 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
 
         const SizedBox(height: 12),
 
-        if (_loadingAssignments)
-          const SizedBox.shrink()
-        else if (assignment != null)
-          _SectionCard(
-            title: 'Your driver',
-            subtitle: 'Today',
-            leading: const Icon(
-              Icons.directions_car_filled,
-              color: AppTheme.primary,
-            ),
-            child: assignment.driver == null
-                ? _DriverPendingCard(
-                    assignment: assignment,
-                    pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
-                    onContactSupport: _openSupportWhatsApp,
-                    onLiveLocation: () => _openLiveLocationForDay(dayNumber),
-                  )
-                : _DriverCard(
-                    assignment: assignment,
-                    pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
-                    onWhatsApp: () {
-                      final digits = _normalizeForWhatsApp(
-                        assignment.driver!.phone,
-                      );
-                      if (digits.isEmpty) return;
-                      _openUrl('https://wa.me/$digits');
-                    },
-                    onLiveLocation: () => _openLiveLocationForDay(dayNumber),
-                  ),
+        _SectionCard(
+          title: 'Your driver',
+          subtitle: assignment == null ? 'Pickup and contact' : 'Today',
+          leading: const Icon(
+            Icons.directions_car_filled,
+            color: AppTheme.primary,
           ),
+          child: _loadingAssignments
+              ? const LinearProgressIndicator(minHeight: 2)
+              : (assignment == null
+                    ? _DriverNotAssignedCard(
+                        onContactSupport: _openSupportWhatsApp,
+                      )
+                    : (assignment.driver == null
+                          ? _DriverPendingCard(
+                              assignment: assignment,
+                              pickupTimeLabel: _formatPickupTime(
+                                assignment.pickupTime,
+                              ),
+                              onContactSupport: _openSupportWhatsApp,
+                              onLiveLocation: () =>
+                                  _openLiveLocationForDay(dayNumber),
+                            )
+                          : _DriverCard(
+                              assignment: assignment,
+                              pickupTimeLabel: _formatPickupTime(
+                                assignment.pickupTime,
+                              ),
+                              onWhatsApp: () {
+                                final digits = _normalizeForWhatsApp(
+                                  assignment.driver!.phone,
+                                );
+                                if (digits.isEmpty) return;
+                                _openUrl('https://wa.me/$digits');
+                              },
+                              onLiveLocation: () =>
+                                  _openLiveLocationForDay(dayNumber),
+                            ))),
+        ),
 
         const SizedBox(height: 12),
 
@@ -1350,6 +1359,36 @@ class _DriverPendingCard extends StatelessWidget {
               label: const Text('View live location'),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DriverNotAssignedCard extends StatelessWidget {
+  final Future<void> Function() onContactSupport;
+
+  const _DriverNotAssignedCard({required this.onContactSupport});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'No driver details yet.',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Your operator will share pickup details here once assigned.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: () async => onContactSupport(),
+          icon: const Icon(Icons.chat_bubble_rounded),
+          label: const Text('Message support'),
         ),
       ],
     );
