@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import 'package:gobuddy_mobile/core/services/geocoding_service.dart';
@@ -211,6 +212,127 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
     return null;
   }
 
+  Map<String, dynamic>? _extractHotel(
+    Map<String, dynamic> rawData,
+    int dayIndex,
+  ) {
+    final days = rawData['days'] as List<dynamic>? ?? [];
+    Map<String, dynamic>? fromDay;
+    if (days.isNotEmpty && dayIndex >= 0 && dayIndex < days.length) {
+      final day = days[dayIndex] as Map<String, dynamic>;
+      final h1 = day['hotel'];
+      final h2 = day['accommodation'];
+      if (h1 is Map) fromDay = Map<String, dynamic>.from(h1);
+      if (fromDay == null && h2 is Map) fromDay = Map<String, dynamic>.from(h2);
+    }
+
+    if (fromDay != null) return fromDay;
+
+    final hotel = rawData['hotel'];
+    final accommodation = rawData['accommodation'];
+    if (hotel is Map) return Map<String, dynamic>.from(hotel);
+    if (accommodation is Map) return Map<String, dynamic>.from(accommodation);
+
+    final hotels = rawData['hotels'];
+    if (hotels is List && hotels.isNotEmpty && hotels.first is Map) {
+      return Map<String, dynamic>.from(hotels.first as Map);
+    }
+
+    // Last resort: scan activities for a hotel-like payload.
+    if (days.isNotEmpty && dayIndex >= 0 && dayIndex < days.length) {
+      final day = days[dayIndex] as Map<String, dynamic>;
+      final activities = day['activities'] as List<dynamic>? ?? [];
+      for (final a in activities) {
+        if (a is! Map) continue;
+        final kind = a['type']?.toString().toLowerCase();
+        if (kind == 'hotel' || kind == 'accommodation') {
+          final h = a['hotel'];
+          if (h is Map) return Map<String, dynamic>.from(h);
+        }
+      }
+    }
+    return null;
+  }
+
+  String _normalizeForWhatsApp(String raw) =>
+      raw.replaceAll(RegExp(r'\\D'), '');
+
+  String _formatPickupTime(String? raw) {
+    if (raw == null) return '';
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    final m = RegExp(r'^(\\d{1,2}):(\\d{2})').firstMatch(s);
+    if (m == null) return s;
+    return '${m.group(1)!.padLeft(2, '0')}:${m.group(2)}';
+  }
+
+  Future<void> _copyText(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied')));
+  }
+
+  Future<void> _openLiveLocationForDay(int dayNumber) async {
+    final tripId = _tripId;
+    if (tripId == null) return;
+
+    try {
+      final now = DateTime.now().toUtc();
+
+      Future<Map<String, dynamic>?> fetchForDay(int? day) async {
+        final base = Supabase.instance.client
+            .from('trip_location_shares')
+            .select('share_token, expires_at, is_active, created_at')
+            .eq('trip_id', tripId)
+            .eq('is_active', true)
+            .order('created_at', ascending: false)
+            .limit(1);
+
+        if (day == null) {
+          return base.isFilter('day_number', null).maybeSingle();
+        }
+        return base.eq('day_number', day).maybeSingle();
+      }
+
+      Map<String, dynamic>? row = await fetchForDay(dayNumber);
+      row ??= await fetchForDay(null);
+      if (row == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Live location is not available yet.')),
+        );
+        return;
+      }
+
+      final expiresAtRaw = row['expires_at']?.toString();
+      if (expiresAtRaw != null) {
+        final expiresAt = DateTime.tryParse(expiresAtRaw);
+        if (expiresAt != null && expiresAt.toUtc().isBefore(now)) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Live location link has expired.')),
+          );
+          return;
+        }
+      }
+
+      final token = row['share_token']?.toString();
+      if (token == null || token.isEmpty) return;
+
+      final baseUrl = SupabaseConfig.apiBaseUrl.contains('your-app.vercel.app')
+          ? 'http://10.0.2.2:3000'
+          : SupabaseConfig.apiBaseUrl;
+      await _openUrl('$baseUrl/live/$token');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open live location.')),
+      );
+    }
+  }
+
   void _ensureGeocoded(String rawLocation) {
     final location = rawLocation.trim();
     if (location.isEmpty) return;
@@ -395,6 +517,7 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
         : dayIndex.clamp(0, days.length - 1);
     final dayNumber = clampedDayIndex + 1;
     final assignment = _assignmentForDay(dayNumber);
+    final hotel = _extractHotel(_rawData, clampedDayIndex);
 
     final next = _nextActivity(now, clampedDayIndex);
     final nextAct = next.activity;
@@ -553,7 +676,8 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
                           if (assignment?.pickupTime != null)
                             _InfoPill(
                               icon: Icons.directions_car_rounded,
-                              label: 'Pickup ${assignment!.pickupTime}',
+                              label:
+                                  'Pickup ${_formatPickupTime(assignment!.pickupTime)}',
                             ),
                           if (assignment?.pickupLocation != null)
                             _InfoPill(
@@ -565,6 +689,22 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
                     ],
                   ],
                 ),
+        ),
+
+        const SizedBox(height: 12),
+
+        _HotelCard(
+          hotel: hotel,
+          startDate: startDate,
+          endDate: endDate,
+          onOpenMaps: (query) async {
+            final encoded = Uri.encodeComponent(query);
+            await _openUrl(
+              'https://www.google.com/maps/search/?api=1&query=$encoded',
+            );
+          },
+          onCopy: _copyText,
+          onCall: (phone) => _openUrl('tel:$phone'),
         ),
 
         const SizedBox(height: 12),
@@ -686,7 +826,16 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
               Icons.directions_car_filled,
               color: AppTheme.primary,
             ),
-            child: _DriverCard(assignment: assignment!),
+            child: _DriverCard(
+              assignment: assignment!,
+              pickupTimeLabel: _formatPickupTime(assignment.pickupTime),
+              onWhatsApp: () {
+                final digits = _normalizeForWhatsApp(assignment.driver!.phone);
+                if (digits.isEmpty) return;
+                _openUrl('https://wa.me/$digits');
+              },
+              onLiveLocation: () => _openLiveLocationForDay(dayNumber),
+            ),
           ),
 
         const SizedBox(height: 12),
@@ -838,49 +987,221 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+class _HotelCard extends StatelessWidget {
+  final Map<String, dynamic>? hotel;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final Future<void> Function(String query) onOpenMaps;
+  final Future<void> Function(String text) onCopy;
+  final Future<void> Function(String phone) onCall;
+
+  const _HotelCard({
+    required this.hotel,
+    required this.startDate,
+    required this.endDate,
+    required this.onOpenMaps,
+    required this.onCopy,
+    required this.onCall,
+  });
+
+  String _pick(Map<String, dynamic> h, List<String> keys) {
+    for (final k in keys) {
+      final v = h[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = hotel;
+    final name = h == null
+        ? ''
+        : _pick(h, const ['name', 'hotel_name', 'title', 'hotel']);
+    final address = h == null
+        ? ''
+        : _pick(h, const ['address', 'hotel_address', 'location']);
+    final phone = h == null ? '' : _pick(h, const ['phone', 'hotel_phone']);
+    final confirmation = h == null
+        ? ''
+        : _pick(h, const [
+            'confirmation',
+            'confirmation_number',
+            'reservation',
+          ]);
+
+    final checkIn = startDate == null
+        ? ''
+        : DateFormat.MMMd().format(startDate!);
+    final checkOut = endDate == null ? '' : DateFormat.MMMd().format(endDate!);
+    final dates = (checkIn.isNotEmpty && checkOut.isNotEmpty)
+        ? '$checkIn → $checkOut'
+        : (checkIn.isNotEmpty ? 'Check-in: $checkIn' : '');
+
+    return _SectionCard(
+      title: 'Hotel',
+      subtitle: dates.isEmpty ? 'Stay details' : dates,
+      leading: const Icon(Icons.hotel_rounded, color: AppTheme.primary),
+      child:
+          (name.isEmpty &&
+              address.isEmpty &&
+              phone.isEmpty &&
+              confirmation.isEmpty)
+          ? const Text(
+              'Hotel details will appear here once your operator adds them.',
+              style: TextStyle(color: AppTheme.textSecondary),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (name.isNotEmpty)
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                if (address.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    address,
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
+                if (confirmation.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _InfoPillRow(
+                    items: [
+                      _InfoPill(
+                        icon: Icons.confirmation_number_rounded,
+                        label: 'Reservation $confirmation',
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: (address.isNotEmpty || name.isNotEmpty)
+                          ? () =>
+                                onOpenMaps(address.isNotEmpty ? address : name)
+                          : null,
+                      icon: const Icon(Icons.map_rounded),
+                      label: const Text('Open maps'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: address.isNotEmpty
+                          ? () => onCopy(address)
+                          : null,
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('Copy address'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: phone.isNotEmpty ? () => onCall(phone) : null,
+                      icon: const Icon(Icons.call_rounded),
+                      label: const Text('Call hotel'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+}
+
 class _DriverCard extends StatelessWidget {
   final DriverAssignment assignment;
-  const _DriverCard({required this.assignment});
+  final String pickupTimeLabel;
+  final VoidCallback onWhatsApp;
+  final VoidCallback onLiveLocation;
+
+  const _DriverCard({
+    required this.assignment,
+    required this.pickupTimeLabel,
+    required this.onWhatsApp,
+    required this.onLiveLocation,
+  });
 
   @override
   Widget build(BuildContext context) {
     final d = assignment.driver!;
-    return Row(
+    final vehicle = [
+      if (d.vehicleType != null) d.vehicleType!,
+      if (d.vehiclePlate != null) d.vehiclePlate!,
+    ].join(' • ');
+    final pickupPills = <_InfoPill>[
+      if (pickupTimeLabel.isNotEmpty)
+        _InfoPill(
+          icon: Icons.schedule_rounded,
+          label: 'Pickup $pickupTimeLabel',
+        ),
+      if (assignment.pickupLocation != null &&
+          assignment.pickupLocation!.trim().isNotEmpty)
+        _InfoPill(
+          icon: Icons.place_rounded,
+          label: assignment.pickupLocation!.trim(),
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: AppTheme.primary.withAlpha(28),
-          backgroundImage: d.photoUrl == null
-              ? null
-              : NetworkImage(d.photoUrl!),
-          child: d.photoUrl != null
-              ? null
-              : const Icon(Icons.person, color: AppTheme.primary),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                d.fullName,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppTheme.primary.withAlpha(28),
+              backgroundImage: d.photoUrl == null
+                  ? null
+                  : NetworkImage(d.photoUrl!),
+              child: d.photoUrl != null
+                  ? null
+                  : const Icon(Icons.person, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    d.fullName,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    vehicle,
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  ),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                [
-                  if (d.vehicleType != null) d.vehicleType!,
-                  if (d.vehiclePlate != null) d.vehiclePlate!,
-                ].join(' • '),
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
+            ),
+            IconButton(
+              onPressed: () => launchUrl(Uri.parse('tel:${d.phone}')),
+              icon: const Icon(Icons.call_rounded),
+              tooltip: 'Call driver',
+            ),
+            IconButton(
+              onPressed: onWhatsApp,
+              icon: const Icon(Icons.chat_bubble_rounded),
+              tooltip: 'WhatsApp',
+            ),
+          ],
         ),
-        IconButton(
-          onPressed: () => launchUrl(Uri.parse('tel:${d.phone}')),
-          icon: const Icon(Icons.call_rounded),
-          tooltip: 'Call driver',
+        if (pickupPills.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _InfoPillRow(items: pickupPills),
+        ],
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: onLiveLocation,
+          icon: const Icon(Icons.navigation_rounded),
+          label: const Text('View live location'),
         ),
       ],
     );
