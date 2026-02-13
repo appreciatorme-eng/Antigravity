@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'trip_detail_screen.dart';
 import '../../../auth/presentation/screens/onboarding_screen.dart';
+import '../widgets/driver_dashboard.dart';
 import '../widgets/traveler_dashboard.dart';
 
 class TripsScreen extends StatefulWidget {
@@ -335,6 +336,15 @@ class _TripsScreenState extends State<TripsScreen> {
                               ),
                             if (_userRole == 'client')
                               const SizedBox(height: 14),
+                            if (_userRole == 'driver') ...[
+                              DriverDashboard(
+                                trips: _trips,
+                                activeTripIndex: _activeTripIndex,
+                                onSelectTrip: (i) =>
+                                    setState(() => _activeTripIndex = i),
+                              ),
+                              const SizedBox(height: 14),
+                            ],
                             ..._trips.asMap().entries.map((entry) {
                               final index = entry.key;
                               final trip = entry.value;

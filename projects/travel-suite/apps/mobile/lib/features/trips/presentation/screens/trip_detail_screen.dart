@@ -22,12 +22,14 @@ class TripDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? trip;
   final String? tripId;
   final int initialDayIndex;
+  final bool autoStartLocationSharing;
 
   const TripDetailScreen({
     super.key,
     this.trip,
     this.tripId,
     this.initialDayIndex = 0,
+    this.autoStartLocationSharing = false,
   }) : assert(
          trip != null || tripId != null,
          'Either trip or tripId must be provided',
@@ -46,6 +48,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   bool _isDriverForTrip = false;
   bool _sharingLocation = false;
   bool _startingLocationShare = false;
+  bool _autoStartAttempted = false;
   Timer? _locationTimer;
 
   final Set<String> _requestedGeocodes = {};
@@ -140,6 +143,20 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     if (!mounted) return;
     setState(() {
       _isDriverForTrip = isDriver;
+    });
+
+    _maybeAutoStartLocationSharing();
+  }
+
+  void _maybeAutoStartLocationSharing() {
+    if (_autoStartAttempted) return;
+    if (!widget.autoStartLocationSharing) return;
+    if (!_isDriverForTrip) return;
+    if (_sharingLocation || _startingLocationShare) return;
+    _autoStartAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _toggleLocationSharing();
     });
   }
 
