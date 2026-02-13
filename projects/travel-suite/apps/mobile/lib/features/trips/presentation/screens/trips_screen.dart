@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'trip_detail_screen.dart';
 import '../../../auth/presentation/screens/onboarding_screen.dart';
+import '../widgets/traveler_dashboard.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -21,6 +22,7 @@ class _TripsScreenState extends State<TripsScreen> {
   String _userRole = 'client';
   bool _driverMapped = false;
   int _onboardingStep = 2;
+  int _activeTripIndex = 0;
 
   @override
   void initState() {
@@ -138,6 +140,7 @@ class _TripsScreenState extends State<TripsScreen> {
         _driverMapped = driverMapped;
         _onboardingStep = step;
         _trips = trips;
+        _activeTripIndex = _pickActiveTripIndex(trips);
         _loading = false;
       });
     } catch (e) {
@@ -213,7 +216,10 @@ class _TripsScreenState extends State<TripsScreen> {
 
               if (_onboardingStep < 2)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: InkWell(
                     onTap: () async {
                       await Navigator.push(
@@ -221,8 +227,8 @@ class _TripsScreenState extends State<TripsScreen> {
                         MaterialPageRoute(
                           builder: (_) => OnboardingScreen(
                             onOnboardingComplete: () {
-                                Navigator.pop(context);
-                                _loadTrips(); // Refresh to update banner
+                              Navigator.pop(context);
+                              _loadTrips(); // Refresh to update banner
                             },
                           ),
                         ),
@@ -235,11 +241,16 @@ class _TripsScreenState extends State<TripsScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.secondary.withAlpha(20),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.secondary.withAlpha(50)),
+                        border: Border.all(
+                          color: AppTheme.secondary.withAlpha(50),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.person_outline, color: AppTheme.secondary),
+                          const Icon(
+                            Icons.person_outline,
+                            color: AppTheme.secondary,
+                          ),
                           const SizedBox(width: 12),
                           const Expanded(
                             child: Column(
@@ -262,7 +273,11 @@ class _TripsScreenState extends State<TripsScreen> {
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.secondary),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: AppTheme.secondary,
+                          ),
                         ],
                       ),
                     ),
@@ -297,19 +312,41 @@ class _TripsScreenState extends State<TripsScreen> {
                     ? _buildEmptyState()
                     : RefreshIndicator(
                         onRefresh: _loadTrips,
-                        child: ListView.builder(
+                        child: ListView(
                           padding: const EdgeInsets.all(16),
-                          itemCount: _trips.length,
-                          itemBuilder: (context, index) {
-                            final trip = _trips[index];
-                            return _buildTripCard(trip)
-                                .animate(delay: (100 * index).ms)
-                                .fadeIn(
-                                  duration: 600.ms,
-                                  curve: Curves.easeOutQuad,
-                                )
-                                .slideY(begin: 0.2, end: 0);
-                          },
+                          children: [
+                            if (_userRole == 'client')
+                              TravelerDashboard(
+                                trips: _trips,
+                                activeTripIndex: _activeTripIndex,
+                                onSelectTrip: (i) =>
+                                    setState(() => _activeTripIndex = i),
+                                onOpenTrip: (trip, {initialDayIndex = 0}) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TripDetailScreen(
+                                        trip: trip,
+                                        initialDayIndex: initialDayIndex,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            if (_userRole == 'client')
+                              const SizedBox(height: 14),
+                            ..._trips.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final trip = entry.value;
+                              return _buildTripCard(trip)
+                                  .animate(delay: (100 * index).ms)
+                                  .fadeIn(
+                                    duration: 600.ms,
+                                    curve: Curves.easeOutQuad,
+                                  )
+                                  .slideY(begin: 0.2, end: 0);
+                            }),
+                          ],
                         ),
                       ),
               ),
@@ -500,5 +537,50 @@ class _TripsScreenState extends State<TripsScreen> {
         ),
       ),
     );
+  }
+
+  int _pickActiveTripIndex(List<Map<String, dynamic>> trips) {
+    if (trips.isEmpty) return 0;
+
+    DateTime? parseDate(dynamic v) {
+      final s = v?.toString();
+      if (s == null || s.isEmpty) return null;
+      try {
+        return DateTime.parse(s);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    var bestIdx = 0;
+    var bestScore = 1 << 30;
+
+    for (var i = 0; i < trips.length; i++) {
+      final t = trips[i];
+      final start = parseDate(t['start_date']);
+      final end = parseDate(t['end_date']);
+      final status = (t['status'] ?? '').toString();
+
+      // Prefer in-progress trips, then upcoming soonest, then most recent.
+      var score = 1000000;
+      if (status == 'in_progress') score = 0;
+      if (start != null) {
+        final startDate = DateTime(start.year, start.month, start.day);
+        score += startDate.difference(todayDate).inDays.abs();
+      }
+      if (end != null) {
+        final endDate = DateTime(end.year, end.month, end.day);
+        if (endDate.isBefore(todayDate)) score += 1000;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
   }
 }

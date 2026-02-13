@@ -65,11 +65,12 @@ class _AuthScreenState extends State<AuthScreen> {
         }
       }
     } on AuthException catch (e) {
-      setState(() => _errorMessage = e.message);
+      if (mounted) setState(() => _errorMessage = e.message);
     } catch (e) {
-      setState(() => _errorMessage = 'An unexpected error occurred');
+      if (mounted)
+        setState(() => _errorMessage = 'An unexpected error occurred');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -103,11 +104,12 @@ class _AuthScreenState extends State<AuthScreen> {
         redirectTo: 'com.gobuddy.gobuddymobile://login-callback',
       );
     } on AuthException catch (e) {
-      setState(() => _errorMessage = e.message);
+      if (mounted) setState(() => _errorMessage = e.message);
     } catch (e) {
-      setState(() => _errorMessage = 'Failed to sign in with Google');
+      if (mounted)
+        setState(() => _errorMessage = 'Failed to sign in with Google');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

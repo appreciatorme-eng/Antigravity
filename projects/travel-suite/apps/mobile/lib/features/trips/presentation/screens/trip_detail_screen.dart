@@ -10,6 +10,7 @@ import 'package:gobuddy_mobile/features/trips/data/repositories/driver_repositor
 import 'package:gobuddy_mobile/features/trips/domain/models/driver.dart';
 import 'package:gobuddy_mobile/features/trips/presentation/widgets/driver_info_card.dart';
 
+import 'package:gobuddy_mobile/core/services/geocoding_service.dart';
 import 'package:gobuddy_mobile/core/services/notification_service.dart';
 import 'package:gobuddy_mobile/core/config/supabase_config.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -20,19 +21,24 @@ import 'dart:async';
 class TripDetailScreen extends StatefulWidget {
   final Map<String, dynamic>? trip;
   final String? tripId;
+  final int initialDayIndex;
 
-  const TripDetailScreen({super.key, this.trip, this.tripId})
-    : assert(
-        trip != null || tripId != null,
-        'Either trip or tripId must be provided',
-      );
+  const TripDetailScreen({
+    super.key,
+    this.trip,
+    this.tripId,
+    this.initialDayIndex = 0,
+  }) : assert(
+         trip != null || tripId != null,
+         'Either trip or tripId must be provided',
+       );
 
   @override
   State<TripDetailScreen> createState() => _TripDetailScreenState();
 }
 
 class _TripDetailScreenState extends State<TripDetailScreen> {
-  int _selectedDayIndex = 0;
+  late int _selectedDayIndex;
   List<DriverAssignment> _assignments = [];
   bool _loadingDriver = true;
   bool _loadingTrip = false;
@@ -42,9 +48,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   bool _startingLocationShare = false;
   Timer? _locationTimer;
 
+  final Set<String> _requestedGeocodes = {};
+
   @override
   void initState() {
     super.initState();
+    _selectedDayIndex = widget.initialDayIndex;
     _trip = widget.trip;
     if (_trip == null && widget.tripId != null) {
       _fetchTripDetails();
@@ -481,10 +490,41 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     );
   }
 
+  void _ensureGeocoded(String rawLocation) {
+    final location = rawLocation.trim();
+    if (location.isEmpty) return;
+    if (_requestedGeocodes.contains(location)) return;
+    if (GeocodingService.instance.getCached(location) != null) return;
+
+    _requestedGeocodes.add(location);
+    GeocodingService.instance.geocode(location).then((_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
   Widget _buildDayContent(dynamic dayData) {
     final day = dayData as Map<String, dynamic>;
     final theme = day['theme'] ?? '';
     final activities = day['activities'] as List<dynamic>? ?? [];
+
+    Marker _buildMarker(LatLng point) {
+      return Marker(
+        point: point,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 4),
+            ],
+          ),
+          padding: const EdgeInsets.all(8),
+          child: const Icon(Icons.place, color: Colors.white, size: 16),
+        ),
+      );
+    }
 
     // Check for driver assignment for this day (1-based index)
     final assignment = _assignments.firstWhere(
@@ -500,29 +540,27 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
     // Collect coordinates for map
     final markers = <Marker>[];
+    var hasPotentialMapData = false;
     for (final activity in activities) {
       final coords = activity['coordinates'] as Map<String, dynamic>?;
       if (coords != null) {
         final lat = coords['lat'] as num?;
         final lng = coords['lng'] as num?;
         if (lat != null && lng != null) {
-          markers.add(
-            Marker(
-              point: LatLng(lat.toDouble(), lng.toDouble()),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withAlpha(51), blurRadius: 4),
-                  ],
-                ),
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.place, color: Colors.white, size: 16),
-              ),
-            ),
-          );
+          hasPotentialMapData = true;
+          markers.add(_buildMarker(LatLng(lat.toDouble(), lng.toDouble())));
+          continue;
+        }
+      }
+
+      final location = activity['location']?.toString();
+      if (location != null && location.trim().isNotEmpty) {
+        hasPotentialMapData = true;
+        final cached = GeocodingService.instance.getCached(location);
+        if (cached != null) {
+          markers.add(_buildMarker(cached));
+        } else {
+          _ensureGeocoded(location);
         }
       }
     }
@@ -576,7 +614,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           ],
 
           // Map
-          if (markers.isNotEmpty)
+          if (hasPotentialMapData)
             Container(
               height: 200,
               margin: const EdgeInsets.only(bottom: 16),
@@ -587,19 +625,30 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                 ],
               ),
               clipBehavior: Clip.antiAlias,
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: markers.first.point,
-                  initialZoom: 13,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  ),
-                  MarkerLayer(markers: markers),
-                ],
-              ),
+              child: markers.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppTheme.primary),
+                    )
+                  : FlutterMap(
+                      options: MapOptions(
+                        initialCenter: markers.first.point,
+                        initialZoom: 13,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png?app=com.gobuddy.gobuddy_mobile',
+                          userAgentPackageName: 'com.gobuddy.gobuddy_mobile',
+                          tileProvider: NetworkTileProvider(
+                            headers: {
+                              'User-Agent':
+                                  'com.gobuddy.gobuddy_mobile (Travel Suite dev)',
+                            },
+                          ),
+                        ),
+                        MarkerLayer(markers: markers),
+                      ],
+                    ),
             ),
 
           // Activities
