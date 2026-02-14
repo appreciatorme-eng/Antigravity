@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Traveler Dashboard - Soft Glass Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00D084", // Mint
+                        "secondary": "#124EA2", // Deep Blue
+                        "muted": "#6B7280",
+                    },
+                    fontFamily: {
+                        "serif": ["Cormorant Garamond", "serif"],
+                        "sans": ["Poppins", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        "soft-gradient": "linear-gradient(135deg, #E0F7FA 0%, #F5F5F5 50%, #E3F2FD 100%)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Glassmorphism Utilities */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Hide Scrollbar for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-soft-gradient min-h-screen text-secondary font-sans antialiased overflow-x-hidden selection:bg-primary/20">
+<div class="relative flex flex-col min-h-screen w-full max-w-md mx-auto shadow-2xl overflow-hidden bg-white/10">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-50 glass-nav px-6 py-4 flex flex-col gap-1 transition-all duration-300">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold uppercase tracking-widest text-primary">October 14-16 • Delhi</span>
+<div class="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[20px]">notifications</span>
+</div>
+</div>
+<h1 class="font-serif text-[32px] font-bold leading-tight text-secondary">My Journeys</h1>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col gap-6 p-6 pb-28 overflow-y-auto no-scrollbar">
+<!-- Current Status Pill -->
+<div class="inline-flex self-start items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-sm font-semibold text-secondary">Current: Day 1 - Arrival</span>
+</div>
+<!-- Driver Card -->
+<div class="glass-card rounded-[24px] p-5 flex items-center gap-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+<div class="relative w-14 h-14 shrink-0">
+<img alt="Professional portrait of driver Raj Singh" class="w-full h-full object-cover rounded-full border-2 border-white shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaOZ7n2uK4-xV_G6Gju_m6svqOffMzskePjV7YyOxaA7QukX7Xgvf8mBnOuHy8B6qbIOhpt37NwGylj9VNeD5fAOi2vjAiGMrhjhZYMO_ZNUllSBmBuuNFPbMZf6LPZNVbiMjWs1abmQ7tP1ZVlXQw185j89c_eG0blF56kv1EQkT8mfOR5AP7niXK1PkRyyju0oAfeNi6YD0QwTm215NYe94twi_3GQ6jsj-2D-XBIwGSoPJOqHCHMEJWN8UZ9T9xIzVIXknCPnyY"/>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-primary border-2 border-white rounded-full"></div>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-serif text-xl font-bold text-secondary truncate">Raj Singh</h3>
+<p class="text-xs text-muted mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">directions_car</span>
+                        Toyota Innova • DL 1C 5592
+                    </p>
+</div>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center text-primary shadow-sm hover:bg-primary hover:text-white transition-colors duration-200">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center text-secondary shadow-sm hover:bg-secondary hover:text-white transition-colors duration-200">
+<span class="material-symbols-outlined text-[20px]">chat_bubble</span>
+</button>
+</div>
+</div>
+<!-- Next Moment Hero Card -->
+<div class="glass-card rounded-[32px] p-6 relative flex flex-col gap-4 overflow-hidden">
+<!-- Decorative background elements -->
+<div class="absolute top-0 right-0 w-full h-full bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
+<div class="relative z-10">
+<div class="flex items-start justify-between mb-2">
+<span class="text-xs font-bold uppercase tracking-widest text-muted">Up Next</span>
+<span class="material-symbols-outlined text-secondary/40">more_horiz</span>
+</div>
+<h2 class="font-serif text-[40px] font-bold text-primary leading-none mb-2">14:00</h2>
+<div class="space-y-1">
+<h3 class="font-serif text-2xl font-bold text-secondary italic">Check-in: The Imperial</h3>
+<div class="flex items-center gap-1.5 text-muted text-sm">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+                            Janpath Ln, New Delhi
+                        </div>
+</div>
+</div>
+<div class="mt-2 pt-4 border-t border-secondary/10 flex items-center justify-between relative z-10">
+<div class="flex -space-x-2">
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Traveler avatar 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR4DmYqqo85kqBISO17JAV_fCDhx8ORlTzhote91RcJdpLAQpp4IjorZZOWAFCWt71ls2caglze8mQk1JNAaNznzqBadewjQhf_wIRRb9I5G4HeSY7q4VLvES5kTRljDok20H0W9ioH1uSQ1QxAICxFDCTJ8aCm8Mpnsj_9b2oi2MOBY0jMhEy--hPlOmjXQWdWLdM7ZNoJTlRkC8TX1B0hYiS1xVDou3hlgSvrKtODBtJx4fcdxAdMbTW9_UkktV8SeYGL-XHY9U3"/>
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Traveler avatar 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH2cihiKs6FRgvEwqD3AZ3YuBbJkufe9lNoSEnpv93TVqJMEZ2Vf4D4Is2-nSlP0CFSzzc2liVj7nwWJOZQMmQSGYM6DHgKDvvhFVqdtarr1Hnb9SAO3cp6NgSKnzreMvqXwVysHa0SSw5KzRvXnEZz3_U3IljWcj1WvsL543nKe4cJqaGGnOmRS0wULWxLlE7JDXuKb2NJUUYoVTxX0ntEaYiKBKu42bGAkWIiLHoqKlso-qMQRHvskSsWwSCWFgZbWNl8aUq9Ivs"/>
+</div>
+<a class="text-sm font-semibold text-secondary hover:text-primary transition-colors flex items-center gap-1" href="#">
+                       Get Directions 
+                       <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Tools Grid -->
+<div class="grid grid-cols-2 gap-4">
+<!-- Item 1 -->
+<button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-[28px]">description</span>
+</div>
+<span class="text-sm font-medium text-secondary">Itinerary</span>
+</button>
+<!-- Item 2 -->
+<button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-[28px]">credit_card</span>
+</div>
+<span class="text-sm font-medium text-secondary">Expenses</span>
+</button>
+<!-- Item 3 -->
+<button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-[28px]">partly_cloudy_day</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="text-sm font-medium text-secondary">28°C Delhi</span>
+<span class="text-[10px] text-muted">Clear Sky</span>
+</div>
+</button>
+<!-- Item 4 -->
+<button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
+<div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-[28px]">support_agent</span>
+</div>
+<span class="text-sm font-medium text-secondary">Concierge</span>
+</button>
+</div>
+</main>
+<!-- Floating Glass Nav Bar -->
+<nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50">
+<div class="glass-nav rounded-full px-2 py-2 flex items-center justify-between shadow-lg ring-1 ring-white/40">
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-md transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-full text-secondary/60 hover:text-secondary hover:bg-white/50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">map</span>
+</a>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-full text-secondary/60 hover:text-secondary hover:bg-white/50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">chat_bubble_outline</span>
+</a>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-full text-secondary/60 hover:text-secondary hover:bg-white/50 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">person</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>
