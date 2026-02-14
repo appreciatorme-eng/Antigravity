@@ -29,6 +29,98 @@ class _TripsScreenState extends State<TripsScreen> {
   int _onboardingStep = 2;
   int _activeTripIndex = 0;
 
+  List<Map<String, dynamic>> _demoTrips({required String role}) {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 2));
+
+    final raw = <String, dynamic>{
+      'destination': 'Delhi',
+      'days': [
+        {
+          'label': 'Arrival',
+          'activities': [
+            {
+              'time': '09:15',
+              'title': 'Airport Pickup',
+              'location': 'Indira Gandhi Intl (DEL)',
+              'status': 'Confirmed',
+              'tags': ['Transfer'],
+            },
+            {
+              'time': '11:30',
+              'title': 'Hotel Check-in',
+              'location': 'The Leela Palace',
+              'status': 'Confirmed',
+              'tags': ['Check-in'],
+              'image_url':
+                  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=60',
+            },
+          ],
+        },
+        {
+          'label': 'Old Delhi',
+          'activities': [
+            {
+              'time': '08:45',
+              'title': 'Breakfast',
+              'location': 'Khan Market',
+              'status': 'Confirmed',
+              'tags': ['Meal'],
+            },
+            {
+              'time': '10:30',
+              'title': 'Old Delhi Walking Tour',
+              'location': 'Chandni Chowk',
+              'status': 'Confirmed',
+              'tags': ['Sightseeing'],
+              'image_url':
+                  'https://images.unsplash.com/photo-1599661046827-dacde4976548?auto=format&fit=crop&w=1200&q=60',
+            },
+          ],
+        },
+        {
+          'label': 'Departure',
+          'activities': [
+            {
+              'time': '07:30',
+              'title': 'Checkout',
+              'location': 'The Leela Palace',
+              'status': 'Confirmed',
+              'tags': ['Check-out'],
+            },
+            {
+              'time': '09:00',
+              'title': 'Transfer to Airport',
+              'location': 'DEL Terminal 3',
+              'status': 'Confirmed',
+              'tags': ['Transfer'],
+            },
+          ],
+        },
+      ],
+    };
+
+    return [
+      {
+        'id': 'demo-trip',
+        'status': 'in_progress',
+        'start_date': start.toIso8601String(),
+        'end_date': end.toIso8601String(),
+        'destination': 'Delhi',
+        'client_id': 'demo-client',
+        'driver_id': role == 'driver' ? 'demo-driver' : null,
+        'itineraries': {
+          'destination': 'Delhi',
+          'duration_days': 3,
+          'summary': 'A short demo itinerary (offline wireframe mode).',
+          'raw_data': raw,
+        },
+        'raw_data': raw,
+      },
+    ];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,8 +241,16 @@ class _TripsScreenState extends State<TripsScreen> {
         _loading = false;
       });
     } catch (e) {
+      debugPrint('TripsScreen: failed to load trips: $e');
       setState(() {
-        _error = 'Failed to load trips';
+        // Don't dead-end the user on backend issues; keep the Stitch wireframes
+        // visible using demo data.
+        _error = 'Failed to load trips (showing demo itinerary)';
+        _userRole = 'client';
+        _driverMapped = false;
+        _onboardingStep = 2;
+        _trips = _demoTrips(role: 'client');
+        _activeTripIndex = 0;
         _loading = false;
       });
     }
@@ -261,26 +361,6 @@ class _TripsScreenState extends State<TripsScreen> {
 
     final content = _loading
         ? _buildLoadingList()
-        : _error != null
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 16),
-                Text(_error!),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _loadTrips,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          )
         : _trips.isEmpty
         ? _buildEmptyState()
         : (_userRole == 'driver'
@@ -308,7 +388,7 @@ class _TripsScreenState extends State<TripsScreen> {
           child: Stack(
             children: [
               content,
-              if (!_loading && _error == null && _trips.isNotEmpty)
+              if (!_loading)
                 Positioned(
                   left: 0,
                   right: 0,
@@ -322,6 +402,43 @@ class _TripsScreenState extends State<TripsScreen> {
                           activeIndex: 0,
                           onTap: handleClientNav,
                         ),
+                ),
+              if (!_loading && _error != null)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  child: GlassCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          size: 18,
+                          color: AppTheme.secondary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _loadTrips,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               if (_onboardingStep < 2 && !_loading && _error == null)
                 Positioned(

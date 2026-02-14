@@ -581,7 +581,7 @@ class TravelerDashboardStitch extends StatelessWidget {
                     },
                   ),
                   toolCard(
-                    icon: Icons.partly_cloudy_day_rounded,
+                    icon: Icons.wb_sunny_rounded,
                     label: '28°C $locationLabel',
                     sublabel: 'Clear Sky',
                     onTap: () {
