@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Itinerary Timeline</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00d184",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0f231c",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .timeline-line {
+            background: linear-gradient(180deg, #00d184 0%, #39564b 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-full min-h-screen w-full flex-col bg-background-light dark:bg-background-dark overflow-x-hidden">
+<!-- Header -->
+<header class="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+<div class="flex items-center p-4 justify-between">
+<div class="flex items-center gap-3">
+<div class="text-slate-900 dark:text-white flex size-10 items-center justify-center rounded-full bg-slate-200 dark:bg-white/10">
+<span class="material-symbols-outlined">arrow_back</span>
+</div>
+<div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">New Delhi Itinerary</h2>
+<p class="text-xs text-slate-500 dark:text-primary/70 font-medium">India • 4 Days Trip</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex size-10 items-center justify-center rounded-full bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white">
+<span class="material-symbols-outlined">map</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-full bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Date Tabs -->
+<div class="px-4">
+<div class="flex border-b border-slate-200 dark:border-primary/20 gap-8 overflow-x-auto no-scrollbar">
+<a class="flex flex-col items-center justify-center border-b-2 border-primary text-primary pb-3 pt-2 shrink-0" href="#">
+<p class="text-xs font-medium uppercase tracking-wider opacity-70">Mon</p>
+<p class="text-sm font-bold">Oct 14</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 shrink-0" href="#">
+<p class="text-xs font-medium uppercase tracking-wider opacity-70">Tue</p>
+<p class="text-sm font-bold">Oct 15</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 shrink-0" href="#">
+<p class="text-xs font-medium uppercase tracking-wider opacity-70">Wed</p>
+<p class="text-sm font-bold">Oct 16</p>
+</a>
+<a class="flex flex-col items-center justify-center border-b-2 border-transparent text-slate-500 dark:text-slate-400 pb-3 pt-2 shrink-0" href="#">
+<p class="text-xs font-medium uppercase tracking-wider opacity-70">Thu</p>
+<p class="text-sm font-bold">Oct 17</p>
+</a>
+</div>
+</div>
+</header>
+<!-- Timeline Content -->
+<main class="flex-1 px-4 py-6 relative">
+<div class="absolute left-[31px] top-8 bottom-0 w-0.5 timeline-line opacity-30"></div>
+<!-- Activity 1: Private Transfer -->
+<div class="relative grid grid-cols-[36px_1fr] gap-4 mb-10 group">
+<div class="relative z-10 flex flex-col items-center">
+<div class="size-9 rounded-full bg-primary flex items-center justify-center text-background-dark ring-4 ring-background-dark shadow-[0_0_15px_rgba(0,209,132,0.4)]">
+<span class="material-symbols-outlined text-[20px] font-bold">directions_car</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-4 transition-all duration-300 hover:bg-white/5">
+<div class="flex justify-between items-start mb-1">
+<span class="text-primary text-xs font-bold uppercase tracking-widest">09:00 AM</span>
+<span class="material-symbols-outlined text-slate-500 text-sm">verified</span>
+</div>
+<h3 class="text-slate-900 dark:text-white text-base font-bold">Private Transfer</h3>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Pickup from Indira Gandhi International Airport. Driver will be waiting at Gate 4 with a name placard.</p>
+</div>
+</div>
+<!-- Activity 2: Red Fort Tour -->
+<div class="relative grid grid-cols-[36px_1fr] gap-4 mb-10 group">
+<div class="relative z-10 flex flex-col items-center">
+<div class="size-9 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center text-primary ring-4 ring-background-dark">
+<span class="material-symbols-outlined text-[20px]">account_balance</span>
+</div>
+</div>
+<div class="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:bg-white/5">
+<div class="w-full h-40 bg-cover bg-center" data-alt="The majestic sandstone walls of the Red Fort in Delhi" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCD53jER-QSwJ-FnHMx2QC3h3lmRO4ujSRgNTyy36ioigKr_Qu-KFBVydegGUUiawLEufSVp2gxhkwvdsyVD1kUv9RDxftzmxykb61w9D91HMWrMPduGLtxxXmuaQiULTkx33lt-h0CFQ6_kFqxBBhaBQMWsp9v4L1eMQRujlc-nOG9JUiM7wdun-rvrD0-A_-Qiq6Ld6keukKc2GB2Ofr3L0hdNIowFLWWqedY51aGBTnnLewtIix_ccDWGqX0O7hIZfQECuAQ74zg')"></div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<span class="text-primary text-xs font-bold uppercase tracking-widest">11:30 AM</span>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-yellow-500 text-xs fill-current">star</span>
+<span class="text-xs text-slate-400 font-bold">4.8</span>
+</div>
+</div>
+<h3 class="text-slate-900 dark:text-white text-base font-bold">Red Fort Tour</h3>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">UNESCO World Heritage site. Explore the Mughal architecture and the Diwan-i-Aam.</p>
+<div class="mt-4 flex gap-2">
+<button class="bg-primary/10 text-primary text-xs font-bold py-2 px-3 rounded-lg border border-primary/20">Ticket Included</button>
+<button class="bg-white/5 text-white/70 text-xs font-bold py-2 px-3 rounded-lg border border-white/10">Audio Guide</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Activity 3: Lunch at Bukhara -->
+<div class="relative grid grid-cols-[36px_1fr] gap-4 mb-10 group">
+<div class="relative z-10 flex flex-col items-center">
+<div class="size-9 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center text-primary ring-4 ring-background-dark">
+<span class="material-symbols-outlined text-[20px]">restaurant</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-4 transition-all duration-300 hover:bg-white/5">
+<div class="flex justify-between items-start mb-1">
+<span class="text-primary text-xs font-bold uppercase tracking-widest">13:30 PM</span>
+<span class="bg-amber-500/20 text-amber-500 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Confirmed</span>
+</div>
+<h3 class="text-slate-900 dark:text-white text-base font-bold">Lunch at Bukhara</h3>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Reservation at ITC Maurya. Famous for its North-West Frontier cuisine and Dal Bukhara.</p>
+<div class="mt-3 flex items-center gap-2 text-primary/80">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="text-xs font-semibold">Diplomatic Enclave, Chanakyapuri</span>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB Container -->
+<div class="fixed bottom-24 right-6 z-30">
+<button class="flex items-center gap-3 bg-primary text-background-dark font-bold px-6 py-4 rounded-xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">flight_land</span>
+<span>I've Landed</span>
+</button>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full border-t border-slate-200 dark:border-primary/10 bg-background-light dark:bg-background-dark px-4 pb-6 pt-3 z-40">
+<div class="flex justify-between items-center max-w-md mx-auto">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-current">calendar_today</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Itinerary</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Explore</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Saved</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Profile</span>
+</a>
+</div>
+</nav>
+<!-- Padding for bottom nav -->
+<div class="h-28 bg-transparent"></div>
+</div>
+</body></html>

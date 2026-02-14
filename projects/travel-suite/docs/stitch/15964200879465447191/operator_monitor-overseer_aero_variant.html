@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Operator Monitor: Overseer Aero Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    backgroundImage: {
+                        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+                        'glass-gradient-hover': 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Blur Utilities for older browser support robustness */
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Smooth scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Ambient Glow Behind Mascot */
+        .mascot-glow {
+            background: radial-gradient(circle, rgba(43, 108, 238, 0.35) 0%, rgba(43, 108, 238, 0) 70%);
+            filter: blur(40px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-white antialiased selection:bg-primary selection:text-white min-h-screen relative overflow-hidden flex justify-center">
+<!-- Background Ambient Gradients -->
+<div class="fixed inset-0 z-0 pointer-events-none">
+<div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] opacity-40"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-900/20 rounded-full blur-[120px] opacity-30"></div>
+</div>
+<!-- Mobile Frame Simulation -->
+<div class="relative z-10 w-full max-w-md h-screen flex flex-col bg-transparent">
+<!-- Header Section: Overseer Aero -->
+<header class="relative px-6 pt-12 pb-6 flex flex-col items-center justify-center shrink-0">
+<!-- Mascot Glow -->
+<div class="absolute top-10 left-1/2 -translate-x-1/2 w-48 h-32 mascot-glow z-0"></div>
+<!-- Header Content -->
+<div class="relative z-10 w-full flex flex-col items-center">
+<!-- Mascot Image (Abstract Aero) -->
+<div class="relative mb-4 w-32 h-20 transition-transform hover:scale-105 duration-500">
+<!-- Using an abstract shape to represent the glass hummingbird mascot -->
+<img alt="Abstract glass hummingbird mascot with wide spread wings" class="w-full h-full object-cover rounded-xl opacity-90 mask-image-wing-shape" data-alt="Abstract glass hummingbird mascot with wide spread wings" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOEXVHbZsbRWgfDfGgqIWamoCky0aa-fF96XAfBCmGnXM9-ZIIjrIoiTzujL6QD_tZDKyy5DKD9QJG25U5sQU7371BD3CJSnILuSflIcNcHV2oQEFtUa8rqhAQgJmMEdqxpqYsqitTKUFEBZYTJf91_0D3Eerf_fg_QKu-qpCb2LCo9sPCF4gTHmuJDABY_O7dgX6hu_EyHu2Gbh3B9LoCSj8PC8QTf-8xr4qW0A2K-T-m_SiTGCgpYQaSeEsHWWe5klqJZ9P2TWWx" style="mask-image: url('data:image/svg+xml;utf8,&lt;svg viewBox=\'0 0 100 60\' xmlns=\'http://www.w3.org/2000/svg\'&gt;&lt;path d=\'M50 30 C 20 10, 0 20, 0 5 L 45 35 L 50 50 L 55 35 L 100 5 C 100 20, 80 10, 50 30 Z\' fill=\'black\'/&gt;&lt;/svg&gt;'); -webkit-mask-image: url('data:image/svg+xml;utf8,&lt;svg viewBox=\'0 0 100 60\' xmlns=\'http://www.w3.org/2000/svg\'&gt;&lt;path d=\'M50 30 C 20 10, 0 20, 0 5 L 45 35 L 50 50 L 55 35 L 100 5 C 100 20, 80 10, 50 30 Z\' fill=\'black\'/&gt;&lt;/svg&gt;'); -webkit-mask-repeat: no-repeat; -webkit-mask-size: contain; mask-repeat: no-repeat; mask-size: contain;"/>
+</div>
+<h1 class="text-2xl font-bold tracking-tight text-white mb-1">Fleet Overseer</h1>
+<p class="text-xs font-medium text-slate-400 tracking-wider uppercase mb-4">Monday, Oct 24 • 09:42 AM</p>
+<!-- Status Pills -->
+<div class="flex items-center gap-3">
+<div class="glass-panel bg-glass-gradient px-3 py-1 rounded-full flex items-center gap-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+</span>
+<span class="text-[10px] font-semibold text-slate-200">SYSTEMS NORMAL</span>
+</div>
+<div class="glass-panel bg-glass-gradient px-3 py-1 rounded-full flex items-center gap-2">
+<span class="material-icons-round text-primary text-[14px]">flight_takeoff</span>
+<span class="text-[10px] font-semibold text-slate-200">3 ACTIVE</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content: Active Flights List -->
+<main class="flex-1 overflow-y-auto no-scrollbar px-5 pb-24 space-y-4">
+<!-- Section Label -->
+<div class="flex justify-between items-end px-1 mb-2">
+<h2 class="text-sm font-semibold text-white/80">Active Flights</h2>
+<button class="text-primary text-xs font-medium hover:text-primary/80 transition-colors">View All</button>
+</div>
+<!-- Card 1: On Time -->
+<div class="group glass-panel bg-glass-gradient hover:bg-glass-gradient-hover rounded-xl p-5 transition-all duration-300 relative overflow-hidden border border-white/5 hover:border-primary/30">
+<!-- Status Bar Indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500/80 rounded-l-xl"></div>
+<div class="flex justify-between items-start mb-4 pl-2">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium mb-1">FLIGHT AA-901</span>
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold text-white">NYC</span>
+<span class="material-icons-round text-slate-500 text-sm rotate-90">flight</span>
+<span class="text-lg font-bold text-white">LON</span>
+</div>
+</div>
+<div class="bg-green-500/10 border border-green-500/20 px-2 py-1 rounded text-[10px] font-bold text-green-400 uppercase tracking-wide">
+                        On Time
+                    </div>
+</div>
+<div class="grid grid-cols-2 gap-4 pl-2">
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Altitude</p>
+<p class="text-sm font-medium text-slate-200 font-mono">35,000 ft</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">ETA</p>
+<p class="text-sm font-medium text-slate-200 font-mono">14:20 UTC</p>
+</div>
+</div>
+<!-- Subtle Progress Bar -->
+<div class="mt-4 pl-2 w-full h-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary/60 w-3/4 rounded-full"></div>
+</div>
+</div>
+<!-- Card 2: Delayed -->
+<div class="group glass-panel bg-glass-gradient hover:bg-glass-gradient-hover rounded-xl p-5 transition-all duration-300 relative overflow-hidden border border-white/5 hover:border-primary/30">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-yellow-500/80 rounded-l-xl"></div>
+<div class="flex justify-between items-start mb-4 pl-2">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium mb-1">FLIGHT AA-452</span>
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold text-white">TOK</span>
+<span class="material-icons-round text-slate-500 text-sm rotate-90">flight</span>
+<span class="text-lg font-bold text-white">PAR</span>
+</div>
+</div>
+<div class="bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded text-[10px] font-bold text-yellow-400 uppercase tracking-wide">
+                        Delayed
+                    </div>
+</div>
+<div class="grid grid-cols-2 gap-4 pl-2">
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Altitude</p>
+<p class="text-sm font-medium text-slate-200 font-mono text-yellow-500/80">Grounded</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">New ETA</p>
+<p class="text-sm font-medium text-slate-200 font-mono">Pending</p>
+</div>
+</div>
+</div>
+<!-- Card 3: In Air -->
+<div class="group glass-panel bg-glass-gradient hover:bg-glass-gradient-hover rounded-xl p-5 transition-all duration-300 relative overflow-hidden border border-white/5 hover:border-primary/30">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl"></div>
+<div class="flex justify-between items-start mb-4 pl-2">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 font-medium mb-1">FLIGHT AA-118</span>
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold text-white">LAX</span>
+<span class="material-icons-round text-slate-500 text-sm rotate-90">flight</span>
+<span class="text-lg font-bold text-white">SYD</span>
+</div>
+</div>
+<div class="bg-primary/20 border border-primary/30 px-2 py-1 rounded text-[10px] font-bold text-primary-300 uppercase tracking-wide">
+                        In Air
+                    </div>
+</div>
+<div class="grid grid-cols-2 gap-4 pl-2">
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Altitude</p>
+<p class="text-sm font-medium text-slate-200 font-mono">32,000 ft</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">ETA</p>
+<p class="text-sm font-medium text-slate-200 font-mono">06:45 Local</p>
+</div>
+</div>
+<!-- Subtle Progress Bar -->
+<div class="mt-4 pl-2 w-full h-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary/60 w-1/4 rounded-full"></div>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="grid grid-cols-2 gap-4 pt-2">
+<button class="glass-panel bg-glass-gradient hover:bg-glass-gradient-hover p-4 rounded-xl flex flex-col items-center justify-center gap-2 group border-white/5">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary transition-colors duration-300">
+<span class="material-icons-round text-primary group-hover:text-white transition-colors duration-300">add</span>
+</div>
+<span class="text-xs font-medium text-slate-300">Add Flight</span>
+</button>
+<button class="glass-panel bg-glass-gradient hover:bg-glass-gradient-hover p-4 rounded-xl flex flex-col items-center justify-center gap-2 group border-white/5">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary transition-colors duration-300">
+<span class="material-icons-round text-primary group-hover:text-white transition-colors duration-300">headset_mic</span>
+</div>
+<span class="text-xs font-medium text-slate-300">Contact Pilots</span>
+</button>
+</div>
+<!-- Spacer for Nav -->
+<div class="h-8"></div>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="absolute bottom-24 right-5 w-14 h-14 bg-primary shadow-[0_0_20px_rgba(43,108,238,0.5)] rounded-full flex items-center justify-center z-20 hover:scale-105 active:scale-95 transition-transform duration-200">
+<span class="material-icons-round text-white text-2xl">radar</span>
+</button>
+<!-- Bottom Navigation Bar -->
+<nav class="absolute bottom-0 left-0 right-0 glass-panel bg-background-dark/80 px-6 py-4 flex justify-between items-center z-30 border-t border-white/10 rounded-t-2xl">
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-icons-round text-primary group-hover:text-primary transition-colors">dashboard</span>
+<span class="text-[10px] font-medium text-primary group-hover:text-primary transition-colors">Fleet</span>
+</a>
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-icons-round text-slate-500 group-hover:text-slate-300 transition-colors">map</span>
+<span class="text-[10px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors">Map</span>
+</a>
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-icons-round text-slate-500 group-hover:text-slate-300 transition-colors">notifications</span>
+<span class="text-[10px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors">Alerts</span>
+</a>
+<a class="flex flex-col items-center gap-1 group" href="#">
+<span class="material-icons-round text-slate-500 group-hover:text-slate-300 transition-colors">person</span>
+<span class="text-[10px] font-medium text-slate-500 group-hover:text-slate-300 transition-colors">Profile</span>
+</a>
+</nav>
+</div>
+</body></html>

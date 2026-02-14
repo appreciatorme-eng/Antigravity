@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Operator Panel: Vigilant Aero Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(16, 22, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .glass-card:active {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+        }
+
+        .active-tab {
+            background: rgba(43, 108, 238, 0.2);
+            border: 1px solid rgba(43, 108, 238, 0.4);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(43, 108, 238, 0.2);
+        }
+
+        .nav-glass {
+            background: rgba(16, 22, 34, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Subtle pulsating glow for the mascot container */
+        .mascot-glow {
+            animation: pulse-glow 4s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 20px rgba(43, 108, 238, 0.1); }
+            50% { box-shadow: 0 0 35px rgba(43, 108, 238, 0.3); }
+            100% { box-shadow: 0 0 20px rgba(43, 108, 238, 0.1); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-100 min-h-screen flex justify-center selection:bg-primary selection:text-white">
+<!-- Mobile Container -->
+<div class="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen relative overflow-hidden flex flex-col shadow-2xl">
+<!-- Ambient Background Glows -->
+<div class="absolute top-[-10%] left-[-20%] w-[80%] h-[40%] bg-primary/20 rounded-full blur-[100px] pointer-events-none"></div>
+<div class="absolute bottom-[-10%] right-[-20%] w-[60%] h-[40%] bg-primary/10 rounded-full blur-[80px] pointer-events-none"></div>
+<!-- Header Section -->
+<header class="relative px-6 pt-12 pb-4 z-10 flex justify-between items-center">
+<div>
+<h2 class="text-xs font-bold tracking-[0.2em] text-primary uppercase mb-1">Fleet Command</h2>
+<h1 class="text-2xl font-bold text-white">Global Oversight</h1>
+</div>
+<button class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+<span class="material-icons text-xl">notifications_none</span>
+</button>
+</header>
+<!-- Hero: Vigilant Aero Mascot -->
+<section class="px-6 mb-8 z-10">
+<div class="glass-card rounded-2xl p-6 relative overflow-hidden mascot-glow group">
+<!-- Inner shine effect -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+<div class="flex flex-col items-center relative z-10">
+<!-- Mascot Image Container -->
+<div class="w-32 h-32 mb-4 relative">
+<!-- Abstract representation of the glass hummingbird -->
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/30 to-white/10 rounded-full blur-sm animate-pulse"></div>
+<img alt="3D glass hummingbird mascot stationary with wings tucked" class="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(43,108,238,0.5)] transform scale-110" data-alt="3D glass hummingbird mascot stationary with wings tucked" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9wqe7wtseYs4y7gj0mk-kGl3fVgsD7Agylw5IgDmzeonoRTPzHCF66Fjr-Qu-ccqi7aIkh6-aAWBvEZhPxSAKc88kHSSpGauaLfqavNtdwlJrBwAcHPGd3DtnFX2fwdFmS22xZvao_5e54kOanw3dgaw1kUfDcClkYXMobsKDU8GR297b4NZb9CJ2vmaFyu3k8XDPYVTlnLKq86f6dNuEVX2wj_vvR7DPq_OL2cr7_AUGAXthaXtYVcEAGXzsHbBWhBVUMLh9lJkQ"/>
+</div>
+<div class="text-center">
+<div class="flex items-center justify-center space-x-2 mb-1">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<span class="text-sm font-semibold tracking-wider text-emerald-400 uppercase">System Optimal</span>
+</div>
+<h3 class="text-3xl font-bold text-white">98% Operational</h3>
+<p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Global Fleet Status</p>
+</div>
+</div>
+<!-- Decorative grid lines -->
+<div class="absolute bottom-0 left-0 w-full h-1/3 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEgMGgwdjJIMUMweiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+')] opacity-30 pointer-events-none"></div>
+</div>
+</section>
+<!-- Segmented Control Tabs -->
+<section class="px-6 mb-6 z-10">
+<div class="p-1 rounded-xl glass-panel flex relative">
+<button class="flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-300 active-tab flex items-center justify-center gap-2">
+<span class="material-icons text-base">flight</span>
+                    Flights (12)
+                </button>
+<button class="flex-1 py-3 px-4 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
+<span class="material-icons text-base">directions_car</span>
+                    Drivers (8)
+                </button>
+</div>
+</section>
+<!-- Scrollable List Area -->
+<div class="flex-1 overflow-y-auto px-6 pb-28 z-10 space-y-4 no-scrollbar">
+<!-- Flight Item: En Route -->
+<div class="glass-card p-5 rounded-xl group hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-primary">
+<span class="material-icons text-lg">flight_takeoff</span>
+</div>
+<div>
+<div class="text-lg font-bold text-white">JA-902</div>
+<div class="text-xs text-slate-400 uppercase tracking-wide">Pvt. Jet Charter</div>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/20 shadow-[0_0_10px_rgba(43,108,238,0.2)]">
+                        En Route
+                    </span>
+</div>
+<div class="flex items-center justify-between relative mb-4">
+<!-- Progress Line -->
+<div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-700/50 -z-10"></div>
+<div class="absolute top-1/2 left-0 w-2/3 h-[1px] bg-primary shadow-[0_0_8px_rgba(43,108,238,0.8)] -z-10"></div>
+<div class="text-left">
+<div class="text-2xl font-light text-white mb-1">LHR</div>
+<div class="text-[10px] text-slate-400">London</div>
+</div>
+<!-- Plane Icon on path -->
+<div class="bg-background-dark p-1 rounded-full border border-primary/50 text-primary transform rotate-45">
+<span class="material-icons text-sm">airplanemode_active</span>
+</div>
+<div class="text-right">
+<div class="text-2xl font-light text-white mb-1">JFK</div>
+<div class="text-[10px] text-slate-400">New York</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-white/5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-slate-700 overflow-hidden border border-white/10">
+<img alt="Client Avatar" class="w-full h-full object-cover opacity-80" data-alt="Client avatar photo of a man in a suit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNqSS-Velyp9eSABiHRqEf8CTOpwfVjw_GdS-Z3R5lcIy6u_fEaR1VumkDj65Sb7jwTh0zJgb57bcHenYiRh0WVWi7NIlmauUVOVyO1U5kxXVILMJ4KTceQaGh8sv3qRjnNz7rdUJaBG-rCbUJp8E_hYTf1mjpP8kiFr35TvomQiZfTpCOLyEk7B1GPNQbxRSzO2N1hb12O9ep0P2TEK16TYplCC5lmqI8z-SSRF9aG4yrziqvqacyXYcRVA9FY92n1jsL43GEaw5n"/>
+</div>
+<span class="text-xs text-slate-300">Client: <span class="text-white font-medium">Mr. Sterling</span></span>
+</div>
+<span class="text-xs font-mono text-primary">ETA: 14:45 UTC</span>
+</div>
+</div>
+<!-- Flight Item: Delayed -->
+<div class="glass-card p-5 rounded-xl group hover:border-red-500/30 transition-all">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-400">
+<span class="material-icons text-lg">warning_amber</span>
+</div>
+<div>
+<div class="text-lg font-bold text-white">BA-112</div>
+<div class="text-xs text-slate-400 uppercase tracking-wide">First Class Commercial</div>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
+                        Delayed
+                    </span>
+</div>
+<div class="flex items-center justify-between relative mb-4">
+<!-- Progress Line -->
+<div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-700/50 -z-10"></div>
+<div class="absolute top-1/2 left-0 w-[10%] h-[1px] bg-red-500/50 -z-10"></div>
+<div class="text-left">
+<div class="text-2xl font-light text-white mb-1">DXB</div>
+<div class="text-[10px] text-slate-400">Dubai</div>
+</div>
+<div class="bg-background-dark p-1 rounded-full border border-slate-700 text-slate-500 transform rotate-45">
+<span class="material-icons text-sm">airplanemode_active</span>
+</div>
+<div class="text-right">
+<div class="text-2xl font-light text-white mb-1">HND</div>
+<div class="text-[10px] text-slate-400">Tokyo</div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-white/5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-slate-700 overflow-hidden border border-white/10">
+<img alt="Client Avatar" class="w-full h-full object-cover opacity-80" data-alt="Client avatar photo of a woman with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD29r-Kw59lF3QgM2uXY-fGjHsbgqWlp9081eJJVa3_agQ6wvalATmlpiNPNY5yOtF2tglZCXwP-DCAFDOK3Pbv6S5pOF2MJ3xoUVQnIhXyB1oOqmn_Y4o-h9qSsaT21nTgD3LPEbVQL74dms8mMhlHq7PFsT08AIeupD6QsnN3E3JDAuIjEBw5HD2gI5TJzASjYRHK3Apgj_O6tMSp-P0QwSUzupvZ3wiaNlBm4lvEvTZ0uqtlRkI6ggSHWmUhsXqPIjFBwCdn84O1"/>
+</div>
+<span class="text-xs text-slate-300">Client: <span class="text-white font-medium">Ms. Vance</span></span>
+</div>
+<span class="text-xs font-mono text-red-400">+45m Delay</span>
+</div>
+</div>
+<!-- Driver Item: Arrived -->
+<div class="glass-card p-5 rounded-xl group hover:border-emerald-500/30 transition-all opacity-80">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400">
+<span class="material-icons text-lg">location_on</span>
+</div>
+<div>
+<div class="text-lg font-bold text-white">M. Chen</div>
+<div class="text-xs text-slate-400 uppercase tracking-wide">Black Car Service</div>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Arrived
+                    </span>
+</div>
+<div class="pl-14">
+<div class="text-sm text-slate-200 mb-1">Pickup: <span class="text-white font-medium">Hotel Ritz, Paris</span></div>
+<div class="text-xs text-slate-500 font-mono">Waiting: 05:22</div>
+</div>
+</div>
+<!-- Driver Item: Completing -->
+<div class="glass-card p-5 rounded-xl group hover:border-blue-400/30 transition-all opacity-60 grayscale-[50%]">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center border border-slate-600/50 text-slate-300">
+<span class="material-icons text-lg">check_circle_outline</span>
+</div>
+<div>
+<div class="text-lg font-bold text-white">S. Fox</div>
+<div class="text-xs text-slate-400 uppercase tracking-wide">Airport Transfer</div>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-700/50 text-slate-300 border border-slate-600/50">
+                        Completing
+                    </span>
+</div>
+<div class="pl-14">
+<div class="text-sm text-slate-200 mb-1">Drop-off: <span class="text-white font-medium">LAX Terminal 4</span></div>
+</div>
+</div>
+</div>
+<!-- Floating Glass Bottom Navigation -->
+<nav class="absolute bottom-0 w-full nav-glass px-6 pb-6 pt-4 flex justify-between items-center z-20">
+<button class="flex flex-col items-center gap-1 text-primary group">
+<div class="relative">
+<span class="material-icons text-2xl group-hover:scale-110 transition-transform">dashboard</span>
+<span class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full"></span>
+</div>
+<span class="text-[10px] font-medium tracking-wide">Fleet</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors group">
+<span class="material-icons text-2xl group-hover:scale-110 transition-transform">map</span>
+<span class="text-[10px] font-medium tracking-wide">Map</span>
+</button>
+<!-- Floating FAB Action -->
+<button class="w-14 h-14 -mt-8 bg-primary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(43,108,238,0.5)] border-4 border-background-dark hover:scale-105 transition-transform active:scale-95">
+<span class="material-icons text-white text-2xl">add</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors group">
+<span class="material-icons text-2xl group-hover:scale-110 transition-transform">chat_bubble_outline</span>
+<span class="text-[10px] font-medium tracking-wide">Msgs</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition-colors group">
+<div class="relative">
+<span class="material-icons text-2xl group-hover:scale-110 transition-transform">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-background-dark"></span>
+</div>
+<span class="text-[10px] font-medium tracking-wide">Alerts</span>
+</button>
+</nav>
+</div>
+</body></html>

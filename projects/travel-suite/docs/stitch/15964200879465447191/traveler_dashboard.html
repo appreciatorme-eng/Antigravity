@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -8,7 +7,6 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&amp;family=Poppins:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script id="tailwind-config">
         tailwind.config = {
@@ -31,25 +29,19 @@
             },
         }
     </script>
-<style>
-        /* Glassmorphism Utilities */
-        .glass-card {
+<style>.glass-card {
             background: rgba(255, 255, 255, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.6);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         }
-
         .glass-nav {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid rgba(255, 255, 255, 0.6);
-        }
-
-        /* Hide Scrollbar for clean look */
-        .no-scrollbar::-webkit-scrollbar {
+        }.no-scrollbar::-webkit-scrollbar {
             display: none;
         }
         .no-scrollbar {
@@ -62,10 +54,14 @@
       min-height: max(884px, 100dvh);
     }
   </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
   </head>
 <body class="bg-soft-gradient min-h-screen text-secondary font-sans antialiased overflow-x-hidden selection:bg-primary/20">
 <div class="relative flex flex-col min-h-screen w-full max-w-md mx-auto shadow-2xl overflow-hidden bg-white/10">
-<!-- Sticky Header -->
 <header class="sticky top-0 z-50 glass-nav px-6 py-4 flex flex-col gap-1 transition-all duration-300">
 <div class="flex items-center justify-between">
 <span class="text-xs font-bold uppercase tracking-widest text-primary">October 14-16 • Delhi</span>
@@ -75,14 +71,62 @@
 </div>
 <h1 class="font-serif text-[32px] font-bold leading-tight text-secondary">My Journeys</h1>
 </header>
-<!-- Main Content Area -->
 <main class="flex-1 flex flex-col gap-6 p-6 pb-28 overflow-y-auto no-scrollbar">
-<!-- Current Status Pill -->
 <div class="inline-flex self-start items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
 <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
 <span class="text-sm font-semibold text-secondary">Current: Day 1 - Arrival</span>
 </div>
-<!-- Driver Card -->
+<div class="glass-card rounded-[24px] p-5 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-40 h-40 bg-blue-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+<div class="relative z-10 flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-secondary/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[18px]">airlines</span>
+</div>
+<div>
+<p class="font-bold text-secondary leading-none">AI 416</p>
+<p class="text-[10px] text-muted uppercase tracking-wider font-semibold">Air India</p>
+</div>
+</div>
+<div class="px-2 py-1 bg-primary/20 border border-primary/30 rounded-lg backdrop-blur-sm">
+<span class="text-[10px] font-bold text-primary-800 uppercase tracking-wide">On Time</span>
+</div>
+</div>
+<div class="relative z-10 flex items-center justify-between mb-4">
+<div class="text-left">
+<p class="text-3xl font-serif font-bold text-secondary">JFK</p>
+<p class="text-xs text-muted font-medium">10:30 AM</p>
+</div>
+<div class="flex-1 px-4 flex flex-col items-center">
+<div class="w-full flex items-center gap-1">
+<div class="h-[1px] bg-secondary/20 w-full"></div>
+<span class="material-symbols-outlined text-secondary/40 text-[16px] rotate-90">flight</span>
+<div class="h-[1px] bg-secondary/20 w-full"></div>
+</div>
+<p class="text-[10px] text-muted mt-1 font-medium">14h 30m</p>
+</div>
+<div class="text-right">
+<p class="text-3xl font-serif font-bold text-secondary">DEL</p>
+<p class="text-xs text-muted font-medium">02:00 PM</p>
+</div>
+</div>
+<div class="relative z-10 flex justify-between items-center bg-white/40 rounded-xl p-3 border border-white/50 backdrop-blur-sm">
+<div>
+<p class="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Terminal</p>
+<p class="font-bold text-secondary text-sm">3</p>
+</div>
+<div class="w-[1px] h-6 bg-secondary/10"></div>
+<div>
+<p class="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Gate</p>
+<p class="font-bold text-secondary text-sm">A12</p>
+</div>
+<div class="w-[1px] h-6 bg-secondary/10"></div>
+<div>
+<p class="text-[10px] text-muted uppercase tracking-wider font-semibold mb-0.5">Seat</p>
+<p class="font-bold text-secondary text-sm">2A</p>
+</div>
+</div>
+</div>
 <div class="glass-card rounded-[24px] p-5 flex items-center gap-4 relative overflow-hidden group">
 <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 <div class="relative w-14 h-14 shrink-0">
@@ -105,9 +149,7 @@
 </button>
 </div>
 </div>
-<!-- Next Moment Hero Card -->
 <div class="glass-card rounded-[32px] p-6 relative flex flex-col gap-4 overflow-hidden">
-<!-- Decorative background elements -->
 <div class="absolute top-0 right-0 w-full h-full bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
 <div class="relative z-10">
 <div class="flex items-start justify-between mb-2">
@@ -134,23 +176,19 @@
 </a>
 </div>
 </div>
-<!-- Tools Grid -->
 <div class="grid grid-cols-2 gap-4">
-<!-- Item 1 -->
 <button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
 <div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
 <span class="material-symbols-outlined text-[28px]">description</span>
 </div>
 <span class="text-sm font-medium text-secondary">Itinerary</span>
 </button>
-<!-- Item 2 -->
 <button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
 <div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
 <span class="material-symbols-outlined text-[28px]">credit_card</span>
 </div>
 <span class="text-sm font-medium text-secondary">Expenses</span>
 </button>
-<!-- Item 3 -->
 <button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
 <div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
 <span class="material-symbols-outlined text-[28px]">partly_cloudy_day</span>
@@ -160,7 +198,6 @@
 <span class="text-[10px] text-muted">Clear Sky</span>
 </div>
 </button>
-<!-- Item 4 -->
 <button class="glass-card rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 aspect-square group hover:bg-white/80 transition-all duration-300">
 <div class="w-12 h-12 rounded-2xl bg-secondary/5 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform duration-300">
 <span class="material-symbols-outlined text-[28px]">support_agent</span>
@@ -169,7 +206,6 @@
 </button>
 </div>
 </main>
-<!-- Floating Glass Nav Bar -->
 <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50">
 <div class="glass-nav rounded-full px-2 py-2 flex items-center justify-between shadow-lg ring-1 ring-white/40">
 <a class="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-primary text-white shadow-md transition-transform active:scale-95" href="#">
@@ -187,4 +223,5 @@
 </div>
 </nav>
 </div>
+
 </body></html>

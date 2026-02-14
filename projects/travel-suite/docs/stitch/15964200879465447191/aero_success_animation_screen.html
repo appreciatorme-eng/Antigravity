@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aero Success Animation Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom glassmorphism utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-card-high {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.01));
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 20px rgba(43, 108, 238, 0.5);
+        }
+
+        /* Abstract checkmark shape */
+        .giant-checkmark {
+            clip-path: polygon(39% 75%, 12% 52%, 5% 61%, 41% 94%, 93% 18%, 84% 10%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark font-display text-white min-h-screen flex items-center justify-center p-4">
+<!-- Mobile Frame Simulation -->
+<div class="w-full max-w-[390px] h-[844px] bg-background-dark relative overflow-hidden rounded-[2.5rem] shadow-2xl border-4 border-slate-800">
+<!-- Ambient Glow Background -->
+<div class="absolute top-[-10%] left-[-20%] w-[150%] h-[60%] bg-primary/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[100%] h-[50%] bg-primary/10 blur-[100px] rounded-full pointer-events-none"></div>
+<!-- Status Bar Area -->
+<div class="absolute top-0 w-full h-12 z-50 flex justify-between items-end px-6 pb-2 text-xs font-medium opacity-80">
+<span>9:41</span>
+<div class="flex gap-1.5 items-center">
+<span class="material-icons text-sm">signal_cellular_alt</span>
+<span class="material-icons text-sm">wifi</span>
+<span class="material-icons text-sm">battery_full</span>
+</div>
+</div>
+<!-- Main Content Wrapper -->
+<div class="relative h-full flex flex-col items-center justify-between pt-32 pb-12 px-6 z-10">
+<!-- Center Visual Composition -->
+<div class="relative w-full aspect-square flex items-center justify-center">
+<!-- Background Giant Frosted Checkmark -->
+<div class="absolute inset-0 flex items-center justify-center opacity-10 scale-150 transform rotate-[-5deg]">
+<div class="w-64 h-64 bg-gradient-to-tr from-white to-transparent giant-checkmark blur-sm"></div>
+</div>
+<!-- Light Trail Effect -->
+<div class="absolute w-40 h-80 bg-gradient-to-t from-primary/0 via-primary/40 to-primary/0 transform -rotate-45 translate-x-4 translate-y-12 blur-2xl opacity-60"></div>
+<!-- Aero Mascot (Hummingbird) -->
+<!-- Using a placeholder for the mascot, described via alt text as requested -->
+<div class="relative z-20 w-64 h-64 animate-float">
+<img alt="Aero Mascot" class="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(43,108,238,0.4)] mask-image-gradient" data-alt="3D glass hummingbird illustration abstract geometric crystal bird glowing blue" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZoL7XOJYvGg3Lgf6fthXdkC193d9hLygsHb2ZlpBHWQe1tQzguk90tnEsMBOvmlKuuYK_P4XvCDXGvYl7aPTTzTCTB44jJmIU0JSFy3sNyHTvim5DaS7oIW79h_G2goxs9PAeal0Fe-RXHO1yplUOdzy3ukcv9JzsJ_a_qju9JcaxQe_V-uiMNZ8imNFScMrP-6UQaJ-eq4ZGAaKut_NkQJqKwGMBtAtduOjJqW_1xdL_eRVYyyH6BtI1xmWZJElY6wIYUAbPqSc4" style="mask-image: linear-gradient(to bottom, black 80%, transparent 100%);"/>
+<!-- Subtle particles/sparkles -->
+<div class="absolute top-0 right-10 w-2 h-2 bg-white rounded-full blur-[1px] opacity-80 animate-pulse"></div>
+<div class="absolute bottom-20 left-10 w-1.5 h-1.5 bg-primary rounded-full blur-[1px] opacity-60"></div>
+</div>
+</div>
+<!-- Success Typography -->
+<div class="text-center space-y-3 mt-[-2rem] relative z-30">
+<div class="inline-flex items-center justify-center p-3 mb-2 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
+<span class="material-icons text-primary text-xl">check</span>
+</div>
+<h1 class="text-4xl font-bold tracking-tight text-white text-glow">
+                    All Set!
+                </h1>
+<p class="text-slate-400 text-lg font-light max-w-[80%] mx-auto leading-relaxed">
+                    Your first class flight to <span class="text-white font-medium">Tokyo</span> has been successfully booked.
+                </p>
+</div>
+<!-- Ticket/Details Card -->
+<div class="w-full mt-auto mb-8 relative group">
+<!-- Glossy highlight effect -->
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-primary/20 blur-[60px] rounded-full pointer-events-none"></div>
+<div class="glass-card-high rounded-xl p-5 relative overflow-hidden transition-all duration-500 hover:scale-[1.02]">
+<!-- Decorative sheen line -->
+<div class="absolute top-0 left-[-100%] w-[50%] h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 animate-[shimmer_3s_infinite]"></div>
+<div class="flex items-center justify-between mb-4 border-b border-white/10 pb-4">
+<div class="flex flex-col">
+<span class="text-xs text-slate-400 uppercase tracking-wider mb-1">Flight</span>
+<span class="text-xl font-bold text-white tracking-widest">JL 405</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-icons text-white/80 rotate-45">flight</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="text-xs text-slate-400 uppercase tracking-wider mb-1">Gate</span>
+<span class="text-xl font-bold text-white">TBD</span>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-slate-300 text-sm font-medium">San Francisco</span>
+<span class="text-xs text-slate-500">SFO • 10:30 AM</span>
+</div>
+<!-- Flight path visual -->
+<div class="flex-1 px-4 flex items-center justify-center pb-3 opacity-50">
+<div class="h-[1px] w-full bg-gradient-to-r from-transparent via-slate-400 to-transparent relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex flex-col text-right">
+<span class="text-slate-300 text-sm font-medium">Tokyo</span>
+<span class="text-xs text-slate-500">HND • 3:45 PM</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl shadow-[0_0_20px_rgba(43,108,238,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2 group">
+<span>View Itinerary</span>
+<span class="material-icons text-sm transition-transform group-hover:translate-x-1">arrow_forward</span>
+</button>
+</div>
+<!-- Bottom Home Indicator -->
+<div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-1/3 h-1.5 bg-white/20 rounded-full backdrop-blur-sm z-50"></div>
+</div>
+</body></html>

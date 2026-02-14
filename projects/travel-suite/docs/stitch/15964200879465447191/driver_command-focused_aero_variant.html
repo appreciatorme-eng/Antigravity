@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Driver Command: Focused Aero Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom map style simulation */
+        .map-bg {
+            background-color: #101622;
+            background-image: 
+                radial-gradient(#1c2638 2px, transparent 2px), 
+                linear-gradient(to right, #1c2638 1px, transparent 1px), 
+                linear-gradient(to bottom, #1c2638 1px, transparent 1px);
+            background-size: 40px 40px, 100px 100px, 100px 100px;
+            background-position: 0 0, 0 0, 0 0;
+        }
+
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(16, 22, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-panel-highlight {
+            background: rgba(43, 108, 238, 0.15); /* Primary color low opacity */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(43, 108, 238, 0.3);
+        }
+        
+        .glass-button {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Aero mascot gradient simulation */
+        .aero-gradient {
+            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(43,108,238,0.6) 50%, rgba(43,108,238,0) 100%);
+        }
+
+        /* Route line simulation */
+        .route-path {
+            stroke-dasharray: 10;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden h-screen w-screen relative">
+<!-- Background Map Layer -->
+<div class="absolute inset-0 w-full h-full z-0 map-bg">
+<!-- Simulated Map Elements -->
+<svg class="w-full h-full opacity-80" viewbox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+<!-- Roads -->
+<path d="M50 -20 L 50 200 L 150 400 L 120 600 L 200 850" fill="none" stroke="#1c2638" stroke-width="12"></path>
+<path d="M250 -20 L 250 150 L 150 400" fill="none" stroke="#1c2638" stroke-width="12"></path>
+<path d="M350 100 L 100 300" fill="none" stroke="#1c2638" stroke-width="8"></path>
+<!-- Active Route -->
+<path class="route-path" d="M180 820 L 120 600 L 150 400 L 250 150 L 250 50" fill="none" stroke="#2b6cee" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"></path>
+<!-- Current Location Halo -->
+<circle cx="180" cy="720" fill="#2b6cee" fill-opacity="0.2" r="20">
+<animate attributename="r" dur="2s" repeatcount="indefinite" values="20;30;20"></animate>
+<animate attributename="opacity" dur="2s" repeatcount="indefinite" values="0.2;0;0.2"></animate>
+</circle>
+<!-- Destination Marker -->
+<circle cx="250" cy="50" fill="#FFFFFF" r="6" stroke="#2b6cee" stroke-width="3"></circle>
+</svg>
+<!-- Location Image (City Context) -->
+<div class="absolute top-1/4 right-0 w-32 h-32 opacity-20 pointer-events-none mix-blend-overlay">
+<img class="w-full h-full object-cover rounded-full blur-xl" data-alt="Abstract blurry city lights at night representing urban movement" data-location="San Francisco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5YOsTQbg-qreVcIXOcg3bA2gWN7mkK7e1QUTz6BdFnjM5kkyqqg5dyLP8xhwnJjGZT4-Lv0Cgn6CjNUvCsz4PCSfCbXw2ZmitGylx5V7tleSE9YGDIhg2REgkwnxBvPS6ZPC32spULfX-H7mKfaZEaByHnxiXIGjKoZbGv4n_GrJXcrvqHdlItbUOgoZMxAHUOKnu_TzMLLky-MEFjaoF-EgrghWwKZYpnVnlkWb1_AAWx9X4Qr4uqPiJarWk0UhcxqCoS6zaQhRx"/>
+</div>
+</div>
+<!-- UI Overlay Layer -->
+<div class="relative z-10 flex flex-col h-full justify-between p-4 safe-area-inset">
+<!-- Top Section: Header & Aero Integration -->
+<div class="glass-panel rounded-xl p-4 flex items-center justify-between shadow-lg mt-2">
+<div class="flex items-center gap-4">
+<!-- Aero Mascot Graphic -->
+<div class="relative w-14 h-14">
+<!-- Abstract representation of Aero in flight -->
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/80 to-transparent opacity-50 rounded-full blur-md"></div>
+<img class="absolute inset-0 w-full h-full object-cover rounded-full mix-blend-screen opacity-90 mask-image-linear-gradient" data-alt="Abstract glowing blue glass hummingbird shape in flight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiNmCANbNLMIFGG3NEuW96357jJhRNO2NdVfXO4N40a8gsW2CG3fB8IFOHtVxcRP67vbm6pc2FGCZ2i2clwk0Pqke0SpC_DloWEZ_L0toHieb6pqjx7pC0IkmpZMlrx5O34aEGUu3hzJ2yMgoixyYlJt_FuV0k7qf3WAx9vykm8dGMD6w7cI5ybQPYYjMlUTosJeKAHXTOiJr3IT2XZCdLOe5lbZOX3n6RkZtJQ_xFXE9L2QiHjJKOD8yBpaHZHd-dugacaHXibXap" style="-webkit-mask-image: linear-gradient(to right, black 60%, transparent 100%); transform: scaleX(-1);"/>
+<!-- Sharp Directional Indicator simulating wings -->
+<div class="absolute -right-2 top-0 w-0 h-0 border-l-[8px] border-l-transparent border-b-[12px] border-b-white transform rotate-45 opacity-80"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-primary tracking-widest uppercase mb-1">Navigation Active</span>
+<h1 class="text-xl font-bold leading-none text-white flex items-center gap-2">
+                        San Francisco Intl.
+                        <span class="material-icons text-primary text-base">flight</span>
+</h1>
+<span class="text-sm text-gray-300">4.2 mi remaining</span>
+</div>
+</div>
+<!-- Re-center Button (Small, unobtrusive) -->
+<button class="w-10 h-10 rounded-full glass-button flex items-center justify-center text-white active:bg-primary/40 transition-colors">
+<span class="material-icons text-xl">my_location</span>
+</button>
+</div>
+<!-- Center Space (Map Visibility Area) -->
+<div class="flex-grow pointer-events-none relative">
+<!-- Floating Turn Indicator Overlay on Map -->
+<div class="absolute top-6 left-0 glass-panel-highlight px-6 py-3 rounded-r-xl border-l-4 border-l-primary flex items-center gap-3 animate-pulse">
+<span class="material-icons text-3xl text-white transform rotate-90">turn_right</span>
+<div>
+<div class="text-xs uppercase text-blue-200 font-semibold tracking-wide">Next Turn 200ft</div>
+<div class="text-lg font-bold text-white">Market Street</div>
+</div>
+</div>
+</div>
+<!-- Bottom Section: Driver Command Console -->
+<div class="flex flex-col gap-4 mb-4">
+<!-- Stats Grid -->
+<div class="grid grid-cols-12 gap-3">
+<!-- Primary Action / ETA Card (Span 7) -->
+<div class="col-span-7 glass-panel rounded-xl p-5 flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-green-500"></div> <!-- Status Indicator -->
+<div class="flex justify-between items-start">
+<div>
+<span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Arrival</span>
+<div class="text-3xl font-bold text-white mt-1">10:42 <span class="text-sm font-normal text-gray-400">AM</span></div>
+</div>
+</div>
+<div class="mt-2 flex items-center gap-2">
+<span class="material-icons text-green-400 text-sm">schedule</span>
+<div class="text-lg font-medium text-green-400">14 min</div>
+</div>
+</div>
+<!-- Speed & Limit (Span 5) -->
+<div class="col-span-5 glass-panel rounded-xl p-4 flex flex-col justify-center items-center relative">
+<!-- Speed Limit Sign -->
+<div class="absolute top-3 right-3 w-8 h-10 border-2 border-white/80 rounded flex items-center justify-center bg-white/10">
+<span class="text-xs font-bold text-white">45</span>
+</div>
+<div class="text-center mt-2">
+<div class="text-4xl font-bold text-white tracking-tighter">38</div>
+<div class="text-xs text-gray-400 uppercase font-bold tracking-widest mt-1">MPH</div>
+</div>
+</div>
+</div>
+<!-- Quick Action Bar -->
+<div class="glass-panel rounded-2xl p-2 flex justify-between items-center h-20 px-6">
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-full text-gray-300 active:text-white transition-colors">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-icons">phone</span>
+</div>
+<span class="text-[10px] font-medium tracking-wide uppercase">Call</span>
+</button>
+<!-- Main Contextual Button (Trip Details / Stop) -->
+<button class="flex-grow mx-4 bg-primary text-white rounded-xl h-14 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/50 active:scale-95 transition-transform">
+<span class="material-icons">stop_circle</span>
+<span class="font-bold text-lg">End Trip</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-16 h-full text-red-400 active:text-red-300 transition-colors">
+<div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+<span class="material-icons">warning</span>
+</div>
+<span class="text-[10px] font-medium tracking-wide uppercase">SOS</span>
+</button>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden glass-panel border-0">
+<div class="bg-gradient-to-r from-primary to-blue-400 h-full w-[72%] rounded-full relative">
+<div class="absolute right-0 top-0 h-full w-2 bg-white blur-[2px]"></div>
+</div>
+</div>
+</div>
+</div>
+</body></html>
