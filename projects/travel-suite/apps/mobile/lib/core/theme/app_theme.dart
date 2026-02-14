@@ -22,6 +22,14 @@ class AppTheme {
   static const Color glassNavSurface = Color(0xD9FFFFFF); // ~85%
   static const Color glassBorder = Color(0x99FFFFFF); // ~60%
 
+  // Dark Mode Colors (Stitch Dark Variants)
+  static const Color darkBackground = Color(0xFF0A2F2A); // Dark teal
+  static const Color darkSurface = Color(0xFF0F3A33); // Slightly lighter teal
+  static const Color darkGlassSurface = Color(0x33FFFFFF); // ~20% white
+  static const Color darkGlassNavSurface = Color(0x40FFFFFF); // ~25% white
+  static const Color darkTextPrimary = Color(0xFFFFFFFF); // White
+  static const Color darkTextSecondary = Color(0xFFB0B0B0); // Light gray
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -33,6 +41,12 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [Color(0xFFE0F7FA), Color(0xFFF5F5F5), Color(0xFFE3F2FD)],
+  );
+
+  static const LinearGradient darkBackgroundGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0A2F2A), Color(0xFF0D3530), Color(0xFF0A2F2A)],
   );
 
   // Light Theme
@@ -158,6 +172,135 @@ class AppTheme {
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: textPrimary,
+      ),
+    ),
+  );
+
+  // Dark Theme
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.dark,
+      primary: primary,
+      secondary: primary,
+      surface: darkSurface,
+      error: error,
+    ),
+    scaffoldBackgroundColor: darkBackground,
+    appBarTheme: const AppBarTheme(
+      elevation: 0,
+      centerTitle: true,
+      backgroundColor: Colors.transparent,
+      foregroundColor: darkTextPrimary,
+      titleTextStyle: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: darkTextPrimary,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      elevation: 2,
+      shadowColor: Colors.black.withAlpha(40),
+      color: darkGlassSurface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: Colors.black,
+        elevation: 2,
+        shadowColor: primary.withAlpha(77),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: primary,
+        side: const BorderSide(color: primary, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: darkGlassSurface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.white.withAlpha(30)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: primary, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    ),
+    textTheme: const TextTheme(
+      displayLarge: TextStyle(
+        fontFamily: 'Cormorant Garamond',
+        fontSize: 40,
+        fontWeight: FontWeight.bold,
+        color: darkTextPrimary,
+      ),
+      displayMedium: TextStyle(
+        fontFamily: 'Cormorant Garamond',
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+        color: darkTextPrimary,
+      ),
+      headlineLarge: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        color: darkTextPrimary,
+      ),
+      headlineMedium: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: darkTextPrimary,
+      ),
+      titleLarge: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: darkTextPrimary,
+      ),
+      titleMedium: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: darkTextPrimary,
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: darkTextPrimary,
+      ),
+      bodyMedium: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        color: darkTextSecondary,
+      ),
+      labelLarge: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: darkTextPrimary,
       ),
     ),
   );
