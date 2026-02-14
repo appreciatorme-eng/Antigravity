@@ -48,6 +48,43 @@ class GlassCard extends StatelessWidget {
   }
 }
 
+class GlassContainer extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry? padding;
+  final BorderRadius borderRadius;
+
+  const GlassContainer({
+    super.key,
+    required this.child,
+    this.margin,
+    this.padding,
+    this.borderRadius = const BorderRadius.all(Radius.circular(20)),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      decoration: BoxDecoration(
+        color: AppTheme.glassSurface,
+        borderRadius: borderRadius,
+        border: Border.all(color: AppTheme.glassBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(12),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: padding != null
+          ? Padding(padding: padding!, child: child)
+          : child,
+    );
+  }
+}
+
 class GlassPill extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -189,7 +226,7 @@ class GlassFloatingNavBar extends StatelessWidget {
 }
 
 class GlassTravelerFloatingNavBar extends StatelessWidget {
-  /// 0 = Home, 1 = Itinerary, 2 = Add, 3 = Messages, 4 = Profile
+  /// 0 = Trip, 1 = Explore, 2 = Concierge, 3 = Bookings, 4 = Profile
   final int activeIndex;
   final void Function(int index) onTap;
 
@@ -235,13 +272,13 @@ class GlassTravelerFloatingNavBar extends StatelessWidget {
                   _NavItem(
                     isActive: activeIndex == 1,
                     onTap: () => onTap(1),
-                    icon: HeroIcons.map,
+                    icon: HeroIcons.sparkles,
                   ),
-                  _TravelerAddItem(onTap: () => onTap(2)),
+                  _TravelerConciergeItem(onTap: () => onTap(2)),
                   _NavItem(
                     isActive: activeIndex == 3,
                     onTap: () => onTap(3),
-                    icon: HeroIcons.chatBubbleOvalLeftEllipsis,
+                    icon: HeroIcons.ticket,
                   ),
                   _NavItem(
                     isActive: activeIndex == 4,
@@ -412,10 +449,10 @@ class _DriverCommandItem extends StatelessWidget {
   }
 }
 
-class _TravelerAddItem extends StatelessWidget {
+class _TravelerConciergeItem extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _TravelerAddItem({required this.onTap});
+  const _TravelerConciergeItem({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -438,7 +475,7 @@ class _TravelerAddItem extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: const AppIcon(
-          HeroIcons.plus,
+          HeroIcons.sparkles,
           size: 24,
           color: Colors.white,
           style: HeroIconStyle.solid,

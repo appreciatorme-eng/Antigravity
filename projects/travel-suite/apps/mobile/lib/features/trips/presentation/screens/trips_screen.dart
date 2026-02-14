@@ -12,6 +12,9 @@ import 'profile_screen.dart';
 import '../widgets/driver_dashboard.dart';
 import '../widgets/traveler_dashboard_stitch.dart';
 import 'itinerary_timeline_screen.dart';
+import '../../../explore/presentation/screens/explore_screen.dart';
+import '../../../concierge/presentation/screens/concierge_screen.dart';
+import '../../../bookings/presentation/screens/bookings_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -312,22 +315,27 @@ class _TripsScreenState extends State<TripsScreen> {
 
     void handleClientNav(int index) {
       switch (index) {
-        case 0:
+        case 0: // Trip (current screen - Home)
           return;
-        case 1:
-          return openClientItinerary();
-        case 2:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Quick action coming soon')),
-          );
-          return;
-        case 3:
+        case 1: // Explore (add-ons and upgrades)
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const InboxScreen()),
+            MaterialPageRoute(builder: (_) => const ExploreScreen()),
           );
           return;
-        case 4:
+        case 2: // Concierge (special requests)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConciergeScreen()),
+          );
+          return;
+        case 3: // Bookings (trip history and documents)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BookingsScreen()),
+          );
+          return;
+        case 4: // Profile
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ProfileScreen()),
