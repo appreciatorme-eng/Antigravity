@@ -175,6 +175,27 @@ Post-confirmation client experience flow and automation checklist:
 - **Headings**: Cormorant Garamond
 - **Body Text**: Poppins
 
+### UX Design System
+
+Travel Suite mobile app follows the **"Soft Glass Premium"** design system created in Google Stitch:
+
+- **Stitch Project**: https://stitch.withgoogle.com/projects/15964200879465447191
+- **Design Assets**: `docs/stitch/15964200879465447191/` (PNG screenshots + HTML exports)
+- **Specifications**: `docs/stitch/DESIGN_IMPLEMENTATION_SPEC.md`
+- **Implementation Guide**: `docs/stitch/IMPLEMENTATION_SUMMARY.md`
+
+**Key Features**:
+- Glassmorphism card effects with backdrop blur
+- Soft gradient backgrounds
+- Premium mint/blue color palette
+- Mobile-first responsive layouts
+
+**Screens Designed**:
+- Auth Portal (login/signup with role toggle)
+- Traveler Dashboard (journey overview, driver info, quick actions)
+- Driver Command (current job, navigation, vehicle status)
+- Itinerary Timeline (day-by-day timeline with activities)
+
 ## 📊 Database (Supabase)
 
 **20 tables** in `public` schema. **21 migrations applied**, 3 pending locally.
