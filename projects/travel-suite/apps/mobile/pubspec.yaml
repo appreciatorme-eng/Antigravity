@@ -102,6 +102,24 @@ flutter:
   assets:
     - assets/
 
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+    - family: Cormorant Garamond
+      fonts:
+        # Variable font file; Flutter will map FontWeight values to the axis.
+        - asset: assets/fonts/CormorantGaramond[wght].ttf
+        - asset: assets/fonts/CormorantGaramond-Italic[wght].ttf
+          style: italic
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

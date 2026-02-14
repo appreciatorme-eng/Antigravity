@@ -9,9 +9,9 @@ import 'trip_detail_screen.dart';
 import '../../../auth/presentation/screens/onboarding_screen.dart';
 import 'inbox_screen.dart';
 import 'profile_screen.dart';
-import 'support_screen.dart';
 import '../widgets/driver_dashboard.dart';
-import '../widgets/traveler_dashboard.dart';
+import '../widgets/traveler_dashboard_stitch.dart';
+import 'itinerary_timeline_screen.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -168,7 +168,7 @@ class _TripsScreenState extends State<TripsScreen> {
       return _trips[_activeTripIndex];
     }
 
-    void openTrip({int initialDayIndex = 0, bool autoStartLive = false}) {
+    void openDriverTrip({bool autoStartLive = false}) {
       final trip = activeTrip();
       if (trip == null) return;
       Navigator.push(
@@ -176,8 +176,21 @@ class _TripsScreenState extends State<TripsScreen> {
         MaterialPageRoute(
           builder: (_) => TripDetailScreen(
             trip: trip,
-            initialDayIndex: initialDayIndex,
             autoStartLocationSharing: autoStartLive,
+          ),
+        ),
+      );
+    }
+
+    void openClientItinerary({int initialDayIndex = 0}) {
+      final trip = activeTrip();
+      if (trip == null) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ItineraryTimelineScreen(
+            trip: trip,
+            initialDayIndex: initialDayIndex,
           ),
         ),
       );
@@ -202,11 +215,11 @@ class _TripsScreenState extends State<TripsScreen> {
         case 0:
           return;
         case 1:
-          return openTrip();
+          return openClientItinerary();
         case 2:
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const SupportScreen()),
+            MaterialPageRoute(builder: (_) => const InboxScreen()),
           );
           return;
         case 3:
@@ -223,7 +236,7 @@ class _TripsScreenState extends State<TripsScreen> {
         case 0:
           return;
         case 1:
-          return openTrip(autoStartLive: true);
+          return openDriverTrip(autoStartLive: true);
         case 2:
           return;
         case 3:
@@ -272,20 +285,12 @@ class _TripsScreenState extends State<TripsScreen> {
                   onSelectTrip: (i) => setState(() => _activeTripIndex = i),
                   onRefresh: _loadTrips,
                 )
-              : TravelerDashboard(
+              : TravelerDashboardStitch(
                   trips: _trips,
                   activeTripIndex: _activeTripIndex,
                   onSelectTrip: (i) => setState(() => _activeTripIndex = i),
                   onOpenTrip: (trip, {initialDayIndex = 0}) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TripDetailScreen(
-                          trip: trip,
-                          initialDayIndex: initialDayIndex,
-                        ),
-                      ),
-                    );
+                    openClientItinerary(initialDayIndex: initialDayIndex);
                   },
                   onRefresh: _loadTrips,
                 ));

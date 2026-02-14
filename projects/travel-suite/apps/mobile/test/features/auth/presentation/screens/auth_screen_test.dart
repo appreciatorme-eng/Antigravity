@@ -10,9 +10,11 @@ void main() {
   testWidgets('renders login mode by default', (tester) async {
     await tester.pumpWidget(buildSubject());
 
-    expect(find.text('Sign In'), findsOneWidget);
-    expect(find.text("Don't have an account? Sign up"), findsOneWidget);
-    expect(find.text('I am signing up as'), findsNothing);
+    expect(find.text('Begin Journey'), findsOneWidget);
+    expect(find.text("Don't have an account? Request Access"), findsOneWidget);
+    // Role toggle is visible in both login and signup (Stitch wireframe parity).
+    expect(find.text('Traveler'), findsOneWidget);
+    expect(find.text('Driver'), findsOneWidget);
   });
 
   testWidgets('shows driver onboarding hint when driver role is selected', (
@@ -20,7 +22,7 @@ void main() {
   ) async {
     await tester.pumpWidget(buildSubject());
 
-    final toggleFinder = find.text("Don't have an account? Sign up");
+    final toggleFinder = find.text("Don't have an account? Request Access");
     await tester.ensureVisible(toggleFinder);
     await tester.tap(toggleFinder);
     await tester.pumpAndSettle();
@@ -37,14 +39,13 @@ void main() {
   testWidgets('shows role selection in signup mode', (tester) async {
     await tester.pumpWidget(buildSubject());
 
-    final toggleFinder = find.text("Don't have an account? Sign up");
+    final toggleFinder = find.text("Don't have an account? Request Access");
     await tester.ensureVisible(toggleFinder);
     await tester.tap(toggleFinder);
     await tester.pumpAndSettle();
 
-    expect(find.text('Create Account'), findsOneWidget);
-    expect(find.text('I am signing up as'), findsOneWidget);
-    expect(find.text('Client'), findsOneWidget);
+    expect(find.text('Request Access'), findsOneWidget);
     expect(find.text('Driver'), findsOneWidget);
+    expect(find.text('Traveler'), findsOneWidget);
   });
 }

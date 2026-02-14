@@ -28,7 +28,7 @@ void main() {
     final outlinedSide = outlinedStyle?.side?.resolve(<WidgetState>{});
     expect(outlinedSide?.color, AppTheme.primary);
 
-    expect(theme.textTheme.displayMedium?.fontFamily, 'CormorantGaramond');
+    expect(theme.textTheme.displayMedium?.fontFamily, 'Cormorant Garamond');
     expect(theme.textTheme.titleLarge?.fontFamily, 'Poppins');
     expect(theme.textTheme.bodyMedium?.color, AppTheme.textSecondary);
   });
@@ -36,6 +36,6 @@ void main() {
   test('gradients expose expected color stops', () {
     expect(AppTheme.primaryGradient.colors.first, AppTheme.primary);
     expect(AppTheme.backgroundGradient.colors.length, 3);
-    expect(AppTheme.backgroundGradient.colors[1], const Color(0xFFF8FAFC));
+    expect(AppTheme.backgroundGradient.colors[1], const Color(0xFFF5F5F5));
   });
 }

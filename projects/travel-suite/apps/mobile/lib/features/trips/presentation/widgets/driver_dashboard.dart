@@ -332,6 +332,13 @@ class _DriverDashboardState extends State<DriverDashboard> {
             ?.toString()
             .trim();
 
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final driverIdRaw =
+        (driverInfo?['driver_id'] ?? driverInfo?['id'] ?? userId).toString();
+    final driverIdShort = driverIdRaw.length <= 4
+        ? driverIdRaw
+        : driverIdRaw.substring(driverIdRaw.length - 4);
+
     String passengerName() {
       final v =
           (raw['traveler_name'] ??
@@ -389,6 +396,134 @@ class _DriverDashboardState extends State<DriverDashboard> {
         : DateFormat.Hm().format(now);
     final upcoming = upcomingRoute();
 
+    Widget upcomingJobCard(Map<String, String> it) {
+      final time = (it['time'] ?? '').trim();
+      final title = (it['title'] ?? '').trim();
+      final loc = (it['location'] ?? '').trim();
+      final lower = title.toLowerCase();
+      final icon = lower.contains('drop')
+          ? Icons.flag_rounded
+          : lower.contains('dinner') || lower.contains('lunch')
+          ? Icons.restaurant_rounded
+          : lower.contains('pick')
+          ? Icons.local_taxi_rounded
+          : Icons.event_rounded;
+      final label = lower.contains('drop')
+          ? 'Drop-off'
+          : lower.contains('dinner')
+          ? 'Dinner Pickup'
+          : lower.contains('lunch')
+          ? 'Lunch Pickup'
+          : lower.contains('pick')
+          ? 'Pickup'
+          : 'Stop';
+
+      return InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(20),
+        child: GlassCard(
+          padding: const EdgeInsets.all(14),
+          borderRadius: BorderRadius.circular(20),
+          child: Row(
+            children: [
+              Container(
+                width: 68,
+                padding: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: AppTheme.secondary.withAlpha(20)),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      time.isEmpty ? '--:--' : time,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.secondary,
+                      ),
+                    ),
+                    Text(
+                      (time.toLowerCase().contains('am') ||
+                              time.toLowerCase().contains('pm'))
+                          ? ''
+                          : 'PM',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: AppTheme.secondary.withAlpha(110),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 18, color: AppTheme.secondary),
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      title.isEmpty ? 'Upcoming stop' : title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontFamilyFallback: const ['serif'],
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.secondary,
+                      ),
+                    ),
+                    if (loc.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        loc,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(110),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.secondary.withAlpha(120),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final list = ListView(
       padding: const EdgeInsets.fromLTRB(24, 120, 24, 96),
       children: [
@@ -401,268 +536,272 @@ class _DriverDashboardState extends State<DriverDashboard> {
           const SizedBox(height: 14),
         ],
         GlassCard(
-          padding: const EdgeInsets.all(18),
-          borderRadius: BorderRadius.circular(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(20),
+          blurSigma: 20,
+          color: Colors.white.withAlpha(242),
+          borderRadius: BorderRadius.circular(32),
+          child: Stack(
             children: [
-              Row(
+              Positioned(
+                top: -40,
+                right: -40,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withAlpha(18),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GlassPill(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    color: AppTheme.primary.withAlpha(22),
-                    borderColor: AppTheme.primary.withAlpha(40),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Current: Day $dayNumber',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  GlassIconButton(
-                    onPressed: () => _openTrip(trip, autoStartLive: true),
-                    size: 36,
-                    background: AppTheme.secondary.withAlpha(18),
-                    icon: const AppIcon(
-                      HeroIcons.signal,
-                      size: 18,
-                      color: AppTheme.secondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                currentTimeLabel,
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: AppTheme.primary,
-                  fontSize: 44,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Today, ${DateFormat.MMMd().format(now)}',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'PASSENGER',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                  color: AppTheme.textSecondary.withAlpha(200),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                passengerName(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'PICKUP LOCATION',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                  color: AppTheme.textSecondary.withAlpha(200),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  AppIcon(
-                    HeroIcons.mapPin,
-                    size: 18,
-                    color: AppTheme.textSecondary.withAlpha(180),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      pickupLocation.isEmpty
-                          ? 'Pickup details will appear once assigned.'
-                          : pickupLocation,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (dropoffLocation.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Drop-off: $dropoffLocation',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: pickupLocation.isEmpty
-                      ? null
-                      : () => _openMaps(pickupLocation),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.secondary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Row(
                     children: [
-                      AppIcon(HeroIcons.arrowUpRight, color: Colors.white),
-                      SizedBox(width: 10),
-                      Text(
-                        'Start Navigation',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                      GlassPill(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        color: AppTheme.primary.withAlpha(18),
+                        borderColor: AppTheme.primary.withAlpha(40),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'CURRENT JOB',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondary.withAlpha(10),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.local_taxi_rounded,
+                          size: 30,
+                          color: AppTheme.secondary,
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        GlassCard(
-          padding: const EdgeInsets.all(16),
-          borderRadius: BorderRadius.circular(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
+                  const SizedBox(height: 14),
                   Text(
-                    'Upcoming Route',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    currentTimeLabel,
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontSize: 54,
+                      height: 1,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.secondary,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 4),
                   Text(
-                    'Today',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.secondary.withAlpha(180),
+                    'Today, ${DateFormat.MMMd().format(now)}',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ...upcoming.map((it) {
-                final time = (it['time'] ?? '').trim();
-                final title = (it['title'] ?? '').trim();
-                final loc = (it['location'] ?? '').trim();
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
+                  const SizedBox(height: 18),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        width: 64,
-                        child: Text(
-                          time.isEmpty ? '--:--' : time,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
+                      Column(
+                        children: [
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppTheme.secondary,
+                                width: 3,
+                              ),
+                            ),
                           ),
-                        ),
+                          Container(
+                            width: 2,
+                            height: 40,
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(
+                                  color: AppTheme.secondary.withAlpha(60),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.location_on_rounded,
+                            color: AppTheme.primary,
+                            size: 22,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              title,
+                              'PASSENGER',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.3,
+                                color: AppTheme.textSecondary.withAlpha(190),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              passengerName(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.secondary,
                               ),
                             ),
-                            if (loc.isNotEmpty)
+                            const SizedBox(height: 14),
+                            Text(
+                              'PICKUP LOCATION',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.3,
+                                color: AppTheme.textSecondary.withAlpha(190),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              pickupLocation.isEmpty
+                                  ? 'Pickup details will appear once assigned.'
+                                  : pickupLocation,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                                height: 1.15,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.secondary.withAlpha(230),
+                              ),
+                            ),
+                            if (dropoffLocation.isNotEmpty) ...[
+                              const SizedBox(height: 6),
                               Text(
-                                loc,
+                                dropoffLocation,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
+                                  color: AppTheme.textSecondary,
                                 ),
                               ),
+                            ],
                           ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GlassIconButton(
-                        onPressed: loc.isEmpty ? null : () => _openMaps(loc),
-                        size: 34,
-                        background: AppTheme.primary.withAlpha(18),
-                        icon: const AppIcon(
-                          HeroIcons.arrowUpRight,
-                          size: 18,
-                          color: AppTheme.primary,
                         ),
                       ),
                     ],
                   ),
-                );
-              }),
-              if (upcoming.isEmpty)
-                const Text(
-                  'Route will appear once itinerary activities are added.',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: pickupLocation.isEmpty
+                          ? null
+                          : () => _openMaps(pickupLocation),
+                      icon: const Icon(Icons.navigation_rounded),
+                      label: const Text(
+                        'Start Navigation',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.secondary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
+              ),
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Text(
+              'Upcoming Route',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontFamilyFallback: const ['serif'],
+                fontStyle: FontStyle.italic,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.secondary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'TODAY',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.6,
+                color: AppTheme.secondary.withAlpha(120),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (upcoming.isEmpty)
+          const GlassCard(
+            child: Text(
+              'Route will appear once itinerary activities are added.',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        else
+          ...upcoming.map(
+            (it) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: upcomingJobCard(it),
+            ),
+          ),
         const SizedBox(height: 16),
         GlassCard(
           padding: const EdgeInsets.all(16),
@@ -736,6 +875,42 @@ class _DriverDashboardState extends State<DriverDashboard> {
                       ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondary.withAlpha(12),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.local_gas_station_rounded,
+                        color: AppTheme.primary,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      '75%',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Range: ${(vehicleRangeKm ?? '420').toString()} km',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
@@ -752,6 +927,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
         scroll,
         _DriverHeader(
           kicker: kicker,
+          driverIdShort: driverIdShort,
           name: (_profile?['full_name'] ?? 'Driver').toString(),
           onDuty: _onDuty,
           loadingDuty: _loadingDuty,
@@ -778,6 +954,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
 
 class _DriverHeader extends StatelessWidget {
   final String kicker;
+  final String driverIdShort;
   final String name;
   final bool onDuty;
   final bool loadingDuty;
@@ -785,6 +962,7 @@ class _DriverHeader extends StatelessWidget {
 
   const _DriverHeader({
     required this.kicker,
+    required this.driverIdShort,
     required this.name,
     required this.onDuty,
     required this.loadingDuty,
@@ -809,64 +987,53 @@ class _DriverHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        kicker.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                          color: AppTheme.primary,
-                        ),
-                      ),
+                if (kicker.trim().isNotEmpty) ...[
+                  Text(
+                    kicker.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                      color: AppTheme.secondary.withAlpha(140),
                     ),
-                    if (loadingDuty)
-                      const SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: Padding(
-                          padding: EdgeInsets.all(7),
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else
-                      GlassIconButton(
-                        onPressed: onToggleDuty,
-                        size: 34,
-                        background: onDuty
-                            ? AppTheme.success.withAlpha(28)
-                            : AppTheme.textSecondary.withAlpha(18),
-                        icon: AppIcon(
-                          HeroIcons.power,
-                          size: 18,
-                          color: onDuty
-                              ? AppTheme.success
-                              : AppTheme.textSecondary,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 Row(
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppTheme.secondary.withAlpha(18),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: const AppIcon(
-                        HeroIcons.user,
-                        size: 18,
-                        color: AppTheme.secondary,
-                      ),
+                    Stack(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.secondary.withAlpha(18),
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          alignment: Alignment.center,
+                          child: const AppIcon(
+                            HeroIcons.user,
+                            size: 20,
+                            color: AppTheme.secondary,
+                          ),
+                        ),
+                        Positioned(
+                          right: 2,
+                          bottom: 2,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -874,26 +1041,96 @@ class _DriverHeader extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
+                            'DRIVER ID: $driverIdShort',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: AppTheme.secondary.withAlpha(150),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.secondary,
                                 ),
                           ),
-                          const SizedBox(height: 2),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 48,
+                      padding: const EdgeInsets.only(left: 14, right: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(190),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppTheme.glassBorder),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            onDuty ? 'On duty' : 'Off duty',
+                            onDuty ? 'ON DUTY' : 'OFF DUTY',
                             style: TextStyle(
-                              color: onDuty
-                                  ? AppTheme.success
-                                  : AppTheme.textSecondary,
-                              fontWeight: FontWeight.w700,
                               fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                              color: onDuty
+                                  ? AppTheme.primary
+                                  : AppTheme.textSecondary,
                             ),
                           ),
+                          const SizedBox(width: 10),
+                          if (loadingDuty)
+                            const SizedBox(
+                              width: 38,
+                              height: 38,
+                              child: Padding(
+                                padding: EdgeInsets.all(9),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          else
+                            InkWell(
+                              onTap: onToggleDuty,
+                              borderRadius: BorderRadius.circular(999),
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: onDuty
+                                      ? AppTheme.primary
+                                      : AppTheme.textSecondary.withAlpha(40),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          (onDuty
+                                                  ? AppTheme.primary
+                                                  : Colors.black)
+                                              .withAlpha(26),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.power_settings_new_rounded,
+                                  size: 20,
+                                  color: onDuty
+                                      ? Colors.white
+                                      : AppTheme.secondary,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

@@ -146,3 +146,17 @@ bash scripts/android_signoff.sh
 
 *   **"I've Landed" Feature**: Calls the web API (`/api/notifications/client-landed`) with the user session token to trigger server-side notifications.
 *   **Maps**: Uses OpenStreetMap tiles. Ensure appropriate attribution is displayed.
+
+## Stitch Wireframes (UX)
+
+The mobile app wireframes are implemented from the versioned Stitch exports in `projects/travel-suite/docs/stitch/`.
+
+Screen mapping:
+* Auth portal: `lib/features/auth/presentation/screens/auth_screen.dart`
+* Traveler dashboard: `lib/features/trips/presentation/widgets/traveler_dashboard_stitch.dart`
+* Itinerary timeline: `lib/features/trips/presentation/screens/itinerary_timeline_screen.dart`
+* Driver command: `lib/features/trips/presentation/widgets/driver_dashboard.dart`
+
+Navigation notes:
+* Traveler bottom nav `Map` opens the itinerary timeline.
+* Traveler bottom nav `Chat` opens the inbox.

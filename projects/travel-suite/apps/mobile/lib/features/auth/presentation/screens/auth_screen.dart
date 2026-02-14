@@ -295,10 +295,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              if (!_isLogin) ...[
-                                _roleToggle(),
-                                const SizedBox(height: 18),
-                              ],
+                              _roleToggle(),
+                              const SizedBox(height: 18),
                               _FieldLabel(text: 'Email Address'),
                               const SizedBox(height: 6),
                               TextField(
@@ -446,8 +444,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                           children: [
                                             Text(
                                               _isLogin
-                                                  ? 'Sign In'
-                                                  : 'Begin Journey',
+                                                  ? 'Begin Journey'
+                                                  : 'Request Access',
                                             ),
                                             const SizedBox(width: 10),
                                             const AppIcon(

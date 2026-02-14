@@ -62,9 +62,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 2,
       shadowColor: Colors.black.withAlpha(20),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -73,9 +71,7 @@ class AppTheme {
         elevation: 2,
         shadowColor: primary.withAlpha(77),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(
           fontFamily: 'Poppins',
           fontSize: 16,
@@ -88,9 +84,7 @@ class AppTheme {
         foregroundColor: primary,
         side: const BorderSide(color: primary, width: 1.5),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -112,13 +106,13 @@ class AppTheme {
     ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
-        fontFamily: 'CormorantGaramond',
+        fontFamily: 'Cormorant Garamond',
         fontSize: 40,
         fontWeight: FontWeight.bold,
         color: textPrimary,
       ),
       displayMedium: TextStyle(
-        fontFamily: 'CormorantGaramond',
+        fontFamily: 'Cormorant Garamond',
         fontSize: 32,
         fontWeight: FontWeight.bold,
         color: textPrimary,

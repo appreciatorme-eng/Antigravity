@@ -21,6 +21,15 @@ Current key screens:
 - `itinerary_timeline.(png|html)`
 - `driver_command.(png|html)`
 
+## Mobile Implementation Mapping (Flutter)
+
+These Stitch exports are implemented as wireframes in the Flutter mobile app:
+
+- Auth portal: `projects/travel-suite/apps/mobile/lib/features/auth/presentation/screens/auth_screen.dart`
+- Traveler dashboard: `projects/travel-suite/apps/mobile/lib/features/trips/presentation/widgets/traveler_dashboard_stitch.dart`
+- Itinerary timeline: `projects/travel-suite/apps/mobile/lib/features/trips/presentation/screens/itinerary_timeline_screen.dart`
+- Driver command: `projects/travel-suite/apps/mobile/lib/features/trips/presentation/widgets/driver_dashboard.dart`
+
 ## How To Refresh
 
 From the project root:
@@ -31,4 +40,3 @@ cd projects/travel-suite/docs/stitch/15964200879465447191
 ```
 
 If Stitch regenerates or changes asset URLs, update `fetch.sh` and commit the refreshed exports alongside the app implementation changes.
-
