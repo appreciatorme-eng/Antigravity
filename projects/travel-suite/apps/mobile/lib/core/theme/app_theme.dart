@@ -62,7 +62,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 2,
       shadowColor: Colors.black.withAlpha(20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -71,7 +71,7 @@ class AppTheme {
         elevation: 2,
         shadowColor: primary.withAlpha(77),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(
           fontFamily: 'Poppins',
           fontSize: 16,
@@ -84,7 +84,7 @@ class AppTheme {
         foregroundColor: primary,
         side: const BorderSide(color: primary, width: 1.5),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
