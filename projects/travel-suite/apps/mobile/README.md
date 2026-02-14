@@ -160,3 +160,4 @@ Screen mapping:
 Navigation notes:
 * Traveler bottom nav `Map` opens the itinerary timeline.
 * Traveler bottom nav `Chat` opens the inbox.
+* Traveler bottom nav `+` is reserved for quick actions (placeholder).

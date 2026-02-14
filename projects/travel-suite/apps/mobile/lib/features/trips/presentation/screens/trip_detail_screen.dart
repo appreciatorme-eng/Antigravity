@@ -454,6 +454,12 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         case 3:
           Navigator.push(
             context,
+            MaterialPageRoute(builder: (_) => const InboxScreen()),
+          );
+          return;
+        case 4:
+          Navigator.push(
+            context,
             MaterialPageRoute(builder: (_) => const ProfileScreen()),
           );
           return;
@@ -615,7 +621,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
     final nav = _isDriverForTrip
         ? GlassDriverFloatingNavBar(activeIndex: 1, onTap: handleDriverNav)
-        : GlassFloatingNavBar(activeIndex: 1, onTap: handleClientNav);
+        : GlassTravelerFloatingNavBar(activeIndex: 1, onTap: handleClientNav);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

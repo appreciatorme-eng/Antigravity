@@ -2,6 +2,10 @@
 
 This folder stores exported UX references from Google Stitch so we have a stable, versioned source of truth for implementation work.
 
+## Specs
+
+- `DESIGN_IMPLEMENTATION_SPEC.md`: the implementation checklist and token spec for the Stitch exports.
+
 ## Project
 
 - Stitch project: https://stitch.withgoogle.com/projects/15964200879465447191

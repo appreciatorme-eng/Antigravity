@@ -21,6 +21,8 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
   bool _isLogin = true;
   bool _loading = false;
   String? _errorMessage;
@@ -29,9 +31,24 @@ class _AuthScreenState extends State<AuthScreen> {
   final ProfileRoleService _profileRoleService = ProfileRoleService();
 
   @override
+  void initState() {
+    super.initState();
+    _emailFocusNode.addListener(() {
+      if (!mounted) return;
+      setState(() {});
+    });
+    _passwordFocusNode.addListener(() {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -196,7 +213,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           'Traveler',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
+                            color: isTraveler
+                                ? AppTheme.textPrimary
+                                : AppTheme.textSecondary.withAlpha(170),
                           ),
                         ),
                       ),
@@ -211,7 +230,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           'Driver',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary.withAlpha(160),
+                            color: isTraveler
+                                ? AppTheme.textSecondary.withAlpha(170)
+                                : AppTheme.textPrimary,
                           ),
                         ),
                       ),
@@ -221,6 +242,75 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _underlineAnimatedField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    required TextInputType keyboardType,
+    required List<String> autofillHints,
+    required Widget suffixIcon,
+    bool obscureText = false,
+    TextInputAction? textInputAction,
+    VoidCallback? onSubmitted,
+  }) {
+    final focused = focusNode.hasFocus;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                keyboardType: keyboardType,
+                textInputAction: textInputAction,
+                autofillHints: autofillHints,
+                obscureText: obscureText,
+                onSubmitted: (_) => onSubmitted?.call(),
+                decoration: InputDecoration(
+                  hintText: hintText,
+                  filled: true,
+                  fillColor: Colors.white.withAlpha(102),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: suffixIcon,
+                  ),
+                  suffixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(height: 2, color: Colors.grey.shade300),
+            ),
+            Positioned(
+              left: 0,
+              bottom: 0,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                height: 2,
+                width: focused ? constraints.maxWidth : 0,
+                color: AppTheme.primary,
+              ),
+            ),
+          ],
         );
       },
     );
@@ -299,88 +389,46 @@ class _AuthScreenState extends State<AuthScreen> {
                               const SizedBox(height: 18),
                               _FieldLabel(text: 'Email Address'),
                               const SizedBox(height: 6),
-                              TextField(
+                              _underlineAnimatedField(
                                 controller: _emailController,
+                                focusNode: _emailFocusNode,
                                 keyboardType: TextInputType.emailAddress,
                                 autofillHints: const [AutofillHints.email],
-                                decoration: InputDecoration(
-                                  hintText: 'name@example.com',
-                                  filled: true,
-                                  fillColor: Colors.white.withAlpha(102),
-                                  suffixIcon: const Padding(
-                                    padding: EdgeInsets.only(right: 10),
-                                    child: AppIcon(
-                                      HeroIcons.envelope,
-                                      size: 18,
-                                      color: Color(0x66124EA2),
-                                    ),
-                                  ),
-                                  suffixIconConstraints: const BoxConstraints(
-                                    minWidth: 36,
-                                    minHeight: 36,
-                                  ),
-                                  border: const UnderlineInputBorder(),
-                                  enabledBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: AppTheme.primary,
-                                      width: 2,
-                                    ),
-                                  ),
+                                textInputAction: TextInputAction.next,
+                                hintText: 'name@example.com',
+                                suffixIcon: const AppIcon(
+                                  HeroIcons.envelope,
+                                  size: 18,
+                                  color: Color(0x66124EA2),
                                 ),
+                                onSubmitted: () =>
+                                    _passwordFocusNode.requestFocus(),
                               ),
                               const SizedBox(height: 16),
                               _FieldLabel(text: 'Password'),
                               const SizedBox(height: 6),
-                              TextField(
+                              _underlineAnimatedField(
                                 controller: _passwordController,
-                                obscureText: !_showPassword,
+                                focusNode: _passwordFocusNode,
+                                keyboardType: TextInputType.text,
                                 autofillHints: const [AutofillHints.password],
-                                decoration: InputDecoration(
-                                  hintText: '••••••••',
-                                  filled: true,
-                                  fillColor: Colors.white.withAlpha(102),
-                                  suffixIcon: InkWell(
-                                    onTap: () => setState(
-                                      () => _showPassword = !_showPassword,
-                                    ),
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 10),
-                                      child: AppIcon(
-                                        _showPassword
-                                            ? HeroIcons.eyeSlash
-                                            : HeroIcons.eye,
-                                        size: 18,
-                                        color: AppTheme.secondary.withAlpha(
-                                          110,
-                                        ),
-                                      ),
-                                    ),
+                                hintText: '••••••••',
+                                obscureText: !_showPassword,
+                                textInputAction: TextInputAction.done,
+                                suffixIcon: InkWell(
+                                  onTap: () => setState(
+                                    () => _showPassword = !_showPassword,
                                   ),
-                                  suffixIconConstraints: const BoxConstraints(
-                                    minWidth: 36,
-                                    minHeight: 36,
-                                  ),
-                                  border: const UnderlineInputBorder(),
-                                  enabledBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: AppTheme.primary,
-                                      width: 2,
-                                    ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: AppIcon(
+                                    _showPassword
+                                        ? HeroIcons.eyeSlash
+                                        : HeroIcons.eye,
+                                    size: 18,
+                                    color: AppTheme.secondary.withAlpha(110),
                                   ),
                                 ),
+                                onSubmitted: _handleAuth,
                               ),
                               const SizedBox(height: 10),
                               Align(

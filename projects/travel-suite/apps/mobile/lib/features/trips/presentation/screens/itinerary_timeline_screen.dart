@@ -65,12 +65,17 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
       case 1:
         return;
       case 2:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Quick action coming soon')),
+        );
+        return;
+      case 3:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const InboxScreen()),
         );
         return;
-      case 3:
+      case 4:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -108,10 +113,14 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
                 width: 86,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white : Colors.white.withAlpha(90),
+                  color: selected
+                      ? AppTheme.primary
+                      : Colors.white.withAlpha(90),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.white.withAlpha(selected ? 180 : 120),
+                    color: selected
+                        ? AppTheme.primary.withAlpha(160)
+                        : Colors.white.withAlpha(120),
                   ),
                   boxShadow: selected
                       ? [
@@ -133,7 +142,7 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
                         color: selected
-                            ? AppTheme.primary
+                            ? Colors.white
                             : AppTheme.secondary.withAlpha(120),
                       ),
                     ),
@@ -144,7 +153,7 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: selected
-                            ? AppTheme.secondary
+                            ? Colors.white
                             : AppTheme.secondary.withAlpha(120),
                       ),
                     ),
@@ -188,6 +197,25 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
       final imageUrl = (activity['image_url'] ?? activity['imageUrl'] ?? '')
           .toString()
           .trim();
+
+      Widget statusPill(String label) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withAlpha(20),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppTheme.primary.withAlpha(50)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.primary.withAlpha(dimmed ? 150 : 255),
+            ),
+          ),
+        );
+      }
 
       Widget cardChild() {
         if (imageUrl.isNotEmpty) {
@@ -289,6 +317,10 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
                           );
                         }).toList(),
                       ),
+                    if (isTour) ...[
+                      const SizedBox(height: 10),
+                      statusPill('Confirmed'),
+                    ],
                   ],
                 ),
               ),
@@ -296,7 +328,7 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
           );
         }
 
-        final showConfirmed = isTransfer;
+        final showConfirmed = isTransfer || isFood;
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -341,24 +373,7 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
               ],
               if (showConfirmed) ...[
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      size: 16,
-                      color: AppTheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Driver Confirmed',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primary.withAlpha(dimmed ? 140 : 255),
-                      ),
-                    ),
-                  ],
-                ),
+                statusPill(isTransfer ? 'Driver Confirmed' : 'Confirmed'),
               ],
             ],
           ),
@@ -383,6 +398,30 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
               child: baseCard,
             )
           : baseCard;
+
+      final badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(230),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withAlpha(160)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(12),
+              blurRadius: 12,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Text(
+          time.isEmpty ? '--:--' : time,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.secondary,
+          ),
+        ),
+      );
 
       return Opacity(
         opacity: dimmed ? 0.6 : 1,
@@ -423,33 +462,15 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Stack(
                     children: [
-                      Text(
-                        time.isEmpty ? '--:--' : time,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.secondary,
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 18),
+                        child: card,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        (time.toLowerCase().contains('am') ||
-                                time.toLowerCase().contains('pm'))
-                            ? ''
-                            : '',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: AppTheme.secondary.withAlpha(120),
-                        ),
-                      ),
+                      Positioned(left: 12, top: 0, child: badge),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  card,
                 ],
               ),
             ),
@@ -630,7 +651,7 @@ class _ItineraryTimelineScreenState extends State<ItineraryTimelineScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: GlassFloatingNavBar(
+      bottomNavigationBar: GlassTravelerFloatingNavBar(
         activeIndex: 1,
         onTap: _handleNav,
       ),

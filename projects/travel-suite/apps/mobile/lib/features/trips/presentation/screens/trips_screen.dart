@@ -217,12 +217,17 @@ class _TripsScreenState extends State<TripsScreen> {
         case 1:
           return openClientItinerary();
         case 2:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Quick action coming soon')),
+          );
+          return;
+        case 3:
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const InboxScreen()),
           );
           return;
-        case 3:
+        case 4:
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ProfileScreen()),
@@ -313,7 +318,7 @@ class _TripsScreenState extends State<TripsScreen> {
                           activeIndex: 2,
                           onTap: handleDriverNav,
                         )
-                      : GlassFloatingNavBar(
+                      : GlassTravelerFloatingNavBar(
                           activeIndex: 0,
                           onTap: handleClientNav,
                         ),

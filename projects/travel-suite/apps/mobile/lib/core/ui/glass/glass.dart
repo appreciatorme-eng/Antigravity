@@ -188,6 +188,76 @@ class GlassFloatingNavBar extends StatelessWidget {
   }
 }
 
+class GlassTravelerFloatingNavBar extends StatelessWidget {
+  /// 0 = Home, 1 = Itinerary, 2 = Add, 3 = Messages, 4 = Profile
+  final int activeIndex;
+  final void Function(int index) onTap;
+
+  const GlassTravelerFloatingNavBar({
+    super.key,
+    required this.activeIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.glassNavSurface,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppTheme.glassBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _NavItem(
+                    isActive: activeIndex == 0,
+                    onTap: () => onTap(0),
+                    icon: HeroIcons.home,
+                  ),
+                  _NavItem(
+                    isActive: activeIndex == 1,
+                    onTap: () => onTap(1),
+                    icon: HeroIcons.map,
+                  ),
+                  _TravelerAddItem(onTap: () => onTap(2)),
+                  _NavItem(
+                    isActive: activeIndex == 3,
+                    onTap: () => onTap(3),
+                    icon: HeroIcons.chatBubbleOvalLeftEllipsis,
+                  ),
+                  _NavItem(
+                    isActive: activeIndex == 4,
+                    onTap: () => onTap(4),
+                    icon: HeroIcons.user,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class GlassDriverFloatingNavBar extends StatelessWidget {
   /// 0 = Home, 1 = Route, 2 = Command, 3 = Inbox, 4 = Profile
   final int activeIndex;
@@ -336,6 +406,42 @@ class _DriverCommandItem extends StatelessWidget {
           size: 22,
           color: isActive ? Colors.white : AppTheme.textPrimary.withAlpha(170),
           style: isActive ? HeroIconStyle.solid : HeroIconStyle.outline,
+        ),
+      ),
+    );
+  }
+}
+
+class _TravelerAddItem extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _TravelerAddItem({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppTheme.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primary.withAlpha(102),
+              blurRadius: 18,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: const AppIcon(
+          HeroIcons.plus,
+          size: 24,
+          color: Colors.white,
+          style: HeroIconStyle.solid,
         ),
       ),
     );
