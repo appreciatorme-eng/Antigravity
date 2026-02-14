@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/ui/glass/glass.dart';
@@ -147,7 +148,7 @@ class TravelerDashboardStitch extends StatelessWidget {
         : destination.split(',').first.trim();
 
     final dateLabel = (start != null && end != null)
-        ? '${start.month}/${start.day}-${end.month}/${end.day}'
+        ? '${DateFormat.MMMM().format(start).toUpperCase()} ${start.day}-${end.day}'
         : '';
 
     final next = _nextActivityForTrip(trip, now);
