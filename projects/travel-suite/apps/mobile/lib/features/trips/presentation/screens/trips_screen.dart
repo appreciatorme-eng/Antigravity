@@ -12,7 +12,7 @@ import 'profile_screen.dart';
 import '../widgets/driver_dashboard.dart';
 import '../widgets/traveler_dashboard_stitch.dart';
 import 'itinerary_timeline_screen.dart';
-import '../../../explore/presentation/screens/explore_screen.dart';
+import '../../../explore/presentation/screens/explore_screen_v2.dart';
 import '../../../concierge/presentation/screens/concierge_screen.dart';
 import '../../../bookings/presentation/screens/bookings_screen.dart';
 
@@ -320,7 +320,7 @@ class _TripsScreenState extends State<TripsScreen> {
         case 1: // Explore (add-ons and upgrades)
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ExploreScreen()),
+            MaterialPageRoute(builder: (_) => const ExploreScreenV2()),
           );
           return;
         case 2: // Concierge (special requests)
