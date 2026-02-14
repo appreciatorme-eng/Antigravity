@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Traveler Home: Gliding Aero Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+        .glass-card-highlight {
+            background: linear-gradient(135deg, rgba(43, 108, 238, 0.15) 0%, rgba(43, 108, 238, 0.05) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(43, 108, 238, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Subtle Ambient Glow */
+        .ambient-glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(43, 108, 238, 0.25) 0%, rgba(43, 108, 238, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Hide Scrollbar for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-white font-display min-h-screen relative overflow-hidden flex justify-center">
+<!-- Ambient Background Glows -->
+<div class="ambient-glow top-[-100px] right-[-50px]"></div>
+<div class="ambient-glow bottom-[-50px] left-[-100px] w-[400px] h-[400px] opacity-60"></div>
+<!-- Mobile Container -->
+<main class="w-full max-w-md h-screen relative flex flex-col z-10 p-6 pb-24 overflow-y-auto no-scrollbar">
+<!-- Header Section -->
+<header class="flex justify-between items-start mb-8 pt-4">
+<div class="flex flex-col">
+<span class="text-white/60 text-sm font-medium tracking-wide">Good evening,</span>
+<h1 class="text-3xl font-bold mt-1 bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">Alex</h1>
+</div>
+<!-- Mascot & Notification Container -->
+<div class="relative flex items-center">
+<div class="glass-panel rounded-full p-2 relative group cursor-pointer transition-all duration-300 hover:bg-white/10">
+<!-- Notification Dot -->
+<span class="absolute top-0 right-0 h-2.5 w-2.5 bg-primary rounded-full border-2 border-background-dark"></span>
+<!-- Aero Mascot (Abstract Representation) -->
+<div class="w-10 h-10 rounded-full overflow-hidden relative">
+<img alt="3D glass hummingbird gliding mascot abstract" class="w-full h-full object-cover opacity-90 scale-125" data-alt="Abstract 3D glass hummingbird gliding" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3xcqVrgibk2ctUO9u4Oi1ctWBnm9bFviRLue-pXavPKoxmCpnoxHLjA6Yt4GlZFR6Lrm-2lrmnrmi0hDAlo5GcV1tn99DX98W4x7dciNGCPzniKgLJTv53upYQKk-IIk7N7fUNNbS4xGADtc-LhdjZY40-KQI4DwEh-R7_I3BfU4JZ4izyM_pmqmPfs_USN9w0Y7DUxgNtlc8v4cINMTDIecObydcYiCEx-1HRm3SPAn2j4G6NWStmQ5aHZ3HfrOLgulIzLR5jMej"/>
+<!-- Overlay for color tint -->
+<div class="absolute inset-0 bg-primary/20 mix-blend-overlay"></div>
+</div>
+</div>
+</div>
+</header>
+<!-- Hero: Flight Status Card -->
+<section class="mb-8">
+<div class="flex justify-between items-end mb-4 px-1">
+<h2 class="text-xl font-bold">Current Trip</h2>
+<div class="flex items-center space-x-1 text-primary text-sm font-medium">
+<span class="material-icons-outlined text-base">cloud</span>
+<span>London 12°C</span>
+</div>
+</div>
+<div class="glass-card-highlight rounded-xl p-6 relative overflow-hidden">
+<!-- Decorative blurred circle inside card -->
+<div class="absolute top-[-50px] left-[-50px] w-32 h-32 bg-primary/20 rounded-full blur-2xl"></div>
+<div class="flex justify-between items-center mb-6 relative z-10">
+<div class="bg-primary/20 text-blue-200 text-xs font-bold px-3 py-1 rounded-full border border-primary/30 shadow-[0_0_10px_rgba(43,108,238,0.3)]">
+                        BOARDING IN 35M
+                    </div>
+<span class="text-white/60 text-sm font-mono tracking-wider">UA938</span>
+</div>
+<div class="flex justify-between items-center mb-2 relative z-10">
+<div class="text-center">
+<div class="text-4xl font-bold">SFO</div>
+<div class="text-white/50 text-xs mt-1 font-medium">San Francisco</div>
+</div>
+<!-- Flight Path Graphic -->
+<div class="flex-1 px-4 flex flex-col items-center">
+<div class="flex justify-between w-full text-[10px] text-white/40 mb-1 font-mono">
+<span>10h 35m</span>
+</div>
+<div class="w-full h-[2px] bg-white/10 relative rounded-full">
+<div class="absolute left-0 top-0 h-full w-2/3 bg-primary rounded-full shadow-[0_0_8px_rgba(43,108,238,0.8)]"></div>
+<div class="absolute left-2/3 top-1/2 -translate-y-1/2 -translate-x-1/2">
+<span class="material-icons-outlined text-primary text-lg rotate-90" style="filter: drop-shadow(0 0 5px rgba(43,108,238,0.8));">flight</span>
+</div>
+</div>
+</div>
+<div class="text-center">
+<div class="text-4xl font-bold">LHR</div>
+<div class="text-white/50 text-xs mt-1 font-medium">London</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-white/10 relative z-10">
+<div>
+<div class="text-white/40 text-[10px] uppercase tracking-wider mb-1">Gate</div>
+<div class="text-xl font-bold">G4</div>
+</div>
+<div class="text-center">
+<div class="text-white/40 text-[10px] uppercase tracking-wider mb-1">Seat</div>
+<div class="text-xl font-bold">2A</div>
+</div>
+<div class="text-right">
+<div class="text-white/40 text-[10px] uppercase tracking-wider mb-1">Depart</div>
+<div class="text-xl font-bold">17:45</div>
+</div>
+</div>
+</div>
+<!-- Quick Action under card -->
+<button class="mt-4 w-full glass-panel hover:bg-white/5 active:scale-[0.99] transition-all rounded-lg py-3 text-sm font-medium flex items-center justify-center gap-2 text-white/90">
+<span class="material-icons-outlined text-lg">qr_code</span>
+                View Boarding Pass
+            </button>
+</section>
+<!-- Itinerary Section -->
+<section>
+<h2 class="text-xl font-bold mb-4 px-1">Next Steps</h2>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="glass-card rounded-lg p-4 flex items-center gap-4 group">
+<div class="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 shrink-0 overflow-hidden relative">
+<img alt="Interior of a luxury hotel lobby" class="w-full h-full object-cover opacity-80" data-alt="Luxury hotel lobby interior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkAs7QMW33mehed92nac5is_V2T-hmeQwHKDNQGyG5r2OyjRYvp5gYrcw_-Q3uspe0_9fpLwJVQftMbkv2KYnVzf9vhVvRp0aOW65ScO0jiM9KFqHosIwbDT40OIhm9pIUQtpZ6LE_8bKdglXH6esIQwLPW1LBjrxNyGWJ-RxWk7PE0CpWqEq_SZqW5z2q0QABYxuUL4b0wFsxFzt9L7Vd49f0X4SIX9USGQ6EcSd09UAHfT6N5bzT8TuLmfxICyzUeV5a0AkrO-p0"/>
+<div class="absolute inset-0 bg-black/20"></div>
+<span class="material-icons-outlined text-white absolute z-10">hotel</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-white truncate">The Langham Hotel</h3>
+<p class="text-xs text-white/50 mt-1 truncate">Check-in at 3:00 PM • 1 Regent St</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-sm">chevron_right</span>
+</button>
+</div>
+<!-- Item 2 -->
+<div class="glass-card rounded-lg p-4 flex items-center gap-4 group">
+<div class="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 shrink-0 overflow-hidden relative">
+<img alt="Sleek black car front view" class="w-full h-full object-cover opacity-80" data-alt="Sleek black luxury car" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoC8oM_qGCbeymMIB8pojtuXMX_Hptv3bAEwWiGgawggH3MMws1Eormx9S9POxSCk142Nu-9JPsEdLUzQtWz049SgpNnMcpXIHaIKOQJJleKmiqG920TLgf9v7e61_2lOL4j5intDO3oeLZ5Q-HCMoLXwusqyBNb9l2gTkU_pXcDovD-Cp3WttRjHnSpDQi-U8iys6kVmuFvw7OtM6Mltq_Rg03O0KYOxfQPEEfxbfSztrJxHck6Nv1ohafZ4kSwhyxnlZnr8hQkU0"/>
+<div class="absolute inset-0 bg-black/20"></div>
+<span class="material-icons-outlined text-white absolute z-10">directions_car</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-bold text-white truncate">Hertz Car Rental</h3>
+<p class="text-xs text-white/50 mt-1 truncate">Confirmation #83920 • Compact SUV</p>
+</div>
+<button class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/60 hover:bg-primary hover:text-white transition-colors">
+<span class="material-icons-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Floating Glass Pill) -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[360px] z-50">
+<div class="glass-panel rounded-2xl px-2 py-2 flex justify-between items-center shadow-2xl backdrop-blur-xl bg-background-dark/40 border border-white/10">
+<button class="flex-1 flex flex-col items-center justify-center py-2 gap-1 group">
+<div class="p-1.5 rounded-xl bg-primary/20 text-primary transition-all duration-300">
+<span class="material-icons-outlined text-xl">home</span>
+</div>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center py-2 gap-1 group text-white/40 hover:text-white/80 transition-colors">
+<span class="material-icons-outlined text-xl group-hover:-translate-y-0.5 transition-transform duration-300">flight_takeoff</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center py-2 gap-1 group text-white/40 hover:text-white/80 transition-colors">
+<span class="material-icons-outlined text-xl group-hover:-translate-y-0.5 transition-transform duration-300">account_balance_wallet</span>
+</button>
+<button class="flex-1 flex flex-col items-center justify-center py-2 gap-1 group text-white/40 hover:text-white/80 transition-colors">
+<span class="material-icons-outlined text-xl group-hover:-translate-y-0.5 transition-transform duration-300">person</span>
+</button>
+</div>
+</div>
+</body></html>

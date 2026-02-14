@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Journeys - Traveler Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00d184",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0f231c",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-active {
+            background: rgba(0, 209, 132, 0.15);
+            border: 1px solid rgba(0, 209, 132, 0.3);
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen font-display">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto overflow-x-hidden pb-24">
+<!-- Header -->
+<header class="flex items-center justify-between p-6 pt-8">
+<div class="flex items-center gap-3">
+<div class="size-12 rounded-full overflow-hidden border-2 border-primary/20 bg-cover bg-center" data-alt="User profile avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0ZsoeMPVKtsfkfXIvqaXCnWW6a8A_SorQb0ZvzDeM82PSKtptmwqE3TNrZimHamnI20ptD1Px9A9_0R6ZwQ9elsndZ60-Qof9WfnDpdB6v4HjlplvbjnZVktm0QLgne8ruZlD2YHrutjdi4mzk_ClazZ7_MYTTXfPPbz9liGHJcNeI79Sy2e1yMDUk6JFv_5H_QcPkJ6aSuCGiU3xvSLLxBoBIvhylrzpOMx9Jmwe1Zxy7l2_cIDpyMb5fs7Qsv8UBAp5YzQb_96i')"></div>
+<div>
+<h1 class="text-2xl font-bold tracking-tight">My Journeys</h1>
+<p class="text-xs text-primary font-medium uppercase tracking-wider">Premium Member</p>
+</div>
+</div>
+<button class="size-11 flex items-center justify-center rounded-xl glass text-white">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<!-- Current Day Pill Selector -->
+<div class="px-6 mb-8">
+<div class="flex gap-3 overflow-x-auto no-scrollbar py-2">
+<div class="flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl glass text-slate-400">
+<span class="text-xs font-medium">11 Sun</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl bg-primary text-background-dark font-bold shadow-lg shadow-primary/20">
+<span class="text-xs uppercase opacity-80">Today</span>
+<span class="text-xl">12 Mon</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl glass text-slate-400">
+<span class="text-xs font-medium">13 Tue</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl glass text-slate-400">
+<span class="text-xs font-medium">14 Wed</span>
+</div>
+<div class="flex flex-col items-center justify-center min-w-[64px] h-20 rounded-2xl glass text-slate-400">
+<span class="text-xs font-medium">15 Thu</span>
+</div>
+</div>
+</div>
+<!-- Driver Card -->
+<section class="px-6 mb-8">
+<h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">Current Driver</h3>
+<div class="glass rounded-xl p-5 relative overflow-hidden">
+<!-- Abstract Background Detail -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+<div class="flex items-center gap-4 relative z-10">
+<div class="size-16 rounded-lg bg-cover bg-center" data-alt="Portrait of Raj Singh our driver" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCwBH_uCk_w3gfMEC4juqtBxeLnjuPfZQemBz-AOSiQ31iep1pnPD9siNUC36q22RqWCEyMbGiVGqmhizSf89LvBjUcBqX1Cmdq_prrYWNCIQ7uLTajrqHWTXq02qjIBd4Rb4BIWoC0lfp1CI7rYVn5f6yw0EfqMVTp7f3RxNJdhQVh0FysV-Qm2GUJKzKGHUB7kGeLIWDBE7mL74uR5tLtSPTj2QPBhZrlHbOfrGZchv2pbFWxmDnCaVEDicatugQdV3RVwppjZYxQ')"></div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<h4 class="text-lg font-bold">Raj Singh</h4>
+<div class="flex items-center text-primary">
+<span class="material-symbols-outlined text-sm">star</span>
+<span class="text-xs font-bold ml-1">4.9</span>
+</div>
+</div>
+<p class="text-sm text-slate-400">Toyota Innova • White</p>
+<p class="text-xs font-mono text-primary/80 mt-1">DL 1CA 1234</p>
+</div>
+</div>
+<div class="flex gap-3 mt-5">
+<button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-lg bg-primary text-background-dark font-bold text-sm">
+<span class="material-symbols-outlined text-xl">call</span>
+                        Call
+                    </button>
+<button class="flex-1 flex items-center justify-center gap-2 h-11 rounded-lg glass text-white font-bold text-sm">
+<span class="material-symbols-outlined text-xl">chat_bubble</span>
+                        Message
+                    </button>
+</div>
+</div>
+</section>
+<!-- Up Next Section -->
+<section class="px-6 mb-8">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Up Next</h3>
+<span class="text-primary text-xs font-bold">ETA 2:45 PM</span>
+</div>
+<div class="glass-active rounded-xl p-5 flex items-start gap-4">
+<div class="size-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-3xl">hotel</span>
+</div>
+<div class="flex-1">
+<h4 class="text-base font-bold text-white">Check-in at The Imperial</h4>
+<p class="text-sm text-slate-300 mt-1">Janpath, New Delhi, 110001</p>
+<div class="mt-3 flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-white/10 text-[10px] font-bold uppercase tracking-tighter">Reservation: #IMP9921</span>
+</div>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full glass border-primary/20">
+<span class="material-symbols-outlined text-primary">directions</span>
+</button>
+</div>
+</section>
+<!-- Action Grid -->
+<section class="px-6 mb-4">
+<h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">Quick Actions</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="glass p-5 rounded-xl flex flex-col gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">map</span>
+<div>
+<p class="font-bold text-white">Itinerary</p>
+<p class="text-[11px] text-slate-500">Day by day plan</p>
+</div>
+</div>
+<div class="glass p-5 rounded-xl flex flex-col gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">payments</span>
+<div>
+<p class="font-bold text-white">Expenses</p>
+<p class="text-[11px] text-slate-500">Track spending</p>
+</div>
+</div>
+<div class="glass p-5 rounded-xl flex flex-col gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">description</span>
+<div>
+<p class="font-bold text-white">Documents</p>
+<p class="text-[11px] text-slate-500">Visas &amp; Tickets</p>
+</div>
+</div>
+<div class="glass p-5 rounded-xl flex flex-col gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">support_agent</span>
+<div>
+<p class="font-bold text-white">Support</p>
+<p class="text-[11px] text-slate-500">24/7 Concierge</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-50 px-4 pb-6 pt-2">
+<div class="glass rounded-full px-6 py-3 flex items-center justify-between shadow-2xl shadow-black/50 backdrop-blur-xl">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-bold">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-[10px] font-medium">Trips</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-medium">Wallet</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+</body></html>

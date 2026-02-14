@@ -2,7 +2,7 @@
 
 **Last Updated:** February 14, 2026  
 **Design Source:** https://stitch.withgoogle.com/projects/15964200879465447191  
-**Status:** Implementation in Progress
+**Status:** Implemented (Core Wireframes)
 
 ## Overview
 
@@ -260,9 +260,9 @@ background: linear-gradient(135deg, #E0F7FA 0%, #F5F5F5 50%, #E3F2FD 100%);
 | Current Component | Stitch Design Equivalent | Changes Needed |
 |-------------------|-------------------------|----------------|
 | `auth_screen.dart` | Auth Portal | Update layout, add animations |
-| `traveler_dashboard.dart` | Traveler Dashboard | Restructure layout, add sticky header |
+| `traveler_dashboard_stitch.dart` | Traveler Dashboard | Restructure layout, add sticky header |
 | `driver_dashboard.dart` | Driver Command | Add duty toggle, update cards |
-| `trip_detail_screen.dart` | Itinerary Timeline | Add date selector, timeline view |
+| `itinerary_timeline_screen.dart` | Itinerary Timeline | Add date selector, timeline view |
 
 ## Assets Required
 
@@ -312,4 +312,3 @@ background: linear-gradient(135deg, #E0F7FA 0%, #F5F5F5 50%, #E3F2FD 100%);
 - Stitch Project: https://stitch.withgoogle.com/projects/15964200879465447191
 - Design Files: `docs/stitch/15964200879465447191/`
 - Brand Identity: `docs/brand_identity.md`
-

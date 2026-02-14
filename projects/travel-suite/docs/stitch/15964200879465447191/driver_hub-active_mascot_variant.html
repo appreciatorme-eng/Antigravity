@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Driver Hub: Active Mascot Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .glass-panel-active {
+            background: rgba(43, 108, 238, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(43, 108, 238, 0.3);
+            box-shadow: 0 0 15px rgba(43, 108, 238, 0.2);
+        }
+        .glass-nav {
+            background: rgba(16, 22, 34, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        /* Gradient Background for depth */
+        .ambient-bg {
+            background: radial-gradient(circle at 0% 0%, rgba(43, 108, 238, 0.15) 0%, rgba(16, 22, 34, 0) 50%),
+                        radial-gradient(circle at 100% 40%, rgba(43, 108, 238, 0.1) 0%, rgba(16, 22, 34, 0) 40%);
+        }
+        
+        /* Mascot SVG Styling */
+        .mascot-shape {
+            fill: rgba(255, 255, 255, 0.1);
+            stroke: rgba(255, 255, 255, 0.4);
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 8px rgba(43, 108, 238, 0.4));
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-white font-display min-h-screen flex flex-col relative overflow-hidden">
+<!-- Ambient Background Effects -->
+<div class="fixed inset-0 pointer-events-none ambient-bg z-0"></div>
+<!-- Main Content Area -->
+<main class="flex-1 px-5 pt-8 pb-32 z-10 overflow-y-auto">
+<!-- Header -->
+<header class="flex justify-between items-center mb-8">
+<div class="flex items-center gap-3">
+<div class="relative w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary/80 to-transparent">
+<img alt="Profile picture of driver James" class="w-full h-full object-cover rounded-full" data-alt="Close up portrait of a man smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtp4GZaiPYfdvr9GSH1nviAVZbiN-uMVkqvQ090DZnNWx22p9TPZuwpk9Eeow7Wxe_qmvDGaxbTna0wx9MNvy1sQ8k2HYSjClJ6hgiJbMKKX5TKJnRFoqgLRS3Ccki29hMLthYpA1tznd8OIeURoA13ILOsVGUwTwSESH3IyKCBzByRQ6qqAJuky4mclcvzLnptVJwj59NZ1XXHpToxmpmzr0oTZmbBHNYMX18O2AZ6yeGkvW4XW_86KEMUxES3VUMz82Vk9QZ1U8m"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-background-dark rounded-full"></div>
+</div>
+<div>
+<p class="text-xs text-white/60 font-light tracking-wide uppercase">Driver Status: Online</p>
+<h1 class="text-xl font-bold text-white">Good Evening, James</h1>
+</div>
+</div>
+<button class="relative w-10 h-10 flex items-center justify-center rounded-full glass-panel active:bg-white/10 transition-colors">
+<span class="material-icons-outlined text-white/80">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_rgba(43,108,238,0.8)]"></span>
+</button>
+</header>
+<!-- Prompt -->
+<div class="mb-6">
+<h2 class="text-3xl font-light text-white leading-tight">Ready for the <br/><span class="font-bold text-primary">road ahead?</span></h2>
+</div>
+<!-- Next Pickup Hero Section -->
+<section class="mb-8 relative">
+<div class="flex items-center gap-3 mb-4 pl-1">
+<h3 class="text-sm font-bold tracking-widest uppercase text-white/50">Next Pickup</h3>
+<!-- Aero Mascot: Active Flight Pose -->
+<div class="relative w-8 h-8 opacity-90 animate-pulse-slow">
+<!-- Abstract Glass Hummingbird SVG -->
+<svg class="w-full h-full transform -rotate-12 translate-y-1" viewbox="0 0 24 24">
+<path class="mascot-shape" d="M2,8 C4,4 9,4 12,8 C15,5 20,4 22,7 C20,10 15,12 12,10 C14,14 18,16 16,19 C14,21 10,18 8,14 C5,15 2,12 2,8 Z"></path>
+<circle cx="18" cy="6" fill="white" fill-opacity="0.8" r="1.5"></circle>
+</svg>
+<!-- Motion trail effect -->
+<div class="absolute top-1/2 left-0 w-12 h-[2px] bg-gradient-to-l from-primary/50 to-transparent transform -translate-x-full -translate-y-1/2 rounded-full blur-[1px]"></div>
+</div>
+</div>
+<!-- Primary Glass Card -->
+<div class="glass-panel-active rounded-2xl p-6 relative overflow-hidden group">
+<!-- Abstract background glow inside card -->
+<div class="absolute -top-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-[50px]"></div>
+<!-- Card Content -->
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-xs text-primary font-medium mb-1 flex items-center gap-1">
+<span class="material-icons-round text-sm">flight_land</span>
+                                Flight BA117 • Landing in 42 min
+                            </p>
+<h2 class="text-2xl font-bold text-white tracking-tight">Alexandra Hamilton</h2>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-wider">VIP</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-white/60 border border-white/10 uppercase tracking-wider">3 Bags</span>
+</div>
+</div>
+<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+<img alt="Passenger Alexandra Hamilton" class="w-full h-full rounded-xl object-cover opacity-80" data-alt="Portrait of a woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSslfopKpoiQ0EFYg5BYe-p_nyxM4l_ATsKjp24xiokt2rHyoXCGdYQ4iLZrrSOqNbe0qY5PIKsuYJjsqbnfNH_NfMTlfNpj__Xxe9jnDAYnLvuk0Qh3O1rHd6Llm-QBA_qfeqCuBGW86l2ekWohrDdox4IVH2gZ4-8pPJeIYWtC9foAqZJl1u6DX_hfckN1htjRUrH0ihEFQc4Z98WrZt_oriVsSZPImMAYbFrIdKJXYEkY99QdfICasSZ_yrTyfJ-h236ueerylS"/>
+</div>
+</div>
+<!-- Route Visualization -->
+<div class="flex flex-col gap-4 mb-8 pl-2 relative border-l border-white/10">
+<div class="relative">
+<span class="absolute -left-[13px] top-1 w-2.5 h-2.5 rounded-full border-2 border-primary bg-background-dark"></span>
+<p class="text-xs text-white/50 mb-0.5">Pickup • 6:45 PM</p>
+<p class="text-sm text-white font-medium">JFK Terminal 4</p>
+</div>
+<div class="relative">
+<span class="absolute -left-[13px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white/30 bg-background-dark"></span>
+<p class="text-xs text-white/50 mb-0.5">Dropoff • ~7:35 PM</p>
+<p class="text-sm text-white font-medium">The Ritz-Carlton</p>
+</div>
+</div>
+<!-- Slide Action Button -->
+<div class="relative h-14 rounded-xl bg-background-dark/50 border border-white/5 flex items-center p-1 cursor-pointer overflow-hidden group-hover:border-primary/30 transition-colors">
+<div class="absolute inset-0 flex items-center justify-center text-white/30 text-sm font-medium tracking-wide pointer-events-none">
+                            Slide to Navigate
+                        </div>
+<div class="h-full aspect-square bg-primary rounded-lg flex items-center justify-center text-white shadow-[0_0_15px_rgba(43,108,238,0.5)] z-10 relative transform active:scale-95 transition-transform">
+<span class="material-icons-round">navigation</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Secondary Info Grid -->
+<div class="grid grid-cols-2 gap-4">
+<!-- Earnings Card -->
+<div class="glass-panel rounded-xl p-4 flex flex-col justify-between h-32">
+<div class="flex justify-between items-start">
+<div class="p-2 rounded-lg bg-white/5 w-fit">
+<span class="material-icons-outlined text-primary text-xl">attach_money</span>
+</div>
+<span class="text-xs text-green-400 flex items-center gap-0.5">
+<span class="material-icons-round text-[10px]">trending_up</span> +12%
+                    </span>
+</div>
+<div>
+<p class="text-xs text-white/50 mb-1">Daily Earnings</p>
+<p class="text-xl font-bold text-white">$320.00</p>
+</div>
+</div>
+<!-- Stats Card -->
+<div class="glass-panel rounded-xl p-4 flex flex-col justify-between h-32">
+<div class="flex justify-between items-start">
+<div class="p-2 rounded-lg bg-white/5 w-fit">
+<span class="material-icons-outlined text-purple-400 text-xl">speed</span>
+</div>
+<span class="text-xs text-white/40">Today</span>
+</div>
+<div>
+<div class="flex justify-between items-end mb-1">
+<p class="text-xs text-white/50">Rides Completed</p>
+<p class="text-xs text-white">4 <span class="text-white/40">/ 6</span></p>
+</div>
+<div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full w-2/3 bg-gradient-to-r from-purple-500 to-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Vehicle Status Card -->
+<div class="glass-panel col-span-2 rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 rounded-lg bg-white/5">
+<span class="material-icons-outlined text-orange-400 text-xl">local_gas_station</span>
+</div>
+<div>
+<p class="text-sm font-medium text-white">Mercedes S-Class</p>
+<p class="text-xs text-white/50">Range: 140 mi remaining</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-lg font-bold text-white">65%</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-6 left-5 right-5 z-50">
+<div class="glass-nav rounded-2xl h-16 px-6 flex justify-between items-center shadow-2xl shadow-black/50">
+<button class="flex flex-col items-center justify-center gap-1 text-primary">
+<span class="material-icons-round text-2xl">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 text-white/40 hover:text-white transition-colors">
+<span class="material-icons-outlined text-2xl">calendar_today</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 text-white/40 hover:text-white transition-colors">
+<span class="material-icons-outlined text-2xl">chat_bubble_outline</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 text-white/40 hover:text-white transition-colors">
+<span class="material-icons-outlined text-2xl">person_outline</span>
+</button>
+</div>
+</nav>
+</body></html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Operator Flight Monitor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Scrollbar for hidden look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-card {
+            background: rgba(16, 22, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-nav {
+            background: rgba(16, 22, 34, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #2b6cee;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #2b6cee;
+        }
+        
+        /* Animated Background Gradient */
+        .bg-gradient-orb {
+            background: radial-gradient(circle at 50% 0%, rgba(43, 108, 238, 0.15), transparent 60%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white min-h-screen flex flex-col relative overflow-hidden">
+<!-- Ambient Background Effects -->
+<div class="fixed top-0 left-0 w-full h-[500px] bg-gradient-orb pointer-events-none z-0"></div>
+<div class="fixed bottom-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
+<!-- Header -->
+<header class="sticky top-0 z-50 px-6 pt-14 pb-4 glass-nav flex items-center justify-between">
+<div>
+<p class="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Live Operations</p>
+<h1 class="text-2xl font-bold tracking-tight">Flight Monitor</h1>
+</div>
+<button class="p-2 rounded-full glass-panel hover:bg-white/5 transition-colors relative">
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+<span class="material-icons text-gray-300">tune</span>
+</button>
+</header>
+<!-- Quick Stats Scroller -->
+<section class="relative z-10 mt-6 px-6">
+<div class="flex space-x-4 overflow-x-auto no-scrollbar pb-2">
+<!-- Stat 1 -->
+<div class="glass-panel min-w-[140px] p-4 rounded-xl flex flex-col items-start space-y-2">
+<div class="flex items-center space-x-2 text-primary">
+<span class="material-icons text-lg">flight_takeoff</span>
+<span class="text-xs font-semibold uppercase tracking-wider">In-Air</span>
+</div>
+<span class="text-3xl font-bold">12</span>
+</div>
+<!-- Stat 2 -->
+<div class="glass-panel min-w-[140px] p-4 rounded-xl flex flex-col items-start space-y-2 border-orange-500/20 bg-orange-500/5">
+<div class="flex items-center space-x-2 text-orange-400">
+<span class="material-icons text-lg">warning</span>
+<span class="text-xs font-semibold uppercase tracking-wider">Delayed</span>
+</div>
+<span class="text-3xl font-bold">3</span>
+</div>
+<!-- Stat 3 -->
+<div class="glass-panel min-w-[140px] p-4 rounded-xl flex flex-col items-start space-y-2">
+<div class="flex items-center space-x-2 text-emerald-400">
+<span class="material-icons text-lg">flight_land</span>
+<span class="text-xs font-semibold uppercase tracking-wider">Landed</span>
+</div>
+<span class="text-3xl font-bold">8</span>
+</div>
+</div>
+</section>
+<!-- Main List -->
+<main class="flex-1 overflow-y-auto px-6 pt-2 pb-32 z-10 space-y-5 mt-4">
+<!-- Date Header -->
+<div class="flex items-center justify-between text-sm text-gray-400 px-1">
+<span>Today, Oct 24</span>
+<span>23 Active</span>
+</div>
+<!-- Card 1: Delayed (Critical) -->
+<div class="glass-card rounded-2xl p-5 relative group overflow-hidden">
+<!-- Status Stripe -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-500"></div>
+<div class="flex justify-between items-start mb-4 pl-3">
+<div class="flex flex-col">
+<div class="flex items-center space-x-2 mb-1">
+<span class="text-2xl font-bold font-display">AA-102</span>
+<span class="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold uppercase tracking-wide border border-orange-500/20 flex items-center gap-1">
+<span class="w-1 h-1 rounded-full bg-orange-500 animate-pulse"></span> Delayed
+                        </span>
+</div>
+<span class="text-xs text-gray-400">LHR London → JFK New York</span>
+</div>
+<img alt="Airline Logo" class="w-10 h-10 rounded-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-500 border border-white/10" data-alt="abstract sky representing flight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkx-CaKsria686-W5hmC8tsaohjrJ8gwp2IoSUIfStyWaDWed-eQRV5Ubru7siCeRJ7_ZcMosVFZxX2M9GcXoyzP9ELztzyehZZ_RTXQJssRm9ZxAGuabdI7MQ78NGgszgVWCtE9cIXjZ-8CF4kGHZLGYHKjQdIa91yMsMCL9WFXTJkW7AvXcmZUEQtRD5pxtfKsEM8wK7-HtaKVZVTprFZL7RZKjxc80-SWq9C7Mbna_MPrFPRMcYuOMYlwSLY4dD9CiTzhM6Zkyc"/>
+</div>
+<div class="pl-3 grid grid-cols-[auto_1fr] gap-4 items-center">
+<div class="relative">
+<img alt="Sarah Jenkins" class="w-12 h-12 rounded-lg object-cover border-2 border-white/10" data-alt="Professional woman portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_bbhN7_NQSzjqV_pi3KX7lIFPpgCrzQTV8Azyps7aBv37rWi6y3ltL6QT4z89QEKNYVYIkEW_6X4gSSyIAEmGlwDuZrr3PGagzXOgtRmK4kFsrCBLeUJp6_t-a9cio9YjdbJqoPAJFlp4mBkXiZWOjr2IoSrSIWxpwksYNdyS1GhDdQA7WVjhA4GlYLEgmFhm_gaQtSAoeMk5Z1kc_gcDLNt6JVTITbEvmzaDFbFVUeA99vaYWVRKaJ1LaJGR0lVmHbE5G2G3e9Ko"/>
+<div class="absolute -bottom-1 -right-1 bg-background-dark rounded-full p-0.5 border border-white/10">
+<span class="material-icons text-sm text-primary">verified</span>
+</div>
+</div>
+<div>
+<h3 class="font-medium text-lg leading-tight">Sarah Jenkins</h3>
+<p class="text-xs text-gray-400 mt-1">Premium Member • +45m delay</p>
+</div>
+</div>
+<div class="mt-5 pl-3 pt-4 border-t border-white/5 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Auto-Notify Driver</span>
+<span class="text-xs text-gray-300">Update pickup time</span>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-background-dark appearance-none cursor-pointer transition-all duration-300" id="toggle1" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-colors duration-300" for="toggle1"></label>
+</div>
+</div>
+</div>
+<!-- Card 2: Landed -->
+<div class="glass-card rounded-2xl p-5 relative group">
+<!-- Status Stripe -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+<div class="flex justify-between items-start mb-4 pl-3">
+<div class="flex flex-col">
+<div class="flex items-center space-x-2 mb-1">
+<span class="text-2xl font-bold font-display text-white">BA-88</span>
+<span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wide border border-emerald-500/20">
+                            Landed
+                        </span>
+</div>
+<span class="text-xs text-gray-400">CDG Paris → DXB Dubai</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-icons text-gray-400 text-lg">flight</span>
+</div>
+</div>
+<div class="pl-3 grid grid-cols-[auto_1fr] gap-4 items-center">
+<div class="relative">
+<img alt="Michael Chen" class="w-12 h-12 rounded-lg object-cover border-2 border-white/10" data-alt="Professional man portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLZg02KLU7cDe6gNQbHhHagfLDggPzjwywU9TKTjiL7M_6ck7zhoX0iCILajEKIj8bUgN0TWA3B5n52dOAZTdYM__N3MRrsst-xPYSNBQ3oH7eoDl_JzOtEXYIjSfhemNtDDmU5kNJ33d6b0puJDC_Dw-LfMRPkLDIXalqyS1DkHQWRiSqsyeaT4BFeg_P9rar4LRLOThpHaQTyEZ8Ux3ZgghWsFQw85S9_Yue5BCMmeIiMfAZ-JhblEcBW5WzfFV0xv6PR-AwAKYK"/>
+</div>
+<div>
+<h3 class="font-medium text-lg leading-tight">Michael Chen</h3>
+<p class="text-xs text-gray-400 mt-1">Gate B12 • Driver waiting</p>
+</div>
+</div>
+<div class="mt-5 pl-3 pt-4 border-t border-white/5 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Notify Arrival</span>
+<span class="text-xs text-gray-300">Sent to hotel concierge</span>
+</div>
+<!-- Toggle Switch Off -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-gray-400 border-4 border-background-dark appearance-none cursor-pointer transition-all duration-300 transform translate-x-0" id="toggle2" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300" for="toggle2"></label>
+</div>
+</div>
+</div>
+<!-- Card 3: Scheduled -->
+<div class="glass-card rounded-2xl p-5 relative group">
+<!-- Status Stripe -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+<div class="flex justify-between items-start mb-4 pl-3">
+<div class="flex flex-col">
+<div class="flex items-center space-x-2 mb-1">
+<span class="text-2xl font-bold font-display text-white">DL-404</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/20 text-blue-300 text-[10px] font-bold uppercase tracking-wide border border-primary/20">
+                            Scheduled
+                        </span>
+</div>
+<span class="text-xs text-gray-400">SFO San Francisco → NRT Tokyo</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-icons text-gray-400 text-lg">flight</span>
+</div>
+</div>
+<div class="pl-3 grid grid-cols-[auto_1fr] gap-4 items-center">
+<div class="relative">
+<img alt="Elena Roy" class="w-12 h-12 rounded-lg object-cover border-2 border-white/10" data-alt="Professional woman portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDi8QB0oaUY2ArayJNHz9lZMGkEuc2pB-sCMPeuVFoSlvG8iAIAodMbplT_6r5kKgF1jLaMaYtgCSEVMPSha9-rKDKvgBSOXkYPXI63vM9i9e-xFq_24znQcL73dJsxxGur4ym5LWiSYaq1oErqQA-EpuKuLlsh4S0FGrPf3CDDSAmTLKfd3iXX9V1TMvGxDt5JnvwzHNxcC-kTAJMBzqfnkH3sAYX1Xcb3sV9OY2vmkKSKrwp0JUDG7NTKQNUtLJCIdnsgyqHXxfNN"/>
+</div>
+<div>
+<h3 class="font-medium text-lg leading-tight">Elena Roy</h3>
+<p class="text-xs text-gray-400 mt-1">Departure in 2h 15m</p>
+</div>
+</div>
+<div class="mt-5 pl-3 pt-4 border-t border-white/5 flex items-center justify-between opacity-50">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Alert Team</span>
+<span class="text-xs text-gray-300">Updates automatic</span>
+</div>
+<!-- Toggle Switch Off/Disabled look -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none">
+<div class="w-12 h-6 bg-white/5 rounded-full flex items-center px-1">
+<div class="w-4 h-4 rounded-full bg-white/10"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4: In Air -->
+<div class="glass-card rounded-2xl p-5 relative group">
+<!-- Status Stripe -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-sky-500"></div>
+<div class="flex justify-between items-start mb-4 pl-3">
+<div class="flex flex-col">
+<div class="flex items-center space-x-2 mb-1">
+<span class="text-2xl font-bold font-display text-white">QF-1</span>
+<span class="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-[10px] font-bold uppercase tracking-wide border border-sky-500/20">
+                            In Air
+                        </span>
+</div>
+<span class="text-xs text-gray-400">SYD Sydney → LHR London</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-icons text-gray-400 text-lg">flight</span>
+</div>
+</div>
+<div class="pl-3 grid grid-cols-[auto_1fr] gap-4 items-center">
+<div class="relative">
+<div class="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-lg font-bold border-2 border-white/10">
+                        JD
+                    </div>
+</div>
+<div>
+<h3 class="font-medium text-lg leading-tight">John Doe</h3>
+<p class="text-xs text-gray-400 mt-1">Crossing Indian Ocean</p>
+</div>
+</div>
+<div class="mt-5 pl-3 pt-4 border-t border-white/5 flex items-center justify-between opacity-50">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Alert Team</span>
+<span class="text-xs text-gray-300">Updates automatic</span>
+</div>
+<div class="relative inline-block w-12 mr-2 align-middle select-none">
+<div class="w-12 h-6 bg-white/5 rounded-full flex items-center px-1">
+<div class="w-4 h-4 rounded-full bg-white/10"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Floating Dock) -->
+<nav class="fixed bottom-6 left-6 right-6 z-50">
+<div class="glass-nav rounded-2xl px-6 py-4 flex justify-between items-center shadow-2xl border border-white/10">
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-icons text-primary text-2xl group-hover:scale-110 transition-transform">radar</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-icons text-gray-500 text-2xl group-hover:text-white transition-colors">schedule</span>
+</button>
+<button class="w-12 h-12 -mt-10 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/40 border-4 border-background-dark hover:scale-105 transition-transform active:scale-95">
+<span class="material-icons text-white">add</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-icons text-gray-500 text-2xl group-hover:text-white transition-colors">chat_bubble_outline</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-icons text-gray-500 text-2xl group-hover:text-white transition-colors">person_outline</span>
+</button>
+</div>
+</nav>
+</body></html>

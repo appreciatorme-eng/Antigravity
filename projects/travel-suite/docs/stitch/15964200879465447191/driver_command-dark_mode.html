@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Driver Command - Raj Singh</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00d184",
+                        "background-light": "#f5f8f7",
+                        "background-dark": "#0a0a0a",
+                        "surface-dark": "#1a1a1a",
+                        "border-dark": "#273a33",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen flex flex-col">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-border-dark px-4 py-4">
+<div class="flex items-center justify-between max-w-2xl mx-auto w-full">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Raj Singh Profile" class="size-12 rounded-full object-cover border-2 border-primary" data-alt="Professional driver portrait Raj Singh" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV9K4SXTas_xT-vzWzbqpJPdPZlevfcTX_1pd8wJYXBajvuNLCv6BQ4CIhhNqG2qB83goz9yT3duDONpOZ0dD-YKYpo58nnzBNnLupdPREL1j983XsfsvuIRFaW23U7E-qZ2xCZAU6eVy3KdX0t6m8dO_ZzKltA0rZd76d9WDInH3QjuOyry7bawjj4o5gYe8tlORd3ezMu8OP2rOed9FN_bC0IxegKr1UmAci4n9Dtt6Td8y-nGB6abk6q_YcQRqTd3AIt3mzDLy6"/>
+<div class="absolute bottom-0 right-0 size-3 bg-primary rounded-full border-2 border-background-dark"></div>
+</div>
+<div>
+<h1 class="text-lg font-bold leading-tight">Raj Singh</h1>
+<p class="text-xs text-slate-500 dark:text-[#9abcaf]">ID: #DRV-9921</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-600 dark:text-[#9abcaf] hover:bg-slate-100 dark:hover:bg-surface-dark rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-1 max-w-2xl mx-auto w-full p-4 space-y-6">
+<!-- Duty Toggle Card -->
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary uppercase tracking-wider">Status</span>
+<span class="text-lg font-bold">You are currently on duty</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Vehicle Status Widget -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-xl">battery_charging_full</span>
+<span class="text-sm font-medium text-slate-500 dark:text-[#9abcaf]">Battery Level</span>
+</div>
+<div class="flex items-end gap-2">
+<span class="text-2xl font-bold">82%</span>
+<span class="text-xs text-primary mb-1 font-medium">Healthy</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 82%"></div>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-xl">distance</span>
+<span class="text-sm font-medium text-slate-500 dark:text-[#9abcaf]">Range Remaining</span>
+</div>
+<div class="flex items-end gap-2">
+<span class="text-2xl font-bold">450</span>
+<span class="text-xs text-slate-500 dark:text-[#9abcaf] mb-1 font-medium">km</span>
+</div>
+<div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary/40 h-full rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Current Job Card -->
+<div class="space-y-4">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#9abcaf] px-1">Active Mission</h3>
+<div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-xl shadow-primary/5">
+<div class="h-40 bg-slate-200 dark:bg-slate-800 relative">
+<img alt="Map Navigation" class="w-full h-full object-cover opacity-60" data-alt="City map showing navigation route" data-location="San Francisco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBX_91Ca8CzKFV3rJRL_Xz89ghg5uRcn2cfsbj-BJ1IgnuwcwpNOZDmEzXiA6SjIvPAd-x_Xu2fmmtzsLwZyPoRM4Gca-W12OM5KVr7MMlllFAQAYzJpBEAO6OqorcdHJJhhsnZGLN1mLJH1njbcSr5Mq8mkJqaZSsBgzwjlne8gM9Ypx96jM9Ow2zOljPIF8BMY4pb4ti14V5PZ4u8FSuxqg2JgG2pCrzQDTDj1KBOCJrstLXZW7a24infr_UG2SSY0XTR8EFoqBhv"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-dark to-transparent"></div>
+<div class="absolute bottom-4 left-4 flex items-center gap-2 bg-primary text-background-dark px-3 py-1 rounded-full text-xs font-bold uppercase">
+<span class="material-symbols-outlined text-sm">schedule</span>
+                        Pickup at 14:00
+                    </div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h2 class="text-xl font-bold mb-1">Pickup: Mr. Anderson</h2>
+<p class="text-slate-500 dark:text-[#9abcaf] text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span>
+                                123 Business Bay District, Penthouse A
+                            </p>
+</div>
+<button class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+<button class="w-full bg-primary text-background-dark font-bold h-14 rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">navigation</span>
+                        START NAVIGATION
+                    </button>
+</div>
+</div>
+</div>
+<!-- Upcoming Route List -->
+<div class="space-y-4 pb-20">
+<div class="flex justify-between items-center px-1">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-[#9abcaf]">Queue</h3>
+<span class="text-xs font-medium text-primary">2 Stops Remaining</span>
+</div>
+<div class="space-y-3">
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark flex items-center gap-4">
+<div class="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-sm">Sarah Jenkins</h4>
+<p class="text-xs text-slate-500 dark:text-[#9abcaf]">Dropoff: Central Station</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-sm">15:30</p>
+<p class="text-[10px] uppercase font-bold text-slate-400">Scheduled</p>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark p-4 rounded-xl border border-slate-200 dark:border-border-dark flex items-center gap-4">
+<div class="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-sm">Package Delivery</h4>
+<p class="text-xs text-slate-500 dark:text-[#9abcaf]">Dropoff: Tech Hub Warehouse</p>
+</div>
+<div class="text-right">
+<p class="font-bold text-sm">16:45</p>
+<p class="text-[10px] uppercase font-bold text-slate-400">Scheduled</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-background-dark border-t border-slate-200 dark:border-border-dark px-6 pb-6 pt-3 z-50">
+<div class="max-w-2xl mx-auto flex items-center justify-between">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined fill-[1]">home</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-[#9abcaf]" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Tasks</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-[#9abcaf]" href="#">
+<span class="material-symbols-outlined">directions_car</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Vehicle</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-[#9abcaf]" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Profile</span>
+</a>
+</div>
+</nav>
+</body></html>

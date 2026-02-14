@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Driver Hub: Hovering Aero Variant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b6cee",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Soft Glass Aesthetic Utilities */
+        .glass-panel {
+            background: rgba(16, 22, 34, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-panel-high-contrast {
+            background: rgba(43, 108, 238, 0.15); /* Primary tint */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-panel-alert {
+            background: rgba(220, 38, 38, 0.15); /* Red tint for alerts */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Floating Animation for Aero */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* Custom Scrollbar hide */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white h-screen overflow-hidden flex flex-col relative">
+<!-- Background Gradient Mesh for Depth -->
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+<div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary/10 rounded-full blur-[100px]"></div>
+</div>
+<!-- Header / Status Bar -->
+<header class="px-6 pt-12 pb-4 flex justify-between items-center z-20">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Driver Profile Picture" class="w-12 h-12 rounded-full border-2 border-primary object-cover" data-alt="Professional driver portrait smiling in suit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDewrWNqaQIUnWcYlbf_4jX1As1Qy3vVxuZvOnoYJEB-_GR2cq95Y_2w9b-thEMZ96hKLp_5eCPapxKVvcDAuCSBV-5F_5O7eF3FF5QZfpd0D_VUtz3CGjqX84RFm4Eaf-vVdjMpEQZrYnCavrTkesRliG7eetvSAmM1K_qy8dz7krbp3fhBA9sH8E-TB4S0easF9pSBDf9CcGrb35t0O3vj_nqMm8fUIr0jUu7HhwKsl9uaoiqDpY94PC662nLe0DgKIeWPuPh82jh"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background-dark"></div>
+</div>
+<div>
+<h1 class="text-sm text-gray-400 uppercase tracking-wider font-semibold">Driver ID #8492</h1>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-lg font-bold">On Duty</span>
+</div>
+</div>
+</div>
+<button class="w-12 h-12 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition-colors">
+<span class="material-icons-round text-white">notifications</span>
+</button>
+</header>
+<!-- Main Scrollable Content -->
+<main class="flex-1 overflow-y-auto no-scrollbar px-6 pb-32 space-y-6 z-10 relative">
+<!-- Active Navigation Card (The Hover Zone) -->
+<section class="relative mt-2">
+<!-- Map Background Container -->
+<div class="h-72 w-full rounded-2xl overflow-hidden relative shadow-2xl border border-white/10">
+<img alt="Dark mode navigation map showing route to airport" class="w-full h-full object-cover opacity-60" data-alt="Dark map interface with blue route line" data-location="San Francisco" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgP2Yk9jieLIGG4D-79sZskLSmKnyPyXJ892xr7tBPFvnGXCs9ZfqZXLGmGI0D5Mxmwbhxt8dLUL8PtI6HKlG5T9HIwVENlPAJFZvWlSb9RLIod4HFMcTU3aOCI7DtnTcQEsFv1u1Pa56821WcVOQcKZxA5Pbaka6U7HezoojRD32WTnWrgk9NRKwbKDDZAL4b6c32BAcBPMddAMPsZdOdsv4biPstvmK1t10oRgaDzNRlltkEoo9nE91722KEWz6ageehLqyOHZyS"/>
+<!-- Live Route Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
+<!-- Navigation Instructions -->
+<div class="absolute top-4 left-4 right-4 flex justify-between items-start">
+<div class="glass-panel px-4 py-3 rounded-xl flex items-center gap-3">
+<span class="material-icons-round text-3xl text-primary">turn_right</span>
+<div>
+<div class="text-xs text-gray-300 uppercase">2.1 Miles</div>
+<div class="text-xl font-bold leading-none">Exit 42B</div>
+</div>
+</div>
+</div>
+<!-- Hovering Aero Mascot & ETA -->
+<div class="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+<div>
+<div class="glass-panel-high-contrast px-5 py-3 rounded-xl backdrop-blur-xl">
+<div class="flex flex-col">
+<span class="text-xs text-blue-200 uppercase tracking-wide mb-1">Estimated Arrival</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-bold text-white tabular-nums">14:12</span>
+<span class="text-sm text-blue-200">PM</span>
+</div>
+<div class="text-sm text-white font-medium mt-1">SFO Terminal 3</div>
+</div>
+</div>
+</div>
+<!-- Aero Mascot -->
+<div class="relative w-24 h-24 -mb-2 -mr-2 animate-float">
+<!-- Abstract Representation of Aero (Glass Hummingbird) -->
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/40 to-cyan-300/20 rounded-full blur-xl animate-pulse"></div>
+<img alt="Crystal glass hummingbird sculpture hovering" class="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(43,108,238,0.5)] opacity-90" data-alt="Stylized glass hummingbird mascot glowing blue" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDic7V7OAJOwXepiQoWHLu4dVPWsfB0fL5t3R59nyQmfN1FWfO7WdzJjEalVVPitDSKSEtZljy6bOsw1E2vRe-UTh2Eo6mf0AhNOgZktRk2LJyBOlxWto5ZzuUjAVSHj9z2XC8Ql0EZKm9mhR1cFt3iSe3fFioEFd_vx6Xy0oFVvjNnITMQWlV4QGrA5VR_B6aHvj_TiRgz2PpBnSnLolZfegPnaozI31Z_pHjMgVHjNpIjeCttIk-8dFLmd-VlJkOLuivcMaL2WDXa" style="mask-image: url('data:image/svg+xml;utf8,&lt;svg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'&gt;&lt;path d=\'M50 0 C20 0 0 20 0 50 C0 80 20 100 50 100 C80 100 100 80 100 50 C100 20 80 0 50 0 Z\'/&gt;&lt;/svg&gt;'); -webkit-mask-image: url('data:image/svg+xml;utf8,&lt;svg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'&gt;&lt;path d=\'M50 0 C20 0 0 20 0 50 C0 80 20 100 50 100 C80 100 100 80 100 50 C100 20 80 0 50 0 Z\'/&gt;&lt;/svg&gt;');"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Critical Alerts Panel -->
+<section>
+<div class="glass-panel-alert p-5 rounded-2xl flex items-start gap-4">
+<div class="p-2 bg-red-500/20 rounded-lg shrink-0">
+<span class="material-icons-round text-red-400">flight_land</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-bold text-red-100">Flight UA929 Delayed</h3>
+<span class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">Update</span>
+</div>
+<p class="text-sm text-red-200 mb-2">New arrival time estimated at <span class="font-bold text-white tabular-nums">14:57 PM</span> (+45m)</p>
+<div class="h-1 w-full bg-red-900/30 rounded-full overflow-hidden">
+<div class="h-full bg-red-500 w-3/4 rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Passenger Manifest -->
+<section class="space-y-4">
+<h2 class="text-sm text-gray-400 uppercase tracking-widest font-bold ml-1">Current Passenger</h2>
+<div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+<!-- Background decorative glow -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+<div class="flex items-center gap-4 mb-4">
+<div class="w-14 h-14 rounded-xl overflow-hidden border border-white/10">
+<img alt="Passenger profile photo" class="w-full h-full object-cover" data-alt="Businessman in suit looking confident" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9ktPOzxymsWqvAuGGc2tclJWmMIS-aKMQoFfnM77O0a6MlnQK5ofDGg6c9QQlm6Od3HLHxXdBbYO3aYYH38kLME4nlovQegqfLDfyTStl2oHhzdbYSJec_-DA-ttqTpbpqtfEpDP9Rh73LSUfMATJ85HhA8-bC3oecgVrvYMzuKz3Vieh0-u4APlzz8Y7iRXGSTsyJDT_HGxBx_7q1PDYn6ntYexUo24Rp8cxND7ao87epsgL-yWl7nlxcU4dCQr7M2l2or53iyfg"/>
+</div>
+<div>
+<h3 class="text-xl font-bold text-white">Mr. Jonathan Doe</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded uppercase">VIP Status</span>
+<span class="text-xs text-gray-400">4.9 ★</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-white/5 p-3 rounded-lg border border-white/5">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-icons-round text-gray-400 text-sm">luggage</span>
+<span class="text-xs text-gray-400 uppercase">Luggage</span>
+</div>
+<div class="text-sm font-medium">2 Large, 1 Carry</div>
+</div>
+<div class="bg-white/5 p-3 rounded-lg border border-white/5">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-icons-round text-gray-400 text-sm">music_note</span>
+<span class="text-xs text-gray-400 uppercase">Prefers</span>
+</div>
+<div class="text-sm font-medium">Jazz / Quiet</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Upcoming Trip Preview (Next in Queue) -->
+<section class="space-y-4 opacity-60">
+<h2 class="text-sm text-gray-500 uppercase tracking-widest font-bold ml-1">Up Next</h2>
+<div class="glass-panel p-4 rounded-xl flex justify-between items-center border-dashed border-white/10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
+<span class="material-icons-round text-lg">calendar_today</span>
+</div>
+<div>
+<div class="text-sm font-bold text-gray-300">Mrs. Alana V.</div>
+<div class="text-xs text-gray-500">Pickup 16:30 • Downtown</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Action Dock (Floating Bottom Bar) -->
+<div class="fixed bottom-8 left-6 right-6 z-50">
+<div class="glass-panel-high-contrast p-2 rounded-2xl flex items-center justify-between shadow-2xl backdrop-blur-2xl">
+<!-- Secondary Actions -->
+<div class="flex gap-1">
+<button class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-white/10 transition text-gray-300">
+<span class="material-icons-round">chat_bubble</span>
+</button>
+<button class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-white/10 transition text-gray-300">
+<span class="material-icons-round">phone</span>
+</button>
+</div>
+<!-- Primary CTA -->
+<button class="flex-1 mx-2 bg-primary hover:bg-blue-600 text-white h-12 rounded-xl font-bold uppercase tracking-wide shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2 transition-all active:scale-95">
+<span class="material-icons-round">near_me</span>
+<span>Start Trip</span>
+</button>
+<!-- Emergency/More -->
+<div class="flex gap-1">
+<button class="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-white/10 transition text-red-400">
+<span class="material-icons-round">warning</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

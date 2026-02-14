@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aero - Initial Loading Screen</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2bbdee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101d22",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                    backgroundImage: {
+                        'dawn-gradient': 'linear-gradient(to top, #101d22 0%, #0f242e 40%, #163642 100%)',
+                        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Styles for specific visual effects */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .hummingbird-body {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 100%);
+            backdrop-filter: blur(8px);
+            border-top: 1px solid rgba(255, 255, 255, 0.4);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        .hummingbird-wing {
+            background: linear-gradient(to right, rgba(43, 189, 238, 0.1), rgba(255, 255, 255, 0.05));
+            filter: blur(2px);
+        }
+
+        .glow-bar {
+            box-shadow: 0 0 15px rgba(43, 189, 238, 0.5);
+        }
+
+        /* Abstract background glow shapes */
+        .bg-glow-1 {
+            background: radial-gradient(circle, rgba(43, 189, 238, 0.15) 0%, rgba(16, 29, 34, 0) 70%);
+        }
+        .bg-glow-2 {
+            background: radial-gradient(circle, rgba(43, 189, 238, 0.08) 0%, rgba(16, 29, 34, 0) 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white min-h-screen flex flex-col relative overflow-hidden">
+<!-- Background Layer: Dawn Sky Gradient -->
+<div class="absolute inset-0 bg-dawn-gradient z-0">
+<!-- Ambient Glow Orbs -->
+<div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-glow-1 rounded-full blur-3xl opacity-60"></div>
+<div class="absolute bottom-[-10%] right-[-20%] w-[600px] h-[600px] bg-glow-2 rounded-full blur-3xl opacity-50"></div>
+<!-- Subtle noise texture overlay for realism (simulated with CSS pattern) -->
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%221%22/%3E%3C/svg%3E');"></div>
+</div>
+<!-- Main Content Container -->
+<main class="relative z-10 flex flex-col items-center justify-between h-screen w-full max-w-md mx-auto px-6 py-12 safe-area-inset-top safe-area-inset-bottom">
+<!-- Top Spacer (Visual Balance) -->
+<div class="flex-1"></div>
+<!-- Centerpiece: Aero Mascot -->
+<div class="relative flex flex-col items-center justify-center mb-12">
+<!-- Glass Hummingbird Construction (CSS Art) -->
+<div class="relative w-48 h-48">
+<!-- Back Wing (Blurred for motion) -->
+<div class="absolute top-4 right-8 w-24 h-32 bg-white/5 rounded-full rotate-[-15deg] blur-[3px] opacity-40 transform origin-bottom-left border border-white/10"></div>
+<!-- Body -->
+<div class="absolute top-12 left-10 w-28 h-20 hummingbird-body rounded-full rotate-[-10deg] z-20 overflow-hidden">
+<!-- Internal sheen -->
+<div class="absolute -top-10 -left-10 w-20 h-40 bg-white/10 rotate-45 blur-md"></div>
+</div>
+<!-- Head -->
+<div class="absolute top-8 left-6 w-14 h-14 hummingbird-body rounded-full z-20"></div>
+<!-- Beak -->
+<div class="absolute top-14 left-[-10px] w-20 h-1 bg-gradient-to-r from-white/60 to-transparent rotate-12 z-10 rounded-full"></div>
+<!-- Front Wing (Main Visual) -->
+<div class="absolute top-[-10px] left-16 w-20 h-36 bg-gradient-to-t from-white/10 to-primary/20 rounded-full rotate-[25deg] z-30 border border-white/20 backdrop-blur-[2px]">
+<div class="absolute inset-0 bg-white/10 rounded-full blur-[1px]"></div>
+</div>
+<!-- Tail Feathers -->
+<div class="absolute bottom-10 right-6 w-16 h-20 bg-white/5 rounded-full rotate-[60deg] z-10 blur-[1px]"></div>
+</div>
+<!-- Mascot Name / Branding (Subtle) -->
+<div class="mt-8 text-center opacity-0 animate-fade-in" style="animation: fadeIn 2s ease-out forwards 0.5s;">
+<h1 class="text-3xl font-display font-light tracking-[0.2em] text-white/90 drop-shadow-lg">AERO</h1>
+<p class="text-xs text-primary/80 font-display tracking-widest mt-2 uppercase">Premium Travel</p>
+</div>
+</div>
+<!-- Spacer -->
+<div class="flex-1"></div>
+<!-- Loading Section -->
+<div class="w-full max-w-[280px] mb-12 flex flex-col items-center space-y-4">
+<!-- Status Text -->
+<p class="text-sm font-display font-light text-white/60 tracking-wide">Preparing your journey...</p>
+<!-- Glass Progress Bar Container -->
+<div class="w-full h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 relative">
+<!-- Glowing Progress Fill -->
+<div class="absolute left-0 top-0 bottom-0 w-[65%] bg-gradient-to-r from-primary/60 via-primary to-white rounded-full glow-bar"></div>
+<!-- Shimmer Effect on bar -->
+<div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] animate-shimmer"></div>
+</div>
+</div>
+<!-- Brand Footer -->
+<div class="absolute bottom-8 left-0 right-0 flex justify-center">
+<div class="w-8 h-8 opacity-30">
+<!-- Simple Geometric Logo Placeholder -->
+<svg class="w-full h-full stroke-white" fill="none" stroke-width="1.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 2L2 22H22L12 2Z" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+</main>
+<!-- Simple CSS Keyframes for shimmer/fade (simulated, no JS) -->
+<style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+            animation: shimmer 2.5s infinite linear;
+        }
+    </style>
+</body></html>
