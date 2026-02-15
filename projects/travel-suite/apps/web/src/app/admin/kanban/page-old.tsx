@@ -3,10 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Columns3, RefreshCcw, ArrowRight, ArrowLeft, Clock3, Search, Phone, Upload, UserPlus } from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassBadge } from "@/components/glass/GlassBadge";
 
 type LifecycleStage =
     | "lead"
@@ -474,71 +470,69 @@ export default function AdminKanbanPage() {
 
     return (
         <div className="space-y-6 max-w-[1400px] mx-auto">
-            {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                        <Columns3 className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                        <span className="text-xs uppercase tracking-widest text-primary font-bold">Operations</span>
-                        <h1 className="text-3xl font-serif text-secondary dark:text-white">Lifecycle Kanban</h1>
-                        <p className="text-text-secondary mt-1">Drag or move clients between stages. Notifications run on configured transitions.</p>
-                    </div>
+                <div>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Operations</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                        <Columns3 className="w-8 h-8 text-[#c4a870]" />
+                        Lifecycle Kanban
+                    </h1>
+                    <p className="text-[#6f5b3e] mt-1">Drag or move clients between stages. Notifications run on configured transitions.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <GlassInput
-                        icon={Search}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search client..."
-                        className="w-[220px]"
-                    />
-                    <GlassButton
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#b09a74]" />
+                        <input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search client..."
+                            className="pl-9 pr-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#1b140a] w-[220px]"
+                        />
+                    </div>
+                    <button
                         onClick={() => void fetchData()}
-                        variant="ghost"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                     >
                         <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                         Refresh
-                    </GlassButton>
+                    </button>
                 </div>
             </div>
 
-            {/* Snapshot */}
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs uppercase tracking-wide text-primary">Operational Snapshot</span>
-                <GlassBadge variant="default" size="sm">
-                    Visible Clients: <span className="font-semibold">{totalVisibleClients}</span>
-                </GlassBadge>
-                <GlassBadge variant="default" size="sm">
-                    Pre-Lead Contacts: <span className="font-semibold">{totalPreLeadContacts}</span>
-                </GlassBadge>
+                <span className="text-[11px] uppercase tracking-wide text-[#8d7650]">Operational Snapshot</span>
+                <span className="rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-xs text-[#6f5b3e]">
+                    Visible Clients: <span className="font-semibold text-[#1b140a]">{totalVisibleClients}</span>
+                </span>
+                <span className="rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-xs text-[#6f5b3e]">
+                    Pre-Lead Contacts: <span className="font-semibold text-[#1b140a]">{totalPreLeadContacts}</span>
+                </span>
             </div>
 
-            {/* Pre-Lead Contacts */}
-            <GlassCard padding="lg" rounded="2xl">
-                <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-4 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                     <div>
-                        <p className="text-sm font-semibold text-secondary dark:text-white">Pre-Lead Contacts</p>
-                        <p className="text-xs text-text-secondary">Search/import contacts and promote them to Lead when ready.</p>
+                        <p className="text-sm font-semibold text-[#1b140a]">Pre-Lead Contacts</p>
+                        <p className="text-xs text-[#8d7650]">Search/import contacts and promote them to Lead when ready.</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        <GlassInput
-                            icon={Search}
-                            value={contactSearch}
-                            onChange={(e) => setContactSearch(e.target.value)}
-                            placeholder="Search contacts..."
-                            className="w-[220px]"
-                        />
-                        <GlassButton
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#b09a74]" />
+                            <input
+                                value={contactSearch}
+                                onChange={(e) => setContactSearch(e.target.value)}
+                                placeholder="Search contacts..."
+                                className="pl-9 pr-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#1b140a] w-[220px]"
+                            />
+                        </div>
+                        <button
                             onClick={() => void importFromPhone()}
                             disabled={importingContacts}
-                            variant="ghost"
-                            size="sm"
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-60"
                         >
                             <Phone className={`w-4 h-4 ${importingContacts ? "animate-spin" : ""}`} />
                             Import Phone
-                        </GlassButton>
+                        </button>
                         <input
                             ref={csvInputRef}
                             type="file"
@@ -549,39 +543,36 @@ export default function AdminKanbanPage() {
                                 if (file) void importCsvContacts(file);
                             }}
                         />
-                        <GlassButton
+                        <button
                             onClick={() => csvInputRef.current?.click()}
                             disabled={importingContacts}
-                            variant="ghost"
-                            size="sm"
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eadfcd] bg-white text-sm text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-60"
                         >
                             <Upload className={`w-4 h-4 ${importingContacts ? "animate-spin" : ""}`} />
                             Import CSV
-                        </GlassButton>
+                        </button>
                     </div>
                 </div>
                 {contactsError ? (
-                    <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
+                    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         Contacts inbox unavailable: {contactsError}
                     </div>
                 ) : null}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-1">
                     {filteredContacts.length === 0 ? (
-                        <p className="text-xs text-text-secondary">No pre-lead contacts found.</p>
+                        <p className="text-xs text-[#8d7650]">No pre-lead contacts found.</p>
                     ) : (
                         filteredContacts.map((contact) => (
-                            <div key={contact.id} className="rounded-xl border border-white/20 bg-white/40 dark:bg-white/5 backdrop-blur-sm px-3 py-3">
-                                <p className="text-sm font-semibold text-secondary dark:text-white truncate">{contact.full_name || "Unnamed Contact"}</p>
-                                <p className="text-xs text-text-secondary truncate">{contact.email || "No email"}</p>
-                                <p className="text-xs text-text-secondary truncate">{contact.phone || "No phone"}</p>
+                            <div key={contact.id} className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] px-3 py-2">
+                                <p className="text-sm font-semibold text-[#1b140a] truncate">{contact.full_name || "Unnamed Contact"}</p>
+                                <p className="text-xs text-[#8d7650] truncate">{contact.email || "No email"}</p>
+                                <p className="text-xs text-[#8d7650] truncate">{contact.phone || "No phone"}</p>
                                 <div className="mt-2 flex items-center justify-between">
-                                    <GlassBadge variant="info" size="sm">
-                                        {contact.source || "manual"}
-                                    </GlassBadge>
+                                    <span className="text-[10px] uppercase tracking-wide text-[#b09a74]">{contact.source || "manual"}</span>
                                     <button
                                         onClick={() => void promoteContactToLead(contact)}
                                         disabled={promotingContactId === contact.id}
-                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-white/20 bg-white/40 dark:bg-white/5 text-[11px] font-semibold text-primary hover:bg-white/60 dark:hover:bg-white/10 transition-colors disabled:opacity-60"
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[#eadfcd] bg-white text-[11px] font-semibold text-[#6f5b3e] disabled:opacity-60"
                                     >
                                         <UserPlus className="w-3 h-3" />
                                         {promotingContactId === contact.id ? "Moving..." : "Move to Lead"}
@@ -591,20 +582,19 @@ export default function AdminKanbanPage() {
                         ))
                     )}
                 </div>
-            </GlassCard>
+            </div>
 
-            {/* Kanban Board */}
             <div className="flex gap-4 overflow-x-auto pb-2 items-start">
                 {clientsByStage.map((column) => (
                     <div
                         key={column.stage}
-                        className="min-w-[290px] max-w-[290px] rounded-2xl border border-white/20 bg-gradient-to-b from-white/80 to-white/60 dark:from-white/10 dark:to-white/5 backdrop-blur-xl p-3 shadow-[0_10px_24px_rgba(0,208,132,0.08)] self-start"
+                        className="min-w-[290px] max-w-[290px] rounded-2xl border border-[#eadfcd] bg-gradient-to-b from-[#fffaf2] to-[#f8efe0] p-3 shadow-[0_10px_24px_rgba(20,16,12,0.06)] self-start"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => void handleDrop(column.stage)}
                     >
-                        <div className="flex items-center justify-between mb-3 sticky top-0 bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-lg px-2 py-1.5 border border-white/20">
-                            <p className="text-xs uppercase tracking-wide font-semibold text-primary">{column.label}</p>
-                            <GlassBadge variant="default" size="sm">{column.clients.length}</GlassBadge>
+                        <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#fff8ec]/90 backdrop-blur rounded-lg px-2 py-1 border border-[#f1e4cf]">
+                            <p className="text-xs uppercase tracking-wide font-semibold text-[#9c7c46]">{column.label}</p>
+                            <span className="text-xs font-semibold text-[#6f5b3e] bg-white px-2 py-0.5 rounded-full border border-[#eadfcd]">{column.clients.length}</span>
                         </div>
                         <div className="space-y-2 min-h-[120px]">
                             {column.clients.map((client) => {
@@ -617,23 +607,21 @@ export default function AdminKanbanPage() {
                                         draggable
                                         onDragStart={() => setDraggingClientId(client.id)}
                                         onDragEnd={() => setDraggingClientId(null)}
-                                        className="rounded-xl border border-white/20 bg-white/80 dark:bg-white/10 backdrop-blur-xl p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-[0_12px_18px_rgba(0,208,132,0.12)] transition-shadow"
+                                        className="rounded-xl border border-[#eadfcd] bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-[0_12px_18px_rgba(20,16,12,0.08)] transition-shadow"
                                     >
-                                        <p className="text-sm font-semibold text-secondary dark:text-white truncate">{client.full_name || "Unnamed Client"}</p>
-                                        <p className="text-xs text-text-secondary truncate">{client.email || "No email"}</p>
+                                        <p className="text-sm font-semibold text-[#1b140a] truncate">{client.full_name || "Unnamed Client"}</p>
+                                        <p className="text-xs text-[#8d7650] truncate">{client.email || "No email"}</p>
                                         <div className="mt-1 flex items-center gap-2">
-                                            <GlassBadge variant="info" size="sm">
-                                                {client.lead_status || "new"}
-                                            </GlassBadge>
-                                            <span className="text-xs text-text-secondary">•</span>
-                                            <p className="text-xs text-text-secondary truncate">{client.phone || "No phone"}</p>
+                                            <p className="text-[10px] text-[#b09a74] uppercase tracking-wide">{client.lead_status || "new"}</p>
+                                            <span className="text-[10px] text-[#8d7650]">•</span>
+                                            <p className="text-[10px] text-[#8d7650]">{client.phone || "No phone"}</p>
                                         </div>
                                         <div className="mt-2">
                                             <select
                                                 value={(client.lifecycle_stage || "lead")}
                                                 onChange={(e) => void moveToStage(client, e.target.value as LifecycleStage)}
                                                 disabled={movingClientId === client.id}
-                                                className="w-full rounded-lg border border-white/20 bg-white/60 dark:bg-white/5 backdrop-blur-xl px-2 py-1.5 text-xs font-semibold text-secondary dark:text-white"
+                                                className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
                                             >
                                                 {LIFECYCLE_STAGES.map((stage) => (
                                                     <option key={`${client.id}-${stage}`} value={stage}>
@@ -642,8 +630,8 @@ export default function AdminKanbanPage() {
                                                 ))}
                                             </select>
                                         </div>
-                                        <div className="mt-2 flex items-center justify-between rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 backdrop-blur-sm px-2 py-1.5">
-                                            <span className="text-[10px] uppercase tracking-wide text-text-secondary">Phase Notify</span>
+                                        <div className="mt-2 flex items-center justify-between rounded-md border border-[#eadfcd] bg-[#fcf8f1] px-2 py-1.5">
+                                            <span className="text-[10px] uppercase tracking-wide text-[#8d7650]">Phase Notify</span>
                                             <button
                                                 onClick={() => void toggleClientPhaseNotifications(client, !(client.phase_notifications_enabled ?? true))}
                                                 disabled={movingClientId === client.id}
@@ -657,59 +645,58 @@ export default function AdminKanbanPage() {
                                             <button
                                                 onClick={() => prev && void moveToStage(client, prev)}
                                                 disabled={!prev || movingClientId === client.id}
-                                                className="text-[11px] px-2 py-1 rounded-md border border-white/20 bg-white/40 dark:bg-white/5 text-primary disabled:opacity-40 hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+                                                className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
                                             >
                                                 <ArrowLeft className="w-3 h-3" />
                                             </button>
                                             <button
                                                 onClick={() => next && void moveToStage(client, next)}
                                                 disabled={!next || movingClientId === client.id}
-                                                className="text-[11px] px-2 py-1 rounded-md border border-white/20 bg-white/40 dark:bg-white/5 text-primary disabled:opacity-40 hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+                                                className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
                                             >
                                                 <ArrowRight className="w-3 h-3" />
                                             </button>
                                             {movingClientId === client.id ? (
-                                                <span className="text-[10px] text-primary">Saving…</span>
+                                                <span className="text-[10px] text-[#9c7c46]">Saving…</span>
                                             ) : null}
                                         </div>
                                     </div>
                                 );
                             })}
                             {!loading && column.clients.length === 0 ? (
-                                <p className="text-xs text-text-secondary">No clients</p>
+                                <p className="text-xs text-[#b09a74]">No clients</p>
                             ) : null}
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Recent Stage Transitions */}
-            <GlassCard padding="lg" rounded="2xl">
-                <div className="flex items-center gap-2 mb-4">
-                    <Clock3 className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-serif text-secondary dark:text-white">Recent Stage Transitions</h2>
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center gap-2 mb-3">
+                    <Clock3 className="w-5 h-5 text-[#9c7c46]" />
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">Recent Stage Transitions</h2>
                 </div>
                 <div className="space-y-2">
                     {events.length === 0 ? (
-                        <p className="text-sm text-text-secondary">No transitions yet.</p>
+                        <p className="text-sm text-[#8d7650]">No transitions yet.</p>
                     ) : (
                         events.map((event) => (
-                            <div key={event.id} className="rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 backdrop-blur-sm px-3 py-2">
-                                <p className="text-sm text-secondary dark:text-white">
+                            <div key={event.id} className="rounded-lg border border-[#eadfcd] bg-[#fcf8f1] px-3 py-2">
+                                <p className="text-sm text-[#1b140a]">
                                     <span className="font-semibold">{event.profile?.full_name || event.profile?.email || "Client"}</span>
                                     {" moved "}
                                     <span className="font-semibold">{getStageLabel(event.from_stage)}</span>
                                     {" → "}
                                     <span className="font-semibold">{getStageLabel(event.to_stage)}</span>
                                 </p>
-                                <p className="text-xs text-text-secondary">
+                                <p className="text-xs text-[#8d7650]">
                                     {new Date(event.created_at).toLocaleString()} by {event.changed_by_profile?.full_name || event.changed_by_profile?.email || "Admin"}
                                 </p>
                             </div>
                         ))
                     )}
                 </div>
-            </GlassCard>
+            </div>
         </div>
     );
 }
