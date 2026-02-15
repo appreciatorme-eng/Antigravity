@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,10 +14,6 @@ import {
     Activity,
     Phone,
 } from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassBadge } from "@/components/glass/GlassBadge";
 
 interface NotificationLog {
     id: string;
@@ -422,11 +419,11 @@ export default function NotificationLogsPage() {
         switch (status) {
             case "sent":
             case "delivered":
-                return <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />;
+                return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
             case "failed":
-                return <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />;
+                return <XCircle className="w-4 h-4 text-rose-500" />;
             case "pending":
-                return <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />;
+                return <Clock className="w-4 h-4 text-amber-500" />;
             default:
                 return null;
         }
@@ -633,107 +630,89 @@ export default function NotificationLogsPage() {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-primary" />
-                </div>
+        <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <span className="text-xs uppercase tracking-widest text-primary font-bold">Notifications</span>
-                    <h1 className="text-3xl font-serif text-secondary dark:text-white">Notification History</h1>
-                    <p className="text-text-secondary mt-1">Monitor all sent and pending push notifications.</p>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Notifications</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                        <Bell className="w-8 h-8 text-[#c4a870]" />
+                        Notification History
+                    </h1>
+                    <p className="text-[#6f5b3e] mt-1">Monitor all sent and pending push notifications.</p>
                 </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3">
-                <GlassButton
-                    variant="ghost"
-                    size="sm"
+                <button
                     onClick={fetchLogs}
-                    loading={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                 >
-                    <RefreshCcw className="w-4 h-4" />
+                    <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
-                </GlassButton>
-                <GlassButton
-                    variant="ghost"
-                    size="sm"
+                </button>
+                <button
                     onClick={fetchWhatsAppHealth}
-                    loading={healthLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                 >
-                    <Activity className="w-4 h-4" />
+                    <Activity className={`w-4 h-4 ${healthLoading ? "animate-spin" : ""}`} />
                     Webhook Health
-                </GlassButton>
-                <GlassButton
-                    variant="ghost"
-                    size="sm"
+                </button>
+                <button
                     onClick={() => void normalizeDriverPhoneMappings()}
                     disabled={normalizingAllDrivers}
-                    loading={normalizingAllDrivers}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
                 >
-                    <Phone className="w-4 h-4" />
-                    Fix All Phone Mapping
-                </GlassButton>
-                <GlassButton
-                    variant="primary"
-                    size="sm"
+                    <Phone className={`w-4 h-4 ${normalizingAllDrivers ? "animate-spin" : ""}`} />
+                    {normalizingAllDrivers ? "Fixing..." : "Fix All Phone Mapping"}
+                </button>
+                <button
                     onClick={runQueueNow}
                     disabled={runningQueue}
-                    loading={runningQueue}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-colors shadow-sm disabled:opacity-60"
                 >
                     <Bell className="w-4 h-4" />
-                    Run Queue Now
-                </GlassButton>
-                <GlassButton
-                    variant="ghost"
-                    size="sm"
+                    {runningQueue ? "Running Queue..." : "Run Queue Now"}
+                </button>
+                <button
                     onClick={retryFailedQueue}
                     disabled={retryingFailed}
-                    loading={retryingFailed}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
                 >
-                    <RefreshCcw className="w-4 h-4" />
-                    Retry Failed
-                </GlassButton>
-                <GlassButton
-                    variant="ghost"
-                    size="sm"
+                    <RefreshCcw className={`w-4 h-4 ${retryingFailed ? 'animate-spin' : ''}`} />
+                    {retryingFailed ? "Retrying Failed..." : "Retry Failed"}
+                </button>
+                <button
                     onClick={cleanupExpiredShares}
                     disabled={cleaningShares}
-                    loading={cleaningShares}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm disabled:opacity-60"
                 >
-                    <Clock className="w-4 h-4" />
-                    Cleanup Expired Live Links
-                </GlassButton>
+                    <Clock className={`w-4 h-4 ${cleaningShares ? 'animate-spin' : ''}`} />
+                    {cleaningShares ? "Cleaning..." : "Cleanup Expired Live Links"}
+                </button>
             </div>
 
-            {/* Status Messages */}
-            {actionMessage && (
-                <GlassCard padding="md" rounded="xl" className="bg-emerald-50/80 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800">
-                    <p className="text-sm text-emerald-800 dark:text-emerald-400">{actionMessage}</p>
-                </GlassCard>
-            )}
-            {actionError && (
-                <GlassCard padding="md" rounded="xl" className="bg-rose-50/80 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800">
-                    <p className="text-sm text-rose-800 dark:text-rose-400">{actionError}</p>
-                </GlassCard>
-            )}
+            {actionMessage ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    {actionMessage}
+                </div>
+            ) : null}
+            {actionError ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {actionError}
+                </div>
+            ) : null}
 
-            {/* Search and Filters */}
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                <div className="md:col-span-2">
-                    <GlassInput
+                <div className="md:col-span-2 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
                         type="text"
                         placeholder="Search logs by title, message or recipient..."
-                        icon={Search}
+                        className="w-full pl-10 pr-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] focus:border-transparent outline-none transition-all bg-white/90"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <div>
                     <select
-                        className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-white/10 border border-white/20 dark:border-white/10 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm appearance-none cursor-pointer"
+                        className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] outline-none appearance-none bg-white text-[#1b140a]"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -748,46 +727,44 @@ export default function NotificationLogsPage() {
                     <input
                         type="text"
                         placeholder="Global WhatsApp message (optional)"
-                        className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-white/10 border border-white/20 dark:border-white/10 text-secondary dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-sm"
+                        className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:ring-2 focus:ring-[#c4a870] focus:border-transparent outline-none transition-all bg-white/90"
                         value={whatsAppMessage}
                         onChange={(e) => setWhatsAppMessage(e.target.value)}
                     />
                 </div>
             </div>
 
-            {/* Queue Health Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <GlassCard padding="lg" rounded="xl">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">Pending</p>
-                    <p className="text-2xl font-serif text-secondary dark:text-white mt-1">{queueHealth.pending}</p>
-                </GlassCard>
-                <GlassCard padding="lg" rounded="xl">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">Processing</p>
-                    <p className="text-2xl font-serif text-secondary dark:text-white mt-1">{queueHealth.processing}</p>
-                </GlassCard>
-                <GlassCard padding="lg" rounded="xl">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">Sent</p>
-                    <p className="text-2xl font-serif text-emerald-600 dark:text-emerald-400 mt-1">{queueHealth.sent}</p>
-                </GlassCard>
-                <GlassCard padding="lg" rounded="xl">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">Failed</p>
-                    <p className="text-2xl font-serif text-rose-600 dark:text-rose-400 mt-1">{queueHealth.failed}</p>
-                </GlassCard>
-                <GlassCard padding="lg" rounded="xl">
-                    <p className="text-xs uppercase tracking-wide text-text-secondary">Due in 1h</p>
-                    <p className="text-2xl font-serif text-secondary dark:text-white mt-1">{queueHealth.upcomingHour}</p>
-                </GlassCard>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Pending</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.pending}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Processing</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.processing}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Sent</p>
+                    <p className="text-2xl font-semibold text-emerald-600 mt-1">{queueHealth.sent}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Failed</p>
+                    <p className="text-2xl font-semibold text-rose-600 mt-1">{queueHealth.failed}</p>
+                </div>
+                <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
+                    <p className="text-xs uppercase tracking-wide text-[#9c7c46]">Due in 1h</p>
+                    <p className="text-2xl font-semibold text-[#1b140a] mt-1">{queueHealth.upcomingHour}</p>
+                </div>
             </div>
 
-            {/* Delivery Tracking */}
-            <GlassCard padding="lg" rounded="2xl">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                    <h2 className="text-lg font-serif text-secondary dark:text-white">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">
                         Delivery Tracking
                     </h2>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
                         <select
-                            className="px-3 py-2 rounded-lg bg-white/80 dark:bg-white/10 border border-white/20 dark:border-white/10 text-sm text-secondary dark:text-white cursor-pointer"
+                            className="px-3 py-2 border border-[#eadfcd] rounded-lg text-sm bg-white"
                             value={deliveryChannel}
                             onChange={(e) => setDeliveryChannel(e.target.value as "all" | "whatsapp" | "push" | "email")}
                         >
@@ -796,89 +773,84 @@ export default function NotificationLogsPage() {
                             <option value="push">Push</option>
                             <option value="email">Email</option>
                         </select>
-                        <label className="flex items-center gap-2 text-sm text-text-secondary px-3 py-2 rounded-lg bg-white/80 dark:bg-white/10 border border-white/20 dark:border-white/10 cursor-pointer">
+                        <label className="flex items-center gap-2 text-sm text-[#6f5b3e] px-3 py-2 border border-[#eadfcd] rounded-lg bg-white">
                             <input
                                 type="checkbox"
                                 checked={deliveryFailedOnly}
                                 onChange={(e) => setDeliveryFailedOnly(e.target.checked)}
-                                className="rounded cursor-pointer"
                             />
                             Failed only
                         </label>
-                        <GlassButton
-                            variant="ghost"
-                            size="sm"
+                        <button
                             onClick={() => void fetchDeliveryTracking()}
+                            className="px-3 py-2 border border-[#eadfcd] rounded-lg bg-white text-sm text-[#6f5b3e]"
                         >
                             Refresh
-                        </GlassButton>
+                        </button>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-4">
                     {Object.entries(deliverySummary).map(([key, value]) => (
-                        <GlassBadge key={key} variant="default" size="sm">
+                        <span key={key} className="text-xs px-2 py-1 rounded-full bg-[#f8f1e6] text-[#7a613a]">
                             {key}: {value}
-                        </GlassBadge>
+                        </span>
                     ))}
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead>
-                            <tr className="border-b border-white/40 dark:border-white/5">
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Channel</th>
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Status</th>
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Attempt</th>
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Trip</th>
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Error</th>
-                                <th className="py-3 pr-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Time</th>
-                                <th className="py-3 text-text-secondary font-medium bg-white/40 dark:bg-white/5 px-4">Action</th>
+                            <tr className="border-b border-[#eadfcd] text-[#8d7650]">
+                                <th className="py-2 pr-3">Channel</th>
+                                <th className="py-2 pr-3">Status</th>
+                                <th className="py-2 pr-3">Attempt</th>
+                                <th className="py-2 pr-3">Trip</th>
+                                <th className="py-2 pr-3">Error</th>
+                                <th className="py-2 pr-3">Time</th>
+                                <th className="py-2">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {deliveryLoading ? (
                                 <tr>
-                                    <td colSpan={7} className="py-6 text-center text-text-secondary">Loading delivery rows...</td>
+                                    <td colSpan={7} className="py-6 text-center text-slate-500">Loading delivery rows...</td>
                                 </tr>
                             ) : deliveryRows.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="py-6 text-center text-text-secondary">No delivery records found.</td>
+                                    <td colSpan={7} className="py-6 text-center text-slate-500">No delivery records found.</td>
                                 </tr>
                             ) : (
                                 deliveryRows.map((row) => (
-                                    <tr key={row.id} className="border-b border-white/20 dark:border-white/5 hover:bg-white/20 dark:hover:bg-white/5 transition-colors">
-                                        <td className="py-3 pr-3 px-4 uppercase text-secondary dark:text-white">{row.channel}</td>
-                                        <td className="py-3 pr-3 px-4">
-                                            <GlassBadge
-                                                variant={
-                                                    row.status === "sent" ? "success" :
-                                                    row.status === "failed" ? "danger" :
-                                                    "warning"
-                                                }
-                                                size="sm"
-                                            >
+                                    <tr key={row.id} className="border-b border-slate-100">
+                                        <td className="py-2 pr-3 uppercase">{row.channel}</td>
+                                        <td className="py-2 pr-3">
+                                            <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${row.status === "sent"
+                                                    ? "bg-emerald-50 text-emerald-700"
+                                                    : row.status === "failed"
+                                                        ? "bg-rose-50 text-rose-700"
+                                                        : "bg-amber-50 text-amber-700"
+                                                }`}>
                                                 {row.status}
-                                            </GlassBadge>
+                                            </span>
                                         </td>
-                                        <td className="py-3 pr-3 px-4 text-secondary dark:text-white">{row.attempt_number}</td>
-                                        <td className="py-3 pr-3 px-4 text-secondary dark:text-white">{row.trip_id ? row.trip_id.slice(0, 8) : "-"}</td>
-                                        <td className="py-3 pr-3 px-4 text-xs text-text-secondary max-w-[320px] truncate">
+                                        <td className="py-2 pr-3">{row.attempt_number}</td>
+                                        <td className="py-2 pr-3">{row.trip_id ? row.trip_id.slice(0, 8) : "-"}</td>
+                                        <td className="py-2 pr-3 text-xs text-[#8d7650] max-w-[320px] truncate">
                                             {row.error_message || "-"}
                                         </td>
-                                        <td className="py-3 pr-3 px-4 text-text-secondary">{formatDate(row.created_at)}</td>
-                                        <td className="py-3 px-4">
+                                        <td className="py-2 pr-3">{formatDate(row.created_at)}</td>
+                                        <td className="py-2">
                                             {(row.status === "failed" || row.status === "retrying") && row.queue_id ? (
-                                                <GlassButton
-                                                    variant="ghost"
-                                                    size="sm"
+                                                <button
                                                     onClick={() => void retrySingleQueueItem(row.queue_id!)}
                                                     disabled={retryingQueueId === row.queue_id}
+                                                    className="text-xs px-2 py-1 rounded-md border border-[#eadfcd] bg-white text-[#6f5b3e] disabled:opacity-50"
                                                 >
                                                     {retryingQueueId === row.queue_id ? "Retrying..." : "Retry"}
-                                                </GlassButton>
+                                                </button>
                                             ) : (
-                                                <span className="text-xs text-text-secondary/40">-</span>
+                                                <span className="text-xs text-slate-400">-</span>
                                             )}
                                         </td>
                                     </tr>
@@ -887,132 +859,126 @@ export default function NotificationLogsPage() {
                         </tbody>
                     </table>
                 </div>
-            </GlassCard>
+            </div>
 
-            {/* WhatsApp Health */}
-            <GlassCard padding="lg" rounded="2xl">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-serif text-secondary dark:text-white flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-[#9c7c46]" />
                         WhatsApp Webhook Health
                     </h2>
-                    <span className="text-xs text-text-secondary">
+                    <span className="text-xs text-[#8d7650]">
                         {healthLoading ? "Refreshing..." : "Live diagnostics"}
                     </span>
                 </div>
 
                 {!whatsAppHealth ? (
-                    <p className="text-sm text-text-secondary">No webhook data available yet.</p>
+                    <p className="text-sm text-[#8d7650]">No webhook data available yet.</p>
                 ) : (
                     <>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <GlassCard padding="md" rounded="lg" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-[11px] uppercase tracking-wide text-text-secondary">Pings 1h</p>
-                                <p className="text-xl font-serif text-secondary dark:text-white">{whatsAppHealth.summary.location_pings_last_1h}</p>
-                            </GlassCard>
-                            <GlassCard padding="md" rounded="lg" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-[11px] uppercase tracking-wide text-text-secondary">Pings 24h</p>
-                                <p className="text-xl font-serif text-secondary dark:text-white">{whatsAppHealth.summary.location_pings_last_24h}</p>
-                            </GlassCard>
-                            <GlassCard padding="md" rounded="lg" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-[11px] uppercase tracking-wide text-text-secondary">Stale Driver Trips</p>
-                                <p className="text-xl font-serif text-rose-600 dark:text-rose-400">{whatsAppHealth.summary.stale_active_driver_trips}</p>
-                            </GlassCard>
-                            <GlassCard padding="md" rounded="lg" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-[11px] uppercase tracking-wide text-text-secondary">Unmapped Ext Drivers</p>
-                                <p className="text-xl font-serif text-amber-600 dark:text-amber-400">{whatsAppHealth.summary.unmapped_external_drivers}</p>
-                            </GlassCard>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Pings 1h</p>
+                                <p className="text-xl font-semibold text-[#1b140a]">{whatsAppHealth.summary.location_pings_last_1h}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Pings 24h</p>
+                                <p className="text-xl font-semibold text-[#1b140a]">{whatsAppHealth.summary.location_pings_last_24h}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Stale Driver Trips</p>
+                                <p className="text-xl font-semibold text-rose-600">{whatsAppHealth.summary.stale_active_driver_trips}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#eadfcd] p-3">
+                                <p className="text-[11px] uppercase tracking-wide text-[#9c7c46]">Unmapped Ext Drivers</p>
+                                <p className="text-xl font-semibold text-amber-600">{whatsAppHealth.summary.unmapped_external_drivers}</p>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <GlassCard padding="md" rounded="xl" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-sm font-semibold text-secondary dark:text-white mb-2">Latest Driver Pings</p>
+                            <div className="rounded-xl border border-[#eadfcd] p-4">
+                                <p className="text-sm font-semibold text-[#1b140a] mb-2">Latest Driver Pings</p>
                                 {whatsAppHealth.latest_pings.length === 0 ? (
-                                    <p className="text-sm text-text-secondary">No active driver pings yet.</p>
+                                    <p className="text-sm text-slate-500">No active driver pings yet.</p>
                                 ) : (
                                     <div className="space-y-2">
                                         {whatsAppHealth.latest_pings.map((item) => (
                                             <div key={item.driver_id} className="flex items-center justify-between text-sm">
                                                 <div>
-                                                    <p className="font-medium text-secondary dark:text-white">{item.driver_name}</p>
-                                                    <p className="text-xs text-text-secondary">
+                                                    <p className="font-medium text-[#1b140a]">{item.driver_name}</p>
+                                                    <p className="text-xs text-slate-500">
                                                         Trip {item.trip_id ? item.trip_id.slice(0, 8) : "unassigned"} • {item.recorded_at ? new Date(item.recorded_at).toLocaleTimeString() : "never"}
                                                     </p>
                                                 </div>
-                                                <GlassBadge
-                                                    variant={item.status === "fresh" ? "success" : "danger"}
-                                                    size="sm"
-                                                >
+                                                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${item.status === "fresh" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
                                                     {item.age_minutes == null ? "No ping" : `${item.age_minutes}m`}
-                                                </GlassBadge>
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                            </GlassCard>
-                            <GlassCard padding="md" rounded="xl" className="bg-white/60 dark:bg-white/5">
-                                <p className="text-sm font-semibold text-secondary dark:text-white mb-2">Drivers Missing Phone Mapping</p>
-                                <p className="text-xs text-text-secondary mb-3">
-                                    WhatsApp inbound location can map only if phone_normalized exists.
+                            </div>
+                            <div className="rounded-xl border border-[#eadfcd] p-4">
+                                <p className="text-sm font-semibold text-[#1b140a] mb-2">Drivers Missing Phone Mapping</p>
+                                <p className="text-xs text-[#8d7650] mb-3">
+                                    WhatsApp inbound location can map only if `phone_normalized` exists.
                                 </p>
                                 {whatsAppHealth.drivers_missing_phone_list.length === 0 ? (
-                                    <p className="text-sm text-emerald-700 dark:text-emerald-400">All driver profiles have normalized phone numbers.</p>
+                                    <p className="text-sm text-emerald-700">All driver profiles have normalized phone numbers.</p>
                                 ) : (
                                     <div className="space-y-2">
                                         {whatsAppHealth.drivers_missing_phone_list.map((driver) => (
-                                            <div key={driver.id} className="text-sm rounded-lg bg-amber-50/80 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800 px-3 py-2 flex items-center justify-between gap-3">
+                                            <div key={driver.id} className="text-sm rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 flex items-center justify-between gap-3">
                                                 <div>
-                                                    <p className="font-medium text-amber-900 dark:text-amber-400">{driver.full_name || "Unnamed driver"}</p>
-                                                    <p className="text-xs text-amber-700 dark:text-amber-500">{driver.email || "No email"}</p>
-                                                    <p className="text-xs text-amber-700 dark:text-amber-500">{driver.phone || "No phone in profile"}</p>
+                                                    <p className="font-medium text-amber-900">{driver.full_name || "Unnamed driver"}</p>
+                                                    <p className="text-xs text-amber-700">{driver.email || "No email"}</p>
+                                                    <p className="text-xs text-amber-700">{driver.phone || "No phone in profile"}</p>
                                                 </div>
-                                                <GlassButton
-                                                    variant="ghost"
-                                                    size="sm"
+                                                <button
                                                     onClick={() => void normalizeDriverPhoneMappings(driver.id)}
                                                     disabled={normalizingDriverId === driver.id}
+                                                    className="text-xs font-semibold px-2 py-1 rounded-md bg-white border border-amber-200 text-amber-800 disabled:opacity-50"
                                                 >
                                                     {normalizingDriverId === driver.id ? "Fixing..." : "Fix"}
-                                                </GlassButton>
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                            </GlassCard>
+                            </div>
                         </div>
                     </>
                 )}
-            </GlassCard>
+            </div>
 
-            {/* Notification Logs Table */}
-            <GlassCard padding="none" rounded="2xl" className="overflow-hidden">
+            <div className="bg-white/90 border border-[#eadfcd] rounded-2xl shadow-[0_12px_30px_rgba(20,16,12,0.06)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-white/40 dark:bg-white/5 border-b border-white/40 dark:border-white/5 text-text-secondary text-sm">
-                                <th className="px-6 py-4 font-medium">Recipient</th>
-                                <th className="px-6 py-4 font-medium">WhatsApp</th>
-                                <th className="px-6 py-4 font-medium">Type</th>
-                                <th className="px-6 py-4 font-medium">Content</th>
-                                <th className="px-6 py-4 font-medium">Status</th>
-                                <th className="px-6 py-4 font-medium">Sent At</th>
+                            <tr className="bg-[#f8f1e6] border-bottom border-[#eadfcd] font-medium text-[#6f5b3e] text-sm">
+                                <th className="px-6 py-4">Recipient</th>
+                                <th className="px-6 py-4">WhatsApp</th>
+                                <th className="px-6 py-4">Type</th>
+                                <th className="px-6 py-4">Content</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Sent At</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/20 dark:divide-white/5">
+                        <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-24"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-12"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-16"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-48"></div><div className="h-3 bg-white/40 dark:bg-white/10 rounded w-32 mt-2"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-16"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-20"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-12"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-48"></div><div className="h-3 bg-slate-100 rounded w-32 mt-2"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
+                                        <td className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-20"></div></td>
                                     </tr>
                                 ))
                             ) : filteredLogs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-text-secondary">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                                         No notification logs found.
                                     </td>
                                 </tr>
@@ -1020,10 +986,10 @@ export default function NotificationLogsPage() {
                                 filteredLogs.map((log) => {
                                     const whatsappLink = getWhatsAppLink(log.recipient_phone, log.body || log.title);
                                     return (
-                                        <tr key={log.id} className="hover:bg-white/20 dark:hover:bg-white/5 transition-colors">
+                                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4">
-                                                <div className="font-medium text-secondary dark:text-white">{log.profiles?.full_name || 'System User'}</div>
-                                                <div className="text-xs text-text-secondary uppercase tracking-wider mt-0.5">{log.recipient_type}</div>
+                                                <div className="font-medium text-slate-900">{log.profiles?.full_name || 'System User'}</div>
+                                                <div className="text-xs text-slate-500 uppercase tracking-wider mt-0.5">{log.recipient_type}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {whatsappLink ? (
@@ -1031,45 +997,42 @@ export default function NotificationLogsPage() {
                                                         href={whatsappLink}
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="inline-flex items-center gap-1"
+                                                        className="inline-flex items-center gap-1 text-emerald-700 text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50"
                                                     >
-                                                        <GlassBadge variant="success" size="sm">
-                                                            <MessageCircle className="w-3 h-3" />
-                                                            WhatsApp
-                                                        </GlassBadge>
+                                                        <MessageCircle className="w-3 h-3" />
+                                                        WhatsApp
                                                     </a>
                                                 ) : (
-                                                    <span className="text-xs text-text-secondary/40">—</span>
+                                                    <span className="text-xs text-slate-300">—</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <GlassBadge variant="info" size="sm">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
                                                     {log.notification_type.replace('_', ' ')}
-                                                </GlassBadge>
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-secondary dark:text-white font-medium truncate max-w-xs">{log.title}</div>
-                                                <div className="text-xs text-text-secondary line-clamp-1 max-w-xs">{log.body}</div>
+                                                <div className="text-slate-900 font-medium truncate max-w-xs">{log.title}</div>
+                                                <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">{log.body}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     {getStatusIcon(log.status)}
-                                                    <span className={`text-sm font-medium ${
-                                                        log.status === 'sent' ? 'text-emerald-600 dark:text-emerald-400' :
-                                                        log.status === 'failed' ? 'text-rose-600 dark:text-rose-400' :
-                                                        log.status === 'pending' ? 'text-amber-600 dark:text-amber-400' :
-                                                        'text-text-secondary'
-                                                    }`}>
+                                                    <span className={`text-sm font-medium ${log.status === 'sent' ? 'text-emerald-600' :
+                                                        log.status === 'failed' ? 'text-rose-600' :
+                                                            log.status === 'pending' ? 'text-amber-600' :
+                                                                'text-slate-600'
+                                                        }`}>
                                                         {(log.status || 'unknown').charAt(0).toUpperCase() + (log.status || 'unknown').slice(1)}
                                                     </span>
                                                 </div>
                                                 {log.error_message && (
-                                                    <div className="text-[10px] text-rose-400 dark:text-rose-500 mt-1 max-w-[150px] truncate" title={log.error_message}>
+                                                    <div className="text-[10px] text-rose-400 mt-1 max-w-[150px] truncate" title={log.error_message}>
                                                         {log.error_message}
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-text-secondary">
+                                            <td className="px-6 py-4 text-sm text-slate-500">
                                                 {formatDate(log.sent_at || log.created_at)}
                                             </td>
                                         </tr>
@@ -1079,7 +1042,7 @@ export default function NotificationLogsPage() {
                         </tbody>
                     </table>
                 </div>
-            </GlassCard>
+            </div>
         </div>
     );
 }
