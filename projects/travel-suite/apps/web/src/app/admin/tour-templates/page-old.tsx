@@ -19,12 +19,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassButton } from '@/components/glass/GlassButton';
-import { GlassInput } from '@/components/glass/GlassInput';
-import { GlassConfirmModal } from '@/components/glass/GlassModal';
-import { GlassBadge } from '@/components/glass/GlassBadge';
-import { GlassCardSkeleton } from '@/components/glass/GlassSkeleton';
 
 interface TourTemplate {
   id: string;
@@ -50,7 +44,6 @@ export default function TourTemplatesPage() {
   const [templates, setTemplates] = useState<TourTemplate[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'archived'>('all');
-  const [deleteConfirm, setDeleteConfirm] = useState<TourTemplate | null>(null);
 
   useEffect(() => {
     loadTemplates();
@@ -127,12 +120,14 @@ export default function TourTemplatesPage() {
     }
   }
 
-  async function handleDeleteTemplate() {
-    if (!deleteConfirm) return;
+  async function handleDeleteTemplate(templateId: string) {
+    if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+      return;
+    }
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.from('tour_templates').delete().eq('id', deleteConfirm.id);
+      const { error } = await supabase.from('tour_templates').delete().eq('id', templateId);
 
       if (error) {
         console.error('Error deleting template:', error);
@@ -142,8 +137,6 @@ export default function TourTemplatesPage() {
       }
     } catch (error) {
       console.error('Error deleting template:', error);
-    } finally {
-      setDeleteConfirm(null);
     }
   }
 
@@ -184,22 +177,8 @@ export default function TourTemplatesPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase tracking-widest text-primary font-bold">
-              Tour Templates
-            </span>
-            <h1 className="text-2xl font-serif text-secondary dark:text-white mt-1">
-              Reusable Itinerary Templates
-            </h1>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <GlassCardSkeleton key={i} />
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg text-gray-600">Loading tour templates...</div>
       </div>
     );
   }
@@ -207,106 +186,118 @@ export default function TourTemplatesPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-[#f6efe4] flex items-center justify-center">
+            <Globe className="w-5 h-5 text-[#9c7c46]" />
           </div>
           <div>
-            <span className="text-xs uppercase tracking-widest text-primary font-bold">
+            <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">
               Tour Templates
             </span>
-            <h1 className="text-2xl font-serif text-secondary dark:text-white mt-1">
+            <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a] mt-1">
               Reusable Itinerary Templates
             </h1>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-[#6f5b3e]">
               Create templates to quickly build proposals for clients
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href="/admin/tour-templates/import">
-            <GlassButton variant="outline">
-              <Upload className="w-4 h-4" />
-              Import Tour
-            </GlassButton>
+          <Link
+            href="/admin/tour-templates/import"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#9c7c46] border border-[#9c7c46] rounded-lg hover:bg-[#f6efe4] transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Import Tour
           </Link>
-          <Link href="/admin/tour-templates/create">
-            <GlassButton variant="primary">
-              <Plus className="w-4 h-4" />
-              Create Template
-            </GlassButton>
+          <Link
+            href="/admin/tour-templates/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Template
           </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex-1 min-w-[240px]">
-          <GlassInput
-            icon={Search}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
             type="text"
             placeholder="Search templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
           />
         </div>
         <div className="flex gap-2">
-          <GlassButton
-            variant={filterStatus === 'all' ? 'primary' : 'ghost'}
-            size="md"
+          <button
             onClick={() => setFilterStatus('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterStatus === 'all'
+                ? 'bg-[#9c7c46] text-white'
+                : 'bg-white text-gray-700 border border-[#eadfcd]'
+            }`}
           >
             All
-          </GlassButton>
-          <GlassButton
-            variant={filterStatus === 'active' ? 'primary' : 'ghost'}
-            size="md"
+          </button>
+          <button
             onClick={() => setFilterStatus('active')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterStatus === 'active'
+                ? 'bg-[#9c7c46] text-white'
+                : 'bg-white text-gray-700 border border-[#eadfcd]'
+            }`}
           >
             Active
-          </GlassButton>
-          <GlassButton
-            variant={filterStatus === 'archived' ? 'primary' : 'ghost'}
-            size="md"
+          </button>
+          <button
             onClick={() => setFilterStatus('archived')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filterStatus === 'archived'
+                ? 'bg-[#9c7c46] text-white'
+                : 'bg-white text-gray-700 border border-[#eadfcd]'
+            }`}
           >
             Archived
-          </GlassButton>
+          </button>
         </div>
       </div>
 
       {/* Templates Grid */}
       {filteredTemplates.length === 0 ? (
-        <GlassCard padding="lg">
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
-              <Globe className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-medium text-secondary dark:text-white mb-2">
-              No templates found
-            </h3>
-            <p className="text-sm text-text-secondary mb-6">
-              {searchQuery
-                ? 'Try adjusting your search query'
-                : 'Get started by creating your first tour template'}
-            </p>
-            {!searchQuery && (
-              <Link href="/admin/tour-templates/create">
-                <GlassButton variant="primary">
-                  <Plus className="w-4 h-4" />
-                  Create Template
-                </GlassButton>
+        <div className="bg-gray-50 rounded-lg p-12 text-center">
+          <Globe className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No templates found</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchQuery
+              ? 'Try adjusting your search query'
+              : 'Get started by creating your first tour template'}
+          </p>
+          {!searchQuery && (
+            <div className="mt-6">
+              <Link
+                href="/admin/tour-templates/create"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#9c7c46] hover:bg-[#8a6d3e]"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Template
               </Link>
-            )}
-          </div>
-        </GlassCard>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTemplates.map((template) => (
-            <GlassCard key={template.id} padding="none" rounded="2xl" className="overflow-hidden hover:shadow-lg transition-shadow">
+            <div
+              key={template.id}
+              className="rounded-2xl border border-[#eadfcd] bg-white/90 overflow-hidden hover:shadow-lg transition-shadow"
+            >
               {/* Hero Image */}
-              <div className="relative h-48 bg-gradient-to-br from-primary/10 to-secondary/10">
+              <div className="relative h-48 bg-gradient-to-br from-[#f6efe4] to-[#eadfcd]">
                 {template.hero_image_url ? (
                   <Image
                     src={template.hero_image_url}
@@ -316,47 +307,46 @@ export default function TourTemplatesPage() {
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <MapPin className="w-12 h-12 text-primary/50" />
+                    <MapPin className="w-12 h-12 text-[#bda87f]" />
                   </div>
                 )}
                 {template.is_public && (
-                  <div className="absolute top-3 right-3">
-                    <GlassBadge variant="primary" icon={Star}>
-                      Public
-                    </GlassBadge>
+                  <div className="absolute top-3 right-3 px-2 py-1 bg-white/90 rounded-full text-xs font-medium text-[#9c7c46] flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-current" />
+                    Public
                   </div>
                 )}
               </div>
 
               {/* Content */}
               <div className="p-5">
-                <h3 className="text-lg font-semibold text-secondary dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-[#1b140a] mb-2">
                   {template.name}
                 </h3>
 
                 <div className="space-y-2 mb-4">
                   {template.destination && (
-                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <MapPin className="w-4 h-4 text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-[#6f5b3e]">
+                      <MapPin className="w-4 h-4 text-[#bda87f]" />
                       {template.destination}
                     </div>
                   )}
                   {template.duration_days && (
-                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <Calendar className="w-4 h-4 text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-[#6f5b3e]">
+                      <Calendar className="w-4 h-4 text-[#bda87f]" />
                       {template.duration_days} days
                     </div>
                   )}
                   {template.base_price && (
-                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <DollarSign className="w-4 h-4 text-primary" />
+                    <div className="flex items-center gap-2 text-sm text-[#6f5b3e]">
+                      <DollarSign className="w-4 h-4 text-[#bda87f]" />
                       ${template.base_price.toFixed(2)} base price
                     </div>
                   )}
                 </div>
 
                 {template.description && (
-                  <p className="text-sm text-text-secondary line-clamp-2 mb-4">
+                  <p className="text-sm text-[#6f5b3e] line-clamp-2 mb-4">
                     {template.description}
                   </p>
                 )}
@@ -365,20 +355,23 @@ export default function TourTemplatesPage() {
                 {template.tags && template.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
                     {template.tags.slice(0, 3).map((tag, index) => (
-                      <GlassBadge key={index} variant="default" size="sm">
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-[#f8f1e6] text-xs text-[#6f5b3e] rounded"
+                      >
                         {tag}
-                      </GlassBadge>
+                      </span>
                     ))}
                     {template.tags.length > 3 && (
-                      <GlassBadge variant="default" size="sm">
+                      <span className="px-2 py-1 bg-[#f8f1e6] text-xs text-[#6f5b3e] rounded">
                         +{template.tags.length - 3} more
-                      </GlassBadge>
+                      </span>
                     )}
                   </div>
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center gap-4 mb-4 text-xs text-text-secondary">
+                <div className="flex items-center gap-4 mb-4 text-xs text-[#bda87f]">
                   <span>{template.days_count || 0} days</span>
                   <span>•</span>
                   <span>{template.activities_count || 0} activities</span>
@@ -386,50 +379,37 @@ export default function TourTemplatesPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                  <Link href={`/admin/tour-templates/${template.id}`} className="flex-1">
-                    <GlassButton variant="primary" size="md" fullWidth>
-                      <Eye className="w-4 h-4" />
-                      View
-                    </GlassButton>
+                  <Link
+                    href={`/admin/tour-templates/${template.id}`}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#9c7c46] text-white text-sm rounded-lg hover:bg-[#8a6d3e] transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View
                   </Link>
-                  <Link href={`/admin/tour-templates/${template.id}/edit`}>
-                    <GlassButton variant="ghost" size="md">
-                      <Pencil className="w-4 h-4" />
-                    </GlassButton>
+                  <Link
+                    href={`/admin/tour-templates/${template.id}/edit`}
+                    className="inline-flex items-center justify-center p-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-[#f8f1e6] transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
                   </Link>
-                  <GlassButton
-                    variant="ghost"
-                    size="md"
+                  <button
                     onClick={() => handleCloneTemplate(template)}
+                    className="inline-flex items-center justify-center p-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-[#f8f1e6] transition-colors"
                   >
                     <Copy className="w-4 h-4" />
-                  </GlassButton>
-                  <GlassButton
-                    variant="ghost"
-                    size="md"
-                    onClick={() => setDeleteConfirm(template)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    className="inline-flex items-center justify-center p-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </GlassButton>
+                  </button>
                 </div>
               </div>
-            </GlassCard>
+            </div>
           ))}
         </div>
       )}
-
-      {/* Delete Confirmation */}
-      <GlassConfirmModal
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={handleDeleteTemplate}
-        title="Delete Template"
-        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone and will delete all associated days and activities.`}
-        confirmText="Delete Template"
-        cancelText="Cancel"
-        variant="danger"
-      />
     </div>
   );
 }
