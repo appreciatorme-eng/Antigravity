@@ -142,38 +142,12 @@ export default function TourTemplatesPage() {
   async function handleCloneTemplate(template: TourTemplate) {
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
 
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.organization_id) return;
-
-      // Clone the template
-      const { data: newTemplate, error } = await supabase
-        .from('tour_templates')
-        .insert({
-          organization_id: profile.organization_id,
-          name: `${template.name} (Copy)`,
-          destination: template.destination,
-          duration_days: template.duration_days,
-          description: template.description,
-          hero_image_url: template.hero_image_url,
-          base_price: template.base_price,
-          status: 'active',
-          is_public: false,
-          tags: template.tags,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      // Use the clone_template_deep RPC function
+      const { data: newTemplateId, error } = await supabase.rpc('clone_template_deep', {
+        p_template_id: template.id,
+        p_new_name: `${template.name} (Copy)`,
+      });
 
       if (error) {
         console.error('Error cloning template:', error);
@@ -181,11 +155,8 @@ export default function TourTemplatesPage() {
         return;
       }
 
-      // TODO: Clone template days, activities, and accommodations
-      // This would need to be a database function for efficiency
-
       loadTemplates();
-      alert('Template cloned successfully!');
+      alert('Template cloned successfully with all days and activities!');
     } catch (error) {
       console.error('Error cloning template:', error);
     }
