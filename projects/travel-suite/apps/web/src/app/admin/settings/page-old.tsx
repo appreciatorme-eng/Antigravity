@@ -12,10 +12,6 @@ import {
     Bell,
     Check
 } from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassFormSkeleton } from "@/components/glass/GlassSkeleton";
 
 interface Organization {
     id: string;
@@ -183,85 +179,76 @@ export default function SettingsPage() {
 
     if (loading) {
         return (
-            <div className="space-y-6 max-w-4xl mx-auto">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                        <Settings className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                        <span className="text-xs uppercase tracking-widest text-primary font-bold">Settings</span>
-                        <h1 className="text-3xl font-serif text-secondary dark:text-white">Settings</h1>
-                    </div>
-                </div>
-                <GlassFormSkeleton sections={3} />
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <Settings className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                    <span className="text-xs uppercase tracking-widest text-primary font-bold">Settings</span>
-                    <h1 className="text-3xl font-serif text-secondary dark:text-white">Settings</h1>
-                    <p className="text-text-secondary mt-1">Manage your organization details and application preferences.</p>
-                </div>
+            <div>
+                <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Settings</span>
+                <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                    <Settings className="w-8 h-8 text-[#c4a870]" />
+                    Settings
+                </h1>
+                <p className="text-[#6f5b3e] mt-1">Manage your organization details and application preferences.</p>
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
                 {/* Organization Details */}
-                <GlassCard padding="none" rounded="2xl">
-                    <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                <div className="bg-white/90 border border-[#eadfcd] rounded-2xl overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                    <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                         <Building2 className="w-5 h-5 text-primary" />
-                        <h2 className="font-bold text-secondary dark:text-white">Organization Details</h2>
+                        <h2 className="font-bold text-slate-900">Organization Details</h2>
                     </div>
                     <div className="p-6 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-secondary dark:text-white">Company Name</label>
-                                <GlassInput
+                                <label className="text-sm font-semibold text-slate-700">Company Name</label>
+                                <input
                                     type="text"
                                     value={organization?.name || ""}
                                     onChange={(e) => setOrganization(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                                     placeholder="Enter company name"
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-secondary dark:text-white">Organization Slug</label>
-                                <GlassInput
+                                <label className="text-sm font-semibold text-slate-700">Organization Slug</label>
+                                <input
                                     type="text"
                                     value={organization?.slug || ""}
                                     disabled
+                                    className="w-full px-4 py-2 border border-slate-100 rounded-lg bg-slate-50 text-slate-400 cursor-not-allowed"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-secondary dark:text-white">Logo URL</label>
-                            <GlassInput
+                            <label className="text-sm font-semibold text-slate-700">Logo URL</label>
+                            <input
                                 type="url"
                                 value={organization?.logo_url || ""}
                                 onChange={(e) => setOrganization(prev => prev ? { ...prev, logo_url: e.target.value } : null)}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                                 placeholder="https://example.com/logo.png"
                             />
                         </div>
                     </div>
-                </GlassCard>
+                </div>
 
                 {/* Branding & Theme */}
-                <GlassCard padding="none" rounded="2xl">
-                    <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                         <Palette className="w-5 h-5 text-purple-500" />
-                        <h2 className="font-bold text-secondary dark:text-white">Branding & Theme</h2>
+                        <h2 className="font-bold text-slate-900">Branding & Theme</h2>
                     </div>
                     <div className="p-6 space-y-4">
                         <div className="flex items-center gap-6">
                             <div className="space-y-2 flex-1">
-                                <label className="text-sm font-semibold text-secondary dark:text-white">Primary Brand Color</label>
+                                <label className="text-sm font-semibold text-slate-700">Primary Brand Color</label>
                                 <div className="flex gap-3">
                                     <input
                                         type="color"
@@ -269,50 +256,51 @@ export default function SettingsPage() {
                                         onChange={(e) => setOrganization(prev => prev ? { ...prev, primary_color: e.target.value } : null)}
                                         className="w-10 h-10 border-none rounded cursor-pointer"
                                     />
-                                    <GlassInput
+                                    <input
                                         type="text"
                                         value={organization?.primary_color || ""}
                                         onChange={(e) => setOrganization(prev => prev ? { ...prev, primary_color: e.target.value } : null)}
+                                        className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                                         placeholder="#00D084"
                                     />
                                 </div>
                             </div>
-                            <div className="w-32 h-32 bg-white/10 dark:bg-white/5 rounded-xl border border-dashed border-white/20 flex flex-col items-center justify-center gap-2 p-4">
+                            <div className="w-32 h-32 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 p-4">
                                 <div
                                     className="w-full h-8 rounded shadow-sm"
                                     style={{ backgroundColor: organization?.primary_color || "#00D084" }}
                                 ></div>
-                                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest text-center">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
                                     Primary Color Preview
                                 </span>
                             </div>
                         </div>
                     </div>
-                </GlassCard>
+                </div>
 
                 {/* Lifecycle Notification Rules */}
-                <GlassCard padding="none" rounded="2xl">
-                    <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                <div className="bg-white/90 border border-[#eadfcd] rounded-2xl overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                    <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                         <Bell className="w-5 h-5 text-primary" />
-                        <h2 className="font-bold text-secondary dark:text-white">Lifecycle Notification Rules</h2>
+                        <h2 className="font-bold text-slate-900">Lifecycle Notification Rules</h2>
                     </div>
                     <div className="p-6 space-y-3">
-                        <p className="text-sm text-text-secondary">
+                        <p className="text-sm text-slate-600">
                             Control whether clients receive automatic WhatsApp + app notifications when moved to each lifecycle stage.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {workflowRules.map((rule) => (
-                                <div key={rule.lifecycle_stage} className="flex items-center justify-between rounded-xl border border-white/20 bg-white/10 dark:bg-white/5 px-4 py-3">
+                                <div key={rule.lifecycle_stage} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                     <div>
-                                        <p className="text-sm font-semibold text-secondary dark:text-white">
+                                        <p className="text-sm font-semibold text-slate-800">
                                             {workflowStageLabels[rule.lifecycle_stage] || rule.lifecycle_stage}
                                         </p>
-                                        <p className="text-xs text-text-secondary">{rule.lifecycle_stage}</p>
+                                        <p className="text-xs text-slate-500">{rule.lifecycle_stage}</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => toggleWorkflowRule(rule.lifecycle_stage)}
-                                        className={`w-12 h-7 rounded-full relative transition-colors ${rule.notify_client ? "bg-primary" : "bg-white/30 dark:bg-white/10"}`}
+                                        className={`w-12 h-7 rounded-full relative transition-colors ${rule.notify_client ? "bg-emerald-500" : "bg-slate-300"}`}
                                         aria-label={`Toggle ${rule.lifecycle_stage}`}
                                     >
                                         <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${rule.notify_client ? "right-1" : "left-1"}`} />
@@ -321,68 +309,68 @@ export default function SettingsPage() {
                             ))}
                         </div>
                         <div className="flex justify-end">
-                            <GlassButton
+                            <button
                                 type="button"
-                                variant="primary"
                                 onClick={saveWorkflowRules}
                                 disabled={rulesSaving}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1b140a] text-[#f5e7c6] font-semibold hover:bg-[#2a2217] transition-colors disabled:opacity-60"
                             >
                                 {rulesSaving ? (
-                                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-[#f5e7c6]/40 border-t-[#f5e7c6] rounded-full animate-spin" />
                                 ) : (
                                     <Save className="w-4 h-4" />
                                 )}
                                 Save Notification Rules
-                            </GlassButton>
+                            </button>
                         </div>
                     </div>
-                </GlassCard>
+                </div>
 
                 {/* Application Config (ReadOnly in this demo) */}
-                <GlassCard padding="none" rounded="2xl" className="opacity-60">
-                    <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm opacity-60">
+                    <div className="p-6 border-b border-slate-100 flex items-center gap-3">
                         <Globe className="w-5 h-5 text-blue-500" />
-                        <h2 className="font-bold text-secondary dark:text-white">System Configuration</h2>
+                        <h2 className="font-bold text-slate-900">System Configuration</h2>
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="flex items-center justify-between p-4 bg-white/10 dark:bg-white/5 rounded-xl border border-white/20">
+                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
-                                <Bell className="w-5 h-5 text-text-secondary" />
+                                <Bell className="w-5 h-5 text-slate-400" />
                                 <div>
-                                    <p className="text-sm font-bold text-secondary dark:text-white">Push Notifications</p>
-                                    <p className="text-xs text-text-secondary">Global kill switch</p>
+                                    <p className="text-sm font-bold text-slate-700">Push Notifications</p>
+                                    <p className="text-xs text-slate-500">Global kill switch</p>
                                 </div>
                             </div>
                             <div className="w-10 h-6 bg-primary rounded-full relative">
                                 <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
                             </div>
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-white/10 dark:bg-white/5 rounded-xl border border-white/20">
+                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-3">
-                                <Shield className="w-5 h-5 text-text-secondary" />
+                                <Shield className="w-5 h-5 text-slate-400" />
                                 <div>
-                                    <p className="text-sm font-bold text-secondary dark:text-white">Two-Factor Auth</p>
-                                    <p className="text-xs text-text-secondary">Security requirement</p>
+                                    <p className="text-sm font-bold text-slate-700">Two-Factor Auth</p>
+                                    <p className="text-xs text-slate-500">Security requirement</p>
                                 </div>
                             </div>
-                            <div className="w-10 h-6 bg-white/30 dark:bg-white/10 rounded-full relative">
+                            <div className="w-10 h-6 bg-slate-300 rounded-full relative">
                                 <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full"></div>
                             </div>
                         </div>
                     </div>
-                </GlassCard>
+                </div>
 
                 <div className="flex items-center justify-end gap-4 pt-4">
                     {showSuccess && (
-                        <span className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium animate-in fade-in slide-in-from-right-4">
+                        <span className="flex items-center gap-2 text-green-600 font-medium animate-in fade-in slide-in-from-right-4">
                             <Check className="w-5 h-5" />
                             Settings saved successfully
                         </span>
                     )}
-                    <GlassButton
+                    <button
                         type="submit"
-                        variant="primary"
                         disabled={saving}
+                        className="flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-xl hover:bg-opacity-90 transition-all shadow-lg disabled:opacity-50 font-bold"
                     >
                         {saving ? (
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -390,7 +378,7 @@ export default function SettingsPage() {
                             <Save className="w-5 h-5" />
                         )}
                         Save Changes
-                    </GlassButton>
+                    </button>
                 </div>
             </form>
         </div>
