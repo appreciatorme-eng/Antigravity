@@ -1,3 +1,10 @@
+/**
+ * Admin Panel Layout
+ *
+ * Updated to match GoBuddy Adventures design system
+ * Features glassmorphism, unified colors (#00d084, #124ea2)
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +12,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Playfair_Display, Manrope } from "next/font/google";
 import {
     LayoutDashboard,
     Users,
@@ -16,7 +22,6 @@ import {
     ChevronLeft,
     Loader2,
     ShieldAlert,
-    ShieldCheck,
     BarChart3,
     FileText,
     Inbox,
@@ -26,17 +31,9 @@ import {
     Columns3,
     Globe,
     FileSpreadsheet,
+    Plane,
 } from "lucide-react";
-
-const displayFont = Playfair_Display({
-    subsets: ["latin"],
-    variable: "--font-display",
-});
-
-const bodyFont = Manrope({
-    subsets: ["latin"],
-    variable: "--font-body",
-});
+import { ThemeToggleButton } from "@/components/ThemeToggle";
 
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -52,9 +49,8 @@ const sidebarLinks = [
     { href: "/admin/notifications", label: "Notifications", icon: Bell },
     { href: "/admin/templates", label: "Email Templates", icon: Wand2 },
     { href: "/admin/billing", label: "Billing", icon: FileText },
-    { href: "/admin/security", label: "Security", icon: ShieldCheck },
-    { href: "/admin/support", label: "Support", icon: Inbox },
     { href: "/admin/settings", label: "Settings", icon: Settings },
+    { href: "/admin/support", label: "Support", icon: Inbox },
 ];
 
 export default function AdminLayout({
@@ -68,6 +64,7 @@ export default function AdminLayout({
 
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     useEffect(() => {
@@ -109,10 +106,10 @@ export default function AdminLayout({
 
     if (loading) {
         return (
-            <div className={`min-h-screen flex items-center justify-center bg-[#f5efe6] ${bodyFont.className} ${displayFont.variable}`}>
-                <div className="text-center">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-app">
+                <div className="glass-card p-8 text-center">
                     <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600">Loading admin panel...</p>
+                    <p className="text-text-secondary">Loading admin panel...</p>
                 </div>
             </div>
         );
@@ -120,21 +117,21 @@ export default function AdminLayout({
 
     if (!authorized) {
         return (
-            <div className={`min-h-screen flex items-center justify-center bg-[#f5efe6] ${bodyFont.className} ${displayFont.variable}`}>
-                <div className="text-center max-w-md mx-auto px-4">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-app p-4">
+                <div className="glass-card p-8 text-center max-w-md">
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <ShieldAlert className="w-8 h-8 text-red-600" />
                     </div>
-                    <h1 className="text-2xl font-[var(--font-display)] text-gray-900 mb-2">
+                    <h1 className="text-2xl font-serif text-secondary mb-2">
                         Access Denied
                     </h1>
-                    <p className="text-gray-600 mb-6">
+                    <p className="text-text-secondary mb-6">
                         You don&apos;t have permission to access the admin panel. Please
                         contact your administrator if you believe this is an error.
                     </p>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-hover transition-smooth shadow-button"
                     >
                         <ChevronLeft className="w-4 h-4" />
                         Back to Home
@@ -145,24 +142,26 @@ export default function AdminLayout({
     }
 
     return (
-        <div className={`min-h-screen flex bg-[radial-gradient(circle_at_top,_#fbf4e9_0%,_#f5efe6_45%,_#efe6d9_100%)] ${bodyFont.className} ${displayFont.variable}`}>
+        <div className="min-h-screen flex bg-gradient-app">
             {/* Sidebar */}
-            <aside className="w-64 bg-[#0f0d0b] border-r border-[#1f1a14] flex flex-col">
+            <aside className={`${collapsed ? 'w-20' : 'w-64'} glass-nav border-r border-white/20 flex flex-col transition-all duration-300 sticky top-0 h-screen`}>
                 {/* Logo */}
-                <div className="p-5 border-b border-[#1f1a14]">
-                    <Link href="/admin" className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-xl bg-[#c4a870] flex items-center justify-center shadow-[0_6px_18px_rgba(196,168,112,0.35)]">
-                            <LayoutDashboard className="w-5 h-5 text-[#1b140a]" />
+                <div className="p-5 border-b border-white/20">
+                    <Link href="/admin" className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-button">
+                            <Plane className="w-5 h-5 text-white" />
                         </div>
-                        <div className="leading-tight">
-                            <span className="block text-xs uppercase tracking-[0.25em] text-[#cbb68e]">Travel Suite</span>
-                            <span className="block text-base font-[var(--font-display)] text-[#f5e9d2]">Admin Atelier</span>
-                        </div>
+                        {!collapsed && (
+                            <div className="leading-tight">
+                                <span className="block text-xs uppercase tracking-widest text-primary font-bold">GoBuddy</span>
+                                <span className="block text-base font-serif text-secondary">Admin Panel</span>
+                            </div>
+                        )}
                     </Link>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
                     {sidebarLinks.map((link) => {
                         const isActive = pathname === link.href ||
                             (link.href !== "/admin" && pathname.startsWith(link.href));
@@ -170,74 +169,63 @@ export default function AdminLayout({
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                                title={link.label}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-smooth ${
                                     isActive
-                                        ? "bg-[#2a2217] text-[#f5e7c6] shadow-[inset_0_0_0_1px_rgba(196,168,112,0.35)]"
-                                        : "text-[#bda87f] hover:bg-[#1b1712] hover:text-[#f5e7c6]"
+                                        ? "bg-primary text-white shadow-button"
+                                        : "text-secondary hover:bg-white/40"
                                 }`}
                             >
-                                <link.icon className={`w-5 h-5 ${isActive ? "text-[#c4a870]" : ""}`} />
-                                {link.label}
+                                <link.icon className="w-5 h-5 shrink-0" />
+                                {!collapsed && <span>{link.label}</span>}
                             </Link>
                         );
                     })}
                 </nav>
 
-                {/* Back to site */}
-                <div className="p-4 border-t border-[#1f1a14]">
-                    <Link
-                        href="/"
-                        className="flex items-center gap-2 text-sm text-[#bda87f] hover:text-[#f5e7c6] transition-colors"
+                {/* Footer */}
+                <div className="p-4 border-t border-white/20 space-y-2">
+                    {/* Theme Toggle */}
+                    <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                        {!collapsed && <span className="text-sm font-medium text-secondary">Theme</span>}
+                        <ThemeToggleButton />
+                    </div>
+
+                    {/* Collapse Toggle */}
+                    <button
+                        onClick={() => setCollapsed(!collapsed)}
+                        className="w-full flex items-center justify-center gap-2 text-sm text-secondary hover:text-primary transition-colors py-2"
                     >
-                        <ChevronLeft className="w-4 h-4" />
-                        Back to site
-                    </Link>
+                        <ChevronLeft className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+                        {!collapsed && 'Collapse'}
+                    </button>
+
+                    {/* Back to site */}
+                    {!collapsed && (
+                        <Link
+                            href="/"
+                            className="flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            Back to site
+                        </Link>
+                    )}
                 </div>
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-auto p-8">
+            <main className="flex-1 overflow-auto p-4 md:p-8">
                 {useMockAdmin && (
-                    <div className="mb-6 rounded-xl border border-amber-200/60 bg-amber-50/80 px-4 py-3 text-sm text-amber-900 shadow-sm">
-                        Mock mode enabled. Admin access and data are simulated for demo purposes.
+                    <div className="glass-card mb-6 px-4 py-3 border-l-4 border-warning">
+                        <p className="text-sm text-secondary font-medium">
+                            <strong>Mock Mode:</strong> Admin access and data are simulated for demo purposes.
+                        </p>
                     </div>
                 )}
-                <div className="rounded-[32px] bg-white/85 shadow-[0_24px_60px_rgba(20,16,12,0.08)] ring-1 ring-[#eadfcd] p-8 backdrop-blur lux-fade-up lux-stagger">
+                <div className="glass-card p-6 md:p-8">
                     {children}
                 </div>
             </main>
-            <style jsx global>{`
-                @keyframes luxFadeUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(12px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .lux-fade-up {
-                    animation: luxFadeUp 420ms ease-out both;
-                }
-                .lux-stagger > * {
-                    animation: luxFadeUp 480ms ease-out both;
-                }
-                .lux-stagger > *:nth-child(1) { animation-delay: 40ms; }
-                .lux-stagger > *:nth-child(2) { animation-delay: 90ms; }
-                .lux-stagger > *:nth-child(3) { animation-delay: 140ms; }
-                .lux-stagger > *:nth-child(4) { animation-delay: 190ms; }
-                .lux-stagger > *:nth-child(5) { animation-delay: 240ms; }
-                .lux-stagger > *:nth-child(6) { animation-delay: 290ms; }
-                .lux-stagger > *:nth-child(7) { animation-delay: 340ms; }
-                .lux-stagger > *:nth-child(8) { animation-delay: 390ms; }
-                @media (prefers-reduced-motion: reduce) {
-                    .lux-fade-up,
-                    .lux-stagger > * {
-                        animation: none;
-                    }
-                }
-            `}</style>
         </div>
     );
 }
