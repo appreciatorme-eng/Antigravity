@@ -6,18 +6,31 @@
  * - Activity selection changes (client toggles activities)
  * - New comments
  * - Price updates
+ *
+ * Integrated with browser push notifications
  */
 
 import { useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import {
+  shouldShowNotification,
+  notifyProposalComment,
+  notifyProposalApproval,
+  notifyProposalView,
+  createEventNotification,
+  showNotification,
+} from '@/lib/notifications/browser-push';
 
 interface UseRealtimeProposalOptions {
   proposalId: string;
+  proposalTitle?: string;
+  clientName?: string;
   onProposalUpdate?: (payload: any) => void;
   onActivityUpdate?: (payload: any) => void;
   onCommentAdded?: (payload: any) => void;
   enabled?: boolean;
+  enableNotifications?: boolean;
 }
 
 /**
@@ -40,10 +53,13 @@ interface UseRealtimeProposalOptions {
  */
 export function useRealtimeProposal({
   proposalId,
+  proposalTitle = 'Proposal',
+  clientName = 'Client',
   onProposalUpdate,
   onActivityUpdate,
   onCommentAdded,
   enabled = true,
+  enableNotifications = true,
 }: UseRealtimeProposalOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -68,6 +84,27 @@ export function useRealtimeProposal({
         },
         (payload) => {
           console.log('[Realtime] Proposal updated:', payload);
+
+          // Show notification for status changes
+          if (enableNotifications && payload.new) {
+            const oldStatus = payload.old?.status;
+            const newStatus = payload.new.status;
+
+            // Client viewed proposal
+            if (oldStatus !== 'viewed' && newStatus === 'viewed') {
+              if (shouldShowNotification('view')) {
+                notifyProposalView(proposalTitle, clientName, proposalId);
+              }
+            }
+
+            // Client approved proposal
+            if (newStatus === 'approved' && oldStatus !== 'approved') {
+              if (shouldShowNotification('approval')) {
+                notifyProposalApproval(proposalTitle, clientName, proposalId);
+              }
+            }
+          }
+
           onProposalUpdate?.(payload);
         }
       )
@@ -80,6 +117,22 @@ export function useRealtimeProposal({
         },
         (payload) => {
           console.log('[Realtime] Activity updated:', payload);
+
+          // Show notification for client activity toggles
+          if (enableNotifications && payload.new) {
+            const oldSelected = payload.old?.is_selected;
+            const newSelected = payload.new.is_selected;
+
+            if (oldSelected !== newSelected && shouldShowNotification('update')) {
+              const notification = createEventNotification('update', {
+                proposalTitle,
+                clientName,
+                proposalId,
+              });
+              showNotification(notification);
+            }
+          }
+
           onActivityUpdate?.(payload);
         }
       )
@@ -93,6 +146,17 @@ export function useRealtimeProposal({
         },
         (payload) => {
           console.log('[Realtime] Comment added:', payload);
+
+          // Show notification for new comments
+          if (enableNotifications && payload.new) {
+            const authorName = payload.new.author_name || clientName;
+            const commentText = payload.new.comment || '';
+
+            if (shouldShowNotification('comment')) {
+              notifyProposalComment(proposalTitle, authorName, proposalId, commentText);
+            }
+          }
+
           onCommentAdded?.(payload);
         }
       )
@@ -107,7 +171,16 @@ export function useRealtimeProposal({
       console.log('[Realtime] Unsubscribing from:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [proposalId, enabled, onProposalUpdate, onActivityUpdate, onCommentAdded]);
+  }, [
+    proposalId,
+    proposalTitle,
+    clientName,
+    enabled,
+    enableNotifications,
+    onProposalUpdate,
+    onActivityUpdate,
+    onCommentAdded,
+  ]);
 
   return {
     isSubscribed: channelRef.current !== null,
