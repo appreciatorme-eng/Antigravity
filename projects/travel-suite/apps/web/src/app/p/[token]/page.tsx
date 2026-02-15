@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
+import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
 import {
   MapPin,
   Calendar,
@@ -16,6 +17,7 @@ import {
   ChevronUp,
   Download,
   AlertCircle,
+  Wifi,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -97,6 +99,16 @@ export default function PublicProposalPage() {
   const [commentEmail, setCommentEmail] = useState('');
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Real-time subscription (updates when operator makes changes)
+  const { isSubscribed } = useRealtimeProposal({
+    proposalId: proposal?.id || '',
+    onProposalUpdate: (payload) => {
+      console.log('[Client] Proposal updated via realtime:', payload);
+      loadProposal(); // Reload if operator updates proposal
+    },
+    enabled: !loading && !!proposal,
+  });
 
   useEffect(() => {
     loadProposal();
@@ -414,6 +426,12 @@ export default function PublicProposalPage() {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        {isSubscribed && (
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm text-green-700 rounded-full text-xs font-medium shadow-lg">
+            <Wifi className="w-3 h-3" />
+            Live Updates
+          </div>
+        )}
         <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
           <div className="max-w-6xl mx-auto">
             <h1 className="text-5xl font-[var(--font-display)] mb-4">{proposal.title}</h1>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
+import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
 import {
   ArrowLeft,
   Copy,
@@ -16,6 +17,8 @@ import {
   Clock,
   AlertCircle,
   RefreshCcw,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -66,6 +69,28 @@ export default function AdminProposalViewPage() {
     selectedActivities: 0,
     optionalActivities: 0,
   });
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+
+  // Real-time subscription
+  const { isSubscribed } = useRealtimeProposal({
+    proposalId,
+    onProposalUpdate: (payload) => {
+      console.log('[Admin] Proposal updated via realtime:', payload);
+      setRealtimeConnected(true);
+      loadProposal(); // Reload proposal data
+    },
+    onActivityUpdate: (payload) => {
+      console.log('[Admin] Activity updated via realtime:', payload);
+      setRealtimeConnected(true);
+      loadProposal(); // Reload to update stats
+    },
+    onCommentAdded: (payload) => {
+      console.log('[Admin] New comment via realtime:', payload);
+      setRealtimeConnected(true);
+      loadComments(); // Reload comments only
+    },
+    enabled: !loading && !!proposal,
+  });
 
   useEffect(() => {
     loadProposal();
@@ -104,7 +129,22 @@ export default function AdminProposalViewPage() {
 
       setProposal(formattedProposal);
 
-      // Load comments with day information
+      // Load comments
+      await loadComments();
+
+      // Load stats
+      await loadStats(supabase);
+    } catch (error) {
+      console.error('Error loading proposal:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadComments() {
+    try {
+      const supabase = createClient();
+
       const { data: commentsData } = await supabase
         .from('proposal_comments')
         .select(
@@ -124,8 +164,13 @@ export default function AdminProposalViewPage() {
         })) || [];
 
       setComments(formattedComments);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  }
 
-      // Load stats
+  async function loadStats(supabase: ReturnType<typeof createClient>) {
+    try {
       const { count: daysCount } = await supabase
         .from('proposal_days')
         .select('*', { count: 'exact', head: true })
@@ -165,9 +210,7 @@ export default function AdminProposalViewPage() {
         });
       }
     } catch (error) {
-      console.error('Error loading proposal:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading stats:', error);
     }
   }
 
@@ -250,9 +293,17 @@ export default function AdminProposalViewPage() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div>
-            <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
-              {proposal.title}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
+                {proposal.title}
+              </h1>
+              {isSubscribed && (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs font-medium">
+                  <Wifi className="w-3 h-3" />
+                  Live
+                </div>
+              )}
+            </div>
             <p className="text-sm text-[#6f5b3e]">
               {proposal.client_name} • Version {proposal.version}
             </p>
@@ -269,6 +320,7 @@ export default function AdminProposalViewPage() {
           <button
             onClick={loadProposal}
             className="inline-flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+            title="Manual refresh (updates automatically via WebSocket)"
           >
             <RefreshCcw className="w-4 h-4" />
             Refresh
