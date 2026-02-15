@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
+import DraggableActivity from '@/components/DraggableActivity';
 import {
   ArrowLeft,
   Save,
@@ -261,6 +262,23 @@ export default function EditTemplatePage() {
 
   const removeAccommodation = (dayId: string) => {
     updateDay(dayId, { accommodation: null });
+  };
+
+  const reorderActivities = (dayId: string, fromIndex: number, toIndex: number) => {
+    const day = days.find((d) => d.id === dayId);
+    if (!day) return;
+
+    const reordered = [...day.activities];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // Update display_order for all activities
+    const updated = reordered.map((activity, index) => ({
+      ...activity,
+      display_order: index,
+    }));
+
+    updateDay(dayId, { activities: updated });
   };
 
   const addTag = () => {
