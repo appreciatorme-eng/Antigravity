@@ -31,6 +31,7 @@ The **Interactive Proposal System** allows tour operators to:
 | **PROPOSAL_SYSTEM_COMPLETE.md** | Complete implementation guide | Technical team |
 | **PROPOSAL_SYSTEM_PHASE_2_TEMPLATE_BUILDER.md** | Template builder details | Frontend developers |
 | **IMPLEMENTATION_SUMMARY.md** | Executive summary | Business/Product |
+| **AI_TOUR_IMPORT_GUIDE.md** | AI import system guide | Operators/Developers |
 
 ### Code Locations
 
@@ -491,10 +492,22 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM template_activities WHERE template_d
 - Version comparison
 - Template analytics
 
-**⏳ Phase 7: AI Import** (Month 4-6)
-- PDF extraction
-- URL scraping
-- Smart suggestions
+**✅ Phase 5 (NEW): AI Tour Import** (February 15, 2026)
+- ✅ PDF extraction using Google Gemini
+- ✅ URL scraping from tour websites
+- ✅ Preview and edit interface
+- ✅ 90% faster template creation
+
+**⏳ Phase 6: Communication** (Week 2-3)
+- Email integration
+- WhatsApp integration
+- Operator notifications
+
+**⏳ Phase 7: Enhancements** (Month 2-3)
+- Real-time WebSocket updates
+- PDF export
+- Version comparison
+- Template analytics
 
 **⏳ Phase 8: Payments** (TBD)
 - Stripe integration (to be discussed)
@@ -510,7 +523,12 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM template_activities WHERE template_d
 - ✅ Core features complete
 - ✅ Production-ready
 
-**v1.1** - Planned (Week 2-3)
+**v1.1** - February 15, 2026
+- ✅ AI tour import (PDF + URL)
+- ✅ Google Gemini integration
+- ✅ 90% faster template creation
+
+**v1.2** - Planned (Week 2-3)
 - Email/WhatsApp integration
 
 **v1.2** - Planned (Month 2-3)

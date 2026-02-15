@@ -15,6 +15,7 @@ import {
   Star,
   MapPin,
   Users,
+  Upload,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -202,13 +203,22 @@ export default function TourTemplatesPage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/admin/tour-templates/create"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Template
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/tour-templates/import"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#9c7c46] border border-[#9c7c46] rounded-lg hover:bg-[#f6efe4] transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Import Tour
+          </Link>
+          <Link
+            href="/admin/tour-templates/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Template
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
