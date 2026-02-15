@@ -1,6 +1,9 @@
 "use client";
 
 import { Wand2, Bell, MessageCircle, Save } from "lucide-react";
+import { GlassCard } from "@/components/glass/GlassCard";
+import { GlassButton } from "@/components/glass/GlassButton";
+import { GlassBadge } from "@/components/glass/GlassBadge";
 
 const templates = [
     {
@@ -29,40 +32,54 @@ const templates = [
 export default function TemplatesPage() {
     return (
         <div className="space-y-8">
+            {/* Header */}
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#f6efe4] flex items-center justify-center">
-                    <Wand2 className="w-5 h-5 text-[#9c7c46]" />
+                <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                    <Wand2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Templates</span>
-                    <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a] mt-1">Notification Templates</h1>
-                    <p className="text-sm text-[#6f5b3e]">Mock templates for push, email, and WhatsApp.</p>
+                    <span className="text-xs uppercase tracking-widest text-primary font-bold">Templates</span>
+                    <h1 className="text-3xl font-serif text-secondary dark:text-white">Notification Templates</h1>
+                    <p className="text-text-secondary mt-1">Mock templates for push, email, and WhatsApp.</p>
                 </div>
             </div>
 
+            {/* Template Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {templates.map((template) => (
-                    <div key={template.id} className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
-                        <div className="flex items-center justify-between mb-3">
+                    <GlassCard key={template.id} padding="lg" rounded="2xl">
+                        <div className="flex items-center justify-between mb-4">
                             <div>
-                                <p className="text-sm font-semibold text-[#1b140a]">{template.title}</p>
-                                <p className="text-xs text-[#bda87f]">{template.channel}</p>
+                                <p className="text-sm font-semibold text-secondary dark:text-white">{template.title}</p>
+                                <GlassBadge variant="info" size="sm" className="mt-1">
+                                    {template.channel}
+                                </GlassBadge>
                             </div>
                             {template.channel === "Push" ? (
-                                <Bell className="w-4 h-4 text-[#9c7c46]" />
+                                <Bell className="w-5 h-5 text-primary" />
                             ) : (
-                                <MessageCircle className="w-4 h-4 text-[#9c7c46]" />
+                                <MessageCircle className="w-5 h-5 text-primary" />
                             )}
                         </div>
-                        <div className="text-xs text-[#bda87f]">Subject</div>
-                        <div className="text-sm text-[#1b140a] mb-3">{template.subject}</div>
-                        <div className="text-xs text-[#bda87f]">Body</div>
-                        <div className="text-sm text-[#6f5b3e] bg-[#f8f1e6] rounded-lg p-3">{template.body}</div>
-                        <button className="mt-4 w-full rounded-lg border border-[#eadfcd] px-4 py-2 text-sm font-semibold text-[#6f5b3e] flex items-center justify-center gap-2">
+
+                        <div className="space-y-3">
+                            <div>
+                                <div className="text-xs uppercase tracking-wide text-primary mb-1">Subject</div>
+                                <div className="text-sm text-secondary dark:text-white">{template.subject}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs uppercase tracking-wide text-primary mb-1">Body</div>
+                                <div className="text-sm text-text-secondary rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 p-3">
+                                    {template.body}
+                                </div>
+                            </div>
+                        </div>
+
+                        <GlassButton variant="ghost" fullWidth className="mt-4">
                             <Save className="w-4 h-4" />
                             Save Template
-                        </button>
-                    </div>
+                        </GlassButton>
+                    </GlassCard>
                 ))}
             </div>
         </div>

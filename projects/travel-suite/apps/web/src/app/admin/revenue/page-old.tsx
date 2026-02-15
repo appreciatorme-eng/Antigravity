@@ -2,10 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { DollarSign, TrendingUp, ShoppingCart, Package } from 'lucide-react';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassBadge } from '@/components/glass/GlassBadge';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 
 /**
  * Revenue Dashboard - Upsell Metrics & Performance
@@ -142,123 +138,110 @@ export default function RevenueDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <GlassSkeleton className="h-20 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <GlassSkeleton className="h-32" />
-          <GlassSkeleton className="h-32" />
-          <GlassSkeleton className="h-32" />
-        </div>
-        <GlassSkeleton className="h-96" />
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg text-gray-600">Loading revenue data...</div>
       </div>
     );
   }
 
-  const avgConversionRate = conversionMetrics.length > 0
-    ? (conversionMetrics.reduce((sum, m) => sum + m.conversion_rate, 0) / conversionMetrics.length)
-    : 0;
-
   return (
-    <div className="space-y-8">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-          <DollarSign className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <span className="text-xs uppercase tracking-widest text-primary font-bold">Revenue</span>
-          <h1 className="text-3xl font-serif text-secondary dark:text-white">Revenue Dashboard</h1>
-          <p className="text-text-secondary mt-1">Add-on upsell performance and conversion metrics</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Revenue Dashboard</h1>
+        <p className="text-gray-600 mt-2">
+          Add-on upsell performance and conversion metrics
+        </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Total Revenue (30d)</div>
-            <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-1">Total Revenue (30d)</div>
+          <div className="text-3xl font-bold text-green-600">
             ${totalRevenue.toFixed(2)}
           </div>
-          <div className="text-xs text-text-secondary mt-2">
+          <div className="text-xs text-gray-500 mt-2">
             From {totalSales} add-on sales
           </div>
-        </GlassCard>
+        </div>
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Total Sales (30d)</div>
-            <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSales}</div>
-          <div className="text-xs text-text-secondary mt-2">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-1">Total Sales (30d)</div>
+          <div className="text-3xl font-bold text-blue-600">{totalSales}</div>
+          <div className="text-xs text-gray-500 mt-2">
             Across {revenueData.length} add-ons
           </div>
-        </GlassCard>
+        </div>
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Avg. Conversion Rate</div>
-            <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-1">
+            Avg. Conversion Rate
           </div>
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {avgConversionRate.toFixed(1)}%
+          <div className="text-3xl font-bold text-purple-600">
+            {conversionMetrics.length > 0
+              ? (
+                  conversionMetrics.reduce(
+                    (sum, m) => sum + m.conversion_rate,
+                    0
+                  ) / conversionMetrics.length
+                ).toFixed(1)
+              : 0}
+            %
           </div>
-          <div className="text-xs text-text-secondary mt-2">Views to purchases</div>
-        </GlassCard>
+          <div className="text-xs text-gray-500 mt-2">Views to purchases</div>
+        </div>
       </div>
 
       {/* Top Performing Add-ons */}
-      <GlassCard padding="none" rounded="2xl">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-lg font-serif text-secondary dark:text-white">
+      <div className="bg-white rounded-lg shadow mb-8">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-bold text-gray-900">
             Top Performing Add-ons
           </h2>
-          <p className="text-sm text-text-secondary mt-1">By total revenue (30 days)</p>
+          <p className="text-sm text-gray-600 mt-1">By total revenue (30 days)</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-white/40 dark:bg-white/5">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Add-on
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Total Revenue
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Sales
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Avg. Price
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
+            <tbody className="divide-y divide-gray-200">
               {revenueData.slice(0, 10).map((item) => (
-                <tr key={item.id} className="hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
+                <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-secondary dark:text-white">
+                    <div className="text-sm font-medium text-gray-900">
                       {item.name}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <GlassBadge variant="info" size="sm">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                       {item.category}
-                    </GlassBadge>
+                    </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
                     ${item.total_revenue.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {item.total_sales}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     ${item.avg_price.toFixed(2)}
                   </td>
                 </tr>
@@ -266,64 +249,64 @@ export default function RevenueDashboard() {
             </tbody>
           </table>
         </div>
-      </GlassCard>
+      </div>
 
       {/* Conversion Metrics */}
-      <GlassCard padding="none" rounded="2xl">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-lg font-serif text-secondary dark:text-white">
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b">
+          <h2 className="text-xl font-bold text-gray-900">
             Conversion Metrics
           </h2>
-          <p className="text-sm text-text-secondary mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             View-to-purchase conversion rates
           </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-white/40 dark:bg-white/5">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Add-on
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Views
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Purchases
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Conversion Rate
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
+            <tbody className="divide-y divide-gray-200">
               {conversionMetrics
                 .sort((a, b) => b.conversion_rate - a.conversion_rate)
                 .slice(0, 10)
                 .map((metric) => (
-                  <tr key={metric.add_on_id} className="hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
+                  <tr key={metric.add_on_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-secondary dark:text-white">
+                      <div className="text-sm font-medium text-gray-900">
                         {metric.add_on_name}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {metric.views}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {metric.purchases}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-white/20 dark:bg-white/10 rounded-full max-w-[100px]">
+                      <div className="flex items-center">
+                        <div className="flex-1 h-2 bg-gray-200 rounded-full mr-2 max-w-[100px]">
                           <div
-                            className="h-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"
+                            className="h-2 bg-purple-600 rounded-full"
                             style={{
                               width: `${Math.min(metric.conversion_rate, 100)}%`,
                             }}
                           ></div>
                         </div>
-                        <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                        <span className="text-sm font-semibold text-purple-600">
                           {metric.conversion_rate.toFixed(1)}%
                         </span>
                       </div>
@@ -333,13 +316,13 @@ export default function RevenueDashboard() {
             </tbody>
           </table>
         </div>
-      </GlassCard>
+      </div>
 
       {/* Empty State */}
       {totalSales === 0 && (
-        <GlassCard padding="lg" rounded="2xl" className="text-center py-12">
+        <div className="bg-gray-50 rounded-lg p-12 text-center mt-8">
           <svg
-            className="mx-auto h-12 w-12 text-text-secondary"
+            className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -351,21 +334,21 @@ export default function RevenueDashboard() {
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             />
           </svg>
-          <h3 className="mt-4 text-sm font-semibold text-secondary dark:text-white">
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
             No revenue data yet
           </h3>
-          <p className="mt-2 text-sm text-text-secondary">
+          <p className="mt-1 text-sm text-gray-500">
             Add-on purchases will appear here once travelers start booking.
           </p>
           <div className="mt-6">
             <a
               href="/admin/add-ons"
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/30 transition-colors"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
             >
               Manage Add-ons
             </a>
           </div>
-        </GlassCard>
+        </div>
       )}
     </div>
   );
