@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck, RefreshCcw, AlertTriangle } from "lucide-react";
+import { GlassCard } from "@/components/glass/GlassCard";
+import { GlassButton } from "@/components/glass/GlassButton";
+import { GlassBadge } from "@/components/glass/GlassBadge";
 
 type Health = "ok" | "warn";
 
@@ -34,8 +37,8 @@ type SecurityDiagnostics = {
   };
 };
 
-function badgeClass(ok: boolean) {
-  return ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700";
+function getBadgeVariant(ok: boolean): "success" | "danger" {
+  return ok ? "success" : "danger";
 }
 
 export default function AdminSecurityPage() {
@@ -72,50 +75,76 @@ export default function AdminSecurityPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Security</span>
-          <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-[#c4a870]" />
-            Security Diagnostics
-          </h1>
-          <p className="text-[#6f5b3e] mt-1">Cron auth, live-share rate limit telemetry, and RLS policy diagnostics.</p>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <span className="text-xs uppercase tracking-widest text-primary font-bold">Security</span>
+            <h1 className="text-3xl font-serif text-secondary dark:text-white">Security Diagnostics</h1>
+            <p className="text-text-secondary mt-1">Cron auth, live-share rate limit telemetry, and RLS policy diagnostics.</p>
+          </div>
         </div>
-        <button
+        <GlassButton
           onClick={() => void fetchDiagnostics()}
-          className="px-4 py-2 border border-[#eadfcd] bg-white rounded-lg text-[#6f5b3e] flex items-center gap-2"
+          variant="ghost"
+          disabled={loading}
         >
           <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
-        </button>
+        </GlassButton>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-      ) : null}
+      {/* Error State */}
+      {error && (
+        <GlassCard padding="lg" className="bg-red-100/50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+        </GlassCard>
+      )}
 
-      <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5">
+      {/* Overall Status */}
+      <GlassCard padding="lg">
         <div className="flex items-center gap-2 mb-3">
-          {overall === "ok" ? <ShieldCheck className="w-5 h-5 text-emerald-600" /> : <AlertTriangle className="w-5 h-5 text-amber-600" />}
-          <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${overall === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+          {overall === "ok" ? <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+          <GlassBadge variant={overall === "ok" ? "success" : "warning"}>
             {overall === "ok" ? "Secure baseline" : "Needs attention"}
-          </span>
-          <span className="text-xs text-[#8d7650]">{data?.checked_at ? `Checked ${new Date(data.checked_at).toLocaleString()}` : "Checking..."}</span>
+          </GlassBadge>
+          <span className="text-xs text-text-secondary">{data?.checked_at ? `Checked ${new Date(data.checked_at).toLocaleString()}` : "Checking..."}</span>
         </div>
 
+        {/* Security Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl border border-[#eadfcd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#9c7c46] mb-2">Cron Auth</p>
+          {/* Cron Auth */}
+          <div className="rounded-xl border border-white/20 bg-white/10 dark:bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-primary mb-2">Cron Auth</p>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between"><span>Legacy secret</span><span className={`px-2 py-0.5 rounded-full text-xs ${badgeClass(!!data?.cron_auth.legacy_secret_configured)}`}>{data?.cron_auth.legacy_secret_configured ? "ON" : "OFF"}</span></div>
-              <div className="flex items-center justify-between"><span>Signed HMAC</span><span className={`px-2 py-0.5 rounded-full text-xs ${badgeClass(!!data?.cron_auth.signing_secret_configured)}`}>{data?.cron_auth.signing_secret_configured ? "ON" : "OFF"}</span></div>
-              <div className="flex items-center justify-between"><span>Service-role bearer</span><span className={`px-2 py-0.5 rounded-full text-xs ${badgeClass(!!data?.cron_auth.service_role_bearer_supported)}`}>{data?.cron_auth.service_role_bearer_supported ? "ON" : "OFF"}</span></div>
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary">Legacy secret</span>
+                <GlassBadge variant={getBadgeVariant(!!data?.cron_auth.legacy_secret_configured)} size="sm">
+                  {data?.cron_auth.legacy_secret_configured ? "ON" : "OFF"}
+                </GlassBadge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary">Signed HMAC</span>
+                <GlassBadge variant={getBadgeVariant(!!data?.cron_auth.signing_secret_configured)} size="sm">
+                  {data?.cron_auth.signing_secret_configured ? "ON" : "OFF"}
+                </GlassBadge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary">Service-role bearer</span>
+                <GlassBadge variant={getBadgeVariant(!!data?.cron_auth.service_role_bearer_supported)} size="sm">
+                  {data?.cron_auth.service_role_bearer_supported ? "ON" : "OFF"}
+                </GlassBadge>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#eadfcd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#9c7c46] mb-2">Live Share Access</p>
-            <div className="space-y-1 text-sm text-[#1b140a]">
+          {/* Live Share Access */}
+          <div className="rounded-xl border border-white/20 bg-white/10 dark:bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-primary mb-2">Live Share Access</p>
+            <div className="space-y-1 text-sm text-secondary dark:text-white">
               <p>Threshold/min: <span className="font-semibold">{data?.live_share_rate_limit.threshold_per_minute ?? "-"}</span></p>
               <p>Requests (5m): <span className="font-semibold">{data?.live_share_rate_limit.access_requests_last_5m ?? "-"}</span></p>
               <p>Requests (1h): <span className="font-semibold">{data?.live_share_rate_limit.access_requests_last_1h ?? "-"}</span></p>
@@ -123,23 +152,25 @@ export default function AdminSecurityPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#eadfcd] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#9c7c46] mb-2">RLS Summary</p>
-            <div className="space-y-1 text-sm text-[#1b140a]">
+          {/* RLS Summary */}
+          <div className="rounded-xl border border-white/20 bg-white/10 dark:bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-primary mb-2">RLS Summary</p>
+            <div className="space-y-1 text-sm text-secondary dark:text-white">
               <p>Tables expected: <span className="font-semibold">{data?.rls.summary.tables_expected ?? "-"}</span></p>
               <p>Tables with RLS: <span className="font-semibold">{data?.rls.summary.tables_with_rls ?? "-"}</span></p>
               <p>Missing required policies: <span className="font-semibold">{data?.rls.summary.missing_policy_count ?? "-"}</span></p>
             </div>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
-      <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5">
-        <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-3">RLS Table Status</h2>
+      {/* RLS Table Status */}
+      <GlassCard padding="lg">
+        <h2 className="text-lg font-serif text-secondary dark:text-white mb-3">RLS Table Status</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-[#eadfcd] text-[#8d7650]">
+              <tr className="border-b border-white/10 text-text-secondary">
                 <th className="py-2 pr-3">Table</th>
                 <th className="py-2 pr-3">RLS</th>
                 <th className="py-2">Policies</th>
@@ -147,35 +178,36 @@ export default function AdminSecurityPage() {
             </thead>
             <tbody>
               {(data?.rls.tables || []).map((row) => (
-                <tr key={row.table_name} className="border-b border-slate-100">
-                  <td className="py-2 pr-3 font-mono text-xs">{row.table_name}</td>
+                <tr key={row.table_name} className="border-b border-white/10">
+                  <td className="py-2 pr-3 font-mono text-xs text-secondary dark:text-white">{row.table_name}</td>
                   <td className="py-2 pr-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${badgeClass(row.rls_enabled)}`}>
+                    <GlassBadge variant={getBadgeVariant(row.rls_enabled)} size="sm">
                       {row.rls_enabled ? "enabled" : "disabled"}
-                    </span>
+                    </GlassBadge>
                   </td>
-                  <td className="py-2">{row.policy_count}</td>
+                  <td className="py-2 text-text-secondary">{row.policy_count}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </GlassCard>
 
-      <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-5">
-        <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-3">Most Accessed Share Hash Prefixes (1h)</h2>
+      {/* Most Accessed Share Hash Prefixes */}
+      <GlassCard padding="lg">
+        <h2 className="text-lg font-serif text-secondary dark:text-white mb-3">Most Accessed Share Hash Prefixes (1h)</h2>
         {data?.live_share_rate_limit.top_share_hash_prefixes_last_1h?.length ? (
           <div className="flex flex-wrap gap-2">
             {data.live_share_rate_limit.top_share_hash_prefixes_last_1h.map((item) => (
-              <span key={item.hash_prefix} className="text-xs px-2 py-1 rounded-full bg-[#f8f1e6] text-[#7a613a]">
+              <GlassBadge key={item.hash_prefix} variant="default" size="sm">
                 {item.hash_prefix}... : {item.count}
-              </span>
+              </GlassBadge>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[#8d7650]">No share-access logs in the last hour.</p>
+          <p className="text-sm text-text-secondary">No share-access logs in the last hour.</p>
         )}
-      </div>
+      </GlassCard>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { ClipboardList, Bell, MapPin, User, MessageCircle } from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
 
 const activityFeed = [
     {
@@ -11,7 +10,7 @@ const activityFeed = [
         detail: "Kyoto Blossom Trail is now confirmed.",
         time: "2 hours ago",
         icon: MapPin,
-        tone: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+        tone: "bg-blue-100 text-blue-600",
     },
     {
         id: "mock-activity-02",
@@ -20,7 +19,7 @@ const activityFeed = [
         detail: "Client notified about updated itinerary.",
         time: "4 hours ago",
         icon: Bell,
-        tone: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+        tone: "bg-amber-100 text-amber-600",
     },
     {
         id: "mock-activity-03",
@@ -29,7 +28,7 @@ const activityFeed = [
         detail: "Sofia Ramirez requested a quote for Lisbon.",
         time: "Yesterday",
         icon: User,
-        tone: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+        tone: "bg-emerald-100 text-emerald-600",
     },
     {
         id: "mock-activity-04",
@@ -38,27 +37,25 @@ const activityFeed = [
         detail: "Liam Walker asked about luggage limits.",
         time: "2 days ago",
         icon: MessageCircle,
-        tone: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+        tone: "bg-purple-100 text-purple-600",
     },
 ];
 
 export default function AdminActivityPage() {
     return (
         <div className="space-y-8">
-            {/* Header */}
             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 rounded-xl bg-[#f6efe4] flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-[#9c7c46]" />
                 </div>
                 <div>
-                    <span className="text-xs uppercase tracking-widest text-primary font-bold">Activity</span>
-                    <h1 className="text-3xl font-serif text-secondary dark:text-white">Activity Feed</h1>
-                    <p className="text-text-secondary mt-1">Mock timeline for operational activity.</p>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Activity</span>
+                    <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a] mt-1">Activity Feed</h1>
+                    <p className="text-sm text-[#6f5b3e]">Mock timeline for operational activity.</p>
                 </div>
             </div>
 
-            {/* Activity Feed */}
-            <GlassCard padding="lg" rounded="2xl">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
                 <div className="space-y-6">
                     {activityFeed.map((item) => (
                         <div key={item.id} className="flex items-start gap-4">
@@ -67,15 +64,15 @@ export default function AdminActivityPage() {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center justify-between">
-                                    <p className="text-sm font-semibold text-secondary dark:text-white">{item.title}</p>
-                                    <span className="text-xs text-text-secondary">{item.time}</span>
+                                    <p className="text-sm font-semibold text-[#1b140a]">{item.title}</p>
+                                    <span className="text-xs text-[#bda87f]">{item.time}</span>
                                 </div>
-                                <p className="text-sm text-text-secondary mt-1">{item.detail}</p>
+                                <p className="text-sm text-[#6f5b3e] mt-1">{item.detail}</p>
                             </div>
                         </div>
                     ))}
                 </div>
-            </GlassCard>
+            </div>
         </div>
     );
 }
