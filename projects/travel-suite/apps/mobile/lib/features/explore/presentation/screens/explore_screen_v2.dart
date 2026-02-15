@@ -131,21 +131,23 @@ class _ExploreScreenV2State extends State<ExploreScreenV2> {
   }
 
   void _showPurchaseDialog(String addOnId) {
-    // Find the add-on
-    AddOnModel? addOn;
+    // Find the add-on (nullable promotion does not work well across closures,
+    // so resolve once and store as a non-nullable `final`).
+    final AddOnModel? resolved = () {
+      final recIndex = _recommendations.indexWhere((a) => a.id == addOnId);
+      if (recIndex != -1) return _recommendations[recIndex];
 
-    // Check recommendations first
-    addOn = _recommendations.firstWhere(
-      (a) => a.id == addOnId,
-      orElse: () => _allAddOns.firstWhere(
-        (a) => a.id == addOnId,
-        orElse: () => _trendingAddOns.firstWhere(
-          (a) => a.id == addOnId,
-        ),
-      ),
-    );
+      final allIndex = _allAddOns.indexWhere((a) => a.id == addOnId);
+      if (allIndex != -1) return _allAddOns[allIndex];
 
-    if (addOn == null) return;
+      final trendingIndex = _trendingAddOns.indexWhere((a) => a.id == addOnId);
+      if (trendingIndex != -1) return _trendingAddOns[trendingIndex];
+
+      return null;
+    }();
+
+    if (resolved == null) return;
+    final AddOnModel addOn = resolved;
 
     showDialog(
       context: context,
