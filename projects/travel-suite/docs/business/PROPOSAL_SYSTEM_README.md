@@ -33,6 +33,7 @@ The **Interactive Proposal System** allows tour operators to:
 | **IMPLEMENTATION_SUMMARY.md** | Executive summary | Business/Product |
 | **AI_TOUR_IMPORT_GUIDE.md** | AI import system guide | Operators/Developers |
 | **REALTIME_WEBSOCKET_GUIDE.md** | Real-time updates guide | Developers |
+| **ENHANCEMENTS_GUIDE.md** | PDF export, drag-drop, version diff | Developers |
 
 ### Code Locations
 
@@ -495,18 +496,19 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM template_activities WHERE template_d
 - ✅ Visual "Live" indicators
 - ✅ <100ms latency
 
-**⏳ Phase 7: Communication** (Week 2-3)
+**✅ Phase 7 (NEW): Enhancements** (February 15, 2026)
+- ✅ PDF export for clients (beautiful, branded PDFs)
+- ✅ Drag-and-drop reordering (component ready)
+- ✅ Version diff view (GitHub-style comparisons)
+- ✅ Change tracking and audit trail
+
+**⏳ Phase 8: Communication** (Week 2-3)
 - Email integration
 - WhatsApp integration
 - Operator notifications
-
-**⏳ Phase 8: Enhancements** (Month 2-3)
-- PDF export
-- Version comparison
-- Template analytics
 - Browser push notifications
 
-**⏳ Phase 8: Payments** (TBD)
+**⏳ Phase 9: Payments** (TBD)
 - Stripe integration (to be discussed)
 - Deposit collection
 - Payment plans
@@ -531,16 +533,19 @@ psql $DATABASE_URL -c "SELECT COUNT(*) FROM template_activities WHERE template_d
 - ✅ Instant operator notifications
 - ✅ Live activity tracking
 
-**v1.3** - Planned (Week 2-3)
+**v1.3** - February 15, 2026
+- ✅ PDF export (client downloads)
+- ✅ Drag-and-drop reordering component
+- ✅ Version diff view
+- ✅ Change tracking
+
+**v1.4** - Planned (Week 2-3)
 - Email/WhatsApp integration
 
-**v1.2** - Planned (Month 2-3)
-- Real-time features
-- PDF export
-
-**v2.0** - Planned (Month 4-6)
-- AI tour import
+**v2.0** - Planned (Month 3-6)
+- Advanced analytics
 - Stripe integration
+- Multi-language support
 
 ---
 
