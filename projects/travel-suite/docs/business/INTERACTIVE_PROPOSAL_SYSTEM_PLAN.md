@@ -1,6 +1,6 @@
 # Interactive Itinerary Proposal System - Implementation Plan
 
-> **📋 IMPLEMENTATION STATUS:** ✅ **CORE FEATURES COMPLETE** (Feb 14, 2026)
+> **📋 IMPLEMENTATION STATUS:** ✅ **CORE FEATURES + AI IMPORT COMPLETE** (Feb 15, 2026)
 >
 > **What's Built:**
 > - ✅ Database schema (9 tables, 5 RPC functions)
@@ -10,13 +10,15 @@
 > - ✅ Admin dashboard (status tracking, comments)
 > - ✅ Navigation integration
 > - ✅ Notification infrastructure (placeholders ready)
+> - ✅ AI tour import from PDFs (Google Gemini)
+> - ✅ AI tour import from URLs (website scraping)
+> - ✅ Import preview and edit interface
 >
 > **What's Pending:**
 > - ⏳ Email/WhatsApp integration (infrastructure ready, needs API keys)
 > - ⏳ Real-time WebSocket notifications
 > - ⏳ PDF export
 > - ⏳ Version diff view
-> - ⏳ AI tour import from PDFs/websites
 > - ⏳ Stripe payment integration (to be discussed)
 >
 > **See:** `IMPLEMENTATION_SUMMARY.md` for complete details
