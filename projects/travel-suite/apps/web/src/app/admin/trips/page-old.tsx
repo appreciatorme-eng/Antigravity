@@ -13,11 +13,6 @@ import {
     Plus
 } from "lucide-react";
 import CreateTripModal from "@/components/CreateTripModal";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassSelect } from "@/components/glass/GlassInput";
-import { GlassListSkeleton } from "@/components/glass/GlassSkeleton";
 
 interface Trip {
     id: string;
@@ -74,15 +69,6 @@ const mockTrips: Trip[] = [
     },
 ];
 
-const STATUS_OPTIONS = [
-    { value: "all", label: "All Status" },
-    { value: "draft", label: "Draft" },
-    { value: "pending", label: "Pending" },
-    { value: "confirmed", label: "Confirmed" },
-    { value: "completed", label: "Completed" },
-    { value: "cancelled", label: "Cancelled" },
-];
-
 export default function AdminTripsPage() {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
@@ -93,7 +79,7 @@ export default function AdminTripsPage() {
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchTrips = useCallback(async () => {
-        setLoading(true);
+        setLoading(true); // Set loading to true when fetching starts
         if (useMockAdmin) {
             setTrips(mockTrips);
             setLoading(false);
@@ -120,6 +106,7 @@ export default function AdminTripsPage() {
     }, [supabase, statusFilter, searchQuery, useMockAdmin]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchTrips();
     }, [fetchTrips]);
 
@@ -135,154 +122,146 @@ export default function AdminTripsPage() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "confirmed":
-                return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+                return "bg-[#f1e4d2] text-[#9c7c46]";
             case "pending":
-                return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
             case "draft":
-                return "bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-400";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
             case "completed":
-                return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+                return "bg-[#efe2cf] text-[#7b5f31]";
             case "cancelled":
-                return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+                return "bg-rose-100 text-rose-700";
             default:
-                return "bg-gray-100 text-gray-800 dark:bg-gray-800/30 dark:text-gray-400";
+                return "bg-[#f6efe4] text-[#6f5b3e]";
         }
     };
 
-    const stats = [
-        {
-            label: "Total Trips",
-            value: trips.length,
-            color: "text-secondary dark:text-white",
-        },
-        {
-            label: "Confirmed",
-            value: trips.filter((t) => t.status === "confirmed").length,
-            color: "text-green-600 dark:text-green-400",
-        },
-        {
-            label: "Pending",
-            value: trips.filter((t) => t.status === "pending").length,
-            color: "text-yellow-600 dark:text-yellow-400",
-        },
-        {
-            label: "This Month",
-            value: trips.filter((t) => {
-                if (!t.start_date) return false;
-                const tripDate = new Date(t.start_date);
-                const now = new Date();
-                return (
-                    tripDate.getMonth() === now.getMonth() &&
-                    tripDate.getFullYear() === now.getFullYear()
-                );
-            }).length,
-            color: "text-secondary dark:text-white",
-        },
-    ];
-
     if (loading) {
         return (
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <span className="text-xs uppercase tracking-widest text-primary font-bold">Trips</span>
-                        <h1 className="text-3xl font-serif text-secondary dark:text-white mt-2">Trips</h1>
-                    </div>
-                </div>
-                <GlassListSkeleton items={5} />
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-center flex-wrap gap-4">
+            <div className="flex justify-between items-center">
                 <div>
-                    <span className="text-xs uppercase tracking-widest text-primary font-bold">Trips</span>
-                    <h1 className="text-3xl font-serif text-secondary dark:text-white mt-2">Trips</h1>
-                    <p className="text-text-secondary mt-1">
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Trips</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2">Trips</h1>
+                    <p className="text-[#6f5b3e] mt-1">
                         Manage client trips and assign drivers.
                     </p>
                 </div>
-                <GlassButton
-                    variant="primary"
+                <button
                     onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-md shadow-sm text-[#f5e7c6] bg-[#1b140a] hover:bg-[#2a2217] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#c4a870]"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 mr-2" />
                     New Trip
-                </GlassButton>
+                </button>
             </div>
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
-                <GlassInput
-                    icon={Search}
-                    type="text"
-                    placeholder="Search by destination, client, or title..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <div className="flex items-center gap-2 sm:w-64">
-                    <Filter className="h-4 w-4 text-text-secondary shrink-0" />
-                    <GlassSelect
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by destination, client, or title..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c4a870]/20 focus:border-[#c4a870] bg-white/90"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-[#bda87f]" />
+                    <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        options={STATUS_OPTIONS}
-                    />
+                        className="px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c4a870]/20 focus:border-[#c4a870] bg-white/90 text-[#1b140a]"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
                 </div>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                    <GlassCard key={index} padding="lg" rounded="xl">
-                        <p className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-2">
-                            {stat.label}
-                        </p>
-                        <p className={`text-2xl font-serif ${stat.color}`}>
-                            {stat.value}
-                        </p>
-                    </GlassCard>
-                ))}
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Total Trips</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#1b140a]">{trips.length}</p>
+                </div>
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Confirmed</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#9c7c46]">
+                        {trips.filter((t) => t.status === "confirmed").length}
+                    </p>
+                </div>
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">Pending</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#6f5b3e]">
+                        {trips.filter((t) => t.status === "pending").length}
+                    </p>
+                </div>
+                <div className="bg-white/90 p-4 rounded-xl border border-[#eadfcd]">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#bda87f]">This Month</p>
+                    <p className="text-2xl font-[var(--font-display)] text-[#1b140a]">
+                        {
+                            trips.filter((t) => {
+                                if (!t.start_date) return false;
+                                const tripDate = new Date(t.start_date);
+                                const now = new Date();
+                                return (
+                                    tripDate.getMonth() === now.getMonth() &&
+                                    tripDate.getFullYear() === now.getFullYear()
+                                );
+                            }).length
+                        }
+                    </p>
+                </div>
             </div>
 
             {/* Trips List */}
-            <GlassCard padding="none" rounded="2xl">
+            <div className="bg-white/90 rounded-2xl border border-[#eadfcd] overflow-hidden shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
                 {trips.length === 0 ? (
                     <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
-                            <MapPin className="w-8 h-8 text-primary" />
+                        <div className="w-16 h-16 bg-[#f6efe4] rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MapPin className="w-8 h-8 text-[#bda87f]" />
                         </div>
-                        <h3 className="text-lg font-medium text-secondary dark:text-white">No trips found</h3>
-                        <p className="text-text-secondary mt-1 mb-6">
-                            Get started by creating a new trip for your clients.
-                        </p>
-                        <GlassButton
-                            variant="primary"
+                        <h3 className="text-lg font-medium text-[#1b140a]">No trips found</h3>
+                        <p className="text-[#6f5b3e] mt-1 mb-6">Get started by creating a new trip for your clients.</p>
+                        <button
                             onClick={() => setIsCreateModalOpen(true)}
+                            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-md shadow-sm text-[#f5e7c6] bg-[#1b140a] hover:bg-[#2a2217] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#c4a870]"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 mr-2" />
                             Create New Trip
-                        </GlassButton>
+                        </button>
                     </div>
                 ) : (
-                    <div className="divide-y divide-white/10">
+                    <div className="divide-y divide-[#efe2cf]">
                         {trips.map((trip) => (
                             <Link
                                 key={trip.id}
                                 href={`/admin/trips/${trip.id}`}
-                                className="flex items-center justify-between p-4 hover:bg-white/20 dark:hover:bg-white/5 transition-colors"
+                                className="flex items-center justify-between p-4 hover:bg-[#f8f1e6] transition-colors"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
-                                        <MapPin className="h-6 w-6 text-primary" />
+                                    <div className="w-12 h-12 bg-[#f6efe4] rounded-xl flex items-center justify-center border border-[#eadfcd]">
+                                        <MapPin className="h-6 w-6 text-[#9c7c46]" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-secondary dark:text-white">
+                                        <h3 className="font-semibold text-[#1b140a]">
                                             {trip.itineraries?.trip_title || trip.destination || "Untitled Trip"}
                                         </h3>
-                                        <div className="flex items-center gap-4 mt-1 text-sm text-text-secondary">
+                                        <div className="flex items-center gap-4 mt-1 text-sm text-[#6f5b3e]">
                                             <span className="flex items-center gap-1">
                                                 <User className="h-3 w-3" />
                                                 {trip.profiles?.full_name || "Unknown"}
@@ -307,13 +286,13 @@ export default function AdminTripsPage() {
                                     >
                                         {trip.status}
                                     </span>
-                                    <ChevronRight className="h-5 w-5 text-text-secondary" />
+                                    <ChevronRight className="h-5 w-5 text-[#bda87f]" />
                                 </div>
                             </Link>
                         ))}
                     </div>
                 )}
-            </GlassCard>
+            </div>
 
             <CreateTripModal
                 open={isCreateModalOpen}
