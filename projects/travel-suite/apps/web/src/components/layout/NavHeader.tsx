@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings } from "lucide-react";
+import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings, Bell } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { ThemeToggleButton } from "@/components/ThemeToggle";
 
 interface UserProfile {
     role: string | null;
@@ -58,7 +59,10 @@ export default function NavHeader() {
         { href: "/", label: "Home", icon: Compass },
         { href: "/planner", label: "Plan Trip", icon: Map },
         ...(user ? [{ href: "/trips", label: "My Trips", icon: Briefcase }] : []),
-        ...(userProfile?.role === "admin" ? [{ href: "/admin", label: "Admin", icon: Settings }] : []),
+        ...(userProfile?.role === "admin" ? [
+            { href: "/admin", label: "Admin", icon: Settings },
+            { href: "/admin/settings/notifications", label: "Notifications", icon: Bell },
+        ] : []),
     ];
 
     const isActive = (href: string) => pathname === href;
@@ -96,6 +100,9 @@ export default function NavHeader() {
 
                     {/* Right side - Auth */}
                     <div className="flex items-center gap-3">
+                        {/* Theme Toggle */}
+                        <ThemeToggleButton />
+
                         {loading ? (
                             <div className="w-8 h-8 bg-gray-100 rounded-full animate-pulse" />
                         ) : user ? (
@@ -165,6 +172,14 @@ export default function NavHeader() {
                                     {link.label}
                                 </Link>
                             ))}
+
+                            <div className="border-t border-gray-100 my-2" />
+
+                            {/* Theme Toggle in Mobile */}
+                            <div className="px-4 py-2 flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">Dark Mode</span>
+                                <ThemeToggleButton />
+                            </div>
 
                             <div className="border-t border-gray-100 my-2" />
 

@@ -6,13 +6,13 @@ import NavHeader from "@/components/layout/NavHeader";
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"], // Regular (400) and Bold (700) matching mobile
 });
 
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600", "700"], // Regular, Medium, Semibold, Bold
 });
 
 export const metadata: Metadata = {

@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { GlassCard, GlassPill, GlassIconButton } from '@/components/glass/GlassCard';
 import { GlassNavBar, travelerNavItems } from '@/components/glass/GlassNavBar';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   Home,
   Bell,
@@ -38,10 +39,13 @@ export default function DesignDemoPage() {
                 My Journeys
               </h1>
             </div>
-            <GlassIconButton
-              icon={<Bell className="w-5 h-5" />}
-              variant="primary"
-            />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <GlassIconButton
+                icon={<Bell className="w-5 h-5" />}
+                variant="primary"
+              />
+            </div>
           </div>
         </div>
       </div>
