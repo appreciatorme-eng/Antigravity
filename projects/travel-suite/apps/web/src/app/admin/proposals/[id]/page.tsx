@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
+import VersionDiff from '@/components/VersionDiff';
 import {
   ArrowLeft,
   Copy,
@@ -19,6 +20,7 @@ import {
   RefreshCcw,
   Wifi,
   WifiOff,
+  History,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -70,6 +72,8 @@ export default function AdminProposalViewPage() {
     optionalActivities: 0,
   });
   const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versions, setVersions] = useState<any[]>([]);
 
   // Real-time subscription
   const { isSubscribed } = useRealtimeProposal({
@@ -253,6 +257,28 @@ export default function AdminProposalViewPage() {
     loadProposal();
   }
 
+  async function loadVersionHistory() {
+    if (versions.length > 0) {
+      // Already loaded, just toggle visibility
+      setShowVersionHistory(!showVersionHistory);
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('proposal_versions')
+        .select('*')
+        .eq('proposal_id', proposalId)
+        .order('version', { ascending: false });
+
+      setVersions(data || []);
+      setShowVersionHistory(true);
+    } catch (error) {
+      console.error('Error loading version history:', error);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -311,6 +337,13 @@ export default function AdminProposalViewPage() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={loadVersionHistory}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <History className="w-4 h-4" />
+            Version History ({proposal.version})
+          </button>
+          <button
             onClick={sendProposal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
           >
@@ -327,6 +360,37 @@ export default function AdminProposalViewPage() {
           </button>
         </div>
       </div>
+
+      {/* Version History */}
+      {showVersionHistory && versions.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-[#1b140a]">Version History</h2>
+          {versions.map((version, index) => {
+            if (index === versions.length - 1) {
+              // First version, nothing to compare
+              return (
+                <div key={version.id} className="bg-white border border-[#eadfcd] rounded-lg p-4">
+                  <p className="text-sm text-[#6f5b3e]">
+                    Version {version.version} • Initial version •{' '}
+                    {new Date(version.created_at).toLocaleString()}
+                  </p>
+                </div>
+              );
+            }
+
+            const currentVer = version;
+            const previousVer = versions[index + 1];
+
+            return (
+              <VersionDiff
+                key={version.id}
+                currentVersion={currentVer}
+                previousVersion={previousVer}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

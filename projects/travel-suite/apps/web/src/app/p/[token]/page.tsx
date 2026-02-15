@@ -453,6 +453,16 @@ export default function PublicProposalPage() {
                 ${totalSelectedPrice.toFixed(2)}
               </div>
             </div>
+            <div className="mt-6">
+              <a
+                href={`/api/proposals/${proposal.id}/pdf?token=${shareToken}`}
+                download
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/90 backdrop-blur-sm text-[#9c7c46] rounded-lg hover:bg-white transition-colors shadow-lg font-medium"
+              >
+                <Download className="w-5 h-5" />
+                Download PDF
+              </a>
+            </div>
           </div>
         </div>
       </div>
