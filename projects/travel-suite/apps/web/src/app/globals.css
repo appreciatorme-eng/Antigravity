@@ -48,85 +48,244 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #00d084;
+  /* === GoBuddy Adventures Design System === */
+  /* Matching mobile app_theme.dart */
+
+  /* Border radius */
+  --radius: 0.75rem; /* 12px base */
+
+  /* Brand Colors */
+  --primary: #00d084;              /* Vivid Green */
+  --primary-hover: #00b874;        /* Darker green */
+  --primary-light: #33dda0;        /* Lighter green */
   --primary-foreground: #ffffff;
-  --secondary: #124ea2;
+
+  --secondary: #124ea2;            /* Royal Blue */
+  --secondary-hover: #0f3e85;      /* Darker blue */
+  --secondary-light: #1e5fbd;      /* Lighter blue */
   --secondary-foreground: #ffffff;
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Neutrals */
+  --background: #f5f5f5;           /* Soft Glass background */
+  --foreground: #124ea2;           /* Royal Blue for text */
+  --text-primary: #124ea2;         /* Royal Blue */
+  --text-secondary: #6b7280;       /* Gray-500 */
+
+  /* Card surfaces */
+  --card: #ffffff;
+  --card-foreground: #124ea2;
+  --popover: #ffffff;
+  --popover-foreground: #124ea2;
+
+  /* Glass surfaces (with opacity) */
+  --glass-surface: rgba(255, 255, 255, 0.65);      /* ~65% white */
+  --glass-nav-surface: rgba(255, 255, 255, 0.85);  /* ~85% white */
+  --glass-border: rgba(255, 255, 255, 0.6);        /* ~60% white */
+
+  /* Feedback colors */
+  --error: #ef4444;                /* Red-500 */
+  --success: #22c55e;              /* Green-500 */
+  --warning: #f59e0b;              /* Amber-500 */
+  --info: #3b82f6;                 /* Blue-500 */
+  --destructive: #ef4444;
+
+  /* Component states */
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+  --accent: #e3f2fd;
+  --accent-foreground: #124ea2;
+  --border: #e5e7eb;
+  --input: #fafafa;
+  --ring: #00d084;
+
+  /* Charts */
+  --chart-1: #00d084;
+  --chart-2: #124ea2;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #3b82f6;
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #124ea2;
+  --sidebar-primary: #00d084;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3f2fd;
+  --sidebar-accent-foreground: #124ea2;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #00d084;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #00d084 0%, #00b874 100%);
+  --gradient-background: linear-gradient(135deg, #e0f7fa 0%, #f5f5f5 50%, #e3f2fd 100%);
+  --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* === Dark Mode (Stitch Dark Variants) === */
+
+  /* Background colors */
+  --background: #0a2f2a;           /* Dark teal */
+  --foreground: #ffffff;           /* White */
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;       /* Light gray */
+
+  /* Card surfaces */
+  --card: #0f3a33;                 /* Slightly lighter teal */
+  --card-foreground: #ffffff;
+  --popover: #0f3a33;
+  --popover-foreground: #ffffff;
+
+  /* Brand colors (unchanged) */
+  --primary: #00d084;
+  --primary-foreground: #000000;   /* Black text on green */
+  --secondary: #00d084;            /* Use primary in dark mode */
+  --secondary-foreground: #000000;
+
+  /* Glass surfaces (darker) */
+  --glass-surface: rgba(255, 255, 255, 0.2);      /* ~20% white */
+  --glass-nav-surface: rgba(255, 255, 255, 0.25); /* ~25% white */
+  --glass-border: rgba(255, 255, 255, 0.15);      /* ~15% white */
+
+  /* Component states */
+  --muted: #0f3a33;
+  --muted-foreground: #b0b0b0;
+  --accent: rgba(0, 208, 132, 0.2);
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #00d084;
+
+  /* Charts (use primary green in dark mode) */
+  --chart-1: #00d084;
+  --chart-2: #33dda0;
+  --chart-3: #22c55e;
+  --chart-4: #f59e0b;
+  --chart-5: #3b82f6;
+
+  /* Sidebar */
+  --sidebar: #0f3a33;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00d084;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: rgba(0, 208, 132, 0.2);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #00d084;
+
+  /* Gradients */
+  --gradient-background: linear-gradient(135deg, #0a2f2a 0%, #0d3530 50%, #0a2f2a 100%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
+
+  /* Typography hierarchy */
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+  }
+
   .maplibregl-popup-content {
     @apply bg-transparent! shadow-none! p-0! rounded-none!;
   }
   .maplibregl-popup-tip {
     @apply hidden!;
+  }
+}
+
+@layer utilities {
+  /* === Glassmorphism Utilities === */
+  .glass {
+    backdrop-filter: blur(16px);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+  }
+
+  .glass-nav {
+    backdrop-filter: blur(20px);
+    background: var(--glass-nav-surface);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.07);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(16px);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+  }
+
+  /* === Gradient Backgrounds === */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-app {
+    background: var(--gradient-background);
+  }
+
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+
+  /* === Text Gradients === */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* === Custom Shadows === */
+  .shadow-glass {
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
+  }
+
+  .shadow-button {
+    box-shadow: 0 8px 14px rgba(0, 208, 132, 0.3);
+  }
+
+  .shadow-card {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  /* === Pulsing Dot Animation === */
+  @keyframes pulse-scale {
+    0%, 100% {
+      transform: scale(0.75);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 0.9;
+    }
+  }
+
+  .pulse-dot {
+    animation: pulse-scale 900ms ease-out infinite;
+  }
+
+  /* === Smooth Transitions === */
+  .transition-smooth {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* === Backdrop Blur Variations === */
+  .backdrop-blur-glass {
+    backdrop-filter: blur(16px);
+  }
+
+  .backdrop-blur-nav {
+    backdrop-filter: blur(20px);
   }
 }
