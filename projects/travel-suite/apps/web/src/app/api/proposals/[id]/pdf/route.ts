@@ -12,9 +12,10 @@ import { ProposalDocument } from '@/components/pdf/ProposalDocument';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Get current user
@@ -54,7 +55,7 @@ export async function GET(
           )
         )
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id)
       .single();
 

@@ -11,9 +11,10 @@ import { paymentService } from '@/lib/payments/payment-service';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Get current user
@@ -72,7 +73,7 @@ export async function POST(
     const { data: invoice } = await supabase
       .from('invoices')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id)
       .single();
 

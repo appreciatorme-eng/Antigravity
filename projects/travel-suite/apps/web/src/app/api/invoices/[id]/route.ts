@@ -12,9 +12,10 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Get current user
@@ -46,7 +47,7 @@ export async function GET(
         clients(id, name, email, phone),
         invoice_payments(*)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id)
       .single();
 
@@ -63,9 +64,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Get current user
@@ -103,7 +105,7 @@ export async function PUT(
     const { data: invoice, error } = await supabase
       .from('invoices')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id)
       .select('*, clients(name, email)')
       .single();
@@ -126,9 +128,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Get current user
@@ -156,7 +159,7 @@ export async function DELETE(
     const { data: invoice } = await supabase
       .from('invoices')
       .select('status')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id)
       .single();
 
@@ -176,7 +179,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('invoices')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id);
 
     if (error) {

@@ -11,9 +11,10 @@ import { createClient } from '@/lib/supabase/client';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
 
     // Get current user
@@ -47,7 +48,7 @@ export async function PUT(
         duration: body.duration,
         is_active: body.is_active,
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id) // Security: ensure user owns this add-on
       .select()
       .single();
@@ -73,9 +74,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = createClient();
 
     // Get current user
@@ -99,7 +101,7 @@ export async function DELETE(
     const { data: purchases } = await supabase
       .from('client_add_ons')
       .select('id')
-      .eq('add_on_id', params.id)
+      .eq('add_on_id', id)
       .limit(1);
 
     if (purchases && purchases.length > 0) {
@@ -116,7 +118,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('add_ons')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('organization_id', profile.organization_id); // Security: ensure user owns this add-on
 
     if (error) {
