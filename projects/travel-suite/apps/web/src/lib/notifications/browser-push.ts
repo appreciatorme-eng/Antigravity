@@ -77,7 +77,7 @@ export async function showNotification(notification: PushNotification): Promise<
   }
 
   try {
-    const options: NotificationOptions = {
+    const options: any = {
       body: notification.body,
       icon: notification.icon || '/logo-192.png',
       badge: notification.badge || '/logo-96.png',
