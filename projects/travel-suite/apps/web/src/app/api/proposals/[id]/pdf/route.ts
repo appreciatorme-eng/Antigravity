@@ -81,7 +81,7 @@ export async function GET(
       React.createElement(ProposalDocument, {
         proposal: proposalData,
         organizationName: (profile as any).organizations?.name || 'Travel Suite',
-      })
+      }) as any
     );
 
     // Convert stream to buffer
