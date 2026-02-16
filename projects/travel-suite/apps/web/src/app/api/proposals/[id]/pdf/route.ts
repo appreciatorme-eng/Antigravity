@@ -78,10 +78,10 @@ export async function GET(
 
     // Generate PDF stream
     const stream = await renderToStream(
-      <ProposalDocument
-        proposal={proposalData}
-        organizationName={(profile as any).organizations?.name || 'Travel Suite'}
-      />
+      React.createElement(ProposalDocument, {
+        proposal: proposalData,
+        organizationName: (profile as any).organizations?.name || 'Travel Suite',
+      })
     );
 
     // Convert stream to buffer
