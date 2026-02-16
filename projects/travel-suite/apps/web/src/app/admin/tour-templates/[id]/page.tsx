@@ -390,7 +390,7 @@ export default function ViewTemplatePage() {
                   {accommodations[day.id].image_url && (
                     <div className="relative w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
                       <Image
-                        src={accommodations[day.id].image_url}
+                        src={accommodations[day.id].image_url || ''}
                         alt={accommodations[day.id].hotel_name}
                         fill
                         className="object-cover"
