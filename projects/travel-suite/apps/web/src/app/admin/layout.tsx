@@ -62,7 +62,6 @@ export default function AdminLayout({
 }) {
     const router = useRouter();
     const pathname = usePathname();
-    const supabase = createClient();
 
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
@@ -70,6 +69,8 @@ export default function AdminLayout({
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     useEffect(() => {
+        const supabase = createClient();
+
         const checkAuth = async () => {
             if (useMockAdmin) {
                 setAuthorized(true);
@@ -104,7 +105,7 @@ export default function AdminLayout({
         };
 
         checkAuth();
-    }, [supabase, router, useMockAdmin]);
+    }, [router, useMockAdmin]);
 
     if (loading) {
         return (
