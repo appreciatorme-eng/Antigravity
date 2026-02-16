@@ -193,7 +193,7 @@ export default function SettingsPage() {
                         <h1 className="text-3xl font-serif text-secondary dark:text-white">Settings</h1>
                     </div>
                 </div>
-                <GlassFormSkeleton sections={3} />
+                <GlassFormSkeleton />
             </div>
         );
     }
