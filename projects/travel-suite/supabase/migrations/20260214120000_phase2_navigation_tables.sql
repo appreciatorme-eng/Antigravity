@@ -2,19 +2,7 @@
 -- Created: 2026-02-14
 -- Description: Database tables to support new mobile navigation (Explore, Concierge, Bookings)
 
--- ============================================================================
--- Helper Functions (MUST be defined before RLS policies)
--- ============================================================================
-
--- Function to get organization ID from auth.uid()
-CREATE OR REPLACE FUNCTION public.get_user_organization_id()
-RETURNS UUID
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-    SELECT organization_id FROM public.profiles WHERE id = auth.uid();
-$$;
+-- Note: get_user_organization_id() function is defined in 20260214110000_create_clients_table.sql
 
 -- ============================================================================
 -- Add-ons Table (for Explore screen)

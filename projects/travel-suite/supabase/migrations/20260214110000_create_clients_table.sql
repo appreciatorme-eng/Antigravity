@@ -3,6 +3,20 @@
 -- Description: Create a clients table that references profiles for backward compatibility with new features
 
 -- ============================================================================
+-- Helper Functions (MUST be defined before RLS policies)
+-- ============================================================================
+
+-- Function to get organization ID from auth.uid()
+CREATE OR REPLACE FUNCTION public.get_user_organization_id()
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT organization_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+-- ============================================================================
 -- Clients Table (References Profiles)
 -- ============================================================================
 -- This table extends profiles for client-specific data
