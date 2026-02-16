@@ -32,7 +32,7 @@ interface DriverAccountLink {
     id: string;
     external_driver_id: string;
     profile_id: string;
-    is_active: boolean;
+    is_active: boolean | null;
     profile_email?: string | null;
     profile_name?: string | null;
 }
