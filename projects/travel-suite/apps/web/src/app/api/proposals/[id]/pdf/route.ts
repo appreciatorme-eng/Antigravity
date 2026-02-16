@@ -5,6 +5,7 @@
  * Returns: PDF file for download
  */
 
+import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { renderToStream } from '@react-pdf/renderer';
@@ -77,10 +78,10 @@ export async function GET(
 
     // Generate PDF stream
     const stream = await renderToStream(
-      ProposalDocument({
-        proposal: proposalData,
-        organizationName: (profile as any).organizations?.name || 'Travel Suite',
-      })
+      <ProposalDocument
+        proposal={proposalData}
+        organizationName={(profile as any).organizations?.name || 'Travel Suite'}
+      />
     );
 
     // Convert stream to buffer
