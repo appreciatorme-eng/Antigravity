@@ -83,7 +83,7 @@ export async function POST(
 
     // Record payment using payment service
     await paymentService.recordPayment({
-      invoiceId: params.id,
+      invoiceId: id,
       amount,
       paymentMethod: payment_method,
       razorpayPaymentId: razorpay_payment_id,
@@ -94,7 +94,7 @@ export async function POST(
     const { data: updatedInvoice } = await supabase
       .from('invoices')
       .select('*, clients(name, email), invoice_payments(*)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     return NextResponse.json({ invoice: updatedInvoice });
