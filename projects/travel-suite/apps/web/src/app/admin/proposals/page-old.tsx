@@ -320,7 +320,7 @@ export default function ProposalsPage() {
                         <StatusIcon className="w-3 h-3" />
                         {statusInfo.label}
                       </span>
-                      {proposal.comments_count > 0 && (
+                      {proposal.comments_count && proposal.comments_count > 0 && (
                         <div className="text-xs text-[#bda87f] mt-1 flex items-center gap-1">
                           <MessageCircle className="w-3 h-3" />
                           {proposal.comments_count} comment{proposal.comments_count !== 1 ? 's' : ''}
