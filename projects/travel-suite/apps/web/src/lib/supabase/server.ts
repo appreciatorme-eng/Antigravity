@@ -1,12 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-// Using any type until migrations are applied to production database
-// import { Database } from '../database.types';
+import { Database } from '../database.types';
 
 export async function createClient() {
     const cookieStore = await cookies();
 
-    return createServerClient<any>(
+    return createServerClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
