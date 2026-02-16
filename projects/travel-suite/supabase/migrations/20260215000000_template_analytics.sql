@@ -46,7 +46,7 @@ ON template_views
 FOR SELECT
 USING (
     organization_id IN (
-        SELECT organization_id FROM user_profiles
+        SELECT organization_id FROM profiles
         WHERE user_id = auth.uid()
     )
 );
@@ -56,7 +56,7 @@ ON template_views
 FOR INSERT
 WITH CHECK (
     organization_id IN (
-        SELECT organization_id FROM user_profiles
+        SELECT organization_id FROM profiles
         WHERE user_id = auth.uid()
     )
 );
@@ -66,7 +66,7 @@ ON template_usage
 FOR SELECT
 USING (
     organization_id IN (
-        SELECT organization_id FROM user_profiles
+        SELECT organization_id FROM profiles
         WHERE user_id = auth.uid()
     )
 );
@@ -76,7 +76,7 @@ ON template_usage
 FOR INSERT
 WITH CHECK (
     organization_id IN (
-        SELECT organization_id FROM user_profiles
+        SELECT organization_id FROM profiles
         WHERE user_id = auth.uid()
     )
 );
