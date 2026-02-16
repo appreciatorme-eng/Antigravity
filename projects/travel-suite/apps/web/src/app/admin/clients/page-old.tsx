@@ -15,11 +15,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { GlassModal } from "@/components/glass/GlassModal";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface Client {
     id: string;
@@ -438,263 +444,278 @@ export default function ClientsPage() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                        <span className="text-xs uppercase tracking-widest text-primary font-bold">Clients</span>
-                        <h1 className="text-3xl font-serif text-secondary dark:text-white">Clients</h1>
-                        <p className="text-text-secondary mt-1">Manage your tour customers and view their travel history.</p>
-                    </div>
+                <div>
+                    <span className="text-xs uppercase tracking-[0.3em] text-[#bda87f]">Clients</span>
+                    <h1 className="text-3xl font-[var(--font-display)] text-[#1b140a] mt-2 flex items-center gap-3">
+                        <Users className="w-8 h-8 text-[#c4a870]" />
+                        Clients
+                    </h1>
+                    <p className="text-[#6f5b3e] mt-1">Manage your tour customers and view their travel history.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <GlassButton
+                    <button
                         onClick={fetchClients}
-                        variant="ghost"
-                        size="sm"
+                        className="p-2 bg-white border border-[#eadfcd] rounded-lg text-[#6f5b3e] hover:bg-[#f8f1e6] transition-colors shadow-sm"
                         title="Refresh"
                     >
                         <RefreshCcw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </GlassButton>
-                    <GlassButton
-                        onClick={() => setModalOpen(true)}
-                        variant="primary"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Client
-                    </GlassButton>
+                    </button>
+                    <Dialog open={modalOpen} onOpenChange={(open) => {
+                        setModalOpen(open);
+                        if (!open) resetForm();
+                    }}>
+                        <DialogTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-all shadow-sm font-semibold">
+                                <Plus className="w-4 h-4" />
+                                Add Client
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[420px]">
+                            <DialogHeader>
+                                <DialogTitle>Add Client</DialogTitle>
+                                <DialogDescription>
+                                    Create a new client profile for trip planning and notifications.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Full Name</label>
+                                    <Input
+                                        value={formData.full_name}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
+                                        placeholder="Ava Chen"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Email</label>
+                                    <Input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                                        placeholder="ava.chen@example.com"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Phone (optional)</label>
+                                    <Input
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                                        placeholder="+1 415 555 0192"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Preferred Destination (optional)</label>
+                                    <Input
+                                        value={formData.preferredDestination}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, preferredDestination: e.target.value }))}
+                                        placeholder="Tokyo, Japan"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Travelers (optional)</label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        value={formData.travelersCount}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, travelersCount: e.target.value }))}
+                                        placeholder="2"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Budget Min (optional)</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.budgetMin}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMin: e.target.value }))}
+                                            placeholder="1500"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Budget Max (optional)</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.budgetMax}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMax: e.target.value }))}
+                                            placeholder="3500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Travel Style (optional)</label>
+                                    <Input
+                                        value={formData.travelStyle}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, travelStyle: e.target.value }))}
+                                        placeholder="Luxury, adventure, family..."
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Interests (optional)</label>
+                                    <Input
+                                        value={formData.interests}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, interests: e.target.value }))}
+                                        placeholder="Food, culture, hiking (comma separated)"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Home Airport (optional)</label>
+                                    <Input
+                                        value={formData.homeAirport}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, homeAirport: e.target.value }))}
+                                        placeholder="SFO"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Notes (optional)</label>
+                                    <textarea
+                                        value={formData.notes}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                                        placeholder="Allergies, accessibility needs, loyalty numbers..."
+                                        className="min-h-[90px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Lead Status</label>
+                                        <select
+                                            value={formData.leadStatus}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, leadStatus: e.target.value }))}
+                                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        >
+                                            <option value="new">New</option>
+                                            <option value="contacted">Contacted</option>
+                                            <option value="qualified">Qualified</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label className="text-sm font-medium">Lifecycle Stage</label>
+                                        <select
+                                            value={formData.lifecycleStage}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, lifecycleStage: e.target.value }))}
+                                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                        >
+                                            <option value="lead">Lead</option>
+                                            <option value="prospect">Prospect</option>
+                                            <option value="proposal">Proposal</option>
+                                            <option value="payment_pending">Payment Pending</option>
+                                            <option value="payment_confirmed">Payment Confirmed</option>
+                                            <option value="active">Active</option>
+                                            <option value="review">Review</option>
+                                            <option value="past">Past</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Client Tag</label>
+                                    <select
+                                        value={formData.clientTag}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, clientTag: e.target.value }))}
+                                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    >
+                                        <option value="standard">Standard</option>
+                                        <option value="vip">VIP</option>
+                                        <option value="repeat">Repeat</option>
+                                        <option value="corporate">Corporate</option>
+                                        <option value="family">Family</option>
+                                        <option value="honeymoon">Honeymoon</option>
+                                        <option value="high_priority">High Priority</option>
+                                    </select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Referral Source (optional)</label>
+                                    <Input
+                                        value={formData.referralSource}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, referralSource: e.target.value }))}
+                                        placeholder="Instagram, Partner, Word of mouth"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Acquisition Channel (optional)</label>
+                                    <Input
+                                        value={formData.sourceChannel}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, sourceChannel: e.target.value }))}
+                                        placeholder="Organic, Paid ads, Referral"
+                                    />
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.marketingOptIn}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, marketingOptIn: e.target.checked }))}
+                                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                    />
+                                    Marketing opt-in
+                                </label>
+                                {formError && (
+                                    <p className="text-sm text-rose-600">{formError}</p>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    onClick={handleCreateClient}
+                                    disabled={saving}
+                                >
+                                    {saving ? "Creating..." : "Create Client"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
-            {/* Create Client Modal */}
-            <GlassModal
-                isOpen={modalOpen}
-                onClose={() => {
-                    setModalOpen(false);
-                    resetForm();
-                }}
-                title="Add Client"
-            >
-                <p className="text-sm text-text-secondary mb-4">
-                    Create a new client profile for trip planning and notifications.
-                </p>
-                <div className="grid gap-4 max-h-[60vh] overflow-y-auto pr-2">
-                    <GlassInput
-                        label="Full Name"
-                        value={formData.full_name}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
-                        placeholder="Ava Chen"
-                    />
-                    <GlassInput
-                        label="Email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                        placeholder="ava.chen@example.com"
-                    />
-                    <GlassInput
-                        label="Phone (optional)"
-                        value={formData.phone}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+1 415 555 0192"
-                    />
-                    <GlassInput
-                        label="Preferred Destination (optional)"
-                        value={formData.preferredDestination}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, preferredDestination: e.target.value }))}
-                        placeholder="Tokyo, Japan"
-                    />
-                    <GlassInput
-                        label="Travelers (optional)"
-                        type="number"
-                        value={formData.travelersCount}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, travelersCount: e.target.value }))}
-                        placeholder="2"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                        <GlassInput
-                            label="Budget Min (optional)"
-                            type="number"
-                            value={formData.budgetMin}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMin: e.target.value }))}
-                            placeholder="1500"
-                        />
-                        <GlassInput
-                            label="Budget Max (optional)"
-                            type="number"
-                            value={formData.budgetMax}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, budgetMax: e.target.value }))}
-                            placeholder="3500"
-                        />
-                    </div>
-                    <GlassInput
-                        label="Travel Style (optional)"
-                        value={formData.travelStyle}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, travelStyle: e.target.value }))}
-                        placeholder="Luxury, adventure, family..."
-                    />
-                    <GlassInput
-                        label="Interests (optional)"
-                        value={formData.interests}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, interests: e.target.value }))}
-                        placeholder="Food, culture, hiking (comma separated)"
-                    />
-                    <GlassInput
-                        label="Home Airport (optional)"
-                        value={formData.homeAirport}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, homeAirport: e.target.value }))}
-                        placeholder="SFO"
-                    />
-                    <div className="grid gap-2">
-                        <label className="text-sm font-medium text-secondary dark:text-white">Notes (optional)</label>
-                        <textarea
-                            value={formData.notes}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Allergies, accessibility needs, loyalty numbers..."
-                            className="min-h-[90px] w-full rounded-xl border border-white/20 bg-white/80 dark:bg-white/10 backdrop-blur-xl px-4 py-3 text-sm text-secondary dark:text-white placeholder:text-text-secondary focus:border-primary/50 outline-none transition-colors"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="grid gap-2">
-                            <label className="text-sm font-medium text-secondary dark:text-white">Lead Status</label>
-                            <select
-                                value={formData.leadStatus}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, leadStatus: e.target.value }))}
-                                className="w-full rounded-xl border border-white/20 bg-white/80 dark:bg-white/10 backdrop-blur-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:border-primary/50 outline-none"
-                            >
-                                <option value="new">New</option>
-                                <option value="contacted">Contacted</option>
-                                <option value="qualified">Qualified</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div className="grid gap-2">
-                            <label className="text-sm font-medium text-secondary dark:text-white">Lifecycle Stage</label>
-                            <select
-                                value={formData.lifecycleStage}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, lifecycleStage: e.target.value }))}
-                                className="w-full rounded-xl border border-white/20 bg-white/80 dark:bg-white/10 backdrop-blur-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:border-primary/50 outline-none"
-                            >
-                                {LIFECYCLE_STAGES.map((stage) => (
-                                    <option key={stage} value={stage}>{LIFECYCLE_STAGE_LABELS[stage]}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="grid gap-2">
-                        <label className="text-sm font-medium text-secondary dark:text-white">Client Tag</label>
-                        <select
-                            value={formData.clientTag}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, clientTag: e.target.value }))}
-                            className="w-full rounded-xl border border-white/20 bg-white/80 dark:bg-white/10 backdrop-blur-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:border-primary/50 outline-none"
-                        >
-                            <option value="standard">Standard</option>
-                            <option value="vip">VIP</option>
-                            <option value="repeat">Repeat</option>
-                            <option value="corporate">Corporate</option>
-                            <option value="family">Family</option>
-                            <option value="honeymoon">Honeymoon</option>
-                            <option value="high_priority">High Priority</option>
-                        </select>
-                    </div>
-                    <GlassInput
-                        label="Referral Source (optional)"
-                        value={formData.referralSource}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, referralSource: e.target.value }))}
-                        placeholder="Instagram, Partner, Word of mouth"
-                    />
-                    <GlassInput
-                        label="Acquisition Channel (optional)"
-                        value={formData.sourceChannel}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, sourceChannel: e.target.value }))}
-                        placeholder="Organic, Paid ads, Referral"
-                    />
-                    <label className="flex items-center gap-2 text-sm text-secondary dark:text-white">
-                        <input
-                            type="checkbox"
-                            checked={formData.marketingOptIn}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, marketingOptIn: e.target.checked }))}
-                            className="h-4 w-4 rounded border-white/20 text-primary focus:ring-primary"
-                        />
-                        Marketing opt-in
-                    </label>
-                    {formError && (
-                        <p className="text-sm text-rose-600 dark:text-rose-400">{formError}</p>
-                    )}
-                </div>
-                <div className="flex justify-end gap-3 mt-6">
-                    <GlassButton
-                        onClick={() => {
-                            setModalOpen(false);
-                            resetForm();
-                        }}
-                        variant="ghost"
-                    >
-                        Cancel
-                    </GlassButton>
-                    <GlassButton
-                        onClick={handleCreateClient}
-                        disabled={saving}
-                        variant="primary"
-                    >
-                        {saving ? "Creating..." : "Create Client"}
-                    </GlassButton>
-                </div>
-            </GlassModal>
-
-            {/* Lifecycle Kanban */}
-            <GlassCard padding="lg" rounded="2xl">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-serif text-secondary dark:text-white">Lifecycle Kanban</h2>
-                    <p className="text-xs text-text-secondary">Move clients from lead to review with one click.</p>
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-4 shadow-[0_12px_30px_rgba(20,16,12,0.06)]">
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-[var(--font-display)] text-[#1b140a]">Lifecycle Kanban</h2>
+                    <p className="text-xs text-[#8d7650]">Move clients from lead to review with one click.</p>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2">
                     {clientsByLifecycleStage.map((column) => (
                         <div
                             key={column.stage}
-                            className="min-w-[240px] max-w-[240px] rounded-xl border border-white/20 bg-white/40 dark:bg-white/5 backdrop-blur-sm p-3"
+                            className="min-w-[240px] max-w-[240px] rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-3"
                         >
-                            <div className="flex items-center justify-between mb-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">
                                     {column.label}
                                 </p>
-                                <GlassBadge variant="default" size="sm">{column.clients.length}</GlassBadge>
+                                <span className="text-xs font-semibold text-[#6f5b3e]">{column.clients.length}</span>
                             </div>
                             <div className="space-y-2">
                                 {column.clients.length === 0 ? (
-                                    <p className="text-xs text-text-secondary">No clients in this stage.</p>
+                                    <p className="text-xs text-[#b09a74]">No clients in this stage.</p>
                                 ) : (
                                     column.clients.map((client) => {
                                         const prevStage = getPrevStage(client.lifecycle_stage);
                                         const nextStage = getNextStage(client.lifecycle_stage);
                                         return (
-                                            <div key={`${column.stage}-${client.id}`} className="rounded-lg border border-white/20 bg-white/60 dark:bg-white/10 backdrop-blur-sm p-2">
-                                                <p className="text-sm font-semibold text-secondary dark:text-white truncate">
+                                            <div key={`${column.stage}-${client.id}`} className="rounded-lg border border-[#eadfcd] bg-white p-2">
+                                                <p className="text-sm font-semibold text-[#1b140a] truncate">
                                                     {client.full_name || "Unnamed Client"}
                                                 </p>
-                                                <p className="text-xs text-text-secondary truncate">
+                                                <p className="text-xs text-[#8d7650] truncate">
                                                     {client.email || "No email"}
                                                 </p>
                                                 <div className="mt-2 flex items-center gap-2">
                                                     <button
                                                         onClick={() => prevStage && void handleLifecycleStageChange(client.id, prevStage)}
                                                         disabled={!prevStage || stageUpdatingId === client.id}
-                                                        className="text-[11px] px-2 py-1 rounded-md border border-white/20 bg-white/40 dark:bg-white/5 text-primary disabled:opacity-40 hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+                                                        className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
                                                     >
                                                         ←
                                                     </button>
                                                     <button
                                                         onClick={() => nextStage && void handleLifecycleStageChange(client.id, nextStage)}
                                                         disabled={!nextStage || stageUpdatingId === client.id}
-                                                        className="text-[11px] px-2 py-1 rounded-md border border-white/20 bg-white/40 dark:bg-white/5 text-primary disabled:opacity-40 hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+                                                        className="text-[11px] px-2 py-1 rounded-md border border-[#eadfcd] text-[#6f5b3e] disabled:opacity-40"
                                                     >
                                                         →
                                                     </button>
                                                     {stageUpdatingId === client.id && (
-                                                        <span className="text-[10px] text-primary">Saving…</span>
+                                                        <span className="text-[10px] text-[#9c7c46]">Saving…</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -705,46 +726,47 @@ export default function ClientsPage() {
                         </div>
                     ))}
                 </div>
-            </GlassCard>
+            </div>
 
-            {/* Search */}
-            <GlassInput
-                icon={Search}
-                type="text"
-                placeholder="Search clients by name, email or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            {/* Search and Filters */}
+            <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                    type="text"
+                    placeholder="Search clients by name, email or phone..."
+                    className="w-full pl-11 pr-4 py-3 border border-[#eadfcd] rounded-xl focus:ring-2 focus:ring-[#c4a870]/30 focus:border-[#c4a870] outline-none transition-all shadow-sm bg-white/90"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
 
             {/* Clients Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
                     Array.from({ length: 6 }).map((_, i) => (
-                        <GlassCard key={i} padding="lg" rounded="2xl" className="animate-pulse">
+                        <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-pulse">
                             <div className="flex items-center gap-4 mb-4">
-                                <div className="w-14 h-14 bg-white/40 dark:bg-white/10 rounded-full"></div>
+                                <div className="w-14 h-14 bg-slate-100 rounded-full"></div>
                                 <div className="space-y-2 flex-1">
-                                    <div className="h-4 bg-white/40 dark:bg-white/10 rounded w-3/4"></div>
-                                    <div className="h-3 bg-white/40 dark:bg-white/10 rounded w-1/2"></div>
+                                    <div className="h-4 bg-slate-100 rounded w-3/4"></div>
+                                    <div className="h-3 bg-slate-100 rounded w-1/2"></div>
                                 </div>
                             </div>
-                            <div className="space-y-3 pt-4 border-t border-white/10">
-                                <div className="h-3 bg-white/40 dark:bg-white/10 rounded w-full"></div>
-                                <div className="h-3 bg-white/40 dark:bg-white/10 rounded w-2/3"></div>
+                            <div className="space-y-3 pt-4 border-t border-slate-50">
+                                <div className="h-3 bg-slate-100 rounded w-full"></div>
+                                <div className="h-3 bg-slate-100 rounded w-2/3"></div>
                             </div>
-                        </GlassCard>
+                        </div>
                     ))
                 ) : filteredClients.length === 0 ? (
-                    <div className="col-span-full">
-                        <GlassCard padding="lg" rounded="2xl" className="text-center py-12">
-                            <Users className="w-12 h-12 text-text-secondary mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-secondary dark:text-white">No clients found</h3>
-                            <p className="text-text-secondary">Try adjusting your search or add a new client.</p>
-                        </GlassCard>
+                    <div className="col-span-full py-20 text-center bg-white border border-slate-100 rounded-2xl">
+                        <Users className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900">No clients found</h3>
+                        <p className="text-slate-500">Try adjusting your search or add a new client.</p>
                     </div>
                 ) : (
                     filteredClients.map((client) => (
-                        <GlassCard key={client.id} padding="lg" rounded="2xl" className="hover:shadow-[0_20px_40px_rgba(0,208,132,0.12)] transition-shadow group">
+                        <div key={client.id} className="bg-white/90 border border-[#eadfcd] rounded-2xl p-6 shadow-[0_12px_30px_rgba(20,16,12,0.06)] hover:shadow-[0_20px_40px_rgba(20,16,12,0.08)] transition-all group relative overflow-hidden">
                             <div className="flex items-center gap-4 mb-4">
                                 {client.avatar_url ? (
                                     <Image
@@ -752,67 +774,72 @@ export default function ClientsPage() {
                                         alt={client.full_name || ''}
                                         width={56}
                                         height={56}
-                                        className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+                                        className="w-14 h-14 rounded-full object-cover border-2 border-slate-50"
                                     />
                                 ) : (
-                                    <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center text-primary font-bold text-xl">
+                                    <div className="w-14 h-14 rounded-full bg-[#f6efe4] flex items-center justify-center text-[#9c7c46] font-bold text-xl border-2 border-[#eadfcd]">
                                         {client.full_name?.charAt(0) || 'U'}
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-bold text-secondary dark:text-white truncate group-hover:text-primary transition-colors">
+                                    <h3 className="text-lg font-bold text-[#1b140a] truncate group-hover:text-[#9c7c46] transition-colors">
                                         {client.full_name || 'Anonymous Client'}
                                     </h3>
-                                    <p className="text-sm text-text-secondary flex items-center gap-1">
+                                    <p className="text-sm text-[#6f5b3e] flex items-center gap-1">
                                         <Calendar className="w-3.5 h-3.5" />
                                         Since {formatDate(client.created_at)}
                                     </p>
                                 </div>
-                                <button className="p-1.5 text-text-secondary hover:text-primary rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition-colors">
+                                <button className="p-1.5 text-[#bda87f] hover:text-[#9c7c46] rounded-lg hover:bg-[#f6efe4] transition-colors">
                                     <MoreVertical className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <div className="space-y-3 pt-4 border-t border-white/10">
-                                <div className="flex items-center gap-3 text-text-secondary">
-                                    <Mail className="w-4 h-4 text-primary" />
+                            <div className="space-y-3 pt-4 border-t border-[#eadfcd]">
+                                <div className="flex items-center gap-3 text-[#6f5b3e]">
+                                    <Mail className="w-4 h-4 text-[#bda87f]" />
                                     <span className="text-sm truncate" title={client.email || ''}>
                                         {client.email || 'No email provided'}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-3 text-text-secondary">
-                                    <Phone className="w-4 h-4 text-primary" />
+                                <div className="flex items-center gap-3 text-[#6f5b3e]">
+                                    <Phone className="w-4 h-4 text-[#bda87f]" />
                                     <span className="text-sm">
                                         {client.phone || 'No phone provided'}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-primary">Role</span>
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Role</span>
                                     <select
                                         value={(client.role === "driver" ? "driver" : "client")}
                                         onChange={(e) => void handleRoleOverride(client.id, e.target.value as "client" | "driver")}
                                         disabled={roleUpdatingId === client.id}
-                                        className="rounded-lg border border-white/20 bg-white/60 dark:bg-white/5 backdrop-blur-xl px-2 py-1 text-xs font-semibold text-secondary dark:text-white"
+                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
                                     >
                                         <option value="client">Client</option>
                                         <option value="driver">Driver</option>
                                     </select>
                                 </div>
                                 {roleUpdatingId === client.id && (
-                                    <p className="text-[11px] text-primary">Updating role…</p>
+                                    <p className="text-[11px] text-[#9c7c46]">Updating role…</p>
                                 )}
                                 <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-primary">Stage</span>
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Stage</span>
                                     <div className="flex items-center gap-2">
                                         <select
                                             value={client.lifecycle_stage || "lead"}
                                             onChange={(e) => void handleLifecycleStageChange(client.id, e.target.value)}
                                             disabled={stageUpdatingId === client.id}
-                                            className="rounded-lg border border-white/20 bg-white/60 dark:bg-white/5 backdrop-blur-xl px-2 py-1 text-xs font-semibold text-secondary dark:text-white"
+                                            className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
                                         >
-                                            {LIFECYCLE_STAGES.map((stage) => (
-                                                <option key={stage} value={stage}>{LIFECYCLE_STAGE_LABELS[stage]}</option>
-                                            ))}
+                                            <option value="lead">Lead</option>
+                                            <option value="prospect">Prospect</option>
+                                            <option value="proposal">Proposal</option>
+                                            <option value="payment_pending">Payment Pending</option>
+                                            <option value="payment_confirmed">Payment Confirmed</option>
+                                            <option value="active">Active</option>
+                                            <option value="review">Review</option>
+                                            <option value="past">Past</option>
                                         </select>
                                         <button
                                             onClick={() => {
@@ -820,22 +847,22 @@ export default function ClientsPage() {
                                                 if (next) void handleLifecycleStageChange(client.id, next);
                                             }}
                                             disabled={stageUpdatingId === client.id || !getNextStage(client.lifecycle_stage)}
-                                            className="rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 px-2 py-1 text-[11px] font-semibold text-primary disabled:opacity-40 hover:bg-white/60 dark:hover:bg-white/10 transition-colors"
+                                            className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-[11px] font-semibold text-[#6f5b3e] disabled:opacity-40"
                                         >
                                             Next
                                         </button>
                                     </div>
                                 </div>
                                 {stageUpdatingId === client.id && (
-                                    <p className="text-[11px] text-primary">Updating stage…</p>
+                                    <p className="text-[11px] text-[#9c7c46]">Updating stage…</p>
                                 )}
                                 <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-primary">Tag</span>
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[#9c7c46]">Tag</span>
                                     <select
                                         value={client.client_tag || "standard"}
                                         onChange={(e) => void handleClientTagChange(client.id, e.target.value)}
                                         disabled={tagUpdatingId === client.id}
-                                        className="rounded-lg border border-white/20 bg-white/60 dark:bg-white/5 backdrop-blur-xl px-2 py-1 text-xs font-semibold text-secondary dark:text-white"
+                                        className="rounded-md border border-[#eadfcd] bg-white px-2 py-1 text-xs font-semibold text-[#6f5b3e]"
                                     >
                                         <option value="standard">Standard</option>
                                         <option value="vip">VIP</option>
@@ -847,16 +874,16 @@ export default function ClientsPage() {
                                     </select>
                                 </div>
                                 {tagUpdatingId === client.id && (
-                                    <p className="text-[11px] text-primary">Updating tag…</p>
+                                    <p className="text-[11px] text-[#9c7c46]">Updating tag…</p>
                                 )}
                                 {(client.preferred_destination || client.budget_min || client.budget_max || client.travelers_count || client.travel_style) && (
-                                    <div className="text-xs text-text-secondary space-y-1 pt-2 border-t border-white/10">
+                                    <div className="text-xs text-slate-500 space-y-1">
                                         {client.preferred_destination && (
                                             <div>Destination: {client.preferred_destination}</div>
                                         )}
                                         {(client.budget_min || client.budget_max) && (
                                             <div>
-                                                Budget: ${client.budget_min ?? "—"} to ${client.budget_max ?? "—"}
+                                                Budget: {client.budget_min ?? "—"} to {client.budget_max ?? "—"}
                                             </div>
                                         )}
                                         {client.travelers_count && (
@@ -870,33 +897,32 @@ export default function ClientsPage() {
                                 {(client.interests?.length || client.home_airport || client.lead_status || client.lifecycle_stage) && (
                                     <div className="flex flex-wrap gap-2 pt-2">
                                         {client.client_tag && (
-                                            <GlassBadge variant="default" size="sm">
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-[#f6efe4] text-[#7b5f31]">
                                                 {client.client_tag.replace(/_/g, " ")}
-                                            </GlassBadge>
+                                            </span>
                                         )}
                                         {client.lead_status && (
-                                            <GlassBadge variant="info" size="sm">
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-slate-100 text-slate-600">
                                                 {client.lead_status}
-                                            </GlassBadge>
+                                            </span>
                                         )}
                                         {client.lifecycle_stage && (
-                                            <GlassBadge variant="success" size="sm">
+                                            <span className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-primary/10 text-primary">
                                                 {client.lifecycle_stage}
-                                            </GlassBadge>
+                                            </span>
                                         )}
                                         {client.home_airport && (
-                                            <GlassBadge variant="warning" size="sm">
+                                            <span className="px-2 py-1 text-[10px] font-semibold rounded-full bg-amber-50 text-amber-700">
                                                 {client.home_airport}
-                                            </GlassBadge>
+                                            </span>
                                         )}
                                         {(client.interests || []).slice(0, 3).map((interest) => (
-                                            <GlassBadge
+                                            <span
                                                 key={`${client.id}-${interest}`}
-                                                variant="success"
-                                                size="sm"
+                                                className="px-2 py-1 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700"
                                             >
                                                 {interest}
-                                            </GlassBadge>
+                                            </span>
                                         ))}
                                     </div>
                                 )}
@@ -904,30 +930,30 @@ export default function ClientsPage() {
 
                             <div className="mt-6 flex items-center justify-between">
                                 <div className="flex flex-col">
-                                    <span className="text-2xl font-black text-secondary dark:text-white leading-tight">
+                                    <span className="text-2xl font-black text-[#1b140a] leading-tight">
                                         {client.trips_count}
                                     </span>
-                                    <span className="text-[10px] uppercase tracking-wider font-bold text-primary">
+                                    <span className="text-[10px] uppercase tracking-wider font-bold text-[#bda87f]">
                                         Total Trips
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Link
                                         href={`/admin/clients/${client.id}`}
-                                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-secondary dark:hover:text-white transition-colors bg-primary/20 border border-primary/30 px-3 py-2 rounded-full"
+                                        className="flex items-center gap-1.5 text-xs font-bold text-[#9c7c46] hover:text-[#7b5f31] transition-colors bg-[#f6efe4] px-3 py-2 rounded-full"
                                     >
                                         View Profile
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </Link>
                                     <button
                                         onClick={() => handleDeleteClient(client.id)}
-                                        className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-full transition-colors"
+                                        className="text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 px-3 py-2 rounded-full"
                                     >
                                         Delete
                                     </button>
                                 </div>
                             </div>
-                        </GlassCard>
+                        </div>
                     ))
                 )}
             </div>
