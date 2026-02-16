@@ -47,7 +47,7 @@ FOR SELECT
 USING (
     organization_id IN (
         SELECT organization_id FROM profiles
-        WHERE user_id = auth.uid()
+        WHERE id = auth.uid()
     )
 );
 
@@ -57,7 +57,7 @@ FOR INSERT
 WITH CHECK (
     organization_id IN (
         SELECT organization_id FROM profiles
-        WHERE user_id = auth.uid()
+        WHERE id = auth.uid()
     )
 );
 
@@ -67,7 +67,7 @@ FOR SELECT
 USING (
     organization_id IN (
         SELECT organization_id FROM profiles
-        WHERE user_id = auth.uid()
+        WHERE id = auth.uid()
     )
 );
 
@@ -77,7 +77,7 @@ FOR INSERT
 WITH CHECK (
     organization_id IN (
         SELECT organization_id FROM profiles
-        WHERE user_id = auth.uid()
+        WHERE id = auth.uid()
     )
 );
 
