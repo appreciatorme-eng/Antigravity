@@ -2,27 +2,43 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { DollarSign, TrendingUp, ShoppingCart, Package } from 'lucide-react';
+import {
+  DollarSign,
+  TrendingUp,
+  ShoppingCart,
+  Package,
+  Users,
+  CreditCard,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 
 /**
- * Revenue Dashboard - Upsell Metrics & Performance
+ * Revenue Dashboard - Complete Business Metrics
  *
  * Shows tour operators:
- * - Total add-on revenue
+ * - MRR (Monthly Recurring Revenue) from subscriptions
+ * - Total invoice revenue
+ * - Add-on upsell revenue
  * - Conversion rates
- * - Top performing add-ons
- * - Trending items
+ * - Growth trends
+ * - Top performers
  */
 
-interface ConversionMetric {
-  add_on_id: string;
-  add_on_name: string;
-  views: number;
-  purchases: number;
-  conversion_rate: number;
+interface RevenueMetrics {
+  mrr: number;
+  totalRevenue: number;
+  invoiceRevenue: number;
+  addonRevenue: number;
+  activeSubscriptions: number;
+  totalInvoices: number;
+  paidInvoices: number;
+  pendingInvoices: number;
+  totalClients: number;
 }
 
 interface AddOnRevenue {
@@ -34,15 +50,27 @@ interface AddOnRevenue {
   avg_price: number;
 }
 
+interface MonthlyTrend {
+  month: string;
+  revenue: number;
+  invoices: number;
+}
+
 export default function RevenueDashboard() {
   const [loading, setLoading] = useState(true);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [conversionMetrics, setConversionMetrics] = useState<
-    ConversionMetric[]
-  >([]);
-  const [revenueData, setRevenueData] = useState<AddOnRevenue[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalSales, setTotalSales] = useState(0);
+  const [metrics, setMetrics] = useState<RevenueMetrics>({
+    mrr: 0,
+    totalRevenue: 0,
+    invoiceRevenue: 0,
+    addonRevenue: 0,
+    activeSubscriptions: 0,
+    totalInvoices: 0,
+    paidInvoices: 0,
+    pendingInvoices: 0,
+    totalClients: 0,
+  });
+  const [addonData, setAddonData] = useState<AddOnRevenue[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
 
   useEffect(() => {
     loadData();
@@ -63,9 +91,9 @@ export default function RevenueDashboard() {
 
       // Get organization ID
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('organization_id')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single();
 
       if (!profile?.organization_id) {
@@ -73,48 +101,110 @@ export default function RevenueDashboard() {
         return;
       }
 
-      setOrganizationId(profile.organization_id);
+      const orgId = profile.organization_id;
 
-      // Load conversion metrics
-      const { data: metrics } = await supabase.rpc(
-        'get_addon_conversion_rate',
-        {
-          p_organization_id: profile.organization_id,
-          p_days: 30,
-        }
-      );
+      // Load all metrics in parallel
+      const [
+        subscriptionsResult,
+        invoicesResult,
+        addonsResult,
+        clientsResult,
+      ] = await Promise.all([
+        // Subscriptions (MRR)
+        supabase
+          .from('subscriptions')
+          .select('total_amount, billing_cycle, status')
+          .eq('organization_id', orgId)
+          .eq('status', 'active'),
 
-      if (metrics) {
-        setConversionMetrics(metrics);
+        // Invoices
+        supabase
+          .from('invoices')
+          .select('amount, status, created_at')
+          .eq('organization_id', orgId),
+
+        // Add-ons
+        supabase
+          .from('client_add_ons')
+          .select('amount_paid, add_on_id, add_ons(name, category)')
+          .eq('status', 'confirmed')
+          .gte('purchased_at', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()),
+
+        // Clients
+        supabase
+          .from('clients')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId),
+      ]);
+
+      // Calculate MRR from subscriptions
+      let mrr = 0;
+      let activeSubscriptions = 0;
+      if (subscriptionsResult.data) {
+        subscriptionsResult.data.forEach((sub) => {
+          activeSubscriptions++;
+          const amount = parseFloat(sub.total_amount?.toString() || '0');
+          if (sub.billing_cycle === 'annual') {
+            mrr += amount / 12; // Convert annual to monthly
+          } else {
+            mrr += amount;
+          }
+        });
       }
 
-      // Load revenue data
-      const { data: purchases } = await supabase
-        .from('client_add_ons')
-        .select('amount_paid, add_on_id, add_ons(name, category)')
-        .eq('add_ons.organization_id', profile.organization_id)
-        .gte(
-          'purchased_at',
-          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        );
+      // Calculate invoice metrics
+      let invoiceRevenue = 0;
+      let paidInvoices = 0;
+      let pendingInvoices = 0;
+      const monthlyMap = new Map<string, MonthlyTrend>();
 
-      if (purchases) {
-        // Calculate revenue by add-on
-        const revenueMap = new Map<string, AddOnRevenue>();
-        let total = 0;
+      if (invoicesResult.data) {
+        invoicesResult.data.forEach((inv) => {
+          const amount = parseFloat(inv.amount?.toString() || '0');
 
-        purchases.forEach((purchase: any) => {
+          if (inv.status === 'paid') {
+            invoiceRevenue += amount;
+            paidInvoices++;
+
+            // Track monthly trend
+            const date = new Date(inv.created_at);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+            if (monthlyMap.has(monthKey)) {
+              const existing = monthlyMap.get(monthKey)!;
+              existing.revenue += amount;
+              existing.invoices++;
+            } else {
+              monthlyMap.set(monthKey, {
+                month: monthName,
+                revenue: amount,
+                invoices: 1,
+              });
+            }
+          } else if (inv.status === 'pending') {
+            pendingInvoices++;
+          }
+        });
+      }
+
+      // Calculate add-on revenue
+      let addonRevenue = 0;
+      const addonMap = new Map<string, AddOnRevenue>();
+
+      if (addonsResult.data) {
+        addonsResult.data.forEach((purchase: any) => {
+          const amount = parseFloat(purchase.amount_paid || '0');
+          addonRevenue += amount;
+
           const addOnId = purchase.add_on_id;
-          const amount = parseFloat(purchase.amount_paid);
-          total += amount;
-
-          if (revenueMap.has(addOnId)) {
-            const existing = revenueMap.get(addOnId)!;
+          if (addonMap.has(addOnId)) {
+            const existing = addonMap.get(addOnId)!;
             existing.total_revenue += amount;
             existing.total_sales += 1;
             existing.avg_price = existing.total_revenue / existing.total_sales;
           } else if (purchase.add_ons) {
-            revenueMap.set(addOnId, {
+            addonMap.set(addOnId, {
               id: addOnId,
               name: purchase.add_ons.name,
               category: purchase.add_ons.category,
@@ -124,15 +214,31 @@ export default function RevenueDashboard() {
             });
           }
         });
-
-        const revenueArray = Array.from(revenueMap.values()).sort(
-          (a, b) => b.total_revenue - a.total_revenue
-        );
-
-        setRevenueData(revenueArray);
-        setTotalRevenue(total);
-        setTotalSales(purchases.length);
       }
+
+      const addonArray = Array.from(addonMap.values()).sort(
+        (a, b) => b.total_revenue - a.total_revenue
+      );
+
+      // Sort monthly trends
+      const trendsArray = Array.from(monthlyMap.values())
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .slice(-6); // Last 6 months
+
+      setMetrics({
+        mrr,
+        totalRevenue: mrr + invoiceRevenue + addonRevenue,
+        invoiceRevenue,
+        addonRevenue,
+        activeSubscriptions,
+        totalInvoices: invoicesResult.data?.length || 0,
+        paidInvoices,
+        pendingInvoices,
+        totalClients: clientsResult.count || 0,
+      });
+
+      setAddonData(addonArray);
+      setMonthlyTrends(trendsArray);
     } catch (error) {
       console.error('Error loading revenue data:', error);
     } finally {
@@ -140,11 +246,16 @@ export default function RevenueDashboard() {
     }
   }
 
+  function formatCurrency(amount: number) {
+    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
   if (loading) {
     return (
       <div className="space-y-8">
         <GlassSkeleton className="h-20 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <GlassSkeleton className="h-32" />
           <GlassSkeleton className="h-32" />
           <GlassSkeleton className="h-32" />
           <GlassSkeleton className="h-32" />
@@ -154,8 +265,8 @@ export default function RevenueDashboard() {
     );
   }
 
-  const avgConversionRate = conversionMetrics.length > 0
-    ? (conversionMetrics.reduce((sum, m) => sum + m.conversion_rate, 0) / conversionMetrics.length)
+  const avgInvoiceValue = metrics.paidInvoices > 0
+    ? metrics.invoiceRevenue / metrics.paidInvoices
     : 0;
 
   return (
@@ -168,199 +279,232 @@ export default function RevenueDashboard() {
         <div>
           <span className="text-xs uppercase tracking-widest text-primary font-bold">Revenue</span>
           <h1 className="text-3xl font-serif text-secondary dark:text-white">Revenue Dashboard</h1>
-          <p className="text-text-secondary mt-1">Add-on upsell performance and conversion metrics</p>
+          <p className="text-text-secondary mt-1">Complete business metrics and performance</p>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Top-Level Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <GlassCard padding="lg" rounded="2xl">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Total Revenue (30d)</div>
+            <div className="text-xs uppercase tracking-wide text-primary">MRR</div>
             <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            ${totalRevenue.toFixed(2)}
+            {formatCurrency(metrics.mrr)}
           </div>
           <div className="text-xs text-text-secondary mt-2">
-            From {totalSales} add-on sales
+            {metrics.activeSubscriptions} active subscription{metrics.activeSubscriptions !== 1 ? 's' : ''}
           </div>
         </GlassCard>
 
         <GlassCard padding="lg" rounded="2xl">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Total Sales (30d)</div>
-            <ShoppingCart className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="text-xs uppercase tracking-wide text-primary">Total Revenue</div>
+            <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalSales}</div>
+          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            {formatCurrency(metrics.totalRevenue)}
+          </div>
           <div className="text-xs text-text-secondary mt-2">
-            Across {revenueData.length} add-ons
+            All revenue streams
           </div>
         </GlassCard>
 
         <GlassCard padding="lg" rounded="2xl">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">Avg. Conversion Rate</div>
-            <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <div className="text-xs uppercase tracking-wide text-primary">Invoice Revenue</div>
+            <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {avgConversionRate.toFixed(1)}%
+            {formatCurrency(metrics.invoiceRevenue)}
           </div>
-          <div className="text-xs text-text-secondary mt-2">Views to purchases</div>
+          <div className="text-xs text-text-secondary mt-2">
+            {metrics.paidInvoices} paid invoices
+          </div>
+        </GlassCard>
+
+        <GlassCard padding="lg" rounded="2xl">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs uppercase tracking-wide text-primary">Add-on Revenue</div>
+            <ShoppingCart className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+            {formatCurrency(metrics.addonRevenue)}
+          </div>
+          <div className="text-xs text-text-secondary mt-2">
+            Upsell & extras
+          </div>
         </GlassCard>
       </div>
 
-      {/* Top Performing Add-ons */}
-      <GlassCard padding="none" rounded="2xl">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-lg font-serif text-secondary dark:text-white">
-            Top Performing Add-ons
-          </h2>
-          <p className="text-sm text-text-secondary mt-1">By total revenue (30 days)</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-white/40 dark:bg-white/5">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Add-on
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Total Revenue
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Sales
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Avg. Price
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {revenueData.slice(0, 10).map((item) => (
-                <tr key={item.id} className="hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-secondary dark:text-white">
-                      {item.name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <GlassBadge variant="info" size="sm">
-                      {item.category}
-                    </GlassBadge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    ${item.total_revenue.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary dark:text-white">
-                    {item.total_sales}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                    ${item.avg_price.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </GlassCard>
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <GlassCard padding="lg" rounded="2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-1">
+                Total Clients
+              </div>
+              <div className="text-2xl font-bold text-secondary dark:text-white">
+                {metrics.totalClients}
+              </div>
+            </div>
+            <Users className="w-8 h-8 text-primary opacity-50" />
+          </div>
+        </GlassCard>
 
-      {/* Conversion Metrics */}
-      <GlassCard padding="none" rounded="2xl">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-lg font-serif text-secondary dark:text-white">
-            Conversion Metrics
+        <GlassCard padding="lg" rounded="2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-1">
+                Avg Invoice Value
+              </div>
+              <div className="text-2xl font-bold text-secondary dark:text-white">
+                {formatCurrency(avgInvoiceValue)}
+              </div>
+            </div>
+            <Calendar className="w-8 h-8 text-primary opacity-50" />
+          </div>
+        </GlassCard>
+
+        <GlassCard padding="lg" rounded="2xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-text-secondary mb-1">
+                Pending Invoices
+              </div>
+              <div className="text-2xl font-bold text-secondary dark:text-white">
+                {metrics.pendingInvoices}
+              </div>
+            </div>
+            <Package className="w-8 h-8 text-primary opacity-50" />
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Monthly Trends */}
+      {monthlyTrends.length > 0 && (
+        <GlassCard padding="lg" rounded="2xl">
+          <h2 className="text-lg font-serif text-secondary dark:text-white mb-6">
+            Revenue Trend (Last 6 Months)
           </h2>
-          <p className="text-sm text-text-secondary mt-1">
-            View-to-purchase conversion rates
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-white/40 dark:bg-white/5">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Add-on
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Views
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Purchases
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
-                  Conversion Rate
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {conversionMetrics
-                .sort((a, b) => b.conversion_rate - a.conversion_rate)
-                .slice(0, 10)
-                .map((metric) => (
-                  <tr key={metric.add_on_id} className="hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
+          <div className="grid grid-cols-6 gap-4">
+            {monthlyTrends.map((trend, index) => {
+              const prevRevenue = index > 0 ? monthlyTrends[index - 1].revenue : trend.revenue;
+              const growth = prevRevenue > 0
+                ? ((trend.revenue - prevRevenue) / prevRevenue) * 100
+                : 0;
+              const isPositive = growth >= 0;
+
+              return (
+                <div key={trend.month} className="text-center">
+                  <div className="text-xs text-text-secondary mb-2">{trend.month}</div>
+                  <div className="text-lg font-bold text-secondary dark:text-white mb-1">
+                    {formatCurrency(trend.revenue)}
+                  </div>
+                  <div className="text-xs text-text-secondary mb-2">
+                    {trend.invoices} invoice{trend.invoices !== 1 ? 's' : ''}
+                  </div>
+                  {index > 0 && (
+                    <div className={`flex items-center justify-center gap-1 text-xs font-semibold ${
+                      isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {isPositive ? (
+                        <ArrowUpRight className="w-3 h-3" />
+                      ) : (
+                        <ArrowDownRight className="w-3 h-3" />
+                      )}
+                      {Math.abs(growth).toFixed(1)}%
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Top Performing Add-ons */}
+      {addonData.length > 0 && (
+        <GlassCard padding="none" rounded="2xl">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="text-lg font-serif text-secondary dark:text-white">
+              Top Performing Add-ons
+            </h2>
+            <p className="text-sm text-text-secondary mt-1">By total revenue</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white/40 dark:bg-white/5">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                    Add-on
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wide">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-primary uppercase tracking-wide">
+                    Total Revenue
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-primary uppercase tracking-wide">
+                    Sales
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-primary uppercase tracking-wide">
+                    Avg. Price
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {addonData.slice(0, 10).map((item) => (
+                  <tr key={item.id} className="hover:bg-white/10 dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-secondary dark:text-white">
-                        {metric.add_on_name}
+                        {item.name}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                      {metric.views}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary dark:text-white">
-                      {metric.purchases}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-white/20 dark:bg-white/10 rounded-full max-w-[100px]">
-                          <div
-                            className="h-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"
-                            style={{
-                              width: `${Math.min(metric.conversion_rate, 100)}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                          {metric.conversion_rate.toFixed(1)}%
-                        </span>
-                      </div>
+                      <GlassBadge variant="info" size="sm">
+                        {item.category}
+                      </GlassBadge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(item.total_revenue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-secondary dark:text-white">
+                      {item.total_sales}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-text-secondary">
+                      {formatCurrency(item.avg_price)}
                     </td>
                   </tr>
                 ))}
-            </tbody>
-          </table>
-        </div>
-      </GlassCard>
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Empty State */}
-      {totalSales === 0 && (
+      {metrics.totalRevenue === 0 && (
         <GlassCard padding="lg" rounded="2xl" className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-text-secondary"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
+          <DollarSign className="mx-auto h-12 w-12 text-text-secondary opacity-50" />
           <h3 className="mt-4 text-sm font-semibold text-secondary dark:text-white">
             No revenue data yet
           </h3>
           <p className="mt-2 text-sm text-text-secondary">
-            Add-on purchases will appear here once travelers start booking.
+            Revenue will appear here once you start receiving payments from subscriptions and invoices.
           </p>
-          <div className="mt-6">
+          <div className="mt-6 flex gap-3 justify-center">
+            <a
+              href="/admin/billing"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/30 transition-colors"
+            >
+              View Billing
+            </a>
             <a
               href="/admin/add-ons"
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary/20 border border-primary/30 text-sm font-semibold text-primary hover:bg-primary/30 transition-colors"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-sm font-semibold text-secondary dark:text-white hover:bg-white/30 transition-colors"
             >
               Manage Add-ons
             </a>
