@@ -225,7 +225,7 @@ export default function ImportTourPage() {
   };
 
   // Preview screen
-  if (status === 'previewing' && extractedData) {
+  if ((status === 'previewing' || status === 'saving') && extractedData) {
     return (
       <div className="p-8 max-w-6xl mx-auto">
         <ImportPreview
