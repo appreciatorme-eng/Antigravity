@@ -198,14 +198,14 @@ ALTER TABLE public.proposal_versions ENABLE ROW LEVEL SECURITY;
 -- RLS Policies: Templates
 CREATE POLICY "Organizations can manage their templates"
     ON public.tour_templates
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 CREATE POLICY "Template days inherit template access"
     ON public.template_days
     USING (
         template_id IN (
             SELECT id FROM public.tour_templates
-            WHERE organization_id = auth.uid_organization_id()
+            WHERE organization_id = public.get_user_organization_id()
         )
     );
 
@@ -215,7 +215,7 @@ CREATE POLICY "Template activities inherit day access"
         template_day_id IN (
             SELECT td.id FROM public.template_days td
             JOIN public.tour_templates tt ON tt.id = td.template_id
-            WHERE tt.organization_id = auth.uid_organization_id()
+            WHERE tt.organization_id = public.get_user_organization_id()
         )
     );
 
@@ -225,7 +225,7 @@ CREATE POLICY "Template accommodations inherit day access"
         template_day_id IN (
             SELECT td.id FROM public.template_days td
             JOIN public.tour_templates tt ON tt.id = td.template_id
-            WHERE tt.organization_id = auth.uid_organization_id()
+            WHERE tt.organization_id = public.get_user_organization_id()
         )
     );
 
@@ -233,7 +233,7 @@ CREATE POLICY "Template accommodations inherit day access"
 CREATE POLICY "Organizations can manage their proposals"
     ON public.proposals
     FOR ALL
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 CREATE POLICY "Public can view proposals via share token"
     ON public.proposals
@@ -246,7 +246,7 @@ CREATE POLICY "Proposal days inherit proposal access"
     USING (
         proposal_id IN (
             SELECT id FROM public.proposals
-            WHERE organization_id = auth.uid_organization_id()
+            WHERE organization_id = public.get_user_organization_id()
         )
     );
 
@@ -262,7 +262,7 @@ CREATE POLICY "Proposal activities inherit day access"
         proposal_day_id IN (
             SELECT pd.id FROM public.proposal_days pd
             JOIN public.proposals p ON p.id = pd.proposal_id
-            WHERE p.organization_id = auth.uid_organization_id()
+            WHERE p.organization_id = public.get_user_organization_id()
         )
     );
 
@@ -278,7 +278,7 @@ CREATE POLICY "Proposal accommodations inherit day access"
         proposal_day_id IN (
             SELECT pd.id FROM public.proposal_days pd
             JOIN public.proposals p ON p.id = pd.proposal_id
-            WHERE p.organization_id = auth.uid_organization_id()
+            WHERE p.organization_id = public.get_user_organization_id()
         )
     );
 
@@ -299,7 +299,7 @@ CREATE POLICY "Organizations can manage proposal comments"
     USING (
         proposal_id IN (
             SELECT id FROM public.proposals
-            WHERE organization_id = auth.uid_organization_id()
+            WHERE organization_id = public.get_user_organization_id()
         )
     );
 
@@ -314,7 +314,7 @@ CREATE POLICY "Organizations can manage proposal versions"
     USING (
         proposal_id IN (
             SELECT id FROM public.proposals
-            WHERE organization_id = auth.uid_organization_id()
+            WHERE organization_id = public.get_user_organization_id()
         )
     );
 

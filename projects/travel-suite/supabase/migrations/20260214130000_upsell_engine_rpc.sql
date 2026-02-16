@@ -250,7 +250,7 @@ CREATE POLICY "Organizations can view addon analytics"
     FOR SELECT
     USING (
         client_id IN (
-            SELECT id FROM public.clients WHERE organization_id = auth.uid_organization_id()
+            SELECT id FROM public.clients WHERE organization_id = public.get_user_organization_id()
         )
     );
 

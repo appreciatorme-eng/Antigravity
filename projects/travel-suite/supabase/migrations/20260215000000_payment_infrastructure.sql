@@ -139,24 +139,24 @@ ALTER TABLE public.payment_events ENABLE ROW LEVEL SECURITY;
 -- Payment Methods RLS Policies
 CREATE POLICY "Organizations can manage their payment methods"
     ON public.payment_methods
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 -- Subscriptions RLS Policies
 CREATE POLICY "Organizations can view their subscriptions"
     ON public.subscriptions
     FOR SELECT
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 CREATE POLICY "Organizations can update their subscriptions"
     ON public.subscriptions
     FOR UPDATE
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 -- Payment Events RLS Policies (Read-only for organizations)
 CREATE POLICY "Organizations can view their payment events"
     ON public.payment_events
     FOR SELECT
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 -- ============================================================================
 -- Helper Functions

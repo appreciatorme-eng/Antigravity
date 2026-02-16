@@ -3,6 +3,20 @@
 -- Description: Database tables to support new mobile navigation (Explore, Concierge, Bookings)
 
 -- ============================================================================
+-- Helper Functions (MUST be defined before RLS policies)
+-- ============================================================================
+
+-- Function to get organization ID from auth.uid()
+CREATE OR REPLACE FUNCTION public.get_user_organization_id()
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+    SELECT organization_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+-- ============================================================================
 -- Add-ons Table (for Explore screen)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.add_ons (
@@ -30,7 +44,7 @@ ALTER TABLE public.add_ons ENABLE ROW LEVEL SECURITY;
 -- RLS Policy: Organizations can manage their own add-ons
 CREATE POLICY "Organizations can manage their add-ons"
     ON public.add_ons
-    USING (organization_id = auth.uid_organization_id());
+    USING (organization_id = public.get_user_organization_id());
 
 -- ============================================================================
 -- Client Add-ons Table (purchased add-ons)
@@ -66,7 +80,7 @@ CREATE POLICY "Organizations can manage client add-on purchases"
     ON public.client_add_ons
     USING (
         client_id IN (
-            SELECT id FROM public.clients WHERE organization_id = auth.uid_organization_id()
+            SELECT id FROM public.clients WHERE organization_id = public.get_user_organization_id()
         )
     );
 
@@ -108,7 +122,7 @@ CREATE POLICY "Organizations can manage all concierge requests"
     ON public.concierge_requests
     USING (
         client_id IN (
-            SELECT id FROM public.clients WHERE organization_id = auth.uid_organization_id()
+            SELECT id FROM public.clients WHERE organization_id = public.get_user_organization_id()
         )
     );
 
@@ -150,23 +164,9 @@ CREATE POLICY "Organizations can manage travel documents"
     ON public.travel_documents
     USING (
         client_id IN (
-            SELECT id FROM public.clients WHERE organization_id = auth.uid_organization_id()
+            SELECT id FROM public.clients WHERE organization_id = public.get_user_organization_id()
         )
     );
-
--- ============================================================================
--- Helper Functions
--- ============================================================================
-
--- Function to get organization ID from auth.uid()
-CREATE OR REPLACE FUNCTION auth.uid_organization_id()
-RETURNS UUID
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-    SELECT organization_id FROM public.profiles WHERE id = auth.uid();
-$$;
 
 -- ============================================================================
 -- Triggers for updated_at
