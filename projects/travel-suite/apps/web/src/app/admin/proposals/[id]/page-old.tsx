@@ -23,9 +23,6 @@ import {
   History,
 } from 'lucide-react';
 import Link from 'next/link';
-import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassButton } from '@/components/glass/GlassButton';
-import { GlassBadge } from '@/components/glass/GlassBadge';
 
 interface Proposal {
   id: string;
@@ -285,7 +282,7 @@ export default function AdminProposalViewPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg text-text-secondary">Loading proposal...</div>
+        <div className="text-lg text-gray-600">Loading proposal...</div>
       </div>
     );
   }
@@ -295,10 +292,10 @@ export default function AdminProposalViewPage() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold font-serif text-secondary dark:text-white mb-2">Proposal Not Found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Proposal Not Found</h2>
           <Link
             href="/admin/proposals"
-            className="text-primary hover:underline"
+            className="text-[#9c7c46] hover:underline"
           >
             Back to Proposals
           </Link>
@@ -317,56 +314,67 @@ export default function AdminProposalViewPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/admin/proposals"
-            className="p-2 hover:bg-white/40 dark:hover:bg-white/5 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-text-secondary" />
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-serif text-secondary dark:text-white">
+              <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
                 {proposal.title}
               </h1>
               {isSubscribed && (
-                <GlassBadge variant="success" icon={Wifi}>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs font-medium">
+                  <Wifi className="w-3 h-3" />
                   Live
-                </GlassBadge>
+                </div>
               )}
             </div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-[#6f5b3e]">
               {proposal.client_name} • Version {proposal.version}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <GlassButton variant="secondary" onClick={loadVersionHistory}>
+          <button
+            onClick={loadVersionHistory}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <History className="w-4 h-4" />
             Version History ({proposal.version})
-          </GlassButton>
-          <GlassButton variant="primary" onClick={sendProposal}>
+          </button>
+          <button
+            onClick={sendProposal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
+          >
             <Send className="w-4 h-4" />
             Send to Client
-          </GlassButton>
-          <GlassButton variant="secondary" onClick={loadProposal}>
+          </button>
+          <button
+            onClick={loadProposal}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+            title="Manual refresh (updates automatically via WebSocket)"
+          >
             <RefreshCcw className="w-4 h-4" />
             Refresh
-          </GlassButton>
+          </button>
         </div>
       </div>
 
       {/* Version History */}
       {showVersionHistory && versions.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold font-serif text-secondary dark:text-white">Version History</h2>
+          <h2 className="text-xl font-bold text-[#1b140a]">Version History</h2>
           {versions.map((version, index) => {
             if (index === versions.length - 1) {
               // First version, nothing to compare
               return (
-                <GlassCard key={version.id} padding="md" rounded="lg">
-                  <p className="text-sm text-text-secondary">
+                <div key={version.id} className="bg-white border border-[#eadfcd] rounded-lg p-4">
+                  <p className="text-sm text-[#6f5b3e]">
                     Version {version.version} • Initial version •{' '}
                     {new Date(version.created_at).toLocaleString()}
                   </p>
-                </GlassCard>
+                </div>
               );
             }
 
@@ -386,141 +394,143 @@ export default function AdminProposalViewPage() {
 
       {/* Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="text-sm text-primary mb-1">Status</div>
-          <div className="text-2xl font-bold font-serif text-secondary dark:text-white capitalize">{proposal.status}</div>
+        <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+          <div className="text-sm text-[#bda87f] mb-1">Status</div>
+          <div className="text-2xl font-bold text-[#1b140a] capitalize">{proposal.status}</div>
           {proposal.approved_at && (
-            <div className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+            <div className="text-xs text-green-600 mt-2 flex items-center gap-1">
               <CheckCircle className="w-3 h-3" />
               Approved by {proposal.approved_by}
             </div>
           )}
-        </GlassCard>
+        </div>
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="text-sm text-primary mb-1">Views</div>
-          <div className="text-2xl font-bold font-serif text-secondary dark:text-white">
+        <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+          <div className="text-sm text-[#bda87f] mb-1">Views</div>
+          <div className="text-2xl font-bold text-[#1b140a]">
             {proposal.viewed_at ? '1+' : '0'}
           </div>
           {proposal.viewed_at && (
-            <div className="text-xs text-text-secondary mt-2 flex items-center gap-1">
+            <div className="text-xs text-[#6f5b3e] mt-2 flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {new Date(proposal.viewed_at).toLocaleDateString()}
             </div>
           )}
-        </GlassCard>
+        </div>
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="text-sm text-primary mb-1">Comments</div>
-          <div className="text-2xl font-bold font-serif text-secondary dark:text-white">{comments.length}</div>
+        <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+          <div className="text-sm text-[#bda87f] mb-1">Comments</div>
+          <div className="text-2xl font-bold text-[#1b140a]">{comments.length}</div>
           {unresolvedComments.length > 0 && (
-            <div className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+            <div className="text-xs text-orange-600 mt-2">
               {unresolvedComments.length} unresolved
             </div>
           )}
-        </GlassCard>
+        </div>
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="text-sm text-primary mb-1">Total Price</div>
-          <div className="text-2xl font-bold text-primary">
+        <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+          <div className="text-sm text-[#bda87f] mb-1">Total Price</div>
+          <div className="text-2xl font-bold text-[#9c7c46]">
             ${(proposal.client_selected_price || proposal.total_price).toFixed(2)}
           </div>
           {proposal.client_selected_price &&
             proposal.client_selected_price !== proposal.total_price && (
-              <div className="text-xs text-text-secondary mt-2">
+              <div className="text-xs text-[#6f5b3e] mt-2">
                 Base: ${proposal.total_price.toFixed(2)}
               </div>
             )}
-        </GlassCard>
+        </div>
       </div>
 
       {/* Share Link */}
-      <GlassCard padding="lg" rounded="2xl" className="bg-gradient-to-r from-blue-50/90 to-purple-50/90 dark:from-blue-900/20 dark:to-purple-900/20">
-        <h3 className="text-lg font-semibold font-serif text-secondary dark:text-white mb-3">Client Share Link</h3>
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Client Share Link</h3>
         <div className="flex gap-2">
           <input
             type="text"
             value={shareUrl}
             readOnly
-            className="flex-1 px-4 py-2 bg-white dark:bg-white/10 border border-white/20 rounded-lg text-sm text-secondary dark:text-white"
+            className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm"
           />
-          <GlassButton variant="secondary" onClick={copyShareLink}>
+          <button
+            onClick={copyShareLink}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <Copy className="w-4 h-4" />
             Copy
-          </GlassButton>
+          </button>
           <a
             href={shareUrl}
             target="_blank"
             rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <GlassButton variant="secondary">
-              <ExternalLink className="w-4 h-4" />
-              Preview
-            </GlassButton>
+            <ExternalLink className="w-4 h-4" />
+            Preview
           </a>
         </div>
         {proposal.expires_at && (
-          <p className="text-xs text-text-secondary mt-2">
+          <p className="text-xs text-gray-600 mt-2">
             Expires: {new Date(proposal.expires_at).toLocaleDateString()}
           </p>
         )}
-      </GlassCard>
+      </div>
 
       {/* Proposal Stats */}
-      <GlassCard padding="lg" rounded="2xl">
-        <h3 className="text-lg font-semibold font-serif text-secondary dark:text-white mb-4">Proposal Details</h3>
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h3 className="text-lg font-semibold text-[#1b140a] mb-4">Proposal Details</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <div className="text-sm text-primary">Total Days</div>
-            <div className="text-xl font-bold text-secondary dark:text-white">{stats.totalDays}</div>
+            <div className="text-sm text-[#bda87f]">Total Days</div>
+            <div className="text-xl font-bold text-[#1b140a]">{stats.totalDays}</div>
           </div>
           <div>
-            <div className="text-sm text-primary">Total Activities</div>
-            <div className="text-xl font-bold text-secondary dark:text-white">{stats.totalActivities}</div>
+            <div className="text-sm text-[#bda87f]">Total Activities</div>
+            <div className="text-xl font-bold text-[#1b140a]">{stats.totalActivities}</div>
           </div>
           <div>
-            <div className="text-sm text-primary">Selected Activities</div>
-            <div className="text-xl font-bold text-secondary dark:text-white">{stats.selectedActivities}</div>
+            <div className="text-sm text-[#bda87f]">Selected Activities</div>
+            <div className="text-xl font-bold text-[#1b140a]">{stats.selectedActivities}</div>
           </div>
           <div>
-            <div className="text-sm text-primary">Optional Activities</div>
-            <div className="text-xl font-bold text-secondary dark:text-white">{stats.optionalActivities}</div>
+            <div className="text-sm text-[#bda87f]">Optional Activities</div>
+            <div className="text-xl font-bold text-[#1b140a]">{stats.optionalActivities}</div>
           </div>
         </div>
 
         {proposal.template_name && (
-          <div className="mt-4 pt-4 border-t border-white/20">
-            <div className="text-sm text-primary">Created from template</div>
-            <div className="text-sm text-secondary dark:text-white font-medium">{proposal.template_name}</div>
+          <div className="mt-4 pt-4 border-t border-[#eadfcd]">
+            <div className="text-sm text-[#bda87f]">Created from template</div>
+            <div className="text-sm text-[#1b140a] font-medium">{proposal.template_name}</div>
           </div>
         )}
-      </GlassCard>
+      </div>
 
       {/* Client Information */}
-      <GlassCard padding="lg" rounded="2xl">
-        <h3 className="text-lg font-semibold font-serif text-secondary dark:text-white mb-4">Client Information</h3>
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h3 className="text-lg font-semibold text-[#1b140a] mb-4">Client Information</h3>
         <div className="space-y-2">
           <div>
-            <span className="text-sm text-primary">Name:</span>
-            <div className="text-sm text-secondary dark:text-white font-medium">{proposal.client_name}</div>
+            <span className="text-sm text-[#bda87f]">Name:</span>
+            <div className="text-sm text-[#1b140a] font-medium">{proposal.client_name}</div>
           </div>
           {proposal.client_email && (
             <div>
-              <span className="text-sm text-primary">Email:</span>
-              <div className="text-sm text-secondary dark:text-white font-medium">
-                <a href={`mailto:${proposal.client_email}`} className="text-primary hover:underline">
+              <span className="text-sm text-[#bda87f]">Email:</span>
+              <div className="text-sm text-[#1b140a] font-medium">
+                <a href={`mailto:${proposal.client_email}`} className="text-[#9c7c46] hover:underline">
                   {proposal.client_email}
                 </a>
               </div>
             </div>
           )}
         </div>
-      </GlassCard>
+      </div>
 
       {/* Comments Section */}
       {comments.length > 0 && (
-        <GlassCard padding="lg" rounded="2xl">
-          <h3 className="text-lg font-semibold font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+          <h3 className="text-lg font-semibold text-[#1b140a] mb-4 flex items-center gap-2">
             <MessageCircle className="w-5 h-5" />
             Client Comments ({comments.length})
           </h3>
@@ -531,40 +541,40 @@ export default function AdminProposalViewPage() {
                 key={comment.id}
                 className={`p-4 rounded-lg border ${
                   comment.is_resolved
-                    ? 'bg-gray-50/90 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
-                    : 'bg-orange-50/90 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                    ? 'bg-gray-50 border-gray-200'
+                    : 'bg-orange-50 border-orange-200'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <div className="font-semibold text-secondary dark:text-white">{comment.author_name}</div>
+                    <div className="font-semibold text-[#1b140a]">{comment.author_name}</div>
                     {comment.author_email && (
-                      <div className="text-xs text-primary">{comment.author_email}</div>
+                      <div className="text-xs text-[#bda87f]">{comment.author_email}</div>
                     )}
                     {comment.day_number && (
-                      <div className="text-xs text-primary mt-1">
+                      <div className="text-xs text-[#bda87f] mt-1">
                         On Day {comment.day_number}
                         {comment.day_title && `: ${comment.day_title}`}
                       </div>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-primary">
+                    <div className="text-xs text-[#bda87f]">
                       {new Date(comment.created_at).toLocaleDateString()}
                     </div>
                     {!comment.is_resolved && (
                       <button
                         onClick={() => markCommentResolved(comment.id)}
-                        className="mt-1 text-xs text-primary hover:underline"
+                        className="mt-1 text-xs text-[#9c7c46] hover:underline"
                       >
                         Mark Resolved
                       </button>
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-text-secondary">{comment.comment}</p>
+                <p className="text-sm text-[#6f5b3e]">{comment.comment}</p>
                 {comment.is_resolved && (
-                  <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <div className="mt-2 text-xs text-green-600 flex items-center gap-1">
                     <CheckCircle className="w-3 h-3" />
                     Resolved
                   </div>
@@ -572,25 +582,25 @@ export default function AdminProposalViewPage() {
               </div>
             ))}
           </div>
-        </GlassCard>
+        </div>
       )}
 
       {/* Timeline */}
-      <GlassCard padding="lg" rounded="2xl">
-        <h3 className="text-lg font-semibold font-serif text-secondary dark:text-white mb-4">Activity Timeline</h3>
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h3 className="text-lg font-semibold text-[#1b140a] mb-4">Activity Timeline</h3>
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-sm">
-            <Calendar className="w-4 h-4 text-primary" />
-            <span className="text-text-secondary">Created:</span>
-            <span className="text-secondary dark:text-white font-medium">
+            <Calendar className="w-4 h-4 text-[#bda87f]" />
+            <span className="text-[#6f5b3e]">Created:</span>
+            <span className="text-[#1b140a] font-medium">
               {new Date(proposal.created_at).toLocaleString()}
             </span>
           </div>
           {proposal.viewed_at && (
             <div className="flex items-center gap-3 text-sm">
               <Eye className="w-4 h-4 text-blue-600" />
-              <span className="text-text-secondary">First Viewed:</span>
-              <span className="text-secondary dark:text-white font-medium">
+              <span className="text-[#6f5b3e]">First Viewed:</span>
+              <span className="text-[#1b140a] font-medium">
                 {new Date(proposal.viewed_at).toLocaleString()}
               </span>
             </div>
@@ -598,8 +608,8 @@ export default function AdminProposalViewPage() {
           {proposal.approved_at && (
             <div className="flex items-center gap-3 text-sm">
               <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="text-text-secondary">Approved:</span>
-              <span className="text-secondary dark:text-white font-medium">
+              <span className="text-[#6f5b3e]">Approved:</span>
+              <span className="text-[#1b140a] font-medium">
                 {new Date(proposal.approved_at).toLocaleString()} by {proposal.approved_by}
               </span>
             </div>
@@ -607,19 +617,19 @@ export default function AdminProposalViewPage() {
           {comments.length > 0 && (
             <div className="flex items-center gap-3 text-sm">
               <MessageCircle className="w-4 h-4 text-orange-600" />
-              <span className="text-text-secondary">Last Comment:</span>
-              <span className="text-secondary dark:text-white font-medium">
+              <span className="text-[#6f5b3e]">Last Comment:</span>
+              <span className="text-[#1b140a] font-medium">
                 {new Date(comments[0].created_at).toLocaleString()}
               </span>
             </div>
           )}
         </div>
-      </GlassCard>
+      </div>
 
       {/* Help Text */}
-      <div className="bg-blue-50/90 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">Next Steps</h3>
-        <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1 list-disc list-inside">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Next Steps</h3>
+        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
           {proposal.status === 'draft' && (
             <li>Click "Send to Client" to share the proposal link</li>
           )}
@@ -633,7 +643,7 @@ export default function AdminProposalViewPage() {
             <li>Respond to {unresolvedComments.length} unresolved comment(s)</li>
           )}
           {proposal.approved_at && (
-            <li>Proposal approved! Move client to "payment_pending" in CRM</li>
+            <li>🎉 Proposal approved! Move client to "payment_pending" in CRM</li>
           )}
         </ul>
       </div>

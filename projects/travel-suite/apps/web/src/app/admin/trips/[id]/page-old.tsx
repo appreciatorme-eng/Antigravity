@@ -22,11 +22,17 @@ import {
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
-import { GlassModal } from "@/components/glass/GlassModal";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Driver {
     id: string;
@@ -1134,15 +1140,15 @@ out center tags 80;
                 <div className="flex items-center gap-4">
                     <Link
                         href="/admin/trips"
-                        className="p-2 hover:bg-white/40 dark:bg-white/5 rounded-lg transition-colors"
+                        className="p-2 hover:bg-[#f6efe4] rounded-lg transition-colors"
                     >
-                        <ArrowLeft className="h-5 w-5 text-text-secondary" />
+                        <ArrowLeft className="h-5 w-5 text-[#6f5b3e]" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-[var(--font-display)] text-secondary dark:text-white">
+                        <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
                             {trip.itineraries?.trip_title || trip.destination}
                         </h1>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-text-secondary">
+                        <div className="flex items-center gap-4 mt-1 text-sm text-[#6f5b3e]">
                             <span className="flex items-center gap-1">
                                 <User className="h-4 w-4" />
                                 {trip.profiles?.full_name}
@@ -1159,71 +1165,85 @@ out center tags 80;
                     <button
                         onClick={createLiveLocationShare}
                         disabled={creatingLiveLink}
-                        className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors text-text-secondary disabled:opacity-60"
+                        className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] rounded-lg hover:bg-[#f6efe4] transition-colors text-[#6f5b3e] disabled:opacity-60"
                     >
                         <Link2 className="h-4 w-4" />
                         {creatingLiveLink ? "Creating..." : "Live Link"}
                     </button>
-                    <GlassButton variant="secondary" onClick={() => setNotificationOpen(true)}>
-                        <Bell className="h-4 w-4" />
-                        Notify Client
-                    </GlassButton>
-                    <GlassModal
-                        isOpen={notificationOpen}
-                        onClose={() => setNotificationOpen(false)}
-                        title="Send Notification"
-                        description="Send a push notification to the client regarding this trip. You can target by email to ensure it matches the mobile login."
-                    >
-                        <div className="grid gap-4">
-                            <label className="flex items-center gap-2 text-sm text-text-secondary">
-                                <input
-                                    type="checkbox"
-                                    checked={useEmailTarget}
-                                    onChange={(e) => {
-                                        setUseEmailTarget(e.target.checked);
-                                        if (e.target.checked && !notificationEmail) {
-                                            setNotificationEmail(trip.profiles?.email || "");
-                                        }
-                                    }}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                />
-                                Send by email instead of user ID
-                            </label>
-                            {useEmailTarget && (
-                                <GlassInput
-                                    label="Client Email"
-                                    type="email"
-                                    value={notificationEmail}
-                                    onChange={(e) => setNotificationEmail(e.target.value)}
-                                    placeholder={trip.profiles?.email || "client@example.com"}
-                                />
-                            )}
-                            <GlassInput
-                                label="Title"
-                                value={notificationTitle}
-                                onChange={(e) => setNotificationTitle(e.target.value)}
-                                placeholder="Notification Title"
-                            />
-                            <GlassTextarea
-                                label="Message"
-                                value={notificationBody}
-                                onChange={(e) => setNotificationBody(e.target.value)}
-                                placeholder={`Your trip to ${trip.destination} has been updated...`}
-                                rows={3}
-                            />
-                            <div className="flex justify-end mt-4">
-                                <GlassButton variant="primary" onClick={sendNotificationToClient}>
-                                    Send Notification
-                                </GlassButton>
+                    <Dialog open={notificationOpen} onOpenChange={setNotificationOpen}>
+                        <DialogTrigger asChild>
+                            <button
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] rounded-lg hover:bg-[#f6efe4] transition-colors text-[#6f5b3e]"
+                            >
+                                <Bell className="h-4 w-4" />
+                                Notify Client
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Send Notification</DialogTitle>
+                                <DialogDescription>
+                                    Send a push notification to the client regarding this trip. You can target by email to ensure it matches the mobile login.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <label className="flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        checked={useEmailTarget}
+                                        onChange={(e) => {
+                                            setUseEmailTarget(e.target.checked);
+                                            if (e.target.checked && !notificationEmail) {
+                                                setNotificationEmail(trip.profiles?.email || "");
+                                            }
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    Send by email instead of user ID
+                                </label>
+                                {useEmailTarget && (
+                                    <div className="grid gap-2">
+                                        <label htmlFor="email" className="text-sm font-medium leading-none">Client Email</label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={notificationEmail}
+                                            onChange={(e) => setNotificationEmail(e.target.value)}
+                                            placeholder={trip.profiles?.email || "client@example.com"}
+                                        />
+                                    </div>
+                                )}
+                                <div className="grid gap-2">
+                                    <label htmlFor="title" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Title</label>
+                                    <Input
+                                        id="title"
+                                        value={notificationTitle}
+                                        onChange={(e) => setNotificationTitle(e.target.value)}
+                                        placeholder="Notification Title"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <label htmlFor="body" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Message</label>
+                                    <textarea
+                                        id="body"
+                                        value={notificationBody}
+                                        onChange={(e) => setNotificationBody(e.target.value)}
+                                        placeholder={`Your trip to ${trip.destination} has been updated...`}
+                                        className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    </GlassModal>
+                            <DialogFooter>
+                                <Button onClick={sendNotificationToClient}>Send Notification</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                     {clientWhatsAppLink ? (
                         <a
                             href={clientWhatsAppLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-secondary dark:text-white rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
                         >
                             <MessageCircle className="h-4 w-4" />
                             WhatsApp Client
@@ -1231,7 +1251,7 @@ out center tags 80;
                     ) : (
                         <button
                             disabled
-                            className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-primary rounded-lg cursor-not-allowed"
+                            className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#cbb68e] rounded-lg cursor-not-allowed"
                             title="Client phone not available"
                         >
                             <MessageCircle className="h-4 w-4" />
@@ -1244,7 +1264,7 @@ out center tags 80;
                                 href={liveLocationUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-secondary dark:text-white rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#1b140a] rounded-lg hover:bg-[#f6efe4] transition-colors"
                                 title="Open live location page"
                             >
                                 <MapPin className="h-4 w-4" />
@@ -1252,7 +1272,7 @@ out center tags 80;
                             </a>
                             <button
                                 onClick={revokeLiveLocationShare}
-                                className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-text-secondary rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-[#f6efe4] transition-colors"
                                 title="Disable active live links"
                             >
                                 Revoke Live
@@ -1262,7 +1282,7 @@ out center tags 80;
                     <button
                         onClick={saveChanges}
                         disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-secondary dark:bg-white/20 text-white rounded-lg hover:bg-secondary/90 dark:hover:bg-white/30 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#1b140a] text-[#f5e7c6] rounded-lg hover:bg-[#2a2217] transition-colors disabled:opacity-50"
                     >
                         <Save className="h-4 w-4" />
                         {saving ? "Saving..." : "Save Changes"}
@@ -1568,28 +1588,28 @@ out center tags 80;
                             </div>
 
                             <div className="space-y-3">
-                                <div className="rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-3">
-                                    <p className="text-[10px] uppercase tracking-wide text-primary">Reminder Queue</p>
+                                <div className="rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-3">
+                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46]">Reminder Queue</p>
                                     {reminderStatusByDay[activeDay] ? (
                                         <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">P {reminderStatusByDay[activeDay].pending}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">W {reminderStatusByDay[activeDay].processing}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">S {reminderStatusByDay[activeDay].sent}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">F {reminderStatusByDay[activeDay].failed}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">P {reminderStatusByDay[activeDay].pending}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">W {reminderStatusByDay[activeDay].processing}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">S {reminderStatusByDay[activeDay].sent}</span>
+                                            <span className="rounded bg-white border border-[#eadfcd] px-2 py-1 text-center">F {reminderStatusByDay[activeDay].failed}</span>
                                         </div>
                                     ) : (
-                                        <p className="mt-2 text-xs text-text-secondary">No reminders queued for this day yet.</p>
+                                        <p className="mt-2 text-xs text-[#6f5b3e]">No reminders queued for this day yet.</p>
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-3">
-                                    <p className="text-[10px] uppercase tracking-wide text-primary">Driver Ping</p>
+                                <div className="rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-3">
+                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46]">Driver Ping</p>
                                     {latestDriverLocation?.recorded_at ? (
                                         <>
-                                            <p className="mt-2 text-xs text-secondary dark:text-white">
+                                            <p className="mt-2 text-xs text-[#1b140a]">
                                                 Last ping: {new Date(latestDriverLocation.recorded_at).toLocaleString()}
                                             </p>
-                                            <p className="text-xs text-text-secondary">
+                                            <p className="text-xs text-[#6f5b3e]">
                                                 {latestDriverLocation.latitude.toFixed(5)}, {latestDriverLocation.longitude.toFixed(5)}
                                             </p>
                                             {Date.now() - new Date(latestDriverLocation.recorded_at).getTime() > 10 * 60 * 1000 ? (
@@ -1599,7 +1619,7 @@ out center tags 80;
                                             )}
                                         </>
                                     ) : (
-                                        <p className="mt-2 text-xs text-text-secondary">No driver location ping received yet.</p>
+                                        <p className="mt-2 text-xs text-[#6f5b3e]">No driver location ping received yet.</p>
                                     )}
                                 </div>
                                 {itineraryDays
@@ -1627,7 +1647,7 @@ out center tags 80;
                                                         placeholder="Activity title"
                                                     />
                                                     <div className="mt-2 flex items-center gap-2">
-                                                        <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                        <MapPin className="w-3.5 h-3.5 text-[#bda87f]" />
                                                         <input
                                                             type="text"
                                                             value={activity.location || ""}
@@ -1642,15 +1662,15 @@ out center tags 80;
                                                             onBlur={(e) =>
                                                                 handleLocationBlur(activeDay, index, e.target.value)
                                                             }
-                                                            className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-sm text-text-secondary"
+                                                            className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-sm text-[#6f5b3e]"
                                                             placeholder="Location (auto-mapped)"
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="w-[210px] rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-2">
+                                                <div className="w-[210px] rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-2">
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-primary mb-1">Start</p>
+                                                            <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">Start</p>
                                                             {index === 0 ? (
                                                                 <select
                                                                     value={activity.start_time || "09:00"}
@@ -1662,7 +1682,7 @@ out center tags 80;
                                                                             e.target.value
                                                                         )
                                                                     }
-                                                                    className="w-full rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-[primary]/25"
+                                                                    className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] focus:outline-none focus:ring-2 focus:ring-[#c4a870]/25"
                                                                 >
                                                                     {timeOptions.map((time) => (
                                                                         <option key={time} value={time}>
@@ -1671,21 +1691,21 @@ out center tags 80;
                                                                     ))}
                                                                 </select>
                                                             ) : (
-                                                                <div className="rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white text-center">
+                                                                <div className="rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] text-center">
                                                                     {activity.start_time || "--:--"}
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-primary mb-1">End</p>
-                                                            <div className="rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white text-center">
+                                                            <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">End</p>
+                                                            <div className="rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] text-center">
                                                                 {activity.end_time || "--:--"}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="w-[132px] rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-2">
-                                                    <p className="text-[10px] uppercase tracking-wide text-primary mb-1">Duration</p>
+                                                <div className="w-[132px] rounded-lg border border-[#eadfcd] bg-[#faf6ee] p-2">
+                                                    <p className="text-[10px] uppercase tracking-wide text-[#9c7c46] mb-1">Duration</p>
                                                     <div className="flex items-center gap-1.5">
                                                         <select
                                                             value={activity.duration_minutes}
@@ -1697,7 +1717,7 @@ out center tags 80;
                                                                     parseInt(e.target.value, 10) || 60
                                                                 )
                                                             }
-                                                            className="w-full rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-[primary]/25"
+                                                            className="w-full rounded-md border border-[#eadfcd] bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-[#1b140a] focus:outline-none focus:ring-2 focus:ring-[#c4a870]/25"
                                                         >
                                                             {[30, 45, 60, 75, 90, 120, 150, 180].map((mins) => (
                                                                 <option key={mins} value={mins}>
@@ -1705,7 +1725,7 @@ out center tags 80;
                                                                 </option>
                                                             ))}
                                                         </select>
-                                                        <span className="text-xs text-text-secondary">mins</span>
+                                                        <span className="text-xs text-[#8a7351]">mins</span>
                                                     </div>
                                                 </div>
                                             </div>

@@ -3,8 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Mail, Phone, MapPin, CalendarDays, BadgeCheck, Utensils, Accessibility, User, HeartPulse } from "lucide-react";
 import type { Database } from "@/lib/database.types";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
 
 export default async function ClientProfilePage({
     params,
@@ -12,7 +10,9 @@ export default async function ClientProfilePage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = await createClient(); // Await createClient just in case (though typically sync, but good practice if it changes)
+    // Wait, check standard pattern. Usually createClient is sync in recent supabase-ssr? No, usually awaitable cookies().
+    // Looking at lib/supabase/server.ts would confirm. Assuming awaitable.
 
     const { data: profile, error } = await supabase
         .from("profiles")
@@ -49,23 +49,12 @@ export default async function ClientProfilePage({
 
     return (
         <div className="space-y-8">
-            {/* Header Section */}
-            <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                    <span className="text-xs uppercase tracking-widest text-primary font-bold">CLIENT PROFILE</span>
-                    <h1 className="text-3xl font-serif text-secondary dark:text-white">{profile.full_name || "Unnamed Client"}</h1>
-                </div>
-            </div>
-
             {/* Header Card */}
-            <GlassCard padding="lg" rounded="2xl">
+            <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h2 className="text-2xl font-serif text-secondary dark:text-white">{profile.full_name || "Unnamed Client"}</h2>
-                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-text-secondary">
+                        <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">{profile.full_name || "Unnamed Client"}</h1>
+                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-[#6f5b3e]">
                             {profile.email && (
                                 <span className="flex items-center gap-2">
                                     <Mail className="w-4 h-4" />
@@ -79,14 +68,14 @@ export default async function ClientProfilePage({
                                 </span>
                             )}
                             {profile.phone_whatsapp && (
-                                <span className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                                <span className="flex items-center gap-2 text-green-700">
                                     <Phone className="w-4 h-4" />
                                     WhatsApp: {profile.phone_whatsapp}
                                 </span>
                             )}
                         </div>
                         {profile.bio && (
-                            <p className="mt-4 text-sm text-text-secondary italic border-l-2 border-primary pl-3">
+                            <p className="mt-4 text-sm text-[#6f5b3e] italic border-l-2 border-[#bda87f] pl-3">
                                 {profile.bio}
                             </p>
                         )}
@@ -94,58 +83,62 @@ export default async function ClientProfilePage({
                     {/* Tags / Badges */}
                     <div className="flex flex-col items-end gap-2">
                         {profile.lifecycle_stage && (
-                            <GlassBadge variant="primary" icon={BadgeCheck}>
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-[#f6efe4] text-[#9c7c46] capitalize">
+                                <BadgeCheck className="w-4 h-4" />
                                 {profile.lifecycle_stage.replace('_', ' ')}
-                            </GlassBadge>
+                            </span>
                         )}
                         {clientInfo.loyalty_tier && (
-                            <GlassBadge variant="warning">
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700 capitalize">
                                 {clientInfo.loyalty_tier} Tier
-                            </GlassBadge>
+                            </span>
                         )}
                     </div>
                 </div>
-            </GlassCard>
+            </div>
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                 {/* Left Column: Preferences & Needs */}
                 <div className="space-y-8">
-                    <GlassCard padding="lg" rounded="2xl">
-                        <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
-                            <User className="w-5 h-5 text-primary" />
+                    <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
+                        <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4 flex items-center gap-2">
+                            <User className="w-5 h-5 text-[#bda87f]" />
                             Travel Preferences
                         </h2>
-                        <div className="grid gap-3 text-sm text-text-secondary">
-                            <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-2">
+                        <div className="grid gap-3 text-sm text-[#6f5b3e]">
+                            <div className="flex items-center justify-between border-b border-[#f6efe4] pb-2">
                                 <span>Preferred Destination</span>
-                                <span className="font-medium text-secondary dark:text-white">{profile.preferred_destination || "—"}</span>
+                                <span className="font-medium text-[#1b140a]">{profile.preferred_destination || "—"}</span>
                             </div>
-                            <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-2">
+                            <div className="flex items-center justify-between border-b border-[#f6efe4] pb-2">
                                 <span>Travelers Count</span>
-                                <span className="font-medium text-secondary dark:text-white">{profile.travelers_count || 1}</span>
+                                <span className="font-medium text-[#1b140a]">{profile.travelers_count || 1}</span>
                             </div>
-                            <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-2">
+                            <div className="flex items-center justify-between border-b border-[#f6efe4] pb-2">
                                 <span>Budget Range</span>
-                                <span className="font-medium text-secondary dark:text-white">{formatCurrency(profile.budget_min)} - {formatCurrency(profile.budget_max)}</span>
+                                <span className="font-medium text-[#1b140a]">{formatCurrency(profile.budget_min)} - {formatCurrency(profile.budget_max)}</span>
                             </div>
-                            <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-2">
+                            <div className="flex items-center justify-between border-b border-[#f6efe4] pb-2">
                                 <span>Travel Style</span>
-                                <span className="font-medium text-secondary dark:text-white">{profile.travel_style || "—"}</span>
+                                <span className="font-medium text-[#1b140a]">{profile.travel_style || "—"}</span>
                             </div>
-                            <div className="flex items-center justify-between border-b border-white/10 dark:border-white/5 pb-2">
+                            <div className="flex items-center justify-between border-b border-[#f6efe4] pb-2">
                                 <span>Home Airport</span>
-                                <span className="font-medium text-secondary dark:text-white">{profile.home_airport || "—"}</span>
+                                <span className="font-medium text-[#1b140a]">{profile.home_airport || "—"}</span>
                             </div>
 
                             <div className="mt-2">
-                                <span className="block mb-2 text-xs uppercase tracking-widest text-primary font-bold">Interests</span>
+                                <span className="block mb-2 text-xs uppercase tracking-wider text-[#9c7c46]">Interests</span>
                                 <div className="flex flex-wrap gap-2">
                                     {(profile.interests || []).map((interest: string) => (
-                                        <GlassBadge key={interest} variant="success">
+                                        <span
+                                            key={interest}
+                                            className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700"
+                                        >
                                             {interest}
-                                        </GlassBadge>
+                                        </span>
                                     ))}
                                     {(!profile.interests || profile.interests.length === 0) && (
                                         <span className="text-xs text-gray-400">No interests selected</span>
@@ -153,27 +146,27 @@ export default async function ClientProfilePage({
                                 </div>
                             </div>
                         </div>
-                    </GlassCard>
+                    </div>
 
                     {/* NEW: Health & Dietary Requirements */}
                     {(profile.dietary_requirements?.length || profile.mobility_needs) ? (
-                        <GlassCard padding="lg" rounded="2xl">
-                            <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
+                        <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
+                            <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4 flex items-center gap-2">
                                 <HeartPulse className="w-5 h-5 text-rose-400" />
                                 Health & Accessibility
                             </h2>
                             <div className="space-y-4">
                                 {profile.dietary_requirements && profile.dietary_requirements.length > 0 && (
                                     <div>
-                                        <div className="flex items-center gap-2 text-sm font-medium text-secondary dark:text-white mb-2">
-                                            <Utensils className="w-4 h-4 text-primary" />
+                                        <div className="flex items-center gap-2 text-sm font-medium text-[#1b140a] mb-2">
+                                            <Utensils className="w-4 h-4 text-[#9c7c46]" />
                                             Dietary Requirements
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {profile.dietary_requirements.map((req: string) => (
-                                                <GlassBadge key={req} variant="danger">
+                                                <span key={req} className="px-2 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100">
                                                     {req}
-                                                </GlassBadge>
+                                                </span>
                                             ))}
                                         </div>
                                     </div>
@@ -181,56 +174,53 @@ export default async function ClientProfilePage({
 
                                 {profile.mobility_needs && (
                                     <div>
-                                        <div className="flex items-center gap-2 text-sm font-medium text-secondary dark:text-white mb-2">
-                                            <Accessibility className="w-4 h-4 text-primary" />
+                                        <div className="flex items-center gap-2 text-sm font-medium text-[#1b140a] mb-2">
+                                            <Accessibility className="w-4 h-4 text-[#9c7c46]" />
                                             Mobility Needs
                                         </div>
-                                        <p className="text-sm text-text-secondary bg-white/40 dark:bg-white/5 p-3 rounded-lg border border-white/20">
+                                        <p className="text-sm text-[#6f5b3e] bg-[#fdfbf6] p-3 rounded-lg border border-[#f6efe4]">
                                             {profile.mobility_needs}
                                         </p>
                                     </div>
                                 )}
                             </div>
-                        </GlassCard>
+                        </div>
                     ) : null}
                 </div>
 
                 {/* Right Column: Trips & History */}
                 <div className="space-y-8">
-                    <GlassCard padding="lg" rounded="2xl">
-                        <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-primary" />
+                    <div className="rounded-2xl border border-[#eadfcd] bg-white/90 p-6">
+                        <h2 className="text-lg font-[var(--font-display)] text-[#1b140a] mb-4 flex items-center gap-2">
+                            <MapPin className="w-5 h-5 text-[#bda87f]" />
                             Trip History
                         </h2>
                         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                             {trips && trips.length > 0 ? trips.map((trip) => (
-                                <div key={trip.id} className="flex items-center justify-between rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 px-4 py-3">
+                                <div key={trip.id} className="flex items-center justify-between rounded-lg border border-[#efe2cf] bg-[#f8f1e6] px-4 py-3">
                                     <div>
-                                        <p className="text-sm font-semibold text-secondary dark:text-white">{trip.itineraries?.destination || "Custom Trip"}</p>
-                                        <p className="text-xs text-text-secondary flex items-center gap-2 mt-1">
+                                        <p className="text-sm font-semibold text-[#1b140a]">{trip.itineraries?.destination || "Custom Trip"}</p>
+                                        <p className="text-xs text-[#6f5b3e] flex items-center gap-2 mt-1">
                                             <CalendarDays className="w-3 h-3" />
                                             {formatDate(trip.start_date)} - {formatDate(trip.end_date)}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs font-semibold">
-                                        <GlassBadge
-                                            variant={
-                                                trip.status === 'completed' ? 'default' :
-                                                trip.status === 'confirmed' ? 'success' :
-                                                'warning'
-                                            }
-                                        >
+                                        <span className={`px-2 py-1 rounded-full capitalize ${trip.status === 'completed' ? 'bg-gray-100 text-gray-600' :
+                                            trip.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
+                                                'bg-amber-100 text-amber-700'
+                                            }`}>
                                             {trip.status || 'Planned'}
-                                        </GlassBadge>
+                                        </span>
                                     </div>
                                 </div>
                             )) : (
-                                <div className="text-center py-8 text-text-secondary text-sm italic">
+                                <div className="text-center py-8 text-[#6f5b3e] text-sm italic">
                                     No trips recorded for this client.
                                 </div>
                             )}
                         </div>
-                    </GlassCard>
+                    </div>
                 </div>
             </div>
         </div>
