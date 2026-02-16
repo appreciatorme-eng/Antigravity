@@ -41,7 +41,7 @@ export async function GET(
     // Fetch proposal with all details
     const { data: proposal, error } = await supabase
       .from('proposals')
-      .select(\`
+      .select(`
         *,
         clients(name, email),
         proposal_days(
@@ -53,7 +53,7 @@ export async function GET(
             *
           )
         )
-      \`)
+      `)
       .eq('id', params.id)
       .eq('organization_id', profile.organization_id)
       .single();
@@ -93,7 +93,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': \`attachment; filename="\${proposal.title.replace(/\\s+/g, '_')}_Proposal.pdf"\`,
+        'Content-Disposition': `attachment; filename="${proposal.title.replace(/\s+/g, '_')}_Proposal.pdf"`,
       },
     });
   } catch (error) {
