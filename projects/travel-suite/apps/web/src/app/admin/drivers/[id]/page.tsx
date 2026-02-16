@@ -221,7 +221,7 @@ export default async function DriverDetailsPage({
                         </h2>
 
                         <div className="space-y-3">
-                            {assignments && assignments.length > 0 ? assignments.map((assignment) => (
+                            {assignments && assignments.length > 0 ? assignments.map((assignment: any) => (
                                 <div key={assignment.id} className="p-3 bg-white/40 dark:bg-white/5 rounded-lg border border-white/20">
                                     <div className="text-sm font-semibold text-secondary dark:text-white">{assignment.trip?.itineraries?.destination || "Unknown Trip"}</div>
                                     <div className="text-xs text-text-secondary mt-1 flex justify-between">
