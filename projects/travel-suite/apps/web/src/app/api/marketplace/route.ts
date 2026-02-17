@@ -62,7 +62,8 @@ export async function GET(req: Request) {
             supabaseQuery = supabaseQuery.contains("specialties", [specialty]);
         }
         if (query) {
-            supabaseQuery = supabaseQuery.ilike("organization.name", `%${query}%`);
+            // Use full-text search on description and ILIKE on organization name
+            supabaseQuery = (supabaseQuery as any).or(`organization.name.ilike.%${query}%,search_vector.fts.${query}`);
         }
 
         const { data, error } = await supabaseQuery;
@@ -107,18 +108,24 @@ export async function PATCH(req: Request) {
         }
 
         const body = await req.json();
-        const { description, service_regions, specialties, margin_rate } = body;
+        const { description, service_regions, specialties, margin_rate, request_verification } = body;
+
+        const updates: any = {
+            organization_id: profile.organization_id,
+            description,
+            service_regions: Array.isArray(service_regions) ? service_regions : [],
+            specialties: Array.isArray(specialties) ? specialties : [],
+            margin_rate: typeof margin_rate === "number" ? margin_rate : null,
+            updated_at: new Date().toISOString()
+        };
+
+        if (request_verification) {
+            updates.verification_status = 'pending';
+        }
 
         const { data, error } = await supabaseAdmin
             .from("marketplace_profiles")
-            .upsert({
-                organization_id: profile.organization_id,
-                description,
-                service_regions: Array.isArray(service_regions) ? service_regions : [],
-                specialties: Array.isArray(specialties) ? specialties : [],
-                margin_rate: typeof margin_rate === "number" ? margin_rate : null,
-                updated_at: new Date().toISOString()
-            }, { onConflict: "organization_id" })
+            .upsert(updates, { onConflict: "organization_id" })
             .select()
             .single();
 

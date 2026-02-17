@@ -29,6 +29,7 @@ export default function MarketplaceSettingsPage() {
         service_regions: [] as string[],
         specialties: [] as string[],
         margin_rate: "" as string | number,
+        verification_status: "none" as string
     });
     const [newRegion, setNewRegion] = useState("");
     const [newSpecialty, setNewSpecialty] = useState("");
@@ -68,6 +69,7 @@ export default function MarketplaceSettingsPage() {
                         service_regions: marketProfile.service_regions || [],
                         specialties: marketProfile.specialties || [],
                         margin_rate: marketProfile.margin_rate ?? "",
+                        verification_status: marketProfile.verification_status || "none",
                     });
                 }
             }
@@ -107,6 +109,39 @@ export default function MarketplaceSettingsPage() {
                 throw new Error(err.error || "Failed to save settings");
             }
 
+            setSuccessMessage(true);
+            setTimeout(() => setSuccessMessage(false), 3000);
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleRequestVerification = async () => {
+        if (!organization?.id) return;
+        setSaving(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/marketplace", {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    ...formData,
+                    margin_rate: formData.margin_rate === "" ? null : Number(formData.margin_rate),
+                    request_verification: true
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Failed to request verification");
+            }
+
+            setFormData(prev => ({ ...prev, verification_status: 'pending' }));
             setSuccessMessage(true);
             setTimeout(() => setSuccessMessage(false), 3000);
         } catch (error: any) {
@@ -180,10 +215,36 @@ export default function MarketplaceSettingsPage() {
                         <div className="space-y-1">
                             <h3 className="text-xl font-bold text-white">{organization?.name}</h3>
                             <div className="flex items-center gap-2 text-sm text-slate-500">
-                                <ShieldCheck size={14} className="text-blue-400" />
-                                Official Tour Operator Account
+                                {formData.verification_status === 'verified' ? (
+                                    <div className="flex items-center gap-1.5 text-blue-400 font-medium">
+                                        <CheckCircle2 size={14} />
+                                        Verified Partner
+                                    </div>
+                                ) : formData.verification_status === 'pending' ? (
+                                    <div className="flex items-center gap-1.5 text-orange-400 font-medium">
+                                        <RefreshCcw size={14} className="animate-spin" />
+                                        Verification Pending
+                                    </div>
+                                ) : (
+                                    <>
+                                        <ShieldCheck size={14} className="text-slate-600" />
+                                        Standard Partner Account
+                                    </>
+                                )}
                             </div>
                         </div>
+                        {formData.verification_status === 'none' && (
+                            <div className="ml-auto">
+                                <GlassButton
+                                    variant="secondary"
+                                    className="text-xs py-1.5 px-3"
+                                    onClick={handleRequestVerification}
+                                    disabled={saving || !formData.description}
+                                >
+                                    Request Verification
+                                </GlassButton>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-6">

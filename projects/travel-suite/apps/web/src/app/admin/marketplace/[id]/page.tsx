@@ -63,6 +63,10 @@ export default function OperatorDetailPage() {
     const [newRating, setNewRating] = useState(5);
     const [newComment, setNewComment] = useState("");
     const [currentUserOrgId, setCurrentUserOrgId] = useState<string | null>(null);
+    const [inquiryMessage, setInquiryMessage] = useState("");
+    const [submittingInquiry, setSubmittingInquiry] = useState(false);
+    const [inquirySent, setInquirySent] = useState(false);
+    const [showInquiryModal, setShowInquiryModal] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -141,6 +145,40 @@ export default function OperatorDetailPage() {
             alert(error.message);
         } finally {
             setSubmittingReview(false);
+        }
+    };
+
+    const handleSubmitInquiry = async () => {
+        if (!inquiryMessage.trim()) return;
+        setSubmittingInquiry(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(`/api/marketplace/${targetOrgId}/inquiry`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    message: inquiryMessage
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Failed to send inquiry");
+            }
+
+            setInquirySent(true);
+            setInquiryMessage("");
+            setTimeout(() => {
+                setShowInquiryModal(false);
+                setInquirySent(false);
+            }, 3000);
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setSubmittingInquiry(false);
         }
     };
 
@@ -385,10 +423,44 @@ export default function OperatorDetailPage() {
                         </div>
 
                         <div className="pt-6 border-t border-slate-800 space-y-4">
-                            <GlassButton className="w-full group">
-                                <span className="flex-1 text-center">Inquiry Connection</span>
-                                <ExternalLink size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                            </GlassButton>
+                            {showInquiryModal ? (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                    <textarea
+                                        placeholder="Briefly describe your interest in partnering..."
+                                        className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-blue-500/30 outline-none h-24"
+                                        value={inquiryMessage}
+                                        onChange={(e) => setInquiryMessage(e.target.value)}
+                                        disabled={inquirySent}
+                                    />
+                                    <div className="flex gap-2">
+                                        <GlassButton
+                                            variant="secondary"
+                                            className="flex-1"
+                                            onClick={() => setShowInquiryModal(false)}
+                                            disabled={submittingInquiry}
+                                        >
+                                            Cancel
+                                        </GlassButton>
+                                        <GlassButton
+                                            className="flex-1 flex items-center justify-center gap-2"
+                                            onClick={handleSubmitInquiry}
+                                            disabled={submittingInquiry || !inquiryMessage.trim() || inquirySent}
+                                        >
+                                            {inquirySent ? <CheckCircle2 size={16} /> : submittingInquiry ? <RefreshCcw className="animate-spin" size={16} /> : <Send size={16} />}
+                                            {inquirySent ? "Sent!" : "Send"}
+                                        </GlassButton>
+                                    </div>
+                                </div>
+                            ) : (
+                                <GlassButton
+                                    className="w-full group"
+                                    onClick={() => setShowInquiryModal(true)}
+                                    disabled={currentUserOrgId === targetOrgId}
+                                >
+                                    <span className="flex-1 text-center">Inquiry Connection</span>
+                                    <ExternalLink size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                </GlassButton>
+                            )}
                             <p className="text-xs text-slate-600 text-center">
                                 Connecting confirms you agree to our Marketplace Terms of Engagement.
                             </p>
@@ -399,4 +471,6 @@ export default function OperatorDetailPage() {
         </div>
     );
 }
+
+import { CheckCircle2 } from "lucide-react";
 
