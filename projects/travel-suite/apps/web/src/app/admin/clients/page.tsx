@@ -11,7 +11,8 @@ import {
     Plus,
     MoreVertical,
     ExternalLink,
-    RefreshCcw
+    RefreshCcw,
+    Edit2
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -108,6 +109,7 @@ export default function ClientsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
+    const [editingClientId, setEditingClientId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
@@ -223,9 +225,35 @@ export default function ClientsPage() {
             sourceChannel: "",
         });
         setFormError(null);
+        setEditingClientId(null);
     };
 
-    const handleCreateClient = async () => {
+    const handleEditClient = (client: Client) => {
+        setEditingClientId(client.id);
+        setFormData({
+            full_name: client.full_name || "",
+            email: client.email || "",
+            phone: client.phone || "",
+            preferredDestination: client.preferred_destination || "",
+            travelersCount: client.travelers_count?.toString() || "",
+            budgetMin: client.budget_min?.toString() || "",
+            budgetMax: client.budget_max?.toString() || "",
+            travelStyle: client.travel_style || "",
+            interests: client.interests?.join(", ") || "",
+            homeAirport: client.home_airport || "",
+            notes: client.notes || "",
+            leadStatus: client.lead_status || "new",
+            clientTag: client.client_tag || "standard",
+            phaseNotificationsEnabled: client.phase_notifications_enabled ?? true,
+            lifecycleStage: client.lifecycle_stage || "lead",
+            marketingOptIn: client.marketing_opt_in || false,
+            referralSource: client.referral_source || "",
+            sourceChannel: client.source_channel || "",
+        });
+        setModalOpen(true);
+    };
+
+    const handleSaveClient = async () => {
         if (!formData.full_name.trim() || !formData.email.trim()) {
             setFormError("Name and email are required.");
             return;
@@ -236,58 +264,89 @@ export default function ClientsPage() {
 
         try {
             if (useMockAdmin) {
-                const newClient: Client = {
-                    id: `mock-client-${Date.now()}`,
-                    full_name: formData.full_name.trim(),
-                    email: formData.email.trim(),
-                    phone: formData.phone.trim() || null,
-                    avatar_url: null,
-                    created_at: new Date().toISOString(),
-                    preferred_destination: formData.preferredDestination || null,
-                    travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
-                    budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
-                    budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
-                    travel_style: formData.travelStyle || null,
-                    interests: formData.interests
-                        ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
-                        : null,
-                    home_airport: formData.homeAirport || null,
-                    notes: formData.notes || null,
-                    lead_status: formData.leadStatus || "new",
-                    client_tag: formData.clientTag || "standard",
-                    phase_notifications_enabled: formData.phaseNotificationsEnabled,
-                    lifecycle_stage: formData.lifecycleStage || "lead",
-                    marketing_opt_in: formData.marketingOptIn,
-                    referral_source: formData.referralSource || null,
-                    source_channel: formData.sourceChannel || null,
-                    trips_count: 0,
-                };
-                setClients((prev) => [newClient, ...prev]);
+                if (editingClientId) {
+                    setClients((prev) => prev.map((c) => c.id === editingClientId ? {
+                        ...c,
+                        full_name: formData.full_name.trim(),
+                        email: formData.email.trim(),
+                        phone: formData.phone.trim() || null,
+                        preferred_destination: formData.preferredDestination || null,
+                        travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
+                        budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
+                        budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
+                        travel_style: formData.travelStyle || null,
+                        interests: formData.interests
+                            ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
+                            : null,
+                        home_airport: formData.homeAirport || null,
+                        notes: formData.notes || null,
+                        lead_status: formData.leadStatus || "new",
+                        client_tag: formData.clientTag || "standard",
+                        phase_notifications_enabled: formData.phaseNotificationsEnabled,
+                        lifecycle_stage: formData.lifecycleStage || "lead",
+                        marketing_opt_in: formData.marketingOptIn,
+                        referral_source: formData.referralSource || null,
+                        source_channel: formData.sourceChannel || null,
+                    } : c));
+                } else {
+                    const newClient: Client = {
+                        id: `mock-client-${Date.now()}`,
+                        full_name: formData.full_name.trim(),
+                        email: formData.email.trim(),
+                        phone: formData.phone.trim() || null,
+                        avatar_url: null,
+                        created_at: new Date().toISOString(),
+                        preferred_destination: formData.preferredDestination || null,
+                        travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
+                        budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
+                        budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
+                        travel_style: formData.travelStyle || null,
+                        interests: formData.interests
+                            ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
+                            : null,
+                        home_airport: formData.homeAirport || null,
+                        notes: formData.notes || null,
+                        lead_status: formData.leadStatus || "new",
+                        client_tag: formData.clientTag || "standard",
+                        phase_notifications_enabled: formData.phaseNotificationsEnabled,
+                        lifecycle_stage: formData.lifecycleStage || "lead",
+                        marketing_opt_in: formData.marketingOptIn,
+                        referral_source: formData.referralSource || null,
+                        source_channel: formData.sourceChannel || null,
+                        trips_count: 0,
+                    };
+                    setClients((prev) => [newClient, ...prev]);
+                }
                 setModalOpen(false);
                 resetForm();
                 return;
             }
 
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
-                method: "POST",
+
+            const url = "/api/admin/clients";
+            const method = editingClientId ? "PATCH" : "POST";
+            const body = editingClientId ? { ...formData, id: editingClientId } : formData;
+
+            const response = await fetch(url, {
+                method,
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${session?.access_token}`,
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(body),
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || "Failed to create client");
+                throw new Error(error.error || `Failed to ${editingClientId ? 'update' : 'create'} client`);
             }
 
             await fetchClients();
             setModalOpen(false);
             resetForm();
         } catch (error) {
-            setFormError(error instanceof Error ? error.message : "Failed to create client");
+            setFormError(error instanceof Error ? error.message : `Failed to ${editingClientId ? 'update' : 'create'} client`);
         } finally {
             setSaving(false);
         }
@@ -476,7 +535,7 @@ export default function ClientsPage() {
                     setModalOpen(false);
                     resetForm();
                 }}
-                title="Add Client"
+                title={editingClientId ? "Edit Client" : "Add Client"}
             >
                 <p className="text-sm text-text-secondary mb-4">
                     Create a new client profile for trip planning and notifications.
@@ -636,11 +695,11 @@ export default function ClientsPage() {
                         Cancel
                     </GlassButton>
                     <GlassButton
-                        onClick={handleCreateClient}
+                        onClick={handleSaveClient}
                         disabled={saving}
                         variant="primary"
                     >
-                        {saving ? "Creating..." : "Create Client"}
+                        {saving ? "Saving..." : (editingClientId ? "Save Changes" : "Create Client")}
                     </GlassButton>
                 </div>
             </GlassModal>
@@ -768,9 +827,19 @@ export default function ClientsPage() {
                                         Since {formatDate(client.created_at)}
                                     </p>
                                 </div>
-                                <button className="p-1.5 text-text-secondary hover:text-primary rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition-colors">
-                                    <MoreVertical className="w-5 h-5" />
-                                </button>
+
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => handleEditClient(client)}
+                                        className="p-1.5 text-text-secondary hover:text-primary rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition-colors"
+                                        title="Edit client details"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button className="p-1.5 text-text-secondary hover:text-primary rounded-lg hover:bg-white/40 dark:hover:bg-white/10 transition-colors">
+                                        <MoreVertical className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-3 pt-4 border-t border-white/10">
@@ -931,6 +1000,6 @@ export default function ClientsPage() {
                     ))
                 )}
             </div>
-        </div>
+        </div >
     );
 }

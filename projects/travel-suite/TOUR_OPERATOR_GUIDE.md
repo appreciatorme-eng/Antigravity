@@ -11,8 +11,9 @@ This guide outlines how a tour operator can leverage the Travel Suite web applic
     *   **Required Info:** Full Name, Email.
     *   **Optional Info:** Phone, Budget, Travel Style, Interests.
     *   **Status Tracking:** Set `Lead Status` (New, Contacted, Qualified) and `Lifecycle Stage` (Lead, Prospect, Active).
-3.  **View Client Profile:** Click on a client card to see their trip history, preferences, and contact details.
-4.  **Manage Lifecycle:** Move clients through stages (e.g., Lead -> Prospect -> Proposal Sent -> Active Trip) using the Kanban board or profile dropdowns.
+4.  **Edit Client Details:** Click the "Edit" icon on any client card to update their profile, including notes and preferences.
+5.  **View Client Profile:** Click "View Profile" on a client card to see their trip history, detailed notes, and contact details.
+6.  **Manage Lifecycle:** Move clients through stages (e.g., Lead -> Prospect -> Proposal Sent -> Active Trip) using the Kanban board or profile dropdowns. Automated emails can be triggered on stage changes.
 
 **Recommendations:**
 *   Add a "Notes" section to client profiles for keeping track of conversations.

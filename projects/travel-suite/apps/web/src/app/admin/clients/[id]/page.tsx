@@ -1,7 +1,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { Mail, Phone, MapPin, CalendarDays, BadgeCheck, Utensils, Accessibility, User, HeartPulse } from "lucide-react";
+import { Mail, Phone, MapPin, CalendarDays, BadgeCheck, Utensils, Accessibility, User, HeartPulse, FileText } from "lucide-react";
 import type { Database } from "@/lib/database.types";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
@@ -199,6 +199,22 @@ export default async function ClientProfilePage({
                 <div className="space-y-8">
                     <GlassCard padding="lg" rounded="2xl">
                         <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-primary" />
+                            Notes & Preferences
+                        </h2>
+                        {profile.notes ? (
+                            <p className="text-sm text-text-secondary whitespace-pre-wrap leading-relaxed">
+                                {profile.notes}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-text-secondary italic">
+                                No notes recorded.
+                            </p>
+                        )}
+                    </GlassCard>
+
+                    <GlassCard padding="lg" rounded="2xl">
+                        <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
                             <MapPin className="w-5 h-5 text-primary" />
                             Trip History
                         </h2>
@@ -216,8 +232,8 @@ export default async function ClientProfilePage({
                                         <GlassBadge
                                             variant={
                                                 trip.status === 'completed' ? 'default' :
-                                                trip.status === 'confirmed' ? 'success' :
-                                                'warning'
+                                                    trip.status === 'confirmed' ? 'success' :
+                                                        'warning'
                                             }
                                         >
                                             {trip.status || 'Planned'}

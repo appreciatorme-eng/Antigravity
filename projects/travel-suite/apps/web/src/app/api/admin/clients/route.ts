@@ -340,18 +340,47 @@ export async function PATCH(req: NextRequest) {
         const profileId = String(body.id || "").trim();
         const role = typeof body.role === "string" ? body.role.trim() : "";
         const lifecycleStage = typeof body.lifecycle_stage === "string" ? body.lifecycle_stage.trim() : "";
-        const clientTag = typeof body.client_tag === "string" ? body.client_tag.trim() : "";
+        const clientTag = typeof body.clientTag === "string" ? body.clientTag.trim() : "";
         const phaseNotificationsEnabled =
-            typeof body.phase_notifications_enabled === "boolean"
-                ? body.phase_notifications_enabled
+            typeof body.phaseNotificationsEnabled === "boolean"
+                ? body.phaseNotificationsEnabled
                 : null;
+
+        // Additional fields for update
+        const fullName = typeof body.full_name === "string" ? body.full_name.trim() : undefined;
+        const phone = typeof body.phone === "string" ? body.phone.trim() : undefined;
+        // email is not updated here to avoid auth sync issues for now
+        const preferredDestination = typeof body.preferredDestination === "string" ? body.preferredDestination.trim() : undefined;
+        const travelersCount = Number.isFinite(Number(body.travelersCount)) ? Number(body.travelersCount) : undefined;
+        const budgetMin = Number.isFinite(Number(body.budgetMin)) ? Number(body.budgetMin) : undefined;
+        const budgetMax = Number.isFinite(Number(body.budgetMax)) ? Number(body.budgetMax) : undefined;
+        const travelStyle = typeof body.travelStyle === "string" ? body.travelStyle.trim() : undefined;
+        const interests = Array.isArray(body.interests)
+            ? body.interests
+            : typeof body.interests === "string"
+                ? body.interests.split(",").map((s: string) => s.trim()).filter(Boolean)
+                : undefined;
+        const homeAirport = typeof body.homeAirport === "string" ? body.homeAirport.trim() : undefined;
+        const notes = typeof body.notes === "string" ? body.notes.trim() : undefined;
+        const marketingOptIn = typeof body.marketingOptIn === "boolean" ? body.marketingOptIn : undefined;
+        const referralSource = typeof body.referralSource === "string" ? body.referralSource.trim() : undefined;
+        const sourceChannel = typeof body.sourceChannel === "string" ? body.sourceChannel.trim() : undefined;
+        const leadStatus = typeof body.leadStatus === "string" ? body.leadStatus.trim() : undefined;
 
         if (!profileId) {
             return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
         }
 
-        if (!role && !lifecycleStage && !clientTag && phaseNotificationsEnabled === null) {
-            return NextResponse.json({ error: "Provide role, lifecycle_stage, client_tag, or phase_notifications_enabled" }, { status: 400 });
+        // We allow updates if at least one field is provided
+        const hasUpdates = role || lifecycleStage || clientTag || phaseNotificationsEnabled !== null ||
+            fullName !== undefined || phone !== undefined || preferredDestination !== undefined ||
+            travelersCount !== undefined || budgetMin !== undefined || budgetMax !== undefined ||
+            travelStyle !== undefined || interests !== undefined || homeAirport !== undefined ||
+            notes !== undefined || marketingOptIn !== undefined || referralSource !== undefined ||
+            sourceChannel !== undefined || leadStatus !== undefined;
+
+        if (!hasUpdates) {
+            return NextResponse.json({ error: "No fields to update provided" }, { status: 400 });
         }
 
         if (role && role !== "client" && role !== "driver") {
@@ -387,7 +416,7 @@ export async function PATCH(req: NextRequest) {
 
         const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
-            .select("id,full_name,phone,phone_normalized,lifecycle_stage,preferred_destination,phase_notifications_enabled,organization_id")
+            .select("id,full_name,email,phone,phone_normalized,lifecycle_stage,preferred_destination,phase_notifications_enabled,organization_id")
             .eq("id", profileId)
             .maybeSingle();
 
@@ -398,7 +427,7 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Profile not found in your organization" }, { status: 404 });
         }
 
-        const updates: Record<string, string | boolean> = {};
+        const updates: Record<string, string | number | boolean | string[] | null> = {};
         if (role) updates.role = role;
         if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
         if (clientTag) updates.client_tag = clientTag;
@@ -409,6 +438,25 @@ export async function PATCH(req: NextRequest) {
         if (role === "client" && !clientTag) {
             updates.client_tag = "standard";
         }
+
+        // Map camelCase body to snake_case DB fields
+        if (fullName !== undefined) updates.full_name = fullName;
+        if (phone !== undefined) {
+            updates.phone = phone;
+            updates.phone_normalized = phone.replace(/\D/g, "");
+        }
+        if (preferredDestination !== undefined) updates.preferred_destination = preferredDestination;
+        if (travelersCount !== undefined) updates.travelers_count = travelersCount;
+        if (budgetMin !== undefined) updates.budget_min = budgetMin;
+        if (budgetMax !== undefined) updates.budget_max = budgetMax;
+        if (travelStyle !== undefined) updates.travel_style = travelStyle;
+        if (interests !== undefined) updates.interests = interests;
+        if (homeAirport !== undefined) updates.home_airport = homeAirport;
+        if (notes !== undefined) updates.notes = notes;
+        if (marketingOptIn !== undefined) updates.marketing_opt_in = marketingOptIn;
+        if (referralSource !== undefined) updates.referral_source = referralSource;
+        if (sourceChannel !== undefined) updates.source_channel = sourceChannel;
+        if (leadStatus !== undefined) updates.lead_status = leadStatus;
 
         const { error } = await supabaseAdmin
             .from("profiles")
@@ -454,10 +502,14 @@ export async function PATCH(req: NextRequest) {
 
             const templateKey = lifecycleTemplateByStage[lifecycleStage];
             const recipientPhone = existingProfile.phone_normalized || existingProfile.phone || null;
+            const recipientEmail = existingProfile.email || null;
+
             await supabaseAdmin.from("notification_queue").insert({
                 user_id: existingProfile.id,
                 notification_type: "custom",
                 recipient_phone: recipientPhone,
+                recipient_email: recipientEmail,
+                channel_preference: recipientPhone ? "whatsapp_first" : "email_only",
                 recipient_type: "client",
                 scheduled_for: new Date().toISOString(),
                 idempotency_key: `lifecycle-stage:${existingProfile.id}:${existingProfile.lifecycle_stage || "lead"}:${lifecycleStage}:${Date.now()}`,

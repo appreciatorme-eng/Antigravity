@@ -581,7 +581,14 @@
 - **Changes:**
   - Adds `SELECT`, `UPDATE`, `INSERT`, `DELETE` policies for `profiles` table for admins in same organization.
 - **Status:** ✅ Applied
+### 46. Email Notification Support (`20260217160000`)
+- **File:** `20260217160000_add_email_to_queue.sql`
+- **Purpose:** Enable email notifications in the async queue.
+- **Changes:**
+  - Adds `recipient_email` column to `notification_queue` table.
+- **Status:** ✅ Applied
 
+---
 ---
 
 ## Complete Table Inventory (50+ tables)
