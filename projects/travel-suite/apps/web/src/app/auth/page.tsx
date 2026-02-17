@@ -66,7 +66,7 @@ export default function AuthPage() {
     };
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4 relative overflow-hidden">
+        <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-sky-50 dark:from-[#0a2f2a] dark:via-[#0d3530] dark:to-[#0a2f2a] p-4 relative overflow-hidden">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
@@ -84,7 +84,7 @@ export default function AuthPage() {
                 </div>
 
                 {/* Auth Card */}
-                <Card className="border-gray-100 shadow-xl bg-white/80 backdrop-blur-sm">
+                <Card className="border-gray-100 dark:border-white/10 shadow-xl bg-white/80 dark:bg-white/10 backdrop-blur-sm">
                     <CardContent className="p-8">
                         {/* Tab Switcher */}
                         <div className="flex mb-8 bg-gray-50 p-1 rounded-lg border border-gray-100">
@@ -112,16 +112,17 @@ export default function AuthPage() {
                         <form onSubmit={handleAuth} className="space-y-5">
                             {mode === "signup" && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-gray-700 ml-1">
+                                    <label htmlFor="auth-full-name" className="text-sm font-medium text-gray-700 dark:text-white/90 ml-1">
                                         Full Name
                                     </label>
                                     <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                         <Input
+                                            id="auth-full-name"
                                             type="text"
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
-                                            className="pl-9 h-11 bg-gray-50/50 border-gray-200 focus-visible:ring-primary"
+                                            className="pl-9 h-11 bg-gray-50/50 dark:bg-white/10 border-gray-200 dark:border-white/10 text-secondary dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/50 focus-visible:ring-primary"
                                             placeholder="John Doe"
                                             required={mode === "signup"}
                                         />
@@ -130,16 +131,17 @@ export default function AuthPage() {
                             )}
 
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-gray-700 ml-1">
+                                <label htmlFor="auth-email" className="text-sm font-medium text-gray-700 dark:text-white/90 ml-1">
                                     Email
                                 </label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                     <Input
+                                        id="auth-email"
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-9 h-11 bg-gray-50/50 border-gray-200 focus-visible:ring-primary"
+                                        className="pl-9 h-11 bg-gray-50/50 dark:bg-white/10 border-gray-200 dark:border-white/10 text-secondary dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/50 focus-visible:ring-primary"
                                         placeholder="you@example.com"
                                         required
                                     />
@@ -147,16 +149,17 @@ export default function AuthPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-gray-700 ml-1">
+                                <label htmlFor="auth-password" className="text-sm font-medium text-gray-700 dark:text-white/90 ml-1">
                                     Password
                                 </label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                     <Input
+                                        id="auth-password"
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-9 h-11 bg-gray-50/50 border-gray-200 focus-visible:ring-primary"
+                                        className="pl-9 h-11 bg-gray-50/50 dark:bg-white/10 border-gray-200 dark:border-white/10 text-secondary dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/50 focus-visible:ring-primary"
                                         placeholder="••••••••"
                                         required
                                         minLength={6}
@@ -194,7 +197,7 @@ export default function AuthPage() {
                                 <Separator />
                             </div>
                             <div className="relative flex justify-center">
-                                <span className="bg-white px-3 text-xs uppercase tracking-wider text-gray-400 font-medium">or continue with</span>
+                                <span className="bg-white dark:bg-transparent px-3 text-xs uppercase tracking-wider text-gray-400 dark:text-white/60 font-medium">or continue with</span>
                             </div>
                         </div>
 

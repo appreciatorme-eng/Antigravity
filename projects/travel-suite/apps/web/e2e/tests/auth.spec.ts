@@ -11,6 +11,18 @@ test.describe('Authentication', () => {
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
+  test('email field should accept typing (light/dark)', async ({ page }) => {
+    // Ensure the field remains usable even if the app is in dark mode.
+    await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
+    await gotoWithRetry(page, '/auth');
+
+    const email = page.locator('#auth-email, input[type="email"]').first();
+    await email.click();
+    await email.fill('');
+    await page.keyboard.type('hello@example.com');
+    await expect(email).toHaveValue('hello@example.com');
+  });
+
   test('should show error for invalid credentials', async ({ page }) => {
     const response = await page.request.post('/api/auth/password-login', {
       data: {
