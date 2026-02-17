@@ -43,11 +43,17 @@ export default function AuthPage() {
                 if (error) throw error;
                 setMessage("Check your email for a confirmation link!");
             } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
+                const response = await fetch("/api/auth/password-login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ email, password }),
                 });
-                if (error) throw error;
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(payload.error || "Failed to sign in");
+                }
                 router.push("/planner");
                 router.refresh();
             }
