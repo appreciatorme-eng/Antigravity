@@ -59,7 +59,7 @@ export class PaymentService {
     // Check if customer already exists
     const { data: org } = await supabase
       .from('organizations')
-      .select('razorpay_customer_id, name, billing_email, gstin')
+      .select('razorpay_customer_id, name, gstin')
       .eq('id', organizationId)
       .single();
 
@@ -75,7 +75,7 @@ export class PaymentService {
     // Create new Razorpay customer
     const customer = await razorpay.customers.create({
       name: org.name,
-      email: org.billing_email || '',
+      email: '', // TODO: Fetch owner email or support billing_email
       gstin: org.gstin || undefined,
       notes: {
         organization_id: organizationId,
@@ -144,7 +144,7 @@ export class PaymentService {
         currency: 'INR',
         current_period_start: currentPeriodStart.toISOString(),
         current_period_end: currentPeriodEnd.toISOString(),
-        next_billing_date: currentPeriodEnd,
+        next_billing_date: currentPeriodEnd.toISOString(),
         trial_start: null, // TODO: Implement trial period
         trial_end: null,
       })
@@ -218,7 +218,7 @@ export class PaymentService {
       organizationId: subscription.organization_id,
       subscriptionId: subscription.id,
       eventType: 'subscription.cancelled',
-      externalId: subscription.razorpay_subscription_id,
+      externalId: subscription.razorpay_subscription_id || undefined,
       status: cancelAtPeriodEnd ? 'active' : 'cancelled',
       metadata: { cancelAtPeriodEnd },
     });
@@ -233,7 +233,7 @@ export class PaymentService {
     // Get organization details
     const { data: org } = await supabase
       .from('organizations')
-      .select('name, billing_email, gstin, billing_state')
+      .select('name, gstin, billing_state')
       .eq('id', options.organizationId)
       .single();
 
@@ -268,8 +268,9 @@ export class PaymentService {
       .from('invoices')
       .insert({
         organization_id: options.organizationId,
+        invoice_number: `INV-${Date.now()}`,
         client_id: options.clientId,
-        amount: totalAmount,
+        total_amount: totalAmount,
         subtotal: options.amount,
         cgst: gst.cgst,
         sgst: gst.sgst,
@@ -280,7 +281,7 @@ export class PaymentService {
         place_of_supply: customerState,
         sac_code: '998314', // SAC code for software services
         razorpay_invoice_id: razorpayInvoice.id,
-        due_date: options.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        due_date: (options.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).toISOString(), // 30 days from now
       })
       .select()
       .single();
@@ -328,15 +329,18 @@ export class PaymentService {
     const { error: paymentError } = await supabase
       .from('invoice_payments')
       .insert({
+        organization_id: invoice.organization_id,
         invoice_id: options.invoiceId,
         amount: options.amount,
-        payment_method: options.paymentMethod,
-        payment_date: new Date(),
-        notes: {
+        method: options.paymentMethod,
+        payment_date: new Date().toISOString(),
+        notes: JSON.stringify({
           razorpay_payment_id: options.razorpayPaymentId,
           razorpay_order_id: options.razorpayOrderId,
           payment_details: payment,
-        },
+        }),
+        currency: 'INR',
+        status: 'captured'
       });
 
     if (paymentError) {
@@ -345,7 +349,7 @@ export class PaymentService {
 
     // Update invoice status
     const newStatus =
-      options.amount >= (invoice.amount || 0) ? 'paid' : 'partially_paid';
+      options.amount >= (invoice.total_amount || 0) ? 'paid' : 'partially_paid';
 
     await supabase
       .from('invoices')
@@ -454,12 +458,6 @@ export class PaymentService {
 
     // Increment failed payment count if subscription
     if (subscriptionId) {
-      await supabase.rpc('increment', {
-        table_name: 'subscriptions',
-        row_id: subscriptionId,
-        column_name: 'failed_payment_count',
-      });
-
       // Get subscription to check failure count
       const { data: subscription } = await supabase
         .from('subscriptions')
@@ -467,14 +465,23 @@ export class PaymentService {
         .eq('id', subscriptionId)
         .single();
 
-      // Suspend subscription after 3 failed attempts
-      if (subscription && subscription.failed_payment_count >= 3) {
+      if (subscription) {
+        const newCount = (subscription.failed_payment_count || 0) + 1;
+
         await supabase
           .from('subscriptions')
-          .update({ status: 'paused' })
+          .update({ failed_payment_count: newCount })
           .eq('id', subscriptionId);
 
-        // TODO: Send notification to organization
+        // Suspend subscription after 3 failed attempts
+        if (newCount >= 3) {
+          await supabase
+            .from('subscriptions')
+            .update({ status: 'paused' })
+            .eq('id', subscriptionId);
+
+          // TODO: Send notification to organization
+        }
       }
     }
 
@@ -594,7 +601,7 @@ export class PaymentService {
 
       case 'users':
         const { count: userCount } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', organizationId);
         current = userCount || 0;

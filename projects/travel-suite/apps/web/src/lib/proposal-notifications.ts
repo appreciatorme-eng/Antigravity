@@ -43,7 +43,7 @@ export async function sendProposalEmail(notification: ProposalNotification): Pro
 
     // Get client email
     const { data: client } = await supabase
-      .from('clients')
+      .from('profiles')
       .select('email, full_name')
       .eq('id', notification.clientId)
       .single();
@@ -118,7 +118,7 @@ export async function sendProposalWhatsApp(notification: ProposalNotification): 
 
     // Get client phone
     const { data: client } = await supabase
-      .from('clients')
+      .from('profiles')
       .select('phone, full_name')
       .eq('id', notification.clientId)
       .single();
@@ -221,7 +221,7 @@ export async function notifyOperatorOfActivity(
       .from('proposals')
       .select(`
         *,
-        clients(full_name, email),
+        clients(profiles(full_name, email)),
         profiles(full_name, email)
       `)
       .eq('id', proposalId)
@@ -229,8 +229,13 @@ export async function notifyOperatorOfActivity(
 
     if (!proposal) return;
 
-    const clientName = (proposal as any).clients?.full_name || 'Client';
-    const operatorEmail = (proposal as any).profiles?.email;
+    // Get client info safely handling nested relations
+    const p = proposal as any;
+    const clientProfile = p.clients?.profiles || (Array.isArray(p.clients?.profiles) ? p.clients?.profiles[0] : null);
+    const clientName = clientProfile?.full_name || 'Client';
+
+    // Operator is the creator (profiles relation on proposal)
+    const operatorEmail = p.profiles?.email;
 
     if (!operatorEmail) return;
 

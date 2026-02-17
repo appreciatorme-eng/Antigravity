@@ -157,11 +157,13 @@ export default function PublicProposalPage() {
       // Format proposal data
       const formattedProposal: Proposal = {
         ...proposalData,
-        template_name: proposalData.tour_templates?.name,
-        destination: proposalData.tour_templates?.destination,
-        duration_days: proposalData.tour_templates?.duration_days,
-        description: proposalData.tour_templates?.description,
-        hero_image_url: proposalData.tour_templates?.hero_image_url,
+        total_price: proposalData.total_price || 0,
+        status: proposalData.status || 'draft',
+        template_name: proposalData.tour_templates?.name || undefined,
+        destination: proposalData.tour_templates?.destination || undefined,
+        duration_days: proposalData.tour_templates?.duration_days || undefined,
+        description: proposalData.tour_templates?.description || undefined,
+        hero_image_url: proposalData.tour_templates?.hero_image_url || undefined,
       };
 
       setProposal(formattedProposal);
@@ -176,7 +178,11 @@ export default function PublicProposalPage() {
       if (daysError) {
         console.error('Error loading days:', daysError);
       } else {
-        setDays(daysData || []);
+        const mappedDays: ProposalDay[] = (daysData || []).map(day => ({
+          ...day,
+          is_approved: day.is_approved || false
+        }));
+        setDays(mappedDays);
 
         // Expand first day by default
         if (daysData && daysData.length > 0) {
@@ -198,7 +204,18 @@ export default function PublicProposalPage() {
             if (!activitiesByDay[activity.proposal_day_id]) {
               activitiesByDay[activity.proposal_day_id] = [];
             }
-            activitiesByDay[activity.proposal_day_id].push(activity);
+            activitiesByDay[activity.proposal_day_id].push({
+              ...activity,
+              time: activity.time || null,
+              description: activity.description || null,
+              location: activity.location || null,
+              image_url: activity.image_url || null,
+              price: activity.price || 0,
+              is_optional: activity.is_optional || false,
+              is_premium: activity.is_premium || false,
+              is_selected: activity.is_selected || false,
+              display_order: activity.display_order || 0
+            });
           });
           setActivities(activitiesByDay);
 
@@ -211,7 +228,14 @@ export default function PublicProposalPage() {
           // Map accommodations by day
           const accommodationsByDay: Record<string, ProposalAccommodation> = {};
           (accommodationsData || []).forEach((acc) => {
-            accommodationsByDay[acc.proposal_day_id] = acc;
+            accommodationsByDay[acc.proposal_day_id] = {
+              ...acc,
+              room_type: acc.room_type || null,
+              amenities: acc.amenities || null,
+              image_url: acc.image_url || null,
+              star_rating: acc.star_rating || 0,
+              price_per_night: acc.price_per_night || 0
+            };
           });
           setAccommodations(accommodationsByDay);
         }
@@ -224,7 +248,11 @@ export default function PublicProposalPage() {
         .eq('proposal_id', proposalData.id)
         .order('created_at', { ascending: false });
 
-      setComments(commentsData || []);
+      setComments((commentsData || []).map(comment => ({
+        ...comment,
+        proposal_day_id: comment.proposal_day_id || null,
+        created_at: comment.created_at || new Date().toISOString()
+      })));
     } catch (error) {
       console.error('Error loading proposal:', error);
       setError('An error occurred while loading the proposal');
@@ -534,11 +562,10 @@ export default function PublicProposalPage() {
                         {dayActivities.map((activity) => (
                           <div
                             key={activity.id}
-                            className={`flex gap-4 p-4 rounded-lg transition-all ${
-                              activity.is_selected
-                                ? 'bg-[#f8f1e6] border-2 border-[#9c7c46]'
-                                : 'bg-gray-50 border-2 border-gray-200 opacity-60'
-                            }`}
+                            className={`flex gap-4 p-4 rounded-lg transition-all ${activity.is_selected
+                              ? 'bg-[#f8f1e6] border-2 border-[#9c7c46]'
+                              : 'bg-gray-50 border-2 border-gray-200 opacity-60'
+                              }`}
                           >
                             {/* Activity Toggle (if optional) */}
                             {activity.is_optional && (

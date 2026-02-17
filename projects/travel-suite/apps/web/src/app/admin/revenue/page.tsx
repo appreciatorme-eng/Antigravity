@@ -91,7 +91,7 @@ export default function RevenueDashboard() {
 
       // Get organization ID
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('organization_id')
         .eq('user_id', user.id)
         .single();
@@ -120,7 +120,7 @@ export default function RevenueDashboard() {
         // Invoices
         supabase
           .from('invoices')
-          .select('amount, status, created_at')
+          .select('total_amount, status, created_at')
           .eq('organization_id', orgId),
 
         // Add-ons
@@ -160,14 +160,14 @@ export default function RevenueDashboard() {
 
       if (invoicesResult.data) {
         invoicesResult.data.forEach((inv) => {
-          const amount = parseFloat(inv.amount?.toString() || '0');
+          const amount = parseFloat(inv.total_amount?.toString() || '0');
 
           if (inv.status === 'paid') {
             invoiceRevenue += amount;
             paidInvoices++;
 
             // Track monthly trend
-            const date = new Date(inv.created_at);
+            const date = new Date(inv.created_at || new Date().toISOString());
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
@@ -407,9 +407,8 @@ export default function RevenueDashboard() {
                     {trend.invoices} invoice{trend.invoices !== 1 ? 's' : ''}
                   </div>
                   {index > 0 && (
-                    <div className={`flex items-center justify-center gap-1 text-xs font-semibold ${
-                      isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
+                    <div className={`flex items-center justify-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                      }`}>
                       {isPositive ? (
                         <ArrowUpRight className="w-3 h-3" />
                       ) : (

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's organization
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id')
       .eq('user_id', user.id)
       .single();
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's organization with details
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id, organizations(name, billing_email, billing_state)')
       .eq('user_id', user.id)
       .single();

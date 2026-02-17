@@ -102,7 +102,13 @@ export default function ViewTemplatePage() {
         return;
       }
 
-      setTemplate(templateData);
+      setTemplate({
+        ...templateData,
+        status: templateData.status || 'draft',
+        is_public: templateData.is_public || false,
+        created_at: templateData.created_at || new Date().toISOString(),
+        updated_at: templateData.updated_at || new Date().toISOString(),
+      });
 
       // Load days
       const { data: daysData, error: daysError } = await supabase
@@ -131,7 +137,13 @@ export default function ViewTemplatePage() {
             if (!activitiesByDay[activity.template_day_id]) {
               activitiesByDay[activity.template_day_id] = [];
             }
-            activitiesByDay[activity.template_day_id].push(activity);
+            activitiesByDay[activity.template_day_id].push({
+              ...activity,
+              price: activity.price || 0,
+              is_optional: activity.is_optional || false,
+              is_premium: activity.is_premium || false,
+              display_order: activity.display_order || 0,
+            });
           });
           setActivities(activitiesByDay);
 
@@ -144,7 +156,11 @@ export default function ViewTemplatePage() {
           // Map accommodations by day
           const accommodationsByDay: Record<string, TemplateAccommodation> = {};
           (accommodationsData || []).forEach((acc) => {
-            accommodationsByDay[acc.template_day_id] = acc;
+            accommodationsByDay[acc.template_day_id] = {
+              ...acc,
+              star_rating: acc.star_rating || 0,
+              price_per_night: acc.price_per_night || 0,
+            };
           });
           setAccommodations(accommodationsByDay);
         }

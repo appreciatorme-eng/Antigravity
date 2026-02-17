@@ -1,0 +1,59 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "GoBuddy Adventures" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - generic [ref=e9]: GoBuddy Adventures
+      - navigation [ref=e10]:
+        - link "Home" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+          - text: Home
+        - link "Plan Trip" [ref=e15] [cursor=pointer]:
+          - /url: /planner
+          - img [ref=e16]
+          - text: Plan Trip
+      - generic [ref=e19]:
+        - link "Sign In" [ref=e20] [cursor=pointer]:
+          - /url: /auth
+        - link "Get Started" [ref=e21] [cursor=pointer]:
+          - /url: /auth
+  - main [ref=e22]:
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - img [ref=e27]
+          - heading "GoBuddy Adventures" [level=1] [ref=e29]
+          - paragraph [ref=e30]: Your AI-powered travel companion
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - button "Sign In" [ref=e34]
+            - button "Create Account" [active] [ref=e35]
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - text: Full Name
+              - generic [ref=e38]:
+                - img [ref=e39]
+                - textbox "John Doe" [ref=e42]
+            - generic [ref=e43]:
+              - text: Email
+              - generic [ref=e44]:
+                - img [ref=e45]
+                - textbox "you@example.com" [ref=e48]
+            - generic [ref=e49]:
+              - text: Password
+              - generic [ref=e50]:
+                - img [ref=e51]
+                - textbox "••••••••" [ref=e54]
+            - button "Create Account" [ref=e55]
+          - generic [ref=e59]: or continue with
+          - button "Continue with Google" [ref=e60]:
+            - img
+            - generic [ref=e61]: Continue with Google
+        - paragraph [ref=e62]: By continuing, you agree to our Terms of Service and Privacy Policy
+  - alert [ref=e63]
+```

@@ -100,18 +100,27 @@ export default function TourTemplatesPage() {
         // Load counts for each template
         const templatesWithCounts = await Promise.all(
           (data || []).map(async (template) => {
-            const { count: daysCount } = await supabase
+            const { data: days, count: daysCount } = await supabase
               .from('template_days')
-              .select('*', { count: 'exact', head: true })
+              .select('id', { count: 'exact' })
               .eq('template_id', template.id);
 
-            const { count: activitiesCount } = await supabase
-              .from('template_activities')
-              .select('*', { count: 'exact', head: true })
-              .eq('template_day_id', { in: [] }); // We'll need to join properly
+            let activitiesCount = 0;
+            if (days && days.length > 0) {
+              const dayIds = days.map((d) => d.id);
+              const { count } = await supabase
+                .from('template_activities')
+                .select('*', { count: 'exact', head: true })
+                .in('template_day_id', dayIds);
+              activitiesCount = count || 0;
+            }
 
             return {
               ...template,
+              status: template.status || 'draft',
+              is_public: template.is_public || false,
+              created_at: template.created_at || new Date().toISOString(),
+              updated_at: template.updated_at || new Date().toISOString(),
               days_count: daysCount || 0,
               activities_count: activitiesCount || 0,
             };

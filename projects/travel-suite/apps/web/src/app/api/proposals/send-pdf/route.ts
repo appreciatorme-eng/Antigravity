@@ -71,15 +71,12 @@ export async function POST(request: NextRequest) {
 
     // Log event
     await supabase.from('notification_logs').insert({
-      user_id: user.id,
-      type: 'proposal_pdf_email',
+      recipient_id: user.id,
+      notification_type: 'proposal_pdf_email',
       title: 'Proposal PDF Sent',
-      message: `PDF sent to ${client_email} for proposal: ${proposal_title}`,
-      metadata: {
-        proposal_id,
-        client_email,
-        sent_at: new Date().toISOString(),
-      },
+      body: `PDF sent to ${client_email} for proposal: ${proposal_title}`,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
     });
 
     return NextResponse.json({

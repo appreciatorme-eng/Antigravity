@@ -72,14 +72,21 @@ export default function CreateProposalPage() {
       // Load clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, full_name, email, phone')
-        .eq('organization_id', profile.organization_id)
-        .order('full_name', { ascending: true });
+        .select('id, profiles(full_name, email, phone)')
+        .eq('organization_id', profile.organization_id);
 
       if (clientsError) {
         console.error('Error loading clients:', clientsError);
       } else {
-        setClients(clientsData || []);
+        const formattedClients = (clientsData || [])
+          .map((client: any) => ({
+            ...client,
+            full_name: client.profiles?.full_name || 'Unknown',
+            email: client.profiles?.email || '',
+            phone: client.profiles?.phone || '',
+          }))
+          .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''));
+        setClients(formattedClients);
       }
 
       // Load templates

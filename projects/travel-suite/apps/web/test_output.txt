@@ -1,0 +1,118 @@
+
+Running 6 tests using 1 worker
+
+[1A[2K[1/6] e2e/tests/auth.spec.ts:4:7 › Authentication › should display login page
+[1A[2K  1) e2e/tests/auth.spec.ts:4:7 › Authentication › should display login page ───────────────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/auth", waiting until "load"[22m
+
+
+      3 | test.describe('Authentication', () => {
+      4 |   test('should display login page', async ({ page }) => {
+    > 5 |     await page.goto('/auth');
+        |                ^
+      6 |
+      7 |     // Check for login form elements
+      8 |     await expect(page.locator('input[type="email"], input[name="email"]')).toBeVisible();
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:5:16
+
+
+[1A[2K[2/6] e2e/tests/auth.spec.ts:13:7 › Authentication › should show error for invalid credentials
+[1A[2K  2) e2e/tests/auth.spec.ts:13:7 › Authentication › should show error for invalid credentials ──────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/auth", waiting until "load"[22m
+
+
+      12 |
+      13 |   test('should show error for invalid credentials', async ({ page }) => {
+    > 14 |     await page.goto('/auth');
+         |                ^
+      15 |
+      16 |     // Fill in invalid credentials
+      17 |     await page.fill('input[type="email"], input[name="email"]', 'invalid@test.com');
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:14:16
+
+
+[1A[2K[3/6] e2e/tests/auth.spec.ts:29:7 › Authentication › should redirect unauthenticated users from protected routes
+[1A[2K  3) e2e/tests/auth.spec.ts:29:7 › Authentication › should redirect unauthenticated users from protected routes 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/admin", waiting until "load"[22m
+
+
+      29 |   test('should redirect unauthenticated users from protected routes', async ({ page }) => {
+      30 |     // Try to access admin page without login
+    > 31 |     await page.goto('/admin');
+         |                ^
+      32 |
+      33 |     // Should redirect to login
+      34 |     await expect(page).toHaveURL(/auth/);
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:31:16
+
+
+[1A[2K[4/6] e2e/tests/auth.spec.ts:37:7 › Authentication › should have Google OAuth option
+[1A[2K  4) e2e/tests/auth.spec.ts:37:7 › Authentication › should have Google OAuth option ────────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/auth", waiting until "load"[22m
+
+
+      36 |
+      37 |   test('should have Google OAuth option', async ({ page }) => {
+    > 38 |     await page.goto('/auth');
+         |                ^
+      39 |
+      40 |     // Check for Google sign in button
+      41 |     const googleButton = page.locator('text=Google, [data-provider="google"]');
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:38:16
+
+
+[1A[2K[5/6] e2e/tests/auth.spec.ts:45:7 › Authentication › should navigate to register page
+[1A[2K  5) e2e/tests/auth.spec.ts:45:7 › Authentication › should navigate to register page ───────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/auth", waiting until "load"[22m
+
+
+      44 |
+      45 |   test('should navigate to register page', async ({ page }) => {
+    > 46 |     await page.goto('/auth');
+         |                ^
+      47 |
+      48 |     // Click register link
+      49 |     const registerLink = page.locator('text=Sign up, text=Register, text=Create account').first();
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:46:16
+
+
+[1A[2K[6/6] e2e/tests/auth.spec.ts:58:7 › Registration › should allow switching to sign-up mode
+[1A[2K  6) e2e/tests/auth.spec.ts:58:7 › Registration › should allow switching to sign-up mode ───────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/auth", waiting until "load"[22m
+
+
+      57 | test.describe('Registration', () => {
+      58 |   test('should allow switching to sign-up mode', async ({ page }) => {
+    > 59 |     await page.goto('/auth');
+         |                ^
+      60 |
+      61 |     const signUpSwitch = page.locator('button, a').filter({ hasText: /sign up|create account|register/i }).first();
+      62 |     await signUpSwitch.click();
+        at /Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/e2e/tests/auth.spec.ts:59:16
+
+
+[1A[2K  6 failed
+    e2e/tests/auth.spec.ts:4:7 › Authentication › should display login page ────────────────────────
+    e2e/tests/auth.spec.ts:13:7 › Authentication › should show error for invalid credentials ───────
+    e2e/tests/auth.spec.ts:29:7 › Authentication › should redirect unauthenticated users from protected routes 
+    e2e/tests/auth.spec.ts:37:7 › Authentication › should have Google OAuth option ─────────────────
+    e2e/tests/auth.spec.ts:45:7 › Authentication › should navigate to register page ────────────────
+    e2e/tests/auth.spec.ts:58:7 › Registration › should allow switching to sign-up mode ────────────

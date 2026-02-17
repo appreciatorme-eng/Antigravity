@@ -30,7 +30,7 @@ export async function GET(
 
     // Get user's organization
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id')
       .eq('user_id', user.id)
       .single();
@@ -82,7 +82,7 @@ export async function PUT(
 
     // Get user's organization
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id')
       .eq('user_id', user.id)
       .single();
@@ -146,7 +146,7 @@ export async function DELETE(
 
     // Get user's organization
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id')
       .eq('user_id', user.id)
       .single();

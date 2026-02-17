@@ -114,7 +114,9 @@ export default function AdminProposalViewPage() {
         .select(
           `
           *,
-          clients(full_name, email),
+          clients(
+            profiles(full_name, email)
+          ),
           tour_templates(name)
         `
         )
@@ -129,8 +131,13 @@ export default function AdminProposalViewPage() {
 
       const formattedProposal: Proposal = {
         ...proposalData,
-        client_name: proposalData.clients?.full_name || 'Unknown Client',
-        client_email: proposalData.clients?.email,
+        status: proposalData.status || 'draft',
+        total_price: proposalData.total_price || 0,
+        version: proposalData.version || 1,
+        created_at: proposalData.created_at || new Date().toISOString(),
+        updated_at: proposalData.updated_at || new Date().toISOString(),
+        client_name: proposalData.clients?.profiles?.full_name || 'Unknown Client',
+        client_email: proposalData.clients?.profiles?.email || undefined,
         template_name: proposalData.tour_templates?.name,
       };
 
@@ -529,11 +536,10 @@ export default function AdminProposalViewPage() {
             {comments.map((comment) => (
               <div
                 key={comment.id}
-                className={`p-4 rounded-lg border ${
-                  comment.is_resolved
-                    ? 'bg-gray-50/90 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
-                    : 'bg-orange-50/90 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
-                }`}
+                className={`p-4 rounded-lg border ${comment.is_resolved
+                  ? 'bg-gray-50/90 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
+                  : 'bg-orange-50/90 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                  }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>

@@ -126,7 +126,7 @@ export async function getTemplateAnalytics(
       return { success: false, error: error.message };
     }
 
-    return { success: true, data: data as TemplateAnalytics };
+    return { success: true, data: data as unknown as TemplateAnalytics };
   } catch (error) {
     console.error('Error getting template analytics:', error);
     return {
@@ -158,7 +158,7 @@ export async function getTopTemplatesByUsage(
       return { success: false, error: error.message };
     }
 
-    return { success: true, data: data as TopTemplate[] };
+    return { success: true, data: data as unknown as TopTemplate[] };
   } catch (error) {
     console.error('Error getting top templates:', error);
     return {
@@ -215,6 +215,7 @@ export async function getTemplateViewTimeline(
 
     // Count views
     viewsData?.forEach((view) => {
+      if (!view.viewed_at) return;
       const dateKey = new Date(view.viewed_at).toISOString().split('T')[0];
       if (timeline[dateKey]) {
         timeline[dateKey].views++;
@@ -223,6 +224,7 @@ export async function getTemplateViewTimeline(
 
     // Count uses
     usesData?.forEach((use) => {
+      if (!use.created_at) return;
       const dateKey = new Date(use.created_at).toISOString().split('T')[0];
       if (timeline[dateKey]) {
         timeline[dateKey].uses++;

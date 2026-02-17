@@ -31,7 +31,7 @@ export async function GET(
 
     // Get user's organization
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('organization_id, organizations(name)')
       .eq('user_id', user.id)
       .single();
@@ -45,7 +45,15 @@ export async function GET(
       .from('proposals')
       .select(`
         *,
-        clients(name, email),
+        clients (
+          profiles (
+            full_name,
+            email
+          )
+        ),
+        tour_templates (
+          destination
+        ),
         proposal_days(
           *,
           proposal_activities(
@@ -65,10 +73,20 @@ export async function GET(
     }
 
     // Format data for PDF component
+    // Cast to any because TS definition for nested join might be tricky to infer automatically here
+    const p = proposal as any;
+    const clientProfile = p.clients?.profiles || p.clients?.profiles?.[0]; // Handle if it returns array or single
+
     const proposalData = {
       ...proposal,
-      client_name: proposal.clients?.name || 'Valued Customer',
-      client_email: proposal.clients?.email,
+      total_price: proposal.total_price || 0,
+      client_selected_price: proposal.client_selected_price || 0,
+      status: proposal.status || 'draft',
+      created_at: proposal.created_at || new Date().toISOString(),
+      destination: (p.tour_templates?.destination) || 'Destination',
+      currency: 'USD',
+      client_name: clientProfile?.full_name || 'Valued Customer',
+      client_email: clientProfile?.email,
       days: proposal.proposal_days?.map((day: any) => ({
         ...day,
         activities: day.proposal_activities || [],
