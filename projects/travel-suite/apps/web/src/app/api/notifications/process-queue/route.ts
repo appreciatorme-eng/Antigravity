@@ -168,7 +168,7 @@ function isServiceRoleBearer(authHeader: string | null): boolean {
     return token === supabaseServiceKey;
 }
 
-function isSignedCronRequest(request: NextRequest): boolean {
+function isSignedCronRequest(request: Request): boolean {
     if (!signingSecret) return false;
 
     const ts = request.headers.get("x-cron-ts") || "";
@@ -179,7 +179,8 @@ function isSignedCronRequest(request: NextRequest): boolean {
     const now = Date.now();
     if (Math.abs(now - tsMs) > 5 * 60_000) return false;
 
-    const payload = `${ts}:${request.method}:${request.nextUrl.pathname}`;
+    const { pathname } = new URL(request.url);
+    const payload = `${ts}:${request.method}:${pathname}`;
     const expected = createHmac("sha256", signingSecret).update(payload).digest("hex");
 
     const sigBuf = Buffer.from(signature, "utf8");
@@ -232,17 +233,18 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
     return (inserted as any)?.share_token || null;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
     const startedAt = Date.now();
-    const requestId = getRequestId(request);
-    const requestContext = getRequestContext(request, requestId);
+    const requestId = getRequestId(request as any);
+    const requestContext = getRequestContext(request as any, requestId);
 
     try {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
         const authHeader = request.headers.get("authorization");
 
         const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
-        const signedAuthorized = isSignedCronRequest(request);
+        const { pathname, origin } = new URL(request.url);
+        const signedAuthorized = isSignedCronRequest(request as any);
         const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
         const adminAuthorized = await isAdminBearerToken(authHeader);
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
@@ -298,7 +300,8 @@ export async function POST(request: NextRequest) {
             if (row.notification_type === "pickup_reminder") {
                 const token = await resolveLiveLinkForQueueItem(row, payload);
                 if (token) {
-                    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+                    const { origin } = new URL(request.url);
+                    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
                     const liveUrl = `${appUrl.replace(/\/$/, "")}/live/${token}`;
                     body = `${body}\n\nTrack live location:\n${liveUrl}`;
                     templateVars.live_link = liveUrl;

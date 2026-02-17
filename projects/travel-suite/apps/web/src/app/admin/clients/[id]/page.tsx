@@ -21,15 +21,20 @@ export default async function ClientProfilePage({
         .single();
 
     if (error || !profile) {
+        console.error("Profile fetch error or not found:", error, id);
         notFound();
     }
 
     // Fetch trips
-    const { data: trips } = await supabase
+    const { data: trips, error: tripsError } = await supabase
         .from("trips")
         .select("*, itineraries(destination)")
         .eq("client_id", id)
         .order("start_date", { ascending: false });
+
+    if (tripsError) {
+        console.error("Trips fetch error:", tripsError);
+    }
 
     // Helper to format currency
     const formatCurrency = (amount: number | null) => {
@@ -40,7 +45,9 @@ export default async function ClientProfilePage({
     // Helper for date
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return "N/A";
-        return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return "N/A";
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     };
 
     // Extract client info safely
@@ -142,7 +149,7 @@ export default async function ClientProfilePage({
                             <div className="mt-2">
                                 <span className="block mb-2 text-xs uppercase tracking-widest text-primary font-bold">Interests</span>
                                 <div className="flex flex-wrap gap-2">
-                                    {(profile.interests || []).map((interest: string) => (
+                                    {(Array.isArray(profile.interests) ? profile.interests : []).map((interest: string) => (
                                         <GlassBadge key={interest} variant="success">
                                             {interest}
                                         </GlassBadge>
@@ -156,21 +163,21 @@ export default async function ClientProfilePage({
                     </GlassCard>
 
                     {/* NEW: Health & Dietary Requirements */}
-                    {(profile.dietary_requirements?.length || profile.mobility_needs) ? (
+                    {(Array.isArray(profile.dietary_requirements) && profile.dietary_requirements.length > 0 || profile.mobility_needs) ? (
                         <GlassCard padding="lg" rounded="2xl">
                             <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
                                 <HeartPulse className="w-5 h-5 text-rose-400" />
                                 Health & Accessibility
                             </h2>
                             <div className="space-y-4">
-                                {profile.dietary_requirements && profile.dietary_requirements.length > 0 && (
+                                {Array.isArray(profile.dietary_requirements) && profile.dietary_requirements.length > 0 && (
                                     <div>
                                         <div className="flex items-center gap-2 text-sm font-medium text-secondary dark:text-white mb-2">
                                             <Utensils className="w-4 h-4 text-primary" />
                                             Dietary Requirements
                                         </div>
                                         <div className="flex flex-wrap gap-2">
-                                            {profile.dietary_requirements.map((req: string) => (
+                                            {(profile.dietary_requirements as string[]).map((req: string) => (
                                                 <GlassBadge key={req} variant="danger">
                                                     {req}
                                                 </GlassBadge>
@@ -197,7 +204,7 @@ export default async function ClientProfilePage({
 
                 {/* Right Column: Trips & History */}
                 <div className="space-y-8">
-                    <GlassCard padding="lg" rounded="2xl">
+                    <GlassCard padding="lg" rounded="2xl" blur="md" opacity="medium">
                         <h2 className="text-lg font-serif text-secondary dark:text-white mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5 text-primary" />
                             Notes & Preferences
@@ -222,7 +229,13 @@ export default async function ClientProfilePage({
                             {trips && trips.length > 0 ? trips.map((trip) => (
                                 <div key={trip.id} className="flex items-center justify-between rounded-lg border border-white/20 bg-white/40 dark:bg-white/5 px-4 py-3">
                                     <div>
-                                        <p className="text-sm font-semibold text-secondary dark:text-white">{trip.itineraries?.destination || "Custom Trip"}</p>
+                                        <p className="text-sm font-semibold text-secondary dark:text-white">
+                                            {(() => {
+                                                const itin = (trip as any).itineraries || (trip as any).itinerary;
+                                                if (Array.isArray(itin)) return itin[0]?.destination || "Custom Trip";
+                                                return itin?.destination || "Custom Trip";
+                                            })()}
+                                        </p>
                                         <p className="text-xs text-text-secondary flex items-center gap-2 mt-1">
                                             <CalendarDays className="w-3 h-3" />
                                             {formatDate(trip.start_date)} - {formatDate(trip.end_date)}

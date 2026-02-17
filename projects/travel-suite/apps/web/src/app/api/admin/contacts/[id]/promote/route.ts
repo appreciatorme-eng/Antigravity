@@ -20,7 +20,7 @@ function normalizePhone(phone?: string | null): string | null {
     return normalized || null;
 }
 
-async function getAdminProfile(req: NextRequest) {
+async function getAdminProfile(req: Request) {
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) return null;
     const token = authHeader.substring(7);
@@ -37,10 +37,10 @@ async function getAdminProfile(req: NextRequest) {
     return profile;
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     const startedAt = Date.now();
-    const requestId = getRequestId(req);
-    const requestContext = getRequestContext(req, requestId);
+    const requestId = getRequestId(req as any);
+    const requestContext = getRequestContext(req as any, requestId);
 
     try {
         const adminProfile = await getAdminProfile(req);

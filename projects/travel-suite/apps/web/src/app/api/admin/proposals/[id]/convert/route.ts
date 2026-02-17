@@ -25,7 +25,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-async function getAdminUserId(req: NextRequest) {
+async function getAdminUserId(req: Request) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -41,7 +41,7 @@ async function getAdminUserId(req: NextRequest) {
     return user?.id || null;
 }
 
-async function requireAdmin(req: NextRequest) {
+async function requireAdmin(req: Request) {
     const adminUserId = await getAdminUserId(req);
     if (!adminUserId) {
         return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -64,7 +64,7 @@ async function requireAdmin(req: NextRequest) {
 }
 
 export async function POST(
-    req: NextRequest,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {

@@ -12,7 +12,7 @@ function sha256(value: string): string {
     return createHash("sha256").update(value).digest("hex");
 }
 
-function getClientIp(req: NextRequest): string {
+function getClientIp(req: Request): string {
     const forwarded = req.headers.get("x-forwarded-for");
     if (forwarded) {
         return forwarded.split(",")[0]?.trim() || "unknown";
@@ -21,7 +21,7 @@ function getClientIp(req: NextRequest): string {
 }
 
 export async function GET(
-    req: NextRequest,
+    req: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
     try {

@@ -111,8 +111,16 @@ export default function AddOnsPage() {
   async function loadData() {
     setLoading(true);
     try {
+      // Get session for Auth header
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       // Load add-ons
-      const response = await fetch('/api/add-ons');
+      const response = await fetch('/api/add-ons', { headers });
       const data = await response.json();
 
       if (data.addOns) {
@@ -126,7 +134,7 @@ export default function AddOnsPage() {
       }
 
       // Load stats
-      const statsResponse = await fetch('/api/add-ons/stats');
+      const statsResponse = await fetch('/api/add-ons/stats', { headers });
       const statsData = await statsResponse.json();
 
       if (statsData) {
@@ -247,9 +255,16 @@ export default function AddOnsPage() {
 
       const method = editingAddOn ? 'PUT' : 'POST';
 
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData),
       });
 
@@ -279,8 +294,16 @@ export default function AddOnsPage() {
     if (!addOnToDelete) return;
 
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch(`/api/add-ons/${addOnToDelete.id}`, {
         method: 'DELETE',
+        headers,
       });
 
       const data = await response.json();
@@ -301,9 +324,16 @@ export default function AddOnsPage() {
 
   async function toggleActive(addon: AddOn) {
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch(`/api/add-ons/${addon.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           ...addon,
           is_active: !addon.is_active,

@@ -40,7 +40,7 @@ interface ReminderDayStatus {
     lastScheduledFor: string | null;
 }
 
-async function requireAdmin(req: NextRequest) {
+async function requireAdmin(req: Request) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -81,12 +81,13 @@ async function requireAdmin(req: NextRequest) {
     return { userId: user.id, organizationId: adminProfile.organization_id };
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id?: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     try {
         const admin = await requireAdmin(req);
         if ("error" in admin) return admin.error;
 
-        const pathId = req.nextUrl.pathname.split("/").pop();
+        const { pathname } = new URL(req.url);
+        const pathId = pathname.split("/").pop();
         const { id: paramId } = await params;
         const tripId = (paramId || pathId || "").trim();
 

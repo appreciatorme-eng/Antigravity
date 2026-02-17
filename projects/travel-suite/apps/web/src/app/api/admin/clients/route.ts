@@ -18,7 +18,7 @@ const lifecycleTemplateByStage: Record<string, string> = {
     past: "lifecycle_past",
 };
 
-async function getAdminUserId(req: NextRequest) {
+async function getAdminUserId(req: Request) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -34,7 +34,7 @@ async function getAdminUserId(req: NextRequest) {
     return user?.id || null;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
     try {
         const adminUserId = await getAdminUserId(req);
         if (!adminUserId) {
@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
     try {
         const adminUserId = await getAdminUserId(req);
         if (!adminUserId) {
@@ -267,7 +267,7 @@ export async function GET(req: NextRequest) {
     }
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
         const clientId = searchParams.get("id");
@@ -316,7 +316,7 @@ export async function DELETE(req: NextRequest) {
     }
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(req: Request) {
     try {
         const adminUserId = await getAdminUserId(req);
         if (!adminUserId) {
