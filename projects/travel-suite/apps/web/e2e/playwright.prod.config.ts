@@ -16,9 +16,11 @@ export default defineConfig({
   
   use: {
     baseURL: process.env.BASE_URL || 'https://travelsuite-rust.vercel.app',
-    trace: 'on-first-retry',
+    // Keep disk usage tiny (prod runs happen in a constrained environment).
+    // Override via CLI flags if you need artifacts for debugging.
+    trace: 'off',
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
+    video: 'off',
   },
 
   projects: [
@@ -28,7 +30,8 @@ export default defineConfig({
     },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Use the locally installed Google Chrome to avoid downloading Playwright browsers.
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
       dependencies: ['setup'],
     },
   ],
