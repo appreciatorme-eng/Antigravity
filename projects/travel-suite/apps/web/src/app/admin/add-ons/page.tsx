@@ -37,7 +37,7 @@ interface AddOn {
   name: string;
   description: string | null;
   price: number;
-  category: 'Activities' | 'Dining' | 'Transport' | 'Upgrades';
+  category: string;
   image_url: string | null;
   duration: string | null;
   is_active: boolean;
@@ -51,15 +51,6 @@ interface Stats {
   totalAddOns: number;
   activeAddOns: number;
 }
-
-const CATEGORIES = ['All', 'Activities', 'Dining', 'Transport', 'Upgrades'] as const;
-
-const CATEGORY_OPTIONS = [
-  { value: 'Activities', label: 'Activities' },
-  { value: 'Dining', label: 'Dining' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Upgrades', label: 'Upgrades' },
-];
 
 const getCategoryColor = (category: string) => {
   const colors = {
@@ -82,6 +73,9 @@ export default function AddOnsPage() {
     totalAddOns: 0,
     activeAddOns: 0,
   });
+
+  const [categories, setCategories] = useState<string[]>(['All', 'Activities', 'Dining', 'Transport', 'Upgrades']);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -123,6 +117,12 @@ export default function AddOnsPage() {
 
       if (data.addOns) {
         setAddOns(data.addOns);
+
+        // Extract unique categories
+        const unique = Array.from(new Set(data.addOns.map((a: AddOn) => a.category)));
+        const defaultCats = ['Activities', 'Dining', 'Transport', 'Upgrades'];
+        const allCats = Array.from(new Set([...defaultCats, ...unique as string[]])).sort();
+        setCategories(['All', ...allCats]);
       }
 
       // Load stats
@@ -176,12 +176,17 @@ export default function AddOnsPage() {
       image_url: '',
       duration: '',
     });
+    setIsCustomCategory(false);
     setFormErrors({});
     setModalOpen(true);
   }
 
   function openEditModal(addon: AddOn) {
     setEditingAddOn(addon);
+
+    const defaultCats = ['Activities', 'Dining', 'Transport', 'Upgrades'];
+    setIsCustomCategory(!defaultCats.includes(addon.category));
+
     setFormData({
       name: addon.name,
       description: addon.description || '',
@@ -415,7 +420,7 @@ export default function AddOnsPage() {
       {/* Category Tabs + Create Button */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <GlassButton
               key={category}
               variant={selectedCategory === category ? 'primary' : 'ghost'}
@@ -601,15 +606,45 @@ export default function AddOnsPage() {
               placeholder="0.00"
             />
 
-            <GlassSelect
-              label="Category"
-              required
-              options={CATEGORY_OPTIONS}
-              value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value as any })
-              }
-            />
+            {!isCustomCategory ? (
+              <GlassSelect
+                label="Category"
+                required
+                options={[
+                  ...categories.filter(c => c !== 'All').map(c => ({ value: c, label: c })),
+                  { value: 'custom', label: 'Other...' }
+                ]}
+                value={formData.category}
+                onChange={(e) => {
+                  if (e.target.value === 'custom') {
+                    setIsCustomCategory(true);
+                    setFormData({ ...formData, category: '' });
+                  } else {
+                    setFormData({ ...formData, category: e.target.value });
+                  }
+                }}
+              />
+            ) : (
+              <div className="space-y-1">
+                <GlassInput
+                  label="Custom Category"
+                  required
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="e.g. VIP Service"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomCategory(false);
+                    setFormData({ ...formData, category: 'Activities' });
+                  }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Back to list
+                </button>
+              </div>
+            )}
           </div>
 
           <GlassInput

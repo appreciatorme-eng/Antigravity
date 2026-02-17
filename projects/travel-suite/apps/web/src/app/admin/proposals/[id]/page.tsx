@@ -23,6 +23,7 @@ import {
   History,
 } from 'lucide-react';
 import Link from 'next/link';
+import ConvertProposalModal from '@/components/admin/ConvertProposalModal';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
@@ -76,6 +77,7 @@ export default function AdminProposalViewPage() {
   });
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
 
   // Real-time subscription
@@ -349,6 +351,18 @@ export default function AdminProposalViewPage() {
             <History className="w-4 h-4" />
             Version History ({proposal.version})
           </GlassButton>
+
+          {(proposal.status === 'approved' || proposal.approved_at) && (
+            <GlassButton
+              variant="primary"
+              onClick={() => setConvertModalOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Convert to Trip
+            </GlassButton>
+          )}
+
           <GlassButton variant="primary" onClick={sendProposal}>
             <Send className="w-4 h-4" />
             Send to Client
@@ -643,6 +657,17 @@ export default function AdminProposalViewPage() {
           )}
         </ul>
       </div>
+
+      {/* Convert Modal */}
+      {proposal && (
+        <ConvertProposalModal
+          open={convertModalOpen}
+          onOpenChange={setConvertModalOpen}
+          proposalId={proposal.id}
+          proposalTitle={proposal.title}
+          onSuccess={(tripId) => router.push(`/admin/trips/${tripId}`)}
+        />
+      )}
     </div>
   );
 }

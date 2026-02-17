@@ -90,7 +90,8 @@ async function loginAs(page: Page, userType: UserType) {
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
-      const response = await page.request.post('/api/auth/password-login', {
+      const baseURL = process.env.BASE_URL || 'http://127.0.0.1:3100';
+      const response = await page.request.post(`${baseURL}/api/auth/password-login`, {
         data: {
           email: user.email,
           password: user.password,

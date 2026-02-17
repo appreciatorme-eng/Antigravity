@@ -3,8 +3,8 @@
 **Project:** Travel Suite
 **Database:** Supabase PostgreSQL with PostGIS
 **Location:** `/Users/justforfun/Desktop/Antigravity/projects/travel-suite/supabase/migrations/`
-**Total Migrations:** 39 files
-**Last Updated:** February 15, 2026
+**Total Migrations:** 46 files
+**Last Updated:** February 17, 2026
 
 ---
 
@@ -527,6 +527,65 @@
 
 ---
 
+### Phase 14: Stability & Fixes (February 17, 2026)
+
+#### Migration 40: `20260217010000_localhost_auth_and_queue_idempotency.sql`
+**Purpose:** Enforce notification queue idempotency foundation.
+
+**Changes:**
+- Cleaned up duplicate idempotency keys
+- Added unique index to prevent future duplicates
+
+**Status:** ✅ Applied
+
+#### Migration 41: `20260217011000_fix_notification_queue_idempotency_constraint.sql`
+**Purpose:** Fix unique index for reliable upserts.
+
+**Changes:**
+- Replaced partial index with full unique index
+- Enables proper ON CONFLICT behavior
+
+**Status:** ✅ Applied
+
+#### Migration 42: `20260217012000_fix_trip_assignment_rls_recursion.sql`
+**Purpose:** Fix infinite recursion in RLS policies.
+
+**Functions Created:**
+- `driver_has_external_trip_assignment(trip_id, user_id)` - Secure check function
+
+**Changes:**
+- Replaced recursive RLS policy on `trips` table with function call
+- Improved policy performance and stability
+
+**Status:** ✅ Applied
+
+#### Migration 43: `20260217013000_fix_external_drivers_admin_insert_policy.sql`
+**Purpose:** Allow admins to create external drivers efficiently.
+
+**Changes:**
+- Updated `Admins can manage external drivers` policy
+- Added missing `WITH CHECK` clause to allow INSERT operations
+
+**Status:** ✅ Applied
+
+#### 44. Fix External Drivers Admin Policy (`20260217013000`)
+- **File:** `20260217013000_fix_external_drivers_admin_insert_policy.sql`
+- **Purpose:** Allow admins to insert/update external drivers.
+- **Changes:**
+  - Adds `WITH CHECK` clause to `external_drivers` policy for admins.
+- **Status:** Applied.
+
+### 45. Admin Profiles Access (`20260217154500`)
+- **File:** `20260217154500_admin_profiles_policy.sql`
+- **Purpose:** Allow organization admins to view and manage client profiles.
+- **Changes:**
+  - Adds `SELECT`, `UPDATE`, `INSERT`, `DELETE` policies for `profiles` table for admins in same organization.
+- **Status:** Applied. missing `WITH CHECK` clause to allow INSERT operations
+
+**Status:** ✅ Applied
+
+---
+
 ## Complete Table Inventory (50+ tables)
 
 ### User & Organization (5 tables)
@@ -650,7 +709,7 @@
 
 ## Migration Statistics
 
-**Total Migrations:** 39
+**Total Migrations:** 43
 **Total Tables:** 50+
 **Total RPC Functions:** 12+
 **Total Indexes:** 100+ (estimated)
@@ -658,7 +717,7 @@
 
 **Lines of SQL:** ~8,000+ lines
 **Migration Timeline:** Feb 2024 - Feb 2026 (2 years)
-**Most Recent:** Template analytics (Feb 15, 2026)
+**Most Recent:** Fix external drivers admin insert policy (Feb 17, 2026)
 
 ---
 
