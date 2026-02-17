@@ -65,13 +65,12 @@ async function requireAdmin(req: NextRequest) {
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id: proposalId } = await params;
         const admin = await requireAdmin(req);
         if ("error" in admin) return admin.error;
-
-        const proposalId = params.id;
         const body = await req.json();
         const startDateStr = String(body.startDate || "");
 

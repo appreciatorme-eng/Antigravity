@@ -8,7 +8,7 @@ import type { Day, Activity, ItineraryResult } from "@/types/itinerary";
 export default async function SharedTripPage({
     params,
 }: {
-    params: { token: string };
+    params: Promise<{ token: string }>;
 }) {
     const supabase = await createClient();
     const { token } = await params;

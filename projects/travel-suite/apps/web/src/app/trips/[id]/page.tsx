@@ -5,7 +5,7 @@ import TripDetailClient from "@/components/TripDetailClient";
 export default async function TripDetailPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
     const supabase = await createClient();
     const { id } = await params;
