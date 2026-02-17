@@ -33,9 +33,11 @@ test.describe('Planner Integration (prod)', () => {
     // Wait for either success or an error toast (and fail fast if it's an error).
     const successHeader = clientPage.locator('text=Days in');
     const errorToast = clientPage.locator('div', { hasText: /failed to generate|missing google api key/i });
+    const fatalError = clientPage.getByRole('heading', { name: /application error/i });
     await expect
       .poll(
         async () => {
+          if (await fatalError.isVisible().catch(() => false)) return 'fatal';
           if (await errorToast.isVisible().catch(() => false)) return 'error';
           if (await successHeader.first().isVisible().catch(() => false)) return 'success';
           return 'pending';
