@@ -7,7 +7,7 @@
 
 'use client';
 
-import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, TextareaHTMLAttributes, forwardRef, useId } from 'react';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
@@ -29,6 +29,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
     className,
     ...props
   }, ref) => {
+    const inputId = props.id ?? useId();
     const inputStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -46,7 +47,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
     return (
       <div className={cn('space-y-1.5', fullWidth ? 'w-full' : '')}>
         {label && (
-          <label className="block text-sm font-medium text-secondary dark:text-white/90">
+          <label htmlFor={inputId} className="block text-sm font-medium text-secondary dark:text-white/90">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -60,6 +61,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
           )}
           <input
             ref={ref}
+            id={inputId}
             className={inputStyles}
             {...props}
           />
@@ -95,6 +97,7 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
     className,
     ...props
   }, ref) => {
+    const textareaId = props.id ?? useId();
     const textareaStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -112,7 +115,7 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
     return (
       <div className={cn('space-y-1.5', fullWidth ? 'w-full' : '')}>
         {label && (
-          <label className="block text-sm font-medium text-secondary dark:text-white/90">
+          <label htmlFor={textareaId} className="block text-sm font-medium text-secondary dark:text-white/90">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -120,6 +123,7 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
 
         <textarea
           ref={ref}
+          id={textareaId}
           className={textareaStyles}
           {...props}
         />
@@ -156,6 +160,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
     className,
     ...props
   }, ref) => {
+    const selectId = props.id ?? useId();
     const selectStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -172,7 +177,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
     return (
       <div className={cn('space-y-1.5', fullWidth ? 'w-full' : '')}>
         {label && (
-          <label className="block text-sm font-medium text-secondary dark:text-white/90">
+          <label htmlFor={selectId} className="block text-sm font-medium text-secondary dark:text-white/90">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -181,6 +186,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
         <div className="relative">
           <select
             ref={ref}
+            id={selectId}
             className={selectStyles}
             {...props}
           >

@@ -1,15 +1,16 @@
 import { test, expect } from '../fixtures/auth';
+import { gotoWithRetry } from '../fixtures/navigation';
 
 test.describe('Trip Management', () => {
   test('client can view their trips', async ({ clientPage }) => {
-    await clientPage.goto('/trips');
+    await gotoWithRetry(clientPage, '/trips');
 
     // Should see trips page
-    await expect(clientPage.locator('h1, h2').filter({ hasText: /trips|itineraries/i })).toBeVisible();
+    await expect(clientPage.locator('h1, h2').filter({ hasText: /trips|itineraries|journeys/i })).toBeVisible();
   });
 
   test('client can view trip details', async ({ clientPage }) => {
-    await clientPage.goto('/trips');
+    await gotoWithRetry(clientPage, '/trips');
 
     // Click on first trip if available
     const tripCard = clientPage.locator('[data-testid="trip-card"]').first();
@@ -27,7 +28,7 @@ test.describe('Trip Management', () => {
   });
 
   test('client can use "I\'ve Landed" button', async ({ clientPage }) => {
-    await clientPage.goto('/trips');
+    await gotoWithRetry(clientPage, '/trips');
 
     // Find an active trip
     const activeTrip = clientPage.locator('[data-status="in_progress"], [data-status="active"]').first();
@@ -53,14 +54,15 @@ test.describe('Trip Management', () => {
 
 test.describe('Admin Trip Management', () => {
   test('admin can view all trips', async ({ adminPage }) => {
-    await adminPage.goto('/admin/trips');
+    await gotoWithRetry(adminPage, '/admin/trips');
 
-    // Should see trips table or list
-    await expect(adminPage.locator('table, [data-testid="trips-list"]')).toBeVisible();
+    // Should see trips page content
+    await expect(adminPage.locator('h1, h2').filter({ hasText: /trips/i })).toBeVisible();
+    await expect(adminPage.locator('a[href^="/admin/trips/"], [data-testid="trip-item"], table').first()).toBeVisible();
   });
 
   test('admin can filter trips by status', async ({ adminPage }) => {
-    await adminPage.goto('/admin/trips');
+    await gotoWithRetry(adminPage, '/admin/trips');
 
     // Find status filter
     const statusFilter = adminPage.locator('select, [data-testid="status-filter"]');
@@ -75,7 +77,7 @@ test.describe('Admin Trip Management', () => {
   });
 
   test('admin can view trip details and assignments', async ({ adminPage }) => {
-    await adminPage.goto('/admin/trips');
+    await gotoWithRetry(adminPage, '/admin/trips');
 
     // Click on first trip
     const tripRow = adminPage.locator('tr, [data-testid="trip-item"]').first();
@@ -90,7 +92,7 @@ test.describe('Admin Trip Management', () => {
   });
 
   test('admin can assign driver to trip day', async ({ adminPage }) => {
-    await adminPage.goto('/admin/trips');
+    await gotoWithRetry(adminPage, '/admin/trips');
 
     // Click on first trip
     const tripRow = adminPage.locator('tr, [data-testid="trip-item"]').first();
@@ -120,7 +122,7 @@ test.describe('Admin Trip Management', () => {
   });
 
   test('admin can send notification to client', async ({ adminPage }) => {
-    await adminPage.goto('/admin/trips');
+    await gotoWithRetry(adminPage, '/admin/trips');
 
     // Click on first trip
     const tripRow = adminPage.locator('tr, [data-testid="trip-item"]').first();

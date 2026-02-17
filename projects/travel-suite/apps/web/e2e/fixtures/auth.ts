@@ -1,4 +1,6 @@
-import { test as base, expect, Page } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { test as base, expect, Browser, Page } from '@playwright/test';
 
 // Test user credentials (use test accounts in your Supabase)
 const TEST_USERS = {
@@ -16,6 +18,15 @@ const TEST_USERS = {
   },
 };
 
+type UserType = 'client' | 'admin' | 'driver';
+
+const AUTH_STATE_DIR = path.resolve(__dirname, '..', '.auth');
+const AUTH_STATE_PATHS: Record<UserType, string> = {
+  client: path.join(AUTH_STATE_DIR, 'client.json'),
+  admin: path.join(AUTH_STATE_DIR, 'admin.json'),
+  driver: path.join(AUTH_STATE_DIR, 'driver.json'),
+};
+
 // Extend base test with authentication fixtures
 export const test = base.extend<{
   authenticatedPage: Page;
@@ -23,44 +34,83 @@ export const test = base.extend<{
   clientPage: Page;
 }>({
   // Generic authenticated page (client role)
-  authenticatedPage: async ({ page }, runFixture) => {
-    await loginAs(page, 'client');
-    await runFixture(page);
+  authenticatedPage: async ({ browser }, runFixture) => {
+    const page = await createAuthenticatedPage(browser, 'client');
+    try {
+      await runFixture(page);
+    } finally {
+      await page.context().close();
+    }
   },
 
   // Admin authenticated page
-  adminPage: async ({ page }, runFixture) => {
-    await loginAs(page, 'admin');
-    await runFixture(page);
+  adminPage: async ({ browser }, runFixture) => {
+    const page = await createAuthenticatedPage(browser, 'admin');
+    try {
+      await runFixture(page);
+    } finally {
+      await page.context().close();
+    }
   },
 
   // Client authenticated page
-  clientPage: async ({ page }, runFixture) => {
-    await loginAs(page, 'client');
-    await runFixture(page);
+  clientPage: async ({ browser }, runFixture) => {
+    const page = await createAuthenticatedPage(browser, 'client');
+    try {
+      await runFixture(page);
+    } finally {
+      await page.context().close();
+    }
   },
 });
+
+async function createAuthenticatedPage(browser: Browser, userType: UserType): Promise<Page> {
+  const statePath = AUTH_STATE_PATHS[userType];
+
+  if (fs.existsSync(statePath)) {
+    const context = await browser.newContext({ storageState: statePath });
+    return context.newPage();
+  }
+
+  // Fallback for local runs if setup file did not run.
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await loginAs(page, userType);
+  return page;
+}
 
 /**
  * Login as a specific user type
  */
-async function loginAs(page: Page, userType: 'client' | 'admin' | 'driver') {
+async function loginAs(page: Page, userType: UserType) {
   const user = TEST_USERS[userType];
 
-  // Go to auth page
-  await page.goto('/auth');
+  // Use API login for stable cookie/session setup across SSR/client routes.
+  let lastError: unknown = null;
 
-  // Fill in credentials
-  await page.fill('input[name="email"], input[type="email"]', user.email);
-  await page.fill('input[name="password"], input[type="password"]', user.password);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      const response = await page.request.post('/api/auth/password-login', {
+        data: {
+          email: user.email,
+          password: user.password,
+        },
+      });
 
-  // Submit form
-  await page.click('button[type="submit"]');
+      if (response.ok()) {
+        return;
+      }
 
-  // Wait for successful login (redirect away from auth page)
-  await page.waitForURL((url) => !url.pathname.includes('/auth'), {
-    timeout: 10000,
-  });
+      const message = await response.text();
+      lastError = new Error(`HTTP ${response.status()} ${message}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    await page.waitForTimeout(1000 + attempt * 500);
+  }
+
+  expect(lastError, `Login failed for ${userType}`).toBeNull();
 }
 
 /**
