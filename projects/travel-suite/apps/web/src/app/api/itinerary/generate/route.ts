@@ -2,6 +2,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import { z } from 'zod';
 
+function extractDestination(prompt: string): string {
+    // Best-effort: try to extract the first "for <destination>" clause.
+    const m = prompt.match(/\bfor\s+([^.\n"]{2,80})/i);
+    return (m?.[1] || prompt).trim().slice(0, 80);
+}
+
+function buildFallbackItinerary(prompt: string, days: number) {
+    const destination = extractDestination(prompt) || 'Destination';
+    return {
+        trip_title: `Trip to ${destination}`,
+        destination,
+        duration_days: days,
+        summary:
+            'A simple itinerary was generated because the AI planner was unavailable. You can retry to get a richer plan.',
+        days: Array.from({ length: days }, (_, idx) => ({
+            day_number: idx + 1,
+            theme: 'Highlights',
+            activities: [
+                {
+                    time: 'Morning',
+                    title: 'Arrive and explore',
+                    description: 'Start with a central neighborhood walk and a cafe stop.',
+                    location: destination,
+                    coordinates: { lat: 0, lng: 0 },
+                },
+                {
+                    time: 'Afternoon',
+                    title: 'Top attractions',
+                    description: 'Visit a landmark and a museum that fits your interests.',
+                    location: destination,
+                    coordinates: { lat: 0, lng: 0 },
+                },
+                {
+                    time: 'Evening',
+                    title: 'Dinner and views',
+                    description: 'Enjoy a local dinner and a scenic viewpoint or river walk.',
+                    location: destination,
+                    coordinates: { lat: 0, lng: 0 },
+                },
+            ],
+        })),
+    };
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    let timeoutId: NodeJS.Timeout | null = null;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+
 // Schema for input validation
 const RequestSchema = z.object({
     prompt: z.string().min(2, "Prompt must be at least 2 characters"),
@@ -52,18 +108,28 @@ const itinerarySchema: Schema = {
 };
 
 export async function POST(req: NextRequest) {
+    let body: unknown = null;
     try {
-        const body = await req.json();
-        const { prompt, days } = RequestSchema.parse(body);
+        body = await req.json();
+    } catch {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const parsed = RequestSchema.safeParse(body);
+    if (!parsed.success) {
+        return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const { prompt, days } = parsed.data;
+
+    try {
 
         const apiKey =
             process.env.GOOGLE_API_KEY ||
             process.env.GOOGLE_GEMINI_API_KEY;
         if (!apiKey) {
-            return NextResponse.json(
-                { error: "Missing Google API Key (GOOGLE_API_KEY)" },
-                { status: 500 }
-            );
+            // Keep planner functional even if AI isn't configured.
+            return NextResponse.json(buildFallbackItinerary(prompt, days));
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -82,9 +148,16 @@ export async function POST(req: NextRequest) {
       For coordinates, provide a rough estimate for the city/location.
     `;
 
-        const result = await model.generateContent(finalPrompt);
-        const responseText = result.response.text();
-        const itinerary = JSON.parse(responseText);
+        let itinerary: any;
+        try {
+            // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
+            const result = await withTimeout(model.generateContent(finalPrompt), 45_000);
+            const responseText = result.response.text();
+            itinerary = JSON.parse(responseText);
+        } catch (innerError) {
+            console.error("AI Generation Error (fallback):", innerError);
+            itinerary = buildFallbackItinerary(prompt, days);
+        }
 
         // Defensive normalization for UI expectations.
         if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
@@ -95,9 +168,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
         console.error("AI Generation Error:", error);
-        return NextResponse.json(
-            { error: "Failed to generate itinerary", details: error instanceof Error ? error.message : String(error) },
-            { status: 500 }
-        );
+        return NextResponse.json(buildFallbackItinerary(prompt, days));
     }
 }

@@ -70,20 +70,27 @@ export default function CreateProposalPage() {
       }
 
       // Load clients
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('clients')
-        .select('id, profiles(full_name, email, phone)')
-        .eq('organization_id', profile.organization_id);
-
-      if (clientsError) {
-        console.error('Error loading clients:', clientsError);
+      // Use admin API (service role) to avoid relying on `profiles` RLS for foreign-table joins.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+      const clientsResp = await fetch('/api/admin/clients', { headers });
+      if (!clientsResp.ok) {
+        const payload = await clientsResp.json().catch(() => ({}));
+        console.error('Error loading clients:', payload);
       } else {
-        const formattedClients = (clientsData || [])
+        const payload = await clientsResp.json();
+        const clientsData = Array.isArray(payload?.clients) ? payload.clients : [];
+        const formattedClients = clientsData
           .map((client: any) => ({
-            ...client,
-            full_name: client.profiles?.full_name || 'Unknown',
-            email: client.profiles?.email || '',
-            phone: client.profiles?.phone || '',
+            id: client.id,
+            full_name: client.full_name || 'Unknown',
+            email: client.email || '',
+            phone: client.phone || '',
           }))
           .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''));
         setClients(formattedClients);
