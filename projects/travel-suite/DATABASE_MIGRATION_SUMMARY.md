@@ -580,9 +580,7 @@
 - **Purpose:** Allow organization admins to view and manage client profiles.
 - **Changes:**
   - Adds `SELECT`, `UPDATE`, `INSERT`, `DELETE` policies for `profiles` table for admins in same organization.
-- **Status:** Applied. missing `WITH CHECK` clause to allow INSERT operations
-
-**Status:** ✅ Applied
+- **Status:** ✅ Applied
 
 ---
 

@@ -29,7 +29,7 @@ This guide outlines how a tour operator can leverage the Travel Suite web applic
 2.  **Add-ons (Upselling):**
     *   **Navigate to** `/admin/add-ons`.
     *   **Create Add-on:** Define extra services like "Airport Transfer", "Spa Package", or "Late Checkout".
-    *   **Set Price & Category:** Categorize for easier browsing.
+    *   **Set Price & Category:** Type a new category name (e.g., "VIP Services") or select an existing one. The system remembers your custom categories.
     *   **Usage:** These can be added to Proposals or Active Trips.
 
 **Recommendations:**
@@ -60,7 +60,11 @@ This guide outlines how a tour operator can leverage the Travel Suite web applic
 **Goal:** Execute the sold trip flawlessly.
 
 **Workflow:**
-1.  **Convert to Trip:** Once a proposal is accepted, it becomes an active Trip in `/admin/trips`.
+1.  **Convert to Trip:**
+    *   Navigate to the approved Proposal (`/admin/proposals/[id]`).
+    *   Click the **"Convert to Trip"** button at the top right.
+    *   Select the **Start Date** for the trip.
+    *   The system creates a new Trip, copies the itinerary and add-ons, and redirects you to the trip page.
 2.  **Detailed Planning:**
     *   **Navigate to** `/admin/trips/[id]`.
     *   Refine itinerary with exact times and logistics.
