@@ -230,11 +230,17 @@ export async function notifyOperatorOfActivity(
     if (!proposal) return;
 
     // Get client info safely handling nested relations
-    const p = proposal as any;
-    const clientProfile = p.clients?.profiles || (Array.isArray(p.clients?.profiles) ? p.clients?.profiles[0] : null);
-    const clientName = clientProfile?.full_name || 'Client';
+    // We use unknown cast first to satisfy strict typing when dealing with complex joins
+    const p = proposal as unknown as {
+      clients: { profiles: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null } | null;
+      profiles: { email: string | null } | null;
+    };
 
-    // Operator is the creator (profiles relation on proposal)
+    const clientProfile = Array.isArray(p.clients?.profiles)
+      ? p.clients?.profiles[0]
+      : p.clients?.profiles;
+
+    const clientName = clientProfile?.full_name || 'Client';
     const operatorEmail = p.profiles?.email;
 
     if (!operatorEmail) return;

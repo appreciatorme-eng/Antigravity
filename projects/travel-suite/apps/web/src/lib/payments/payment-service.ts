@@ -198,6 +198,7 @@ export class PaymentService {
     }
 
     // Update database
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: any = {
       cancel_at_period_end: cancelAtPeriodEnd,
       updated_at: new Date().toISOString(),
@@ -512,7 +513,7 @@ export class PaymentService {
     status?: string;
     errorCode?: string;
     errorDescription?: string;
-    metadata: any;
+    metadata: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   }): Promise<void> {
     const supabase = await createClient();
 
@@ -534,7 +535,7 @@ export class PaymentService {
   /**
    * Get organization's current subscription
    */
-  async getCurrentSubscription(organizationId: string): Promise<any | null> {
+  async getCurrentSubscription(organizationId: string): Promise<any | null> { // eslint-disable-line @typescript-eslint/no-explicit-any
     const supabase = await createClient();
 
     const { data: subscription } = await supabase

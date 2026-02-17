@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link [ref=e5]:
+        - /url: /
+        - img [ref=e7]
+      - generic [ref=e9]:
+        - button "Switch to dark mode" [ref=e10]:
+          - img [ref=e11]
+        - button [ref=e17]:
+          - img [ref=e18]
+  - main [ref=e19]:
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - img [ref=e24]
+          - heading "GoBuddy Adventures" [level=1] [ref=e26]
+          - paragraph [ref=e27]: Your AI-powered travel companion
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - button "Sign In" [ref=e31]
+            - button "Create Account" [ref=e32]
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - text: Email
+              - generic [ref=e35]:
+                - img [ref=e36]
+                - textbox "you@example.com" [active] [ref=e39]
+            - generic [ref=e40]:
+              - text: Password
+              - generic [ref=e41]:
+                - img [ref=e42]
+                - textbox "••••••••" [ref=e45]: testpassword123
+            - button "Sign In" [ref=e46]
+          - generic [ref=e50]: or continue with
+          - button "Continue with Google" [ref=e51]:
+            - img
+            - generic [ref=e52]: Continue with Google
+        - paragraph [ref=e53]: By continuing, you agree to our Terms of Service and Privacy Policy
+  - button "Open Next.js Dev Tools" [ref=e59] [cursor=pointer]:
+    - img [ref=e60]
+  - alert [ref=e65]
+```
