@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ExtractedTourData } from '@/lib/import/pdf-extractor';
+import type { ExtractedTourData } from '@/lib/import/types';
 
 interface ImportPreviewProps {
   extractedData: ExtractedTourData;

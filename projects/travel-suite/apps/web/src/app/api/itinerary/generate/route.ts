@@ -73,6 +73,9 @@ const itinerarySchema: Schema = {
         destination: { type: SchemaType.STRING, description: "Primary destination city/country" },
         duration_days: { type: SchemaType.NUMBER, description: "Total number of days" },
         summary: { type: SchemaType.STRING, description: "Brief overview of the vibe" },
+        budget: { type: SchemaType.STRING, description: "Budget style (Budget-Friendly/Moderate/Luxury/Ultra-High End)" },
+        interests: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Interests the itinerary is optimized for" },
+        tips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Practical tips (booking, transport, timing)" },
         days: {
             type: SchemaType.ARRAY,
             items: {
@@ -85,10 +88,13 @@ const itinerarySchema: Schema = {
                         items: {
                             type: SchemaType.OBJECT,
                             properties: {
-                                time: { type: SchemaType.STRING, description: "Morning/Afternoon/Evening or specific time" },
+                                time: { type: SchemaType.STRING, description: "Specific start time like '09:00 AM' (preferred) or Morning/Afternoon/Evening" },
                                 title: { type: SchemaType.STRING },
                                 description: { type: SchemaType.STRING },
                                 location: { type: SchemaType.STRING, description: "Name of the place" },
+                                duration: { type: SchemaType.STRING, description: "Expected duration, e.g. '1.5h' or '2 hours'" },
+                                cost: { type: SchemaType.STRING, description: "Cost estimate, e.g. '$25' or 'Free' or '€10-€20'" },
+                                transport: { type: SchemaType.STRING, description: "How to get there from previous stop (walk/metro/taxi/ride-share) + approx time" },
                                 coordinates: {
                                     type: SchemaType.OBJECT,
                                     description: "Lat/Lng mostly for map placement (estimate)",
@@ -104,7 +110,7 @@ const itinerarySchema: Schema = {
             }
         }
     },
-    required: ["trip_title", "destination", "duration_days", "days"]
+    required: ["trip_title", "destination", "duration_days", "summary", "days"]
 };
 
 export async function POST(req: NextRequest) {
@@ -142,10 +148,19 @@ export async function POST(req: NextRequest) {
         });
 
         const finalPrompt = `
-      Act as an expert luxury travel planner. 
+      Act as an expert travel planner.
       Create a ${days}-day itinerary for the following request: "${prompt}".
-      Ensure the itinerary is logical, geographically efficient, and includes specific real-world locations.
-      For coordinates, provide a rough estimate for the city/location.
+
+      Requirements:
+      - Exactly ${days} days in the "days" array; day_number must be 1..${days}
+      - 4-6 activities per day with realistic pacing and specific start times (prefer '09:00 AM')
+      - Use real places and neighborhoods; keep it geographically efficient (cluster nearby places)
+      - For each activity include: duration, cost estimate, and transport + approx travel time from previous stop
+      - Include 1-2 food/coffee suggestions per day (as activities)
+      - Provide practical "tips" (booking/entry, best times, closures, local transport)
+      - Coordinates should be rough estimates for map placement
+
+      Output must be valid JSON matching the provided schema. No markdown.
     `;
 
         let itinerary: any;
@@ -162,6 +177,23 @@ export async function POST(req: NextRequest) {
         // Defensive normalization for UI expectations.
         if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
             itinerary.duration_days = days;
+        }
+        if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
+            itinerary.summary = buildFallbackItinerary(prompt, days).summary;
+        }
+        if (!Array.isArray(itinerary.days)) {
+            itinerary.days = buildFallbackItinerary(prompt, days).days;
+        }
+        itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
+            ...d,
+            day_number: idx + 1,
+            theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
+            activities: Array.isArray(d?.activities) ? d.activities : [],
+        }));
+        // If the model returned fewer days, pad with fallbacks.
+        if (itinerary.days.length < days) {
+            const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
+            itinerary.days = itinerary.days.concat(pad);
         }
 
         return NextResponse.json(itinerary);

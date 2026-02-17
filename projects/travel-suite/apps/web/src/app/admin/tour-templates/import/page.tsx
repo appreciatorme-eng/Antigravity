@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { extractTourFromPDF, validateExtractedTour, type ExtractedTourData } from '@/lib/import/pdf-extractor';
-import { extractTourFromURL, getTourPreviewFromURL } from '@/lib/import/url-scraper';
+import { validateExtractedTour, type ExtractedTourData } from '@/lib/import/types';
 import ImportPreview from '@/components/import/ImportPreview';
 import { Upload, Link as LinkIcon, Loader2, FileText, Globe, AlertCircle } from 'lucide-react';
 
@@ -45,7 +44,15 @@ export default function ImportTourPage() {
     setError(null);
 
     try {
-      const result = await extractTourFromPDF(pdfFile);
+      const fd = new FormData();
+      fd.set('method', 'pdf');
+      fd.set('file', pdfFile);
+
+      const res = await fetch('/api/admin/tour-templates/extract', {
+        method: 'POST',
+        body: fd,
+      });
+      const result = await res.json();
 
       if (!result.success || !result.data) {
         setError(result.error || 'Failed to extract tour data from PDF');
@@ -75,7 +82,12 @@ export default function ImportTourPage() {
     setError(null);
 
     try {
-      const result = await getTourPreviewFromURL(url);
+      const res = await fetch('/api/admin/tour-templates/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'preview', url }),
+      });
+      const result = await res.json();
 
       if (!result.success || !result.preview) {
         setError(result.error || 'Failed to fetch URL preview');
@@ -95,7 +107,12 @@ export default function ImportTourPage() {
     setError(null);
 
     try {
-      const result = await extractTourFromURL(url);
+      const res = await fetch('/api/admin/tour-templates/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'url', url }),
+      });
+      const result = await res.json();
 
       if (!result.success || !result.data) {
         setError(result.error || 'Failed to extract tour data from URL');

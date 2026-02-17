@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
-import Image from "next/image";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -46,29 +45,65 @@ export default function PlannerPage() {
 
     const [images, setImages] = useState<Record<string, string | null>>({});
 
+    const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
+
+    const getImageQueryCandidates = (itineraryData: ItineraryResult, act: Activity) => {
+        const rawLocation = (act.location || "").trim();
+        const primaryLocation = rawLocation.split(",")[0]?.trim() || rawLocation;
+        const destination = itineraryData.destination?.trim();
+        const title = (act.title || "").trim();
+
+        const candidates = [
+            [title, rawLocation].filter(Boolean).join(" ").trim(),
+            [title, destination].filter(Boolean).join(" ").trim(),
+            [primaryLocation, destination].filter(Boolean).join(" ").trim(),
+            primaryLocation,
+            destination,
+        ].filter((q) => q && q.length >= 3);
+
+        return Array.from(new Set(candidates));
+    };
+
     const fetchImagesForItinerary = async (itineraryData: ItineraryResult) => {
-        const locations: string[] = [];
+        const jobs: Array<{ key: string; candidates: string[] }> = [];
+        const imageMap: Record<string, string | null> = {};
         itineraryData.days.forEach((day) => {
-            day.activities.forEach((act) => {
-                if (act.location) locations.push(act.location);
+            day.activities.forEach((act, idx) => {
+                const key = activityImageKey(day.day_number, idx);
+                const candidates = getImageQueryCandidates(itineraryData, act);
+                if (candidates.length === 0) {
+                    imageMap[key] = null;
+                    return;
+                }
+                jobs.push({ key, candidates });
             });
         });
 
-        const imageMap: Record<string, string | null> = {};
+        const concurrency = 6;
+        let i = 0;
 
-        // Fetch in parallel but limited to avoid rate limits if necessary
-        // For now, simple parallel fetch is fine for small itineraries
-        await Promise.all(locations.map(async (loc) => {
-            // Simple cache check if needed, but here we just fetch
-            try {
-                const url = await fetch(`/api/images?query=${encodeURIComponent(loc)}`).then(r => r.json()).then(d => d.url);
-                imageMap[loc] = url;
-            } catch (error) {
-                console.error("Failed to load image for", loc, error);
-                imageMap[loc] = null;
+        async function worker() {
+            while (i < jobs.length) {
+                const job = jobs[i++];
+                try {
+                    let found: string | null = null;
+                    for (const q of job.candidates) {
+                        const resp = await fetch(`/api/images?query=${encodeURIComponent(q)}`);
+                        const data = await resp.json().catch(() => ({}));
+                        if (resp.ok && typeof data?.url === "string" && data.url.length > 0) {
+                            found = data.url;
+                            break;
+                        }
+                    }
+                    imageMap[job.key] = found;
+                } catch (err) {
+                    console.error("Failed to load image for", job.key, err);
+                    imageMap[job.key] = null;
+                }
             }
-        }));
+        }
 
+        await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker()));
         setImages(imageMap);
     };
 
@@ -91,7 +126,14 @@ export default function PlannerPage() {
         const interestString = interests.length > 0
             ? ` focusing on ${interests.join(", ")}`
             : "";
-        const finalPrompt = `Create a ${budget} ${days}-day itinerary for ${prompt}${interestString}. Include specific practical details.`;
+        const finalPrompt = `Create a ${budget} ${days}-day itinerary for ${prompt}${interestString}.
+Make it practical and specific:
+- Use realistic start times and include 4-6 activities per day
+- Mention neighborhoods/areas, how to get there (walk/metro/taxi), and approximate travel time between stops
+- Add expected duration and estimated cost where relevant
+- Include 1-2 food/coffee suggestions per day
+- Add short booking/entry tips where needed
+- Keep it geographically efficient (cluster nearby places)`;
 
         try {
             const res = await fetch("/api/itinerary/generate", {
@@ -117,16 +159,16 @@ export default function PlannerPage() {
     };
 
     return (
-        <main className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20">
+        <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
             <div className="max-w-4xl mx-auto px-6 py-10">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
-                    <p className="text-gray-500 text-lg font-light">Design your perfect trip with the power of AI</p>
+                    <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
                 </div>
 
                 {!result ? (
-                    <Card className="border-gray-100 shadow-xl bg-white/80 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 border-b border-gray-100 pb-6">
+                    <Card className="border-gray-100 dark:border-white/10 shadow-xl bg-white/80 dark:bg-slate-950/40 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 dark:from-white/5 dark:to-white/0 border-b border-gray-100 dark:border-white/10 pb-6">
                             <CardTitle className="text-xl flex items-center gap-2 text-secondary">
                                 <Sparkles className="w-5 h-5 text-primary" />
                                 Start your adventure
@@ -138,12 +180,12 @@ export default function PlannerPage() {
                         <CardContent className="p-6 md:p-8 space-y-8">
                             {/* Destination Input */}
                             <div className="space-y-3">
-                                <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                     <MapPin className="w-4 h-4 text-primary" /> Where to?
                                 </label>
                                 <Input
                                     type="text"
-                                    className="h-14 text-lg bg-gray-50/50 border-gray-200 focus-visible:ring-primary pl-4"
+                                    className="h-14 text-lg bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary pl-4"
                                     placeholder="e.g. Paris, Tokyo, New York"
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
@@ -153,7 +195,7 @@ export default function PlannerPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {/* Duration Input */}
                                 <div className="space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                         <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
                                     </label>
                                     <Input
@@ -162,13 +204,13 @@ export default function PlannerPage() {
                                         max={14}
                                         value={days}
                                         onChange={(e) => setDays(Number(e.target.value))}
-                                        className="h-12 bg-gray-50/50 border-gray-200 focus-visible:ring-primary"
+                                        className="h-12 bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary"
                                     />
                                 </div>
 
                                 {/* Budget Input */}
                                 <div className="space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                         <Wallet className="w-4 h-4 text-primary" /> Budget
                                     </label>
                                     <div className="grid grid-cols-2 gap-2">
@@ -178,7 +220,7 @@ export default function PlannerPage() {
                                                 onClick={() => setBudget(option.value)}
                                                 className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 border ${budget === option.value
                                                     ? 'bg-primary text-white border-primary shadow-md transform scale-[1.02]'
-                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                                                    : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-white/10'
                                                     }`}
                                             >
                                                 {option.label}
@@ -190,7 +232,7 @@ export default function PlannerPage() {
 
                             {/* Interests Input */}
                             <div className="space-y-3">
-                                <label className="text-sm font-medium text-gray-700 ml-1 flex items-center gap-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                     <Plane className="w-4 h-4 text-primary" /> Interests
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -200,7 +242,7 @@ export default function PlannerPage() {
                                             onClick={() => toggleInterest(tag)}
                                             className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 ${interests.includes(tag)
                                                 ? 'bg-secondary text-white border-secondary shadow-sm transform scale-105'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:border-secondary hover:text-secondary hover:bg-gray-50'
+                                                : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-secondary hover:text-secondary hover:bg-gray-50 dark:hover:bg-white/10'
                                                 }`}
                                         >
                                             {tag}
@@ -233,11 +275,11 @@ export default function PlannerPage() {
                 ) : (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                         {/* Actions Bar */}
-                        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 sticky top-4 z-20 backdrop-blur-md bg-white/80">
+                        <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10">
                             <Button
                                 variant="ghost"
                                 onClick={() => setResult(null)}
-                                className="text-gray-500 hover:text-secondary"
+                                className="text-gray-500 dark:text-slate-300 hover:text-secondary"
                             >
                                 ← Start Over
                             </Button>
@@ -263,20 +305,20 @@ export default function PlannerPage() {
                                 {result.duration_days} Days in {result.destination}
                             </Badge>
                             <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
-                            <p className="text-xl text-gray-600 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
+                            <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
                         </div>
 
                         {/* Map & Widgets */}
                         <div className="grid lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 relative">
+                            <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
                                 <ItineraryMap
                                     activities={result.days.flatMap((day: Day) => day.activities)}
                                 />
                             </div>
                             <div className="space-y-6">
-                                <Card className="border-gray-200 shadow-md h-full">
+                                <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
                                     <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500">Destination Info</CardTitle>
+                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Destination Info</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-6 pt-4">
                                         <WeatherWidget destination={result.destination} days={days} />
@@ -290,8 +332,8 @@ export default function PlannerPage() {
                         {/* Day by Day */}
                         <div className="space-y-8">
                             {result.days.map((day: Day) => (
-                                <Card key={day.day_number} className="overflow-hidden border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
-                                    <div className="bg-gradient-to-r from-secondary/5 to-transparent px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <Card key={day.day_number} className="overflow-hidden border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md hover:shadow-lg transition-all duration-300">
+                                    <div className="bg-gradient-to-r from-secondary/5 to-transparent dark:from-white/5 px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
                                         <h3 className="text-xl font-bold text-secondary flex items-center gap-3">
                                             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-white text-sm font-bold shadow-sm">
                                                 {day.day_number}
@@ -300,47 +342,64 @@ export default function PlannerPage() {
                                         </h3>
                                     </div>
                                     <CardContent className="p-0">
-                                        <div className="divide-y divide-gray-100">
-                                            {day.activities.map((act: Activity, idx: number) => (
-                                                <div key={idx} className="p-6 hover:bg-gray-50/50 transition-colors">
+                                        <div className="divide-y divide-gray-100 dark:divide-white/10">
+                                            {day.activities.map((act: Activity, idx: number) => {
+                                                const imgKey = activityImageKey(day.day_number, idx);
+                                                const imgUrl = images[imgKey];
+
+                                                return (
+                                                <div key={idx} className="p-6 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
                                                     <div className="flex flex-col md:flex-row gap-5">
                                                         <div className="flex items-start gap-3 w-24 shrink-0 pt-1">
-                                                            <Badge variant="outline" className="font-mono text-xs bg-gray-50">
+                                                            <Badge variant="outline" className="font-mono text-xs bg-gray-50 dark:bg-white/5 dark:text-slate-100 dark:border-white/10">
                                                                 {act.time}
                                                             </Badge>
                                                         </div>
 
-                                                        {images[act.location] && (
-                                                            <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100">
-                                                                <Image
-                                                                    src={images[act.location]!}
-                                                                    alt={act.location}
-                                                                    width={128}
-                                                                    height={96}
+                                                        <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100 dark:ring-white/10 bg-gray-100/50 dark:bg-white/5">
+                                                            {imgUrl === undefined ? (
+                                                                <div className="w-full h-full animate-pulse bg-gray-200/60 dark:bg-white/10" />
+                                                            ) : imgUrl ? (
+                                                                <img
+                                                                    src={imgUrl}
+                                                                    alt={act.location || act.title}
                                                                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                                                                    loading="lazy"
+                                                                    referrerPolicy="no-referrer"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.src = "/placeholder-image.svg";
+                                                                    }}
                                                                 />
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <img
+                                                                    src="/placeholder-image.svg"
+                                                                    alt="No image available"
+                                                                    className="w-full h-full object-cover opacity-80"
+                                                                    loading="lazy"
+                                                                />
+                                                            )}
+                                                        </div>
 
                                                         <div className="flex-1 space-y-2">
                                                             <div className="flex items-start justify-between">
-                                                                <h4 className="text-lg font-semibold text-gray-900 leading-tight">
+                                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-slate-50 leading-tight">
                                                                     {act.title}
                                                                 </h4>
                                                             </div>
 
-                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-300 font-medium">
                                                                 <MapPin className="w-3.5 h-3.5 text-primary" />
                                                                 {act.location}
                                                             </div>
 
-                                                            <p className="text-gray-600 text-sm leading-relaxed">
+                                                            <p className="text-gray-600 dark:text-slate-200 text-sm leading-relaxed">
                                                                 {act.description}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -350,7 +409,7 @@ export default function PlannerPage() {
                 )}
 
                 {error && (
-                    <div className="fixed bottom-6 right-6 p-4 bg-red-white border border-red-200 text-red-600 rounded-xl shadow-2xl animate-in slide-in-from-right duration-500 flex items-center gap-3">
+                    <div className="fixed bottom-6 right-6 p-4 bg-white dark:bg-slate-950/70 border border-red-200 dark:border-red-500/30 text-red-600 rounded-xl shadow-2xl animate-in slide-in-from-right duration-500 flex items-center gap-3">
                         <span className="text-2xl">⚠️</span>
                         {error}
                         <button onClick={() => setError("")} className="ml-2 hover:bg-red-50 p-1 rounded-full"><span className="sr-only">Dismiss</span>×</button>
