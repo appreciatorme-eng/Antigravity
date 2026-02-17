@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
         }
 
         const updates = {
+            email,
             full_name: fullName,
             phone: phone || null,
             phone_normalized: normalizedPhone || null,
@@ -178,10 +179,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 400 });
         }
 
+        // `auth.admin.createUser()` does not guarantee our `profiles` row exists yet.
+        // Use an upsert so the client appears immediately in downstream joins (e.g. proposals dropdown).
         const { error: profileError } = await supabaseAdmin
             .from("profiles")
-            .update(updates)
-            .eq("id", newUser.user.id);
+            .upsert(
+                {
+                    id: newUser.user.id,
+                    ...updates,
+                },
+                { onConflict: "id" }
+            );
 
         if (profileError) {
             return NextResponse.json({ error: profileError.message }, { status: 400 });
