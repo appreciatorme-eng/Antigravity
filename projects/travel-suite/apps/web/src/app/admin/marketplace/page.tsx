@@ -153,7 +153,7 @@ export default function MarketplacePage() {
                                     placeholder="Operator name..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    icon={<Search size={16} />}
+                                    icon={Search}
                                 />
                             </div>
 
