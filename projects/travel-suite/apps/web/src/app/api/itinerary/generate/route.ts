@@ -15,6 +15,7 @@ const itinerarySchema: Schema = {
     properties: {
         trip_title: { type: SchemaType.STRING, description: "A catchy title for the trip" },
         destination: { type: SchemaType.STRING, description: "Primary destination city/country" },
+        duration_days: { type: SchemaType.NUMBER, description: "Total number of days" },
         summary: { type: SchemaType.STRING, description: "Brief overview of the vibe" },
         days: {
             type: SchemaType.ARRAY,
@@ -47,7 +48,7 @@ const itinerarySchema: Schema = {
             }
         }
     },
-    required: ["trip_title", "destination", "days"]
+    required: ["trip_title", "destination", "duration_days", "days"]
 };
 
 export async function POST(req: NextRequest) {
@@ -84,6 +85,11 @@ export async function POST(req: NextRequest) {
         const result = await model.generateContent(finalPrompt);
         const responseText = result.response.text();
         const itinerary = JSON.parse(responseText);
+
+        // Defensive normalization for UI expectations.
+        if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
+            itinerary.duration_days = days;
+        }
 
         return NextResponse.json(itinerary);
 

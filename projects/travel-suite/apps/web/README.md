@@ -28,6 +28,25 @@ GOOGLE_GEMINI_API_KEY=
 - `npm run lint` - eslint
 - `npm run test:e2e` - Playwright tests
 
+## E2E (Playwright)
+
+Local dev server (full browser matrix):
+
+```bash
+npm run test:e2e
+```
+
+Production integration run (Chromium only, hits `BASE_URL` and does not start a local server):
+
+```bash
+BASE_URL=https://travelsuite-rust.vercel.app npx playwright test --config=e2e/playwright.prod.config.ts
+```
+
+Notes:
+- Admin APIs such as `/api/admin/clients` require `SUPABASE_SERVICE_ROLE_KEY` to be set in the deployed environment.
+- Itinerary generation requires `GOOGLE_API_KEY` or `GOOGLE_GEMINI_API_KEY` to be set in the deployed environment.
+- Production integration specs are gated by `E2E_TARGET=prod` (set by `e2e/playwright.prod.config.ts`).
+
 ## Notes
 
 - Server-only utilities live in `src/lib/notifications.ts` (guarded by `server-only`).

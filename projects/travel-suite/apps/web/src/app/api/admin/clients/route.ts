@@ -147,6 +147,22 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: profileError.message }, { status: 400 });
             }
 
+            // Ensure the relational "clients" record exists (proposals/trips reference this table).
+            const { error: clientUpsertError } = await supabaseAdmin
+                .from("clients")
+                .upsert(
+                    {
+                        id: existingProfile.id,
+                        organization_id: adminProfile.organization_id,
+                        user_id: existingProfile.id,
+                    },
+                    { onConflict: "id" }
+                );
+
+            if (clientUpsertError) {
+                return NextResponse.json({ error: clientUpsertError.message }, { status: 400 });
+            }
+
             return NextResponse.json({ success: true, userId: existingProfile.id, status: "updated_existing" });
         }
 
@@ -169,6 +185,21 @@ export async function POST(req: NextRequest) {
 
         if (profileError) {
             return NextResponse.json({ error: profileError.message }, { status: 400 });
+        }
+
+        const { error: clientInsertError } = await supabaseAdmin
+            .from("clients")
+            .upsert(
+                {
+                    id: newUser.user.id,
+                    organization_id: adminProfile.organization_id,
+                    user_id: newUser.user.id,
+                },
+                { onConflict: "id" }
+            );
+
+        if (clientInsertError) {
+            return NextResponse.json({ error: clientInsertError.message }, { status: 400 });
         }
 
         return NextResponse.json({ success: true, userId: newUser.user.id });

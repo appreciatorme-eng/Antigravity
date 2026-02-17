@@ -29,7 +29,8 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
     className,
     ...props
   }, ref) => {
-    const inputId = props.id ?? useId();
+    const reactId = useId();
+    const inputId = props.id ?? reactId;
     const inputStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -97,7 +98,8 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
     className,
     ...props
   }, ref) => {
-    const textareaId = props.id ?? useId();
+    const reactId = useId();
+    const textareaId = props.id ?? reactId;
     const textareaStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -160,7 +162,8 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
     className,
     ...props
   }, ref) => {
-    const selectId = props.id ?? useId();
+    const reactId = useId();
+    const selectId = props.id ?? reactId;
     const selectStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
