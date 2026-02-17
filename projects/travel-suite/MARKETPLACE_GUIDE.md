@@ -2,29 +2,38 @@
 
 The Tour Operator Marketplace is a B2B feature within the Travel Suite that enables tour operators (organizations) to discover, rate, and collaborate with one another.
 
-## Overview
-
-Unlike the public-facing parts of the application, the Marketplace is an **internal discovery layer** for registered organizations. It allows operators to find partners based on their service regions, specialties, and professional ratings.
+- **Inquiry Connection**: Direct interest messaging between organizations via the `marketplace_inquiries` table.
+- **Global Search**: Full-text search (FTS) across bios and specialties for enhanced discovery.
+- **Verification Workflow**: A structured path for operators to request "Verified Partner" status.
 
 ## Database Schema
 
-The marketplace functionality is built on two primary tables:
-
 ### 1. `marketplace_profiles`
-Extends the existing `organizations` table with marketplace-specific metadata.
-- `organization_id`: Links to the core organization record.
-- `description`: A professional bio or capability statement.
-- `service_regions`: A JSONB array of geographic areas covered (e.g., `["Bali", "Thailand"]`).
-- `specialties`: A JSONB array of niche expertise (e.g., `["Luxury", "Eco-tourism"]`).
-- `margin_rate`: The baseline partnership margin offered to other operators.
-- `is_verified`: An admin-controlled flag for trusted partners.
+Extends the existing `organizations` table.
+- ... existing fields ...
+- `verification_status`: Tracks trust level (`none`, `pending`, `verified`, `rejected`).
+- `search_vector`: A generated `tsvector` for optimized full-text search.
 
 ### 2. `marketplace_reviews`
-A peer-to-peer feedback system.
-- `reviewer_org_id`: The organization providing the feedback.
-- `target_org_id`: The organization being reviewed.
-- `rating`: A numeric score from 1-5.
-- `comment`: Detailed text feedback.
+...
+
+### 3. `marketplace_inquiries`
+Tracks partnership requests.
+- `sender_org_id`: The initiating organization.
+- `receiver_org_id`: The target organization.
+- `message`: Context for the partnership request.
+- `status`: Tracking the request (`pending`, `accepted`, `declined`).
+
+## API Endpoints
+
+### Marketplace Discovery
+- `GET /api/marketplace`: Now supports Full-Text Search via the `q` parameter.
+
+### Partner Inquiries
+- `POST /api/marketplace/[id]/inquiry`: Sends a new partnership inquiry.
+
+### Profile Management
+- `PATCH /api/marketplace`: Supports `request_verification: true` to flag a profile for review.
 
 ## API Endpoints
 
