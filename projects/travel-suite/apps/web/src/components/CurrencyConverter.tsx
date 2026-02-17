@@ -93,39 +93,46 @@ export default function CurrencyConverter({
                     <span className="font-medium text-indigo-900 text-sm">Currency Converter</span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        onBlur={convert}
-                        className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
-                        placeholder="Amount"
-                    />
-                    <select
-                        value={fromCurrency}
-                        onChange={(e) => setFromCurrency(e.target.value)}
-                        className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
-                    >
-                        {CURRENCIES.map((c) => (
-                            <option key={c.code} value={c.code}>{c.code}</option>
-                        ))}
-                    </select>
-                    <button
-                        onClick={swapCurrencies}
-                        className="p-1 hover:bg-indigo-100 rounded transition-colors"
-                    >
-                        <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
-                    </button>
-                    <select
-                        value={toCurrency}
-                        onChange={(e) => setToCurrency(e.target.value)}
-                        className="px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
-                    >
-                        {CURRENCIES.map((c) => (
-                            <option key={c.code} value={c.code}>{c.code}</option>
-                        ))}
-                    </select>
+                {/* Compact layout must fit in narrow sidebars without overflow */}
+                <div className="grid grid-cols-1 gap-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            onBlur={convert}
+                            className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
+                            placeholder="Amount"
+                        />
+                        <select
+                            value={fromCurrency}
+                            onChange={(e) => setFromCurrency(e.target.value)}
+                            className="min-w-0 flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                        >
+                            {CURRENCIES.map((c) => (
+                                <option key={c.code} value={c.code}>{c.code}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={swapCurrencies}
+                            className="shrink-0 p-1.5 hover:bg-indigo-100 rounded transition-colors"
+                            aria-label="Swap currencies"
+                        >
+                            <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                        </button>
+                        <select
+                            value={toCurrency}
+                            onChange={(e) => setToCurrency(e.target.value)}
+                            className="min-w-0 flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500"
+                        >
+                            {CURRENCIES.map((c) => (
+                                <option key={c.code} value={c.code}>{c.code}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
 
                 {loading && (

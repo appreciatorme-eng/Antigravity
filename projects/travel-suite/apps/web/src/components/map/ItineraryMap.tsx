@@ -37,6 +37,67 @@ function haversineDistanceKm(a: [number, number], b: [number, number]) {
     return earthRadiusKm * c;
 }
 
+function totalDistanceKmForRoute(route: [number, number][]) {
+    let total = 0;
+    for (let i = 0; i < route.length - 1; i++) {
+        total += haversineDistanceKm(route[i], route[i + 1]);
+    }
+    return total;
+}
+
+// Simple route optimization (nearest-neighbor + 2-opt). This only affects map rendering,
+// not the day-by-day itinerary ordering.
+function optimizeRouteIndices(points: [number, number][], startIndex = 0) {
+    const n = points.length;
+    if (n <= 2) return Array.from({ length: n }, (_, i) => i);
+
+    const unvisited = new Set<number>(Array.from({ length: n }, (_, i) => i));
+    unvisited.delete(startIndex);
+
+    const order: number[] = [startIndex];
+    while (unvisited.size) {
+        const lastIdx = order[order.length - 1]!;
+        let bestIdx: number | null = null;
+        let bestDist = Infinity;
+        for (const idx of unvisited) {
+            const d = haversineDistanceKm(points[lastIdx]!, points[idx]!);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIdx = idx;
+            }
+        }
+        if (bestIdx === null) break;
+        unvisited.delete(bestIdx);
+        order.push(bestIdx);
+    }
+
+    // 2-opt improvement for small-to-medium routes
+    if (order.length >= 4 && order.length <= 40) {
+        let improved = true;
+        let safety = 0;
+        while (improved && safety++ < 80) {
+            improved = false;
+            for (let i = 1; i < order.length - 2; i++) {
+                for (let k = i + 1; k < order.length - 1; k++) {
+                    const a = points[order[i - 1]!]!;
+                    const b = points[order[i]!]!;
+                    const c = points[order[k]!]!;
+                    const d = points[order[k + 1]!]!;
+                    const current = haversineDistanceKm(a, b) + haversineDistanceKm(c, d);
+                    const swapped = haversineDistanceKm(a, c) + haversineDistanceKm(b, d);
+                    if (swapped + 1e-9 < current) {
+                        const reversed = order.slice(i, k + 1).reverse();
+                        order.splice(i, reversed.length, ...reversed);
+                        improved = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return order;
+}
+
 // Child component to handle map bounds when map instance is ready
 function MapBoundsController({ bounds }: { bounds: maplibregl.LngLatBounds }) {
     const { map } = useMap();
@@ -125,10 +186,13 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
         [activities]
     );
 
-    const routeCoordinates = useMemo<[number, number][]>(
-        () => validActivities.map(act => [act.coordinates!.lng, act.coordinates!.lat]),
-        [validActivities]
-    );
+    const { optimizedActivities, routeCoordinates } = useMemo(() => {
+        const coords: [number, number][] = validActivities.map((act) => [act.coordinates!.lng, act.coordinates!.lat]);
+        const order = optimizeRouteIndices(coords, 0);
+        const orderedActivities = order.map((idx) => validActivities[idx]!);
+        const orderedCoords = order.map((idx) => coords[idx]!);
+        return { optimizedActivities: orderedActivities, routeCoordinates: orderedCoords };
+    }, [validActivities]);
 
     const segmentDistances = useMemo(() => {
         const segments: Array<{ from: number; to: number; distanceKm: number; mid: [number, number] }> = [];
@@ -145,10 +209,7 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
         return segments;
     }, [routeCoordinates]);
 
-    const totalDistanceKm = useMemo(
-        () => segmentDistances.reduce((sum, seg) => sum + seg.distanceKm, 0),
-        [segmentDistances]
-    );
+    const totalDistanceKm = useMemo(() => totalDistanceKmForRoute(routeCoordinates), [routeCoordinates]);
 
     const bounds = useMemo(() => {
         const calculatedBounds = new maplibregl.LngLatBounds();
@@ -210,7 +271,7 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
                 </MapMarker>
             ))}
 
-            {validActivities.map((act, idx) => (
+            {optimizedActivities.map((act, idx) => (
                 <MapMarker
                     key={idx}
                     longitude={act.coordinates!.lng}

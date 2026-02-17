@@ -109,32 +109,35 @@ export default function WeatherWidget({ destination, days = 7, compact = false }
                 <span className="text-sm text-gray-500">• {weather.location}</span>
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
-                {weather.forecast.slice(0, 7).map((day, idx) => (
-                    <div
-                        key={day.date}
-                        className={`text-center p-2 rounded-lg ${idx === 0 ? 'bg-white shadow-sm' : ''}`}
-                    >
-                        <div className="text-xs text-gray-500 mb-1">
-                            {idx === 0 ? "Today" : formatDate(day.date).split(",")[0]}
-                        </div>
-                        <div className="flex justify-center mb-1">
-                            {getWeatherIcon(day.weatherCode, "w-6 h-6")}
-                        </div>
-                        <div className="text-sm font-semibold text-gray-800">
-                            {day.tempMax}°
-                        </div>
-                        <div className="text-xs text-gray-400">
-                            {day.tempMin}°
-                        </div>
-                        {day.precipitation > 0 && (
-                            <div className="flex items-center justify-center gap-0.5 mt-1 text-xs text-blue-500">
-                                <Droplets className="w-3 h-3" />
-                                {Math.round(day.precipitation)}mm
+            {/* Sidebars can be narrow; use a horizontal scroller instead of crushing 7 columns */}
+            <div className="-mx-1 px-1 overflow-x-auto">
+                <div className="flex gap-2 min-w-max">
+                    {weather.forecast.slice(0, 7).map((day, idx) => (
+                        <div
+                            key={day.date}
+                            className={`w-[68px] shrink-0 text-center p-2 rounded-lg ${idx === 0 ? 'bg-white shadow-sm' : ''}`}
+                        >
+                            <div className="text-xs text-gray-500 mb-1 truncate">
+                                {idx === 0 ? "Today" : formatDate(day.date).split(",")[0]}
                             </div>
-                        )}
-                    </div>
-                ))}
+                            <div className="flex justify-center mb-1">
+                                {getWeatherIcon(day.weatherCode, "w-6 h-6")}
+                            </div>
+                            <div className="text-sm font-semibold text-gray-800">
+                                {day.tempMax}°
+                            </div>
+                            <div className="text-xs text-gray-400">
+                                {day.tempMin}°
+                            </div>
+                            {day.precipitation > 0 && (
+                                <div className="flex items-center justify-center gap-0.5 mt-1 text-[10px] text-blue-500">
+                                    <Droplets className="w-3 h-3" />
+                                    {Math.round(day.precipitation)}mm
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
