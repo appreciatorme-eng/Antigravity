@@ -78,7 +78,7 @@ test.describe('Admin Create Flows (prod)', () => {
     await expect(adminPage).toHaveURL(/\/admin\/proposals\/[0-9a-f-]+/i, { timeout: 30_000 });
 
     // Basic render check on the proposal page.
-    await expect(adminPage.locator('h1, h2').filter({ hasText: /proposal/i })).toBeVisible({ timeout: 30_000 });
+    await expect(adminPage.getByRole('heading', { name: /client share link/i })).toBeVisible({ timeout: 30_000 });
 
     // 4) Create driver (tests another key admin create flow).
     const driverName = `E2E Driver ${uniq}`;

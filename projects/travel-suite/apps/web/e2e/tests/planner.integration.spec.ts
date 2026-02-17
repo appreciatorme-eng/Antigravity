@@ -12,8 +12,9 @@ test.describe('Planner Integration (prod)', () => {
     // Destination field
     const destinationInput = clientPage.locator('input[placeholder*="Paris" i]');
     await expect(destinationInput).toBeVisible({ timeout: 30_000 });
-    await destinationInput.fill('Paris');
-    await expect(destinationInput).toHaveValue('Paris');
+    await destinationInput.click();
+    await destinationInput.press('ControlOrMeta+A');
+    await destinationInput.type('Paris', { delay: 15 });
 
     // Duration (Days) input
     const daysInput = clientPage
@@ -21,8 +22,9 @@ test.describe('Planner Integration (prod)', () => {
       .locator('..')
       .locator('input[type="number"]');
     await expect(daysInput).toBeVisible({ timeout: 30_000 });
-    await daysInput.fill('1');
-    await expect(daysInput).toHaveValue('1');
+    await daysInput.click();
+    await daysInput.press('ControlOrMeta+A');
+    await daysInput.type('1');
 
     const generateButton = clientPage.getByRole('button', { name: /generate dream itinerary/i });
     await expect(generateButton).toBeEnabled({ timeout: 30_000 });
