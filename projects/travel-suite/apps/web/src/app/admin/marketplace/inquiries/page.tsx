@@ -130,7 +130,7 @@ export default function MarketplaceInquiriesPage() {
                                         {activeTab === "received" ? (
                                             inq.sender?.logo_url ? <img src={inq.sender.logo_url} className="w-full h-full object-cover" /> : <Building2 size={24} className="text-slate-500" />
                                         ) : (
-                                            inq.receiver?.logo_url ? <img inq.receiver.logo_url} className="w-full h-full object-cover" /> : <Building2 size={24} className="text-slate-500" />
+                                            inq.receiver?.logo_url ? <img src={inq.receiver.logo_url} className="w-full h-full object-cover" /> : <Building2 size={24} className="text-slate-500" />
                                         )}
                                     </div>
 
