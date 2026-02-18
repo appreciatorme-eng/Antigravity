@@ -84,7 +84,15 @@ export default function WeatherWidget({ destination, days = 7, compact = false }
     }
 
     if (error || !weather) {
-        return null; // Gracefully hide if weather not available
+        // Show error message instead of hiding completely
+        return (
+            <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 rounded-xl border border-sky-100 dark:border-sky-800/30 p-5">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <Cloud className="w-5 h-5" />
+                    <span className="text-sm">Weather data temporarily unavailable for {destination}</span>
+                </div>
+            </div>
+        );
     }
 
     if (compact) {

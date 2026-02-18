@@ -165,26 +165,98 @@ export async function POST(req: NextRequest) {
         });
 
         const finalPrompt = `
-      Act as an expert travel planner.
-      Create a stunning, detailed ${days}-day itinerary for the following request: "${prompt}".
+      Act as an expert travel planner creating ULTRA-DETAILED, professional itineraries.
+      Create a comprehensive, highly detailed ${days}-day itinerary for: "${prompt}".
 
-      Requirements:
-      - Exactly ${days} days in the "days" array; day_number must be 1..${days}
-      - 4-6 activities per day with realistic pacing and specific start times (prefer '09:00 AM')
-      - Use real places and neighborhoods; keep it geographically efficient (cluster nearby places)
-      - For each activity include:
-          - duration (e.g., '1.5h')
-          - cost estimate (e.g., '$20-30')
-          - transport method from previous stop + time
-          - precise coordinates (lat, lng) strictly for the location (do NOT guess 0,0)
-      - Include 1-2 food/coffee suggestions per day (as activities)
-      - Provide practical "tips" (booking/entry, best times, closures, local transport)
-      - Each day MUST have a unique, descriptive theme (e.g., "Arrival & Historic Center", "Art & Modern Architecture", "Local Markets & Cuisine", "Nature & Scenic Views").
-      - Do NOT use generic words like "Highlights", "Sightseeing", or "Exploration" alone for themes.
-      - Do NOT include "Day 1:", "Day 2:" prefix in the theme - just the descriptive phrase (e.g., "Historic Center Tour" not "Day 1: Historic Center Tour").
-      - Make each theme distinct and specific to what will actually happen that day.
+      CRITICAL REQUIREMENTS FOR EXTREME DETAIL:
 
-      Output must be valid JSON matching the provided schema. No markdown.
+      1. STRUCTURE:
+         - Exactly ${days} days in the "days" array; day_number must be 1..${days}
+         - 4-8 activities per day (more activities = more detail)
+         - Each day has a unique, specific theme (e.g., "Arrival & Historic Center", "Art Museums & Galleries", "Mountain Adventure & Scenic Views")
+
+      2. ACTIVITY DESCRIPTIONS - MUST BE ULTRA-DETAILED:
+         - Write 3-5 sentence descriptions for EACH activity
+         - Include specific sub-locations within the main location (e.g., "Visit the Main Hall, then explore the East Gallery")
+         - Provide multiple options when relevant (e.g., "Option 1: Visit X if weather permits, Option 2: Visit Y as alternative")
+         - Mention specific things to see/do (e.g., "Don't miss the historic chandelier in the main lobby")
+         - Add contextual information (e.g., "This museum houses over 5,000 artifacts from the Ming Dynasty")
+         - Include practical details in description (e.g., "Photography allowed without flash", "Guided tours available in English at 10 AM and 2 PM")
+
+      3. TIME BREAKDOWNS:
+         - Use specific times (e.g., "09:00 AM", "11:30 AM", "02:00 PM")
+         - For longer activities, break into sub-times in the description:
+           Example: "Early Morning (08:00): Start at X, Mid-Morning (10:00): Move to Y, Late Morning (11:30): Visit Z"
+
+      4. LOCATION SPECIFICITY:
+         - Provide exact location names with neighborhoods/areas (e.g., "MoMA, Midtown Manhattan" not just "MoMA")
+         - Include distances from previous stops (e.g., "15-minute walk from previous location")
+         - Mention nearby landmarks for context (e.g., "Located near Central Park South entrance")
+
+      5. TRANSPORTATION DETAILS:
+         - Specify exact transport modes with details (e.g., "Take Metro Line 2 (Red Line) from Station A to Station B, 3 stops, 12 minutes" instead of just "Metro, 12 min")
+         - Include walking directions when relevant (e.g., "Walk south on 5th Avenue for 10 minutes")
+         - Mention costs (e.g., "Taxi approximately $15-20, or Subway $2.75")
+
+      6. COSTS - BE SPECIFIC:
+         - Provide price ranges (e.g., "$25-35 per person" not "$30")
+         - Mention what's included (e.g., "$45 includes entrance + audio guide")
+         - Note free options (e.g., "Free entry on Thursdays after 5 PM")
+         - Include meal costs in food activities (e.g., "Lunch $20-30 per person for mains + drink")
+
+      7. DURATION - BE REALISTIC:
+         - Provide time ranges (e.g., "2-3 hours" not "2h")
+         - Explain why (e.g., "Allow 2-3 hours to fully explore all floors and special exhibitions")
+
+      8. PRACTICAL TIPS:
+         - Add 8-12 practical tips covering:
+           * Best times to visit specific attractions
+           * Booking requirements (e.g., "Book Statue of Liberty tickets 2 weeks in advance")
+           * Local etiquette or customs
+           * What to bring/wear (e.g., "Wear comfortable shoes for 2+ miles of walking")
+           * Photography rules
+           * Accessibility information
+           * Local SIM cards or WiFi options
+           * Best local food markets or restaurants by area
+
+      9. FOOD RECOMMENDATIONS:
+         - Include 2-3 meal suggestions per day as separate activities
+         - Specify cuisine type, price range, and what to order (e.g., "Try the Margherita pizza ($18) and tiramisu ($8)")
+         - Mention ambiance (e.g., "Cozy family-run trattoria with outdoor seating")
+
+      10. COORDINATES:
+         - Provide accurate lat/lng for each location (do NOT use 0,0)
+         - Use real coordinates for the actual place
+
+      EXAMPLE OF REQUIRED DETAIL LEVEL:
+
+      Bad (too brief):
+      {
+        "time": "09:00 AM",
+        "title": "Visit MoMA",
+        "description": "Explore the Museum of Modern Art.",
+        "location": "MoMA",
+        "duration": "2h",
+        "cost": "$25"
+      }
+
+      Good (extremely detailed - THIS IS WHAT I NEED):
+      {
+        "time": "09:00 AM",
+        "title": "Museum of Modern Art (MoMA) - Complete Tour",
+        "description": "Begin your art-filled day at the Museum of Modern Art (MoMA), one of the world's premier modern art museums housing over 200,000 works. Early Morning (09:00-10:30): Start on the 5th floor with the permanent collection featuring Van Gogh's 'Starry Night' and Picasso's 'Les Demoiselles d'Avignon'. Mid-Morning (10:30-11:30): Explore the 4th floor contemporary galleries showcasing rotating exhibitions - check current exhibits online before visiting. Late Morning (11:30-12:00): Visit the sculpture garden (weather permitting) for a peaceful break. The museum offers free audio guides included with admission. Photography allowed without flash. Weekday mornings (before 11 AM) are least crowded. Members enter free; consider membership if visiting multiple NYC museums.",
+        "location": "MoMA, 11 W 53rd St, Midtown Manhattan",
+        "coordinates": { "lat": 40.7614, "lng": -73.9776 },
+        "duration": "2.5-3 hours",
+        "cost": "$25 general admission (free for children under 16, $18 seniors 65+)",
+        "transport": "From your hotel in Times Square area: Walk east on 42nd St to 5th Ave, then north to 53rd St (approximately 15-minute walk, 0.8 miles). Alternative: Take M5 bus northbound on 5th Ave, 5 minutes, $2.75 MetroCard."
+      }
+
+      OUTPUT FORMAT:
+      - Valid JSON matching the provided schema
+      - NO markdown formatting
+      - Each description must be 3-5 detailed sentences minimum
+      - Each activity must provide genuine value and specific actionable information
     `;
 
         let itinerary: any;
