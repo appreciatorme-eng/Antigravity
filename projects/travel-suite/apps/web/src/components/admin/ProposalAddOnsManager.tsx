@@ -117,7 +117,18 @@ export default function ProposalAddOnsManager({
         .eq('is_active', true)
         .order('name');
 
-      setAvailableAddOns(addOnsData || []);
+      const formattedAvailableAddOns: AddOn[] = (addOnsData || []).map((addon) => ({
+        id: addon.id,
+        name: addon.name,
+        description: addon.description,
+        price: addon.price,
+        category: addon.category,
+        image_url: addon.image_url,
+        duration: addon.duration,
+        is_active: addon.is_active ?? false,
+      }));
+
+      setAvailableAddOns(formattedAvailableAddOns);
     } catch (error) {
       console.error('Error loading add-ons:', error);
     } finally {
@@ -313,10 +324,10 @@ export default function ProposalAddOnsManager({
               padding="lg"
               rounded="xl"
               className={`transition-all ${proposalAddon.is_selected_by_client
-                  ? 'ring-2 ring-green-500 dark:ring-green-400'
-                  : proposalAddon.is_included_by_default
-                    ? 'ring-2 ring-blue-500 dark:ring-blue-400'
-                    : ''
+                ? 'ring-2 ring-green-500 dark:ring-green-400'
+                : proposalAddon.is_included_by_default
+                  ? 'ring-2 ring-blue-500 dark:ring-blue-400'
+                  : ''
                 }`}
             >
               <div className="flex items-start gap-4">
