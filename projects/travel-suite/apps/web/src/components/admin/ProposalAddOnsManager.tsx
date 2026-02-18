@@ -446,8 +446,8 @@ export default function ProposalAddOnsManager({
 
       {/* Add Add-On Modal */}
       <GlassModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
         title="Add Add-Ons to Proposal"
         description="Select add-ons to offer to your client"
       >
