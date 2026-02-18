@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import ConvertProposalModal from '@/components/admin/ConvertProposalModal';
+import ProposalAddOnsManager from '@/components/admin/ProposalAddOnsManager';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
@@ -537,6 +538,9 @@ export default function AdminProposalViewPage() {
           )}
         </div>
       </GlassCard>
+
+      {/* Add-Ons Manager */}
+      <ProposalAddOnsManager proposalId={proposalId} />
 
       {/* Comments Section */}
       {comments.length > 0 && (
