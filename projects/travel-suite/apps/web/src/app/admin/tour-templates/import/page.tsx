@@ -33,6 +33,12 @@ export default function ImportTourPage() {
       return;
     }
 
+    // Limit increased to 25MB. Note: Vercel may still reject files > 4.5MB with 413.
+    if (file.size > 25 * 1024 * 1024) {
+      setError('File size must be less than 25MB');
+      return;
+    }
+
     setPdfFile(file);
     setError(null);
   };
@@ -52,7 +58,19 @@ export default function ImportTourPage() {
         method: 'POST',
         body: fd,
       });
-      const result = await res.json();
+
+      const text = await res.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        // If response is not JSON (e.g. 413 Payload Too Large HTML), throw meaningful error
+        throw new Error(
+          res.status === 413
+            ? 'File is too large for the server (likely exceeds Vercel 4.5MB limit unless using Cloud Storage).'
+            : `Server error (${res.status}): ${text.slice(0, 100)}`
+        );
+      }
 
       if (!result.success || !result.data) {
         setError(result.error || 'Failed to extract tour data from PDF');
@@ -322,7 +340,7 @@ export default function ImportTourPage() {
                 <p className="text-sm font-medium text-gray-900 mb-1">
                   {pdfFile ? pdfFile.name : 'Click to upload or drag and drop'}
                 </p>
-                <p className="text-xs text-gray-500">PDF files only, up to 10MB</p>
+                <p className="text-xs text-gray-500">PDF files only, up to 25MB</p>
               </div>
               <input type="file" accept=".pdf" onChange={handlePDFUpload} className="hidden" />
             </label>
