@@ -79,7 +79,7 @@ export async function extractTourFromURL(
     }
 
     const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const prompt = `
 You are a tour itinerary extraction expert. Extract ALL tour information from this HTML webpage and return it as valid JSON.
@@ -119,6 +119,10 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
           "title": "Activity name",
           "description": "Activity description",
           "location": "Location name",
+          "coordinates": {
+            "lat": 0,
+            "lng": 0
+          },
           "price": 50,
           "is_optional": false,
           "is_premium": false
@@ -181,7 +185,7 @@ export async function getTourPreviewFromURL(
     }
 
     const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const prompt = `
 Extract just the basic tour information from this HTML. Return ONLY valid JSON:

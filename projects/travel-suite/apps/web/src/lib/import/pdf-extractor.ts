@@ -38,7 +38,7 @@ export async function extractTourFromPDF(
     }
 
     const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const arrayBuffer = await pdfFile.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
@@ -57,6 +57,7 @@ Extract the following information:
    - Day title (e.g., "Arrival & Desert Safari")
    - Day description
    - Activities (with time, title, description, location, price if mentioned)
+   - Precise coordinates (lat, lng) strictly for the location (do NOT guess 0,0)
    - Hotel/accommodation (name, star rating, room type, price per night if mentioned, amenities)
 
 Important rules:

@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash", // Use newer model for better JSON adherence
+            model: "gemini-1.5-flash-latest", // Use newer model for better JSON adherence
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: itinerarySchema,

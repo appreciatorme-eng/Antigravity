@@ -11,6 +11,7 @@ export interface ExtractedActivity {
   title: string;
   description?: string;
   location?: string;
+  coordinates?: { lat: number; lng: number };
   price?: number;
   is_optional?: boolean;
   is_premium?: boolean;
