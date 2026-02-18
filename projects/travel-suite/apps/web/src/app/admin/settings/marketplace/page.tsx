@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Save,
     RefreshCcw,
+    BarChart3,
     MapPin,
     Tag,
     Info,
@@ -282,6 +285,11 @@ export default function MarketplaceSettingsPage() {
                             Saved Successfully
                         </div>
                     )}
+                    <Link href="/admin/marketplace/analytics">
+                        <GlassButton variant="secondary" className="flex items-center gap-2">
+                            <BarChart3 size={18} /> Analytics
+                        </GlassButton>
+                    </Link>
                     <GlassButton onClick={handleSave} disabled={saving} className="w-40 flex items-center justify-center gap-2">
                         {saving ? <RefreshCcw className="animate-spin" size={18} /> : <Save size={18} />}
                         {saving ? "Saving..." : "Save Changes"}

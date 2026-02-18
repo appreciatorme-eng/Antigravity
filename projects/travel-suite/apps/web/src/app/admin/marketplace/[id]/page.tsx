@@ -140,6 +140,24 @@ export default function OperatorDetailPage() {
         void fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        const recordView = async () => {
+            try {
+                await fetch(`/api/marketplace/${targetOrgId}/view`, {
+                    method: "POST"
+                });
+            } catch (err) {
+                console.error("Failed to record view", err);
+            }
+        };
+
+        if (targetOrgId) {
+            // distinctive duplicate call prevention could work here, but simpler to just adjust db or limit.
+            // For now, we just call it on mount.
+            void recordView();
+        }
+    }, [targetOrgId]);
+
     const handleSubmitReview = async () => {
         if (!newComment.trim()) return;
         setSubmittingReview(true);

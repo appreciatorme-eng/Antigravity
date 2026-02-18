@@ -40,7 +40,7 @@ import { ThemeToggleButton } from "@/components/ThemeToggle";
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/admin/marketplace", label: "Marketplace", icon: Store },
+    { href: "/admin/marketplace", label: "Tour Marketplace", icon: Store },
     { href: "/admin/planner", label: "Planner", icon: Compass },
     { href: "/admin/drivers", label: "Drivers", icon: Car },
     { href: "/admin/trips", label: "Trips", icon: MapPin },
@@ -176,8 +176,8 @@ export default function AdminLayout({
                                 href={link.href}
                                 title={link.label}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-smooth ${isActive
-                                        ? "bg-primary text-white shadow-button"
-                                        : "text-secondary hover:bg-white/40"
+                                    ? "bg-primary text-white shadow-button"
+                                    : "text-secondary hover:bg-white/40"
                                     }`}
                             >
                                 <link.icon className="w-5 h-5 shrink-0" />
