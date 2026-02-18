@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd projects/travel-suite/apps/web && npm run build",
+  "devCommand": "cd projects/travel-suite/apps/web && npm run dev",
+  "installCommand": "cd projects/travel-suite/apps/web && npm install",
+  "framework": "nextjs",
+  "outputDirectory": "projects/travel-suite/apps/web/.next",
+  "regions": ["sin1"]
+}
