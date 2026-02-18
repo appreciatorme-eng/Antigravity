@@ -6,6 +6,7 @@ The Tour Operator Marketplace is a B2B feature within the Travel Suite that enab
 
 - **Global Search**: Full-text search (FTS) across bios and specialties for enhanced discovery.
 - **Inquiry & Inbox**: A dedicated messaging system for partnership requests with a central Inbox (`/admin/marketplace/inquiries`).
+- **Email Notifications**: Real-time alerts for incoming inquiries and verification status updates via Resend.
 - **Media Portfolios**: Operators can showcase their services with an image gallery.
 - **Compliance Document Vault**: A secure section for legal/safety documents (Liability Insurance, Licenses) restricted to Verified Partners.
 - **Integrated Rate Cards**: Structured margin rates for specific services (e.g., "10% for Trekking") to complement the baseline rate.

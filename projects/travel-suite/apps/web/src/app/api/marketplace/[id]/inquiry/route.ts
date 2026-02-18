@@ -50,6 +50,42 @@ export async function POST(
 
         if (error) throw error;
 
+        // --- ASYNC NOTIFICATION ---
+        // Fire and forget (don't block the response)
+        void (async () => {
+            try {
+                // Fetch sender info
+                const { data: senderOrg } = await supabase
+                    .from("organizations")
+                    .select("name")
+                    .eq("id", senderOrgId)
+                    .single();
+
+                // Fetch receiver owner email
+                // Join organizations with profiles via owner_id
+                const { data: receiverInfo } = await supabase
+                    .from("organizations")
+                    .select("name, profiles!owner_id(email)")
+                    .eq("id", targetOrgId)
+                    .single();
+
+                const receiverEmail = (receiverInfo as any)?.profiles?.email;
+
+                if (receiverEmail && senderOrg) {
+                    const { sendInquiryNotification } = await import("@/lib/marketplace-emails");
+                    await sendInquiryNotification({
+                        receiverEmail,
+                        senderOrgName: senderOrg.name,
+                        subject: subject || "Partnership Inquiry",
+                        message,
+                        inquiryUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/admin/marketplace/inquiries`
+                    });
+                }
+            } catch (notifyError) {
+                console.error("Notification failed:", notifyError);
+            }
+        })();
+
         return NextResponse.json(data);
     } catch (error: any) {
         console.error("Error creating inquiry:", error);

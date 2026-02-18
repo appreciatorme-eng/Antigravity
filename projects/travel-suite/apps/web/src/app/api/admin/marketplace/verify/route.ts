@@ -52,6 +52,32 @@ export async function POST(request: Request) {
             .single();
 
         if (error) throw error;
+
+        // --- ASYNC NOTIFICATION ---
+        void (async () => {
+            try {
+                const { data: orgInfo } = await supabase
+                    .from("organizations")
+                    .select("name, profiles!owner_id(email)")
+                    .eq("id", orgId)
+                    .single();
+
+                const receiverEmail = (orgInfo as any)?.profiles?.email;
+
+                if (receiverEmail && orgInfo) {
+                    const { sendVerificationNotification } = await import("@/lib/marketplace-emails");
+                    await sendVerificationNotification({
+                        receiverEmail,
+                        orgName: orgInfo.name,
+                        status: status as 'verified' | 'rejected',
+                        settingsUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/admin/settings/marketplace`
+                    });
+                }
+            } catch (notifyError) {
+                console.error("Verification notification failed:", notifyError);
+            }
+        })();
+
         return NextResponse.json(data);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
