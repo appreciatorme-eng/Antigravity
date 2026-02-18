@@ -84,7 +84,7 @@ export default function ProposalAddOnsManager({
           is_selected_by_client,
           is_included_by_default,
           notes,
-          addons (
+          add_ons (
             id,
             name,
             description,
@@ -105,14 +105,14 @@ export default function ProposalAddOnsManager({
           is_selected_by_client: item.is_selected_by_client,
           is_included_by_default: item.is_included_by_default,
           notes: item.notes,
-          addon: item.addons,
+          addon: item.add_ons,
         })) || [];
 
       setProposalAddOns(formattedProposalAddOns);
 
       // Load all available add-ons for adding
       const { data: addOnsData } = await supabase
-        .from('addons')
+        .from('add_ons')
         .select('*')
         .eq('is_active', true)
         .order('name');
@@ -312,13 +312,12 @@ export default function ProposalAddOnsManager({
               key={proposalAddon.id}
               padding="lg"
               rounded="xl"
-              className={`transition-all ${
-                proposalAddon.is_selected_by_client
+              className={`transition-all ${proposalAddon.is_selected_by_client
                   ? 'ring-2 ring-green-500 dark:ring-green-400'
                   : proposalAddon.is_included_by_default
-                  ? 'ring-2 ring-blue-500 dark:ring-blue-400'
-                  : ''
-              }`}
+                    ? 'ring-2 ring-blue-500 dark:ring-blue-400'
+                    : ''
+                }`}
             >
               <div className="flex items-start gap-4">
                 {/* Image */}

@@ -1629,6 +1629,54 @@ export type Database = {
           },
         ]
       }
+      proposal_addons: {
+        Row: {
+          id: string
+          proposal_id: string
+          addon_id: string
+          is_selected_by_client: boolean | null
+          is_included_by_default: boolean | null
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          proposal_id: string
+          addon_id: string
+          is_selected_by_client?: boolean | null
+          is_included_by_default?: boolean | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          proposal_id?: string
+          addon_id?: string
+          is_selected_by_client?: boolean | null
+          is_included_by_default?: boolean | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_addons_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "add_ons"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       proposal_comments: {
         Row: {
           author_email: string | null
