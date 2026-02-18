@@ -140,15 +140,14 @@ export async function POST(req: NextRequest) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash", // Use newer model for better JSON adherence
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: itinerarySchema,
-                },
-            });
+            model: "gemini-1.5-flash", // Use newer model for better JSON adherence
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: itinerarySchema,
+            },
+        });
 
-            const finalPrompt = `
+        const finalPrompt = `
       Act as an expert travel planner.
       Create a stunning, detailed ${days}-day itinerary for the following request: "${prompt}".
 
@@ -168,43 +167,43 @@ export async function POST(req: NextRequest) {
       Output must be valid JSON matching the provided schema. No markdown.
     `;
 
-            let itinerary: any;
-            try {
-                // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
-                const result = await withTimeout(model.generateContent(finalPrompt), 45_000);
-                const responseText = result.response.text();
-                itinerary = JSON.parse(responseText);
-            } catch(innerError) {
-                console.error("AI Generation Error (fallback):", innerError);
-                itinerary = buildFallbackItinerary(prompt, days);
-            }
+        let itinerary: any;
+        try {
+            // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
+            const result = await withTimeout(model.generateContent(finalPrompt), 45_000);
+            const responseText = result.response.text();
+            itinerary = JSON.parse(responseText);
+        } catch (innerError) {
+            console.error("AI Generation Error (fallback):", innerError);
+            itinerary = buildFallbackItinerary(prompt, days);
+        }
 
         // Defensive normalization for UI expectations.
-        if(typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
-                itinerary.duration_days = days;
-    }
+        if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
+            itinerary.duration_days = days;
+        }
         if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
-        itinerary.summary = buildFallbackItinerary(prompt, days).summary;
-    }
-    if (!Array.isArray(itinerary.days)) {
-        itinerary.days = buildFallbackItinerary(prompt, days).days;
-    }
-    itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
-        ...d,
-        day_number: idx + 1,
-        theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
-        activities: Array.isArray(d?.activities) ? d.activities : [],
-    }));
-    // If the model returned fewer days, pad with fallbacks.
-    if (itinerary.days.length < days) {
-        const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
-        itinerary.days = itinerary.days.concat(pad);
-    }
+            itinerary.summary = buildFallbackItinerary(prompt, days).summary;
+        }
+        if (!Array.isArray(itinerary.days)) {
+            itinerary.days = buildFallbackItinerary(prompt, days).days;
+        }
+        itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
+            ...d,
+            day_number: idx + 1,
+            theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
+            activities: Array.isArray(d?.activities) ? d.activities : [],
+        }));
+        // If the model returned fewer days, pad with fallbacks.
+        if (itinerary.days.length < days) {
+            const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
+            itinerary.days = itinerary.days.concat(pad);
+        }
 
-    return NextResponse.json(itinerary);
+        return NextResponse.json(itinerary);
 
-} catch (error) {
-    console.error("AI Generation Error:", error);
-    return NextResponse.json(buildFallbackItinerary(prompt, days));
-}
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        return NextResponse.json(buildFallbackItinerary(prompt, days));
+    }
 }
