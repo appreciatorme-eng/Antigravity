@@ -34,6 +34,7 @@ import {
     Plane,
     ShoppingBag,
     Store,
+    Building2,
 } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 
@@ -41,7 +42,7 @@ import { ThemeToggleButton } from "@/components/ThemeToggle";
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/admin/marketplace", label: "Tour Marketplace", icon: Store },
+    { href: "/admin/marketplace", label: "Tour Marketplace", icon: Building2 },
     { href: "/admin/planner", label: "Planner", icon: Compass },
     { href: "/admin/drivers", label: "Drivers", icon: Car },
     { href: "/admin/trips", label: "Trips", icon: MapPin },
