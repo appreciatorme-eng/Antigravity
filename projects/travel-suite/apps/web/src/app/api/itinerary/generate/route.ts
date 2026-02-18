@@ -23,23 +23,23 @@ function buildFallbackItinerary(prompt: string, days: number) {
                 {
                     time: 'Morning',
                     title: 'Arrive and explore',
-                    description: 'Start with a central neighborhood walk and a cafe stop.',
+                    description: 'Start with a central library and museum.',
                     location: destination,
-                    coordinates: { lat: 0, lng: 0 },
+                    coordinates: { lat: 40.7128, lng: -74.0060 }, // Default near New York/General center to avoid 0,0
                 },
                 {
                     time: 'Afternoon',
                     title: 'Top attractions',
-                    description: 'Visit a landmark and a museum that fits your interests.',
+                    description: 'Visit a landmark and a park.',
                     location: destination,
-                    coordinates: { lat: 0, lng: 0 },
+                    coordinates: { lat: 40.7308, lng: -73.9973 },
                 },
                 {
                     time: 'Evening',
                     title: 'Dinner and views',
-                    description: 'Enjoy a local dinner and a scenic viewpoint or river walk.',
+                    description: 'Enjoy a local dinner and a scenic view.',
                     location: destination,
-                    coordinates: { lat: 0, lng: 0 },
+                    coordinates: { lat: 40.7589, lng: -73.9851 },
                 },
             ],
         })),
@@ -140,66 +140,71 @@ export async function POST(req: NextRequest) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: itinerarySchema,
-            },
-        });
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash", // Use newer model for better JSON adherence
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: itinerarySchema,
+                },
+            });
 
-        const finalPrompt = `
+            const finalPrompt = `
       Act as an expert travel planner.
-      Create a ${days}-day itinerary for the following request: "${prompt}".
+      Create a stunning, detailed ${days}-day itinerary for the following request: "${prompt}".
 
       Requirements:
       - Exactly ${days} days in the "days" array; day_number must be 1..${days}
       - 4-6 activities per day with realistic pacing and specific start times (prefer '09:00 AM')
       - Use real places and neighborhoods; keep it geographically efficient (cluster nearby places)
-      - For each activity include: duration, cost estimate, and transport + approx travel time from previous stop
+      - For each activity include:
+          - duration (e.g., '1.5h')
+          - cost estimate (e.g., '$20-30')
+          - transport method from previous stop + time
+          - precise coordinates (lat, lng) strictly for the location (do NOT guess 0,0)
       - Include 1-2 food/coffee suggestions per day (as activities)
       - Provide practical "tips" (booking/entry, best times, closures, local transport)
-      - Coordinates should be rough estimates for map placement
+      - Each day MUST have a unique, descriptive theme (e.g., "Day 1: Arrival & Historic Center", "Day 2: Art & Modern Architecture"). Do NOT use "Highlights" for every day.
 
       Output must be valid JSON matching the provided schema. No markdown.
     `;
 
-        let itinerary: any;
-        try {
-            // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
-            const result = await withTimeout(model.generateContent(finalPrompt), 45_000);
-            const responseText = result.response.text();
-            itinerary = JSON.parse(responseText);
-        } catch (innerError) {
-            console.error("AI Generation Error (fallback):", innerError);
-            itinerary = buildFallbackItinerary(prompt, days);
-        }
+            let itinerary: any;
+            try {
+                // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
+                const result = await withTimeout(model.generateContent(finalPrompt), 45_000);
+                const responseText = result.response.text();
+                itinerary = JSON.parse(responseText);
+            } catch(innerError) {
+                console.error("AI Generation Error (fallback):", innerError);
+                itinerary = buildFallbackItinerary(prompt, days);
+            }
 
         // Defensive normalization for UI expectations.
-        if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
-            itinerary.duration_days = days;
-        }
-        if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
-            itinerary.summary = buildFallbackItinerary(prompt, days).summary;
-        }
-        if (!Array.isArray(itinerary.days)) {
-            itinerary.days = buildFallbackItinerary(prompt, days).days;
-        }
-        itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
-            ...d,
-            day_number: idx + 1,
-            theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
-            activities: Array.isArray(d?.activities) ? d.activities : [],
-        }));
-        // If the model returned fewer days, pad with fallbacks.
-        if (itinerary.days.length < days) {
-            const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
-            itinerary.days = itinerary.days.concat(pad);
-        }
-
-        return NextResponse.json(itinerary);
-
-    } catch (error) {
-        console.error("AI Generation Error:", error);
-        return NextResponse.json(buildFallbackItinerary(prompt, days));
+        if(typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
+                itinerary.duration_days = days;
     }
+        if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
+        itinerary.summary = buildFallbackItinerary(prompt, days).summary;
+    }
+    if (!Array.isArray(itinerary.days)) {
+        itinerary.days = buildFallbackItinerary(prompt, days).days;
+    }
+    itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
+        ...d,
+        day_number: idx + 1,
+        theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
+        activities: Array.isArray(d?.activities) ? d.activities : [],
+    }));
+    // If the model returned fewer days, pad with fallbacks.
+    if (itinerary.days.length < days) {
+        const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
+        itinerary.days = itinerary.days.concat(pad);
+    }
+
+    return NextResponse.json(itinerary);
+
+} catch (error) {
+    console.error("AI Generation Error:", error);
+    return NextResponse.json(buildFallbackItinerary(prompt, days));
+}
 }

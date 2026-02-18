@@ -312,7 +312,13 @@ Make it practical and specific:
                         <div className="grid lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
                                 <ItineraryMap
-                                    activities={result.days.flatMap((day: Day) => day.activities)}
+                                    activities={result.days.flatMap((day: Day) =>
+                                        day.activities.map(act => ({
+                                            ...act,
+                                            // Ensure coordinates exist. If missing, fall back to null/undefined so the map component filters them out safely
+                                            coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
+                                        }))
+                                    )}
                                 />
                             </div>
                             <div className="space-y-6">
@@ -338,7 +344,7 @@ Make it practical and specific:
                                             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-white text-sm font-bold shadow-sm">
                                                 {day.day_number}
                                             </span>
-                                            {day.theme}
+                                            {day.theme || `Day ${day.day_number}`}
                                         </h3>
                                     </div>
                                     <CardContent className="p-0">
@@ -348,56 +354,56 @@ Make it practical and specific:
                                                 const imgUrl = images[imgKey];
 
                                                 return (
-                                                <div key={idx} className="p-6 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                    <div className="flex flex-col md:flex-row gap-5">
-                                                        <div className="flex items-start gap-3 w-24 shrink-0 pt-1">
-                                                            <Badge variant="outline" className="font-mono text-xs bg-gray-50 dark:bg-white/5 dark:text-slate-100 dark:border-white/10">
-                                                                {act.time}
-                                                            </Badge>
-                                                        </div>
-
-                                                        <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100 dark:ring-white/10 bg-gray-100/50 dark:bg-white/5">
-                                                            {imgUrl === undefined ? (
-                                                                <div className="w-full h-full animate-pulse bg-gray-200/60 dark:bg-white/10" />
-                                                            ) : imgUrl ? (
-                                                                <img
-                                                                    src={imgUrl}
-                                                                    alt={act.location || act.title}
-                                                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                                                                    loading="lazy"
-                                                                    referrerPolicy="no-referrer"
-                                                                    onError={(e) => {
-                                                                        e.currentTarget.src = "/placeholder-image.svg";
-                                                                    }}
-                                                                />
-                                                            ) : (
-                                                                <img
-                                                                    src="/placeholder-image.svg"
-                                                                    alt="No image available"
-                                                                    className="w-full h-full object-cover opacity-80"
-                                                                    loading="lazy"
-                                                                />
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex-1 space-y-2">
-                                                            <div className="flex items-start justify-between">
-                                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-slate-50 leading-tight">
-                                                                    {act.title}
-                                                                </h4>
+                                                    <div key={idx} className="p-6 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                        <div className="flex flex-col md:flex-row gap-5">
+                                                            <div className="flex items-start gap-3 w-24 shrink-0 pt-1">
+                                                                <Badge variant="outline" className="font-mono text-xs bg-gray-50 dark:bg-white/5 dark:text-slate-100 dark:border-white/10">
+                                                                    {act.time}
+                                                                </Badge>
                                                             </div>
 
-                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-300 font-medium">
-                                                                <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                                {act.location}
+                                                            <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100 dark:ring-white/10 bg-gray-100/50 dark:bg-white/5">
+                                                                {imgUrl === undefined ? (
+                                                                    <div className="w-full h-full animate-pulse bg-gray-200/60 dark:bg-white/10" />
+                                                                ) : imgUrl ? (
+                                                                    <img
+                                                                        src={imgUrl}
+                                                                        alt={act.location || act.title}
+                                                                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                                                                        loading="lazy"
+                                                                        referrerPolicy="no-referrer"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.src = "/placeholder-image.svg";
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <img
+                                                                        src="/placeholder-image.svg"
+                                                                        alt="No image available"
+                                                                        className="w-full h-full object-cover opacity-80"
+                                                                        loading="lazy"
+                                                                    />
+                                                                )}
                                                             </div>
 
-                                                            <p className="text-gray-600 dark:text-slate-200 text-sm leading-relaxed">
-                                                                {act.description}
-                                                            </p>
+                                                            <div className="flex-1 space-y-2">
+                                                                <div className="flex items-start justify-between">
+                                                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-slate-50 leading-tight">
+                                                                        {act.title}
+                                                                    </h4>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-300 font-medium">
+                                                                    <MapPin className="w-3.5 h-3.5 text-primary" />
+                                                                    {act.location}
+                                                                </div>
+
+                                                                <p className="text-gray-600 dark:text-slate-200 text-sm leading-relaxed">
+                                                                    {act.description}
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
                                                 );
                                             })}
                                         </div>
