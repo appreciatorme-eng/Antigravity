@@ -168,7 +168,15 @@ export default function AdminLayout({
 
                 {/* Navigation */}
                 <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+                    {/* Debug: Show link count */}
+                    <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        {sidebarLinks.length} menu items
+                    </div>
                     {sidebarLinks.map((link) => {
+                        // Debug: Log marketplace link
+                        if (link.label === "Tour Marketplace") {
+                            console.log("✅ Marketplace link found in sidebar:", link);
+                        }
                         const isActive = pathname === link.href ||
                             (link.href !== "/admin" && pathname.startsWith(link.href));
                         return (
