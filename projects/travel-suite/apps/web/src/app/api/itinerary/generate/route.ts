@@ -165,98 +165,121 @@ export async function POST(req: NextRequest) {
         });
 
         const finalPrompt = `
-      Act as an expert travel planner creating ULTRA-DETAILED, professional itineraries.
-      Create a comprehensive, highly detailed ${days}-day itinerary for: "${prompt}".
+      Act as a professional tour guide creating EXTREMELY DETAILED itineraries.
+      Create a comprehensive ${days}-day itinerary for: "${prompt}".
 
-      CRITICAL REQUIREMENTS FOR EXTREME DETAIL:
+      CRITICAL REQUIREMENTS - FOLLOW EXACTLY:
 
       1. STRUCTURE:
          - Exactly ${days} days in the "days" array; day_number must be 1..${days}
-         - 4-8 activities per day (more activities = more detail)
-         - Each day has a unique, specific theme (e.g., "Arrival & Historic Center", "Art Museums & Galleries", "Mountain Adventure & Scenic Views")
+         - 5-8 activities per day minimum
+         - Each day has a unique theme (e.g., "Historic Temples & Traditional Gardens", "Modern Tokyo & Shopping Districts", "Art Museums & Cultural Experiences")
 
-      2. ACTIVITY DESCRIPTIONS - MUST BE ULTRA-DETAILED:
-         - Write 3-5 sentence descriptions for EACH activity
-         - Include specific sub-locations within the main location (e.g., "Visit the Main Hall, then explore the East Gallery")
-         - Provide multiple options when relevant (e.g., "Option 1: Visit X if weather permits, Option 2: Visit Y as alternative")
-         - Mention specific things to see/do (e.g., "Don't miss the historic chandelier in the main lobby")
-         - Add contextual information (e.g., "This museum houses over 5,000 artifacts from the Ming Dynasty")
-         - Include practical details in description (e.g., "Photography allowed without flash", "Guided tours available in English at 10 AM and 2 PM")
+      2. ACTIVITY DESCRIPTIONS - MANDATORY MINIMUM 8-10 SENTENCES:
+         ⚠️ CRITICAL: Each activity description MUST be 8-10 full sentences minimum. This is NON-NEGOTIABLE.
 
-      3. TIME BREAKDOWNS:
-         - Use specific times (e.g., "09:00 AM", "11:30 AM", "02:00 PM")
-         - For longer activities, break into sub-times in the description:
-           Example: "Early Morning (08:00): Start at X, Mid-Morning (10:00): Move to Y, Late Morning (11:30): Visit Z"
+         Each description MUST include ALL of these elements:
+         a) Opening sentence: What the attraction is and why it's significant (1 sentence)
+         b) Historical/cultural context: Background information, when it was built, what makes it special (2-3 sentences)
+         c) Detailed walkthrough: Specific areas to visit within the location, in order of your route through the place (2-3 sentences)
+            - Example: "Start on the 3rd floor with the permanent collection. Then move to the 2nd floor special exhibition hall. Finally, visit the rooftop garden for panoramic views."
+         d) What to see/experience: Specific artworks, exhibits, architectural features, or experiences not to miss (1-2 sentences)
+         e) Practical visitor information: Best times, photography rules, available facilities, accessibility (1-2 sentences)
+         f) Local tips: Insider knowledge, crowd avoidance, or special experiences (1 sentence)
 
-      4. LOCATION SPECIFICITY:
-         - Provide exact location names with neighborhoods/areas (e.g., "MoMA, Midtown Manhattan" not just "MoMA")
-         - Include distances from previous stops (e.g., "15-minute walk from previous location")
-         - Mention nearby landmarks for context (e.g., "Located near Central Park South entrance")
+         ❌ NEVER use "Option 1", "Option 2" format - write as a single cohesive detailed description
+         ❌ NEVER write short descriptions - 8-10 sentences is MANDATORY
+         ✅ Write naturally flowing paragraphs that guide visitors step-by-step through the experience
 
-      5. TRANSPORTATION DETAILS:
-         - Specify exact transport modes with details (e.g., "Take Metro Line 2 (Red Line) from Station A to Station B, 3 stops, 12 minutes" instead of just "Metro, 12 min")
-         - Include walking directions when relevant (e.g., "Walk south on 5th Avenue for 10 minutes")
-         - Mention costs (e.g., "Taxi approximately $15-20, or Subway $2.75")
+      3. LOCATION & COORDINATES - EXTREMELY IMPORTANT:
+         ⚠️ CRITICAL: Use ACCURATE coordinates for the EXACT destination requested
+         - For Tokyo: Use coordinates in range lat: 35.6-35.7, lng: 139.6-139.8
+         - For Paris: Use coordinates in range lat: 48.8-48.9, lng: 2.2-2.4
+         - For New York: Use coordinates in range lat: 40.7-40.8, lng: -74.0 to -73.9
+         - For London: Use coordinates in range lat: 51.4-51.6, lng: -0.2 to 0.0
+         - NEVER use wrong city coordinates or default to 0,0
+         - Location field must include neighborhood/district (e.g., "Senso-ji Temple, Asakusa District, Tokyo" not just "Senso-ji")
 
-      6. COSTS - BE SPECIFIC:
-         - Provide price ranges (e.g., "$25-35 per person" not "$30")
-         - Mention what's included (e.g., "$45 includes entrance + audio guide")
-         - Note free options (e.g., "Free entry on Thursdays after 5 PM")
-         - Include meal costs in food activities (e.g., "Lunch $20-30 per person for mains + drink")
+      4. TIME & DURATION:
+         - Use specific times (09:00 AM, 11:30 AM, 02:00 PM, 06:30 PM)
+         - Duration as ranges with explanation (e.g., "2-3 hours allowing time to explore all floors and special exhibitions")
+         - Within descriptions, include time flow naturally: "Arrive around 9 AM when crowds are lightest. Spend your first hour exploring the main hall. By 10:30 AM, head to the garden area."
 
-      7. DURATION - BE REALISTIC:
-         - Provide time ranges (e.g., "2-3 hours" not "2h")
-         - Explain why (e.g., "Allow 2-3 hours to fully explore all floors and special exhibitions")
+      5. TRANSPORTATION - DETAILED ROUTES:
+         - NEVER just say "Metro, 12 min" - provide full details
+         - Good example: "Take the Ginza Line from Asakusa Station to Shibuya Station (6 stops, 20 minutes, ¥200). Exit at Hachiko Exit and walk 3 minutes south."
+         - Include walking directions for nearby places: "Walk 10 minutes north along the river promenade"
+         - Mention costs: "Taxi approximately ¥1,500-2,000, or JR Yamanote Line ¥160"
 
-      8. PRACTICAL TIPS:
-         - Add 8-12 practical tips covering:
-           * Best times to visit specific attractions
-           * Booking requirements (e.g., "Book Statue of Liberty tickets 2 weeks in advance")
-           * Local etiquette or customs
-           * What to bring/wear (e.g., "Wear comfortable shoes for 2+ miles of walking")
-           * Photography rules
-           * Accessibility information
-           * Local SIM cards or WiFi options
-           * Best local food markets or restaurants by area
+      6. COSTS - COMPREHENSIVE PRICING:
+         - Provide detailed price ranges: "¥1,500-2,000 per person for general admission"
+         - What's included: "¥3,500 includes entry, audio guide, and special exhibition access"
+         - Discounts and free options: "Free entry on first Sunday of each month. Students ¥800 with ID. Seniors 65+ ¥1,000."
+         - Meal costs: "Lunch approximately ¥1,500-2,500 per person for a set menu including miso soup, rice, and main dish"
 
-      9. FOOD RECOMMENDATIONS:
-         - Include 2-3 meal suggestions per day as separate activities
-         - Specify cuisine type, price range, and what to order (e.g., "Try the Margherita pizza ($18) and tiramisu ($8)")
-         - Mention ambiance (e.g., "Cozy family-run trattoria with outdoor seating")
+      7. PRACTICAL TIPS (8-12 tips per itinerary):
+         - Booking requirements: "Reserve online 3-5 days in advance during peak season (March-April, October-November)"
+         - Best times: "Visit weekday mornings 9-11 AM to avoid tour groups. Avoid weekends and Japanese holidays."
+         - What to wear/bring: "Wear shoes you can remove easily as you'll enter temples. Bring cash as many smaller shops don't accept cards."
+         - Cultural etiquette: "Bow slightly when greeting. Speak quietly in temples. Don't eat while walking."
+         - Photography: "Photos allowed in gardens but not inside main prayer halls. No flash photography."
+         - Language: "English signage available at major attractions. Download Google Translate offline for emergencies."
+         - Transportation: "Buy a PASMO or Suica IC card for ¥500 for easy metro/bus access throughout your stay."
+         - Connectivity: "Rent a pocket WiFi at the airport (¥600-800/day) or buy a tourist SIM card"
 
-      10. COORDINATES:
-         - Provide accurate lat/lng for each location (do NOT use 0,0)
-         - Use real coordinates for the actual place
+      8. FOOD & DINING:
+         - Include 2-3 meal activities per day with 8-10 sentence descriptions
+         - Cuisine type and specialties: "This family-run ramen shop specializes in tonkotsu (pork bone) broth, simmered for 18 hours"
+         - What to order: "Try the signature tonkotsu ramen (¥950) with extra chashu pork (¥200). Add a soft-boiled egg (¥100) and gyoza dumplings (¥350)."
+         - How to order: "Use the vending machine at entrance to purchase meal tickets, then hand to staff"
+         - Ambiance and seating: "Small 12-seat counter-only shop. Peak lunch hours 12-1 PM can have 20-minute wait."
 
-      EXAMPLE OF REQUIRED DETAIL LEVEL:
+      9. SEARCHABLE ACTIVITY TITLES:
+         - Include the main attraction name clearly for image search
+         - Good: "Senso-ji Temple and Nakamise Shopping Street"
+         - Good: "Tokyo Skytree Observatory Deck"
+         - Good: "Meiji Shrine and Yoyogi Park"
+         - Bad: "Morning Temple Visit" (too vague for image search)
 
-      Bad (too brief):
+      EXAMPLE OF REQUIRED 8-10 SENTENCE DESCRIPTION:
+
+      ❌ WRONG (too brief - only 2 sentences):
       {
         "time": "09:00 AM",
-        "title": "Visit MoMA",
-        "description": "Explore the Museum of Modern Art.",
-        "location": "MoMA",
-        "duration": "2h",
-        "cost": "$25"
+        "title": "Senso-ji Temple",
+        "description": "Visit Tokyo's oldest temple. Explore the temple grounds and shop at Nakamise Street.",
+        "location": "Senso-ji Temple, Asakusa",
+        "coordinates": { "lat": 35.7148, "lng": 139.7967 },
+        "duration": "2 hours",
+        "cost": "Free (donations welcome)"
       }
 
-      Good (extremely detailed - THIS IS WHAT I NEED):
+      ✅ CORRECT (8-10 detailed sentences - THIS IS MANDATORY):
       {
         "time": "09:00 AM",
-        "title": "Museum of Modern Art (MoMA) - Complete Tour",
-        "description": "Begin your art-filled day at the Museum of Modern Art (MoMA), one of the world's premier modern art museums housing over 200,000 works. Early Morning (09:00-10:30): Start on the 5th floor with the permanent collection featuring Van Gogh's 'Starry Night' and Picasso's 'Les Demoiselles d'Avignon'. Mid-Morning (10:30-11:30): Explore the 4th floor contemporary galleries showcasing rotating exhibitions - check current exhibits online before visiting. Late Morning (11:30-12:00): Visit the sculpture garden (weather permitting) for a peaceful break. The museum offers free audio guides included with admission. Photography allowed without flash. Weekday mornings (before 11 AM) are least crowded. Members enter free; consider membership if visiting multiple NYC museums.",
-        "location": "MoMA, 11 W 53rd St, Midtown Manhattan",
-        "coordinates": { "lat": 40.7614, "lng": -73.9776 },
-        "duration": "2.5-3 hours",
-        "cost": "$25 general admission (free for children under 16, $18 seniors 65+)",
-        "transport": "From your hotel in Times Square area: Walk east on 42nd St to 5th Ave, then north to 53rd St (approximately 15-minute walk, 0.8 miles). Alternative: Take M5 bus northbound on 5th Ave, 5 minutes, $2.75 MetroCard."
+        "title": "Senso-ji Temple and Nakamise Shopping Street",
+        "description": "Begin your Tokyo adventure at Senso-ji, the city's oldest and most significant Buddhist temple, founded in 628 AD and dedicated to Kannon, the bodhisattva of compassion. The temple has been a pilgrimage site for over 1,400 years and attracts over 30 million visitors annually, making it one of the world's most visited religious sites. Start your visit at the iconic Kaminarimon (Thunder Gate) with its massive 4-meter-high red lantern weighing 700kg, which marks the outer entrance to the temple complex. Walk through the 250-meter-long Nakamise Shopping Street, a colorful pedestrian arcade lined with over 90 traditional shops selling souvenirs, traditional snacks like ningyo-yaki (small cakes), and local crafts - this shopping street has been here since the Edo period. Continue to the Hozomon Gate, the inner gate featuring two fierce guardian statues, before entering the main temple complex. At the main hall (hondo), observe locals performing traditional rituals: purifying hands and mouth at the chozuya fountain, lighting incense at the large cauldron, and offering prayers. The temple offers free entry though donations are appreciated; arrive early around 9 AM on weekdays to experience the serene morning atmosphere before tour groups arrive around 11 AM. Photography is permitted in the temple grounds but please be respectful and avoid photographing people praying. Don't miss the five-story pagoda on the temple grounds, which is beautifully illuminated at night. Adjacent to the main temple, explore the peaceful Asakusa Shrine, a Shinto shrine that honors the three men who founded Senso-ji - it's much quieter than the main temple and offers a contemplative space.",
+        "location": "Senso-ji Temple, 2-3-1 Asakusa, Taito City, Tokyo",
+        "coordinates": { "lat": 35.7148, "lng": 139.7967 },
+        "duration": "2-2.5 hours allowing time to explore temple grounds, shop at Nakamise Street, and visit adjacent Asakusa Shrine",
+        "cost": "Free entry (donations welcome at temple). Shopping at Nakamise Street: budget ¥1,000-3,000 for snacks and souvenirs",
+        "transport": "Take the Ginza Line to Asakusa Station (Exit 1), 2-minute walk to Kaminarimon Gate. From Tokyo Station: 20 minutes, ¥180 by metro"
       }
+
+      FINAL CRITICAL REMINDERS:
+      ⚠️ EVERY activity description MUST be 8-10 complete sentences minimum
+      ⚠️ NEVER use "Option 1", "Option 2" - write as flowing narrative
+      ⚠️ Use CORRECT coordinates for the destination (Tokyo = lat 35.6-35.7, lng 139.6-139.8)
+      ⚠️ Include searchable attraction names in titles for accurate image matching
+      ⚠️ Write naturally as a professional tour guide would explain the experience
 
       OUTPUT FORMAT:
       - Valid JSON matching the provided schema
       - NO markdown formatting
-      - Each description must be 3-5 detailed sentences minimum
-      - Each activity must provide genuine value and specific actionable information
+      - MANDATORY: 8-10 sentences per activity description
+      - NO "Option 1/Option 2" format
+      - Use correct city coordinates
+      - Each activity provides genuine value and specific actionable information
     `;
 
         let itinerary: any;
