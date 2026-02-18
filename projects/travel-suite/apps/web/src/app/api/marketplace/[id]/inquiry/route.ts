@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createClient();
-    const targetOrgId = params.id;
+    const { id: targetOrgId } = await context.params;
 
     try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -35,9 +35,9 @@ async function getAuthContext(req: Request) {
     return { user: null, profile: null };
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
     try {
-        const targetOrgId = params.id;
+        const { id: targetOrgId } = await context.params;
 
         const { data, error } = await supabaseAdmin
             .from("marketplace_reviews")
@@ -57,14 +57,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
     try {
+        const { id } = await context.params;
+        const targetOrgId = id;
         const { user, profile } = await getAuthContext(req);
         if (!user || !profile) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const targetOrgId = params.id;
         const reviewerOrgId = profile.organization_id;
 
         if (!reviewerOrgId) {
