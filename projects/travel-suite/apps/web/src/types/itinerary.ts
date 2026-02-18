@@ -11,6 +11,7 @@ export interface Activity {
     coordinates?: Coordinate;
     duration?: string;
     cost?: string;
+    transport?: string;
     image?: string;
 }
 
