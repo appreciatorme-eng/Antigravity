@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 
+// Sidebar navigation links - includes marketplace (verified 2026-02-18)
 const sidebarLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
