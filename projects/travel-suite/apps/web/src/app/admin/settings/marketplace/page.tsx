@@ -17,7 +17,11 @@ import {
     Image as ImageIcon,
     Plus,
     Trash2,
-    List
+    List,
+    FileText,
+    ShieldAlert,
+    FileCheck,
+    ExternalLink
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -27,6 +31,14 @@ interface RateCardItem {
     id: string;
     service: string;
     margin: number;
+}
+
+interface ComplianceDocument {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    expiry_date?: string;
 }
 
 export default function MarketplaceSettingsPage() {
@@ -41,13 +53,20 @@ export default function MarketplaceSettingsPage() {
         margin_rate: "" as string | number,
         verification_status: "none" as string,
         gallery_urls: [] as string[],
-        rate_card: [] as RateCardItem[]
+        rate_card: [] as RateCardItem[],
+        compliance_documents: [] as ComplianceDocument[]
     });
     const [newRegion, setNewRegion] = useState("");
     const [newSpecialty, setNewSpecialty] = useState("");
     const [newImageUrl, setNewImageUrl] = useState("");
     const [newRateService, setNewRateService] = useState("");
     const [newRateMargin, setNewRateMargin] = useState("");
+
+    // Document form
+    const [docName, setDocName] = useState("");
+    const [docUrl, setDocUrl] = useState("");
+    const [docType, setDocType] = useState("Other");
+    const [docExpiry, setDocExpiry] = useState("");
 
     const [successMessage, setSuccessMessage] = useState(false);
 
@@ -85,7 +104,8 @@ export default function MarketplaceSettingsPage() {
                         margin_rate: marketProfile.margin_rate ?? "",
                         verification_status: marketProfile.verification_status || "none",
                         gallery_urls: marketProfile.gallery_urls || [],
-                        rate_card: marketProfile.rate_card || []
+                        rate_card: marketProfile.rate_card || [],
+                        compliance_documents: marketProfile.compliance_documents || []
                     });
                 }
             }
@@ -118,7 +138,8 @@ export default function MarketplaceSettingsPage() {
                     specialties: formData.specialties,
                     margin_rate: formData.margin_rate === "" ? null : Number(formData.margin_rate),
                     gallery_urls: formData.gallery_urls,
-                    rate_card: formData.rate_card
+                    rate_card: formData.rate_card,
+                    compliance_documents: formData.compliance_documents
                 })
             });
 
@@ -219,6 +240,26 @@ export default function MarketplaceSettingsPage() {
         setFormData({ ...formData, rate_card: formData.rate_card.filter(item => item.id !== id) });
     };
 
+    const addDocument = () => {
+        if (docName && docUrl) {
+            const newDoc: ComplianceDocument = {
+                id: Math.random().toString(36).substr(2, 9),
+                name: docName,
+                url: docUrl,
+                type: docType,
+                expiry_date: docExpiry || undefined
+            };
+            setFormData({ ...formData, compliance_documents: [...formData.compliance_documents, newDoc] });
+            setDocName("");
+            setDocUrl("");
+            setDocExpiry("");
+        }
+    };
+
+    const removeDocument = (id: string) => {
+        setFormData({ ...formData, compliance_documents: formData.compliance_documents.filter(d => d.id !== id) });
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -249,9 +290,10 @@ export default function MarketplaceSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Core Info */}
+                {/* Left Column: Core Info & Documents */}
                 <div className="lg:col-span-2 space-y-8">
                     <GlassCard className="p-8 space-y-8">
+                        {/* Hero Header */}
                         <div className="flex items-center gap-6 pb-8 border-b border-slate-800">
                             <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden relative">
                                 {organization?.logo_url ? (
@@ -335,6 +377,81 @@ export default function MarketplaceSettingsPage() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </GlassCard>
+
+                    {/* Document Vault Section */}
+                    <GlassCard className="p-8 space-y-6">
+                        <div className="space-y-1">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <ShieldAlert className="text-yellow-400" size={20} /> B2B Compliance Vault
+                            </h3>
+                            <p className="text-xs text-slate-500">Provide legal and safety documents that verified partners can access to streamline onboarding.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/30 p-4 rounded-3xl border border-slate-800">
+                            <div className="space-y-3">
+                                <GlassInput placeholder="Document Name (e.g. Liability Insurance)" value={docName} onChange={(e) => setDocName(e.target.value)} />
+                                <div className="flex gap-2">
+                                    <select
+                                        className="bg-slate-900 border border-slate-800 rounded-2xl px-4 text-xs text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        value={docType}
+                                        onChange={(e) => setDocType(e.target.value)}
+                                    >
+                                        <option>Insurance</option>
+                                        <option>License</option>
+                                        <option>Safety Protocol</option>
+                                        <option>Contract Template</option>
+                                        <option>Other</option>
+                                    </select>
+                                    <div className="flex-1">
+                                        <input
+                                            type="date"
+                                            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-xs text-slate-300 outline-none"
+                                            value={docExpiry}
+                                            onChange={(e) => setDocExpiry(e.target.value)}
+                                            placeholder="Expiry Date"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <GlassInput placeholder="Hosted Document URL (PDF/Doc)" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} />
+                                <GlassButton onClick={addDocument} className="w-full flex items-center justify-center gap-2 py-2">
+                                    <Plus size={16} /> Add to Vault
+                                </GlassButton>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {formData.compliance_documents.map(doc => (
+                                <div key={doc.id} className="p-4 bg-slate-800/40 rounded-2xl border border-slate-700/50 flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                            <FileText size={20} />
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white font-medium">{doc.name}</div>
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                                <span className="uppercase">{doc.type}</span>
+                                                {doc.expiry_date && (
+                                                    <span className="flex items-center gap-1">
+                                                        • Expires {new Date(doc.expiry_date).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <a href={doc.url} target="_blank" className="p-2 text-slate-500 hover:text-blue-400 transition-colors">
+                                            <ExternalLink size={16} />
+                                        </a>
+                                        <button onClick={() => removeDocument(doc.id)} className="p-2 text-slate-500 hover:text-red-400 transition-colors">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </GlassCard>
 

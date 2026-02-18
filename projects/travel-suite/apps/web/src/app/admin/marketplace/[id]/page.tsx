@@ -18,7 +18,10 @@ import {
     RefreshCcw,
     Image as ImageIcon,
     List,
-    CheckCircle2
+    CheckCircle2,
+    Lock,
+    FileText,
+    ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -31,6 +34,14 @@ interface RateCardItem {
     id: string;
     service: string;
     margin: number;
+}
+
+interface ComplianceDocument {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    expiry_date?: string;
 }
 
 interface MarketplaceProfile {
@@ -47,6 +58,7 @@ interface MarketplaceProfile {
     is_verified: boolean;
     gallery_urls: string[];
     rate_card: RateCardItem[];
+    compliance_documents: ComplianceDocument[];
 }
 
 interface Review {
@@ -73,6 +85,7 @@ export default function OperatorDetailPage() {
     const [newRating, setNewRating] = useState(5);
     const [newComment, setNewComment] = useState("");
     const [currentUserOrgId, setCurrentUserOrgId] = useState<string | null>(null);
+    const [currentUserIsVerified, setCurrentUserIsVerified] = useState(false);
     const [inquiryMessage, setInquiryMessage] = useState("");
     const [submittingInquiry, setSubmittingInquiry] = useState(false);
     const [inquirySent, setInquirySent] = useState(false);
@@ -94,6 +107,15 @@ export default function OperatorDetailPage() {
                     .eq("id", session.user.id)
                     .single();
                 setCurrentUserOrgId(userProfile?.organization_id || null);
+
+                if (userProfile?.organization_id) {
+                    const { data: marketProfile } = await (supabase as any)
+                        .from("marketplace_profiles")
+                        .select("is_verified")
+                        .eq("organization_id", userProfile.organization_id)
+                        .single();
+                    setCurrentUserIsVerified(marketProfile?.is_verified || false);
+                }
             }
 
             const profRes = await fetch(`/api/marketplace?q=`, { headers });
@@ -206,7 +228,7 @@ export default function OperatorDetailPage() {
                                         <h1 className="text-4xl font-bold text-white tracking-tight">{profile.organization_name}</h1>
                                         {profile.is_verified && (
                                             <div className="px-2.5 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-bold border border-green-500/20 flex items-center gap-1">
-                                                <ShieldCheck size={14} /> Verified
+                                                <ShieldCheck size={14} /> Verified Partner
                                             </div>
                                         )}
                                     </div>
@@ -294,8 +316,50 @@ export default function OperatorDetailPage() {
                 {/* Sidebar */}
                 <div className="space-y-6">
                     <GlassCard className="p-6 sticky top-10 space-y-6">
-                        {/* Rate Card */}
+                        {/* Comparison Box (Restricted Documents) */}
                         <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <ShieldAlert size={14} className="text-yellow-400" /> Compliance Vault
+                            </h3>
+
+                            {!currentUserIsVerified ? (
+                                <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800/50 space-y-3 text-center">
+                                    <Lock className="mx-auto text-slate-600" size={24} />
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Verified Access Only</p>
+                                    <p className="text-xs text-slate-500">Legal and safety documents are restricted to Verified Partners. Request verification in your settings to unlock access.</p>
+                                    <Link href="/admin/settings/marketplace">
+                                        <GlassButton variant="secondary" className="w-full text-[10px] py-1 mt-2">Get Verified</GlassButton>
+                                    </Link>
+                                </div>
+                            ) : profile.compliance_documents?.length > 0 ? (
+                                <div className="space-y-2">
+                                    {profile.compliance_documents.map(doc => (
+                                        <a
+                                            key={doc.id}
+                                            href={doc.url}
+                                            target="_blank"
+                                            className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-xl hover:border-blue-500/50 hover:bg-slate-800/50 transition-all group"
+                                        >
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <FileText size={16} className="text-blue-400 shrink-0" />
+                                                <div className="overflow-hidden">
+                                                    <div className="text-xs font-bold text-white truncate">{doc.name}</div>
+                                                    <div className="text-[8px] text-slate-500 uppercase">{doc.type}</div>
+                                                </div>
+                                            </div>
+                                            <ExternalLink size={12} className="text-slate-500 group-hover:text-blue-400" />
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-slate-900/50 rounded-xl border border-dashed border-slate-800 text-center">
+                                    <p className="text-[10px] text-slate-600">No documents listed yet.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Rate Card */}
+                        <div className="space-y-4 pt-4 border-t border-slate-800">
                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                 <List size={14} className="text-green-400" /> Partner Rates
                             </h3>
