@@ -108,7 +108,7 @@ export async function PATCH(req: Request) {
         }
 
         const body = await req.json();
-        const { description, service_regions, specialties, margin_rate, request_verification } = body;
+        const { description, service_regions, specialties, margin_rate, request_verification, rate_card, gallery_urls } = body;
 
         const updates: any = {
             organization_id: profile.organization_id,
@@ -116,6 +116,8 @@ export async function PATCH(req: Request) {
             service_regions: Array.isArray(service_regions) ? service_regions : [],
             specialties: Array.isArray(specialties) ? specialties : [],
             margin_rate: typeof margin_rate === "number" ? margin_rate : null,
+            rate_card: Array.isArray(rate_card) ? rate_card : [],
+            gallery_urls: Array.isArray(gallery_urls) ? gallery_urls : [],
             updated_at: new Date().toISOString()
         };
 

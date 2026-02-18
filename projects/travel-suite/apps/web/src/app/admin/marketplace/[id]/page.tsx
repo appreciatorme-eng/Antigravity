@@ -15,7 +15,10 @@ import {
     DollarSign,
     Send,
     ExternalLink,
-    RefreshCcw
+    RefreshCcw,
+    Image as ImageIcon,
+    List,
+    CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,7 +26,12 @@ import { useParams } from "next/navigation";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import { GlassInput } from "@/components/glass/GlassInput";
+
+interface RateCardItem {
+    id: string;
+    service: string;
+    margin: number;
+}
 
 interface MarketplaceProfile {
     id: string;
@@ -37,6 +45,8 @@ interface MarketplaceProfile {
     average_rating: number;
     review_count: number;
     is_verified: boolean;
+    gallery_urls: string[];
+    rate_card: RateCardItem[];
 }
 
 interface Review {
@@ -77,7 +87,6 @@ export default function OperatorDetailPage() {
                 headers.Authorization = `Bearer ${session.access_token}`;
             }
 
-            // Fetch user's own profile to get organization_id for review restriction
             if (session?.user) {
                 const { data: userProfile } = await supabase
                     .from("profiles")
@@ -87,19 +96,16 @@ export default function OperatorDetailPage() {
                 setCurrentUserOrgId(userProfile?.organization_id || null);
             }
 
-            // Fetch marketplace profile
-            // Note: We need the broad list but filtered to this ID for our flattened fields
             const profRes = await fetch(`/api/marketplace?q=`, { headers });
             if (profRes.ok) {
-                const allProfs = await responseToJSON(profRes);
+                const allProfs = await profRes.json();
                 const found = allProfs.find((p: any) => p.organization_id === targetOrgId);
                 setProfile(found || null);
             }
 
-            // Fetch reviews
             const revRes = await fetch(`/api/marketplace/${targetOrgId}/reviews`, { headers });
             if (revRes.ok) {
-                setReviews(await responseToJSON(revRes));
+                setReviews(await revRes.json());
             }
         } catch (error) {
             console.error("Error fetching detail:", error);
@@ -107,10 +113,6 @@ export default function OperatorDetailPage() {
             setLoading(false);
         }
     }, [supabase, targetOrgId]);
-
-    async function responseToJSON(res: Response) {
-        return res.json();
-    }
 
     useEffect(() => {
         void fetchData();
@@ -127,20 +129,13 @@ export default function OperatorDetailPage() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${session?.access_token}`
                 },
-                body: JSON.stringify({
-                    rating: newRating,
-                    comment: newComment
-                })
+                body: JSON.stringify({ rating: newRating, comment: newComment })
             });
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Failed to submit review");
-            }
-
+            if (!response.ok) throw new Error("Failed to submit review");
             setNewComment("");
             setNewRating(5);
-            void fetchData(); // Refresh data
+            void fetchData();
         } catch (error: any) {
             alert(error.message);
         } finally {
@@ -159,22 +154,13 @@ export default function OperatorDetailPage() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${session?.access_token}`
                 },
-                body: JSON.stringify({
-                    message: inquiryMessage
-                })
+                body: JSON.stringify({ message: inquiryMessage })
             });
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Failed to send inquiry");
-            }
-
+            if (!response.ok) throw new Error("Failed to send inquiry");
             setInquirySent(true);
             setInquiryMessage("");
-            setTimeout(() => {
-                setShowInquiryModal(false);
-                setInquirySent(false);
-            }, 3000);
+            setTimeout(() => { setShowInquiryModal(false); setInquirySent(false); }, 3000);
         } catch (error: any) {
             alert(error.message);
         } finally {
@@ -182,49 +168,34 @@ export default function OperatorDetailPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin text-blue-400">
-                    <RefreshCcw size={48} />
-                </div>
-            </div>
-        );
-    }
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <RefreshCcw className="animate-spin text-blue-400" size={48} />
+        </div>
+    );
 
-    if (!profile) {
-        return (
-            <div className="min-h-screen p-10 flex flex-col items-center justify-center space-y-4">
-                <Building2 size={64} className="text-slate-700" />
-                <h1 className="text-2xl font-bold text-white">Operator not found</h1>
-                <Link href="/admin/marketplace">
-                    <GlassButton>Back to Marketplace</GlassButton>
-                </Link>
-            </div>
-        );
-    }
+    if (!profile) return (
+        <div className="min-h-screen p-10 flex flex-col items-center justify-center space-y-4 text-center">
+            <Building2 size={64} className="text-slate-700" />
+            <h1 className="text-2xl font-bold text-white">Operator not found</h1>
+            <Link href="/admin/marketplace"><GlassButton>Back to Marketplace</GlassButton></Link>
+        </div>
+    );
 
     return (
         <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1400px] mx-auto">
-            {/* Nav */}
             <Link href="/admin/marketplace" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-                <ChevronLeft size={20} />
-                Back to Marketplace
+                <ChevronLeft size={20} /> Back to Marketplace
             </Link>
 
-            {/* Profile Header */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
+                    {/* Hero Profile */}
                     <GlassCard className="p-8">
                         <div className="flex flex-col md:flex-row gap-8 items-start">
                             <div className="w-32 h-32 rounded-3xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden shrink-0 relative">
                                 {profile.organization_logo ? (
-                                    <Image
-                                        src={profile.organization_logo}
-                                        alt={profile.organization_name}
-                                        fill
-                                        className="object-cover"
-                                    />
+                                    <Image src={profile.organization_logo} alt={profile.organization_name} fill className="object-cover" />
                                 ) : (
                                     <Building2 size={48} className="text-slate-600" />
                                 )}
@@ -232,238 +203,138 @@ export default function OperatorDetailPage() {
                             <div className="flex-1 space-y-4">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3">
-                                        <h1 className="text-4xl font-bold text-white tracking-tight">
-                                            {profile.organization_name}
-                                        </h1>
+                                        <h1 className="text-4xl font-bold text-white tracking-tight">{profile.organization_name}</h1>
                                         {profile.is_verified && (
-                                            <div className="p-1 px-2.5 bg-green-500/10 text-green-400 rounded-full text-xs font-bold border border-green-500/20 flex items-center gap-1">
-                                                <ShieldCheck size={14} />
-                                                Verified Partner
+                                            <div className="px-2.5 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-bold border border-green-500/20 flex items-center gap-1">
+                                                <ShieldCheck size={14} /> Verified
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-4 text-slate-400">
+                                    <div className="flex items-center gap-4 text-slate-400 text-sm">
                                         <div className="flex items-center gap-1 text-yellow-500">
-                                            <Star size={18} className="fill-yellow-500" />
+                                            <Star size={16} className="fill-yellow-500" />
                                             <span className="font-bold text-slate-200">{profile.average_rating.toFixed(1)}</span>
-                                            <span className="text-sm opacity-60">({profile.review_count} reviews)</span>
+                                            <span className="opacity-60">({profile.review_count} reviews)</span>
                                         </div>
-                                        <div className="w-1.5 h-1.5 bg-slate-700 rounded-full"></div>
-                                        <div className="flex items-center gap-1.5">
-                                            <MapPin size={18} />
-                                            <span>{profile.service_regions.length} Regions Covered</span>
-                                        </div>
+                                        <div className="w-1 h-1 bg-slate-700 rounded-full" />
+                                        <div className="flex items-center gap-1.5"><MapPin size={16} /> {profile.service_regions.length} Regions</div>
                                     </div>
                                 </div>
-
-                                <p className="text-lg text-slate-300 leading-relaxed max-w-2xl">
-                                    {profile.description || "No description provided."}
-                                </p>
-
+                                <p className="text-lg text-slate-300 leading-relaxed">{profile.description || "Leading tour operator providing high-quality travel experiences."}</p>
                                 <div className="flex flex-wrap gap-2 pt-2">
-                                    {profile.specialties.map(spec => (
-                                        <GlassBadge key={spec}>{spec}</GlassBadge>
-                                    ))}
+                                    {profile.specialties.map(spec => <GlassBadge key={spec}>{spec}</GlassBadge>)}
                                 </div>
                             </div>
                         </div>
                     </GlassCard>
 
-                    {/* Regions & Details Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <GlassCard className="p-6 space-y-4">
-                            <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <MapPin size={20} className="text-blue-400" />
-                                Service Regions
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                                {profile.service_regions.map(region => (
-                                    <div key={region} className="px-3 py-2 bg-slate-900/50 border border-slate-800 rounded-xl text-slate-300 text-sm">
-                                        {region}
+                    {/* Media Gallery */}
+                    {profile.gallery_urls?.length > 0 && (
+                        <div className="space-y-4">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <ImageIcon className="text-pink-400" size={20} /> Media Showcase
+                            </h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {profile.gallery_urls.map((url, idx) => (
+                                    <div key={idx} className="aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl group">
+                                        <img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                     </div>
                                 ))}
                             </div>
-                        </GlassCard>
-                        <GlassCard className="p-6 space-y-4">
-                            <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <DollarSign size={20} className="text-green-400" />
-                                Partner Margin
-                            </h3>
-                            <div className="p-4 bg-green-500/5 border border-green-500/10 rounded-2xl flex items-center justify-between">
-                                <span className="text-slate-400">Standard Margin Rate</span>
-                                <span className="text-2xl font-bold text-green-400">
-                                    {profile.margin_rate ? `${profile.margin_rate}%` : "Negotiable"}
-                                </span>
-                            </div>
-                        </GlassCard>
-                    </div>
-
-                    {/* Reviews Section */}
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <MessageSquare size={24} className="text-blue-400" />
-                                Peer Reviews
-                            </h2>
-                            <span className="text-slate-500">{reviews.length} total reviews</span>
                         </div>
+                    )}
 
-                        {/* Submit Review Form (Only show if not reviewing self) */}
+                    {/* Reviews */}
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <MessageSquare className="text-blue-400" /> Partner Reviews
+                        </h2>
                         {currentUserOrgId && currentUserOrgId !== targetOrgId && (
-                            <GlassCard className="p-6 bg-blue-500/5 border-blue-500/10">
+                            <GlassCard className="p-6 bg-blue-500/5">
                                 <div className="space-y-4">
                                     <h4 className="font-semibold text-white">Rate this partner</h4>
-                                    <div className="flex items-center gap-2 text-2xl">
-                                        {[1, 2, 3, 4, 5].map(star => (
-                                            <button
-                                                key={star}
-                                                onClick={() => setNewRating(star)}
-                                                className={`transition-all hover:scale-110 ${newRating >= star ? "text-yellow-400" : "text-slate-700"}`}
-                                            >
-                                                <Star size={28} className={newRating >= star ? "fill-yellow-400" : ""} />
+                                    <div className="flex gap-2">
+                                        {[1, 2, 3, 4, 5].map(s => (
+                                            <button key={s} onClick={() => setNewRating(s)} className={`transition-all ${newRating >= s ? "text-yellow-400" : "text-slate-800"}`}>
+                                                <Star size={24} className={newRating >= s ? "fill-yellow-400" : ""} />
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="relative">
-                                        <textarea
-                                            placeholder="Sharing your partnership experience helps the marketplace..."
-                                            className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500/30 outline-none h-24"
-                                            value={newComment}
-                                            onChange={(e) => setNewComment(e.target.value)}
-                                        />
-                                        <div className="absolute bottom-4 right-4 text-xs text-slate-600">
-                                            Only other operators see this
-                                        </div>
-                                    </div>
+                                    <textarea
+                                        placeholder="Share your partnership experience..."
+                                        className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-4 text-white text-sm h-24"
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                    />
                                     <div className="flex justify-end">
-                                        <GlassButton
-                                            onClick={handleSubmitReview}
-                                            disabled={submittingReview || !newComment.trim()}
-                                            className="flex items-center gap-2"
-                                        >
-                                            {submittingReview ? <RefreshCcw className="animate-spin" size={16} /> : <Send size={16} />}
-                                            Submit Review
-                                        </GlassButton>
+                                        <GlassButton onClick={handleSubmitReview} disabled={submittingReview || !newComment.trim()}>Submit Review</GlassButton>
                                     </div>
                                 </div>
                             </GlassCard>
                         )}
-
-                        {/* Review List */}
                         <div className="space-y-4">
-                            {reviews.length === 0 ? (
-                                <div className="text-center py-12 text-slate-500 italic">
-                                    No reviews yet. Be the first partner to rate them!
-                                </div>
-                            ) : (
-                                reviews.map(review => (
-                                    <GlassCard key={review.id} className="p-6 space-y-4">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden relative">
-                                                    {review.reviewer.logo_url ? (
-                                                        <Image src={review.reviewer.logo_url} alt={review.reviewer.name} fill className="object-cover" />
-                                                    ) : (
-                                                        <Building2 size={16} className="text-slate-600" />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <div className="font-semibold text-white">{review.reviewer.name}</div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex items-center gap-0.5">
-                                                            {[1, 2, 3, 4, 5].map(s => (
-                                                                <Star key={s} size={12} className={review.rating >= s ? "text-yellow-400 fill-yellow-400" : "text-slate-800"} />
-                                                            ))}
-                                                        </div>
-                                                        <div className="text-xs text-slate-500 flex items-center gap-1">
-                                                            <Clock size={10} />
-                                                            {new Date(review.created_at).toLocaleDateString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                            {reviews.map(rev => (
+                                <GlassCard key={rev.id} className="p-6 space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-slate-800 overflow-hidden shrink-0">
+                                            {rev.reviewer.logo_url ? <img src={rev.reviewer.logo_url} className="w-full h-full object-cover" /> : <Building2 size={16} className="m-2 text-slate-600" />}
                                         </div>
-                                        <p className="text-slate-400 leading-relaxed italic">
-                                            "{review.comment}"
-                                        </p>
-                                    </GlassCard>
-                                ))
-                            )}
+                                        <div>
+                                            <div className="text-sm font-bold text-white">{rev.reviewer.name}</div>
+                                            <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map(s => <Star key={s} size={10} className={rev.rating >= s ? "text-yellow-500 fill-yellow-500" : "text-slate-800"} />)}</div>
+                                        </div>
+                                    </div>
+                                    <p className="text-slate-400 text-sm italic">"{rev.comment}"</p>
+                                </GlassCard>
+                            ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar Info */}
+                {/* Sidebar */}
                 <div className="space-y-6">
                     <GlassCard className="p-6 sticky top-10 space-y-6">
+                        {/* Rate Card */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white uppercase tracking-wider text-sm opacity-60">Engagement</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
-                                    <div className="text-2xl font-bold text-white tracking-tight">{profile.review_count}</div>
-                                    <div className="text-xs text-slate-500">Connections</div>
-                                </div>
-                                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800">
-                                    <div className="text-2xl font-bold text-white tracking-tight">{Math.round(profile.average_rating * 20)}%</div>
-                                    <div className="text-xs text-slate-500">Confidence</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="pt-6 border-t border-slate-800 space-y-4">
-                            <h3 className="text-lg font-bold text-white uppercase tracking-wider text-sm opacity-60">Primary Specialties</h3>
-                            <div className="space-y-3">
-                                {profile.specialties.map(spec => (
-                                    <div key={spec} className="flex items-center gap-3 text-slate-300">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        {spec}
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <List size={14} className="text-green-400" /> Partner Rates
+                            </h3>
+                            <div className="space-y-2">
+                                {profile.rate_card?.map(item => (
+                                    <div key={item.id} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                                        <span className="text-sm text-slate-300">{item.service}</span>
+                                        <span className="text-sm font-bold text-green-400">{item.margin}%</span>
                                     </div>
                                 ))}
+                                <div className="flex justify-between items-center p-3 bg-green-500/5 rounded-xl border border-green-500/10">
+                                    <span className="text-sm font-medium text-slate-200 text-xs">Standard Margin</span>
+                                    <span className="text-lg font-bold text-green-400">{profile.margin_rate ? `${profile.margin_rate}%` : "Negotiable"}</span>
+                                </div>
                             </div>
                         </div>
 
+                        {/* Connection CTA */}
                         <div className="pt-6 border-t border-slate-800 space-y-4">
                             {showInquiryModal ? (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-3">
                                     <textarea
                                         placeholder="Briefly describe your interest in partnering..."
-                                        className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-blue-500/30 outline-none h-24"
+                                        className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-xs text-white h-24"
                                         value={inquiryMessage}
                                         onChange={(e) => setInquiryMessage(e.target.value)}
-                                        disabled={inquirySent}
                                     />
                                     <div className="flex gap-2">
-                                        <GlassButton
-                                            variant="secondary"
-                                            className="flex-1"
-                                            onClick={() => setShowInquiryModal(false)}
-                                            disabled={submittingInquiry}
-                                        >
-                                            Cancel
-                                        </GlassButton>
-                                        <GlassButton
-                                            className="flex-1 flex items-center justify-center gap-2"
-                                            onClick={handleSubmitInquiry}
-                                            disabled={submittingInquiry || !inquiryMessage.trim() || inquirySent}
-                                        >
-                                            {inquirySent ? <CheckCircle2 size={16} /> : submittingInquiry ? <RefreshCcw className="animate-spin" size={16} /> : <Send size={16} />}
-                                            {inquirySent ? "Sent!" : "Send"}
+                                        <GlassButton variant="secondary" className="flex-1 text-xs" onClick={() => setShowInquiryModal(false)}>Cancel</GlassButton>
+                                        <GlassButton className="flex-1 text-xs" onClick={handleSubmitInquiry} disabled={submittingInquiry || inquirySent}>
+                                            {inquirySent ? "Sent!" : submittingInquiry ? "..." : "Send Request"}
                                         </GlassButton>
                                     </div>
                                 </div>
                             ) : (
-                                <GlassButton
-                                    className="w-full group"
-                                    onClick={() => setShowInquiryModal(true)}
-                                    disabled={currentUserOrgId === targetOrgId}
-                                >
-                                    <span className="flex-1 text-center">Inquiry Connection</span>
-                                    <ExternalLink size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                <GlassButton className="w-full" onClick={() => setShowInquiryModal(true)} disabled={currentUserOrgId === targetOrgId}>
+                                    Partner Inquiry
                                 </GlassButton>
                             )}
-                            <p className="text-xs text-slate-600 text-center">
-                                Connecting confirms you agree to our Marketplace Terms of Engagement.
-                            </p>
                         </div>
                     </GlassCard>
                 </div>
@@ -471,6 +342,3 @@ export default function OperatorDetailPage() {
         </div>
     );
 }
-
-import { CheckCircle2 } from "lucide-react";
-
