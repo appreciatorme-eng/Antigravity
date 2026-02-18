@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Poppins } from "next/font/google";
+import { Cormorant_Garamond, Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import NavHeader from "@/components/layout/NavHeader";
 
@@ -12,7 +12,12 @@ const cormorant = Cormorant_Garamond({
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"], // Regular, Medium, Semibold, Bold
+  weight: ["400", "500", "600", "700", "800"], // Regular, Medium, Semibold, Bold, ExtraBold
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${cormorant.variable} ${poppins.variable} antialiased font-sans`}
+        className={`${cormorant.variable} ${poppins.variable} ${inter.variable} antialiased font-sans`}
       >
         <NavHeader />
         <main>{children}</main>

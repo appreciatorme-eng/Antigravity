@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane } from "lucide-react";
+import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud } from "lucide-react";
 import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import ShareItinerary from "./ShareItinerary";
@@ -44,6 +44,7 @@ export default function PlannerPage() {
     const [error, setError] = useState("");
 
     const [images, setImages] = useState<Record<string, string | null>>({});
+    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1])); // First day expanded by default
 
     const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
 
@@ -65,6 +66,13 @@ export default function PlannerPage() {
     };
 
     const fetchImagesForItinerary = async (itineraryData: ItineraryResult) => {
+        const IMAGE_SOURCES = [
+            { name: 'unsplash', endpoint: '/api/images/unsplash' },
+            { name: 'pexels', endpoint: '/api/images/pexels' },
+            { name: 'wikimedia', endpoint: '/api/images' },
+            { name: 'pixabay', endpoint: '/api/images/pixabay' }
+        ];
+
         const jobs: Array<{ key: string; candidates: string[] }> = [];
         const imageMap: Record<string, string | null> = {};
         itineraryData.days.forEach((day) => {
@@ -87,14 +95,26 @@ export default function PlannerPage() {
                 const job = jobs[i++];
                 try {
                     let found: string | null = null;
+
+                    // Try each query candidate
                     for (const q of job.candidates) {
-                        const resp = await fetch(`/api/images?query=${encodeURIComponent(q)}`);
-                        const data = await resp.json().catch(() => ({}));
-                        if (resp.ok && typeof data?.url === "string" && data.url.length > 0) {
-                            found = data.url;
-                            break;
+                        if (found) break;
+
+                        // Try each image source until we find an image
+                        for (const source of IMAGE_SOURCES) {
+                            try {
+                                const resp = await fetch(`${source.endpoint}?query=${encodeURIComponent(q)}`);
+                                const data = await resp.json().catch(() => ({}));
+                                if (resp.ok && typeof data?.url === "string" && data.url && data.url.length > 0) {
+                                    found = data.url;
+                                    break;
+                                }
+                            } catch (sourceErr) {
+                                console.warn(`${source.name} failed for query "${q}":`, sourceErr);
+                            }
                         }
                     }
+
                     imageMap[job.key] = found;
                 } catch (err) {
                     console.error("Failed to load image for", job.key, err);
@@ -113,6 +133,18 @@ export default function PlannerPage() {
                 ? prev.filter(i => i !== interest)
                 : [...prev, interest]
         );
+    };
+
+    const toggleDay = (dayNumber: number) => {
+        setExpandedDays(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(dayNumber)) {
+                newSet.delete(dayNumber);
+            } else {
+                newSet.add(dayNumber);
+            }
+            return newSet;
+        });
     };
 
     const handleGenerate = async () => {
@@ -308,7 +340,7 @@ Make it practical and specific:
                             <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
                         </div>
 
-                        {/* Map & Widgets */}
+                        {/* Map & Currency Converter */}
                         <div className="grid lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
                                 <ItineraryMap
@@ -324,92 +356,188 @@ Make it practical and specific:
                             <div className="space-y-6">
                                 <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
                                     <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Destination Info</CardTitle>
+                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-6 pt-4">
-                                        <WeatherWidget destination={result.destination} days={days} />
-                                        <Separator />
+                                    <CardContent className="pt-4">
                                         <CurrencyConverter compact />
                                     </CardContent>
                                 </Card>
                             </div>
                         </div>
 
-                        {/* Day by Day */}
-                        <div className="space-y-8">
-                            {result.days.map((day: Day) => (
-                                <Card key={day.day_number} className="overflow-hidden border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md hover:shadow-lg transition-all duration-300">
-                                    <div className="bg-gradient-to-r from-secondary/5 to-transparent dark:from-white/5 px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
-                                        <h3 className="text-xl font-bold text-secondary flex items-center gap-3">
-                                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-white text-sm font-bold shadow-sm">
-                                                {day.day_number}
-                                            </span>
-                                            {day.theme || `Day ${day.day_number}`}
-                                        </h3>
-                                    </div>
-                                    <CardContent className="p-0">
-                                        <div className="divide-y divide-gray-100 dark:divide-white/10">
-                                            {day.activities.map((act: Activity, idx: number) => {
-                                                const imgKey = activityImageKey(day.day_number, idx);
-                                                const imgUrl = images[imgKey];
+                        {/* Weather Forecast - Full Width Prominent Display */}
+                        <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800/30 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
+                                    <Cloud className="w-7 h-7 text-sky-600" />
+                                    Weather Forecast for {result.destination}
+                                </CardTitle>
+                                <CardDescription>
+                                    Plan your activities around the weather
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <WeatherWidget
+                                    destination={result.destination}
+                                    days={result.duration_days}
+                                    compact={false}
+                                />
+                            </CardContent>
+                        </Card>
 
-                                                return (
-                                                    <div key={idx} className="p-6 hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                        <div className="flex flex-col md:flex-row gap-5">
-                                                            <div className="flex items-start gap-3 w-24 shrink-0 pt-1">
-                                                                <Badge variant="outline" className="font-mono text-xs bg-gray-50 dark:bg-white/5 dark:text-slate-100 dark:border-white/10">
-                                                                    {act.time}
-                                                                </Badge>
-                                                            </div>
+                        {/* Trip Highlights Section */}
+                        {result.tips && result.tips.length > 0 && (
+                            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-100 dark:border-green-800/30 shadow-md">
+                                <CardHeader>
+                                    <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
+                                        <span className="text-3xl">✨</span>
+                                        Trip Highlights
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ul className="space-y-3">
+                                        {result.tips.map((tip, idx) => (
+                                            <li key={idx} className="flex items-start gap-3 text-gray-700 dark:text-slate-200">
+                                                <span className="text-[#18974e] text-xl mt-0.5 shrink-0">✓</span>
+                                                <span className="leading-relaxed">{tip}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                            </Card>
+                        )}
 
-                                                            <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm ring-1 ring-gray-100 dark:ring-white/10 bg-gray-100/50 dark:bg-white/5">
-                                                                {imgUrl === undefined ? (
-                                                                    <div className="w-full h-full animate-pulse bg-gray-200/60 dark:bg-white/10" />
-                                                                ) : imgUrl ? (
-                                                                    <img
-                                                                        src={imgUrl}
-                                                                        alt={act.location || act.title}
-                                                                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                                                                        loading="lazy"
-                                                                        referrerPolicy="no-referrer"
-                                                                        onError={(e) => {
-                                                                            e.currentTarget.src = "/placeholder-image.svg";
-                                                                        }}
-                                                                    />
-                                                                ) : (
-                                                                    <img
-                                                                        src="/placeholder-image.svg"
-                                                                        alt="No image available"
-                                                                        className="w-full h-full object-cover opacity-80"
-                                                                        loading="lazy"
-                                                                    />
-                                                                )}
-                                                            </div>
+                        {/* Day by Day - Accordion with Timeline */}
+                        <div className="space-y-6">
+                            {result.days.map((day: Day, dayIndex: number) => {
+                                const isExpanded = expandedDays.has(day.day_number);
+                                const isLastDay = dayIndex === result.days.length - 1;
 
-                                                            <div className="flex-1 space-y-2">
-                                                                <div className="flex items-start justify-between">
-                                                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-slate-50 leading-tight">
-                                                                        {act.title}
-                                                                    </h4>
+                                return (
+                                    <div key={day.day_number} className="relative">
+                                        {/* Timeline connector */}
+                                        {!isLastDay && (
+                                            <div className="absolute left-[30px] top-[60px] bottom-[-24px] w-[2px] border-l-2 border-dashed border-gray-300 dark:border-gray-600 hidden md:block" />
+                                        )}
+
+                                        {/* Timeline circle indicator */}
+                                        <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
+
+                                        {/* Day card with left margin for timeline on desktop */}
+                                        <div className="md:ml-16">
+                                            {/* Accordion Header */}
+                                            <button
+                                                onClick={() => toggleDay(day.day_number)}
+                                                className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
+                                            >
+                                                <h3 className="text-lg font-bold uppercase tracking-wide">
+                                                    DAY {day.day_number}
+                                                </h3>
+                                                <ChevronDown
+                                                    className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                                                />
+                                            </button>
+
+                                            {/* Collapsible Content */}
+                                            <div
+                                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                                    isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                                                }`}
+                                            >
+                                                <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
+                                                    {/* Theme subtitle */}
+                                                    <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-[#18974e]"></span>
+                                                        {day.theme}
+                                                    </p>
+
+                                                    {/* Activities */}
+                                                    <div className="space-y-8">
+                                                        {day.activities.map((act: Activity, idx: number) => {
+                                                            const imgKey = activityImageKey(day.day_number, idx);
+                                                            const imgUrl = images[imgKey];
+
+                                                            return (
+                                                                <div key={idx} className="group relative">
+                                                                    {/* Large Feature Image with Overlay */}
+                                                                    <div className="relative h-64 rounded-xl overflow-hidden shadow-md mb-4">
+                                                                        {imgUrl === undefined ? (
+                                                                            <div className="relative w-full h-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                                                <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
+                                                                            </div>
+                                                                        ) : imgUrl ? (
+                                                                            <>
+                                                                                <img
+                                                                                    src={imgUrl}
+                                                                                    alt={act.title}
+                                                                                    className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                                                                                    loading="lazy"
+                                                                                    referrerPolicy="no-referrer"
+                                                                                    onError={(e) => {
+                                                                                        e.currentTarget.src = "/placeholder-image.svg";
+                                                                                    }}
+                                                                                />
+                                                                                {/* Gradient overlay */}
+                                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                                                                                {/* Time badge */}
+                                                                                <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">
+                                                                                    {act.time}
+                                                                                </div>
+
+                                                                                {/* Title overlay at bottom */}
+                                                                                <div className="absolute bottom-0 left-0 right-0 p-6">
+                                                                                    <h4 className="text-2xl font-bold text-white mb-2">
+                                                                                        {act.title}
+                                                                                    </h4>
+                                                                                    <div className="flex items-center gap-2 text-white/90 text-sm">
+                                                                                        <MapPin className="w-4 h-4" />
+                                                                                        {act.location}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                                                <span className="text-gray-400 dark:text-gray-500">No image available</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Activity Details Below Image */}
+                                                                    <div className="space-y-3 px-2">
+                                                                        <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
+                                                                            {act.description}
+                                                                        </p>
+
+                                                                        {/* Metadata badges */}
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {act.duration && (
+                                                                                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                                                                    ⏱️ {act.duration}
+                                                                                </Badge>
+                                                                            )}
+                                                                            {act.cost && (
+                                                                                <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
+                                                                                    💰 {act.cost}
+                                                                                </Badge>
+                                                                            )}
+                                                                            {act.transport && (
+                                                                                <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                                                                                    🚇 {act.transport}
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-
-                                                                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-300 font-medium">
-                                                                    <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                                    {act.location}
-                                                                </div>
-
-                                                                <p className="text-gray-600 dark:text-slate-200 text-sm leading-relaxed">
-                                                                    {act.description}
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                );
-                                            })}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

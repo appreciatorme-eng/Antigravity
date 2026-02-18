@@ -10,6 +10,23 @@ function extractDestination(prompt: string): string {
 
 function buildFallbackItinerary(prompt: string, days: number) {
     const destination = extractDestination(prompt) || 'Destination';
+    const themesByDay = [
+        'Arrival & Initial Exploration',
+        'Cultural Discovery',
+        'Local Experiences',
+        'Nature & Outdoor Activities',
+        'Shopping & Markets',
+        'Art & Architecture',
+        'Culinary Journey',
+        'Historical Sites',
+        'Scenic Views & Relaxation',
+        'Adventure Activities',
+        'Local Neighborhoods',
+        'Museums & Galleries',
+        'Parks & Gardens',
+        'Final Exploration & Departure'
+    ];
+
     return {
         trip_title: `Trip to ${destination}`,
         destination,
@@ -18,7 +35,7 @@ function buildFallbackItinerary(prompt: string, days: number) {
             'A simple itinerary was generated because the AI planner was unavailable. You can retry to get a richer plan.',
         days: Array.from({ length: days }, (_, idx) => ({
             day_number: idx + 1,
-            theme: 'Highlights',
+            theme: themesByDay[idx % themesByDay.length],
             activities: [
                 {
                     time: 'Morning',
@@ -162,7 +179,10 @@ export async function POST(req: NextRequest) {
           - precise coordinates (lat, lng) strictly for the location (do NOT guess 0,0)
       - Include 1-2 food/coffee suggestions per day (as activities)
       - Provide practical "tips" (booking/entry, best times, closures, local transport)
-      - Each day MUST have a unique, descriptive theme (e.g., "Day 1: Arrival & Historic Center", "Day 2: Art & Modern Architecture"). Do NOT use "Highlights" for every day.
+      - Each day MUST have a unique, descriptive theme (e.g., "Arrival & Historic Center", "Art & Modern Architecture", "Local Markets & Cuisine", "Nature & Scenic Views").
+      - Do NOT use generic words like "Highlights", "Sightseeing", or "Exploration" alone for themes.
+      - Do NOT include "Day 1:", "Day 2:" prefix in the theme - just the descriptive phrase (e.g., "Historic Center Tour" not "Day 1: Historic Center Tour").
+      - Make each theme distinct and specific to what will actually happen that day.
 
       Output must be valid JSON matching the provided schema. No markdown.
     `;
@@ -188,10 +208,27 @@ export async function POST(req: NextRequest) {
         if (!Array.isArray(itinerary.days)) {
             itinerary.days = buildFallbackItinerary(prompt, days).days;
         }
+        const fallbackThemes = [
+            'Arrival & Initial Exploration',
+            'Cultural Discovery',
+            'Local Experiences',
+            'Nature & Outdoor Activities',
+            'Shopping & Markets',
+            'Art & Architecture',
+            'Culinary Journey',
+            'Historical Sites',
+            'Scenic Views & Relaxation',
+            'Adventure Activities',
+            'Local Neighborhoods',
+            'Museums & Galleries',
+            'Parks & Gardens',
+            'Final Exploration & Departure'
+        ];
+
         itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
             ...d,
             day_number: idx + 1,
-            theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : "Highlights",
+            theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : fallbackThemes[idx % fallbackThemes.length],
             activities: Array.isArray(d?.activities) ? d.activities : [],
         }));
         // If the model returned fewer days, pad with fallbacks.

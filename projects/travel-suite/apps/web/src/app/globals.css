@@ -7,7 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-poppins);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-poppins);
   --font-serif: var(--font-cormorant);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -64,6 +65,10 @@
   --secondary-hover: #0f3e85;      /* Darker blue */
   --secondary-light: #1e5fbd;      /* Lighter blue */
   --secondary-foreground: #ffffff;
+
+  /* Reference Site Colors */
+  --gobuddy-blue: #124ea2;         /* Header blue from reference */
+  --gobuddy-green: #18974e;        /* Highlights green from reference */
 
   /* Neutrals */
   --background: #f5f5f5;           /* Soft Glass background */
@@ -287,5 +292,16 @@
 
   .backdrop-blur-nav {
     backdrop-filter: blur(20px);
+  }
+
+  /* === Shimmer Animation for Loading States === */
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
   }
 }
