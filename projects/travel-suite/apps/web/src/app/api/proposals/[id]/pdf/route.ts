@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
@@ -24,7 +24,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const shareToken = request.nextUrl.searchParams.get('token');
+    const shareToken = new URL(request.url).searchParams.get('token');
     const supabase = await createClient();
 
     const {
