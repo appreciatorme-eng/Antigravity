@@ -10,7 +10,7 @@ import { processPDFImport, publishPDFImport } from '@/lib/pdf-extractor';
  */
 export async function GET(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = await createClient();
@@ -25,10 +25,12 @@ export async function GET(
             }, { status: 401 });
         }
 
+        const { id } = await params;
+
         const { data: pdfImport, error: fetchError } = await supabase
             .from('pdf_imports')
             .select('*')
-            .eq('id', params.id)
+            .eq('id', id)
             .single();
 
         if (fetchError || !pdfImport) {
@@ -61,7 +63,7 @@ export async function GET(
  */
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = await createClient();
@@ -75,6 +77,8 @@ export async function PATCH(
                 error: 'Unauthorized'
             }, { status: 401 });
         }
+
+        const { id } = await params;
 
         const body = await req.json();
         const { action, notes, organizationId } = body;
@@ -90,7 +94,7 @@ export async function PATCH(
         const { data: pdfImport, error: fetchError } = await supabase
             .from('pdf_imports')
             .select('*')
-            .eq('id', params.id)
+            .eq('id', id)
             .single();
 
         if (fetchError || !pdfImport) {
@@ -111,11 +115,11 @@ export async function PATCH(
                         reviewed_at: new Date().toISOString(),
                         review_notes: notes
                     })
-                    .eq('id', params.id);
+                    .eq('id', id);
 
                 if (approveError) throw approveError;
 
-                console.log(`✅ PDF import approved: ${params.id}`);
+                console.log(`✅ PDF import approved: ${id}`);
 
                 return NextResponse.json({
                     success: true,
@@ -133,11 +137,11 @@ export async function PATCH(
                         reviewed_at: new Date().toISOString(),
                         review_notes: notes
                     })
-                    .eq('id', params.id);
+                    .eq('id', id);
 
                 if (rejectError) throw rejectError;
 
-                console.log(`❌ PDF import rejected: ${params.id}`);
+                console.log(`❌ PDF import rejected: ${id}`);
 
                 return NextResponse.json({
                     success: true,
@@ -147,9 +151,9 @@ export async function PATCH(
 
             case 're-extract':
                 // Trigger re-extraction
-                console.log(`🔄 Re-extracting PDF: ${params.id}`);
+                console.log(`🔄 Re-extracting PDF: ${id}`);
 
-                const result = await processPDFImport(params.id);
+                const result = await processPDFImport(id);
 
                 return NextResponse.json({
                     success: result.success,
@@ -168,9 +172,9 @@ export async function PATCH(
                     }, { status: 400 });
                 }
 
-                console.log(`📤 Publishing PDF import to templates: ${params.id}`);
+                console.log(`📤 Publishing PDF import to templates: ${id}`);
 
-                const template = await publishPDFImport(params.id, organizationId);
+                const template = await publishPDFImport(id, organizationId);
 
                 return NextResponse.json({
                     success: true,
@@ -202,7 +206,7 @@ export async function PATCH(
  */
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = await createClient();
@@ -217,18 +221,20 @@ export async function DELETE(
             }, { status: 401 });
         }
 
+        const { id } = await params;
+
         // Get PDF import for file cleanup
         const { data: pdfImport } = await supabase
             .from('pdf_imports')
             .select('file_url')
-            .eq('id', params.id)
+            .eq('id', id)
             .single();
 
         // Delete from database
         const { error: deleteError } = await supabase
             .from('pdf_imports')
             .delete()
-            .eq('id', params.id);
+            .eq('id', id);
 
         if (deleteError) throw deleteError;
 
@@ -242,7 +248,7 @@ export async function DELETE(
             }
         }
 
-        console.log(`🗑️  PDF import deleted: ${params.id}`);
+        console.log(`🗑️  PDF import deleted: ${id}`);
 
         return NextResponse.json({
             success: true,
