@@ -188,12 +188,13 @@ export default function PublicProposalPage() {
       );
     }
 
-    if (payload.status) {
+    const nextStatus = payload.status;
+    if (typeof nextStatus === 'string') {
       setProposal((prev) =>
         prev
           ? {
               ...prev,
-              status: payload.status,
+              status: nextStatus,
             }
           : prev
       );
