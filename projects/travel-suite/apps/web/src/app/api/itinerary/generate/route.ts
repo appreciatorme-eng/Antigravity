@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import { z } from 'zod';
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
+import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
@@ -159,12 +160,65 @@ export async function POST(req: NextRequest) {
         );
 
         if (cachedItinerary) {
-            console.log(`✅ Cache HIT for ${destination}, ${days} days - API call avoided!`);
+            console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
             return NextResponse.json(cachedItinerary);
         }
 
-        console.log(`❌ Cache MISS for ${destination}, ${days} days - generating with AI...`);
+        console.log(`❌ [TIER 1: CACHE MISS] ${destination}, ${days} days - trying RAG templates...`);
 
+        // TIER 2: RAG TEMPLATE SEARCH (Unified Knowledge Base)
+        try {
+            const templates = await searchTemplates({
+                destination,
+                days,
+                budget: undefined, // Could extract from prompt if needed
+                interests: undefined
+            });
+
+            if (templates && templates.length > 0) {
+                console.log(`✅ [TIER 2: RAG HIT] Found ${templates.length} matching templates (top similarity: ${templates[0].similarity.toFixed(2)})`);
+
+                const itinerary = await assembleItinerary(templates, { destination, days });
+
+                if (itinerary) {
+                    // Extract cache params for consistency
+                    const cacheParams = extractCacheParams(prompt, itinerary);
+
+                    // Save to cache asynchronously
+                    const cacheId = await saveItineraryToCache(
+                        cacheParams.destination,
+                        cacheParams.days,
+                        cacheParams.budget,
+                        cacheParams.interests,
+                        itinerary
+                    );
+
+                    if (cacheId) {
+                        console.log(`💾 RAG itinerary cached (ID: ${cacheId})`);
+
+                        // Save attribution tracking
+                        if (itinerary.base_template_id) {
+                            await saveAttributionTracking(
+                                cacheId,
+                                itinerary.base_template_id,
+                                undefined // requestingOrgId - could extract from auth
+                            ).catch(err => {
+                                console.error('Attribution tracking failed (non-blocking):', err);
+                            });
+                        }
+                    }
+
+                    return NextResponse.json(itinerary);
+                }
+            }
+
+            console.log(`❌ [TIER 2: RAG MISS] No matching templates found - falling back to Gemini AI...`);
+        } catch (ragError) {
+            console.error('[TIER 2: RAG ERROR] RAG system error (non-blocking):', ragError);
+            console.log('Falling back to Gemini AI generation...');
+        }
+
+        // TIER 3: GEMINI AI FALLBACK
         const apiKey =
             process.env.GOOGLE_API_KEY ||
             process.env.GOOGLE_GEMINI_API_KEY;
