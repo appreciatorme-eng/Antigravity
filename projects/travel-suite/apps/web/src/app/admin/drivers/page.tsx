@@ -104,6 +104,7 @@ export default function DriversPage() {
     const [success, setSuccess] = useState<string | null>(null);
     const [driverAccountLinks, setDriverAccountLinks] = useState<Record<string, DriverAccountLink>>({});
     const [linkEmailByDriver, setLinkEmailByDriver] = useState<Record<string, string>>({});
+    const [organizationId, setOrganizationId] = useState<string | null>(null);
     const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     // Form state
@@ -117,6 +118,79 @@ export default function DriversPage() {
         notes: "",
     });
 
+    const ensureOrganizationId = useCallback(async (): Promise<string> => {
+        if (organizationId) return organizationId;
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            throw new Error("Please sign in again.");
+        }
+
+        const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("id, organization_id")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) {
+            throw new Error(`Failed to load profile: ${profileError.message}`);
+        }
+
+        if (profile?.organization_id) {
+            setOrganizationId(profile.organization_id);
+            return profile.organization_id;
+        }
+
+        // Reuse an organization already owned by this user before creating a new one.
+        const { data: existingOrg, error: existingOrgError } = await supabase
+            .from("organizations")
+            .select("id")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (existingOrgError) {
+            throw new Error(`Failed to resolve organization: ${existingOrgError.message}`);
+        }
+
+        let resolvedOrgId = existingOrg?.id || null;
+
+        if (!resolvedOrgId) {
+            const slug = `agency-${user.id.slice(0, 8)}-${Date.now().toString(36)}`;
+            const { data: newOrg, error: newOrgError } = await supabase
+                .from("organizations")
+                .insert({
+                    name: "My Travel Agency",
+                    slug,
+                    owner_id: user.id,
+                })
+                .select("id")
+                .single();
+
+            if (newOrgError || !newOrg?.id) {
+                throw new Error(newOrgError?.message || "Organization setup failed. Please contact support.");
+            }
+
+            resolvedOrgId = newOrg.id;
+        }
+
+        const { error: profileUpdateError } = await supabase
+            .from("profiles")
+            .update({ organization_id: resolvedOrgId })
+            .eq("id", user.id);
+
+        if (profileUpdateError) {
+            throw new Error(`Organization created but profile could not be linked: ${profileUpdateError.message}`);
+        }
+
+        setOrganizationId(resolvedOrgId);
+        return resolvedOrgId;
+    }, [organizationId, supabase]);
+
     const fetchDrivers = useCallback(async () => {
         if (useMockAdmin) {
             setDrivers(mockDrivers);
@@ -124,48 +198,33 @@ export default function DriversPage() {
             return;
         }
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .single();
+        setLoading(true);
+        try {
+            const orgId = await ensureOrganizationId();
+            const { data, error } = await supabase
+                .from("external_drivers")
+                .select("*")
+                .eq("organization_id", orgId)
+                .order("created_at", { ascending: false });
 
-        if (!profile?.organization_id) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: newOrg } = await supabase
-                    .from("organizations")
-                    .insert({
-                        name: "My Travel Agency",
-                        slug: `agency-${user.id.slice(0, 8)}`,
-                        owner_id: user.id,
-                    })
-                    .select()
-                    .single();
-
-                if (newOrg) {
-                    await supabase
-                        .from("profiles")
-                        .update({ organization_id: newOrg.id })
-                        .eq("id", user.id);
-                }
+            if (error) {
+                console.error("Error fetching drivers:", error);
+                setError("Failed to load drivers");
+                return;
             }
-        }
 
-        const { data, error } = await supabase
-            .from("external_drivers")
-            .select("*")
-            .order("created_at", { ascending: false });
+            const list = data || [];
+            setDrivers(list);
 
-        if (error) {
-            console.error("Error fetching drivers:", error);
-            return;
-        }
+            const driverIds = list.map((driver) => driver.id);
+            if (!driverIds.length) {
+                setDriverAccountLinks({});
+                return;
+            }
 
-        setDrivers(data || []);
-
-        const { data: links } = await supabase
-            .from("driver_accounts")
-            .select(`
+            const { data: links } = await supabase
+                .from("driver_accounts")
+                .select(`
                 id,
                 external_driver_id,
                 profile_id,
@@ -176,20 +235,26 @@ export default function DriversPage() {
                 )
             `);
 
-        const mapping: Record<string, DriverAccountLink> = {};
-        (links as DriverAccountJoinRow[] | null || []).forEach((item) => {
-            mapping[item.external_driver_id] = {
-                id: item.id,
-                external_driver_id: item.external_driver_id,
-                profile_id: item.profile_id,
-                is_active: item.is_active,
-                profile_email: item.profiles?.email || null,
-                profile_name: item.profiles?.full_name || null,
-            };
-        });
-        setDriverAccountLinks(mapping);
-        setLoading(false);
-    }, [supabase, useMockAdmin]);
+            const mapping: Record<string, DriverAccountLink> = {};
+            (links as DriverAccountJoinRow[] | null || [])
+                .filter((item) => driverIds.includes(item.external_driver_id))
+                .forEach((item) => {
+                    mapping[item.external_driver_id] = {
+                        id: item.id,
+                        external_driver_id: item.external_driver_id,
+                        profile_id: item.profile_id,
+                        is_active: item.is_active,
+                        profile_email: item.profiles?.email || null,
+                        profile_name: item.profiles?.full_name || null,
+                    };
+                });
+            setDriverAccountLinks(mapping);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load drivers");
+        } finally {
+            setLoading(false);
+        }
+    }, [ensureOrganizationId, supabase, useMockAdmin]);
 
     useEffect(() => {
         void fetchDrivers();
@@ -247,14 +312,7 @@ export default function DriversPage() {
                 return;
             }
 
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("organization_id")
-                .single();
-
-            if (!profile?.organization_id) {
-                throw new Error("No organization found. Please refresh and try again.");
-            }
+            const resolvedOrganizationId = await ensureOrganizationId();
 
             if (editingDriver) {
                 const { error } = await supabase
@@ -274,7 +332,7 @@ export default function DriversPage() {
                 setSuccess("Driver updated successfully");
             } else {
                 const { error } = await supabase.from("external_drivers").insert({
-                    organization_id: profile.organization_id,
+                    organization_id: resolvedOrganizationId,
                     full_name: formData.full_name!,
                     phone: formData.phone!,
                     vehicle_type: formData.vehicle_type as ExternalDriver["vehicle_type"],
