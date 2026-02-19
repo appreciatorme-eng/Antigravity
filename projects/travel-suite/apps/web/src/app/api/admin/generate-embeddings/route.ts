@@ -53,28 +53,21 @@ export async function GET(req: NextRequest) {
     const supabase = await createClient();
 
     // Count templates with and without embeddings
-    const { data: stats, error } = await supabase.rpc('get_embedding_stats');
+    const { count: total } = await supabase
+      .from('tour_templates')
+      .select('*', { count: 'exact', head: true });
 
-    if (error) {
-      // Fallback manual count if RPC doesn't exist
-      const { count: total } = await supabase
-        .from('tour_templates')
-        .select('*', { count: 'exact', head: true });
+    const { count: withEmbeddings } = await supabase
+      .from('tour_templates')
+      .select('*', { count: 'exact', head: true })
+      .not('embedding', 'is', null);
 
-      const { count: withEmbeddings } = await supabase
-        .from('tour_templates')
-        .select('*', { count: 'exact', head: true })
-        .not('embedding', 'is', null);
-
-      return NextResponse.json({
-        totalTemplates: total || 0,
-        withEmbeddings: withEmbeddings || 0,
-        withoutEmbeddings: (total || 0) - (withEmbeddings || 0),
-        percentageComplete: total ? Math.round((withEmbeddings || 0) / total * 100) : 0
-      });
-    }
-
-    return NextResponse.json(stats);
+    return NextResponse.json({
+      totalTemplates: total || 0,
+      withEmbeddings: withEmbeddings || 0,
+      withoutEmbeddings: (total || 0) - (withEmbeddings || 0),
+      percentageComplete: total ? Math.round((withEmbeddings || 0) / total * 100) : 0
+    });
 
   } catch (error) {
     console.error('Failed to get embedding stats:', error);
