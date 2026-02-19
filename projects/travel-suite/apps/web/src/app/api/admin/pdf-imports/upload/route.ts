@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
 
         // Check for duplicate
         const { data: existingImport } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .select('id, file_name, status')
             .eq('organization_id', organizationId)
             .eq('file_hash', fileHash)
-            .single() as any;
+            .single();
 
         if (existingImport) {
             return NextResponse.json({
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
         // Create PDF import record
         const { data: pdfImport, error: insertError } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .insert({
                 organization_id: organizationId,
                 file_name: file.name,
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
                 created_by: user.id
             })
             .select()
-            .single() as any;
+            .single();
 
         if (insertError) {
             console.error('Database insert error:', insertError);

@@ -712,6 +712,120 @@ export type Database = {
           },
         ]
       }
+      itinerary_cache: {
+        Row: {
+          budget: string | null
+          cache_key: string
+          created_at: string | null
+          created_by: string | null
+          destination: string
+          duration_days: number
+          expires_at: string | null
+          generation_source: string | null
+          id: string
+          interests: string[] | null
+          itinerary_data: Json
+          last_used_at: string | null
+          quality_score: number | null
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          budget?: string | null
+          cache_key: string
+          created_at?: string | null
+          created_by?: string | null
+          destination: string
+          duration_days: number
+          expires_at?: string | null
+          generation_source?: string | null
+          id?: string
+          interests?: string[] | null
+          itinerary_data: Json
+          last_used_at?: string | null
+          quality_score?: number | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          budget?: string | null
+          cache_key?: string
+          created_at?: string | null
+          created_by?: string | null
+          destination?: string
+          duration_days?: number
+          expires_at?: string | null
+          generation_source?: string | null
+          id?: string
+          interests?: string[] | null
+          itinerary_data?: Json
+          last_used_at?: string | null
+          quality_score?: number | null
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
+      itinerary_cache_analytics: {
+        Row: {
+          api_call_avoided: boolean | null
+          cache_id: string | null
+          created_at: string | null
+          event_type: string
+          id: string
+          organization_id: string | null
+          query_budget: string | null
+          query_days: number | null
+          query_destination: string | null
+          query_interests: string[] | null
+          response_time_ms: number | null
+          user_id: string | null
+        }
+        Insert: {
+          api_call_avoided?: boolean | null
+          cache_id?: string | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          organization_id?: string | null
+          query_budget?: string | null
+          query_days?: number | null
+          query_destination?: string | null
+          query_interests?: string[] | null
+          response_time_ms?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          api_call_avoided?: boolean | null
+          cache_id?: string | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          organization_id?: string | null
+          query_budget?: string | null
+          query_days?: number | null
+          query_destination?: string | null
+          query_interests?: string[] | null
+          response_time_ms?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_cache_analytics_cache_id_fkey"
+            columns: ["cache_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_cache"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_cache_analytics_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_inquiries: {
         Row: {
           created_at: string | null
@@ -1129,6 +1243,7 @@ export type Database = {
           notification_type: string
           payload: Json
           processed_at: string | null
+          recipient_email: string | null
           recipient_phone: string | null
           recipient_type: string | null
           scheduled_for: string
@@ -1147,6 +1262,7 @@ export type Database = {
           notification_type: string
           payload?: Json
           processed_at?: string | null
+          recipient_email?: string | null
           recipient_phone?: string | null
           recipient_type?: string | null
           scheduled_for: string
@@ -1165,6 +1281,7 @@ export type Database = {
           notification_type?: string
           payload?: Json
           processed_at?: string | null
+          recipient_email?: string | null
           recipient_phone?: string | null
           recipient_type?: string | null
           scheduled_for?: string
@@ -1196,7 +1313,6 @@ export type Database = {
           created_at: string | null
           gstin: string | null
           id: string
-          itinerary_template: string
           logo_url: string | null
           name: string
           owner_id: string | null
@@ -1212,7 +1328,6 @@ export type Database = {
           created_at?: string | null
           gstin?: string | null
           id?: string
-          itinerary_template?: string
           logo_url?: string | null
           name: string
           owner_id?: string | null
@@ -1228,7 +1343,6 @@ export type Database = {
           created_at?: string | null
           gstin?: string | null
           id?: string
-          itinerary_template?: string
           logo_url?: string | null
           name?: string
           owner_id?: string | null
@@ -1373,6 +1487,128 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdf_extraction_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          max_attempts: number
+          pdf_import_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          pdf_import_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          max_attempts?: number
+          pdf_import_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_extraction_queue_pdf_import_id_fkey"
+            columns: ["pdf_import_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdf_imports: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          extracted_data: Json | null
+          extraction_confidence: number | null
+          extraction_error: string | null
+          file_hash: string | null
+          file_name: string
+          file_size_bytes: number | null
+          file_url: string
+          id: string
+          organization_id: string
+          published_at: string | null
+          published_template_id: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          extraction_error?: string | null
+          file_hash?: string | null
+          file_name: string
+          file_size_bytes?: number | null
+          file_url: string
+          id?: string
+          organization_id: string
+          published_at?: string | null
+          published_template_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          extraction_error?: string | null
+          file_hash?: string | null
+          file_name?: string
+          file_size_bytes?: number | null
+          file_url?: string
+          id?: string
+          organization_id?: string
+          published_at?: string | null
+          published_template_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_imports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_imports_published_template_id_fkey"
+            columns: ["published_template_id"]
+            isOneToOne: false
+            referencedRelation: "tour_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1632,52 +1868,64 @@ export type Database = {
           },
         ]
       }
-      proposal_addons: {
+      proposal_add_ons: {
         Row: {
-          id: string
-          proposal_id: string
-          addon_id: string
-          is_selected_by_client: boolean | null
-          is_included_by_default: boolean | null
-          notes: string | null
+          add_on_id: string | null
+          category: string
           created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_selected: boolean
+          name: string
+          proposal_id: string
+          quantity: number
+          unit_price: number
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          proposal_id: string
-          addon_id: string
-          is_selected_by_client?: boolean | null
-          is_included_by_default?: boolean | null
-          notes?: string | null
+          add_on_id?: string | null
+          category: string
           created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_selected?: boolean
+          name: string
+          proposal_id: string
+          quantity?: number
+          unit_price?: number
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          proposal_id?: string
-          addon_id?: string
-          is_selected_by_client?: boolean | null
-          is_included_by_default?: boolean | null
-          notes?: string | null
+          add_on_id?: string | null
+          category?: string
           created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_selected?: boolean
+          name?: string
+          proposal_id?: string
+          quantity?: number
+          unit_price?: number
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "proposal_addons_proposal_id_fkey"
+            foreignKeyName: "proposal_add_ons_add_on_id_fkey"
+            columns: ["add_on_id"]
+            isOneToOne: false
+            referencedRelation: "add_ons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_add_ons_proposal_id_fkey"
             columns: ["proposal_id"]
             isOneToOne: false
             referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "proposal_addons_addon_id_fkey"
-            columns: ["addon_id"]
-            isOneToOne: false
-            referencedRelation: "add_ons"
-            referencedColumns: ["id"]
-          }
         ]
       }
       proposal_comments: {
@@ -2116,12 +2364,14 @@ export type Database = {
         Row: {
           description: string | null
           display_order: number | null
+          embedding: string | null
           id: string
           image_url: string | null
           is_optional: boolean | null
           is_premium: boolean | null
           location: string | null
           price: number | null
+          searchable_text: string | null
           template_day_id: string
           time: string | null
           title: string
@@ -2129,12 +2379,14 @@ export type Database = {
         Insert: {
           description?: string | null
           display_order?: number | null
+          embedding?: string | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
           is_premium?: boolean | null
           location?: string | null
           price?: number | null
+          searchable_text?: string | null
           template_day_id: string
           time?: string | null
           title: string
@@ -2142,12 +2394,14 @@ export type Database = {
         Update: {
           description?: string | null
           display_order?: number | null
+          embedding?: string | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
           is_premium?: boolean | null
           location?: string | null
           price?: number | null
+          searchable_text?: string | null
           template_day_id?: string
           time?: string | null
           title?: string
@@ -2264,6 +2518,68 @@ export type Database = {
           },
         ]
       }
+      template_usage_attribution: {
+        Row: {
+          contribution_percentage: number | null
+          created_at: string | null
+          id: string
+          itinerary_cache_id: string | null
+          requesting_organization_id: string | null
+          similarity_score: number | null
+          source_organization_id: string
+          source_template_id: string
+        }
+        Insert: {
+          contribution_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          itinerary_cache_id?: string | null
+          requesting_organization_id?: string | null
+          similarity_score?: number | null
+          source_organization_id: string
+          source_template_id: string
+        }
+        Update: {
+          contribution_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          itinerary_cache_id?: string | null
+          requesting_organization_id?: string | null
+          similarity_score?: number | null
+          source_organization_id?: string
+          source_template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_usage_attribution_itinerary_cache_id_fkey"
+            columns: ["itinerary_cache_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_cache"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_usage_attribution_requesting_organization_id_fkey"
+            columns: ["requesting_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_usage_attribution_source_organization_id_fkey"
+            columns: ["source_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_usage_attribution_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "tour_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_views: {
         Row: {
           id: string
@@ -2328,14 +2644,20 @@ export type Database = {
           description: string | null
           destination: string | null
           duration_days: number | null
+          embedding: string | null
+          embedding_updated_at: string | null
           hero_image_url: string | null
           id: string
           is_public: boolean | null
+          last_used_at: string | null
           name: string
           organization_id: string
+          quality_score: number | null
+          searchable_text: string | null
           status: string | null
           tags: string[] | null
           updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
           base_price?: number | null
@@ -2344,14 +2666,20 @@ export type Database = {
           description?: string | null
           destination?: string | null
           duration_days?: number | null
+          embedding?: string | null
+          embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
+          last_used_at?: string | null
           name: string
           organization_id: string
+          quality_score?: number | null
+          searchable_text?: string | null
           status?: string | null
           tags?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
           base_price?: number | null
@@ -2360,14 +2688,20 @@ export type Database = {
           description?: string | null
           destination?: string | null
           duration_days?: number | null
+          embedding?: string | null
+          embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
           is_public?: boolean | null
+          last_used_at?: string | null
           name?: string
           organization_id?: string
+          quality_score?: number | null
+          searchable_text?: string | null
           status?: string | null
           tags?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Relationships: [
           {
@@ -2423,59 +2757,6 @@ export type Database = {
           },
           {
             foreignKeyName: "travel_documents_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      trip_accommodations: {
-        Row: {
-          address: string | null
-          check_in_time: string
-          check_out_time: string
-          confirmation_number: string | null
-          contact_phone: string | null
-          coordinates: Json | null
-          created_at: string
-          day_number: number
-          hotel_name: string
-          id: string
-          notes: string | null
-          trip_id: string
-        }
-        Insert: {
-          address?: string | null
-          check_in_time?: string
-          check_out_time?: string
-          confirmation_number?: string | null
-          contact_phone?: string | null
-          coordinates?: Json | null
-          created_at?: string
-          day_number: number
-          hotel_name: string
-          id?: string
-          notes?: string | null
-          trip_id: string
-        }
-        Update: {
-          address?: string | null
-          check_in_time?: string
-          check_out_time?: string
-          confirmation_number?: string | null
-          contact_phone?: string | null
-          coordinates?: Json | null
-          created_at?: string
-          day_number?: number
-          hotel_name?: string
-          id?: string
-          notes?: string | null
-          trip_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "trip_accommodations_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
@@ -2844,6 +3125,10 @@ export type Database = {
         Args: { p_proposal_id: string }
         Returns: number
       }
+      calculate_template_quality: {
+        Args: { p_template_id: string }
+        Returns: number
+      }
       can_publish_driver_location: {
         Args: { actor_user_id: string; target_trip_id: string }
         Returns: boolean
@@ -2852,6 +3137,7 @@ export type Database = {
         Args: { p_feature: string; p_limit: number; p_organization_id: string }
         Returns: boolean
       }
+      cleanup_expired_cache: { Args: never; Returns: undefined }
       clone_template_deep: {
         Args: { p_new_name?: string; p_template_id: string }
         Returns: string
@@ -2863,6 +3149,14 @@ export type Database = {
           p_template_id: string
         }
         Returns: string
+      }
+      complete_pdf_extraction: {
+        Args: {
+          p_confidence: number
+          p_extracted_data: Json
+          p_queue_id: string
+        }
+        Returns: boolean
       }
       create_proposal_version: {
         Args: {
@@ -2876,7 +3170,24 @@ export type Database = {
         Args: { actor_user_id: string; target_trip_id: string }
         Returns: boolean
       }
+      fail_pdf_extraction: {
+        Args: { p_error: string; p_queue_id: string }
+        Returns: boolean
+      }
+      generate_cache_key: {
+        Args: {
+          p_budget?: string
+          p_days: number
+          p_destination: string
+          p_interests?: string[]
+        }
+        Returns: string
+      }
       generate_share_token: { Args: never; Returns: string }
+      generate_template_searchable_text: {
+        Args: { p_template_id: string }
+        Returns: string
+      }
       get_addon_conversion_rate: {
         Args: { p_days?: number; p_organization_id: string }
         Returns: {
@@ -2886,6 +3197,27 @@ export type Database = {
           purchases: number
           views: number
         }[]
+      }
+      get_cache_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          api_calls_avoided: number
+          cache_hit_rate: number
+          cost_savings_estimate: number
+          top_destinations: Json
+          total_cache_hits: number
+          total_cache_misses: number
+          total_cached_itineraries: number
+        }[]
+      }
+      get_cached_itinerary: {
+        Args: {
+          p_budget?: string
+          p_days: number
+          p_destination: string
+          p_interests?: string[]
+        }
+        Returns: Json
       }
       get_current_subscription: {
         Args: { p_organization_id: string }
@@ -2897,6 +3229,32 @@ export type Database = {
           plan_id: string
           status: string
           subscription_id: string
+        }[]
+      }
+      get_pdf_import_stats: {
+        Args: { p_organization_id?: string }
+        Returns: {
+          approved_count: number
+          avg_confidence: number
+          extracted_count: number
+          extracting_count: number
+          failed_count: number
+          published_count: number
+          rejected_count: number
+          reviewing_count: number
+          total_imports: number
+          uploaded_count: number
+        }[]
+      }
+      get_pending_pdf_extractions: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          file_name: string
+          file_url: string
+          organization_id: string
+          pdf_import_id: string
+          queue_id: string
         }[]
       }
       get_recommended_addons: {
@@ -2967,6 +3325,40 @@ export type Database = {
       }
       get_user_organization_id: { Args: never; Returns: string }
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
+      save_itinerary_to_cache: {
+        Args: {
+          p_budget: string
+          p_created_by?: string
+          p_days: number
+          p_destination: string
+          p_interests: string[]
+          p_itinerary_data: Json
+        }
+        Returns: string
+      }
+      search_similar_templates_with_quality: {
+        Args: {
+          p_exclude_organization_id?: string
+          p_match_count?: number
+          p_match_threshold?: number
+          p_max_days?: number
+          p_min_days?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          base_price: number
+          combined_rank: number
+          destination: string
+          duration_days: number
+          name: string
+          organization_id: string
+          quality_score: number
+          similarity: number
+          template_id: string
+          usage_count: number
+        }[]
+      }
+      start_pdf_extraction: { Args: { p_queue_id: string }; Returns: boolean }
       track_addon_view: {
         Args: { p_add_on_id: string; p_client_id: string; p_source?: string }
         Returns: undefined
@@ -2987,116 +3379,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

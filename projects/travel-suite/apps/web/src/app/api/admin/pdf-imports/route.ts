@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
         // Build query
         let query = supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
             query = query.eq('status', status);
         }
 
-        const { data: imports, error: fetchError, count } = await query as any;
+        const { data: imports, error: fetchError, count } = await query;
 
         if (fetchError) {
             throw fetchError;

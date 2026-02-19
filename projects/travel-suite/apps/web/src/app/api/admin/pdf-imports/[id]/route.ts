@@ -28,10 +28,10 @@ export async function GET(
         const { id } = await params;
 
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .select('*')
             .eq('id', id)
-            .single() as any;
+            .single();
 
         if (fetchError || !pdfImport) {
             return NextResponse.json({
@@ -92,10 +92,10 @@ export async function PATCH(
 
         // Get PDF import
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .select('*')
             .eq('id', id)
-            .single() as any;
+            .single();
 
         if (fetchError || !pdfImport) {
             return NextResponse.json({
@@ -108,7 +108,7 @@ export async function PATCH(
             case 'approve':
                 // Approve for publishing
                 const { error: approveError } = await supabase
-                    .from('pdf_imports' as any)
+                    .from('pdf_imports')
                     .update({
                         status: 'approved',
                         reviewed_by: user.id,
@@ -130,7 +130,7 @@ export async function PATCH(
             case 'reject':
                 // Reject extraction
                 const { error: rejectError } = await supabase
-                    .from('pdf_imports' as any)
+                    .from('pdf_imports')
                     .update({
                         status: 'rejected',
                         reviewed_by: user.id,
@@ -225,14 +225,14 @@ export async function DELETE(
 
         // Get PDF import for file cleanup
         const { data: pdfImport } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .select('file_url')
             .eq('id', id)
-            .single() as any;
+            .single();
 
         // Delete from database
         const { error: deleteError } = await supabase
-            .from('pdf_imports' as any)
+            .from('pdf_imports')
             .delete()
             .eq('id', id);
 

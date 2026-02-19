@@ -83,7 +83,7 @@ export async function embedTemplate(templateId: string) {
             searchable_text: searchableText,
             embedding_updated_at: new Date().toISOString(),
             quality_score: qualityScore
-        } as any)
+        })
         .eq('id', templateId);
 
     if (updateError) {

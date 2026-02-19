@@ -46,7 +46,7 @@ export async function searchTemplates(
         p_match_count: 5,
         p_min_days: Math.max(1, request.days - 2),
         p_max_days: request.days + 2,
-        p_exclude_organization_id: request.requestingOrgId || null
+        ...(request.requestingOrgId && { p_exclude_organization_id: request.requestingOrgId })
     });
 
     if (error) {
