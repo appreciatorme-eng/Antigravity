@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
             query = query.eq('status', status);
         }
 
-        const { data: imports, error: fetchError, count } = await query;
+        const { data: imports, error: fetchError, count } = await query as any;
 
         if (fetchError) {
             throw fetchError;

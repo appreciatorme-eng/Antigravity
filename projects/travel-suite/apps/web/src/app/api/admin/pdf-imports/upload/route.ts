@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             .select('id, file_name, status')
             .eq('organization_id', organizationId)
             .eq('file_hash', fileHash)
-            .single();
+            .single() as any;
 
         if (existingImport) {
             return NextResponse.json({
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
                 created_by: user.id
             })
             .select()
-            .single();
+            .single() as any;
 
         if (insertError) {
             console.error('Database insert error:', insertError);

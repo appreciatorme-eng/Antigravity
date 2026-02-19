@@ -311,7 +311,7 @@ export async function processPDFImport(pdfImportId: string) {
             .from('pdf_imports' as any)
             .select('*')
             .eq('id', pdfImportId)
-            .single();
+            .single() as any;
 
         if (fetchError || !pdfImport) {
             throw new Error(`PDF import not found: ${pdfImportId}`);
@@ -387,7 +387,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
             .select('*')
             .eq('id', pdfImportId)
             .eq('organization_id', organizationId) // Security check
-            .single();
+            .single() as any;
 
         if (fetchError || !pdfImport) {
             throw new Error('PDF import not found or access denied');
@@ -422,7 +422,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
                 // in related tables (template_days, template_activities, etc.)
             })
             .select()
-            .single();
+            .single() as any;
 
         if (insertError) {
             throw insertError;

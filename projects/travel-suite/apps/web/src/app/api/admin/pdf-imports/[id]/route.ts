@@ -31,7 +31,7 @@ export async function GET(
             .from('pdf_imports' as any)
             .select('*')
             .eq('id', id)
-            .single();
+            .single() as any;
 
         if (fetchError || !pdfImport) {
             return NextResponse.json({
@@ -95,7 +95,7 @@ export async function PATCH(
             .from('pdf_imports' as any)
             .select('*')
             .eq('id', id)
-            .single();
+            .single() as any;
 
         if (fetchError || !pdfImport) {
             return NextResponse.json({
@@ -228,7 +228,7 @@ export async function DELETE(
             .from('pdf_imports' as any)
             .select('file_url')
             .eq('id', id)
-            .single();
+            .single() as any;
 
         // Delete from database
         const { error: deleteError } = await supabase
@@ -240,7 +240,7 @@ export async function DELETE(
 
         // Clean up storage file (best effort)
         if (pdfImport?.file_url) {
-            const fileName = pdfImport.file_url.split('/').pop();
+            const fileName = (pdfImport.file_url as string).split('/').pop();
             if (fileName) {
                 await supabase.storage
                     .from('pdf-imports')
