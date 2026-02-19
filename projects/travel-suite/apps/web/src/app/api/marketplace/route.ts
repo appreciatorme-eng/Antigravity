@@ -37,9 +37,12 @@ async function getAuthContext(req: Request) {
 
 export async function GET(req: Request) {
     try {
-        const { user } = await getAuthContext(req);
-        if (!user) {
+        const { user, profile } = await getAuthContext(req);
+        if (!user || !profile) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (!profile.organization_id) {
+            return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
         }
 
         const url = new URL(req.url);
@@ -53,7 +56,9 @@ export async function GET(req: Request) {
                 *,
                 organization:organizations!inner(name, logo_url),
                 reviews:marketplace_reviews(rating)
-            `);
+            `)
+            .eq("is_verified", true)
+            .eq("verification_status", "verified");
 
         if (region) {
             supabaseQuery = supabaseQuery.contains("service_regions", [region]);
@@ -123,7 +128,8 @@ export async function PATCH(req: Request) {
         };
 
         if (request_verification) {
-            updates.verification_status = 'pending';
+            updates.verification_status = "pending";
+            updates.is_verified = false;
         }
 
         const { data, error } = await supabaseAdmin

@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
-import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
 import {
   MapPin,
   Calendar,
@@ -17,7 +15,6 @@ import {
   ChevronUp,
   Download,
   AlertCircle,
-  Wifi,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -92,6 +89,15 @@ interface ProposalComment {
   created_at: string;
 }
 
+interface PublicProposalPayload {
+  proposal: Proposal;
+  days: ProposalDay[];
+  activitiesByDay: Record<string, ProposalActivity[]>;
+  accommodationsByDay: Record<string, ProposalAccommodation>;
+  comments: ProposalComment[];
+  addOns: ProposalAddOn[];
+}
+
 export default function PublicProposalPage() {
   const params = useParams();
   const shareToken = params.token as string;
@@ -115,18 +121,8 @@ export default function PublicProposalPage() {
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Real-time subscription (updates when operator makes changes)
-  const { isSubscribed } = useRealtimeProposal({
-    proposalId: proposal?.id || '',
-    onProposalUpdate: (payload) => {
-      console.log('[Client] Proposal updated via realtime:', payload);
-      loadProposal(); // Reload if operator updates proposal
-    },
-    enabled: !loading && !!proposal,
-  });
-
   useEffect(() => {
-    loadProposal();
+    void loadProposal();
   }, [shareToken]);
 
   async function loadProposal() {
@@ -134,173 +130,31 @@ export default function PublicProposalPage() {
     setError(null);
 
     try {
-      const supabase = createClient();
+      const response = await fetch(`/api/proposals/public/${shareToken}`, {
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as PublicProposalPayload | { error: string };
 
-      // Load proposal by share token (public access)
-      const { data: proposalData, error: proposalError } = await supabase
-        .from('proposals')
-        .select(
-          `
-          *,
-          tour_templates(name, destination, duration_days, description, hero_image_url)
-        `
-        )
-        .eq('share_token', shareToken)
-        .single();
-
-      if (proposalError || !proposalData) {
-        setError('Proposal not found or link has expired');
-        setLoading(false);
+      if (!response.ok || !('proposal' in payload)) {
+        setError('error' in payload ? payload.error : 'Proposal not found or link has expired');
         return;
       }
 
-      // Check if expired
-      if (proposalData.expires_at && new Date(proposalData.expires_at) < new Date()) {
-        setError('This proposal link has expired');
-        setLoading(false);
-        return;
-      }
+      const bundle = payload as PublicProposalPayload;
+      setProposal(bundle.proposal);
+      setDays(bundle.days || []);
+      setActivities(bundle.activitiesByDay || {});
+      setAccommodations(bundle.accommodationsByDay || {});
+      setComments(bundle.comments || []);
+      setAddOns(bundle.addOns || []);
 
-      // Mark as viewed (first time)
-      if (!proposalData.viewed_at) {
-        await supabase
-          .from('proposals')
-          .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
-          .eq('id', proposalData.id);
-      }
-
-      // Format proposal data
-      const formattedProposal: Proposal = {
-        ...proposalData,
-        total_price: proposalData.total_price || 0,
-        client_selected_price: proposalData.client_selected_price ?? null,
-        status: proposalData.status || 'draft',
-        template_name: proposalData.tour_templates?.name || undefined,
-        destination: proposalData.tour_templates?.destination || undefined,
-        duration_days: proposalData.tour_templates?.duration_days || undefined,
-        description: proposalData.tour_templates?.description || undefined,
-        hero_image_url: proposalData.tour_templates?.hero_image_url || undefined,
-      };
-
-      setProposal(formattedProposal);
-
-      // Load proposal days
-      const { data: daysData, error: daysError } = await supabase
-        .from('proposal_days')
-        .select('*')
-        .eq('proposal_id', proposalData.id)
-        .order('day_number', { ascending: true });
-
-      if (daysError) {
-        console.error('Error loading days:', daysError);
+      if (bundle.days && bundle.days.length > 0) {
+        setExpandedDays((previous) =>
+          previous.size ? previous : new Set([bundle.days[0].id])
+        );
       } else {
-        const mappedDays: ProposalDay[] = (daysData || []).map(day => ({
-          ...day,
-          is_approved: day.is_approved || false
-        }));
-        setDays(mappedDays);
-
-        // Expand first day by default
-        if (daysData && daysData.length > 0) {
-          setExpandedDays(new Set([daysData[0].id]));
-        }
-
-        // Load activities for each day
-        const dayIds = (daysData || []).map((d) => d.id);
-        if (dayIds.length > 0) {
-          const { data: activitiesData } = await supabase
-            .from('proposal_activities')
-            .select('*')
-            .in('proposal_day_id', dayIds)
-            .order('display_order', { ascending: true });
-
-          // Group activities by day
-          const activitiesByDay: Record<string, ProposalActivity[]> = {};
-          (activitiesData || []).forEach((activity) => {
-            if (!activitiesByDay[activity.proposal_day_id]) {
-              activitiesByDay[activity.proposal_day_id] = [];
-            }
-            activitiesByDay[activity.proposal_day_id].push({
-              ...activity,
-              time: activity.time || null,
-              description: activity.description || null,
-              location: activity.location || null,
-              image_url: activity.image_url || null,
-              price: activity.price || 0,
-              is_optional: activity.is_optional || false,
-              is_premium: activity.is_premium || false,
-              is_selected: activity.is_selected || false,
-              display_order: activity.display_order || 0
-            });
-          });
-          setActivities(activitiesByDay);
-
-          // Load accommodations
-          const { data: accommodationsData } = await supabase
-            .from('proposal_accommodations')
-            .select('*')
-            .in('proposal_day_id', dayIds);
-
-          // Map accommodations by day
-          const accommodationsByDay: Record<string, ProposalAccommodation> = {};
-          (accommodationsData || []).forEach((acc) => {
-            accommodationsByDay[acc.proposal_day_id] = {
-              ...acc,
-              room_type: acc.room_type || null,
-              amenities: acc.amenities || null,
-              image_url: acc.image_url || null,
-              star_rating: acc.star_rating || 0,
-              price_per_night: acc.price_per_night || 0
-            };
-          });
-          setAccommodations(accommodationsByDay);
-        }
+        setExpandedDays(new Set());
       }
-
-      // Load proposal add-ons / options (vehicle type, upgrades, etc.)
-      try {
-        const { data: addOnsData, error: addOnsError } = await (supabase as any)
-          .from('proposal_add_ons')
-          .select('*')
-          .eq('proposal_id', proposalData.id)
-          .order('category', { ascending: true });
-
-        if (addOnsError) {
-          // If the table doesn't exist yet (migration not applied), keep this feature hidden.
-          console.warn('Add-ons unavailable:', addOnsError.message);
-          setAddOns([]);
-        } else {
-          const mapped: ProposalAddOn[] = (addOnsData || []).map((a: any) => ({
-            id: a.id,
-            proposal_id: a.proposal_id,
-            add_on_id: a.add_on_id ?? null,
-            name: a.name,
-            description: a.description ?? null,
-            category: a.category,
-            image_url: a.image_url ?? null,
-            unit_price: Number(a.unit_price || 0),
-            quantity: Number(a.quantity || 1),
-            is_selected: a.is_selected !== false,
-          }));
-          setAddOns(mapped);
-        }
-      } catch (e) {
-        console.warn('Add-ons unavailable:', e);
-        setAddOns([]);
-      }
-
-      // Load comments
-      const { data: commentsData } = await supabase
-        .from('proposal_comments')
-        .select('*')
-        .eq('proposal_id', proposalData.id)
-        .order('created_at', { ascending: false });
-
-      setComments((commentsData || []).map(comment => ({
-        ...comment,
-        proposal_day_id: comment.proposal_day_id || null,
-        created_at: comment.created_at || new Date().toISOString()
-      })));
     } catch (error) {
       console.error('Error loading proposal:', error);
       setError('An error occurred while loading the proposal');
@@ -309,116 +163,88 @@ export default function PublicProposalPage() {
     }
   }
 
+  async function performPublicAction(body: Record<string, unknown>) {
+    const response = await fetch(`/api/proposals/public/${shareToken}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const payload = (await response.json()) as { error?: string; client_selected_price?: number; status?: string };
+    if (!response.ok) {
+      throw new Error(payload.error || 'Action failed');
+    }
+
+    if (payload.client_selected_price !== undefined) {
+      setProposal((prev) =>
+        prev
+          ? {
+              ...prev,
+              client_selected_price: payload.client_selected_price,
+            }
+          : prev
+      );
+    }
+
+    if (payload.status) {
+      setProposal((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: payload.status,
+            }
+          : prev
+      );
+    }
+  }
+
   async function toggleActivity(activityId: string, dayId: string) {
-    const supabase = createClient();
     const activity = activities[dayId]?.find((a) => a.id === activityId);
 
     if (!activity) return;
 
     const newSelectedState = !activity.is_selected;
 
-    // Update in database
-    const { error } = await supabase
-      .from('proposal_activities')
-      .update({ is_selected: newSelectedState })
-      .eq('id', activityId);
-
-    if (error) {
+    try {
+      await performPublicAction({
+        action: 'toggleActivity',
+        activityId,
+        selected: newSelectedState,
+      });
+      await loadProposal();
+    } catch (error) {
       console.error('Error toggling activity:', error);
-      return;
-    }
-
-    // Update local state
-    setActivities((prev) => ({
-      ...prev,
-      [dayId]: prev[dayId].map((a) =>
-        a.id === activityId ? { ...a, is_selected: newSelectedState } : a
-      ),
-    }));
-
-    // Recalculate total price
-    await recalculatePrice();
-  }
-
-  async function recalculatePrice() {
-    if (!proposal) return;
-
-    const supabase = createClient();
-
-    // Call the RPC function to recalculate
-    const { data: newPrice } = await supabase.rpc('calculate_proposal_price', {
-      p_proposal_id: proposal.id,
-    });
-
-    if (newPrice !== null && newPrice !== undefined) {
-      const { error } = await supabase
-        .from('proposals')
-        .update({ client_selected_price: newPrice })
-        .eq('id', proposal.id);
-
-      if (!error) {
-        setProposal((prev) => (prev ? { ...prev, client_selected_price: newPrice } : null));
-      }
     }
   }
 
   async function toggleAddOn(addOnId: string) {
-    if (!proposal) return;
-
-    const supabase = createClient();
-    const current = addOns.find((a) => a.id === addOnId);
+    const current = addOns.find((item) => item.id === addOnId);
     if (!current) return;
 
-    const nextSelected = !current.is_selected;
-    const { error } = await (supabase as any)
-      .from('proposal_add_ons')
-      .update({ is_selected: nextSelected })
-      .eq('id', addOnId);
-
-    if (error) {
+    try {
+      await performPublicAction({
+        action: 'toggleAddOn',
+        addOnId,
+        selected: !current.is_selected,
+      });
+      await loadProposal();
+    } catch (error) {
       console.error('Error toggling add-on:', error);
-      return;
     }
-
-    setAddOns((prev) => prev.map((a) => (a.id === addOnId ? { ...a, is_selected: nextSelected } : a)));
-    await recalculatePrice();
   }
 
   async function selectVehicle(addOnId: string) {
-    if (!proposal) return;
-
-    const supabase = createClient();
-    const vehicleIds = addOns.filter((a) => a.category === 'Transport').map((a) => a.id);
-    if (vehicleIds.length === 0) return;
-
-    // Make vehicle selection mutually exclusive
-    const { error: unsetError } = await (supabase as any)
-      .from('proposal_add_ons')
-      .update({ is_selected: false })
-      .eq('proposal_id', proposal.id)
-      .eq('category', 'Transport');
-
-    if (unsetError) {
-      console.error('Error clearing vehicles:', unsetError);
-      return;
+    try {
+      await performPublicAction({
+        action: 'selectVehicle',
+        addOnId,
+      });
+      await loadProposal();
+    } catch (error) {
+      console.error('Error selecting vehicle:', error);
     }
-
-    const { error: setError } = await (supabase as any)
-      .from('proposal_add_ons')
-      .update({ is_selected: true })
-      .eq('id', addOnId);
-
-    if (setError) {
-      console.error('Error selecting vehicle:', setError);
-      return;
-    }
-
-    setAddOns((prev) =>
-      prev.map((a) =>
-        a.category === 'Transport' ? { ...a, is_selected: a.id === addOnId } : a
-      )
-    );
-    await recalculatePrice();
   }
 
   async function submitComment() {
@@ -430,30 +256,14 @@ export default function PublicProposalPage() {
     setSubmittingComment(true);
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase.from('proposal_comments').insert({
-        proposal_id: proposal.id,
-        proposal_day_id: commentDayId,
-        author_name: commentName,
-        author_email: commentEmail || null,
+      await performPublicAction({
+        action: 'comment',
+        proposalDayId: commentDayId,
+        authorName: commentName,
+        authorEmail: commentEmail || null,
         comment: commentText,
       });
-
-      if (error) {
-        console.error('Error submitting comment:', error);
-        alert('Failed to submit comment');
-        return;
-      }
-
-      // Update proposal status to commented
-      await supabase
-        .from('proposals')
-        .update({ status: 'commented' })
-        .eq('id', proposal.id);
-
-      // Reload comments
-      loadProposal();
+      await loadProposal();
 
       // Reset form
       setCommentText('');
@@ -474,27 +284,16 @@ export default function PublicProposalPage() {
     if (!clientName) return;
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase
-        .from('proposals')
-        .update({
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: clientName,
-        })
-        .eq('id', proposal.id);
-
-      if (error) {
-        console.error('Error approving proposal:', error);
-        alert('Failed to approve proposal');
-        return;
-      }
-
+      await performPublicAction({
+        action: 'approve',
+        approvedBy: clientName,
+      });
+      await loadProposal();
       setProposal((prev) => (prev ? { ...prev, status: 'approved' } : null));
       alert('✅ Proposal approved! The tour operator will be notified.');
     } catch (error) {
       console.error('Error approving proposal:', error);
+      alert('Failed to approve proposal');
     }
   }
 
@@ -550,12 +349,6 @@ export default function PublicProposalPage() {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-        {isSubscribed && (
-          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm text-green-700 rounded-full text-xs font-medium shadow-lg">
-            <Wifi className="w-3 h-3" />
-            Live Updates
-          </div>
-        )}
         <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
           <div className="max-w-6xl mx-auto">
             <h1 className="text-5xl font-[var(--font-display)] mb-4">{proposal.title}</h1>

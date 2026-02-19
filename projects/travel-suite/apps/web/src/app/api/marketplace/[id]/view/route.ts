@@ -9,29 +9,37 @@ export async function POST(
     const { id: targetOrgId } = await context.params;
 
     try {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: viewerProfile } = await supabase
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", user.id)
+            .single();
+
+        if (!viewerProfile?.organization_id) {
+            return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+        }
+
         // Resolve target profile_id
         const { data: profile, error: profileError } = await supabase
             .from("marketplace_profiles")
             .select("id")
             .eq("organization_id", targetOrgId)
+            .eq("is_verified", true)
+            .eq("verification_status", "verified")
             .single();
 
         if (profileError || !profile) {
             return NextResponse.json({ error: "Profile not found" }, { status: 404 });
         }
 
-        // Get current user's org if available (optional)
-        const { data: { user } } = await supabase.auth.getUser();
-        let viewerOrgId = null;
-
-        if (user) {
-            const { data: viewerProfile } = await supabase
-                .from("profiles")
-                .select("organization_id")
-                .eq("id", user.id)
-                .single();
-            viewerOrgId = viewerProfile?.organization_id || null;
-        }
+        const viewerOrgId = viewerProfile.organization_id;
 
         // Prevent self-views if viewer is same as target
         if (viewerOrgId === targetOrgId) {

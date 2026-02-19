@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, User, Loader2, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,10 @@ type AuthMode = "login" | "signup";
 
 export default function AuthPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const supabase = createClient();
+    const requestedNext = searchParams.get("next");
+    const nextPath = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/admin";
 
     const [mode, setMode] = useState<AuthMode>("login");
     const [email, setEmail] = useState("");
@@ -54,7 +57,7 @@ export default function AuthPage() {
                 if (!response.ok) {
                     throw new Error(payload.error || "Failed to sign in");
                 }
-                router.push("/planner");
+                router.push(nextPath);
                 router.refresh();
             }
         } catch (err: unknown) {
@@ -209,7 +212,11 @@ export default function AuthPage() {
                                 setLoading(true);
                                 await supabase.auth.signInWithOAuth({
                                     provider: "google",
-                                    options: { redirectTo: `${window.location.origin}/auth/callback` },
+                                    options: {
+                                        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+                                            nextPath
+                                        )}`,
+                                    },
                                 });
                             }}
                             disabled={loading}

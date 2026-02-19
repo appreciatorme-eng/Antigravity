@@ -38,6 +38,22 @@ async function getAuthContext(req: Request) {
 export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
     try {
         const { id: targetOrgId } = await context.params;
+        const { user, profile } = await getAuthContext(req);
+        if (!user || !profile || !profile.organization_id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { data: targetProfile } = await supabaseAdmin
+            .from("marketplace_profiles")
+            .select("organization_id")
+            .eq("organization_id", targetOrgId)
+            .eq("is_verified", true)
+            .eq("verification_status", "verified")
+            .maybeSingle();
+
+        if (!targetProfile) {
+            return NextResponse.json([], { status: 200 });
+        }
 
         const { data, error } = await supabaseAdmin
             .from("marketplace_reviews")
@@ -74,6 +90,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
         if (reviewerOrgId === targetOrgId) {
             return NextResponse.json({ error: "You cannot review your own organization" }, { status: 400 });
+        }
+
+        const { data: targetProfile } = await supabaseAdmin
+            .from("marketplace_profiles")
+            .select("organization_id")
+            .eq("organization_id", targetOrgId)
+            .eq("is_verified", true)
+            .eq("verification_status", "verified")
+            .maybeSingle();
+
+        if (!targetProfile) {
+            return NextResponse.json({ error: "Operator not available in marketplace" }, { status: 404 });
         }
 
         const body = await req.json();

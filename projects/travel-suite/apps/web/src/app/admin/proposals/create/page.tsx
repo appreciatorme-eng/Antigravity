@@ -307,23 +307,43 @@ export default function CreateProposalPage() {
 
       // Persist selected options (vehicle type + add-ons) into proposal_add_ons if the table exists.
       try {
-        const selectedIds = new Set<string>(selectedAddOnIds);
-        if (selectedVehicleId) selectedIds.add(selectedVehicleId);
-        const selectedRows = Array.from(selectedIds)
-          .map((id) => addOns.find((a) => a.id === id))
-          .filter(Boolean) as AddOn[];
+        const availableVehicles = addOns.filter((a) => a.category === 'Transport');
+        const defaultVehicleId =
+          selectedVehicleId || (availableVehicles.length > 0 ? availableVehicles[0].id : '');
 
-        if (proposalId && selectedRows.length > 0) {
-          const insertPayload = selectedRows.map((a) => ({
+        const addOnRows: Array<{ addOn: AddOn; selected: boolean }> = [];
+        for (const vehicle of availableVehicles) {
+          addOnRows.push({
+            addOn: vehicle,
+            selected: vehicle.id === defaultVehicleId,
+          });
+        }
+
+        for (const addOnId of selectedAddOnIds) {
+          const found = addOns.find((a) => a.id === addOnId);
+          if (!found) continue;
+          addOnRows.push({
+            addOn: found,
+            selected: true,
+          });
+        }
+
+        const dedupedRows = new Map<string, { addOn: AddOn; selected: boolean }>();
+        for (const row of addOnRows) {
+          dedupedRows.set(row.addOn.id, row);
+        }
+
+        if (proposalId && dedupedRows.size > 0) {
+          const insertPayload = Array.from(dedupedRows.values()).map(({ addOn, selected }) => ({
             proposal_id: proposalId,
-            add_on_id: a.id,
-            name: a.name,
-            description: a.description || null,
-            category: a.category,
-            image_url: a.image_url || null,
-            unit_price: Number(a.price) || 0,
+            add_on_id: addOn.id,
+            name: addOn.name,
+            description: addOn.description || null,
+            category: addOn.category,
+            image_url: addOn.image_url || null,
+            unit_price: Number(addOn.price) || 0,
             quantity: 1,
-            is_selected: true,
+            is_selected: selected,
           }));
 
           // proposal_add_ons may not exist in older DBs; keep this best-effort and avoid strict typing.
@@ -905,144 +925,6 @@ export default function CreateProposalPage() {
             </label>
           </div>
         </div>
-      </div>
-
-      {/* Options & Add-ons */}
-      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
-        <h2 className="text-lg font-semibold text-[#1b140a] mb-2">Options & Add-ons</h2>
-        <p className="text-sm text-[#6f5b3e] mb-4">
-          Choose a vehicle type and optional add-ons. These will appear on the proposal and update pricing dynamically.
-        </p>
-
-        {addOns.length === 0 ? (
-          <div className="text-sm text-[#6f5b3e]">
-            No add-ons found. Create them in{' '}
-            <Link href="/admin/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
-              Admin → Add-ons
-            </Link>{' '}
-            (opens new tab). Use category <span className="font-medium">Transport</span> for vehicle types.
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <h3 className="text-sm font-semibold text-[#1b140a]">Vehicle Type</h3>
-                {selectedVehicleId ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedVehicleId('')}
-                    className="text-xs text-[#6f5b3e] hover:underline"
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-
-              {vehicles.length === 0 ? (
-                <div className="text-sm text-[#6f5b3e]">
-                  No Transport add-ons found. Add vehicle options under category <span className="font-medium">Transport</span>.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {vehicles.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setSelectedVehicleId(v.id)}
-                      className={`p-4 rounded-xl border text-left transition-colors ${
-                        selectedVehicleId === v.id
-                          ? 'border-[#9c7c46] bg-[#f8f1e6]'
-                          : 'border-[#eadfcd] hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-medium text-[#1b140a] truncate">{v.name}</div>
-                          {v.description ? (
-                            <div className="text-xs text-[#6f5b3e] mt-1">{v.description}</div>
-                          ) : null}
-                        </div>
-                        <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
-                          ${Number(v.price || 0).toFixed(2)}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-[#1b140a] mb-2">Optional Add-ons</h3>
-              {optionalAddOns.length === 0 ? (
-                <div className="text-sm text-[#6f5b3e]">No optional add-ons available.</div>
-              ) : (
-                <div className="space-y-2">
-                  {optionalAddOns.slice(0, 30).map((a) => {
-                    const checked = selectedAddOnIds.has(a.id);
-                    return (
-                      <label
-                        key={a.id}
-                        className="flex items-start gap-3 p-3 rounded-xl border border-[#eadfcd] hover:bg-gray-50 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            setSelectedAddOnIds((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(a.id);
-                              else next.delete(a.id);
-                              return next;
-                            });
-                          }}
-                          className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="font-medium text-[#1b140a] truncate">{a.name}</div>
-                            <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
-                              ${Number(a.price || 0).toFixed(2)}
-                            </div>
-                          </div>
-                          <div className="text-xs text-[#6f5b3e] mt-0.5 truncate">
-                            {[a.category, a.duration].filter(Boolean).join(' • ')}
-                          </div>
-                          {a.description ? (
-                            <div className="text-xs text-[#6f5b3e] mt-1">{a.description}</div>
-                          ) : null}
-                        </div>
-                      </label>
-                    );
-                  })}
-                  {optionalAddOns.length > 30 ? (
-                    <div className="text-xs text-[#6f5b3e]">
-                      Showing first 30 add-ons. Manage full list in{' '}
-                      <Link href="/admin/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
-                        Add-ons
-                      </Link>
-                      .
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 rounded-xl border border-[#eadfcd] bg-[#fffdf8]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-[#1b140a]">Estimated Total</div>
-                  <div className="text-xs text-[#6f5b3e]">
-                    Base template + selected options (final price also includes selected activities/hotels).
-                  </div>
-                </div>
-                <div className="text-xl font-semibold text-[#1b140a]">
-                  ${Number(estimatedTotal || 0).toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Create Button */}

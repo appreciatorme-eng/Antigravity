@@ -30,6 +30,18 @@ export async function POST(
             return NextResponse.json({ error: "Cannot send inquiry to your own organization" }, { status: 400 });
         }
 
+        const { data: targetProfile } = await (supabase as any)
+            .from("marketplace_profiles")
+            .select("organization_id")
+            .eq("organization_id", targetOrgId)
+            .eq("is_verified", true)
+            .eq("verification_status", "verified")
+            .maybeSingle();
+
+        if (!targetProfile) {
+            return NextResponse.json({ error: "Operator not available in marketplace" }, { status: 404 });
+        }
+
         const { subject, message } = await request.json();
 
         if (!message) {
