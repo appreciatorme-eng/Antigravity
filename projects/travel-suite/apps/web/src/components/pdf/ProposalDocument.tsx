@@ -313,9 +313,12 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   proposal,
   organizationName = 'Travel Suite',
   organizationLogo,
-  primaryColor = '#00d084',
+  primaryColor,
   addOns = [],
 }) => {
+  const resolvedPrimaryColor = primaryColor ?? '#00d084';
+  const logoSrc = organizationLogo ?? undefined;
+
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === 'INR') {
       return `₹${amount.toLocaleString('en-IN')}`;
@@ -358,10 +361,10 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={[styles.header, { borderBottomColor: primaryColor }]}> 
+        <View style={[styles.header, { borderBottomColor: resolvedPrimaryColor }]}>
           <View style={styles.brandRow}>
-            <Text style={[styles.brandName, { color: primaryColor }]}>{organizationName}</Text>
-            {organizationLogo ? <Image src={organizationLogo} style={styles.brandLogo} /> : null}
+            <Text style={[styles.brandName, { color: resolvedPrimaryColor }]}>{organizationName}</Text>
+            {logoSrc ? <Image src={logoSrc} style={styles.brandLogo} /> : null}
           </View>
 
           <Text style={styles.title}>{proposal.title}</Text>
@@ -378,7 +381,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { borderBottomColor: primaryColor }]}>Trip Overview</Text>
+          <Text style={[styles.sectionTitle, { borderBottomColor: resolvedPrimaryColor }]}>Trip Overview</Text>
           <Text style={{ fontSize: 10, color: '#4a4a4a', lineHeight: 1.5 }}>
             Welcome to your personalized {proposal.destination} tour package. This proposal includes
             a curated {proposal.days.length}-day itinerary with dynamic options for transport and upsells.
@@ -386,11 +389,11 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { borderBottomColor: primaryColor }]}>Detailed Itinerary</Text>
+          <Text style={[styles.sectionTitle, { borderBottomColor: resolvedPrimaryColor }]}>Detailed Itinerary</Text>
 
           {proposal.days.map((day) => (
             <View key={day.day_number}>
-              <View style={[styles.dayHeader, { borderLeftColor: primaryColor }]}> 
+              <View style={[styles.dayHeader, { borderLeftColor: resolvedPrimaryColor }]}>
                 <Text style={styles.dayTitle}>
                   Day {day.day_number}: {day.title}
                 </Text>
@@ -406,7 +409,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
                         <View style={styles.activityHeader}>
                           <Text style={styles.activityTitle}>{activity.title}</Text>
                           <View style={{ flexDirection: 'row' }}>
-                            <Text style={[styles.activityBadge, { backgroundColor: primaryColor }]}>SELECTED</Text>
+                            <Text style={[styles.activityBadge, { backgroundColor: resolvedPrimaryColor }]}>SELECTED</Text>
                             {activity.is_optional ? (
                               <Text style={styles.activityOptionalBadge}>OPTIONAL</Text>
                             ) : null}
@@ -442,7 +445,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         </View>
 
         <View style={styles.pricingSection}>
-          <Text style={[styles.sectionTitle, { borderBottomColor: primaryColor }]}>Pricing Summary</Text>
+          <Text style={[styles.sectionTitle, { borderBottomColor: resolvedPrimaryColor }]}>Pricing Summary</Text>
 
           <View style={styles.pricingRow}>
             <Text style={styles.pricingLabel}>Selected Activities ({selectedActivities.length})</Text>
@@ -486,9 +489,9 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
             </View>
           ) : null}
 
-          <View style={[styles.totalRow, { borderTopColor: primaryColor }]}> 
+          <View style={[styles.totalRow, { borderTopColor: resolvedPrimaryColor }]}>
             <Text style={styles.totalLabel}>Total Package Price</Text>
-            <Text style={[styles.totalValue, { color: primaryColor }]}> 
+            <Text style={[styles.totalValue, { color: resolvedPrimaryColor }]}>
               {formatCurrency(displayTotal, proposal.currency)}
             </Text>
           </View>
@@ -502,7 +505,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
       </Page>
 
       <Page size="A4" style={styles.page}>
-        <View style={[styles.header, { borderBottomColor: primaryColor }]}> 
+        <View style={[styles.header, { borderBottomColor: resolvedPrimaryColor }]}>
           <Text style={styles.title}>Terms & Conditions</Text>
         </View>
 
