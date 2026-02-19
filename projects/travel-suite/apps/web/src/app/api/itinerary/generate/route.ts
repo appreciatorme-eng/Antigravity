@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import { z } from 'zod';
+import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
@@ -146,6 +147,23 @@ export async function POST(req: NextRequest) {
     const { prompt, days } = parsed.data;
 
     try {
+        // Extract destination early for cache lookup
+        const destination = extractDestination(prompt);
+
+        // CACHE LOOKUP - Check if we have this itinerary cached
+        const cachedItinerary = await getCachedItinerary(
+            destination,
+            days,
+            undefined, // budget - we'll get this from AI response
+            undefined  // interests - we'll get this from AI response
+        );
+
+        if (cachedItinerary) {
+            console.log(`✅ Cache HIT for ${destination}, ${days} days - API call avoided!`);
+            return NextResponse.json(cachedItinerary);
+        }
+
+        console.log(`❌ Cache MISS for ${destination}, ${days} days - generating with AI...`);
 
         const apiKey =
             process.env.GOOGLE_API_KEY ||
@@ -331,6 +349,25 @@ export async function POST(req: NextRequest) {
             const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
             itinerary.days = itinerary.days.concat(pad);
         }
+
+        // CACHE SAVE - Save successful AI generation to cache
+        // Extract cache params (destination, budget, interests) from generated itinerary
+        const cacheParams = extractCacheParams(prompt, itinerary);
+
+        // Save to cache asynchronously (don't block response)
+        saveItineraryToCache(
+            cacheParams.destination,
+            cacheParams.days,
+            cacheParams.budget,
+            cacheParams.interests,
+            itinerary
+        ).then(cacheId => {
+            if (cacheId) {
+                console.log(`💾 Itinerary cached successfully (ID: ${cacheId}) for ${cacheParams.destination}`);
+            }
+        }).catch(err => {
+            console.error('Cache save failed (non-blocking):', err);
+        });
 
         return NextResponse.json(itinerary);
 
