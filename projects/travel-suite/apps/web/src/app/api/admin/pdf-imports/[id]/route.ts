@@ -124,7 +124,7 @@ export async function PATCH(
                 return NextResponse.json({
                     success: true,
                     message: 'PDF import approved. Ready to publish.',
-                    pdf_import: { ...pdfImport, status: 'approved' }
+                    pdf_import: pdfImport
                 });
 
             case 'reject':
@@ -146,7 +146,7 @@ export async function PATCH(
                 return NextResponse.json({
                     success: true,
                     message: 'PDF import rejected.',
-                    pdf_import: { ...pdfImport, status: 'rejected' }
+                    pdf_import: pdfImport
                 });
 
             case 're-extract':
