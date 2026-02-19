@@ -11,37 +11,49 @@ import { createClient } from '@/lib/supabase/server';
 import { renderToStream } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
 
+const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] || null : value;
+};
+
+const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9-_]+/g, '_');
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const shareToken = request.nextUrl.searchParams.get('token');
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
-      error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
+    let userOrganizationId: string | null = null;
+    let userOrganization: any = null;
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id, organizations(name, logo_url, primary_color)')
+        .eq('id', user.id)
+        .single();
+
+      userOrganizationId = profile?.organization_id || null;
+      userOrganization = normalizeRelation((profile as any)?.organizations);
+    }
+
+    if (!user && !shareToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id, organizations(name)')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
+    if (!shareToken && !userOrganizationId) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    // Fetch proposal with all details
-    const { data: proposal, error } = await supabase
+    let proposalQuery = supabase
       .from('proposals')
       .select(`
         *,
@@ -50,6 +62,11 @@ export async function GET(
             full_name,
             email
           )
+        ),
+        organizations (
+          name,
+          logo_url,
+          primary_color
         ),
         tour_templates (
           destination
@@ -64,56 +81,102 @@ export async function GET(
           )
         )
       `)
-      .eq('id', id)
-      .eq('organization_id', profile.organization_id)
-      .single();
+      .eq('id', id);
+
+    if (shareToken) {
+      proposalQuery = proposalQuery.eq('share_token', shareToken);
+    } else if (userOrganizationId) {
+      proposalQuery = proposalQuery.eq('organization_id', userOrganizationId);
+    }
+
+    const { data: proposal, error } = await proposalQuery.single();
 
     if (error || !proposal) {
       return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
     }
 
-    // Format data for PDF component
-    // Cast to any because TS definition for nested join might be tricky to infer automatically here
+    // proposal_add_ons type may not exist in generated Database types yet.
+    const { data: proposalAddOns } = await (supabase as any)
+      .from('proposal_add_ons')
+      .select('*')
+      .eq('proposal_id', id);
+
     const p = proposal as any;
-    const clientProfile = p.clients?.profiles || p.clients?.profiles?.[0]; // Handle if it returns array or single
+    const clientProfile = normalizeRelation(p.clients?.profiles);
+    const proposalOrganization = normalizeRelation(p.organizations) || userOrganization;
 
     const proposalData = {
-      ...proposal,
-      total_price: proposal.total_price || 0,
-      client_selected_price: proposal.client_selected_price || 0,
+      id: proposal.id,
+      title: proposal.title,
+      total_price: Number(proposal.total_price || 0),
+      client_selected_price: proposal.client_selected_price,
       status: proposal.status || 'draft',
       created_at: proposal.created_at || new Date().toISOString(),
-      destination: (p.tour_templates?.destination) || 'Destination',
+      destination: p.tour_templates?.destination || 'Destination',
+      duration_days: p.proposal_days?.length || undefined,
       currency: 'USD',
       client_name: clientProfile?.full_name || 'Valued Customer',
       client_email: clientProfile?.email,
-      days: proposal.proposal_days?.map((day: any) => ({
-        ...day,
-        activities: day.proposal_activities || [],
-        accommodations: day.proposal_accommodations || [],
-      })) || [],
+      days:
+        p.proposal_days?.map((day: any) => ({
+          day_number: day.day_number,
+          title: day.title || `Day ${day.day_number}`,
+          description: day.description || undefined,
+          activities:
+            day.proposal_activities?.map((activity: any) => ({
+              id: activity.id,
+              title: activity.title,
+              description: activity.description || undefined,
+              time: activity.time || undefined,
+              location: activity.location || undefined,
+              price: Number(activity.price || 0),
+              is_optional: activity.is_optional === true,
+              is_selected: activity.is_selected !== false,
+            })) || [],
+          accommodations:
+            day.proposal_accommodations?.map((accommodation: any) => ({
+              id: accommodation.id,
+              name: accommodation.hotel_name || 'Accommodation',
+              type: accommodation.room_type || undefined,
+              check_in: accommodation.check_in_date || undefined,
+              check_out: accommodation.check_out_date || undefined,
+              price: Number(accommodation.price_per_night || 0),
+              is_selected: accommodation.is_selected !== false,
+            })) || [],
+        })) || [],
     };
 
-    // Generate PDF stream
+    const formattedAddOns =
+      proposalAddOns?.map((addOn: any) => ({
+        id: addOn.id,
+        name: addOn.name,
+        category: addOn.category,
+        description: addOn.description,
+        quantity: addOn.quantity,
+        unit_price: Number(addOn.unit_price || 0),
+        is_selected: addOn.is_selected !== false,
+      })) || [];
+
     const stream = await renderToStream(
       React.createElement(ProposalDocument, {
         proposal: proposalData,
-        organizationName: (profile as any).organizations?.name || 'Travel Suite',
+        addOns: formattedAddOns,
+        organizationName: proposalOrganization?.name || 'Travel Suite',
+        organizationLogo: proposalOrganization?.logo_url || null,
+        primaryColor: proposalOrganization?.primary_color || '#00d084',
       }) as any
     );
 
-    // Convert stream to buffer
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const buffer = Buffer.concat(chunks);
 
-    // Return PDF
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${proposal.title.replace(/\s+/g, '_')}_Proposal.pdf"`,
+        'Content-Disposition': `attachment; filename="${sanitizeFileName(proposal.title)}_Proposal.pdf"`,
       },
     });
   } catch (error) {

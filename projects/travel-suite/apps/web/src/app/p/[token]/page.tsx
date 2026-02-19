@@ -25,6 +25,7 @@ interface Proposal {
   id: string;
   title: string;
   total_price: number;
+  client_selected_price?: number | null;
   status: string;
   expires_at: string | null;
   // Joined data
@@ -33,6 +34,19 @@ interface Proposal {
   duration_days?: number;
   description?: string;
   hero_image_url?: string;
+}
+
+interface ProposalAddOn {
+  id: string;
+  proposal_id: string;
+  add_on_id: string | null;
+  name: string;
+  description: string | null;
+  category: string;
+  image_url: string | null;
+  unit_price: number;
+  quantity: number;
+  is_selected: boolean;
 }
 
 interface ProposalDay {
@@ -91,6 +105,7 @@ export default function PublicProposalPage() {
     {}
   );
   const [comments, setComments] = useState<ProposalComment[]>([]);
+  const [addOns, setAddOns] = useState<ProposalAddOn[]>([]);
 
   // UI state
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
@@ -158,6 +173,7 @@ export default function PublicProposalPage() {
       const formattedProposal: Proposal = {
         ...proposalData,
         total_price: proposalData.total_price || 0,
+        client_selected_price: proposalData.client_selected_price ?? null,
         status: proposalData.status || 'draft',
         template_name: proposalData.tour_templates?.name || undefined,
         destination: proposalData.tour_templates?.destination || undefined,
@@ -241,6 +257,38 @@ export default function PublicProposalPage() {
         }
       }
 
+      // Load proposal add-ons / options (vehicle type, upgrades, etc.)
+      try {
+        const { data: addOnsData, error: addOnsError } = await (supabase as any)
+          .from('proposal_add_ons')
+          .select('*')
+          .eq('proposal_id', proposalData.id)
+          .order('category', { ascending: true });
+
+        if (addOnsError) {
+          // If the table doesn't exist yet (migration not applied), keep this feature hidden.
+          console.warn('Add-ons unavailable:', addOnsError.message);
+          setAddOns([]);
+        } else {
+          const mapped: ProposalAddOn[] = (addOnsData || []).map((a: any) => ({
+            id: a.id,
+            proposal_id: a.proposal_id,
+            add_on_id: a.add_on_id ?? null,
+            name: a.name,
+            description: a.description ?? null,
+            category: a.category,
+            image_url: a.image_url ?? null,
+            unit_price: Number(a.unit_price || 0),
+            quantity: Number(a.quantity || 1),
+            is_selected: a.is_selected !== false,
+          }));
+          setAddOns(mapped);
+        }
+      } catch (e) {
+        console.warn('Add-ons unavailable:', e);
+        setAddOns([]);
+      }
+
       // Load comments
       const { data: commentsData } = await supabase
         .from('proposal_comments')
@@ -309,9 +357,68 @@ export default function PublicProposalPage() {
         .eq('id', proposal.id);
 
       if (!error) {
-        setProposal((prev) => (prev ? { ...prev, total_price: newPrice } : null));
+        setProposal((prev) => (prev ? { ...prev, client_selected_price: newPrice } : null));
       }
     }
+  }
+
+  async function toggleAddOn(addOnId: string) {
+    if (!proposal) return;
+
+    const supabase = createClient();
+    const current = addOns.find((a) => a.id === addOnId);
+    if (!current) return;
+
+    const nextSelected = !current.is_selected;
+    const { error } = await (supabase as any)
+      .from('proposal_add_ons')
+      .update({ is_selected: nextSelected })
+      .eq('id', addOnId);
+
+    if (error) {
+      console.error('Error toggling add-on:', error);
+      return;
+    }
+
+    setAddOns((prev) => prev.map((a) => (a.id === addOnId ? { ...a, is_selected: nextSelected } : a)));
+    await recalculatePrice();
+  }
+
+  async function selectVehicle(addOnId: string) {
+    if (!proposal) return;
+
+    const supabase = createClient();
+    const vehicleIds = addOns.filter((a) => a.category === 'Transport').map((a) => a.id);
+    if (vehicleIds.length === 0) return;
+
+    // Make vehicle selection mutually exclusive
+    const { error: unsetError } = await (supabase as any)
+      .from('proposal_add_ons')
+      .update({ is_selected: false })
+      .eq('proposal_id', proposal.id)
+      .eq('category', 'Transport');
+
+    if (unsetError) {
+      console.error('Error clearing vehicles:', unsetError);
+      return;
+    }
+
+    const { error: setError } = await (supabase as any)
+      .from('proposal_add_ons')
+      .update({ is_selected: true })
+      .eq('id', addOnId);
+
+    if (setError) {
+      console.error('Error selecting vehicle:', setError);
+      return;
+    }
+
+    setAddOns((prev) =>
+      prev.map((a) =>
+        a.category === 'Transport' ? { ...a, is_selected: a.id === addOnId } : a
+      )
+    );
+    await recalculatePrice();
   }
 
   async function submitComment() {
@@ -403,18 +510,7 @@ export default function PublicProposalPage() {
     });
   }
 
-  // Calculate selected price
-  const selectedPrice = Object.values(activities)
-    .flat()
-    .filter((a) => a.is_selected)
-    .reduce((sum, a) => sum + a.price, 0);
-
-  const selectedAccommodationPrice = Object.values(accommodations).reduce(
-    (sum, acc) => sum + acc.price_per_night,
-    0
-  );
-
-  const totalSelectedPrice = selectedPrice + selectedAccommodationPrice;
+  const displayedPrice = proposal?.client_selected_price ?? proposal?.total_price ?? 0;
 
   if (loading) {
     return (
@@ -478,7 +574,7 @@ export default function PublicProposalPage() {
               )}
               <div className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
-                ${totalSelectedPrice.toFixed(2)}
+                ${displayedPrice.toFixed(2)}
               </div>
             </div>
             <div className="mt-6">
@@ -501,6 +597,99 @@ export default function PublicProposalPage() {
         {proposal.description && (
           <div className="bg-white rounded-2xl border border-[#eadfcd] p-8">
             <p className="text-lg text-[#6f5b3e] leading-relaxed">{proposal.description}</p>
+          </div>
+        )}
+
+        {/* Options & Add-ons */}
+        {(addOns.length > 0) && (
+          <div className="bg-white rounded-2xl border border-[#eadfcd] p-8">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-[var(--font-display)] text-[#1b140a]">Options</h2>
+                <p className="text-sm text-[#6f5b3e]">
+                  Choose your vehicle type and optional upgrades. Price updates instantly.
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-[#6f5b3e]">Current total</div>
+                <div className="text-xl font-semibold text-[#1b140a]">${displayedPrice.toFixed(2)}</div>
+                {proposal.total_price !== displayedPrice && (
+                  <div className="text-xs text-[#6f5b3e]">Base: ${proposal.total_price.toFixed(2)}</div>
+                )}
+              </div>
+            </div>
+
+            {addOns.filter((a) => a.category === 'Transport').length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-[#1b140a] mb-2">Vehicle Type</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {addOns
+                    .filter((a) => a.category === 'Transport')
+                    .map((a) => (
+                      <label
+                        key={a.id}
+                        className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+                          a.is_selected ? 'border-[#9c7c46] bg-[#f8f1e6]' : 'border-[#eadfcd] hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="vehicle"
+                          checked={a.is_selected}
+                          onChange={() => selectVehicle(a.id)}
+                          className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 focus:ring-[#9c7c46]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-medium text-[#1b140a] truncate">{a.name}</div>
+                            <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
+                              ${Number(a.unit_price || 0).toFixed(2)}
+                            </div>
+                          </div>
+                          {a.description ? (
+                            <div className="text-xs text-[#6f5b3e] mt-1">{a.description}</div>
+                          ) : null}
+                        </div>
+                      </label>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {addOns.filter((a) => a.category !== 'Transport').length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-[#1b140a] mb-2">Add-ons</h3>
+                <div className="space-y-2">
+                  {addOns
+                    .filter((a) => a.category !== 'Transport')
+                    .map((a) => (
+                      <label
+                        key={a.id}
+                        className="flex items-start gap-3 p-3 rounded-xl border border-[#eadfcd] hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={a.is_selected}
+                          onChange={() => toggleAddOn(a.id)}
+                          className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-medium text-[#1b140a] truncate">{a.name}</div>
+                            <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
+                              ${Number(a.unit_price || 0).toFixed(2)}
+                            </div>
+                          </div>
+                          <div className="text-xs text-[#6f5b3e] mt-0.5 truncate">{a.category}</div>
+                          {a.description ? (
+                            <div className="text-xs text-[#6f5b3e] mt-1">{a.description}</div>
+                          ) : null}
+                        </div>
+                      </label>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -714,12 +903,12 @@ export default function PublicProposalPage() {
             <div>
               <h3 className="text-lg font-semibold text-[#1b140a] mb-1">Total Price</h3>
               <p className="text-sm text-[#6f5b3e]">
-                Based on your selected activities and accommodations
+                Based on your selected options and itinerary
               </p>
             </div>
             <div className="text-right">
               <div className="text-4xl font-bold text-[#9c7c46]">
-                ${totalSelectedPrice.toFixed(2)}
+                ${displayedPrice.toFixed(2)}
               </div>
             </div>
           </div>
