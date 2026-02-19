@@ -1,0 +1,324 @@
+/**
+ * Print Styles for Professional Itinerary
+ * Ensures PDF/print output matches WBB Kenya Safari quality
+ */
+
+@media print {
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1.5cm 2cm;
+  }
+
+  /* Hide non-essential elements */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Body */
+  body {
+    font-size: 10pt;
+    line-height: 1.4;
+    color: #000;
+    background: #fff;
+  }
+
+  /* Headers */
+  h1 {
+    font-size: 24pt;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    font-size: 18pt;
+    margin-top: 18pt;
+    margin-bottom: 10pt;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 14pt;
+    margin-top: 12pt;
+    margin-bottom: 8pt;
+    page-break-after: avoid;
+  }
+
+  h4 {
+    font-size: 12pt;
+    margin-top: 10pt;
+    margin-bottom: 6pt;
+    page-break-after: avoid;
+  }
+
+  /* Paragraphs */
+  p {
+    margin-bottom: 8pt;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Cards and sections */
+  .professional-itinerary {
+    max-width: 100%;
+  }
+
+  /* Prevent breaks inside */
+  .print\:break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Day cards */
+  .print\:break-inside-avoid > div {
+    page-break-inside: avoid;
+  }
+
+  /* Images */
+  img {
+    max-width: 100%;
+    height: auto;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Preserve background colors for badges and highlights */
+  .print\:preserve-colors,
+  [class*="bg-"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cover page */
+  .professional-itinerary > div:first-child {
+    page-break-after: always;
+  }
+
+  /* Force expand all days in print */
+  .professional-itinerary [class*="transition-"],
+  .professional-itinerary [class*="hover:"] {
+    transition: none !important;
+  }
+
+  /* Timeline adjustments for print */
+  .absolute.left-6 {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Badges */
+  .badge {
+    border: 1pt solid currentColor;
+    padding: 2pt 6pt;
+    font-size: 9pt;
+  }
+
+  /* Separator lines */
+  hr,
+  .separator {
+    border-color: #ccc !important;
+    margin: 8pt 0;
+  }
+
+  /* Activity metadata icons */
+  svg {
+    width: 12pt;
+    height: 12pt;
+  }
+
+  /* Links - show URLs */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+  }
+
+  /* Don't show URLs for anchor links */
+  a[href^="#"]:after {
+    content: "";
+  }
+
+  /* Inclusions/Exclusions cards */
+  .grid.md\:grid-cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12pt;
+    page-break-inside: avoid;
+  }
+
+  /* Activity cards */
+  .group {
+    margin-bottom: 12pt;
+    page-break-inside: avoid;
+  }
+
+  /* Activity images in print */
+  .group img {
+    max-height: 200pt;
+    margin-bottom: 8pt;
+  }
+
+  /* Footer */
+  .professional-itinerary > div:last-child {
+    margin-top: 24pt;
+    font-size: 8pt;
+    text-align: center;
+    color: #666;
+  }
+
+  /* Remove shadows in print */
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl,
+  .shadow-md,
+  .shadow-sm {
+    box-shadow: none !important;
+  }
+
+  /* Borders in print */
+  .border {
+    border-width: 1pt;
+    border-color: #ddd;
+  }
+
+  /* Timeline dot colors preserved */
+  .absolute.rounded-full {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Preserve gradient backgrounds */
+  .bg-gradient-to-br,
+  .bg-gradient-to-r,
+  .bg-gradient-to-t,
+  .bg-gradient-to-b {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Activity metadata layout */
+  .flex.flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8pt;
+  }
+
+  /* Prose content */
+  .prose {
+    max-width: 100%;
+  }
+
+  .prose p {
+    margin-bottom: 8pt;
+    line-height: 1.5;
+  }
+
+  /* Transport info box */
+  .p-3.bg-blue-50 {
+    background-color: #eff6ff !important;
+    border: 1pt solid #bfdbfe !important;
+    padding: 6pt 8pt;
+    margin-top: 8pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Operator logo */
+  .h-12.md\:h-16 {
+    height: 48pt;
+  }
+
+  /* Badge variants */
+  .bg-emerald-50\/50,
+  .bg-rose-50\/50 {
+    opacity: 1 !important;
+  }
+
+  /* Card padding adjustments for print */
+  .p-6 {
+    padding: 12pt;
+  }
+
+  .p-12,
+  .md\:p-16 {
+    padding: 18pt;
+  }
+
+  /* Font weights */
+  .font-bold {
+    font-weight: 700;
+  }
+
+  .font-semibold {
+    font-weight: 600;
+  }
+
+  .font-medium {
+    font-weight: 500;
+  }
+
+  /* Dark mode overrides for print */
+  .dark\:text-white,
+  .dark\:text-slate-100,
+  .dark\:text-slate-200 {
+    color: #000 !important;
+  }
+
+  .dark\:bg-slate-900,
+  .dark\:bg-slate-950\/40 {
+    background-color: #fff !important;
+  }
+
+  .dark\:border-slate-700,
+  .dark\:border-white\/10 {
+    border-color: #ddd !important;
+  }
+
+  /* Ensure white backgrounds in print */
+  .bg-white\/80,
+  .bg-white {
+    background-color: #fff !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  /* Avoid breaks */
+  .avoid-break-inside {
+    page-break-inside: avoid;
+  }
+
+  .avoid-break-after {
+    page-break-after: avoid;
+  }
+}
+
+/* Print button styling */
+@media screen {
+  .print-button {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 50;
+    padding: 0.75rem 1.5rem;
+    background: #00d084;
+    color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .print-button:hover {
+    background: #00b872;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+}

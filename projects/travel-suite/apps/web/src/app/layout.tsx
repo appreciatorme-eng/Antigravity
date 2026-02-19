@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Poppins, Inter } from "next/font/google";
 import "./globals.css";
+import "@/styles/print.css";
 import NavHeader from "@/components/layout/NavHeader";
 
 const cormorant = Cormorant_Garamond({
