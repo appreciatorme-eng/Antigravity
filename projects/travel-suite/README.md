@@ -317,6 +317,12 @@ Security baseline:
 - [x] **Template Analytics** - Track usage, views, conversion rates
 - [x] **Dynamic Navigation** - Role-based navigation system
 - [x] **Live Location Sharing** - Driver tracking with magic links
+- [x] **PDF Import Pipeline (Phase 5)** - Upload PDFs → GPT-4o extraction → Review → Publish
+  - Auto-extract structured templates from brochure PDFs
+  - AI confidence scoring and quality validation
+  - Operator review and approval workflow
+  - Direct publishing to unified template database
+  - 📚 **Documentation**: See `docs/PDF_IMPORT_SYSTEM.md`
 
 ### 🔄 In Progress
 - [ ] Email/WhatsApp API integration (infrastructure ready, needs API keys)
@@ -324,7 +330,7 @@ Security baseline:
 - [ ] Template Analytics Dashboard (partial implementation)
 - [ ] End-to-end push notification validation on real devices
 - [ ] **Professional Itinerary UI** - Transform to match WBB PDF quality (Phase 6)
-- [ ] **PDF Import Pipeline** - Upload PDFs → AI extraction → Review → Publish (Phase 5)
+- [ ] **PDF Import UI** - Admin interface for PDF upload and review (Phase 5 UI)
 
 ### 🔮 Planned
 - [ ] **Attribution Dashboard** - Operator template usage analytics (Phase 8)
