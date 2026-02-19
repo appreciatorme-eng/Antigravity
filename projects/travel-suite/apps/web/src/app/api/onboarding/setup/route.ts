@@ -13,6 +13,18 @@ const normalizeTemplate = (value: unknown): 'safari_story' | 'urban_brief' => {
   return TEMPLATE_OPTIONS.has(candidate) ? (candidate as 'safari_story' | 'urban_brief') : 'safari_story';
 };
 
+const isMissingColumnError = (error: unknown, column: string): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as { message?: string; details?: string; hint?: string; code?: string };
+  const blob = `${record.message || ''} ${record.details || ''} ${record.hint || ''}`.toLowerCase();
+  const normalizedColumn = column.toLowerCase();
+  return (
+    blob.includes(`could not find the '${normalizedColumn}' column`) ||
+    blob.includes(`column "${normalizedColumn}" does not exist`) ||
+    (blob.includes(normalizedColumn) && blob.includes('schema cache'))
+  );
+};
+
 const slugify = (value: string) =>
   value
     .toLowerCase()
@@ -66,12 +78,37 @@ async function ensureProfile(userId: string, email: string | null) {
 
 async function getOrganization(organizationId: string | null) {
   if (!organizationId) return null;
-  const { data: organization } = await supabaseAdmin
+  const { data: organizationWithTemplate, error: organizationWithTemplateError } = await supabaseAdmin
     .from('organizations')
     .select('id, name, slug, logo_url, primary_color, itinerary_template')
     .eq('id', organizationId)
     .maybeSingle();
-  return organization ?? null;
+
+  if (!organizationWithTemplateError) {
+    return organizationWithTemplate ?? null;
+  }
+
+  if (!isMissingColumnError(organizationWithTemplateError, 'itinerary_template')) {
+    throw new Error(organizationWithTemplateError.message);
+  }
+
+  const { data: organizationWithoutTemplate, error: organizationWithoutTemplateError } =
+    await supabaseAdmin
+      .from('organizations')
+      .select('id, name, slug, logo_url, primary_color')
+      .eq('id', organizationId)
+      .maybeSingle();
+
+  if (organizationWithoutTemplateError) {
+    throw new Error(organizationWithoutTemplateError.message);
+  }
+
+  return organizationWithoutTemplate
+    ? {
+        ...organizationWithoutTemplate,
+        itinerary_template: 'safari_story',
+      }
+    : null;
 }
 
 async function getMarketplaceProfile(organizationId: string | null) {
@@ -184,22 +221,42 @@ export async function POST(request: Request) {
       }
     }
 
+    const organizationBasePayload = {
+      name: companyName,
+      owner_id: auth.user.id,
+      logo_url: logoUrl || null,
+      primary_color: primaryColor || '#f26430',
+    };
+
     if (!organizationId) {
       const baseSlug = slugify(companyName) || `agency-${auth.user.id.slice(0, 8)}`;
       const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const { data: insertedOrg, error: orgInsertError } = await supabaseAdmin
+      const orgInsertPayload = {
+        ...organizationBasePayload,
+        slug: uniqueSlug,
+        itinerary_template: itineraryTemplate,
+      };
+
+      let { data: insertedOrg, error: orgInsertError } = await supabaseAdmin
         .from('organizations')
-        .insert({
-          name: companyName,
-          slug: uniqueSlug,
-          owner_id: auth.user.id,
-          logo_url: logoUrl || null,
-          primary_color: primaryColor || '#f26430',
-          itinerary_template: itineraryTemplate,
-        })
+        .insert(orgInsertPayload)
         .select('id, slug')
         .single();
+
+      if (orgInsertError && isMissingColumnError(orgInsertError, 'itinerary_template')) {
+        const fallbackPayload = {
+          ...organizationBasePayload,
+          slug: uniqueSlug,
+        };
+        const fallbackResult = await supabaseAdmin
+          .from('organizations')
+          .insert(fallbackPayload)
+          .select('id, slug')
+          .single();
+        insertedOrg = fallbackResult.data;
+        orgInsertError = fallbackResult.error;
+      }
 
       if (orgInsertError || !insertedOrg) {
         return NextResponse.json(
@@ -216,17 +273,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Organization setup failed' }, { status: 500 });
     }
 
-    const { error: organizationUpdateError } = await supabaseAdmin
+    const organizationUpdatePayload = {
+      ...organizationBasePayload,
+      itinerary_template: itineraryTemplate,
+      slug: organizationSlug || undefined,
+    };
+
+    let { error: organizationUpdateError } = await supabaseAdmin
       .from('organizations')
-      .update({
-        name: companyName,
-        owner_id: auth.user.id,
-        logo_url: logoUrl || null,
-        primary_color: primaryColor || '#f26430',
-        itinerary_template: itineraryTemplate,
-        slug: organizationSlug || undefined,
-      })
+      .update(organizationUpdatePayload)
       .eq('id', organizationId);
+
+    if (organizationUpdateError && isMissingColumnError(organizationUpdateError, 'itinerary_template')) {
+      const fallbackUpdatePayload = {
+        ...organizationBasePayload,
+        slug: organizationSlug || undefined,
+      };
+      const fallbackUpdateResult = await supabaseAdmin
+        .from('organizations')
+        .update(fallbackUpdatePayload)
+        .eq('id', organizationId);
+      organizationUpdateError = fallbackUpdateResult.error;
+    }
 
     if (organizationUpdateError) {
       return NextResponse.json({ error: organizationUpdateError.message }, { status: 400 });

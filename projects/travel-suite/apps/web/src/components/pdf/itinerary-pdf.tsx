@@ -112,6 +112,18 @@ const normalizeOrganizationRelation = (profile: any) => {
   return Array.isArray(rawOrg) ? rawOrg[0] || null : rawOrg || null;
 };
 
+const isMissingColumnError = (error: unknown, column: string): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as { message?: string; details?: string; hint?: string };
+  const blob = `${record.message || ''} ${record.details || ''} ${record.hint || ''}`.toLowerCase();
+  const normalizedColumn = column.toLowerCase();
+  return (
+    blob.includes(`could not find the '${normalizedColumn}' column`) ||
+    blob.includes(`column "${normalizedColumn}" does not exist`) ||
+    (blob.includes(normalizedColumn) && blob.includes('schema cache'))
+  );
+};
+
 export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPreferences> => {
   const supabase = createClient();
 
@@ -127,11 +139,25 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
       };
     }
 
-    const { data: profile } = await supabase
+    let { data: profile, error } = await supabase
       .from('profiles')
       .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
       .eq('id', user.id)
       .single();
+
+    if (error && isMissingColumnError(error, 'itinerary_template')) {
+      const fallbackResult = await supabase
+        .from('profiles')
+        .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
+        .eq('id', user.id)
+        .single();
+      profile = fallbackResult.data;
+      error = fallbackResult.error;
+    }
+
+    if (error) {
+      throw error;
+    }
 
     const organization = normalizeOrganizationRelation(profile);
 

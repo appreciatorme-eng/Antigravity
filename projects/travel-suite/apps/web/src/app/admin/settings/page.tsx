@@ -58,6 +58,18 @@ const mockOrganization: Organization = {
     subscription_tier: "pro",
 };
 
+const isMissingColumnError = (error: unknown, column: string): boolean => {
+    if (!error || typeof error !== "object") return false;
+    const record = error as { message?: string; details?: string; hint?: string };
+    const blob = `${record.message || ""} ${record.details || ""} ${record.hint || ""}`.toLowerCase();
+    const normalizedColumn = column.toLowerCase();
+    return (
+        blob.includes(`could not find the '${normalizedColumn}' column`) ||
+        blob.includes(`column "${normalizedColumn}" does not exist`) ||
+        (blob.includes(normalizedColumn) && blob.includes("schema cache"))
+    );
+};
+
 export default function SettingsPage() {
     const supabase = createClient();
     const [organization, setOrganization] = useState<Organization | null>(null);
@@ -125,15 +137,30 @@ export default function SettingsPage() {
                 return;
             }
 
-            const { error } = await supabase
+            const updatePayload = {
+                name: organization.name,
+                logo_url: organization.logo_url,
+                primary_color: organization.primary_color,
+                itinerary_template: organization.itinerary_template || "safari_story",
+            };
+
+            let { error } = await supabase
                 .from("organizations")
-                .update({
+                .update(updatePayload)
+                .eq("id", organization.id);
+
+            if (error && isMissingColumnError(error, "itinerary_template")) {
+                const fallbackPayload = {
                     name: organization.name,
                     logo_url: organization.logo_url,
                     primary_color: organization.primary_color,
-                    itinerary_template: organization.itinerary_template || "safari_story",
-                })
-                .eq("id", organization.id);
+                };
+                const fallbackResult = await supabase
+                    .from("organizations")
+                    .update(fallbackPayload)
+                    .eq("id", organization.id);
+                error = fallbackResult.error;
+            }
 
             if (error) throw error;
 
