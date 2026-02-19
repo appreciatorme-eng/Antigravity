@@ -16,6 +16,11 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassFormSkeleton } from "@/components/glass/GlassSkeleton";
+import {
+    ITINERARY_TEMPLATE_OPTIONS,
+    normalizeItineraryTemplateId,
+    type ItineraryTemplateId,
+} from "@/components/pdf/itinerary-types";
 
 interface Organization {
     id: string;
@@ -23,6 +28,7 @@ interface Organization {
     slug: string;
     logo_url: string | null;
     primary_color: string | null;
+    itinerary_template: ItineraryTemplateId | null;
     subscription_tier: string | null;
 }
 
@@ -48,6 +54,7 @@ const mockOrganization: Organization = {
     slug: "gobuddy-adventures",
     logo_url: "https://gobuddyadventures.com/wp-content/uploads/2021/12/GoBuddy-Full-Logo-Transparent-1.png",
     primary_color: "#00D084",
+    itinerary_template: "safari_story",
     subscription_tier: "pro",
 };
 
@@ -80,7 +87,10 @@ export default function SettingsPage() {
                 .single();
 
             if (error) throw error;
-            setOrganization(data);
+            setOrganization({
+                ...data,
+                itinerary_template: normalizeItineraryTemplateId(data.itinerary_template),
+            });
 
             const { data: { session } } = await supabase.auth.getSession();
             const rulesResponse = await fetch("/api/admin/workflow/rules", {
@@ -120,7 +130,8 @@ export default function SettingsPage() {
                 .update({
                     name: organization.name,
                     logo_url: organization.logo_url,
-                    primary_color: organization.primary_color
+                    primary_color: organization.primary_color,
+                    itinerary_template: organization.itinerary_template || "safari_story",
                 })
                 .eq("id", organization.id);
 
@@ -258,7 +269,7 @@ export default function SettingsPage() {
                         <Palette className="w-5 h-5 text-purple-500" />
                         <h2 className="font-bold text-secondary dark:text-white">Branding & Theme</h2>
                     </div>
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-6">
                         <div className="flex items-center gap-6">
                             <div className="space-y-2 flex-1">
                                 <label className="text-sm font-semibold text-secondary dark:text-white">Primary Brand Color</label>
@@ -286,6 +297,32 @@ export default function SettingsPage() {
                                     Primary Color Preview
                                 </span>
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-secondary dark:text-white">Default Itinerary PDF Template</label>
+                            <select
+                                value={organization?.itinerary_template || "safari_story"}
+                                onChange={(e) =>
+                                    setOrganization((prev) =>
+                                        prev
+                                            ? {
+                                                  ...prev,
+                                                  itinerary_template: e.target.value as ItineraryTemplateId,
+                                              }
+                                            : null
+                                    )
+                                }
+                                className="w-full rounded-xl border border-white/20 bg-white/15 dark:bg-white/5 px-3 py-2 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                {ITINERARY_TEMPLATE_OPTIONS.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                        {option.label} - {option.description}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-text-secondary">
+                                This template is pre-selected for itinerary PDF exports. Users can still switch templates during download.
+                            </p>
                         </div>
                     </div>
                 </GlassCard>

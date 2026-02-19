@@ -1030,6 +1030,7 @@ export type Database = {
           created_at: string | null
           gstin: string | null
           id: string
+          itinerary_template: string
           logo_url: string | null
           name: string
           owner_id: string | null
@@ -1045,6 +1046,7 @@ export type Database = {
           created_at?: string | null
           gstin?: string | null
           id?: string
+          itinerary_template?: string
           logo_url?: string | null
           name: string
           owner_id?: string | null
@@ -1060,6 +1062,7 @@ export type Database = {
           created_at?: string | null
           gstin?: string | null
           id?: string
+          itinerary_template?: string
           logo_url?: string | null
           name?: string
           owner_id?: string | null

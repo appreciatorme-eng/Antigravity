@@ -371,6 +371,8 @@ CREATE TABLE IF NOT EXISTS public.organizations (
     slug TEXT UNIQUE NOT NULL,
     logo_url TEXT,
     primary_color TEXT DEFAULT '#00d084',
+    itinerary_template TEXT NOT NULL DEFAULT 'safari_story'
+        CHECK (itinerary_template IN ('safari_story', 'urban_brief')),
     owner_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'enterprise')),
     created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -1,70 +1,96 @@
 "use client";
 
-import { Download, Loader2 } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import type { ItineraryResult } from "@/types/itinerary";
+import { Download, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import type { ItineraryResult } from '@/types/itinerary';
+import {
+  downloadItineraryPdf,
+  fetchItineraryPdfPreferences,
+} from './itinerary-pdf';
+import {
+  DEFAULT_ITINERARY_TEMPLATE,
+  ITINERARY_TEMPLATE_OPTIONS,
+  type ItineraryTemplateId,
+} from './itinerary-types';
 
 interface PDFDownloadButtonProps {
-    itinerary: ItineraryResult;
-    className?: string;
+  itinerary: ItineraryResult;
+  className?: string;
+  showTemplateSelector?: boolean;
 }
 
-export default function PDFDownloadButton({ itinerary, className = "" }: PDFDownloadButtonProps) {
-    const [generating, setGenerating] = useState(false);
+export default function PDFDownloadButton({
+  itinerary,
+  className = '',
+  showTemplateSelector = true,
+}: PDFDownloadButtonProps) {
+  const [generating, setGenerating] = useState(false);
+  const [template, setTemplate] = useState<ItineraryTemplateId>(DEFAULT_ITINERARY_TEMPLATE);
 
-    const handleDownload = async () => {
-        if (!itinerary) return;
-
-        setGenerating(true);
-
-        try {
-            // Dynamic imports to avoid SSR issues
-            const { pdf } = await import("@react-pdf/renderer");
-            const { default: ItineraryDocument } = await import("./ItineraryDocument");
-
-            // Prepare data for the PDF component
-            const pdfData = {
-                trip_title: itinerary.trip_title || "My Trip",
-                destination: itinerary.destination || "",
-                summary: itinerary.summary || "",
-                days: itinerary.days || [],
-                duration_days: itinerary.duration_days || (itinerary.days?.length || 1),
-            };
-
-            // Generate the PDF blob
-            const blob = await pdf(<ItineraryDocument data={pdfData} />).toBlob();
-
-            // Create download link
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${pdfData.trip_title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-        } finally {
-            setGenerating(false);
-        }
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      const preferences = await fetchItineraryPdfPreferences();
+      if (mounted) {
+        setTemplate(preferences.defaultTemplate);
+      }
+    })();
+    return () => {
+      mounted = false;
     };
+  }, []);
 
-    return (
-        <Button
-            variant="outline"
-            size="icon"
-            onClick={handleDownload}
-            disabled={generating}
-            className={`bg-white/80 backdrop-blur-sm shadow-sm hover:bg-gray-100 transition-colors ${className}`}
-            title="Download PDF"
+  const handleDownload = async () => {
+    if (!itinerary || generating) return;
+
+    setGenerating(true);
+
+    try {
+      await downloadItineraryPdf({
+        itinerary,
+        template,
+        fileName: `${(itinerary.trip_title || 'itinerary').replace(/[^a-zA-Z0-9-_]+/g, '_')}_${template}.pdf`,
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {showTemplateSelector ? (
+        <select
+          value={template}
+          onChange={(event) => setTemplate(event.target.value as ItineraryTemplateId)}
+          className="h-9 rounded-md border border-gray-200 bg-white/90 px-2 text-xs text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-label="Choose PDF template"
         >
-            {generating ? (
-                <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
-            ) : (
-                <Download className="w-4 h-4 text-gray-700" />
-            )}
-        </Button>
-    );
+          {ITINERARY_TEMPLATE_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : null}
+
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={handleDownload}
+        disabled={generating}
+        className={`bg-white/80 backdrop-blur-sm shadow-sm hover:bg-gray-100 transition-colors ${className}`}
+        title="Download PDF"
+      >
+        {generating ? (
+          <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
+        ) : (
+          <Download className="w-4 h-4 text-gray-700" />
+        )}
+      </Button>
+    </div>
+  );
 }
