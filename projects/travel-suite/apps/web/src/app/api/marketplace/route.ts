@@ -49,6 +49,7 @@ export async function GET(req: Request) {
         const region = url.searchParams.get("region");
         const specialty = url.searchParams.get("specialty");
         const query = url.searchParams.get("q");
+        const verification = url.searchParams.get("verification");
 
         let supabaseQuery = supabaseAdmin
             .from("marketplace_profiles")
@@ -56,9 +57,11 @@ export async function GET(req: Request) {
                 *,
                 organization:organizations!inner(name, logo_url),
                 reviews:marketplace_reviews(rating)
-            `)
-            .eq("is_verified", true)
-            .eq("verification_status", "verified");
+            `);
+
+        if (verification) {
+            supabaseQuery = supabaseQuery.eq("verification_status", verification);
+        }
 
         if (region) {
             supabaseQuery = supabaseQuery.contains("service_regions", [region]);
@@ -71,7 +74,9 @@ export async function GET(req: Request) {
             supabaseQuery = (supabaseQuery as any).or(`organization.name.ilike.%${query}%,search_vector.fts.${query}`);
         }
 
-        const { data, error } = await supabaseQuery;
+        const { data, error } = await supabaseQuery
+            .order("is_verified", { ascending: false })
+            .order("updated_at", { ascending: false });
 
         if (error) throw error;
 
@@ -83,10 +88,17 @@ export async function GET(req: Request) {
                 : 0;
             return {
                 ...item,
+                description: item.description || "",
+                service_regions: Array.isArray(item.service_regions) ? item.service_regions : [],
+                specialties: Array.isArray(item.specialties) ? item.specialties : [],
+                gallery_urls: Array.isArray(item.gallery_urls) ? item.gallery_urls : [],
+                rate_card: Array.isArray(item.rate_card) ? item.rate_card : [],
+                compliance_documents: Array.isArray(item.compliance_documents) ? item.compliance_documents : [],
                 organization_name: item.organization?.name,
                 organization_logo: item.organization?.logo_url,
                 average_rating: avgRating,
-                review_count: ratings.length
+                review_count: ratings.length,
+                verification_status: item.verification_status || "none"
             };
         });
 

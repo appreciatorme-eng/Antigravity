@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Search,
@@ -8,7 +8,6 @@ import {
     Star,
     MapPin,
     Trophy,
-    ExternalLink,
     RefreshCcw,
     Building2,
     ShieldCheck,
@@ -20,7 +19,11 @@ import Image from "next/image";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
+import {
+    mergeMarketplaceOptions,
+    SERVICE_REGION_OPTIONS,
+    SPECIALTY_OPTIONS,
+} from "@/lib/marketplace-options";
 
 interface MarketplaceProfile {
     id: string;
@@ -34,6 +37,7 @@ interface MarketplaceProfile {
     average_rating: number;
     review_count: number;
     is_verified: boolean;
+    verification_status?: string;
 }
 
 export default function MarketplacePage() {
@@ -77,8 +81,14 @@ export default function MarketplacePage() {
         return () => clearTimeout(timer);
     }, [fetchProfiles]);
 
-    const allRegions = ["Bali", "Lombok", "Java", "Sumatra", "Thailand", "Vietnam", "Cambodia", "Laos"];
-    const allSpecialties = ["Luxury", "Adventure", "Eco-tourism", "Cultural", "Wellness", "Family", "Honeymoon"];
+    const allRegions = useMemo(
+        () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, profiles.flatMap((profile) => profile.service_regions || [])),
+        [profiles]
+    );
+    const allSpecialties = useMemo(
+        () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, profiles.flatMap((profile) => profile.specialties || [])),
+        [profiles]
+    );
 
     return (
         <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
@@ -237,6 +247,19 @@ export default function MarketplacePage() {
                                                                 <ShieldCheck size={16} className="text-green-400" />
                                                             )}
                                                         </h3>
+                                                        {profile.verification_status === "pending" ? (
+                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-orange-500/15 text-orange-300 border border-orange-500/30">
+                                                                Pending verification
+                                                            </div>
+                                                        ) : profile.verification_status === "verified" ? (
+                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                                Verified
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-500/15 text-slate-300 border border-slate-500/30">
+                                                                Draft profile
+                                                            </div>
+                                                        )}
                                                         <div className="flex items-center gap-1 mt-1">
                                                             <Star size={14} className="text-yellow-400 fill-yellow-400" />
                                                             <span className="text-sm font-semibold text-slate-200">

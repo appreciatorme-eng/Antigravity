@@ -7,6 +7,12 @@ import {
   ITINERARY_TEMPLATE_OPTIONS,
   type ItineraryTemplateId,
 } from '@/components/pdf/itinerary-types';
+import SearchableCreatableMultiSelect from '@/components/forms/SearchableCreatableMultiSelect';
+import {
+  mergeMarketplaceOptions,
+  SERVICE_REGION_OPTIONS,
+  SPECIALTY_OPTIONS,
+} from '@/lib/marketplace-options';
 
 interface OnboardingPayload {
   onboardingComplete: boolean;
@@ -34,12 +40,6 @@ interface OnboardingPayload {
   } | null;
 }
 
-const parseCommaSeparated = (value: string) =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,8 +63,17 @@ function OnboardingPageContent() {
   const [itineraryTemplate, setItineraryTemplate] = useState<ItineraryTemplateId>('safari_story');
   const [bio, setBio] = useState('');
   const [marketplaceDescription, setMarketplaceDescription] = useState('');
-  const [serviceRegionsRaw, setServiceRegionsRaw] = useState('');
-  const [specialtiesRaw, setSpecialtiesRaw] = useState('');
+  const [serviceRegions, setServiceRegions] = useState<string[]>([]);
+  const [specialties, setSpecialties] = useState<string[]>([]);
+
+  const serviceRegionOptions = useMemo(
+    () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, serviceRegions),
+    [serviceRegions]
+  );
+  const specialtyOptions = useMemo(
+    () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, specialties),
+    [specialties]
+  );
 
   useEffect(() => {
     void loadOnboardingData();
@@ -106,8 +115,8 @@ function OnboardingPageContent() {
 
       if (data.marketplace) {
         setMarketplaceDescription(data.marketplace.description || '');
-        setServiceRegionsRaw((data.marketplace.service_regions || []).join(', '));
-        setSpecialtiesRaw((data.marketplace.specialties || []).join(', '));
+        setServiceRegions(data.marketplace.service_regions || []);
+        setSpecialties(data.marketplace.specialties || []);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load onboarding data');
@@ -144,8 +153,8 @@ function OnboardingPageContent() {
           itineraryTemplate,
           bio: bio.trim(),
           marketplaceDescription: marketplaceDescription.trim(),
-          serviceRegions: parseCommaSeparated(serviceRegionsRaw),
-          specialties: parseCommaSeparated(specialtiesRaw),
+          serviceRegions,
+          specialties,
         }),
       });
 
@@ -297,21 +306,23 @@ function OnboardingPageContent() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Service Regions (comma-separated)</label>
-              <input
-                value={serviceRegionsRaw}
-                onChange={(event) => setServiceRegionsRaw(event.target.value)}
-                placeholder="Kenya, Tanzania, Uganda"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+              <SearchableCreatableMultiSelect
+                label="Area of Operations"
+                selectedValues={serviceRegions}
+                onChange={setServiceRegions}
+                options={serviceRegionOptions}
+                placeholder="Search places (e.g. Kenya, Dubai, Bali) or add new..."
+                helperText="Start typing to autofill from the global destination list. If missing, add custom."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Specialties (comma-separated)</label>
-              <input
-                value={specialtiesRaw}
-                onChange={(event) => setSpecialtiesRaw(event.target.value)}
-                placeholder="Self-drive, Photography, Family safaris"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+              <SearchableCreatableMultiSelect
+                label="Specialties"
+                selectedValues={specialties}
+                onChange={setSpecialties}
+                options={specialtyOptions}
+                placeholder="Search specialties or add new..."
+                helperText="Select from common tour specialties, or add your own niche offerings."
               />
             </div>
           </div>

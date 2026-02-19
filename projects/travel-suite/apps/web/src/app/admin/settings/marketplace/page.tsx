@@ -2,18 +2,13 @@
 
 import Link from "next/link";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Save,
     RefreshCcw,
     BarChart3,
-    MapPin,
-    Tag,
     Info,
-    Layout,
-    Globe,
-    Briefcase,
     Building2,
     ShieldCheck,
     CheckCircle2,
@@ -23,12 +18,17 @@ import {
     List,
     FileText,
     ShieldAlert,
-    FileCheck,
     ExternalLink
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
+import SearchableCreatableMultiSelect from "@/components/forms/SearchableCreatableMultiSelect";
+import {
+    mergeMarketplaceOptions,
+    SERVICE_REGION_OPTIONS,
+    SPECIALTY_OPTIONS,
+} from "@/lib/marketplace-options";
 
 interface RateCardItem {
     id: string;
@@ -59,8 +59,6 @@ export default function MarketplaceSettingsPage() {
         rate_card: [] as RateCardItem[],
         compliance_documents: [] as ComplianceDocument[]
     });
-    const [newRegion, setNewRegion] = useState("");
-    const [newSpecialty, setNewSpecialty] = useState("");
     const [newImageUrl, setNewImageUrl] = useState("");
     const [newRateService, setNewRateService] = useState("");
     const [newRateMargin, setNewRateMargin] = useState("");
@@ -72,6 +70,14 @@ export default function MarketplaceSettingsPage() {
     const [docExpiry, setDocExpiry] = useState("");
 
     const [successMessage, setSuccessMessage] = useState(false);
+    const serviceRegionOptions = useMemo(
+        () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, formData.service_regions),
+        [formData.service_regions]
+    );
+    const specialtyOptions = useMemo(
+        () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, formData.specialties),
+        [formData.specialties]
+    );
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -193,28 +199,6 @@ export default function MarketplaceSettingsPage() {
         }
     };
 
-    const addRegion = () => {
-        if (newRegion && !formData.service_regions.includes(newRegion)) {
-            setFormData({ ...formData, service_regions: [...formData.service_regions, newRegion] });
-            setNewRegion("");
-        }
-    };
-
-    const removeRegion = (region: string) => {
-        setFormData({ ...formData, service_regions: formData.service_regions.filter(r => r !== region) });
-    };
-
-    const addSpecialty = () => {
-        if (newSpecialty && !formData.specialties.includes(newSpecialty)) {
-            setFormData({ ...formData, specialties: [...formData.specialties, newSpecialty] });
-            setNewSpecialty("");
-        }
-    };
-
-    const removeSpecialty = (spec: string) => {
-        setFormData({ ...formData, specialties: formData.specialties.filter(s => s !== spec) });
-    };
-
     const addImage = () => {
         if (newImageUrl && !formData.gallery_urls.includes(newImageUrl)) {
             setFormData({ ...formData, gallery_urls: [...formData.gallery_urls, newImageUrl] });
@@ -275,8 +259,8 @@ export default function MarketplaceSettingsPage() {
         <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1200px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold text-white">Marketplace Settings</h1>
-                    <p className="text-slate-400">Manage your organization's presence and credentials in the partner network.</p>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Marketplace Settings</h1>
+                    <p className="text-slate-600 dark:text-slate-400">Manage your organization's presence and credentials in the partner network.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {successMessage && (
@@ -302,17 +286,17 @@ export default function MarketplaceSettingsPage() {
                 <div className="lg:col-span-2 space-y-8">
                     <GlassCard className="p-8 space-y-8">
                         {/* Hero Header */}
-                        <div className="flex items-center gap-6 pb-8 border-b border-slate-800">
-                            <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden relative">
+                        <div className="flex items-center gap-6 pb-8 border-b border-slate-200 dark:border-slate-800">
+                            <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden relative">
                                 {organization?.logo_url ? (
                                     <img src={organization.logo_url} alt={organization.name} className="object-cover w-full h-full" />
                                 ) : (
-                                    <Building2 size={32} className="text-slate-600" />
+                                    <Building2 size={32} className="text-slate-500 dark:text-slate-600" />
                                 )}
                             </div>
                             <div className="space-y-1">
-                                <h3 className="text-xl font-bold text-white">{organization?.name}</h3>
-                                <div className="flex items-center gap-2 text-sm text-slate-500">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{organization?.name}</h3>
+                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-500">
                                     {formData.verification_status === 'verified' ? (
                                         <div className="flex items-center gap-1.5 text-blue-400 font-medium">
                                             <CheckCircle2 size={14} /> Verified Partner
@@ -322,7 +306,7 @@ export default function MarketplaceSettingsPage() {
                                             <RefreshCcw size={14} className="animate-spin" /> Verification Pending
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 text-slate-600">
+                                        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-500">
                                             <ShieldCheck size={14} /> Standard Partner
                                         </div>
                                     )}
@@ -339,11 +323,11 @@ export default function MarketplaceSettingsPage() {
 
                         <div className="space-y-6">
                             <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-400 flex items-center gap-2">
                                     <Info size={16} className="text-blue-400" /> Organization Bio
                                 </label>
                                 <textarea
-                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-4 text-white focus:ring-2 focus:ring-blue-500/30 outline-none h-32 text-sm"
+                                    className="w-full bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 outline-none h-32 text-sm placeholder:text-slate-500 dark:placeholder:text-slate-500"
                                     placeholder="Describe your services, destinations, and what makes you a unique partner..."
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -351,39 +335,27 @@ export default function MarketplaceSettingsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                                        <MapPin size={16} className="text-orange-400" /> Service Regions
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <GlassInput placeholder="e.g. Bali" value={newRegion} onChange={(e) => setNewRegion(e.target.value)} onKeyPress={(e) => e.key === "Enter" && addRegion()} />
-                                        <GlassButton onClick={addRegion} variant="secondary" className="px-3"><Plus size={16} /></GlassButton>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {formData.service_regions.map(r => (
-                                            <div key={r} className="px-2.5 py-1 bg-slate-800/80 rounded-lg text-xs text-white flex items-center gap-2 border border-slate-700">
-                                                {r} <button onClick={() => removeRegion(r)} className="text-slate-500 hover:text-red-400">×</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <SearchableCreatableMultiSelect
+                                    label="Area of Operations"
+                                    selectedValues={formData.service_regions}
+                                    options={serviceRegionOptions}
+                                    onChange={(nextValues) =>
+                                        setFormData((prev) => ({ ...prev, service_regions: nextValues }))
+                                    }
+                                    placeholder="Search regions, countries, or cities..."
+                                    helperText="Autofills from a global destination list. Add new if something is missing."
+                                />
 
-                                <div className="space-y-3">
-                                    <label className="text-sm font-medium text-slate-400 flex items-center gap-2">
-                                        <Tag size={16} className="text-purple-400" /> Specialties
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <GlassInput placeholder="e.g. Luxury" value={newSpecialty} onChange={(e) => setNewSpecialty(e.target.value)} onKeyPress={(e) => e.key === "Enter" && addSpecialty()} />
-                                        <GlassButton onClick={addSpecialty} variant="secondary" className="px-3"><Plus size={16} /></GlassButton>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {formData.specialties.map(s => (
-                                            <div key={s} className="px-2.5 py-1 bg-slate-800/80 rounded-lg text-xs text-white flex items-center gap-2 border border-slate-700">
-                                                {s} <button onClick={() => removeSpecialty(s)} className="text-slate-500 hover:text-red-400">×</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <SearchableCreatableMultiSelect
+                                    label="Specialties"
+                                    selectedValues={formData.specialties}
+                                    options={specialtyOptions}
+                                    onChange={(nextValues) =>
+                                        setFormData((prev) => ({ ...prev, specialties: nextValues }))
+                                    }
+                                    placeholder="Search specialties..."
+                                    helperText="Choose from common specialties or add custom options."
+                                />
                             </div>
                         </div>
                     </GlassCard>
@@ -391,18 +363,18 @@ export default function MarketplaceSettingsPage() {
                     {/* Document Vault Section */}
                     <GlassCard className="p-8 space-y-6">
                         <div className="space-y-1">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <ShieldAlert className="text-yellow-400" size={20} /> B2B Compliance Vault
                             </h3>
-                            <p className="text-xs text-slate-500">Provide legal and safety documents that verified partners can access to streamline onboarding.</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-500">Provide legal and safety documents that verified partners can access to streamline onboarding.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/30 p-4 rounded-3xl border border-slate-800">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100/70 dark:bg-slate-900/30 p-4 rounded-3xl border border-slate-200 dark:border-slate-800">
                             <div className="space-y-3">
                                 <GlassInput placeholder="Document Name (e.g. Liability Insurance)" value={docName} onChange={(e) => setDocName(e.target.value)} />
                                 <div className="flex gap-2">
                                     <select
-                                        className="bg-slate-900 border border-slate-800 rounded-2xl px-4 text-xs text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/50"
+                                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-xs text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/50"
                                         value={docType}
                                         onChange={(e) => setDocType(e.target.value)}
                                     >
@@ -415,7 +387,7 @@ export default function MarketplaceSettingsPage() {
                                     <div className="flex-1">
                                         <input
                                             type="date"
-                                            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 text-xs text-slate-300 outline-none"
+                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 py-2 text-xs text-slate-700 dark:text-slate-300 outline-none"
                                             value={docExpiry}
                                             onChange={(e) => setDocExpiry(e.target.value)}
                                             placeholder="Expiry Date"
@@ -433,14 +405,14 @@ export default function MarketplaceSettingsPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {formData.compliance_documents.map(doc => (
-                                <div key={doc.id} className="p-4 bg-slate-800/40 rounded-2xl border border-slate-700/50 flex items-center justify-between group">
+                                <div key={doc.id} className="p-4 bg-slate-100/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/50 flex items-center justify-between group">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
                                             <FileText size={20} />
                                         </div>
                                         <div>
-                                            <div className="text-sm font-bold text-white font-medium">{doc.name}</div>
-                                            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                            <div className="text-sm font-bold text-slate-900 dark:text-white font-medium">{doc.name}</div>
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-slate-500">
                                                 <span className="uppercase">{doc.type}</span>
                                                 {doc.expiry_date && (
                                                     <span className="flex items-center gap-1">
@@ -466,10 +438,10 @@ export default function MarketplaceSettingsPage() {
                     {/* Media Gallery */}
                     <GlassCard className="p-8 space-y-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <ImageIcon className="text-pink-400" size={20} /> Media Portfolio
                             </h3>
-                            <span className="text-xs text-slate-500">{formData.gallery_urls.length} images</span>
+                            <span className="text-xs text-slate-600 dark:text-slate-500">{formData.gallery_urls.length} images</span>
                         </div>
                         <div className="space-y-4">
                             <div className="flex gap-2">
@@ -480,7 +452,7 @@ export default function MarketplaceSettingsPage() {
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {formData.gallery_urls.map((url, idx) => (
-                                    <div key={idx} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+                                    <div key={idx} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
                                         <img src={url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button onClick={() => removeImage(url)} className="p-2 bg-red-500 rounded-full text-white transform hover:scale-110 transition-transform">
@@ -498,14 +470,14 @@ export default function MarketplaceSettingsPage() {
                 <div className="space-y-8">
                     <GlassCard className="p-8 space-y-6">
                         <div className="space-y-1">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <List className="text-green-400" size={20} /> Partner Rate Card
                             </h3>
-                            <p className="text-xs text-slate-500">Define specific margin rates for different service types.</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-500">Define specific margin rates for different service types.</p>
                         </div>
 
                         <div className="space-y-4">
-                            <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-800 space-y-3">
+                            <div className="p-4 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                                 <GlassInput placeholder="Service (e.g. Trekking)" value={newRateService} onChange={(e) => setNewRateService(e.target.value)} className="text-sm" />
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
@@ -518,9 +490,9 @@ export default function MarketplaceSettingsPage() {
 
                             <div className="space-y-2">
                                 {formData.rate_card.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800 transition-colors">
+                                    <div key={item.id} className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
                                         <div className="space-y-0.5">
-                                            <div className="text-sm text-white font-medium">{item.service}</div>
+                                            <div className="text-sm text-slate-900 dark:text-white font-medium">{item.service}</div>
                                             <div className="text-xs text-green-400 font-bold">{item.margin}% Margin</div>
                                         </div>
                                         <button onClick={() => removeRateItem(item.id)} className="text-slate-500 hover:text-red-400 transition-colors p-1">
@@ -531,8 +503,8 @@ export default function MarketplaceSettingsPage() {
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-slate-800 space-y-3">
-                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider italic">Baseline Margin (%)</label>
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                            <label className="text-xs font-medium text-slate-600 dark:text-slate-500 uppercase tracking-wider italic">Baseline Margin (%)</label>
                             <GlassInput
                                 type="number"
                                 value={formData.margin_rate}
