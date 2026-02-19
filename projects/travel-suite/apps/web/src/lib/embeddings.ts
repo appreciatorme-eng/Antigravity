@@ -94,6 +94,7 @@ export async function embedTemplate(templateId: string) {
 
 /**
  * Batch generate embeddings for all templates without embeddings
+ * Returns summary statistics and error details
  */
 export async function embedAllTemplates() {
     const supabase = await createClient();
@@ -104,23 +105,38 @@ export async function embedAllTemplates() {
         .select('id, name')
         .is('embedding', null)
         .eq('status', 'active')
-        .limit(50); // Process in batches
+        .limit(100); // Process in batches
 
     if (error || !templates) {
         throw error || new Error('No templates found');
     }
 
-    const results = [];
+    console.log(`🔄 Starting batch embedding for ${templates.length} templates...`);
+
+    const errors: Array<{ id: string; name: string; error: string }> = [];
+    let processed = 0;
+
     for (const template of templates) {
         try {
-            const result = await embedTemplate(template.id);
-            results.push({ id: template.id, name: template.name, success: true, result });
-            console.log(`✅ Embedded template: ${template.name}`);
+            await embedTemplate(template.id);
+            processed++;
+            console.log(`✅ [${processed}/${templates.length}] Embedded: ${template.name}`);
         } catch (err) {
-            results.push({ id: template.id, name: template.name, success: false, error: err });
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            errors.push({
+                id: template.id,
+                name: template.name,
+                error: errorMessage
+            });
             console.error(`❌ Failed to embed template ${template.name}:`, err);
         }
     }
 
-    return results;
+    console.log(`✨ Batch complete: ${processed} processed, ${errors.length} errors`);
+
+    return {
+        processed,
+        total: templates.length,
+        errors
+    };
 }
