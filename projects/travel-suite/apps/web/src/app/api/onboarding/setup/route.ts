@@ -21,6 +21,9 @@ const isMissingColumnError = (error: unknown, column: string): boolean => {
   return (
     blob.includes(`could not find the '${normalizedColumn}' column`) ||
     blob.includes(`column "${normalizedColumn}" does not exist`) ||
+    blob.includes(`column ${normalizedColumn} does not exist`) ||
+    blob.includes(`column organizations.${normalizedColumn} does not exist`) ||
+    (blob.includes('column') && blob.includes(normalizedColumn) && blob.includes('does not exist')) ||
     (blob.includes(normalizedColumn) && blob.includes('schema cache'))
   );
 };
