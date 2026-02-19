@@ -395,7 +395,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
                 key={actIndex}
                 style={[
                   styles.activityContainer,
-                  actIndex === day.activities.length - 1 && styles.activityLastChild
+                  ...(actIndex === day.activities.length - 1 ? [styles.activityLastChild] : [])
                 ]}
               >
                 {/* Activity Image (if available) */}
