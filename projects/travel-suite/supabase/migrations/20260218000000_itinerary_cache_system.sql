@@ -46,16 +46,14 @@ CREATE TABLE IF NOT EXISTS public.itinerary_cache (
 CREATE INDEX idx_itinerary_cache_key ON public.itinerary_cache(cache_key);
 
 -- Fuzzy matching: destination + days
-CREATE INDEX idx_itinerary_cache_destination_days ON public.itinerary_cache(destination, duration_days)
-    WHERE expires_at > NOW();
+CREATE INDEX idx_itinerary_cache_destination_days ON public.itinerary_cache(destination, duration_days, expires_at);
 
 -- Popular destinations (for analytics)
-CREATE INDEX idx_itinerary_cache_usage ON public.itinerary_cache(destination, usage_count DESC)
-    WHERE expires_at > NOW();
+CREATE INDEX idx_itinerary_cache_usage ON public.itinerary_cache(destination, usage_count DESC, expires_at);
 
 -- Quality-based filtering
-CREATE INDEX idx_itinerary_cache_quality ON public.itinerary_cache(quality_score DESC, usage_count DESC)
-    WHERE expires_at > NOW() AND quality_score > 0.5;
+CREATE INDEX idx_itinerary_cache_quality ON public.itinerary_cache(quality_score DESC, usage_count DESC, expires_at)
+    WHERE quality_score > 0.5;
 
 -- Expiration cleanup
 CREATE INDEX idx_itinerary_cache_expires ON public.itinerary_cache(expires_at);
