@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
         // Build query
         let query = supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);

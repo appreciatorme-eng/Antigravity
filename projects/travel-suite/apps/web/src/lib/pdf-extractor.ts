@@ -308,7 +308,7 @@ export async function processPDFImport(pdfImportId: string) {
     try {
         // Get PDF import details
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('*')
             .eq('id', pdfImportId)
             .single();
@@ -325,7 +325,7 @@ export async function processPDFImport(pdfImportId: string) {
         if (result.success && result.template) {
             // Save successful extraction
             const { error: updateError } = await supabase
-                .from('pdf_imports')
+                .from('pdf_imports' as any)
                 .update({
                     status: 'extracted',
                     extracted_data: result.template,
@@ -343,7 +343,7 @@ export async function processPDFImport(pdfImportId: string) {
         } else {
             // Save failed extraction
             const { error: updateError } = await supabase
-                .from('pdf_imports')
+                .from('pdf_imports' as any)
                 .update({
                     status: 'failed',
                     extraction_error: result.error || 'Unknown error'
@@ -363,7 +363,7 @@ export async function processPDFImport(pdfImportId: string) {
 
         // Update PDF import with error
         await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .update({
                 status: 'failed',
                 extraction_error: error instanceof Error ? error.message : 'Unknown error'
@@ -383,7 +383,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
     try {
         // Get PDF import with extracted data
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('*')
             .eq('id', pdfImportId)
             .eq('organization_id', organizationId) // Security check
@@ -432,7 +432,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
 
         // Update PDF import status
         await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .update({
                 status: 'published',
                 published_template_id: tourTemplate.id,

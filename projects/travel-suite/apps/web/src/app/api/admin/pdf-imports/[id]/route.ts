@@ -28,7 +28,7 @@ export async function GET(
         const { id } = await params;
 
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('*')
             .eq('id', id)
             .single();
@@ -92,7 +92,7 @@ export async function PATCH(
 
         // Get PDF import
         const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('*')
             .eq('id', id)
             .single();
@@ -108,7 +108,7 @@ export async function PATCH(
             case 'approve':
                 // Approve for publishing
                 const { error: approveError } = await supabase
-                    .from('pdf_imports')
+                    .from('pdf_imports' as any)
                     .update({
                         status: 'approved',
                         reviewed_by: user.id,
@@ -130,7 +130,7 @@ export async function PATCH(
             case 'reject':
                 // Reject extraction
                 const { error: rejectError } = await supabase
-                    .from('pdf_imports')
+                    .from('pdf_imports' as any)
                     .update({
                         status: 'rejected',
                         reviewed_by: user.id,
@@ -225,14 +225,14 @@ export async function DELETE(
 
         // Get PDF import for file cleanup
         const { data: pdfImport } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('file_url')
             .eq('id', id)
             .single();
 
         // Delete from database
         const { error: deleteError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .delete()
             .eq('id', id);
 

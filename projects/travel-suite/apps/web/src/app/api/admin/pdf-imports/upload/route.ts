@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
         // Check for duplicate
         const { data: existingImport } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .select('id, file_name, status')
             .eq('organization_id', organizationId)
             .eq('file_hash', fileHash)
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
         // Create PDF import record
         const { data: pdfImport, error: insertError } = await supabase
-            .from('pdf_imports')
+            .from('pdf_imports' as any)
             .insert({
                 organization_id: organizationId,
                 file_name: file.name,
