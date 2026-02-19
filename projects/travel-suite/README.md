@@ -332,6 +332,15 @@ Security baseline:
   - Print-ready styling for professional PDF export
   - Fully responsive (mobile → tablet → desktop)
   - 📚 **Documentation**: See `docs/PROFESSIONAL_ITINERARY_UI.md`
+- [x] **PDF Export Enhancement (Phase 7)** - Professional template matching web UI
+  - New "Professional" PDF template using @react-pdf/renderer
+  - Cover page with operator branding and hero design
+  - Timeline-style day cards with activity images
+  - Inclusions/Exclusions color-coded sections
+  - Dynamic operator branding (logo, primary color, contact)
+  - A4 layout with proper page breaks
+  - Consistent quality across web and PDF outputs
+  - 📚 **Documentation**: See `docs/PDF_EXPORT_ENHANCEMENT.md`
 
 ### 🔄 In Progress
 - [ ] Email/WhatsApp API integration (infrastructure ready, needs API keys)

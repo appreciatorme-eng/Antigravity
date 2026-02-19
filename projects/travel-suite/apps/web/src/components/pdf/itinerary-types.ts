@@ -1,4 +1,4 @@
-export type ItineraryTemplateId = 'safari_story' | 'urban_brief';
+export type ItineraryTemplateId = 'safari_story' | 'urban_brief' | 'professional';
 
 export interface ItineraryBranding {
   companyName: string;
@@ -20,13 +20,22 @@ export const DEFAULT_ITINERARY_TEMPLATE: ItineraryTemplateId = 'safari_story';
 
 export const normalizeItineraryTemplateId = (
   value: string | null | undefined
-): ItineraryTemplateId => (value === 'urban_brief' ? 'urban_brief' : DEFAULT_ITINERARY_TEMPLATE);
+): ItineraryTemplateId => {
+  if (value === 'urban_brief') return 'urban_brief';
+  if (value === 'professional') return 'professional';
+  return DEFAULT_ITINERARY_TEMPLATE;
+};
 
 export const ITINERARY_TEMPLATE_OPTIONS: Array<{
   id: ItineraryTemplateId;
   label: string;
   description: string;
 }> = [
+  {
+    id: 'professional',
+    label: 'Professional (Recommended)',
+    description: 'Modern timeline design matching WBB PDF quality with rich descriptions and operator branding.',
+  },
   {
     id: 'safari_story',
     label: 'Safari Story',

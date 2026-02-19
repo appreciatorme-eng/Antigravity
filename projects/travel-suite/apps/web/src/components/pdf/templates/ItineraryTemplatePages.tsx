@@ -895,6 +895,12 @@ export const ItineraryTemplatePages: React.FC<ItineraryTemplatePagesProps> = ({
   branding,
   template,
 }) => {
+  // Note: Professional template is imported as a complete Document
+  // So we return null here and handle it separately in ItineraryDocument
+  if (template === 'professional') {
+    return null;
+  }
+
   if (template === 'urban_brief') {
     return <UrbanBriefPages itinerary={itinerary} branding={branding} />;
   }
