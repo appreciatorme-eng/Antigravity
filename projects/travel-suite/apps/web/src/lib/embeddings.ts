@@ -70,9 +70,9 @@ export async function embedTemplate(templateId: string) {
     // Calculate quality score based on content completeness
     const qualityScore = Math.min(1.0,
         0.3 + // Base score
-        (template.description?.length > 100 ? 0.3 : 0) + // Has detailed description
+        ((template.description?.length || 0) > 100 ? 0.3 : 0) + // Has detailed description
         (template.tags && template.tags.length > 0 ? 0.2 : 0) + // Has tags
-        (template.name?.length > 10 ? 0.2 : 0) // Has descriptive name
+        ((template.name?.length || 0) > 10 ? 0.2 : 0) // Has descriptive name
     );
 
     // Update template with embedding
