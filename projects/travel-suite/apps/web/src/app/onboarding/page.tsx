@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Building2, CheckCircle2 } from 'lucide-react';
 import {
@@ -40,7 +40,7 @@ const parseCommaSeparated = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => {
@@ -329,5 +329,24 @@ export default function OnboardingPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+function OnboardingPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8f5ef] to-[#efe4d2]">
+      <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-sm border border-[#eadfcd]">
+        <Loader2 className="w-5 h-5 animate-spin text-[#9c7c46]" />
+        <span className="text-sm text-[#6f5b3e]">Loading setup...</span>
+      </div>
+    </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingPageFallback />}>
+      <OnboardingPageContent />
+    </Suspense>
   );
 }

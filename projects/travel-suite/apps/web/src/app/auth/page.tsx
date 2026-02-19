@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, User, Loader2, Plane } from "lucide-react";
@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 
 type AuthMode = "login" | "signup";
 
-export default function AuthPage() {
+function AuthPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const supabase = createClient();
@@ -239,5 +239,24 @@ export default function AuthPage() {
                 </p>
             </div>
         </main>
+    );
+}
+
+function AuthPageFallback() {
+    return (
+        <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-sky-50 dark:from-[#0a2f2a] dark:via-[#0d3530] dark:to-[#0a2f2a] p-4">
+            <div className="inline-flex items-center gap-2 text-gray-600">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading authentication...
+            </div>
+        </main>
+    );
+}
+
+export default function AuthPage() {
+    return (
+        <Suspense fallback={<AuthPageFallback />}>
+            <AuthPageContent />
+        </Suspense>
     );
 }
