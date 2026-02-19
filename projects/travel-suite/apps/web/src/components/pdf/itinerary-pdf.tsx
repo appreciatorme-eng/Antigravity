@@ -21,6 +21,20 @@ export interface ItineraryPdfPreferences {
   defaultTemplate: ItineraryTemplateId;
 }
 
+interface OrganizationPreferencesRow {
+  name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+  itinerary_template?: string | null;
+}
+
+interface ProfilePreferencesRow {
+  email: string | null;
+  phone: string | null;
+  organization_id: string | null;
+  organizations: OrganizationPreferencesRow | OrganizationPreferencesRow[] | null;
+}
+
 const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9-_]+/g, '_');
 
 const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
@@ -139,11 +153,14 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
       };
     }
 
-    let { data: profile, error } = await supabase
+    const primaryResult = await supabase
       .from('profiles')
       .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
       .eq('id', user.id)
       .single();
+
+    let profile = primaryResult.data as ProfilePreferencesRow | null;
+    let error = primaryResult.error;
 
     if (error && isMissingColumnError(error, 'itinerary_template')) {
       const fallbackResult = await supabase
@@ -151,7 +168,7 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
         .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
         .eq('id', user.id)
         .single();
-      profile = fallbackResult.data;
+      profile = fallbackResult.data as ProfilePreferencesRow | null;
       error = fallbackResult.error;
     }
 
