@@ -323,7 +323,20 @@ Requirements:
             // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
             const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
             const responseText = result.response.text();
-            itinerary = JSON.parse(responseText);
+            
+            // Clean markdown syntax from the text if present
+            let cleanedText = responseText.trim();
+            if (cleanedText.startsWith('```json')) {
+                cleanedText = cleanedText.replace(/^```json\n?/, '');
+            } else if (cleanedText.startsWith('```')) {
+                cleanedText = cleanedText.replace(/^```\n?/, '');
+            }
+            if (cleanedText.endsWith('```')) {
+                cleanedText = cleanedText.replace(/\n?```$/, '');
+            }
+            cleanedText = cleanedText.trim();
+            
+            itinerary = JSON.parse(cleanedText);
         } catch (innerError) {
             console.error("AI Generation Error (fallback):", innerError);
             itinerary = await buildFallbackItinerary(prompt, days);
