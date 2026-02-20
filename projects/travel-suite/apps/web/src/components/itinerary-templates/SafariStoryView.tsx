@@ -57,7 +57,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary })
         {/* Title & Destination */}
         <div className="text-center max-w-3xl">
           <h1 className="text-5xl font-serif font-bold mb-4 tracking-wide">
-            {itinerary.title || 'Safari Adventure'}
+            {itinerary.trip_title || itinerary.title || 'Safari Adventure'}
           </h1>
 
           {itinerary.destination && (
@@ -181,7 +181,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary })
                             <div className="flex items-start gap-2 mb-2">
                               <span className="text-xl">{getActivityIcon(activity)}</span>
                               <h4 className="font-bold text-slate-900 flex-1 leading-tight">
-                                {activity.name}
+                                {activity.title || activity.name}
                               </h4>
                             </div>
 

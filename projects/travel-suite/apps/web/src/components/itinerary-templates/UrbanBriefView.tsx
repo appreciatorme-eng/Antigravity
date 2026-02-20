@@ -20,7 +20,7 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) 
               TRAVEL ITINERARY
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {itinerary.title}
+              {itinerary.trip_title || itinerary.title}
             </h1>
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-1.5">
@@ -50,7 +50,7 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) 
               OVERVIEW
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {itinerary.description}
+              {itinerary.summary || itinerary.description}
             </p>
           </div>
         )}
@@ -94,10 +94,10 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) 
                     className="w-10 h-10 rounded flex items-center justify-center text-white font-bold text-sm"
                     style={{ backgroundColor: brandColor }}
                   >
-                    {day.day}
+                    {day.day_number || day.day}
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">{day.title}</div>
+                    <div className="font-semibold text-gray-900">{day.theme || day.title || `Day ${day.day_number}`}</div>
                     {day.date && (
                       <div className="text-xs text-gray-600 mt-0.5">{day.date}</div>
                     )}
@@ -132,7 +132,7 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <h4 className="font-medium text-gray-900 text-sm">
-                              {activity.name}
+                              {activity.title || activity.name}
                             </h4>
                             {activity.time && (
                               <div className="flex items-center gap-1 text-xs text-gray-600 flex-shrink-0">
