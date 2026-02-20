@@ -342,12 +342,14 @@ export async function POST(req: NextRequest) {
             console.log('Falling back to Gemini AI generation...');
         }
 
-        // TIER 3: GEMINI AI FALLBACK
-        const apiKey =
+        // TIER 3: AI GENERATION — try Groq first, then Gemini, then fallback
+        const geminiApiKey =
             process.env.GOOGLE_API_KEY ||
             process.env.GOOGLE_GEMINI_API_KEY;
-        if (!apiKey) {
-            // Keep planner functional even if AI isn't configured.
+        const groqApiKey = process.env.GROQ_API_KEY;
+
+        if (!geminiApiKey && !groqApiKey) {
+            console.warn('⚠️ No AI keys configured (GOOGLE_API_KEY / GROQ_API_KEY). Returning fallback itinerary.');
             return NextResponse.json(await buildFallbackItinerary(prompt, days));
         }
 
@@ -412,13 +414,7 @@ Requirements:
 - Location must include neighborhood/district`;
 
         try {
-            // ROUTER: Use Groq LLama-3-8b for basic, cheap queries
-            if (prompt.length < 100 && days <= 10 && process.env.GROQ_API_KEY) {
-                console.log(`⚡ [MODEL ROUTER: GROQ] Prompt is simple, routing to Llama-3-8b...`);
-                const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-                // We inject the JSON schema requirements so Llama knows how to format
-                const groqSystemPrompt = `You are an expert travel planner. You MUST output valid JSON exactly adhering to this structure:
+            const groqSystemPrompt = `You are an expert travel planner. You MUST output valid JSON exactly adhering to this structure:
 {
   "trip_title": "string",
   "destination": "string",
@@ -447,22 +443,34 @@ Requirements:
 }
 Return ONLY valid raw JSON and absolutely nothing else.`;
 
-                const chatCompletion = await groq.chat.completions.create({
-                    messages: [
-                        { role: 'system', content: groqSystemPrompt },
-                        { role: 'user', content: finalPrompt }
-                    ],
-                    model: 'llama3-8b-8192',
-                    temperature: 0.5,
-                    max_completion_tokens: 8000,
-                    response_format: { type: 'json_object' }
-                });
+            // ROUTER: Try Groq first (cheaper & faster) — use for ALL queries when key is present
+            if (groqApiKey) {
+                console.log(`⚡ [MODEL ROUTER: GROQ] Routing to Llama-3-8b via Groq...`);
+                try {
+                    const groq = new Groq({ apiKey: groqApiKey });
+                    const chatCompletion = await groq.chat.completions.create({
+                        messages: [
+                            { role: 'system', content: groqSystemPrompt },
+                            { role: 'user', content: finalPrompt }
+                        ],
+                        model: 'llama3-8b-8192',
+                        temperature: 0.5,
+                        max_completion_tokens: 8000,
+                        response_format: { type: 'json_object' }
+                    });
+                    const responseContent = chatCompletion.choices[0]?.message?.content || "";
+                    itinerary = JSON.parse(responseContent);
+                    console.log(`✅ [GROQ] Successfully generated itinerary.`);
+                } catch (groqError) {
+                    console.error(`❌ [GROQ] Failed:`, groqError);
+                    // Fall through to Gemini below
+                }
+            }
 
-                const responseContent = chatCompletion.choices[0]?.message?.content || "";
-                itinerary = JSON.parse(responseContent);
-            } else {
-                console.log(`🧠 [MODEL ROUTER: GEMINI] Prompt is complex or Groq is missing, routing to Gemini 2.5...`);
-                const genAI = new GoogleGenerativeAI(apiKey);
+            // If Groq didn't produce a result, try Gemini
+            if (!itinerary && geminiApiKey) {
+                console.log(`🧠 [MODEL ROUTER: GEMINI] Routing to Gemini 2.5-flash...`);
+                const genAI = new GoogleGenerativeAI(geminiApiKey);
                 const model = genAI.getGenerativeModel({
                     model: "gemini-2.5-flash",
                     generationConfig: {
@@ -470,13 +478,19 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                         responseSchema: itinerarySchema,
                     },
                 });
-
                 const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
                 const responseText = result.response.text();
                 itinerary = JSON.parse(responseText.trim());
+                console.log(`✅ [GEMINI] Successfully generated itinerary.`);
+            }
+
+            // If all AI providers failed, use fallback
+            if (!itinerary) {
+                console.warn('⚠️ All AI providers failed or unavailable — using fallback itinerary.');
+                itinerary = await buildFallbackItinerary(prompt, days);
             }
         } catch (innerError) {
-            console.error("AI Generation Error (fallback):", innerError);
+            console.error("AI Generation Error (outer catch):", innerError);
             itinerary = await buildFallbackItinerary(prompt, days);
         }
 
