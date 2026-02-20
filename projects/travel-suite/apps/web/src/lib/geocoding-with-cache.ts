@@ -287,6 +287,21 @@ export async function getCityCenter(cityName: string): Promise<[number, number] 
 }
 
 /**
+ * Usage stats data structure returned from database
+ */
+interface UsageStatsData {
+    month_year: string;
+    total_requests: string | number;
+    cache_hits: string | number;
+    api_calls: string | number;
+    cache_hit_rate: string | number;
+    remaining_calls: number;
+    limit_threshold: number;
+    limit_reached: boolean;
+    last_api_call_at: string | null;
+}
+
+/**
  * Get current month's geocoding usage statistics
  */
 export async function getGeocodingUsageStats(): Promise<{
@@ -316,16 +331,22 @@ export async function getGeocodingUsageStats(): Promise<{
             return null;
         }
 
+        if (!data) {
+            return null;
+        }
+
+        const statsData = data as UsageStatsData;
+
         return {
-            monthYear: data.month_year,
-            totalRequests: parseInt(data.total_requests),
-            cacheHits: parseInt(data.cache_hits),
-            apiCalls: parseInt(data.api_calls),
-            cacheHitRate: parseFloat(data.cache_hit_rate),
-            remainingCalls: data.remaining_calls,
-            limitThreshold: data.limit_threshold,
-            limitReached: data.limit_reached,
-            lastApiCallAt: data.last_api_call_at,
+            monthYear: statsData.month_year,
+            totalRequests: parseInt(statsData.total_requests.toString()),
+            cacheHits: parseInt(statsData.cache_hits.toString()),
+            apiCalls: parseInt(statsData.api_calls.toString()),
+            cacheHitRate: parseFloat(statsData.cache_hit_rate.toString()),
+            remainingCalls: statsData.remaining_calls,
+            limitThreshold: statsData.limit_threshold,
+            limitReached: statsData.limit_reached,
+            lastApiCallAt: statsData.last_api_call_at,
         };
     } catch (error) {
         console.error('Failed to get usage stats:', error);
