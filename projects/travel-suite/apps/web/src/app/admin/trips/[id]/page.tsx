@@ -900,10 +900,10 @@ out center tags 80;
                     if (accommodation.id) {
                         await supabase
                             .from("trip_accommodations")
-                            .update(data)
+                            .update(data as any)
                             .eq("id", accommodation.id);
                     } else {
-                        await supabase.from("trip_accommodations").insert(data);
+                        await supabase.from("trip_accommodations").insert(data as any);
                     }
                 }
             }
