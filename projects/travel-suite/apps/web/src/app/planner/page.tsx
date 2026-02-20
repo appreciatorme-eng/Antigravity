@@ -346,6 +346,7 @@ Make it practical and specific:
                         <div className="grid lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
                                 <ItineraryMap
+                                    destination={result.destination}
                                     activities={result.days.flatMap((day: Day) =>
                                         day.activities.map(act => ({
                                             ...act,

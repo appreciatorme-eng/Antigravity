@@ -20,6 +20,7 @@ interface Activity {
 
 interface ItineraryMapProps {
     activities: Activity[];
+    destination?: string;
 }
 
 function haversineDistanceKm(a: [number, number], b: [number, number]) {
@@ -174,7 +175,30 @@ function MapRouteLine({ coordinates }: { coordinates: [number, number][] }) {
     return null;
 }
 
-export default function ItineraryMap({ activities }: ItineraryMapProps) {
+// Fallback coordinates for major cities when geocoding is unavailable
+const CITY_COORDINATES: Record<string, [number, number]> = {
+    'chennai': [80.2707, 13.0827],
+    'mumbai': [72.8777, 19.0760],
+    'delhi': [77.1025, 28.7041],
+    'bangalore': [77.5946, 12.9716],
+    'kolkata': [88.3639, 22.5726],
+    'hyderabad': [78.4867, 17.3850],
+    'pune': [73.8567, 18.5204],
+    'jaipur': [75.7873, 26.9124],
+};
+
+function getCityCoordinates(destination?: string): [number, number] | null {
+    if (!destination) return null;
+    const normalized = destination.toLowerCase();
+    for (const [city, coords] of Object.entries(CITY_COORDINATES)) {
+        if (normalized.includes(city)) {
+            return coords;
+        }
+    }
+    return null;
+}
+
+export default function ItineraryMap({ activities, destination }: ItineraryMapProps) {
     const validActivities = useMemo(
         () =>
             activities.filter(
@@ -222,6 +246,35 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
     }, [validActivities]);
 
     if (validActivities.length === 0) {
+        // Try to show the destination city even without activity coordinates
+        const cityCoords = getCityCoordinates(destination);
+        if (cityCoords) {
+            return (
+                <Map
+                    center={cityCoords}
+                    zoom={12}
+                    className="h-full w-full rounded-lg overflow-hidden font-sans"
+                    theme="light"
+                >
+                    <MapControls position="bottom-right" showCompass={false} />
+                    <MapMarker longitude={cityCoords[0]} latitude={cityCoords[1]}>
+                        <MarkerContent>
+                            <div className="relative group cursor-pointer z-50">
+                                <div className="w-12 h-12 rounded-full bg-[#1b140a] border-2 border-[#c4a870] shadow-[0_10px_18px_rgba(20,16,12,0.35)] flex items-center justify-center">
+                                    <MapPin className="w-6 h-6 text-[#f5e7c6]" />
+                                </div>
+                            </div>
+                        </MarkerContent>
+                        <MarkerPopup>
+                            <div className="p-2 min-w-[150px]">
+                                <h4 className="text-sm font-bold text-gray-900">{destination}</h4>
+                            </div>
+                        </MarkerPopup>
+                    </MapMarker>
+                </Map>
+            );
+        }
+
         return (
             <div className="h-full w-full bg-gray-50 flex flex-col items-center justify-center text-gray-400 rounded-lg border border-dashed border-gray-200 p-6">
                 <MapPin className="w-8 h-8 mb-2 opacity-50" />
@@ -232,7 +285,7 @@ export default function ItineraryMap({ activities }: ItineraryMapProps) {
     }
 
     // Default center (will be overridden by fitBounds)
-    const initialCenter: [number, number] = routeCoordinates[0];
+    const initialCenter: [number, number] = routeCoordinates[0] || getCityCoordinates(destination) || [0, 0];
 
     if (initialCenter) {
         for (const coordinate of routeCoordinates) {
