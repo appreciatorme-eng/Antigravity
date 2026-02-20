@@ -1,10 +1,10 @@
 import React from 'react';
 import { ChevronRight, MapPin, Clock, DollarSign, Users, Calendar } from 'lucide-react';
-import { Itinerary } from '@/types/itinerary';
-import { TemplateProps } from './types';
+import { Activity, Day } from '@/types/itinerary';
+import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 
-export const UrbanBriefView: React.FC<TemplateProps> = ({ itinerary }) => {
+export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
   const brandColor = '#124ea2';
 
   const totalDays = itinerary.days?.length || 0;
