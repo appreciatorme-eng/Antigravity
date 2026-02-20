@@ -3,6 +3,7 @@ import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import { z } from 'zod';
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
+import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
@@ -82,6 +83,55 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
         return await Promise.race([promise, timeoutPromise]);
     } finally {
         if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+
+/**
+ * Geocode all activity locations in an itinerary
+ * Adds accurate coordinates to activities that have locations but no/invalid coordinates
+ */
+async function geocodeItineraryActivities(itinerary: any): Promise<any> {
+    try {
+        // Get city center for proximity bias
+        const cityProximity = await getCityCenter(itinerary.destination);
+
+        let geocodedCount = 0;
+        let skippedCount = 0;
+
+        for (const day of itinerary.days) {
+            for (const activity of day.activities) {
+                // Skip if activity already has valid coordinates
+                if (
+                    activity.coordinates &&
+                    activity.coordinates.lat !== 0 &&
+                    activity.coordinates.lng !== 0 &&
+                    Math.abs(activity.coordinates.lat) <= 90 &&
+                    Math.abs(activity.coordinates.lng) <= 180
+                ) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Geocode the location
+                if (activity.location) {
+                    const result = await geocodeLocation(
+                        activity.location,
+                        cityProximity || undefined
+                    );
+
+                    if (result) {
+                        activity.coordinates = result.coordinates;
+                        geocodedCount++;
+                    }
+                }
+            }
+        }
+
+        console.log(`📍 Geocoding: ${geocodedCount} locations geocoded, ${skippedCount} already had coordinates`);
+        return itinerary;
+    } catch (error) {
+        console.error('Geocoding error (non-blocking):', error);
+        return itinerary; // Return original itinerary if geocoding fails
     }
 }
 
@@ -189,8 +239,11 @@ export async function POST(req: NextRequest) {
                 const itinerary = await assembleItinerary(templates, { destination, days });
 
                 if (itinerary) {
+                    // GEOCODE ACTIVITIES - Add accurate coordinates
+                    const geocodedItinerary = await geocodeItineraryActivities(itinerary);
+
                     // Extract cache params for consistency
-                    const cacheParams = extractCacheParams(prompt, itinerary);
+                    const cacheParams = extractCacheParams(prompt, geocodedItinerary);
 
                     // Save to cache asynchronously
                     const cacheId = await saveItineraryToCache(
@@ -198,17 +251,17 @@ export async function POST(req: NextRequest) {
                         cacheParams.days,
                         cacheParams.budget,
                         cacheParams.interests,
-                        itinerary
+                        geocodedItinerary
                     );
 
                     if (cacheId) {
                         console.log(`💾 RAG itinerary cached (ID: ${cacheId})`);
 
                         // Save attribution tracking
-                        if (itinerary.base_template_id) {
+                        if (geocodedItinerary.base_template_id) {
                             await saveAttributionTracking(
                                 cacheId,
-                                itinerary.base_template_id,
+                                geocodedItinerary.base_template_id,
                                 undefined // requestingOrgId - could extract from auth
                             ).catch(err => {
                                 console.error('Attribution tracking failed (non-blocking):', err);
@@ -216,7 +269,7 @@ export async function POST(req: NextRequest) {
                         }
                     }
 
-                    return NextResponse.json(itinerary);
+                    return NextResponse.json(geocodedItinerary);
                 }
             }
 
@@ -412,9 +465,12 @@ export async function POST(req: NextRequest) {
             itinerary.days = itinerary.days.concat(pad);
         }
 
+        // GEOCODE ACTIVITIES - Add accurate coordinates to all activities
+        const geocodedItinerary = await geocodeItineraryActivities(itinerary);
+
         // CACHE SAVE - Save successful AI generation to cache
         // Extract cache params (destination, budget, interests) from generated itinerary
-        const cacheParams = extractCacheParams(prompt, itinerary);
+        const cacheParams = extractCacheParams(prompt, geocodedItinerary);
 
         // Save to cache asynchronously (don't block response)
         saveItineraryToCache(
@@ -422,7 +478,7 @@ export async function POST(req: NextRequest) {
             cacheParams.days,
             cacheParams.budget,
             cacheParams.interests,
-            itinerary
+            geocodedItinerary
         ).then(cacheId => {
             if (cacheId) {
                 console.log(`💾 Itinerary cached successfully (ID: ${cacheId}) for ${cacheParams.destination}`);
@@ -431,7 +487,7 @@ export async function POST(req: NextRequest) {
             console.error('Cache save failed (non-blocking):', err);
         });
 
-        return NextResponse.json(itinerary);
+        return NextResponse.json(geocodedItinerary);
 
     } catch (error) {
         console.error("AI Generation Error:", error);
