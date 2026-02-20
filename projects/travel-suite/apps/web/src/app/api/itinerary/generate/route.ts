@@ -4,9 +4,26 @@ import { z } from 'zod';
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 // Allow up to 60s for AI generation + geocoding
 export const maxDuration = 60;
+
+// Initialize rate limiter globally if env vars are present
+let ratelimit: Ratelimit | null = null;
+// Use try/catch so missing/placeholder variables at build-time don't break Next.js
+try {
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+        ratelimit = new Ratelimit({
+            redis: Redis.fromEnv(),
+            limiter: Ratelimit.slidingWindow(5, '1 m'), // 5 requests per minute per user
+        });
+    }
+} catch (e) {
+    console.warn("Ratelimit initialization failed (likely build step)");
+}
 
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
@@ -159,6 +176,22 @@ const RequestSchema = z.object({
 
 
 export async function POST(req: NextRequest) {
+    // 1. Authentication Check
+    const serverClient = await createServerClient();
+    const { data: { user } } = await serverClient.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Rate Limiting Check
+    if (ratelimit) {
+        const { success } = await ratelimit.limit(user.id);
+        if (!success) {
+            return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
+        }
+    }
+
     let body: unknown = null;
     try {
         body = await req.json();
@@ -323,7 +356,7 @@ Requirements:
             // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
             const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
             const responseText = result.response.text();
-            
+
             // Clean markdown syntax from the text if present
             let cleanedText = responseText.trim();
             if (cleanedText.startsWith('```json')) {
@@ -335,7 +368,7 @@ Requirements:
                 cleanedText = cleanedText.replace(/\n?```$/, '');
             }
             cleanedText = cleanedText.trim();
-            
+
             itinerary = JSON.parse(cleanedText);
         } catch (innerError) {
             console.error("AI Generation Error (fallback):", innerError);

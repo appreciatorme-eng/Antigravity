@@ -116,7 +116,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
         } catch (error) {
             console.error("AI Generation Error:", error);
-            alert("Failed to generate itinerary. Please try again.");
+            alert(error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.");
         } finally {
             setIsGenerating(false);
         }
