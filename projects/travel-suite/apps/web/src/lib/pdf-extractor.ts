@@ -402,7 +402,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
             throw new Error('No extracted data available');
         }
 
-        const template = pdfImport.extracted_data as ExtractedTemplate;
+        const template = pdfImport.extracted_data as unknown as ExtractedTemplate;
 
         // Create tour template
         const { data: tourTemplate, error: insertError } = await supabase
