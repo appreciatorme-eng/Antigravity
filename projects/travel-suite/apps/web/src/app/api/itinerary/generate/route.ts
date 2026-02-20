@@ -453,7 +453,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                             { role: 'system', content: groqSystemPrompt },
                             { role: 'user', content: finalPrompt }
                         ],
-                        model: 'llama3-8b-8192',
+                        model: 'llama-3.3-70b-versatile',
                         temperature: 0.5,
                         max_completion_tokens: 8000,
                         response_format: { type: 'json_object' }
@@ -472,7 +472,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 console.log(`🧠 [MODEL ROUTER: GEMINI] Routing to Gemini 2.5-flash...`);
                 const genAI = new GoogleGenerativeAI(geminiApiKey);
                 const model = genAI.getGenerativeModel({
-                    model: "gemini-2.5-flash",
+                    model: "gemini-2.0-flash",
                     generationConfig: {
                         responseMimeType: "application/json",
                         responseSchema: itinerarySchema,
