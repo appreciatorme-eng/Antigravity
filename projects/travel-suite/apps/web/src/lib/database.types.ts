@@ -3368,6 +3368,10 @@ export type Database = {
         }[]
       }
       get_user_organization_id: { Args: never; Returns: string }
+      increment_template_usage: {
+        Args: { p_template_id: string }
+        Returns: undefined
+      }
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
       save_itinerary_to_cache: {
         Args: {

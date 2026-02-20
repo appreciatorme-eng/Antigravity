@@ -242,12 +242,8 @@ export async function saveAttributionTracking(
             similarity_score: null
         });
 
-    // Update template usage stats
-    await supabase
-        .from('tour_templates')
-        .update({
-            usage_count: supabase.raw('usage_count + 1') as any,
-            last_used_at: new Date().toISOString()
-        })
-        .eq('id', templateId);
+    // Update template usage stats atomically
+    await supabase.rpc('increment_template_usage', {
+        p_template_id: templateId
+    });
 }
