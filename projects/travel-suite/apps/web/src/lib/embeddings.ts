@@ -6,9 +6,15 @@
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to avoid build errors when OPENAI_API_KEY is not set
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI | null {
+    if (!process.env.OPENAI_API_KEY) return null;
+    if (!_openai) {
+        _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return _openai;
+}
 
 /**
  * Generate embedding vector for text using OpenAI text-embedding-3-small
@@ -21,7 +27,10 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     }
 
     try {
-        const response = await openai.embeddings.create({
+        const client = getOpenAI();
+        if (!client) return [];
+
+        const response = await client.embeddings.create({
             model: "text-embedding-3-small",
             input: text.substring(0, 8000), // Max context window
             dimensions: 1536,
