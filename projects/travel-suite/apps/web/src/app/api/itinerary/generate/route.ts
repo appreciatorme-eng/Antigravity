@@ -5,6 +5,9 @@ import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 
+// Allow up to 60s for AI generation + geocoding
+export const maxDuration = 60;
+
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
     const m = prompt.match(/\bfor\s+([^.\n"]{2,80})/i);
@@ -231,24 +234,26 @@ export async function POST(req: NextRequest) {
         );
 
         if (cachedItinerary) {
-            // Validate that cached itinerary has proper geocoded coordinates
+            // Skip cached fallback itineraries (generated when AI was unavailable)
+            const isFallback = typeof cachedItinerary.summary === 'string' &&
+                cachedItinerary.summary.includes('AI planner was unavailable');
+
             // Skip cache if it has old New York fallback coordinates (40.7, -74.0 area)
             const hasValidCoordinates = cachedItinerary.days?.some((day: any) =>
                 day.activities?.some((activity: any) => {
                     const lat = activity.coordinates?.lat;
                     const lng = activity.coordinates?.lng;
-                    // Check if coordinates are NOT in New York area (40.6-40.8, -74.1 to -73.9)
                     if (!lat || !lng) return false;
                     const isNewYork = lat >= 40.6 && lat <= 40.8 && lng >= -74.1 && lng <= -73.9;
-                    return !isNewYork; // Valid if NOT New York
+                    return !isNewYork;
                 })
             );
 
-            if (hasValidCoordinates) {
+            if (!isFallback && hasValidCoordinates) {
                 console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
                 return NextResponse.json(cachedItinerary);
             } else {
-                console.log(`⚠️ [TIER 1: CACHE INVALID] ${destination} has old NY coordinates - regenerating with geocoding`);
+                console.log(`⚠️ [TIER 1: CACHE INVALID] ${destination} - ${isFallback ? 'is fallback itinerary' : 'has old NY coordinates'} - regenerating`);
             }
         }
 
@@ -509,24 +514,28 @@ export async function POST(req: NextRequest) {
         // GEOCODE ACTIVITIES - Add accurate coordinates to all activities
         const geocodedItinerary = await geocodeItineraryActivities(itinerary);
 
-        // CACHE SAVE - Save successful AI generation to cache
-        // Extract cache params (destination, budget, interests) from generated itinerary
-        const cacheParams = extractCacheParams(prompt, geocodedItinerary);
+        // CACHE SAVE - Only cache AI-generated itineraries (not fallbacks)
+        const isFallbackItinerary = typeof geocodedItinerary.summary === 'string' &&
+            geocodedItinerary.summary.includes('AI planner was unavailable');
 
-        // Save to cache asynchronously (don't block response)
-        saveItineraryToCache(
-            cacheParams.destination,
-            cacheParams.days,
-            cacheParams.budget,
-            cacheParams.interests,
-            geocodedItinerary
-        ).then(cacheId => {
-            if (cacheId) {
-                console.log(`💾 Itinerary cached successfully (ID: ${cacheId}) for ${cacheParams.destination}`);
-            }
-        }).catch(err => {
-            console.error('Cache save failed (non-blocking):', err);
-        });
+        if (!isFallbackItinerary) {
+            const cacheParams = extractCacheParams(prompt, geocodedItinerary);
+            saveItineraryToCache(
+                cacheParams.destination,
+                cacheParams.days,
+                cacheParams.budget,
+                cacheParams.interests,
+                geocodedItinerary
+            ).then(cacheId => {
+                if (cacheId) {
+                    console.log(`💾 Itinerary cached successfully (ID: ${cacheId}) for ${cacheParams.destination}`);
+                }
+            }).catch(err => {
+                console.error('Cache save failed (non-blocking):', err);
+            });
+        } else {
+            console.log('⚠️ Skipping cache save for fallback itinerary');
+        }
 
         return NextResponse.json(geocodedItinerary);
 
