@@ -19,8 +19,8 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
 const queueSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
 const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);

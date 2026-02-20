@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
+const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {

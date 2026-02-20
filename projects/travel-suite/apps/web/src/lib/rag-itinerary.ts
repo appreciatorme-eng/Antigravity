@@ -7,7 +7,7 @@ import { generateEmbedding } from './embeddings';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder' });
 
 export interface RAGItineraryRequest {
     destination: string;
@@ -113,19 +113,19 @@ for ${fullTemplate.destination}. Adapt it to create a ${request.days}-day itiner
 
 Original Template:
 ${JSON.stringify({
-    name: fullTemplate.name,
-    destination: fullTemplate.destination,
-    days: fullTemplate.days?.map((d: any) => ({
-        day_number: d.day_number,
-        title: d.title,
-        activities: d.activities?.map((a: any) => ({
-            time: a.time,
-            title: a.title,
-            description: a.description,
-            location: a.location
+        name: fullTemplate.name,
+        destination: fullTemplate.destination,
+        days: fullTemplate.days?.map((d: any) => ({
+            day_number: d.day_number,
+            title: d.title,
+            activities: d.activities?.map((a: any) => ({
+                time: a.time,
+                title: a.title,
+                description: a.description,
+                location: a.location
+            }))
         }))
-    }))
-}, null, 2)}
+    }, null, 2)}
 
 Requirements:
 - Create exactly ${request.days} days

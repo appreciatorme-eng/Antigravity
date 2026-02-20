@@ -121,7 +121,12 @@ function useMap() {
   return context;
 }
 
-const defaultStyles = {
+const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+const defaultStyles = mapboxToken ? {
+  dark: `https://api.mapbox.com/styles/v1/mapbox/dark-v11/style?access_token=${mapboxToken}`,
+  light: `https://api.mapbox.com/styles/v1/mapbox/light-v11/style?access_token=${mapboxToken}`,
+} : {
   dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 };
