@@ -43,8 +43,9 @@ async function buildFallbackItinerary(prompt: string, days: number) {
     try {
         const geocoded = await getCityCenter(destination);
         if (geocoded) {
-            cityCoordinates = geocoded;
-            console.log(`📍 Fallback itinerary using geocoded coords for ${destination}: ${geocoded.lat}, ${geocoded.lng}`);
+            const [lng, lat] = geocoded; // getCityCenter returns [lng, lat]
+            cityCoordinates = { lat, lng };
+            console.log(`📍 Fallback itinerary using geocoded coords for ${destination}: ${lat}, ${lng}`);
         }
     } catch (err) {
         console.error('Geocoding failed for fallback, using default coords:', err);
@@ -461,18 +462,20 @@ export async function POST(req: NextRequest) {
         }
 
         // Generate fallback once if needed for normalization
-        let fallbackData: any = null;
-        if ((typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) ||
+        const needsFallback = (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) ||
             !Array.isArray(itinerary.days) ||
-            (Array.isArray(itinerary.days) && itinerary.days.length < days)) {
+            (Array.isArray(itinerary.days) && itinerary.days.length < days);
+
+        let fallbackData: any = null;
+        if (needsFallback) {
             fallbackData = await buildFallbackItinerary(prompt, days);
         }
 
         if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
-            itinerary.summary = fallbackData.summary;
+            itinerary.summary = fallbackData?.summary || 'A travel itinerary';
         }
         if (!Array.isArray(itinerary.days)) {
-            itinerary.days = fallbackData.days;
+            itinerary.days = fallbackData?.days || [];
         }
         const fallbackThemes = [
             'Arrival & Initial Exploration',
@@ -498,7 +501,7 @@ export async function POST(req: NextRequest) {
             activities: Array.isArray(d?.activities) ? d.activities : [],
         }));
         // If the model returned fewer days, pad with fallbacks.
-        if (itinerary.days.length < days) {
+        if (itinerary.days.length < days && fallbackData) {
             const pad = fallbackData.days.slice(itinerary.days.length);
             itinerary.days = itinerary.days.concat(pad);
         }
