@@ -129,7 +129,7 @@ ${JSON.stringify({
 
 Requirements:
 - Create exactly ${request.days} days
-- ${request.days > fullTemplate.duration_days ? 'Add similar activities to extend the itinerary logically' : 'Condense activities while keeping the best ones'}
+- ${request.days > (fullTemplate.duration_days || 0) ? 'Add similar activities to extend the itinerary logically' : 'Condense activities while keeping the best ones'}
 - Maintain logical flow and timing
 - Keep budget level: ${request.budget || 'moderate'}
 - Emphasize interests: ${request.interests?.join(', ') || 'general tourism'}
