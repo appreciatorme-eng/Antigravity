@@ -15,7 +15,8 @@ export interface Activity {
     duration?: string;
     cost?: string;
     transport?: string;
-    image?: string;
+    image?: string; // Activity image URL
+    imageUrl?: string; // Alternative image URL property (used in SafariStoryView)
 }
 
 export interface Day {
