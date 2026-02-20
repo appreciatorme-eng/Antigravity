@@ -104,7 +104,7 @@ export default function SettingsPage() {
             if (error) throw error;
             setOrganization({
                 ...data,
-                itinerary_template: normalizeItineraryTemplateId(data.itinerary_template),
+                itinerary_template: normalizeItineraryTemplateId((data as any).itinerary_template),
             });
 
             const { data: { session } } = await supabase.auth.getSession();
