@@ -46,7 +46,9 @@ async function canMakeApiCall(): Promise<boolean> {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-        return false;
+        // Allow geocoding even without Supabase tracking
+        console.warn('Supabase not configured - skipping API limit check, allowing geocoding');
+        return true;
     }
 
     try {
@@ -55,13 +57,15 @@ async function canMakeApiCall(): Promise<boolean> {
 
         if (error) {
             console.error('Error checking API limit:', error);
-            return false;
+            // Allow geocoding even if limit check fails
+            return true;
         }
 
         return data === true;
     } catch (error) {
         console.error('Failed to check API limit:', error);
-        return false;
+        // Allow geocoding even if limit check fails
+        return true;
     }
 }
 
@@ -73,7 +77,9 @@ async function trackApiCall(): Promise<boolean> {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-        return false;
+        // Allow geocoding even without Supabase tracking
+        console.warn('Supabase not configured - skipping API call tracking');
+        return true;
     }
 
     try {
@@ -81,14 +87,16 @@ async function trackApiCall(): Promise<boolean> {
         const { data, error } = await supabase.rpc('increment_geocoding_api_call');
 
         if (error) {
-            console.error('Error tracking API call:', error);
-            return false;
+            console.error('Error tracking API call (non-blocking):', error);
+            // Allow geocoding even if tracking fails
+            return true;
         }
 
         return data === true;
     } catch (error) {
-        console.error('Failed to track API call:', error);
-        return false;
+        console.error('Failed to track API call (non-blocking):', error);
+        // Allow geocoding even if tracking fails
+        return true;
     }
 }
 
