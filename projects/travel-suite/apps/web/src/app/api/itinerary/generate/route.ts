@@ -218,8 +218,25 @@ export async function POST(req: NextRequest) {
         );
 
         if (cachedItinerary) {
-            console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
-            return NextResponse.json(cachedItinerary);
+            // Validate that cached itinerary has proper geocoded coordinates
+            // Skip cache if it has old New York fallback coordinates (40.7, -74.0 area)
+            const hasValidCoordinates = cachedItinerary.days?.some((day: any) =>
+                day.activities?.some((activity: any) => {
+                    const lat = activity.coordinates?.lat;
+                    const lng = activity.coordinates?.lng;
+                    // Check if coordinates are NOT in New York area (40.6-40.8, -74.1 to -73.9)
+                    if (!lat || !lng) return false;
+                    const isNewYork = lat >= 40.6 && lat <= 40.8 && lng >= -74.1 && lng <= -73.9;
+                    return !isNewYork; // Valid if NOT New York
+                })
+            );
+
+            if (hasValidCoordinates) {
+                console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
+                return NextResponse.json(cachedItinerary);
+            } else {
+                console.log(`⚠️ [TIER 1: CACHE INVALID] ${destination} has old NY coordinates - regenerating with geocoding`);
+            }
         }
 
         console.log(`❌ [TIER 1: CACHE MISS] ${destination}, ${days} days - trying RAG templates...`);
