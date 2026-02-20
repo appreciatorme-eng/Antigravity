@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User, Upload, Link as LinkIcon, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
@@ -35,10 +35,12 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
 
-    // AI State
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedData, setGeneratedData] = useState<ItineraryResult | null>(null);
+    const [importMode, setImportMode] = useState<"ai" | "url" | "pdf">("ai");
+    const [importUrl, setImportUrl] = useState("");
+    const [pdfFile, setPdfFile] = useState<File | null>(null);
 
     // Clients Data
     const [clients, setClients] = useState<Client[]>([]);
@@ -86,8 +88,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setStartDate("");
             setEndDate("");
             setPrompt("");
+            setImportUrl("");
+            setPdfFile(null);
             setGeneratedData(null);
             setCreating(false);
+            setImportMode("ai");
         }
     }, [open, fetchClients]);
 
@@ -117,6 +122,52 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         } catch (error) {
             console.error("AI Generation Error:", error);
             alert(error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleImportUrl = async () => {
+        if (!importUrl) return;
+        setIsGenerating(true);
+        try {
+            const res = await fetch("/api/itinerary/import/url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: importUrl }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to import from URL");
+
+            setGeneratedData(data.itinerary as ItineraryResult);
+        } catch (error) {
+            console.error("URL Import Error:", error);
+            alert(error instanceof Error ? error.message : "Failed to import from URL.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleImportPdf = async () => {
+        if (!pdfFile) return;
+        setIsGenerating(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', pdfFile);
+
+            const res = await fetch("/api/itinerary/import/pdf", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to import from PDF");
+
+            setGeneratedData(data.itinerary as ItineraryResult);
+        } catch (error) {
+            console.error("PDF Import Error:", error);
+            alert(error instanceof Error ? error.message : "Failed to parse PDF.");
         } finally {
             setIsGenerating(false);
         }
@@ -228,32 +279,100 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                         </div>
                     </div>
 
-                    {/* AI Generation Section */}
+                    {/* Import Mode Selector */}
                     {!generatedData ? (
-                        <div className="bg-purple-50 border border-purple-100 rounded-xl p-6 space-y-4">
-                            <div className="flex items-center gap-2 text-purple-700 font-semibold">
-                                <Sparkles className="w-5 h-5" />
-                                <span>Generate Itinerary with AI</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="e.g. 7 days in Kyoto for a foodie couple..."
-                                    value={prompt}
-                                    onChange={(e) => setPrompt(e.target.value)}
-                                    className="bg-white"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
-                                />
-                                <Button
-                                    onClick={handleGenerateAI}
-                                    disabled={isGenerating || !prompt}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                        <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 space-y-4">
+                            <div className="flex gap-2 p-1 bg-white border rounded-lg w-fit">
+                                <button
+                                    onClick={() => setImportMode("ai")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "ai" ? "bg-purple-100 text-purple-700" : "text-gray-500 hover:bg-gray-100"}`}
                                 >
-                                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
-                                </Button>
+                                    <Sparkles className="w-4 h-4" /> AI Describe
+                                </button>
+                                <button
+                                    onClick={() => setImportMode("url")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "url" ? "bg-blue-100 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`}
+                                >
+                                    <LinkIcon className="w-4 h-4" /> From Website URL
+                                </button>
+                                <button
+                                    onClick={() => setImportMode("pdf")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "pdf" ? "bg-rose-100 text-rose-700" : "text-gray-500 hover:bg-gray-100"}`}
+                                >
+                                    <FileText className="w-4 h-4" /> From PDF Upload
+                                </button>
                             </div>
-                            <p className="text-xs text-purple-600/70">
-                                This will create a logical day-by-day plan with activities, locations, and descriptions.
-                            </p>
+
+                            {importMode === "ai" && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="e.g. 7 days in Kyoto for a foodie couple..."
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                            className="bg-white"
+                                            onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
+                                        />
+                                        <Button
+                                            onClick={handleGenerateAI}
+                                            disabled={isGenerating || !prompt}
+                                            className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                                        >
+                                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        Describe what you want; the AI will structure a complete multi-day itinerary.
+                                    </p>
+                                </div>
+                            )}
+
+                            {importMode === "url" && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="https://example-tour-agency.com/tours/italy-extravaganza"
+                                            value={importUrl}
+                                            onChange={(e) => setImportUrl(e.target.value)}
+                                            className="bg-white"
+                                            onKeyDown={(e) => e.key === 'Enter' && handleImportUrl()}
+                                        />
+                                        <Button
+                                            onClick={handleImportUrl}
+                                            disabled={isGenerating || !importUrl}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                                        >
+                                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Extract from Web"}
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        Paste a link to any existing tour page. Our scraper will intelligently extract the itinerary.
+                                    </p>
+                                </div>
+                            )}
+
+                            {importMode === "pdf" && (
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex gap-2 items-center">
+                                        <Input
+                                            type="file"
+                                            accept=".pdf"
+                                            onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                                            className="bg-white file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100"
+                                        />
+                                        <Button
+                                            onClick={handleImportPdf}
+                                            disabled={isGenerating || !pdfFile}
+                                            className="bg-rose-600 hover:bg-rose-700 text-white shrink-0"
+                                        >
+                                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Import PDF"}
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        Upload a PDF brochure. The AI will read the text and parse it directly into your trip format.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="space-y-4 border rounded-xl p-4 bg-gray-50/50">

@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  serverExternalPackages: ['pdf-parse'],
   outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns: [
