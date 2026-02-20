@@ -19,7 +19,7 @@ function extractDestination(prompt: string): string {
     return cleaned;
 }
 
-function buildFallbackItinerary(prompt: string, days: number) {
+async function buildFallbackItinerary(prompt: string, days: number) {
     const destination = extractDestination(prompt) || 'Destination';
     const themesByDay = [
         'Arrival & Initial Exploration',
@@ -38,6 +38,18 @@ function buildFallbackItinerary(prompt: string, days: number) {
         'Final Exploration & Departure'
     ];
 
+    // Try to geocode the destination for accurate coordinates
+    let cityCoordinates = { lat: 40.7128, lng: -74.0060 }; // Default fallback
+    try {
+        const geocoded = await getCityCenter(destination);
+        if (geocoded) {
+            cityCoordinates = geocoded;
+            console.log(`📍 Fallback itinerary using geocoded coords for ${destination}: ${geocoded.lat}, ${geocoded.lng}`);
+        }
+    } catch (err) {
+        console.error('Geocoding failed for fallback, using default coords:', err);
+    }
+
     return {
         trip_title: `Trip to ${destination}`,
         destination,
@@ -53,21 +65,21 @@ function buildFallbackItinerary(prompt: string, days: number) {
                     title: 'Arrive and explore',
                     description: 'Start with a central library and museum.',
                     location: destination,
-                    coordinates: { lat: 40.7128, lng: -74.0060 }, // Default near New York/General center to avoid 0,0
+                    coordinates: cityCoordinates,
                 },
                 {
                     time: 'Afternoon',
                     title: 'Top attractions',
                     description: 'Visit a landmark and a park.',
                     location: destination,
-                    coordinates: { lat: 40.7308, lng: -73.9973 },
+                    coordinates: cityCoordinates,
                 },
                 {
                     time: 'Evening',
                     title: 'Dinner and views',
                     description: 'Enjoy a local dinner and a scenic view.',
                     location: destination,
-                    coordinates: { lat: 40.7589, lng: -73.9851 },
+                    coordinates: cityCoordinates,
                 },
             ],
         })),
@@ -302,7 +314,7 @@ export async function POST(req: NextRequest) {
             process.env.GOOGLE_GEMINI_API_KEY;
         if (!apiKey) {
             // Keep planner functional even if AI isn't configured.
-            return NextResponse.json(buildFallbackItinerary(prompt, days));
+            return NextResponse.json(await buildFallbackItinerary(prompt, days));
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -440,18 +452,27 @@ export async function POST(req: NextRequest) {
             itinerary = JSON.parse(responseText);
         } catch (innerError) {
             console.error("AI Generation Error (fallback):", innerError);
-            itinerary = buildFallbackItinerary(prompt, days);
+            itinerary = await buildFallbackItinerary(prompt, days);
         }
 
         // Defensive normalization for UI expectations.
         if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
             itinerary.duration_days = days;
         }
+
+        // Generate fallback once if needed for normalization
+        let fallbackData: any = null;
+        if ((typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) ||
+            !Array.isArray(itinerary.days) ||
+            (Array.isArray(itinerary.days) && itinerary.days.length < days)) {
+            fallbackData = await buildFallbackItinerary(prompt, days);
+        }
+
         if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
-            itinerary.summary = buildFallbackItinerary(prompt, days).summary;
+            itinerary.summary = fallbackData.summary;
         }
         if (!Array.isArray(itinerary.days)) {
-            itinerary.days = buildFallbackItinerary(prompt, days).days;
+            itinerary.days = fallbackData.days;
         }
         const fallbackThemes = [
             'Arrival & Initial Exploration',
@@ -478,7 +499,7 @@ export async function POST(req: NextRequest) {
         }));
         // If the model returned fewer days, pad with fallbacks.
         if (itinerary.days.length < days) {
-            const pad = buildFallbackItinerary(prompt, days).days.slice(itinerary.days.length);
+            const pad = fallbackData.days.slice(itinerary.days.length);
             itinerary.days = itinerary.days.concat(pad);
         }
 
@@ -508,6 +529,6 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
         console.error("AI Generation Error:", error);
-        return NextResponse.json(buildFallbackItinerary(prompt, days));
+        return NextResponse.json(await buildFallbackItinerary(prompt, days));
     }
 }
