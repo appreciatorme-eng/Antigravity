@@ -8,6 +8,7 @@ export interface Activity {
     title: string;
     description: string;
     location: string;
+    type?: string; // Activity type (e.g., 'transport', 'meal', 'activity')
     coordinates?: Coordinate;
     duration?: string;
     cost?: string;
@@ -23,6 +24,7 @@ export interface Day {
 
 export interface ItineraryResult {
     trip_title: string;
+    title?: string; // Alias for trip_title used in templates
     description?: string;
     destination: string;
     duration_days: number;
@@ -31,4 +33,9 @@ export interface ItineraryResult {
     budget?: string;
     interests?: string[];
     tips?: string[];
+    branding?: {
+        logoUrl?: string;
+        primaryColor?: string;
+        organizationName?: string;
+    };
 }

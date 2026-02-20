@@ -43,7 +43,7 @@ export default function PlannerPage() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<ItineraryResult | null>(null);
     const [error, setError] = useState("");
-    const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari-story');
+    const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari_story');
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1])); // First day expanded by default
@@ -398,10 +398,10 @@ Make it practical and specific:
                         </Card>
 
                         {/* Template-Based Itinerary Display */}
-                        {selectedTemplate === 'safari-story' && (
+                        {selectedTemplate === 'safari_story' && (
                             <SafariStoryView itinerary={result} />
                         )}
-                        {selectedTemplate === 'urban-brief' && (
+                        {selectedTemplate === 'urban_brief' && (
                             <UrbanBriefView itinerary={result} />
                         )}
                         {selectedTemplate === 'professional' && (

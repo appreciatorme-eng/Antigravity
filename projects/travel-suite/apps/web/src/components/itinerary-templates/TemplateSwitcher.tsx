@@ -16,14 +16,14 @@ interface TemplateOption {
 
 const TEMPLATE_OPTIONS: TemplateOption[] = [
   {
-    id: 'safari-story',
+    id: 'safari_story',
     icon: '🦁',
     label: 'Safari Story',
     description: 'Perfect for wildlife adventures and nature experiences',
     brandColor: '#18974e',
   },
   {
-    id: 'urban-brief',
+    id: 'urban_brief',
     icon: '🏙️',
     label: 'Urban Brief',
     description: 'Ideal for city exploration and urban discoveries',
