@@ -2764,6 +2764,50 @@ export type Database = {
           },
         ]
       }
+      trip_accommodations: {
+        Row: {
+          address: string | null
+          check_in_time: string | null
+          contact_phone: string | null
+          created_at: string | null
+          day_number: number
+          hotel_name: string
+          id: string
+          trip_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          check_in_time?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          day_number: number
+          hotel_name: string
+          id?: string
+          trip_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          check_in_time?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          day_number?: number
+          hotel_name?: string
+          id?: string
+          trip_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_accommodations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_driver_assignments: {
         Row: {
           created_at: string | null
