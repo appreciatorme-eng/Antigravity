@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
+import type { Json } from '@/lib/database.types';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -328,7 +329,7 @@ export async function processPDFImport(pdfImportId: string) {
                 .from('pdf_imports')
                 .update({
                     status: 'extracted',
-                    extracted_data: result.template,
+                    extracted_data: result.template as unknown as Json,
                     extraction_confidence: result.confidence
                 })
                 .eq('id', pdfImportId);
