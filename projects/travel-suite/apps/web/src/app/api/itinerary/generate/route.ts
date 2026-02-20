@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import { z } from 'zod';
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
@@ -242,7 +242,35 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        console.log(`❌ [TIER 1: CACHE MISS] ${destination}, ${days} days - trying RAG templates...`);
+        console.log(`❌ [TIER 1: DB CACHE MISS] ${destination}, ${days} days - trying Redis cache...`);
+
+        // REDIS CACHE LOOKUP - Check if we have this itinerary cached in fast memory forever
+        const promptHash = Buffer.from(prompt).toString('base64').substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
+        const redisCacheKey = `itinerary_memo:${promptHash}:${days}`;
+
+        if (ratelimit) {
+            try {
+                // We use ratelimit.redis (the internal redis client) to fetch the cache
+                // But the property might be private depending on Upstash versions, 
+                // so let's import and instantiate our own explicit Redis client to be safe.
+            } catch (e) { }
+        }
+
+        let redisStore: Redis | null = null;
+        try {
+            if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+                redisStore = Redis.fromEnv();
+                const cachedRedis = await redisStore.get(redisCacheKey);
+                if (cachedRedis) {
+                    console.log(`✅ [TIER 0: REDIS HIT] Fastest possible response!`);
+                    return NextResponse.json(typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis);
+                }
+            }
+        } catch (e) {
+            console.warn("Redis fallback missed / connection issue");
+        }
+
+        console.log(`❌ [TIER 0: REDIS MISS] ${destination} - trying RAG templates...`);
 
         // TIER 2: RAG TEMPLATE SEARCH (Unified Knowledge Base)
         try {
@@ -308,40 +336,65 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(await buildFallbackItinerary(prompt, days));
         }
 
+        const itinerarySchema: Schema = {
+            type: SchemaType.OBJECT,
+            properties: {
+                trip_title: { type: SchemaType.STRING },
+                destination: { type: SchemaType.STRING },
+                duration_days: { type: SchemaType.NUMBER },
+                summary: { type: SchemaType.STRING },
+                budget: { type: SchemaType.STRING },
+                interests: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                tips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                days: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            day_number: { type: SchemaType.NUMBER },
+                            theme: { type: SchemaType.STRING },
+                            activities: {
+                                type: SchemaType.ARRAY,
+                                items: {
+                                    type: SchemaType.OBJECT,
+                                    properties: {
+                                        time: { type: SchemaType.STRING },
+                                        title: { type: SchemaType.STRING },
+                                        description: { type: SchemaType.STRING },
+                                        location: { type: SchemaType.STRING },
+                                        duration: { type: SchemaType.STRING },
+                                        cost: { type: SchemaType.STRING },
+                                        transport: { type: SchemaType.STRING },
+                                        coordinates: {
+                                            type: SchemaType.OBJECT,
+                                            properties: {
+                                                lat: { type: SchemaType.NUMBER },
+                                                lng: { type: SchemaType.NUMBER }
+                                            },
+                                            required: ["lat", "lng"]
+                                        }
+                                    },
+                                    required: ["time", "title", "description", "location"]
+                                }
+                            }
+                        },
+                        required: ["day_number", "theme", "activities"]
+                    }
+                }
+            },
+            required: ["trip_title", "destination", "duration_days", "summary", "days"]
+        };
+
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
             generationConfig: {
                 responseMimeType: "application/json",
+                responseSchema: itinerarySchema,
             },
         });
 
         const finalPrompt = `Create a ${days}-day travel itinerary for: "${prompt}".
-
-Return JSON with this exact structure:
-{
-  "trip_title": "Catchy title",
-  "destination": "City/Country",
-  "duration_days": ${days},
-  "summary": "1-2 sentence overview of the trip",
-  "budget": "Budget style",
-  "interests": ["interest1", "interest2"],
-  "tips": ["tip1", "tip2", ...6-8 practical tips],
-  "days": [{
-    "day_number": 1,
-    "theme": "3-5 word theme",
-    "activities": [{
-      "time": "09:00 AM",
-      "title": "Specific Landmark Name",
-      "description": "3-4 sentences: what it is, history/significance, what to see, practical tips.",
-      "location": "Landmark Name, Neighborhood, City",
-      "duration": "2-3 hours",
-      "cost": "Price or Free",
-      "transport": "How to get there from previous stop with details",
-      "coordinates": {"lat": 0.0, "lng": 0.0}
-    }]
-  }]
-}
 
 Requirements:
 - Exactly ${days} days with 5-6 activities per day (include meals)
@@ -357,19 +410,8 @@ Requirements:
             const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
             const responseText = result.response.text();
 
-            // Clean markdown syntax from the text if present
-            let cleanedText = responseText.trim();
-            if (cleanedText.startsWith('```json')) {
-                cleanedText = cleanedText.replace(/^```json\n?/, '');
-            } else if (cleanedText.startsWith('```')) {
-                cleanedText = cleanedText.replace(/^```\n?/, '');
-            }
-            if (cleanedText.endsWith('```')) {
-                cleanedText = cleanedText.replace(/\n?```$/, '');
-            }
-            cleanedText = cleanedText.trim();
-
-            itinerary = JSON.parse(cleanedText);
+            // SDK strictly returns valid JSON matching the schema
+            itinerary = JSON.parse(responseText.trim());
         } catch (innerError) {
             console.error("AI Generation Error (fallback):", innerError);
             itinerary = await buildFallbackItinerary(prompt, days);
@@ -433,6 +475,18 @@ Requirements:
             geocodedItinerary.summary.includes('AI planner was unavailable');
 
         if (!isFallbackItinerary) {
+            // Memory Save: Save to REDIS Forever
+            if (redisStore) {
+                try {
+                    // Cache infinitely, Upstash allows max limit to naturally evict LRU items
+                    await redisStore.set(redisCacheKey, JSON.stringify(geocodedItinerary));
+                    console.log(`💾 Memorized Itinerary to Redis: ${redisCacheKey}`);
+                } catch (e) {
+                    console.error("Failed to memorize to Redis");
+                }
+            }
+
+            // DB Save
             const cacheParams = extractCacheParams(prompt, geocodedItinerary);
             saveItineraryToCache(
                 cacheParams.destination,
@@ -442,7 +496,7 @@ Requirements:
                 geocodedItinerary
             ).then(cacheId => {
                 if (cacheId) {
-                    console.log(`💾 Itinerary cached successfully (ID: ${cacheId}) for ${cacheParams.destination}`);
+                    console.log(`💾 Itinerary cached successfully in Postgres (ID: ${cacheId}) for ${cacheParams.destination}`);
                 }
             }).catch(err => {
                 console.error('Cache save failed (non-blocking):', err);
