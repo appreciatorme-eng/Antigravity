@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
+import { SafariStoryView, UrbanBriefView, ProfessionalView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -42,6 +43,7 @@ export default function PlannerPage() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<ItineraryResult | null>(null);
     const [error, setError] = useState("");
+    const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari-story');
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1])); // First day expanded by default
@@ -385,7 +387,29 @@ Make it practical and specific:
                             </CardContent>
                         </Card>
 
-                        {/* Trip Highlights Section */}
+                        {/* Template Switcher */}
+                        <Card className="bg-white dark:bg-slate-950 shadow-lg">
+                            <CardContent className="pt-6">
+                                <TemplateSwitcher
+                                    currentTemplate={selectedTemplate}
+                                    onTemplateChange={setSelectedTemplate}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {/* Template-Based Itinerary Display */}
+                        {selectedTemplate === 'safari-story' && (
+                            <SafariStoryView itinerary={result} />
+                        )}
+                        {selectedTemplate === 'urban-brief' && (
+                            <UrbanBriefView itinerary={result} />
+                        )}
+                        {selectedTemplate === 'professional' && (
+                            <ProfessionalView itinerary={result} />
+                        )}
+
+                        {/* Trip Highlights Section (Hidden - now part of templates) */}
+                        {false && (
                         {result.tips && result.tips.length > 0 && (
                             <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-100 dark:border-green-800/30 shadow-md">
                                 <CardHeader>
@@ -406,8 +430,6 @@ Make it practical and specific:
                                 </CardContent>
                             </Card>
                         )}
-
-                        {/* Day by Day - Accordion with Timeline */}
                         <div className="space-y-6">
                             {result.days.map((day: Day, dayIndex: number) => {
                                 const isExpanded = expandedDays.has(day.day_number);
