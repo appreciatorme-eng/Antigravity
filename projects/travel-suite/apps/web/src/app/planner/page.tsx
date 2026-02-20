@@ -409,27 +409,6 @@ Make it practical and specific:
                         )}
 
                         {/* Trip Highlights Section (Hidden - now part of templates) */}
-                        {false && (
-                        {result.tips && result.tips.length > 0 && (
-                            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-100 dark:border-green-800/30 shadow-md">
-                                <CardHeader>
-                                    <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
-                                        <span className="text-3xl">✨</span>
-                                        Trip Highlights
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <ul className="space-y-3">
-                                        {result.tips.map((tip, idx) => (
-                                            <li key={idx} className="flex items-start gap-3 text-gray-700 dark:text-slate-200">
-                                                <span className="text-[#18974e] text-xl mt-0.5 shrink-0">✓</span>
-                                                <span className="leading-relaxed">{tip}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </CardContent>
-                            </Card>
-                        )}
                         <div className="space-y-6">
                             {result.days.map((day: Day, dayIndex: number) => {
                                 const isExpanded = expandedDays.has(day.day_number);
