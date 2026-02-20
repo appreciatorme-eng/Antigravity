@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import { z } from 'zod';
+import Groq from "groq-sdk";
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
+import { getSemanticMatch, saveSemanticMatch } from '@/lib/semantic-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 import { Ratelimit } from '@upstash/ratelimit';
@@ -270,7 +272,20 @@ export async function POST(req: NextRequest) {
             console.warn("Redis fallback missed / connection issue");
         }
 
-        console.log(`❌ [TIER 0: REDIS MISS] ${destination} - trying RAG templates...`);
+        console.log(`❌ [TIER 0: REDIS MISS] ${destination} - trying Semantic Cache...`);
+
+        // TIER 0.5: SEMANTIC CACHE (Vector Match)
+        try {
+            const semanticMatch = await getSemanticMatch(prompt, destination, days);
+            if (semanticMatch) {
+                console.log(`✅ [TIER 0.5: SEMANTIC CACHE HIT] exact itinerary match saved API cost!`);
+                return NextResponse.json(semanticMatch);
+            }
+        } catch (e) {
+            console.error('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
+        }
+
+        console.log(`❌ [TIER 0.5: SEMANTIC MISS] ${destination} - trying RAG templates...`);
 
         // TIER 2: RAG TEMPLATE SEARCH (Unified Knowledge Base)
         try {
@@ -385,15 +400,7 @@ export async function POST(req: NextRequest) {
             required: ["trip_title", "destination", "duration_days", "summary", "days"]
         };
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: itinerarySchema,
-            },
-        });
-
+        let itinerary: any;
         const finalPrompt = `Create a ${days}-day travel itinerary for: "${prompt}".
 
 Requirements:
@@ -404,14 +411,70 @@ Requirements:
 - Include specific times, durations, costs, and transport directions
 - Location must include neighborhood/district`;
 
-        let itinerary: any;
         try {
-            // Occasionally the provider can hang; cap time so the UI doesn't spin forever.
-            const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
-            const responseText = result.response.text();
+            // ROUTER: Use Groq LLama-3-8b for basic, cheap queries
+            if (prompt.length < 100 && days <= 10 && process.env.GROQ_API_KEY) {
+                console.log(`⚡ [MODEL ROUTER: GROQ] Prompt is simple, routing to Llama-3-8b...`);
+                const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-            // SDK strictly returns valid JSON matching the schema
-            itinerary = JSON.parse(responseText.trim());
+                // We inject the JSON schema requirements so Llama knows how to format
+                const groqSystemPrompt = `You are an expert travel planner. You MUST output valid JSON exactly adhering to this structure:
+{
+  "trip_title": "string",
+  "destination": "string",
+  "duration_days": number,
+  "summary": "string",
+  "budget": "string",
+  "interests": ["string"],
+  "tips": ["string"],
+  "days": [
+    {
+      "day_number": number,
+      "theme": "string",
+      "activities": [
+        {
+          "time": "string",
+          "title": "searchable landmark",
+          "description": "3-4 sentences",
+          "location": "string",
+          "cost": "string",
+          "transport": "string",
+          "coordinates": { "lat": number, "lng": number }
+        }
+      ]
+    }
+  ]
+}
+Return ONLY valid raw JSON and absolutely nothing else.`;
+
+                const chatCompletion = await groq.chat.completions.create({
+                    messages: [
+                        { role: 'system', content: groqSystemPrompt },
+                        { role: 'user', content: finalPrompt }
+                    ],
+                    model: 'llama3-8b-8192',
+                    temperature: 0.5,
+                    max_completion_tokens: 8000,
+                    response_format: { type: 'json_object' }
+                });
+
+                const responseContent = chatCompletion.choices[0]?.message?.content || "";
+                itinerary = JSON.parse(responseContent);
+            } else {
+                console.log(`🧠 [MODEL ROUTER: GEMINI] Prompt is complex or Groq is missing, routing to Gemini 2.5...`);
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({
+                    model: "gemini-2.5-flash",
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: itinerarySchema,
+                    },
+                });
+
+                const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
+                const responseText = result.response.text();
+                itinerary = JSON.parse(responseText.trim());
+            }
         } catch (innerError) {
             console.error("AI Generation Error (fallback):", innerError);
             itinerary = await buildFallbackItinerary(prompt, days);
@@ -503,6 +566,13 @@ Requirements:
             });
         } else {
             console.log('⚠️ Skipping cache save for fallback itinerary');
+        }
+
+        // Save to semantic pgvector cache asynchronously
+        if (process.env.OPENAI_API_KEY && !isFallbackItinerary) {
+            saveSemanticMatch(prompt, destination, days, geocodedItinerary)
+                .then(() => console.log('✅ [TIER 0.5: SEMANTIC CACHE STORED]'))
+                .catch(e => console.error(e));
         }
 
         return NextResponse.json(geocodedItinerary);

@@ -10,6 +10,8 @@ const serverSchema = z.object({
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
     GOOGLE_API_KEY: z.string().min(1).optional(),
     GOOGLE_GEMINI_API_KEY: z.string().min(1).optional(),
+    GROQ_API_KEY: z.string().min(1).optional(),
+    OPENAI_API_KEY: z.string().min(1).optional(),
 });
 
 /**
