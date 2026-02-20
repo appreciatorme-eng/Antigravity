@@ -6,9 +6,11 @@ export interface Coordinate {
 export interface Activity {
     time: string;
     title: string;
+    name?: string; // Activity name (alternative to title, used in some templates)
     description: string;
     location: string;
     type?: string; // Activity type (e.g., 'transport', 'meal', 'activity')
+    tags?: string[]; // Activity tags for categorization
     coordinates?: Coordinate;
     duration?: string;
     cost?: string;
@@ -18,7 +20,11 @@ export interface Activity {
 
 export interface Day {
     day_number: number;
+    day?: number; // Alternative day number field
     theme: string;
+    title?: string; // Optional title for the day
+    date?: string; // Optional date for the day (e.g., "2024-03-15")
+    summary?: string; // Optional summary/description of the day
     activities: Activity[];
 }
 
