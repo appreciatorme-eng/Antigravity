@@ -7,7 +7,15 @@ import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/l
 function extractDestination(prompt: string): string {
     // Best-effort: try to extract the first "for <destination>" clause.
     const m = prompt.match(/\bfor\s+([^.\n"]{2,80})/i);
-    return (m?.[1] || prompt).trim().slice(0, 80);
+    const extracted = (m?.[1] || prompt).trim();
+
+    // Clean up: remove anything after "focusing on" or similar phrases
+    const cleaned = extracted
+        .replace(/\s+(focusing on|with|including|featuring).*$/i, '')
+        .trim()
+        .slice(0, 80);
+
+    return cleaned;
 }
 
 function buildFallbackItinerary(prompt: string, days: number) {
