@@ -21,16 +21,16 @@ export async function GET(req: NextRequest) {
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 generationConfig: { responseMimeType: 'application/json' },
             });
-            const result = await model.generateContent('Return JSON: {"greeting":"hello","model":"gemini-2.0-flash"}');
+            const result = await model.generateContent('Return JSON: {"greeting":"hello","model":"gemini-2.5-flash"}');
             const text = result.response.text();
-            return NextResponse.json({ success: true, model: 'gemini-2.0-flash', response: JSON.parse(text) });
+            return NextResponse.json({ success: true, model: 'gemini-2.5-flash', response: JSON.parse(text) });
         } catch (error) {
             return NextResponse.json({
                 success: false,
-                model: 'gemini-2.0-flash',
+                model: 'gemini-2.5-flash',
                 error: error instanceof Error ? error.message : String(error),
             }, { status: 500 });
         }
