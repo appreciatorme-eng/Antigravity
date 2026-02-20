@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud } from "lucide-react";
+import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
-import ShareItinerary from "./ShareItinerary";
 import SaveItineraryButton from "./SaveItineraryButton";
+import ShareTripModal from "@/components/ShareTripModal";
 import WeatherWidget from "@/components/WeatherWidget";
 import CurrencyConverter from "@/components/CurrencyConverter";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ export default function PlannerPage() {
     const [result, setResult] = useState<ItineraryResult | null>(null);
     const [error, setError] = useState("");
     const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari_story');
+    const [isShareOpen, setIsShareOpen] = useState(false);
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1])); // First day expanded by default
@@ -325,7 +326,12 @@ Make it practical and specific:
                                     budget={budget}
                                     interests={interests}
                                 />
-                                <ShareItinerary tripTitle={result.trip_title} />
+                                <button
+                                    onClick={() => setIsShareOpen(true)}
+                                    className="px-4 py-2 bg-white text-secondary hover:bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 transition-all text-sm font-medium"
+                                >
+                                    <Share2 className="w-4 h-4" /> Share Trip
+                                </button>
                                 <DownloadPDFButton
                                     data={result}
                                     fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
@@ -552,6 +558,17 @@ Make it practical and specific:
                         {error}
                         <button onClick={() => setError("")} className="ml-2 hover:bg-red-50 p-1 rounded-full"><span className="sr-only">Dismiss</span>×</button>
                     </div>
+                )}
+
+                {/* Share Trip Modal — renders as overlay when opened */}
+                {result && (
+                    <ShareTripModal
+                        isOpen={isShareOpen}
+                        onClose={() => setIsShareOpen(false)}
+                        tripTitle={result.trip_title}
+                        rawItineraryData={result}
+                        initialTemplateId={selectedTemplate}
+                    />
                 )}
             </div>
         </main>
