@@ -20,6 +20,79 @@ interface GeocodeError {
 }
 
 /**
+ * Track cache hit in usage statistics
+ */
+async function trackCacheHit(): Promise<void> {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        return;
+    }
+
+    try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        await supabase.rpc('increment_geocoding_cache_hit');
+    } catch (error) {
+        console.error('Failed to track cache hit (non-blocking):', error);
+    }
+}
+
+/**
+ * Check if API calls are allowed this month
+ */
+async function canMakeApiCall(): Promise<boolean> {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        return false;
+    }
+
+    try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data, error } = await supabase.rpc('can_make_geocoding_api_call');
+
+        if (error) {
+            console.error('Error checking API limit:', error);
+            return false;
+        }
+
+        return data === true;
+    } catch (error) {
+        console.error('Failed to check API limit:', error);
+        return false;
+    }
+}
+
+/**
+ * Track API call in usage statistics
+ */
+async function trackApiCall(): Promise<boolean> {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        return false;
+    }
+
+    try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data, error } = await supabase.rpc('increment_geocoding_api_call');
+
+        if (error) {
+            console.error('Error tracking API call:', error);
+            return false;
+        }
+
+        return data === true;
+    } catch (error) {
+        console.error('Failed to track API call:', error);
+        return false;
+    }
+}
+
+/**
  * Get geocoding result from database cache
  */
 async function getFromCache(location: string): Promise<GeocodeResult | null> {
@@ -42,6 +115,9 @@ async function getFromCache(location: string): Promise<GeocodeResult | null> {
     if (error || !data) {
         return null;
     }
+
+    // Track cache hit
+    await trackCacheHit();
 
     return {
         coordinates: {
@@ -85,7 +161,7 @@ async function saveToCache(
 }
 
 /**
- * Geocode using Mapbox API
+ * Geocode using Mapbox API with rate limiting
  */
 async function geocodeWithMapbox(
     location: string,
@@ -95,6 +171,20 @@ async function geocodeWithMapbox(
 
     if (!mapboxToken) {
         console.warn('NEXT_PUBLIC_MAPBOX_TOKEN not configured');
+        return null;
+    }
+
+    // Check if we can make API calls this month
+    const allowed = await canMakeApiCall();
+    if (!allowed) {
+        console.warn('⚠️ Geocoding API limit reached for this month (90k requests). Using cache only.');
+        return null;
+    }
+
+    // Track the API call BEFORE making it
+    const tracked = await trackApiCall();
+    if (!tracked) {
+        console.warn('⚠️ Could not track API call - aborting to stay within limits');
         return null;
     }
 
@@ -121,6 +211,8 @@ async function geocodeWithMapbox(
 
         const feature = data.features[0];
         const [lng, lat] = feature.center;
+
+        console.log(`📍 Geocoded: "${location}" → [${lat}, ${lng}]`);
 
         return {
             coordinates: { lat, lng },
@@ -192,4 +284,51 @@ export async function getCityCenter(cityName: string): Promise<[number, number] 
     const result = await geocodeLocation(cityName);
     if (!result) return null;
     return [result.coordinates.lng, result.coordinates.lat];
+}
+
+/**
+ * Get current month's geocoding usage statistics
+ */
+export async function getGeocodingUsageStats(): Promise<{
+    monthYear: string;
+    totalRequests: number;
+    cacheHits: number;
+    apiCalls: number;
+    cacheHitRate: number;
+    remainingCalls: number;
+    limitThreshold: number;
+    limitReached: boolean;
+    lastApiCallAt: string | null;
+} | null> {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+        return null;
+    }
+
+    try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data, error } = await supabase.rpc('get_geocoding_usage_stats').single();
+
+        if (error) {
+            console.error('Error getting usage stats:', error);
+            return null;
+        }
+
+        return {
+            monthYear: data.month_year,
+            totalRequests: parseInt(data.total_requests),
+            cacheHits: parseInt(data.cache_hits),
+            apiCalls: parseInt(data.api_calls),
+            cacheHitRate: parseFloat(data.cache_hit_rate),
+            remainingCalls: data.remaining_calls,
+            limitThreshold: data.limit_threshold,
+            limitReached: data.limit_reached,
+            lastApiCallAt: data.last_api_call_at,
+        };
+    } catch (error) {
+        console.error('Failed to get usage stats:', error);
+        return null;
+    }
 }
