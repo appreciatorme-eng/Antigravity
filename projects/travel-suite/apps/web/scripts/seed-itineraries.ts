@@ -11,16 +11,28 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Top 50 Global Tourist Destinations
+// Top Global and Indian Tourist Destinations
 const destinations = [
+    // Top Global
     "Paris", "London", "Dubai", "Tokyo", "Rome", "New York City", "Istanbul",
     "Bangkok", "Barcelona", "Amsterdam", "Singapore", "Seoul", "Venice",
     "Los Angeles", "Las Vegas", "Miami", "Kyoto", "Bali", "Sydney", "Florence",
     "Madrid", "Vienna", "Prague", "Milan", "Athens", "Berlin", "Munich",
     "San Francisco", "Chicago", "Toronto", "Vancouver", "Montreal", "Cancun",
     "Mexico City", "Rio de Janeiro", "Buenos Aires", "Cape Town", "Cairo",
-    "Marrakech", "Mumbai", "New Delhi", "Phuket", "Ho Chi Minh City", "Taipei",
-    "Osaka", "Lisbon", "Porto", "Zurich", "Geneva", "Budapest"
+    "Marrakech", "Phuket", "Ho Chi Minh City", "Taipei",
+    "Osaka", "Lisbon", "Porto", "Zurich", "Geneva", "Budapest",
+
+    // Top Indian Destinations
+    "Mumbai", "New Delhi", "Bengaluru", "Goa", "Jaipur", "Udaipur",
+    "Agra", "Varanasi", "Kochi", "Munnar", "Kolkata", "Chennai",
+    "Hyderabad", "Pune", "Ahmedabad", "Rishikesh", "Manali",
+    "Shimla", "Darjeeling", "Leh Ladakh", "Amritsar", "Jaisalmer",
+    "Jodhpur", "Pondicherry", "Mysore", "Andaman Islands",
+    "Srinagar", "Ooty", "Kodaikanal", "Hampi", "Trivandrum",
+    "Mahabaleshwar", "Gokarna", "Mcleodganj", "Khajuraho",
+    "Ranthambore", "Coorg", "Shillong", "Gangtok", "Dharamshala",
+    "Varkala", "Nainital", "Mount Abu", "Pushkar", "Tirupati"
 ];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -117,7 +129,7 @@ Requirements:
 }
 
 async function runSeeder() {
-    console.log("🚀 Initializing 'Pareto' Top 50 Itinerary Pre-Generation Seeding Engine");
+    console.log(`🚀 Initializing 'Pareto' Top ${destinations.length} Itinerary Pre-Generation Seeding Engine`);
 
     if (!process.env.GROQ_API_KEY || !process.env.OPENAI_API_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
         console.error("❌ Missing required API keys. Ensure .env file has GROQ, OPENAI, and SUPABASE keys.");
@@ -133,7 +145,7 @@ async function runSeeder() {
         await sleep(2000);
     }
 
-    console.log("\n✅ All top 50 destinations fully seeded successfully.");
+    console.log(`\n✅ All ${destinations.length} destinations fully seeded successfully.`);
     process.exit(0);
 }
 
