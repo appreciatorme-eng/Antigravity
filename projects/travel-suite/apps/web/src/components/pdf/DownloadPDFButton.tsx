@@ -26,30 +26,32 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
       // Small delay to ensure any layout shifts/images have loaded
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const html2canvasModule = await import('html2canvas');
-      const html2canvas = html2canvasModule.default || html2canvasModule;
+      const htmlToImage = await import('html-to-image');
       const jspdfModule = await import('jspdf');
       const jsPDF = jspdfModule.jsPDF || jspdfModule.default || jspdfModule;
 
-      const canvas = await (html2canvas as any)(element, {
-        scale: 2, // higher scale for better resolution
-        useCORS: true, // to load remote images
-        logging: true,
+      const imgData = await htmlToImage.toPng(element, {
+        pixelRatio: 2, // higher scale for better resolution
         backgroundColor: '#ffffff',
-        ignoreElements: (node: Element) => {
-          if (node && typeof node.hasAttribute === 'function' && node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
-            return true;
+        filter: (node: HTMLElement) => {
+          if (node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
+            return false;
           }
-          return false;
+          return true;
         }
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const img = new Image();
+      img.src = imgData;
+      await new Promise(resolve => { img.onload = resolve; });
+
+      const canvasWidth = img.width;
+      const canvasHeight = img.height;
 
       const pdf = new (jsPDF as any)('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = (canvasHeight * pdfWidth) / canvasWidth;
 
       let heightLeft = pdfHeight;
       let position = 0;
