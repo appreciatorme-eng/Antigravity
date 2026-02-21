@@ -142,6 +142,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                 itineraryId={itinerary.id}
                 tripTitle={itinerary.trip_title}
                 templateId={templateId}
+                client={clientData}
             />
         </>
     );

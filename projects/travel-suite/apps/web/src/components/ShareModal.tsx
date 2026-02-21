@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { X, Link2, Check, Copy, Mail, Share2 } from "lucide-react";
+import { X, Link2, Check, Copy, Mail, Share2, MessageCircle, Send } from "lucide-react";
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -10,9 +10,14 @@ interface ShareModalProps {
     itineraryId: string;
     tripTitle: string;
     templateId?: string;   // The template saved with this itinerary
+    client?: {
+        name: string;
+        email?: string;
+        phone?: string;
+    } | null;
 }
 
-export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, templateId = "safari_story" }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, templateId = "safari_story", client }: ShareModalProps) {
     const supabase = createClient();
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -96,15 +101,42 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
 
     const shareViaEmail = () => {
         if (!shareUrl) return;
-        const subject = encodeURIComponent(`Check out my trip to ${tripTitle}`);
-        const body = encodeURIComponent(`I planned this trip with GoBuddy Adventures!\n\n${shareUrl}`);
-        window.open(`mailto:?subject=${subject}&body=${body}`);
+        if (!client?.email) {
+            setError("Cannot send email: Client email is missing.");
+            return;
+        }
+        setError("");
+        const subject = encodeURIComponent(`Your bespoke itinerary to ${tripTitle}`);
+        const body = encodeURIComponent(`Hello ${client.name},\n\nI have prepared your personalized itinerary for ${tripTitle}. You can view it here:\n\n${shareUrl}\n\nLooking forward to your feedback!`);
+        window.open(`mailto:${client.email}?subject=${subject}&body=${body}`);
     };
 
-    const shareViaTwitter = () => {
+    const shareViaWhatsApp = () => {
         if (!shareUrl) return;
-        const text = encodeURIComponent(`Check out my trip to ${tripTitle}! Planned with @GoBuddyAdventures`);
-        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`);
+        if (!client?.phone) {
+            setError("Cannot send WhatsApp: Client phone number is missing.");
+            return;
+        }
+        setError("");
+        const text = encodeURIComponent(`Hello ${client.name}, here is your personalized itinerary for ${tripTitle}: ${shareUrl}`);
+        window.open(`https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=${text}`);
+    };
+
+    const shareViaBoth = () => {
+        if (!shareUrl) return;
+        let missing = [];
+        if (!client?.email) missing.push("email");
+        if (!client?.phone) missing.push("phone number");
+
+        if (missing.length > 0) {
+            setError(`Missing client ${missing.join(" and ")}.`);
+            return;
+        }
+
+        setError("");
+        // Sequence: Open WhatsApp first, then Email
+        shareViaWhatsApp();
+        setTimeout(shareViaEmail, 1000);
     };
 
     if (!isOpen) return null;
@@ -185,23 +217,38 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
 
                         {/* Share options */}
                         <div className="pt-4 border-t border-gray-100">
-                            <p className="text-sm text-gray-500 mb-3">Or share via:</p>
-                            <div className="flex gap-3">
+                            <p className="text-sm text-gray-500 mb-3 font-medium">Send directly to {client?.name || "client"}:</p>
+
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 animate-in fade-in slide-in-from-top-2">
+                                    {error}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={shareViaEmail}
+                                        className="flex-1 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-all hover:border-primary/20 bg-white"
+                                    >
+                                        <Mail className="w-4 h-4 text-primary" />
+                                        <span className="text-sm font-medium text-gray-700">Send Email</span>
+                                    </button>
+                                    <button
+                                        onClick={shareViaWhatsApp}
+                                        className="flex-1 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-all hover:border-green-500/20 bg-white"
+                                    >
+                                        <MessageCircle className="w-4 h-4 text-green-500" />
+                                        <span className="text-sm font-medium text-gray-700">WhatsApp</span>
+                                    </button>
+                                </div>
+
                                 <button
-                                    onClick={shareViaEmail}
-                                    className="flex-1 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-all"
+                                    onClick={shareViaBoth}
+                                    className="w-full py-2.5 bg-secondary text-white rounded-lg hover:opacity-90 flex items-center justify-center gap-2 transition-all shadow-sm"
                                 >
-                                    <Mail className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-700">Email</span>
-                                </button>
-                                <button
-                                    onClick={shareViaTwitter}
-                                    className="flex-1 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-all"
-                                >
-                                    <svg className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-gray-700">X</span>
+                                    <Send className="w-4 h-4" />
+                                    <span className="text-sm font-semibold">Send via Both</span>
                                 </button>
                             </div>
                         </div>
