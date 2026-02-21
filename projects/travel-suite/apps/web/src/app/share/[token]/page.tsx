@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
-import { getTemplateById } from "@/components/templates/TemplateRegistry";
+import ShareTemplateRenderer from "./ShareTemplateRenderer";
 
 export default async function SharedTripPage({
     params,
@@ -90,28 +90,25 @@ export default async function SharedTripPage({
     const organizationName: string =
         (Array.isArray(org) ? org[0]?.name : org?.name) || "Travel Adventures";
 
-    // Resolve the template
-    const templateId: string = (share as any).template_id || "classic";
-    const templateDef = getTemplateById(templateId);
-    const TemplateComponent = templateDef.component;
+    // Resolve the template (default to safari_story — the first premium template)
+    const templateId: string = (share as any).template_id || "safari_story";
 
     // Resolve client data
-    let clientData = null;
+    let clientData: { name: string; email?: string } | null = null;
     const clientRecord = (itinerary as any).clients;
     if (clientRecord && clientRecord.profiles) {
         clientData = {
-            name: clientRecord.profiles.full_name || 'Valued Client',
-            email: clientRecord.profiles.email
+            name: clientRecord.profiles.full_name || "Valued Client",
+            email: clientRecord.profiles.email,
         };
     }
 
-    // The new 6 templates use `itinerary` prop; the legacy Classic/Modern use `itineraryData`.
-    // We pass both so whichever convention the component implements, it will work.
-    const AnyTemplate = TemplateComponent as any;
+    // Delegate rendering to a client component — all template components use "use client"
+    // and cannot be dynamically resolved inside a server component.
     return (
-        <AnyTemplate
+        <ShareTemplateRenderer
+            templateId={templateId}
             itinerary={fullTripData}
-            itineraryData={fullTripData}
             organizationName={organizationName}
             client={clientData}
         />
