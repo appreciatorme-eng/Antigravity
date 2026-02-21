@@ -54,10 +54,25 @@ export interface Logistics {
     hotels?: HotelDetails[];
 }
 
+export interface PricingAddOn {
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    category: string;
+}
+
+export interface Pricing {
+    basePrice: number;
+    passengerCount: number;
+    availableAddOns?: PricingAddOn[];
+}
+
 export interface ItineraryResult {
     trip_title: string;
     title?: string; // Alias for trip_title used in templates
     description?: string;
+    pricing?: Pricing;
     destination: string;
     duration_days: number;
     summary: string;
