@@ -26,17 +26,18 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
       // Small delay to ensure any layout shifts/images have loaded
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Dynamically import to avoid SSR issues
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
+      const html2canvasModule = await import('html2canvas');
+      const html2canvas = html2canvasModule.default || html2canvasModule;
+      const jspdfModule = await import('jspdf');
+      const jsPDF = jspdfModule.jsPDF || jspdfModule.default || jspdfModule;
 
-      const canvas = await html2canvas(element, {
+      const canvas = await (html2canvas as any)(element, {
         scale: 2, // higher scale for better resolution
         useCORS: true, // to load remote images
-        logging: false,
+        logging: true,
         backgroundColor: '#ffffff',
-        ignoreElements: (node) => {
-          if (node.classList && node.classList.contains('print:hidden')) {
+        ignoreElements: (node: Element) => {
+          if (node && typeof node.hasAttribute === 'function' && node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
             return true;
           }
           return false;
@@ -45,7 +46,7 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
 
       const imgData = canvas.toDataURL('image/png');
 
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdf = new (jsPDF as any)('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -70,7 +71,8 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
 
     } catch (error) {
       console.error("Failed to generate PDF", error);
-      alert('Failed to generate PDF. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Failed to generate PDF: ${errorMessage}\nPlease try again.`);
     } finally {
       setLoading(false);
     }
