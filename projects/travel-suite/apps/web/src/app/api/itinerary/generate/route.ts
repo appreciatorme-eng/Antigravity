@@ -6,6 +6,7 @@ import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/
 import { getSemanticMatch, saveSemanticMatch } from '@/lib/semantic-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
+import { populateItineraryImages } from '@/lib/image-search';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -305,6 +306,9 @@ export async function POST(req: NextRequest) {
                     // GEOCODE ACTIVITIES - Add accurate coordinates
                     const geocodedItinerary = await geocodeItineraryActivities(itinerary);
 
+                    // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
+                    await populateItineraryImages(geocodedItinerary);
+
                     // Extract cache params for consistency
                     const cacheParams = extractCacheParams(prompt, geocodedItinerary);
 
@@ -546,6 +550,9 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
         // GEOCODE ACTIVITIES - Add accurate coordinates to all activities
         const geocodedItinerary = await geocodeItineraryActivities(itinerary);
+
+        // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
+        await populateItineraryImages(geocodedItinerary);
 
         // CACHE SAVE - Only cache AI-generated itineraries (not fallbacks)
         const isFallbackItinerary = typeof geocodedItinerary.summary === 'string' &&
