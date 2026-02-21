@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Plane, Hotel, Plus, Trash2, Navigation } from 'lucide-react';
+import { Plane, Hotel, Plus, Trash2, Navigation, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FlightDetails, HotelDetails, Logistics, ItineraryResult } from '@/types/itinerary';
@@ -99,12 +99,12 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                         <div className="md:col-span-3 space-y-2">
                             <label className="text-xs text-gray-500">Departure</label>
                             <Input value={flight.departure_airport} onChange={e => updateFlight(idx, 'departure_airport', e.target.value)} placeholder="JFK" />
-                            <Input value={flight.departure_time} onChange={e => updateFlight(idx, 'departure_time', e.target.value)} placeholder="Departure Time" />
+                            <Input type="datetime-local" value={flight.departure_time} onChange={e => updateFlight(idx, 'departure_time', e.target.value)} />
                         </div>
                         <div className="md:col-span-3 space-y-2">
                             <label className="text-xs text-gray-500">Arrival</label>
                             <Input value={flight.arrival_airport} onChange={e => updateFlight(idx, 'arrival_airport', e.target.value)} placeholder="LHR" />
-                            <Input value={flight.arrival_time} onChange={e => updateFlight(idx, 'arrival_time', e.target.value)} placeholder="Arrival Time" />
+                            <Input type="datetime-local" value={flight.arrival_time} onChange={e => updateFlight(idx, 'arrival_time', e.target.value)} />
                         </div>
                         <div className="md:col-span-1 pt-6 text-right">
                             <Button variant="ghost" size="icon" onClick={() => removeFlight(idx)} className="text-red-500">
@@ -140,8 +140,8 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                         </div>
                         <div className="md:col-span-3 space-y-2">
                             <label className="text-xs text-gray-500">Dates</label>
-                            <Input value={hotel.check_in} onChange={e => updateHotel(idx, 'check_in', e.target.value)} placeholder="Check in" />
-                            <Input value={hotel.check_out} onChange={e => updateHotel(idx, 'check_out', e.target.value)} placeholder="Check out" />
+                            <Input type="date" value={hotel.check_in} onChange={e => updateHotel(idx, 'check_in', e.target.value)} />
+                            <Input type="date" value={hotel.check_out} onChange={e => updateHotel(idx, 'check_out', e.target.value)} />
                         </div>
                         <div className="md:col-span-1 pt-6 text-right">
                             <Button variant="ghost" size="icon" onClick={() => removeHotel(idx)} className="text-red-500">

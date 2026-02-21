@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Pricing } from '@/types/itinerary';
-import { DollarSign, CheckCircle2, Circle } from 'lucide-react';
+import { IndianRupee, CheckCircle2, Circle } from 'lucide-react';
 
 interface InteractivePricingProps {
     pricing?: Pricing;
@@ -52,7 +52,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <p className="text-sm text-gray-500 dark:text-gray-400">Includes all standard accommodations and scheduled activities.</p>
                         </div>
                         <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                            ${pricing.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{pricing.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                     </div>
 
@@ -68,8 +68,8 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                                             key={addon.id}
                                             onClick={() => handleToggle(addon.id)}
                                             className={`relative flex items-center justify-between p-5 rounded-xl border-2 transition-all cursor-pointer ${isSelected
-                                                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10'
-                                                    : 'border-gray-100 dark:border-white/10 hover:border-emerald-200 dark:hover:border-emerald-500/30'
+                                                ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10'
+                                                : 'border-gray-100 dark:border-white/10 hover:border-emerald-200 dark:hover:border-emerald-500/30'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
@@ -89,7 +89,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                                                 </div>
                                             </div>
                                             <div className={`font-bold whitespace-nowrap ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                + ${addon.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                + ₹{addon.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                         </div>
                                     );
@@ -105,8 +105,8 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <p className="text-xs text-gray-400">Prices are subject to final confirmation.</p>
                         </div>
                         <div className="text-4xl font-bold flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <DollarSign className="w-8 h-8 opacity-50" />
-                            {finalTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <IndianRupee className="w-8 h-8 opacity-50" />
+                            {finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                     </div>
                 </div>

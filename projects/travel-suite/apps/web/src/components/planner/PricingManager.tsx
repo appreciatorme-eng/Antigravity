@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Trash2 } from 'lucide-react';
+import { IndianRupee, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pricing, PricingAddOn, ItineraryResult } from '@/types/itinerary';
@@ -28,6 +28,14 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
         }
         load();
     }, []);
+
+    const formatIndianNumber = (num: number) => {
+        return num.toLocaleString('en-IN');
+    };
+
+    const parseIndianNumber = (str: string) => {
+        return parseFloat(str.replace(/,/g, '')) || 0;
+    };
 
     const updatePricing = (field: keyof Pricing, val: number) => {
         const pricing = data.pricing || { basePrice: 0, passengerCount: 1, availableAddOns: [] };
@@ -78,17 +86,17 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
     return (
         <div className="space-y-6">
             <h2 className="text-xl font-bold font-serif flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-500" /> Pricing & Add-ons
+                <IndianRupee className="w-5 h-5 text-emerald-500" /> Pricing & Add-ons
             </h2>
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Base Price (Total or Per Person)</label>
                         <Input
-                            type="number"
-                            value={data.pricing?.basePrice || 0}
-                            onChange={(e) => updatePricing('basePrice', parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
+                            type="text"
+                            value={formatIndianNumber(data.pricing?.basePrice || 0)}
+                            onChange={(e) => updatePricing('basePrice', parseIndianNumber(e.target.value))}
+                            placeholder="0"
                         />
                     </div>
                     <div className="space-y-2">
@@ -118,7 +126,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                             >
                                 <option value="">+ Add from Catalog...</option>
                                 {dbAddOns.map(a => (
-                                    <option key={a.id} value={a.id}>{a.name} (${a.price})</option>
+                                    <option key={a.id} value={a.id}>{a.name} (₹{formatIndianNumber(a.price)})</option>
                                 ))}
                             </select>
                             <Button variant="outline" size="sm" onClick={() => addPricingAddOn()}>
@@ -142,10 +150,10 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                                     <div className="w-32 space-y-1">
                                         <label className="text-xs text-gray-500">Price</label>
                                         <Input
-                                            type="number"
-                                            value={addon.price}
-                                            onChange={e => updatePricingAddOn(idx, 'price', e.target.value)}
-                                            placeholder="0.00"
+                                            type="text"
+                                            value={formatIndianNumber(addon.price)}
+                                            onChange={e => updatePricingAddOn(idx, 'price', parseIndianNumber(e.target.value))}
+                                            placeholder="0"
                                         />
                                     </div>
                                     <div className="w-32 space-y-1">
