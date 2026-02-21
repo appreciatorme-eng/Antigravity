@@ -25,7 +25,7 @@ export default async function SharedTripPage({
                 *,
                 clients ( id, profiles ( full_name, email ) ),
                 profiles!itineraries_user_id_fkey (
-                    organizations ( name, logo_url, primary_color )
+                    organizations!profiles_organization_id_fkey ( name, logo_url, primary_color )
                 )
             )
         `)
