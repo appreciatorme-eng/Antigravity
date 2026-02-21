@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
@@ -10,11 +10,14 @@ export default async function SharedTripPage({
 }: {
     params: Promise<{ token: string }>;
 }) {
-    const supabase = await createClient();
+    const supabaseAdmin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+    );
     const { token } = await params;
 
     // Fetch the shared record AND the org info (for branding)
-    const { data: share, error: shareError } = await supabase
+    const { data: share, error: shareError } = await supabaseAdmin
         .from("shared_itineraries")
         .select(`
             *,
@@ -60,7 +63,7 @@ export default async function SharedTripPage({
     }
 
     // Track the view
-    await supabase
+    await supabaseAdmin
         .from("shared_itineraries")
         .update({ viewed_at: new Date().toISOString() })
         .eq("id", share.id);
