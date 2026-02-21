@@ -47,7 +47,7 @@ export default function PlannerPage() {
     const [isShareOpen, setIsShareOpen] = useState(false);
 
     const [images, setImages] = useState<Record<string, string | null>>({});
-    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1])); // First day expanded by default
+    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])); // All days expanded by default
 
     const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
 

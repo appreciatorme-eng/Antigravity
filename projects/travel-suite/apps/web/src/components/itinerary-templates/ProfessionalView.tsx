@@ -10,7 +10,7 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
     logoUrl,
     organizationName
 }) => {
-    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
+    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
     const toggleDay = (dayNumber: number) => {
         setExpandedDays(prev => {

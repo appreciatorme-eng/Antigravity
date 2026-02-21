@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Moon } from
 
 export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
   // Open the first day by default
-  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
   // Default to an earthy olive/khaki color if no brand color is provided
   const brandColor = itinerary.branding?.primaryColor || '#4b5320'; // Army green / Olive
