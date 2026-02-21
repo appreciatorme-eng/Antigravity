@@ -196,7 +196,7 @@ Make it practical and specific:
     return (
         <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
             <div className="w-full max-w-full">
-                <div className="max-w-4xl mx-auto px-6 pt-10 pb-4 text-center">
+                <div className="max-w-4xl mx-auto px-6 pt-10 pb-4 text-center print:hidden">
                     <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
                     <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
                 </div>
@@ -313,7 +313,7 @@ Make it practical and specific:
                     <>
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                             {/* Actions Bar */}
-                            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10">
+                            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10 print:hidden">
                                 <Button
                                     variant="ghost"
                                     onClick={() => setResult(null)}
@@ -398,7 +398,7 @@ Make it practical and specific:
                             </Card>
 
                             {/* Template Switcher */}
-                            <Card className="bg-white dark:bg-slate-950 shadow-lg">
+                            <Card className="bg-white dark:bg-slate-950 shadow-lg print:hidden">
                                 <CardContent className="pt-6">
                                     <TemplateSwitcher
                                         currentTemplate={selectedTemplate}
