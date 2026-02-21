@@ -134,7 +134,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary })
                   </button>
 
                   {/* Expanded Content (Magazine layout) */}
-                  <div className={`transition-all duration-700 ease-in-out ${isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                  <div className={`transition-all duration-700 ease-in-out ${isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden [.pdf-exporting_&]:max-h-[5000px] [.pdf-exporting_&]:opacity-100 [.pdf-exporting_&]:overflow-visible'}`}>
                     <div className="px-6 pb-10 md:px-10 md:pb-12 border-t border-stone-100 bg-stone-50/50">
 
                       {day.summary && (

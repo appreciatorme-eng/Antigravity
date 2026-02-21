@@ -124,84 +124,82 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                                     </button>
 
                                     {/* Day Activities */}
-                                    {isExpanded && (
-                                        <div className="px-8 pb-6 space-y-4">
-                                            {day.activities.map((activity, activityIndex) => (
-                                                <div
-                                                    key={activityIndex}
-                                                    className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                                                >
-                                                    <div className="md:flex">
-                                                        {/* Activity Image */}
-                                                        {activity.image && (
-                                                            <div className="md:w-80 md:flex-shrink-0 h-48 md:h-auto">
-                                                                <img
-                                                                    src={activity.image}
-                                                                    alt={activity.title}
-                                                                    className="w-full h-full object-cover"
-                                                                />
-                                                            </div>
-                                                        )}
+                                    <div className={`px-8 pb-6 space-y-4 ${isExpanded ? 'block' : 'hidden [.pdf-exporting_&]:block'}`}>
+                                        {day.activities.map((activity, activityIndex) => (
+                                            <div
+                                                key={activityIndex}
+                                                className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                                            >
+                                                <div className="md:flex">
+                                                    {/* Activity Image */}
+                                                    {activity.image && (
+                                                        <div className="md:w-80 md:flex-shrink-0 h-48 md:h-auto">
+                                                            <img
+                                                                src={activity.image}
+                                                                alt={activity.title}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    )}
 
-                                                        {/* Activity Content */}
-                                                        <div className="flex-1 p-6">
-                                                            {/* Time Badge */}
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                <Badge
-                                                                    variant="secondary"
-                                                                    className="font-medium"
-                                                                    style={{
-                                                                        backgroundColor: `${brandColor}15`,
-                                                                        color: brandColor
-                                                                    }}
-                                                                >
-                                                                    <Clock className="w-3 h-3 mr-1" />
-                                                                    {activity.time}
-                                                                </Badge>
-                                                                {activity.duration && (
-                                                                    <span className="text-sm text-gray-500">
-                                                                        {activity.duration}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                    {/* Activity Content */}
+                                                    <div className="flex-1 p-6">
+                                                        {/* Time Badge */}
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className="font-medium"
+                                                                style={{
+                                                                    backgroundColor: `${brandColor}15`,
+                                                                    color: brandColor
+                                                                }}
+                                                            >
+                                                                <Clock className="w-3 h-3 mr-1" />
+                                                                {activity.time}
+                                                            </Badge>
+                                                            {activity.duration && (
+                                                                <span className="text-sm text-gray-500">
+                                                                    {activity.duration}
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                                            {/* Title */}
-                                                            <h3 className="text-xl font-bold text-gray-900 mb-3">
-                                                                {activity.title}
-                                                            </h3>
+                                                        {/* Title */}
+                                                        <h3 className="text-xl font-bold text-gray-900 mb-3">
+                                                            {activity.title}
+                                                        </h3>
 
-                                                            {/* Description */}
-                                                            <p className="text-gray-700 leading-relaxed mb-4">
-                                                                {activity.description}
-                                                            </p>
+                                                        {/* Description */}
+                                                        <p className="text-gray-700 leading-relaxed mb-4">
+                                                            {activity.description}
+                                                        </p>
 
-                                                            {/* Activity Details */}
-                                                            <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
-                                                                {activity.location && (
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                                        <MapPin className="w-4 h-4" style={{ color: brandColor }} />
-                                                                        <span>{activity.location}</span>
-                                                                    </div>
-                                                                )}
-                                                                {activity.cost && (
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                                        <DollarSign className="w-4 h-4" style={{ color: brandColor }} />
-                                                                        <span>{activity.cost}</span>
-                                                                    </div>
-                                                                )}
-                                                                {activity.transport && (
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                                        <Navigation className="w-4 h-4" style={{ color: brandColor }} />
-                                                                        <span>{activity.transport}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                        {/* Activity Details */}
+                                                        <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-100">
+                                                            {activity.location && (
+                                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                    <MapPin className="w-4 h-4" style={{ color: brandColor }} />
+                                                                    <span>{activity.location}</span>
+                                                                </div>
+                                                            )}
+                                                            {activity.cost && (
+                                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                    <DollarSign className="w-4 h-4" style={{ color: brandColor }} />
+                                                                    <span>{activity.cost}</span>
+                                                                </div>
+                                                            )}
+                                                            {activity.transport && (
+                                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                    <Navigation className="w-4 h-4" style={{ color: brandColor }} />
+                                                                    <span>{activity.transport}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         );

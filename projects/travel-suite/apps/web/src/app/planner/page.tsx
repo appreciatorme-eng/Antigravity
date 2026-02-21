@@ -458,13 +458,13 @@ Make it practical and specific:
                                                             DAY {day.day_number}
                                                         </h3>
                                                         <ChevronDown
-                                                            className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                                                            className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : '[.pdf-exporting_&]:rotate-180'}`}
                                                         />
                                                     </button>
 
                                                     {/* Collapsible Content */}
                                                     <div
-                                                        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                                                        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0 [.pdf-exporting_&]:max-h-[10000px] [.pdf-exporting_&]:opacity-100'
                                                             }`}
                                                     >
                                                         <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
