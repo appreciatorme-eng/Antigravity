@@ -39,6 +39,9 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
           pixelRatio: 2, // higher scale for better resolution
           backgroundColor: '#ffffff',
           imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+          cacheBust: true, // Bypass browser cache forcing CORS refresh on opaque cached images
+          fetchRequestInit: { cache: 'no-cache' }, // Prevent Vercel/Cloudflare edge fetching errors
+          skipFonts: true, // Prevents toPng() from notoriously crashing on web font CSS loads
           filter: (node: HTMLElement) => {
             if (node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
               return false;
