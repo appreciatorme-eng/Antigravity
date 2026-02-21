@@ -240,19 +240,16 @@ export function TemplateSwitcher({ currentTemplate, onTemplateChange }: Template
               </div>
 
               {/* Info */}
-              <div className="p-3 bg-white dark:bg-slate-950">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-semibold text-sm text-gray-900 dark:text-slate-100">{label}</span>
-                  {isSelected && (
-                    <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center shadow"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-slate-400 leading-snug">{description}</p>
+              <div className="px-3 py-2 bg-white dark:bg-slate-950 flex items-center justify-between">
+                <span className="font-semibold text-sm text-gray-900 dark:text-slate-100 truncate">{label}</span>
+                {isSelected && (
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shadow shrink-0 ml-2"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
               </div>
 
               {/* Accent bottom bar on selection */}

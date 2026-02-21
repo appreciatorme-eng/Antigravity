@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Calendar, Wallet, Clock, ArrowLeft, Share2, Loader2 } from "lucide-react";
+import { MapPin, Calendar, Wallet, Clock, ArrowLeft, Link2, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import ShareModal from "@/components/ShareModal";
 import WeatherWidget from "@/components/WeatherWidget";
@@ -67,14 +67,13 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             <ClientAssignmentBlock itineraryId={itinerary.id} initialClientId={itinerary.client_id} />
                             <Button
                                 variant="outline"
-                                size="icon"
                                 onClick={() => setShowShareModal(true)}
-                                title="Share"
-                                className="bg-white/80 backdrop-blur-sm shadow-sm"
+                                className="bg-white/80 backdrop-blur-sm shadow-sm gap-2 text-gray-700 font-medium"
                             >
-                                <Share2 className="w-4 h-4 text-gray-700" />
+                                <Link2 className="w-4 h-4" />
+                                Create Magic Link
                             </Button>
-                            <PDFDownloadButton itinerary={tripData} clientName={clientName} />
+                            <PDFDownloadButton itinerary={tripData} clientName={clientName} showTemplateSelector={false} />
                         </div>
                     </div>
 
