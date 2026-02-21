@@ -135,6 +135,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                 onClose={() => setShowShareModal(false)}
                 itineraryId={itinerary.id}
                 tripTitle={itinerary.trip_title}
+                templateId={templateId}
             />
         </>
     );

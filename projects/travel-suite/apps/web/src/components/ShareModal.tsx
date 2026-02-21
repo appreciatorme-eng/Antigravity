@@ -9,9 +9,10 @@ interface ShareModalProps {
     onClose: () => void;
     itineraryId: string;
     tripTitle: string;
+    templateId?: string;   // The template saved with this itinerary
 }
 
-export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, templateId = "safari_story" }: ShareModalProps) {
     const supabase = createClient();
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -23,18 +24,24 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
         setError("");
 
         try {
-            // If a share link already exists for this itinerary, just reuse it exactly as-is
-            // (the template was chosen in the planner and should not be overridden here)
+            // Check if a share already exists for this itinerary
             const { data: existing } = await supabase
                 .from("shared_itineraries")
-                .select("share_code")
+                .select("id, share_code")
                 .eq("itinerary_id", itineraryId)
                 .maybeSingle();
 
             if (existing) {
+                // Always sync the template to match the itinerary's current choice
+                const { error: updateErr } = await supabase
+                    .from("shared_itineraries")
+                    .update({ template_id: templateId })
+                    .eq("id", existing.id);
+
+                if (updateErr) throw updateErr;
                 setShareUrl(`${window.location.origin}/share/${existing.share_code}`);
             } else {
-                // Brand-new share — create with the default template (safari_story)
+                // Brand-new share — use the itinerary's template
                 const shareToken = crypto.randomUUID();
                 const expiresAt = new Date();
                 expiresAt.setMonth(expiresAt.getMonth() + 1);
@@ -45,7 +52,7 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
                         itinerary_id: itineraryId,
                         share_code: shareToken,
                         expires_at: expiresAt.toISOString(),
-                        template_id: "safari_story",
+                        template_id: templateId,
                     });
 
                 if (insertError) throw insertError;
