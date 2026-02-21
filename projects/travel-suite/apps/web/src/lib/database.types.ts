@@ -2197,6 +2197,7 @@ export type Database = {
           itinerary_id: string | null
           recipient_phone: string | null
           share_code: string
+          template_id: string | null
           viewed_at: string | null
         }
         Insert: {
@@ -2206,6 +2207,7 @@ export type Database = {
           itinerary_id?: string | null
           recipient_phone?: string | null
           share_code: string
+          template_id?: string | null
           viewed_at?: string | null
         }
         Update: {
@@ -2215,6 +2217,7 @@ export type Database = {
           itinerary_id?: string | null
           recipient_phone?: string | null
           share_code?: string
+          template_id?: string | null
           viewed_at?: string | null
         }
         Relationships: [

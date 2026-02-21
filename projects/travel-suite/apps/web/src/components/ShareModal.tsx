@@ -24,29 +24,39 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
         setError("");
 
         try {
-            const shareToken = crypto.randomUUID();
-            const expiresAt = new Date();
-            expiresAt.setMonth(expiresAt.getMonth() + 1);
-
-            // Upsert so the template is always saved/updated even if a link already exists
-            const { data: upserted, error: upsertError } = await supabase
+            // Check if a share link already exists for this itinerary
+            const { data: existing } = await supabase
                 .from("shared_itineraries")
-                .upsert(
-                    {
+                .select("id, share_code")
+                .eq("itinerary_id", itineraryId)
+                .maybeSingle();
+
+            if (existing) {
+                // Update the template on the existing row and reuse its share_code
+                await supabase
+                    .from("shared_itineraries")
+                    .update({ template_id: templateId })
+                    .eq("id", existing.id);
+
+                setShareUrl(`${window.location.origin}/share/${existing.share_code}`);
+            } else {
+                // Create a fresh share link
+                const shareToken = crypto.randomUUID();
+                const expiresAt = new Date();
+                expiresAt.setMonth(expiresAt.getMonth() + 1);
+
+                const { error: insertError } = await supabase
+                    .from("shared_itineraries")
+                    .insert({
                         itinerary_id: itineraryId,
                         share_code: shareToken,
                         expires_at: expiresAt.toISOString(),
                         template_id: templateId,
-                    },
-                    { onConflict: "itinerary_id", ignoreDuplicates: false }
-                )
-                .select("share_code")
-                .single();
+                    });
 
-            if (upsertError) throw upsertError;
-
-            const code = upserted?.share_code ?? shareToken;
-            setShareUrl(`${window.location.origin}/share/${code}`);
+                if (insertError) throw insertError;
+                setShareUrl(`${window.location.origin}/share/${shareToken}`);
+            }
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to generate share link";
             setError(message);
