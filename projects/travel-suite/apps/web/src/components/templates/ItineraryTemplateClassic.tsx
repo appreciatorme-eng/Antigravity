@@ -80,12 +80,26 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
                                     {day.activities.map((activity: Activity, idx: number) => (
                                         <div
                                             key={idx}
-                                            className="flex gap-4 p-4 bg-gray-50 rounded-lg"
+                                            className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg"
                                         >
                                             <div className="shrink-0 w-16 text-sm text-gray-500 flex items-center gap-1">
                                                 <Clock className="w-3 h-3" />
                                                 {activity.time}
                                             </div>
+                                            {activity.image && (
+                                                <div className="w-full sm:w-32 h-32 sm:h-24 rounded-lg overflow-hidden shrink-0 shadow-sm">
+                                                    <img
+                                                        src={activity.image}
+                                                        alt={activity.title}
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                            e.currentTarget.onerror = null;
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
                                             <div className="flex-1">
                                                 <h4 className="font-medium text-gray-800">
                                                     {activity.title}

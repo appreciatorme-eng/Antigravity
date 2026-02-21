@@ -10,7 +10,7 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
             <header className="relative bg-stone-900 text-white pb-12 pt-6">
                 <div className="absolute inset-0 overflow-hidden">
                     <img
-                        src={`https://source.unsplash.com/random/1920x1080/?${encodeURIComponent(itineraryData.destination)},travel,landscape`}
+                        src={`https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80`}
                         alt={itineraryData.destination}
                         className="w-full h-full object-cover opacity-20"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -89,6 +89,20 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
                                                     </div>
 
                                                     <div className="md:pl-24">
+                                                        {activity.image && (
+                                                            <div className="w-full h-48 sm:h-56 rounded-xl border border-stone-100 overflow-hidden mb-4 shadow-sm">
+                                                                <img
+                                                                    src={activity.image}
+                                                                    alt={activity.title}
+                                                                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                                                                    loading="lazy"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                                        e.currentTarget.onerror = null;
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
                                                         <p className="text-stone-600 leading-relaxed mb-3">
                                                             {activity.description}
                                                         </p>
