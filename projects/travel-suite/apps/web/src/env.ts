@@ -21,8 +21,8 @@ const serverSchema = z.object({
 const clientSchema = z.object({
     // We make these strictly required string URLs
     // Though we accept any string right now to allow the fallback proxies to keep builds working.
-    NEXT_PUBLIC_SUPABASE_URL: z.string().min(1),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+    NEXT_PUBLIC_SUPABASE_URL: z.string().min(1).optional(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_MAPBOX_TOKEN: z.string().min(1).optional(),
 });
 
