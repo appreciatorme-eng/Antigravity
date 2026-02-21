@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 import ItineraryBuilder from "@/components/ItineraryBuilder";
+import { InteractivePricing } from "@/components/InteractivePricing";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -579,6 +580,13 @@ Make it practical and specific:
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+
+                            {/* Inject Pricing module at the bottom of the Preview */}
+                            {!isEditing && result!.pricing && (
+                                <div className="mt-16 bg-white/60 dark:bg-slate-950/40 py-12 border-t border-gray-200 dark:border-white/10 rounded-2xl shadow-sm">
+                                    <InteractivePricing pricing={result!.pricing} />
                                 </div>
                             )}
                         </div>
