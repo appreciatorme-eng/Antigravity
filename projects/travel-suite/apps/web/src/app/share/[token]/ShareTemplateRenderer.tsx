@@ -10,8 +10,10 @@ import { BentoJourneyView } from "@/components/itinerary-templates/BentoJourneyV
 import ItineraryTemplateClassic from "@/components/templates/ItineraryTemplateClassic";
 import ItineraryTemplateModern from "@/components/templates/ItineraryTemplateModern";
 import { InteractivePricing } from "@/components/InteractivePricing";
+import { ApprovalManager } from "@/components/planner/ApprovalManager";
 
 interface ShareTemplateRendererProps {
+    token: string;
     templateId: string;
     itinerary: ItineraryResult;
     organizationName: string;
@@ -19,6 +21,7 @@ interface ShareTemplateRendererProps {
 }
 
 export default function ShareTemplateRenderer({
+    token,
     templateId,
     itinerary,
     organizationName,
@@ -61,6 +64,14 @@ export default function ShareTemplateRenderer({
                     <InteractivePricing pricing={itinerary.pricing} />
                 </div>
             )}
+
+            {/* Client Approval & Feedback Section */}
+            <div className="bg-gray-50 dark:bg-slate-950 border-t border-gray-100 dark:border-white/5">
+                <ApprovalManager
+                    token={token}
+                    clientName={client?.name || ""}
+                />
+            </div>
         </div>
     );
 }

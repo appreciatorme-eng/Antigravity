@@ -108,6 +108,7 @@ export default async function SharedTripPage({
     // and cannot be dynamically resolved inside a server component.
     return (
         <ShareTemplateRenderer
+            token={token}
             templateId={templateId}
             itinerary={fullTripData}
             organizationName={organizationName}
