@@ -9,9 +9,10 @@ interface ShareModalProps {
     onClose: () => void;
     itineraryId: string;
     tripTitle: string;
+    templateId?: string;
 }
 
-export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, templateId = "safari_story" }: ShareModalProps) {
     const supabase = createClient();
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -23,37 +24,29 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
         setError("");
 
         try {
-            // Check if share already exists
-            const { data: existing } = await supabase
-                .from("shared_itineraries")
-                .select("share_code")
-                .eq("itinerary_id", itineraryId)
-                .single();
-
-            if (existing) {
-                const url = `${window.location.origin}/share/${existing.share_code}`;
-                setShareUrl(url);
-                setLoading(false);
-                return;
-            }
-
-            // Create new share token
             const shareToken = crypto.randomUUID();
             const expiresAt = new Date();
-            expiresAt.setMonth(expiresAt.getMonth() + 1); // Expires in 1 month
+            expiresAt.setMonth(expiresAt.getMonth() + 1);
 
-            const { error: insertError } = await supabase
+            // Upsert so the template is always saved/updated even if a link already exists
+            const { data: upserted, error: upsertError } = await supabase
                 .from("shared_itineraries")
-                .insert({
-                    itinerary_id: itineraryId,
-                    share_code: shareToken,
-                    expires_at: expiresAt.toISOString(),
-                });
+                .upsert(
+                    {
+                        itinerary_id: itineraryId,
+                        share_code: shareToken,
+                        expires_at: expiresAt.toISOString(),
+                        template_id: templateId,
+                    },
+                    { onConflict: "itinerary_id", ignoreDuplicates: false }
+                )
+                .select("share_code")
+                .single();
 
-            if (insertError) throw insertError;
+            if (upsertError) throw upsertError;
 
-            const url = `${window.location.origin}/share/${shareToken}`;
-            setShareUrl(url);
+            const code = upserted?.share_code ?? shareToken;
+            setShareUrl(`${window.location.origin}/share/${code}`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to generate share link";
             setError(message);
