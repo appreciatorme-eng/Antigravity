@@ -144,7 +144,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
 
                                             <CardContent className="p-0">
                                                 <div className="divide-y divide-gray-100">
-                                                {day.activities.map((activity: Activity, idx: number) => (
+                                                    {day.activities.map((activity: Activity, idx: number) => (
                                                         <div key={idx} className="p-6 hover:bg-gray-50/50 transition-colors">
                                                             <div className="flex flex-col md:flex-row gap-5">
                                                                 {activity.image && (
@@ -232,7 +232,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
 
                                         <Separator />
 
-                                        <CurrencyConverter compact />
+                                        <CurrencyConverter destination={itinerary.destination} compact />
                                     </CardContent>
                                 </Card>
 

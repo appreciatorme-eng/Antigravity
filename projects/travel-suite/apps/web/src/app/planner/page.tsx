@@ -371,7 +371,7 @@ Make it practical and specific:
                                             <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
                                         </CardHeader>
                                         <CardContent className="pt-4">
-                                            <CurrencyConverter compact />
+                                            <CurrencyConverter destination={result.destination} compact />
                                         </CardContent>
                                     </Card>
                                 </div>

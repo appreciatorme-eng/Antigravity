@@ -25,17 +25,43 @@ const CURRENCIES = [
 interface CurrencyConverterProps {
     defaultFrom?: string;
     defaultTo?: string;
+    destination?: string;
     compact?: boolean;
 }
+
+const getCurrencyForDestination = (destination: string): string => {
+    if (!destination) return 'EUR';
+    const d = destination.toLowerCase();
+
+    if (d.includes('japan') || d.includes('tokyo') || d.includes('kyoto') || d.includes('osaka')) return 'JPY';
+    if (d.includes('uk') || d.includes('london') || d.includes('england') || d.includes('scotland')) return 'GBP';
+    if (d.includes('australia') || d.includes('sydney') || d.includes('melbourne')) return 'AUD';
+    if (d.includes('canada') || d.includes('toronto') || d.includes('vancouver')) return 'CAD';
+    if (d.includes('china') || d.includes('beijing') || d.includes('shanghai')) return 'CNY';
+    if (d.includes('india') || d.includes('delhi') || d.includes('mumbai') || d.includes('bangalore')) return 'INR';
+    if (d.includes('mexico') || d.includes('cancun')) return 'MXN';
+    if (d.includes('singapore')) return 'SGD';
+    if (d.includes('thailand') || d.includes('bangkok') || d.includes('phuket')) return 'THB';
+    if (d.includes('korea') || d.includes('seoul')) return 'KRW';
+    if (d.includes('brazil') || d.includes('rio')) return 'BRL';
+    if (d.includes('south africa') || d.includes('cape town')) return 'ZAR';
+    if (d.includes('switzerland') || d.includes('zurich') || d.includes('geneva')) return 'CHF';
+    if (d.includes('united states') || d.includes('usa') || d.includes('new york') || d.includes('los angeles') || d.includes('america')) return 'USD';
+
+    return 'EUR';
+};
 
 export default function CurrencyConverter({
     defaultFrom = "USD",
     defaultTo = "EUR",
+    destination,
     compact = false
 }: CurrencyConverterProps) {
+    const initialTo = destination ? getCurrencyForDestination(destination) : defaultTo;
+
     const [amount, setAmount] = useState("100");
     const [fromCurrency, setFromCurrency] = useState(defaultFrom);
-    const [toCurrency, setToCurrency] = useState(defaultTo);
+    const [toCurrency, setToCurrency] = useState(initialTo);
     const [result, setResult] = useState<{
         converted: number;
         rate: number;
@@ -43,6 +69,13 @@ export default function CurrencyConverter({
     } | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // If destination prop changes while component is mounted, update the toCurrency
+    useEffect(() => {
+        if (destination) {
+            setToCurrency(getCurrencyForDestination(destination));
+        }
+    }, [destination]);
 
     const convert = async () => {
         if (!amount || isNaN(Number(amount))) return;
