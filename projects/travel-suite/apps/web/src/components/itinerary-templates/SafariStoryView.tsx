@@ -5,7 +5,7 @@ import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Moon } from 'lucide-react';
 
-export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
+export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
   // Open the first day by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
@@ -55,6 +55,11 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary })
           <h1 className="text-5xl md:text-7xl font-serif text-stone-900 mb-6 leading-tight">
             {itinerary.trip_title || itinerary.title || 'Safari Adventure'}
           </h1>
+          {client && (
+            <h2 className="text-3xl font-serif text-stone-600 mb-6 italic" style={{ color: brandColor }}>
+              A private expedition for {client.name}
+            </h2>
+          )}
 
           {itinerary.destination && (
             <div className="flex items-center gap-2 text-xl text-stone-600 font-serif italic mb-8 border-t border-b border-stone-300 py-3 px-8">

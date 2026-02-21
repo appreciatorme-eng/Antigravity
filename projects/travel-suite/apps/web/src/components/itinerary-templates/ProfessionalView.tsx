@@ -8,7 +8,8 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
     itinerary,
     brandColor = '#124ea2',
     logoUrl,
-    organizationName
+    organizationName,
+    client
 }) => {
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
@@ -41,6 +42,11 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                             <h1 className="text-4xl font-bold text-gray-900 mb-3">
                                 {itinerary.trip_title}
                             </h1>
+                            {client && (
+                                <h2 className="text-xl font-medium text-gray-600 mb-3 italic" style={{ color: brandColor }}>
+                                    Prepared exclusively for {client.name}
+                                </h2>
+                            )}
                             <p className="text-lg text-gray-600 leading-relaxed max-w-3xl">
                                 {itinerary.summary}
                             </p>

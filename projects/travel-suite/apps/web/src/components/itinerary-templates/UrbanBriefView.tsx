@@ -4,7 +4,7 @@ import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 
-export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
+export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
   const brandColor = '#124ea2';
 
   const totalDays = itinerary.days?.length || 0;
@@ -37,6 +37,11 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary }) 
             <div className="text-2xl font-bold" style={{ color: brandColor }}>
               BRIEF
             </div>
+            {client && (
+              <div className="text-xs font-semibold text-gray-800 mt-2 uppercase tracking-tight">
+                For: {client.name}
+              </div>
+            )}
             <div className="text-xs text-gray-500 mt-1">
               Executive Summary
             </div>

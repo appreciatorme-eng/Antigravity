@@ -6,6 +6,7 @@ export interface ItineraryBranding {
   primaryColor?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  clientName?: string | null;
 }
 
 export const DEFAULT_ITINERARY_BRANDING: ItineraryBranding = {
@@ -31,19 +32,19 @@ export const ITINERARY_TEMPLATE_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    id: 'professional',
-    label: 'Professional (Recommended)',
-    description: 'Modern timeline design matching WBB PDF quality with rich descriptions and operator branding.',
-  },
-  {
-    id: 'safari_story',
-    label: 'Safari Story',
-    description: 'Editorial brochure style inspired by Kenya safari decks.',
-  },
-  {
-    id: 'urban_brief',
-    label: 'Urban Brief',
-    description: 'Clean corporate format inspired by Dubai itinerary briefs.',
-  },
-];
+    {
+      id: 'professional',
+      label: 'Professional (Recommended)',
+      description: 'Modern timeline design matching WBB PDF quality with rich descriptions and operator branding.',
+    },
+    {
+      id: 'safari_story',
+      label: 'Safari Story',
+      description: 'Editorial brochure style inspired by Kenya safari decks.',
+    },
+    {
+      id: 'urban_brief',
+      label: 'Urban Brief',
+      description: 'Clean corporate format inspired by Dubai itinerary briefs.',
+    },
+  ];

@@ -21,6 +21,7 @@ export default async function SharedTripPage({
             *,
             itineraries (
                 *,
+                clients ( id, profiles ( full_name, email ) ),
                 organizations ( name, logo_url, primary_color )
             )
         `
@@ -91,5 +92,15 @@ export default async function SharedTripPage({
     const templateDef = getTemplateById(templateId);
     const TemplateComponent = templateDef.component;
 
-    return <TemplateComponent itineraryData={fullTripData} organizationName={organizationName} />;
+    // Resolve client data
+    let clientData = null;
+    const clientRecord = (itinerary as any).clients;
+    if (clientRecord && clientRecord.profiles) {
+        clientData = {
+            name: clientRecord.profiles.full_name || 'Valued Client',
+            email: clientRecord.profiles.email
+        };
+    }
+
+    return <TemplateComponent itineraryData={fullTripData} organizationName={organizationName} client={clientData} />;
 }

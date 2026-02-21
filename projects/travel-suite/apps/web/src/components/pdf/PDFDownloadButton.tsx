@@ -18,12 +18,14 @@ interface PDFDownloadButtonProps {
   itinerary: ItineraryResult;
   className?: string;
   showTemplateSelector?: boolean;
+  clientName?: string | null;
 }
 
 export default function PDFDownloadButton({
   itinerary,
   className = '',
   showTemplateSelector = true,
+  clientName,
 }: PDFDownloadButtonProps) {
   const [generating, setGenerating] = useState(false);
   const [template, setTemplate] = useState<ItineraryTemplateId>(DEFAULT_ITINERARY_TEMPLATE);
@@ -50,6 +52,7 @@ export default function PDFDownloadButton({
       await downloadItineraryPdf({
         itinerary,
         template,
+        branding: clientName ? { clientName } as any : undefined,
         fileName: `${(itinerary.trip_title || 'itinerary').replace(/[^a-zA-Z0-9-_]+/g, '_')}_${template}.pdf`,
       });
     } catch (error) {

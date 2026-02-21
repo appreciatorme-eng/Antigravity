@@ -4,6 +4,10 @@ import React from 'react';
 export interface ItineraryTemplateProps {
     itineraryData: ItineraryResult;
     organizationName?: string;
+    client?: {
+        name: string;
+        email?: string;
+    } | null;
 }
 
 export interface TemplateDefinition {

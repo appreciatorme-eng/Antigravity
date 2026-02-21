@@ -5,7 +5,7 @@ import { ItineraryTemplateProps } from './types';
 import { MapPin, Clock, Navigation, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
+export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#e11d48'; // Rose Red
     const mainRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +39,11 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary 
                     <h1 className="text-7xl md:text-9xl font-bold text-white mb-6 tracking-tighter shadow-sm leading-none drop-shadow-2xl">
                         {itinerary.destination || itinerary.trip_title}
                     </h1>
+                    {client && (
+                        <h2 className="text-2xl md:text-3xl font-light text-white/90 mb-6 tracking-wide drop-shadow-md italic">
+                            A bespoke journey for {client.name}
+                        </h2>
+                    )}
                     {itinerary.summary && (
                         <p className="text-xl md:text-3xl text-white/90 font-light max-w-3xl mx-auto leading-relaxed drop-shadow-lg">
                             {itinerary.summary}

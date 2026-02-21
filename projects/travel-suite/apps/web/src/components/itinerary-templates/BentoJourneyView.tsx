@@ -5,7 +5,7 @@ import { ItineraryTemplateProps } from './types';
 import { MapPin, Navigation, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
+export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#6366f1'; // Indigo 
 
     return (
@@ -16,9 +16,16 @@ export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary }
                     Immersive Travel Grid
                 </Badge>
                 <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-8 mb-4">
-                    <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-slate-950 leading-[0.95] max-w-4xl">
-                        {itinerary.trip_title || itinerary.title}
-                    </h1>
+                    <div>
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-slate-950 leading-[0.95] max-w-4xl">
+                            {itinerary.trip_title || itinerary.title}
+                        </h1>
+                        {client && (
+                            <h2 className="text-xl md:text-2xl font-medium tracking-wide text-slate-500 mt-4 uppercase">
+                                For: {client.name}
+                            </h2>
+                        )}
+                    </div>
                 </div>
                 {itinerary.summary && (
                     <p className="text-xl md:text-2xl font-light leading-snug text-slate-600 max-w-3xl mt-6">

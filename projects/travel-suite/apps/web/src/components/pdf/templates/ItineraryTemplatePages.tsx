@@ -392,6 +392,11 @@ const SafariStoryPages = ({
 
           <Text style={safariStyles.coverKicker}>Curated Itinerary</Text>
           <Text style={safariStyles.coverTitle}>{itinerary.trip_title}</Text>
+          {branding?.clientName && (
+            <Text style={{ fontSize: 24, fontStyle: 'italic', marginBottom: 16, color: brandColor }}>
+              A private expedition for {branding.clientName}
+            </Text>
+          )}
           <Text style={safariStyles.coverDestination}>{itinerary.destination}</Text>
           <Text style={safariStyles.coverSummary}>
             {itinerary.summary || 'A carefully sequenced itinerary built for an immersive, practical travel experience.'}
@@ -466,7 +471,7 @@ const SafariStoryPages = ({
       {dayGroups.map((group, groupIndex) => (
         <Page key={`safari-days-${groupIndex}`} size={PAGE_SIZE} style={safariStyles.page}>
           <View style={safariStyles.daysPageHeader}>
-            <View style={[safariStyles.daysHeaderPill, { backgroundColor: brandColor }]}> 
+            <View style={[safariStyles.daysHeaderPill, { backgroundColor: brandColor }]}>
               <Text style={safariStyles.daysHeaderPillText}>Itinerary</Text>
             </View>
             <Text style={safariStyles.daysHeaderTitle}>
@@ -781,7 +786,7 @@ const UrbanBriefPages = ({
         </View>
 
         <Text style={urbanStyles.sectionTitle}>Overview</Text>
-        <View style={[urbanStyles.activityCard, { marginBottom: 12 }]}> 
+        <View style={[urbanStyles.activityCard, { marginBottom: 12 }]}>
           <Text style={urbanStyles.activityDescription}>
             {itinerary.summary || 'A fixed-format itinerary brief with dynamic day count and pricing-ready sections.'}
           </Text>
@@ -876,7 +881,7 @@ const UrbanBriefPages = ({
       ))}
 
       <Page size={PAGE_SIZE} style={urbanStyles.page}>
-        <View style={[urbanStyles.closingPanel, { borderTopColor: accent }]}> 
+        <View style={[urbanStyles.closingPanel, { borderTopColor: accent }]}>
           <Text style={[urbanStyles.closingTitle, { color: accent }]}>Thank You</Text>
           <Text style={urbanStyles.closingBody}>We look forward to hosting you.</Text>
           <Text style={urbanStyles.closingInfo}>{branding.companyName}</Text>

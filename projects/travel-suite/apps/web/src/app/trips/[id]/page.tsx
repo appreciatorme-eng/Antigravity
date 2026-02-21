@@ -18,7 +18,10 @@ export default async function TripDetailPage({
 
     const { data: itinerary, error } = await supabase
         .from("itineraries")
-        .select("*")
+        .select(`
+            *,
+            clients ( id, profiles ( full_name, email ) )
+        `)
         .eq("id", id)
         .eq("user_id", user.id)
         .single();

@@ -346,6 +346,13 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
               {itinerary.trip_title}
             </Text>
 
+            {/* Client Name */}
+            {branding?.clientName && (
+              <Text style={{ fontSize: 18, color: '#e2e8f0', marginBottom: 20, fontStyle: 'italic' }}>
+                Prepared exclusively for {branding.clientName}
+              </Text>
+            )}
+
             {/* Summary */}
             <Text style={styles.coverSummary}>
               {itinerary.summary}

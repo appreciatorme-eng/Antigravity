@@ -9,6 +9,10 @@ export interface ItineraryTemplateProps {
     brandColor?: string;
     logoUrl?: string;
     organizationName?: string;
+    client?: {
+        name: string;
+        email?: string;
+    } | null;
 }
 
 export type ItineraryTemplateId = 'safari_story' | 'urban_brief' | 'professional' | 'luxury_resort' | 'visual_journey' | 'bento_journey';

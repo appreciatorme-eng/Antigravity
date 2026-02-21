@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ItineraryResult, Day, Activity } from "@/types/itinerary";
+import ClientAssignmentBlock from "@/components/ClientAssignmentBlock";
 
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
     ssr: false,
@@ -33,6 +34,8 @@ interface TripDetailClientProps {
         interests?: string[] | null;
         summary?: string | null;
         raw_data: ItineraryResult;
+        client_id?: string | null;
+        clients?: any;
     };
 }
 
@@ -40,6 +43,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
     const [showShareModal, setShowShareModal] = useState(false);
 
     const tripData = itinerary.raw_data;
+    const clientName = itinerary.clients?.profiles?.full_name || null;
 
     return (
         <>
@@ -54,6 +58,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             </Button>
                         </Link>
                         <div className="flex items-center gap-2">
+                            <ClientAssignmentBlock itineraryId={itinerary.id} initialClientId={itinerary.client_id} />
                             <Button
                                 variant="outline"
                                 size="icon"
@@ -63,7 +68,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                             >
                                 <Share2 className="w-4 h-4 text-gray-700" />
                             </Button>
-                            <PDFDownloadButton itinerary={tripData} />
+                            <PDFDownloadButton itinerary={tripData} clientName={clientName} />
                         </div>
                     </div>
 

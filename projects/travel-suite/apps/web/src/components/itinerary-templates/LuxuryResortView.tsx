@@ -5,7 +5,7 @@ import { ItineraryTemplateProps } from './types';
 import { MapPin, Clock, DollarSign, Navigation, Info, ArrowUpRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary }) => {
+export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#ccb27a'; // Champagne Gold
     const [currentBg, setCurrentBg] = useState<string>('');
 
@@ -47,6 +47,11 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary }
                     <h1 className="text-6xl md:text-8xl font-serif mb-6 leading-[1.1] tracking-tight">
                         {itinerary.trip_title || 'The Escape'}
                     </h1>
+                    {client && (
+                        <h2 className="text-2xl md:text-3xl font-serif mb-6 italic" style={{ color: brandColor }}>
+                            Prepared exclusively for {client.name}
+                        </h2>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-6 text-lg sm:text-xl font-light opacity-80 mb-8">
                         {itinerary.destination && (
