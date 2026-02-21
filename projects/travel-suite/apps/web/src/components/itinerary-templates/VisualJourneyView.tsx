@@ -25,6 +25,10 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary 
                     src={itinerary.days?.[0]?.activities?.[0]?.image || itinerary.days?.[0]?.activities?.[0]?.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop"}
                     alt="Destination"
                     className="absolute inset-0 w-full h-full object-cover transform scale-105 duration-[20s] ease-out hover:scale-110"
+                    onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop";
+                        e.currentTarget.onerror = null;
+                    }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
 
@@ -107,6 +111,10 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary 
                                                     src={activity.image || activity.imageUrl || "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"}
                                                     alt={activity.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2s] ease-out"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                        e.currentTarget.onerror = null;
+                                                    }}
                                                 />
                                             </div>
                                             {/* Floating Info Tag */}

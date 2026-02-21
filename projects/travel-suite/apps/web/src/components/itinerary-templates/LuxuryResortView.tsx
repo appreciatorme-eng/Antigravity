@@ -101,6 +101,10 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary }
                                                         src={image}
                                                         alt={activity.title}
                                                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-105"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                            e.currentTarget.onerror = null;
+                                                        }}
                                                     />
                                                 </div>
                                             )}

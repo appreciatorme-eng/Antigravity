@@ -8,7 +8,6 @@ import ShareModal from "@/components/ShareModal";
 import WeatherWidget from "@/components/WeatherWidget";
 import CurrencyConverter from "@/components/CurrencyConverter";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -149,12 +148,15 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                                                             <div className="flex flex-col md:flex-row gap-5">
                                                                 {activity.image && (
                                                                     <div className="md:w-32 md:h-24 w-full h-48 rounded-lg overflow-hidden shrink-0 shadow-sm">
-                                                                        <Image
+                                                                        <img
                                                                             src={activity.image}
                                                                             alt={activity.title}
-                                                                            width={128}
-                                                                            height={96}
                                                                             className="w-full h-full object-cover"
+                                                                            loading="lazy"
+                                                                            onError={(e) => {
+                                                                                e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                                                e.currentTarget.onerror = null;
+                                                                            }}
                                                                         />
                                                                     </div>
                                                                 )}
