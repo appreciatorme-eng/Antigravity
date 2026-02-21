@@ -161,8 +161,7 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                     center={cityCenter}
                     zoom={12}
                     style={{ width: "100%", height: "100%" }}
-                    scrollWheelZoom={false}
-                    zoomControl={false}
+                    scrollWheelZoom
                 >
                     <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -210,8 +209,7 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                 center={center as [number, number]}
                 zoom={10}
                 style={{ width: "100%", height: "100%" }}
-                scrollWheelZoom={false}
-                zoomControl={false}
+                scrollWheelZoom
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -222,17 +220,18 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                 {/* Auto-fit bounds to all markers */}
                 <FitBounds positions={positions} />
 
-                {/* Route polyline */}
+                {/* Route polyline — solid base + dashed overlay for clear visibility */}
                 {routeLine.length > 1 && (
-                    <Polyline
-                        positions={routeLine}
-                        pathOptions={{
-                            color: "#c4a870",
-                            weight: 3,
-                            opacity: 0.85,
-                            dashArray: "8, 6",
-                        }}
-                    />
+                    <>
+                        <Polyline
+                            positions={routeLine}
+                            pathOptions={{ color: "#c4a870", weight: 6, opacity: 0.35 }}
+                        />
+                        <Polyline
+                            positions={routeLine}
+                            pathOptions={{ color: "#c4a870", weight: 3, opacity: 1, dashArray: "10 8" }}
+                        />
+                    </>
                 )}
 
                 {/* Activity markers */}
