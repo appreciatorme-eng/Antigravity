@@ -105,5 +105,15 @@ export default async function SharedTripPage({
         };
     }
 
-    return <TemplateComponent itineraryData={fullTripData} organizationName={organizationName} client={clientData} />;
+    // The new 6 templates use `itinerary` prop; the legacy Classic/Modern use `itineraryData`.
+    // We pass both so whichever convention the component implements, it will work.
+    const AnyTemplate = TemplateComponent as any;
+    return (
+        <AnyTemplate
+            itinerary={fullTripData}
+            itineraryData={fullTripData}
+            organizationName={organizationName}
+            client={clientData}
+        />
+    );
 }
