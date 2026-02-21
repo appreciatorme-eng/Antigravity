@@ -42,7 +42,7 @@ export default function SaveItineraryButton({
             }
 
             // Save itinerary to database
-            const { error: insertError } = await supabase
+            const { data: insertedTrip, error: insertError } = await supabase
                 .from("itineraries")
                 .insert({
                     user_id: user.id,
@@ -53,12 +53,14 @@ export default function SaveItineraryButton({
                     budget: budget,
                     interests: interests,
                     raw_data: itineraryData as any,
-                });
+                })
+                .select("id")
+                .single();
 
             if (insertError) throw insertError;
 
-            setSaved(true);
-            setTimeout(() => setSaved(false), 3000);
+            // Redirect immediately to the saved trip page where Client Assignment is available
+            router.push(`/trips/${insertedTrip.id}`);
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to save";
