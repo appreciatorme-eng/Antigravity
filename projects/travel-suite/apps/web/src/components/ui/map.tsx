@@ -124,8 +124,8 @@ function useMap() {
 const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 const defaultStyles = mapboxToken ? {
-  dark: `https://api.mapbox.com/styles/v1/mapbox/dark-v11/style?access_token=${mapboxToken}`,
-  light: `https://api.mapbox.com/styles/v1/mapbox/light-v11/style?access_token=${mapboxToken}`,
+  dark: `https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${mapboxToken}`,
+  light: `https://api.mapbox.com/styles/v1/mapbox/light-v11?access_token=${mapboxToken}`,
 } : {
   // OpenFreeMap: completely free, no API key, no rate limits, open-source tiles
   dark: "https://tiles.openfreemap.org/styles/liberty",
