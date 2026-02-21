@@ -17,6 +17,8 @@ import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 import ItineraryBuilder from "@/components/ItineraryBuilder";
 import { InteractivePricing } from "@/components/InteractivePricing";
+import { LogisticsManager } from "@/components/planner/LogisticsManager";
+import { PricingManager } from "@/components/planner/PricingManager";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -407,6 +409,24 @@ Make it practical and specific:
                                     />
                                 </CardContent>
                             </Card>
+
+                            {/* Quick Edit Logistics & Pricing (Always visible outside Builder Mode) */}
+                            {!isEditing && (
+                                <div className="grid md:grid-cols-2 gap-8 bg-gray-50/50 dark:bg-slate-900/30 p-8 rounded-3xl border border-gray-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Quick Edit</Badge>
+                                        </div>
+                                        <LogisticsManager data={result!} onChange={setResult} />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">Quick Edit</Badge>
+                                        </div>
+                                        <PricingManager data={result!} onChange={setResult} />
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Template Switcher */}
                             <Card className="bg-white dark:bg-slate-950 shadow-lg print:hidden">
