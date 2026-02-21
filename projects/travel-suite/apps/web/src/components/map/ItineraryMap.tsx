@@ -44,7 +44,7 @@ interface ItineraryMapProps {
     destination?: string;
 }
 
-// ── Haversine distance ────────────────────────────────────────────────────────
+// ── Haversine distance ───────────────────────────────────────────────────────
 function haversineKm(a: [number, number], b: [number, number]) {
     const toRad = (d: number) => (d * Math.PI) / 180;
     const R = 6371;
@@ -60,6 +60,52 @@ function totalDistanceKm(route: [number, number][]) {
     let total = 0;
     for (let i = 0; i < route.length - 1; i++) total += haversineKm(route[i]!, route[i + 1]!);
     return total;
+}
+
+// ── Route optimisation: nearest-neighbour greedy + 2-opt refinement ───────────
+function optimizeRouteIndices(points: [number, number][], startIndex = 0): number[] {
+    const n = points.length;
+    if (n <= 2) return Array.from({ length: n }, (_, i) => i);
+
+    const unvisited = new Set<number>(Array.from({ length: n }, (_, i) => i));
+    unvisited.delete(startIndex);
+    const order: number[] = [startIndex];
+
+    while (unvisited.size) {
+        const last = order[order.length - 1]!;
+        let bestIdx: number | null = null;
+        let bestDist = Infinity;
+        for (const idx of unvisited) {
+            const d = haversineKm(points[last]!, points[idx]!);
+            if (d < bestDist) { bestDist = d; bestIdx = idx; }
+        }
+        if (bestIdx === null) break;
+        unvisited.delete(bestIdx);
+        order.push(bestIdx);
+    }
+
+    // 2-opt improvement (effective for up to ~40 stops)
+    if (order.length >= 4 && order.length <= 40) {
+        let improved = true;
+        let safety = 0;
+        while (improved && safety++ < 80) {
+            improved = false;
+            for (let i = 1; i < order.length - 2; i++) {
+                for (let k = i + 1; k < order.length - 1; k++) {
+                    const a = points[order[i - 1]!]!;
+                    const b = points[order[i]!]!;
+                    const c = points[order[k]!]!;
+                    const d = points[order[k + 1]!]!;
+                    if (haversineKm(a, c) + haversineKm(b, d) + 1e-9 < haversineKm(a, b) + haversineKm(c, d)) {
+                        order.splice(i, k - i + 1, ...order.slice(i, k + 1).reverse());
+                        improved = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return order;
 }
 
 // ── Numbered pin icon ─────────────────────────────────────────────────────────
@@ -145,13 +191,17 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
         [valid]
     );
 
-    const totalKm = useMemo(
-        () => totalDistanceKm(positions),
-        [positions]
-    );
+    // Optimise route line: nearest-neighbour + 2-opt (markers stay in original order)
+    const optimizedLine = useMemo<[number, number][]>(() => {
+        if (positions.length <= 1) return positions;
+        const order = optimizeRouteIndices(positions, 0);
+        return order.map((i) => positions[i]!);
+    }, [positions]);
+
+    const totalKm = useMemo(() => totalDistanceKm(optimizedLine), [optimizedLine]);
 
     // Leaflet Polyline uses [lat, lng] which is the same as positions
-    const routeLine = positions;
+    const routeLine = optimizedLine;
 
     if (valid.length === 0) {
         const cityCenter = getCityCoords(destination);
