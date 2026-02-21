@@ -38,6 +38,7 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
         imgData = await htmlToImage.toPng(element, {
           pixelRatio: 2, // higher scale for better resolution
           backgroundColor: '#ffffff',
+          imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
           filter: (node: HTMLElement) => {
             if (node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
               return false;
@@ -48,7 +49,10 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
 
         const img = new Image();
         img.src = imgData;
-        await new Promise(resolve => { img.onload = resolve; });
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error("Failed to load generated PDF image data"));
+        });
 
         const canvasWidth = img.width;
         const canvasHeight = img.height;
@@ -81,7 +85,14 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
 
     } catch (error) {
       console.error("Failed to generate PDF", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'type' in error) {
+        errorMessage = 'Failed to load a custom font or external image. Please try again.';
+      } else {
+        errorMessage = String(error);
+      }
       alert(`Failed to generate PDF: ${errorMessage}\nPlease try again.`);
     } finally {
       setLoading(false);
