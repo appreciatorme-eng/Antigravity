@@ -136,20 +136,14 @@ const VisualThumb = () => (
     </svg>
 );
 
-const ExecutiveThumb = () => (
+const BentoThumb = () => (
     <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-        <rect width="200" height="120" fill="#ffffff" />
-        <rect width="80" height="120" fill="#f4f4f5" />
-        <rect x="10" y="90" width="50" height="6" rx="3" fill="#000000" fillOpacity="0.2" />
-        <rect x="100" y="20" width="70" height="6" rx="3" fill="#18181b" />
-        <line x1="110" y1="40" x2="110" y2="100" stroke="#e4e4e7" strokeWidth="2" />
-        {[0, 1].map((i) => (
-            <g key={i} transform={`translate(110, ${50 + i * 30})`}>
-                <circle cx="0" cy="3" r="3" fill="#0ea5e9" />
-                <rect x="10" y="0" width="40" height="4" rx="2" fill="#3f3f46" />
-                <rect x="10" y="8" width="60" height="3" rx="1.5" fill="#a1a1aa" />
-            </g>
-        ))}
+        <rect width="200" height="120" fill="#f0f2f5" />
+        <rect x="10" y="20" width="80" height="10" rx="4" fill="#6366f1" fillOpacity="0.8" />
+        <rect x="10" y="40" width="80" height="70" rx="8" fill="#cbd5e1" />
+        <rect x="100" y="40" width="40" height="30" rx="6" fill="#94a3b8" />
+        <rect x="150" y="40" width="40" height="30" rx="6" fill="#94a3b8" />
+        <rect x="100" y="80" width="90" height="30" rx="6" fill="#cbd5e1" />
     </svg>
 );
 
@@ -159,7 +153,7 @@ const TEMPLATE_THUMBNAILS_RICH: Record<string, React.ReactNode> = {
     professional: <ProfessionalThumb />,
     luxury_resort: <LuxuryThumb />,
     visual_journey: <VisualThumb />,
-    executive_direct: <ExecutiveThumb />,
+    bento_journey: <BentoThumb />,
     // legacy share-modal templates:
     classic: (
         <div className="w-full h-full bg-gradient-to-br from-emerald-50 to-sky-100 p-2 flex flex-col gap-1.5">
@@ -201,7 +195,7 @@ const TEMPLATE_ACCENT: Record<string, string> = {
     professional: '#4f46e5',
     luxury_resort: '#ccb27a',
     visual_journey: '#e11d48',
-    executive_direct: '#0ea5e9',
+    bento_journey: '#6366f1',
     classic: '#10b981',
     modern: '#78716c',
 };

@@ -187,26 +187,18 @@ const TEMPLATE_OPTIONS = [
     ),
   },
   {
-    id: 'executive_direct' as ItineraryTemplateId,
-    label: 'Executive Direct',
-    description: 'Left sticky image · Scrolling rigt',
-    accentColor: '#0ea5e9',
+    id: 'bento_journey' as ItineraryTemplateId,
+    label: 'Bento Grid',
+    description: 'Immersive · Masonry Layout',
+    accentColor: '#6366f1',
     Preview: () => (
       <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-        <rect width="200" height="130" fill="#ffffff" />
-        <rect width="80" height="130" fill="#f4f4f5" />
-        <rect x="10" y="90" width="50" height="6" rx="3" fill="#000000" fillOpacity="0.2" />
-        <rect x="10" y="102" width="30" height="3" rx="1.5" fill="#000000" fillOpacity="0.1" />
-        <rect x="100" y="20" width="70" height="6" rx="3" fill="#18181b" />
-        <rect x="100" y="32" width="40" height="3" rx="1.5" fill="#a1a1aa" />
-        <line x1="110" y1="50" x2="110" y2="110" stroke="#e4e4e7" strokeWidth="2" />
-        {[0, 1].map((i) => (
-          <g key={i} transform={`translate(110, ${60 + i * 30})`}>
-            <circle cx="0" cy="3" r="3" fill="#0ea5e9" />
-            <rect x="10" y="0" width="40" height="4" rx="2" fill="#3f3f46" />
-            <rect x="10" y="8" width="60" height="3" rx="1.5" fill="#a1a1aa" />
-          </g>
-        ))}
+        <rect width="200" height="130" fill="#f0f2f5" />
+        <rect x="10" y="20" width="80" height="15" rx="4" fill="#6366f1" fillOpacity="0.8" />
+        <rect x="10" y="45" width="80" height="70" rx="8" fill="#cbd5e1" />
+        <rect x="100" y="45" width="40" height="30" rx="6" fill="#94a3b8" />
+        <rect x="150" y="45" width="40" height="30" rx="6" fill="#94a3b8" />
+        <rect x="100" y="85" width="90" height="30" rx="6" fill="#cbd5e1" />
       </svg>
     ),
   },

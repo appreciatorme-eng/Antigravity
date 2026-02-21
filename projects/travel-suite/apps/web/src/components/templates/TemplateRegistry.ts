@@ -5,7 +5,7 @@ import {
     ProfessionalView,
     LuxuryResortView,
     VisualJourneyView,
-    ExecutiveDirectView
+    BentoJourneyView
 } from "@/components/itinerary-templates";
 import ItineraryTemplateClassic from "./ItineraryTemplateClassic";
 import ItineraryTemplateModern from "./ItineraryTemplateModern";
@@ -47,11 +47,11 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
         component: VisualJourneyView as any
     },
     {
-        id: 'executive_direct',
-        name: 'Executive Direct',
-        description: 'Sophisticated split-screen layout with sticky imagery.',
+        id: 'bento_journey',
+        name: 'Bento Grid',
+        description: 'Immersive masonry layout showcasing beautiful locations.',
         isPremium: true,
-        component: ExecutiveDirectView as any
+        component: BentoJourneyView as any
     },
     // Legacy mapping incase older shares try to load them
     {

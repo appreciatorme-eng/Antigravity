@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
-import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, ExecutiveDirectView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
+import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -195,370 +195,376 @@ Make it practical and specific:
 
     return (
         <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
-            <div className="max-w-4xl mx-auto px-6 py-10">
-                <div className="text-center mb-10">
+            <div className="w-full max-w-full">
+                <div className="max-w-4xl mx-auto px-6 pt-10 pb-4 text-center">
                     <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
                     <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
                 </div>
 
                 {!result ? (
-                    <Card className="border-gray-100 dark:border-white/10 shadow-xl bg-white/80 dark:bg-slate-950/40 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 dark:from-white/5 dark:to-white/0 border-b border-gray-100 dark:border-white/10 pb-6">
-                            <CardTitle className="text-xl flex items-center gap-2 text-secondary">
-                                <Sparkles className="w-5 h-5 text-primary" />
-                                Start your adventure
-                            </CardTitle>
-                            <CardDescription>
-                                Tell us where you want to go, and we&apos;ll handle the rest.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6 md:p-8 space-y-8">
-                            {/* Destination Input */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-primary" /> Where to?
-                                </label>
-                                <Input
-                                    type="text"
-                                    className="h-14 text-lg bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary pl-4"
-                                    placeholder="e.g. Paris, Tokyo, New York"
-                                    value={prompt}
-                                    onChange={(e) => setPrompt(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {/* Duration Input */}
+                    <div className="max-w-4xl mx-auto px-6 pb-10">
+                        <Card className="border-gray-100 dark:border-white/10 shadow-xl bg-white/80 dark:bg-slate-950/40 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 dark:from-white/5 dark:to-white/0 border-b border-gray-100 dark:border-white/10 pb-6">
+                                <CardTitle className="text-xl flex items-center gap-2 text-secondary">
+                                    <Sparkles className="w-5 h-5 text-primary" />
+                                    Start your adventure
+                                </CardTitle>
+                                <CardDescription>
+                                    Tell us where you want to go, and we&apos;ll handle the rest.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-6 md:p-8 space-y-8">
+                                {/* Destination Input */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
+                                        <MapPin className="w-4 h-4 text-primary" /> Where to?
                                     </label>
                                     <Input
-                                        type="number"
-                                        min={1}
-                                        max={14}
-                                        value={days}
-                                        onChange={(e) => setDays(Number(e.target.value))}
-                                        className="h-12 bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary"
+                                        type="text"
+                                        className="h-14 text-lg bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary pl-4"
+                                        placeholder="e.g. Paris, Tokyo, New York"
+                                        value={prompt}
+                                        onChange={(e) => setPrompt(e.target.value)}
                                     />
                                 </div>
 
-                                {/* Budget Input */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Duration Input */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={14}
+                                            value={days}
+                                            onChange={(e) => setDays(Number(e.target.value))}
+                                            className="h-12 bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary"
+                                        />
+                                    </div>
+
+                                    {/* Budget Input */}
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
+                                            <Wallet className="w-4 h-4 text-primary" /> Budget
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {BUDGET_OPTIONS.map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => setBudget(option.value)}
+                                                    className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 border ${budget === option.value
+                                                        ? 'bg-primary text-white border-primary shadow-md transform scale-[1.02]'
+                                                        : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Interests Input */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                        <Wallet className="w-4 h-4 text-primary" /> Budget
+                                        <Plane className="w-4 h-4 text-primary" /> Interests
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {BUDGET_OPTIONS.map((option) => (
+                                    <div className="flex flex-wrap gap-2">
+                                        {INTEREST_OPTIONS.map((tag) => (
                                             <button
-                                                key={option.value}
-                                                onClick={() => setBudget(option.value)}
-                                                className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 border ${budget === option.value
-                                                    ? 'bg-primary text-white border-primary shadow-md transform scale-[1.02]'
-                                                    : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-white/10'
+                                                key={tag}
+                                                onClick={() => toggleInterest(tag)}
+                                                className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 ${interests.includes(tag)
+                                                    ? 'bg-secondary text-white border-secondary shadow-sm transform scale-105'
+                                                    : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-secondary hover:text-secondary hover:bg-gray-50 dark:hover:bg-white/10'
                                                     }`}
                                             >
-                                                {option.label}
+                                                {tag}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Interests Input */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                    <Plane className="w-4 h-4 text-primary" /> Interests
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {INTEREST_OPTIONS.map((tag) => (
-                                        <button
-                                            key={tag}
-                                            onClick={() => toggleInterest(tag)}
-                                            className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 ${interests.includes(tag)
-                                                ? 'bg-secondary text-white border-secondary shadow-sm transform scale-105'
-                                                : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-secondary hover:text-secondary hover:bg-gray-50 dark:hover:bg-white/10'
-                                                }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
+                                <Separator className="my-4" />
+
+                                <Button
+                                    onClick={handleGenerate}
+                                    disabled={loading || !prompt}
+                                    className="w-full h-14 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                                            Crafting your Journey...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5 mr-2" />
+                                            Generate Dream Itinerary
+                                        </>
+                                    )}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                ) : (
+                    <>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                            {/* Actions Bar */}
+                            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setResult(null)}
+                                    className="text-gray-500 dark:text-slate-300 hover:text-secondary"
+                                >
+                                    ← Start Over
+                                </Button>
+                                <div className="flex gap-2">
+                                    <SaveItineraryButton
+                                        itineraryData={result}
+                                        destination={prompt}
+                                        days={days}
+                                        budget={budget}
+                                        interests={interests}
+                                    />
+                                    <button
+                                        onClick={() => setIsShareOpen(true)}
+                                        className="px-4 py-2 bg-white text-secondary hover:bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 transition-all text-sm font-medium"
+                                    >
+                                        <Share2 className="w-4 h-4" /> Share Trip
+                                    </button>
+                                    <DownloadPDFButton
+                                        data={result}
+                                        fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
+                                    />
                                 </div>
                             </div>
 
-                            <Separator className="my-4" />
-
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={loading || !prompt}
-                                className="w-full h-14 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl"
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="animate-spin w-5 h-5 mr-2" />
-                                        Crafting your Journey...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="w-5 h-5 mr-2" />
-                                        Generate Dream Itinerary
-                                    </>
-                                )}
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                        {/* Actions Bar */}
-                        <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10">
-                            <Button
-                                variant="ghost"
-                                onClick={() => setResult(null)}
-                                className="text-gray-500 dark:text-slate-300 hover:text-secondary"
-                            >
-                                ← Start Over
-                            </Button>
-                            <div className="flex gap-2">
-                                <SaveItineraryButton
-                                    itineraryData={result}
-                                    destination={prompt}
-                                    days={days}
-                                    budget={budget}
-                                    interests={interests}
-                                />
-                                <button
-                                    onClick={() => setIsShareOpen(true)}
-                                    className="px-4 py-2 bg-white text-secondary hover:bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 transition-all text-sm font-medium"
-                                >
-                                    <Share2 className="w-4 h-4" /> Share Trip
-                                </button>
-                                <DownloadPDFButton
-                                    data={result}
-                                    fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
-                                />
+                            {/* Itinerary Header */}
+                            <div className="text-center space-y-4">
+                                <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
+                                    {result.duration_days} Days in {result.destination}
+                                </Badge>
+                                <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
+                                <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
                             </div>
-                        </div>
 
-                        {/* Itinerary Header */}
-                        <div className="text-center space-y-4">
-                            <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
-                                {result.duration_days} Days in {result.destination}
-                            </Badge>
-                            <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
-                            <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
-                        </div>
-
-                        {/* Map & Currency Converter */}
-                        <div className="grid lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
-                                <ItineraryMap
-                                    destination={result.destination}
-                                    activities={result.days.flatMap((day: Day) =>
-                                        day.activities.map(act => ({
-                                            ...act,
-                                            // Ensure coordinates exist. If missing, fall back to null/undefined so the map component filters them out safely
-                                            coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
-                                        }))
-                                    )}
-                                />
+                            {/* Map & Currency Converter */}
+                            <div className="grid lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
+                                    <ItineraryMap
+                                        destination={result.destination}
+                                        activities={result.days.flatMap((day: Day) =>
+                                            day.activities.map(act => ({
+                                                ...act,
+                                                // Ensure coordinates exist. If missing, fall back to null/undefined so the map component filters them out safely
+                                                coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
+                                            }))
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-6">
+                                    <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="pt-4">
+                                            <CurrencyConverter compact />
+                                        </CardContent>
+                                    </Card>
+                                </div>
                             </div>
-                            <div className="space-y-6">
-                                <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-4">
-                                        <CurrencyConverter compact />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
 
-                        {/* Weather Forecast - Full Width Prominent Display */}
-                        <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800/30 shadow-lg">
-                            <CardHeader>
-                                <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
-                                    <Cloud className="w-7 h-7 text-sky-600" />
-                                    Weather Forecast for {result.destination}
-                                </CardTitle>
-                                <CardDescription>
-                                    Plan your activities around the weather
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <WeatherWidget
-                                    destination={result.destination}
-                                    days={result.duration_days}
-                                    compact={false}
-                                />
-                            </CardContent>
-                        </Card>
+                            {/* Weather Forecast - Full Width Prominent Display */}
+                            <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800/30 shadow-lg">
+                                <CardHeader>
+                                    <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
+                                        <Cloud className="w-7 h-7 text-sky-600" />
+                                        Weather Forecast for {result.destination}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Plan your activities around the weather
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <WeatherWidget
+                                        destination={result.destination}
+                                        days={result.duration_days}
+                                        compact={false}
+                                    />
+                                </CardContent>
+                            </Card>
 
-                        {/* Template Switcher */}
-                        <Card className="bg-white dark:bg-slate-950 shadow-lg">
-                            <CardContent className="pt-6">
-                                <TemplateSwitcher
-                                    currentTemplate={selectedTemplate}
-                                    onTemplateChange={setSelectedTemplate}
-                                />
-                            </CardContent>
-                        </Card>
+                            {/* Template Switcher */}
+                            <Card className="bg-white dark:bg-slate-950 shadow-lg">
+                                <CardContent className="pt-6">
+                                    <TemplateSwitcher
+                                        currentTemplate={selectedTemplate}
+                                        onTemplateChange={setSelectedTemplate}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div> {/* End inner animate container */}
 
-                        {/* Template-Based Itinerary Display — replaces accordion when a template is active */}
-                        {selectedTemplate === 'safari_story' && (
-                            <SafariStoryView itinerary={result} />
-                        )}
-                        {selectedTemplate === 'urban_brief' && (
-                            <UrbanBriefView itinerary={result} />
-                        )}
-                        {selectedTemplate === 'professional' && (
-                            <ProfessionalView itinerary={result} />
-                        )}
-                        {selectedTemplate === 'luxury_resort' && (
-                            <LuxuryResortView itinerary={result} />
-                        )}
-                        {selectedTemplate === 'visual_journey' && (
-                            <VisualJourneyView itinerary={result} />
-                        )}
-                        {selectedTemplate === 'executive_direct' && (
-                            <ExecutiveDirectView itinerary={result} />
-                        )}
+                        {/* FULL WIDTH LAYOUT FOR TEMPLATES */}
+                        <div className="w-full mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                            {/* Template-Based Itinerary Display */}
+                            {selectedTemplate === 'safari_story' && (
+                                <SafariStoryView itinerary={result!} />
+                            )}
+                            {selectedTemplate === 'urban_brief' && (
+                                <UrbanBriefView itinerary={result!} />
+                            )}
+                            {selectedTemplate === 'professional' && (
+                                <ProfessionalView itinerary={result!} />
+                            )}
+                            {selectedTemplate === 'luxury_resort' && (
+                                <LuxuryResortView itinerary={result!} />
+                            )}
+                            {selectedTemplate === 'visual_journey' && (
+                                <VisualJourneyView itinerary={result!} />
+                            )}
+                            {selectedTemplate === 'bento_journey' && (
+                                <BentoJourneyView itinerary={result!} />
+                            )}
 
-                        {/* Classic Accordion — only shown when no template view is selected */}
-                        {!(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'executive_direct'] as string[]).includes(selectedTemplate) && (
-                            <div className="space-y-6">
-                                {result.days.map((day: Day, dayIndex: number) => {
-                                    const isExpanded = expandedDays.has(day.day_number);
-                                    const isLastDay = dayIndex === result.days.length - 1;
+                            {/* Classic Accordion (fallback) must remain constrained */}
+                            {!(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'bento_journey'] as string[]).includes(selectedTemplate) && (
+                                <div className="space-y-6 max-w-4xl mx-auto">
+                                    {result!.days.map((day: Day, dayIndex: number) => {
+                                        const isExpanded = expandedDays.has(day.day_number);
+                                        const isLastDay = dayIndex === result.days.length - 1;
 
-                                    return (
-                                        <div key={day.day_number} className="relative">
-                                            {/* Timeline connector */}
-                                            {!isLastDay && (
-                                                <div className="absolute left-[30px] top-[60px] bottom-[-24px] w-[2px] border-l-2 border-dashed border-gray-300 dark:border-gray-600 hidden md:block" />
-                                            )}
+                                        return (
+                                            <div key={day.day_number} className="relative">
+                                                {/* Timeline connector */}
+                                                {!isLastDay && (
+                                                    <div className="absolute left-[30px] top-[60px] bottom-[-24px] w-[2px] border-l-2 border-dashed border-gray-300 dark:border-gray-600 hidden md:block" />
+                                                )}
 
-                                            {/* Timeline circle indicator */}
-                                            <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
+                                                {/* Timeline circle indicator */}
+                                                <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
 
-                                            {/* Day card with left margin for timeline on desktop */}
-                                            <div className="md:ml-16">
-                                                {/* Accordion Header */}
-                                                <button
-                                                    onClick={() => toggleDay(day.day_number)}
-                                                    className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
-                                                >
-                                                    <h3 className="text-lg font-bold uppercase tracking-wide">
-                                                        DAY {day.day_number}
-                                                    </h3>
-                                                    <ChevronDown
-                                                        className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-                                                    />
-                                                </button>
+                                                {/* Day card with left margin for timeline on desktop */}
+                                                <div className="md:ml-16">
+                                                    {/* Accordion Header */}
+                                                    <button
+                                                        onClick={() => toggleDay(day.day_number)}
+                                                        className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
+                                                    >
+                                                        <h3 className="text-lg font-bold uppercase tracking-wide">
+                                                            DAY {day.day_number}
+                                                        </h3>
+                                                        <ChevronDown
+                                                            className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
+                                                    </button>
 
-                                                {/* Collapsible Content */}
-                                                <div
-                                                    className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
-                                                        }`}
-                                                >
-                                                    <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
-                                                        {/* Theme subtitle */}
-                                                        <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">
-                                                            <span className="w-2 h-2 rounded-full bg-[#18974e]"></span>
-                                                            {day.theme}
-                                                        </p>
+                                                    {/* Collapsible Content */}
+                                                    <div
+                                                        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                                                            }`}
+                                                    >
+                                                        <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
+                                                            {/* Theme subtitle */}
+                                                            <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">
+                                                                <span className="w-2 h-2 rounded-full bg-[#18974e]"></span>
+                                                                {day.theme}
+                                                            </p>
 
-                                                        {/* Activities */}
-                                                        <div className="space-y-8">
-                                                            {day.activities.map((act: Activity, idx: number) => {
-                                                                const imgKey = activityImageKey(day.day_number, idx);
-                                                                const imgUrl = images[imgKey];
+                                                            {/* Activities */}
+                                                            <div className="space-y-8">
+                                                                {day.activities.map((act: Activity, idx: number) => {
+                                                                    const imgKey = activityImageKey(day.day_number, idx);
+                                                                    const imgUrl = images[imgKey];
 
-                                                                return (
-                                                                    <div key={idx} className="group relative">
-                                                                        {/* Large Feature Image with Overlay */}
-                                                                        <div className="relative h-64 rounded-xl overflow-hidden shadow-md mb-4">
-                                                                            {imgUrl === undefined ? (
-                                                                                <div className="relative w-full h-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                                                                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
-                                                                                </div>
-                                                                            ) : imgUrl ? (
-                                                                                <>
-                                                                                    <img
-                                                                                        src={imgUrl}
-                                                                                        alt={act.title}
-                                                                                        className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-                                                                                        loading="lazy"
-                                                                                        referrerPolicy="no-referrer"
-                                                                                        onError={(e) => {
-                                                                                            e.currentTarget.src = "/placeholder-image.svg";
-                                                                                        }}
-                                                                                    />
-                                                                                    {/* Gradient overlay */}
-                                                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                                                                                    {/* Time badge */}
-                                                                                    <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">
-                                                                                        {act.time}
+                                                                    return (
+                                                                        <div key={idx} className="group relative">
+                                                                            {/* Large Feature Image with Overlay */}
+                                                                            <div className="relative h-64 rounded-xl overflow-hidden shadow-md mb-4">
+                                                                                {imgUrl === undefined ? (
+                                                                                    <div className="relative w-full h-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                                                        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
                                                                                     </div>
+                                                                                ) : imgUrl ? (
+                                                                                    <>
+                                                                                        <img
+                                                                                            src={imgUrl}
+                                                                                            alt={act.title}
+                                                                                            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                                                                                            loading="lazy"
+                                                                                            referrerPolicy="no-referrer"
+                                                                                            onError={(e) => {
+                                                                                                e.currentTarget.src = "/placeholder-image.svg";
+                                                                                            }}
+                                                                                        />
+                                                                                        {/* Gradient overlay */}
+                                                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                                                                                    {/* Title overlay at bottom */}
-                                                                                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                                                                                        <h4 className="text-2xl font-bold text-white mb-2">
-                                                                                            {act.title}
-                                                                                        </h4>
-                                                                                        <div className="flex items-center gap-2 text-white/90 text-sm">
-                                                                                            <MapPin className="w-4 h-4" />
-                                                                                            {act.location}
+                                                                                        {/* Time badge */}
+                                                                                        <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">
+                                                                                            {act.time}
                                                                                         </div>
+
+                                                                                        {/* Title overlay at bottom */}
+                                                                                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                                                                                            <h4 className="text-2xl font-bold text-white mb-2">
+                                                                                                {act.title}
+                                                                                            </h4>
+                                                                                            <div className="flex items-center gap-2 text-white/90 text-sm">
+                                                                                                <MapPin className="w-4 h-4" />
+                                                                                                {act.location}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                                                        <span className="text-gray-400 dark:text-gray-500">No image available</span>
                                                                                     </div>
-                                                                                </>
-                                                                            ) : (
-                                                                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                                                    <span className="text-gray-400 dark:text-gray-500">No image available</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-
-                                                                        {/* Activity Details Below Image */}
-                                                                        <div className="space-y-3 px-2">
-                                                                            <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
-                                                                                {act.description}
-                                                                            </p>
-
-                                                                            {/* Metadata badges */}
-                                                                            <div className="flex flex-wrap gap-2">
-                                                                                {act.duration && (
-                                                                                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-                                                                                        ⏱️ {act.duration}
-                                                                                    </Badge>
-                                                                                )}
-                                                                                {act.cost && (
-                                                                                    <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
-                                                                                        💰 {act.cost}
-                                                                                    </Badge>
-                                                                                )}
-                                                                                {act.transport && (
-                                                                                    <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                                                                                        🚇 {act.transport}
-                                                                                    </Badge>
                                                                                 )}
                                                                             </div>
+
+                                                                            {/* Activity Details Below Image */}
+                                                                            <div className="space-y-3 px-2">
+                                                                                <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
+                                                                                    {act.description}
+                                                                                </p>
+
+                                                                                {/* Metadata badges */}
+                                                                                <div className="flex flex-wrap gap-2">
+                                                                                    {act.duration && (
+                                                                                        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                                                                            ⏱️ {act.duration}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                    {act.cost && (
+                                                                                        <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
+                                                                                            💰 {act.cost}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                    {act.transport && (
+                                                                                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                                                                                            🚇 {act.transport}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                    </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
 
                 {error && (

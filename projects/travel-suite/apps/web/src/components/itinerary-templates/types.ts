@@ -11,4 +11,4 @@ export interface ItineraryTemplateProps {
     organizationName?: string;
 }
 
-export type ItineraryTemplateId = 'safari_story' | 'urban_brief' | 'professional' | 'luxury_resort' | 'visual_journey' | 'executive_direct';
+export type ItineraryTemplateId = 'safari_story' | 'urban_brief' | 'professional' | 'luxury_resort' | 'visual_journey' | 'bento_journey';
