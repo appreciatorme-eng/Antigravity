@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { X, Link2, Check, Copy, Mail, Share2 } from "lucide-react";
 
@@ -61,6 +61,14 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
             setLoading(false);
         }
     };
+
+    // Auto-generate link as soon as the modal opens — no second click needed
+    useEffect(() => {
+        if (isOpen && !shareUrl && !loading) {
+            generateShareLink();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const copyToClipboard = async () => {
         if (!shareUrl) return;
@@ -128,22 +136,16 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: 
 
                 {/* Generate link section */}
                 {!shareUrl ? (
-                    <div className="space-y-4">
-                        <button
-                            onClick={generateShareLink}
-                            disabled={loading}
-                            className="w-full py-3 bg-primary text-white font-medium rounded-lg hover:bg-opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
-                        >
-                            {loading ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                <Link2 className="w-5 h-5" />
-                            )}
-                            {loading ? "Generating..." : "Generate Share Link"}
-                        </button>
-
+                    <div className="flex flex-col items-center justify-center py-6 gap-3">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-gray-500">{error ? error : "Generating your magic link..."}</p>
                         {error && (
-                            <p className="text-sm text-red-500 text-center">{error}</p>
+                            <button
+                                onClick={generateShareLink}
+                                className="text-sm text-primary underline"
+                            >
+                                Try again
+                            </button>
                         )}
                     </div>
                 ) : (
