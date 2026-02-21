@@ -23,14 +23,15 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary }
     };
 
     return (
-        <div className="min-h-screen bg-black text-white selection:bg-white/20 font-sans overflow-x-hidden relative">
+        <div className="min-h-screen bg-black text-white selection:bg-white/20 font-sans overflow-hidden relative rounded-3xl shadow-2xl border border-white/10">
             {/* Dynamic Background Image */}
             <div
-                className="fixed inset-0 z-0 transition-opacity duration-1000 ease-in-out"
+                className="absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out"
                 style={{
                     backgroundImage: `url(${currentBg || "https://images.unsplash.com/photo-1542314831-c6a4d1409322?q=80&w=2560&auto=format&fit=crop"})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed', // Keep the parallax feel inside the container 
                     filter: 'brightness(0.3) blur(2px)' // dark and slightly blurred for text contrast
                 }}
             />

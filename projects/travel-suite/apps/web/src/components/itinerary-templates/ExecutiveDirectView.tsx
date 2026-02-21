@@ -15,7 +15,7 @@ export const ExecutiveDirectView: React.FC<ItineraryTemplateProps> = ({ itinerar
     }, [defaultHeroImage]);
 
     return (
-        <div className="bg-white text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row">
+        <div className="bg-white text-zinc-900 font-sans min-h-screen flex flex-col md:flex-row overflow-hidden relative rounded-3xl shadow-2xl border border-zinc-200">
             {/* LEFT HALF - STICKY IMAGE PANEL (Hidden on small screens, shown full on desktop) */}
             <div className="w-full h-[50vh] md:w-[45vw] md:h-screen md:sticky md:top-0 order-1 md:order-1 overflow-hidden bg-zinc-100 flex-shrink-0 relative group">
                 <img

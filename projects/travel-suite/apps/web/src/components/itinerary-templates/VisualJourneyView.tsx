@@ -17,7 +17,7 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary 
     };
 
     return (
-        <div ref={mainRef} className="bg-slate-50 font-sans text-slate-900 overflow-x-hidden min-h-screen">
+        <div ref={mainRef} className="bg-slate-50 font-sans text-slate-900 overflow-hidden relative rounded-3xl shadow-2xl border border-slate-200 min-h-screen">
             {/* Cinematic Hero */}
             <div className="relative h-screen flex items-center justify-center overflow-hidden">
                 {/* Fallback Hero Image from the first activity */}
