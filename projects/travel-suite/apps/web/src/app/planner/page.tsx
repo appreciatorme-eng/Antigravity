@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
+import ItineraryBuilder from "@/components/ItineraryBuilder";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -45,6 +46,7 @@ export default function PlannerPage() {
     const [error, setError] = useState("");
     const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari_story');
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])); // All days expanded by default
@@ -330,6 +332,13 @@ Make it practical and specific:
                                         interests={interests}
                                         templateId={selectedTemplate}
                                     />
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsEditing(!isEditing)}
+                                        className="border-primary/20 hover:bg-primary/5 text-primary"
+                                    >
+                                        {isEditing ? '👀 Preview Design' : '🖊️ Edit Itinerary'}
+                                    </Button>
                                     <button
                                         onClick={() => setIsShareOpen(true)}
                                         className="px-4 py-2 bg-white text-secondary hover:bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 transition-all text-sm font-medium"
@@ -409,30 +418,37 @@ Make it practical and specific:
                             </Card>
                         </div> {/* End inner animate container */}
 
-                        {/* FULL WIDTH LAYOUT FOR TEMPLATES */}
+                        {/* FULL WIDTH LAYOUT FOR TEMPLATES OR BUILDER */}
                         <div id="itinerary-pdf-content" className="w-full mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                            {/* Template-Based Itinerary Display */}
-                            {selectedTemplate === 'safari_story' && (
-                                <SafariStoryView itinerary={result!} />
-                            )}
-                            {selectedTemplate === 'urban_brief' && (
-                                <UrbanBriefView itinerary={result!} />
-                            )}
-                            {selectedTemplate === 'professional' && (
-                                <ProfessionalView itinerary={result!} />
-                            )}
-                            {selectedTemplate === 'luxury_resort' && (
-                                <LuxuryResortView itinerary={result!} />
-                            )}
-                            {selectedTemplate === 'visual_journey' && (
-                                <VisualJourneyView itinerary={result!} />
-                            )}
-                            {selectedTemplate === 'bento_journey' && (
-                                <BentoJourneyView itinerary={result!} />
+
+                            {isEditing ? (
+                                <ItineraryBuilder data={result!} onChange={setResult} />
+                            ) : (
+                                <>
+                                    {/* Template-Based Itinerary Display */}
+                                    {selectedTemplate === 'safari_story' && (
+                                        <SafariStoryView itinerary={result!} />
+                                    )}
+                                    {selectedTemplate === 'urban_brief' && (
+                                        <UrbanBriefView itinerary={result!} />
+                                    )}
+                                    {selectedTemplate === 'professional' && (
+                                        <ProfessionalView itinerary={result!} />
+                                    )}
+                                    {selectedTemplate === 'luxury_resort' && (
+                                        <LuxuryResortView itinerary={result!} />
+                                    )}
+                                    {selectedTemplate === 'visual_journey' && (
+                                        <VisualJourneyView itinerary={result!} />
+                                    )}
+                                    {selectedTemplate === 'bento_journey' && (
+                                        <BentoJourneyView itinerary={result!} />
+                                    )}
+                                </>
                             )}
 
                             {/* Classic Accordion (fallback) must remain constrained */}
-                            {!(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'bento_journey'] as string[]).includes(selectedTemplate) && (
+                            {!isEditing && !(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'bento_journey'] as string[]).includes(selectedTemplate) && (
                                 <div className="space-y-6 max-w-4xl mx-auto">
                                     {result!.days.map((day: Day, dayIndex: number) => {
                                         const isExpanded = expandedDays.has(day.day_number);

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Clock, DollarSign, Navigation, Info, ArrowUpRight } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Navigation, Info, ArrowUpRight, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
@@ -77,6 +77,62 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                         </p>
                     )}
                 </div>
+
+                {/* Logistics */}
+                {itinerary.logistics && (
+                    <div className="mb-24 space-y-8">
+                        {/* Flights Glass Card */}
+                        {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
+                            <div className="rounded-3xl p-8 backdrop-blur-xl bg-black/40 border border-white/10">
+                                <h3 className="text-2xl font-serif mb-6 flex items-center gap-3">
+                                    <Plane className="w-6 h-6" style={{ color: brandColor }} /> Privé Flights
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {itinerary.logistics.flights.map(flight => (
+                                        <div key={flight.id} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="font-serif text-xl">{flight.airline}</div>
+                                                <div className="text-sm font-light tracking-widest text-white/50">{flight.flight_number}</div>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="text-2xl font-light">{flight.departure_airport}</div>
+                                                    <div className="text-sm text-white/50 mt-1">{flight.departure_time}</div>
+                                                </div>
+                                                <div className="w-12 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                                                <div className="text-right">
+                                                    <div className="text-2xl font-light">{flight.arrival_airport}</div>
+                                                    <div className="text-sm text-white/50 mt-1">{flight.arrival_time}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Hotels Glass Card */}
+                        {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
+                            <div className="rounded-3xl p-8 backdrop-blur-xl bg-black/40 border border-white/10">
+                                <h3 className="text-2xl font-serif mb-6 flex items-center gap-3">
+                                    <MapPin className="w-6 h-6" style={{ color: brandColor }} /> Exclusive Stays
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {itinerary.logistics.hotels.map(hotel => (
+                                        <div key={hotel.id} className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                                            <div className="font-serif text-xl mb-2">{hotel.name}</div>
+                                            <div className="text-sm text-white/50 mb-6 font-light">{hotel.address}</div>
+                                            <div className="flex justify-between border-t border-white/10 pt-4 text-sm font-light">
+                                                <div><span className="uppercase tracking-widest text-[10px] text-white/40 block mb-1">Check In</span>{hotel.check_in}</div>
+                                                <div className="text-right"><span className="uppercase tracking-widest text-[10px] text-white/40 block mb-1">Check Out</span>{hotel.check_out}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Days Grid - Glassmorphism style */}
                 <div className="space-y-24">

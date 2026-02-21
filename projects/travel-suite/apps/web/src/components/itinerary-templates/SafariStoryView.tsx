@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Moon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Moon, Plane } from 'lucide-react';
 
 export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
   // Open the first day by default
@@ -85,11 +85,81 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
 
       {/* 2. INTRODUCTION (The Prologue) */}
       {itinerary.summary && (
-        <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+        <div className="max-w-4xl mx-auto px-6 py-16 text-center border-b border-stone-200">
           <p className="text-xl md:text-2xl font-serif text-stone-600 leading-relaxed italic">
             "{itinerary.summary}"
           </p>
           <div className="w-24 h-[1px] bg-stone-300 mx-auto mt-12"></div>
+        </div>
+      )}
+
+      {/* 2.5 LOGISTICS (The Manifest) */}
+      {itinerary.logistics && (
+        <div className="max-w-4xl mx-auto px-6 py-16">
+          <h2 className="text-2xl font-serif text-center text-stone-900 mb-12 uppercase tracking-widest">
+            Expedition Manifest
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-serif text-stone-800 flex items-center gap-3 border-b border-stone-200 pb-2">
+                  <Plane className="w-5 h-5 text-stone-500" /> Air Travel
+                </h3>
+                <div className="space-y-4">
+                  {itinerary.logistics.flights.map(flight => (
+                    <div key={flight.id} className="bg-white p-5 border border-stone-200 shadow-sm relative">
+                      {/* Ticket notch effect */}
+                      <div className="absolute top-1/2 -left-2 w-4 h-4 rounded-full bg-[#FDFBF7] border-r border-stone-200 transform -translate-y-1/2"></div>
+                      <div className="absolute top-1/2 -right-2 w-4 h-4 rounded-full bg-[#FDFBF7] border-l border-stone-200 transform -translate-y-1/2"></div>
+
+                      <div className="font-serif text-lg text-stone-900">{flight.airline}</div>
+                      <div className="text-xs uppercase tracking-widest text-stone-500 mb-3">{flight.flight_number}</div>
+
+                      <div className="flex justify-between items-center text-stone-800 font-medium border-t border-dashed border-stone-300 pt-3">
+                        <div className="text-center">
+                          <div className="text-sm">{flight.departure_time}</div>
+                          <div className="text-xl font-serif">{flight.departure_airport}</div>
+                        </div>
+                        <div className="text-stone-400">✈</div>
+                        <div className="text-center">
+                          <div className="text-sm">{flight.arrival_time}</div>
+                          <div className="text-xl font-serif">{flight.arrival_airport}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-serif text-stone-800 flex items-center gap-3 border-b border-stone-200 pb-2">
+                  <MapPin className="w-5 h-5 text-stone-500" /> Lodgings
+                </h3>
+                <div className="space-y-4">
+                  {itinerary.logistics.hotels.map(hotel => (
+                    <div key={hotel.id} className="bg-white p-5 border border-stone-200 shadow-sm border-l-4" style={{ borderLeftColor: brandColor }}>
+                      <div className="font-serif text-lg text-stone-900 mb-1">{hotel.name}</div>
+                      <div className="text-sm text-stone-500 mb-4">{hotel.address}</div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm bg-stone-50 p-3">
+                        <div>
+                          <span className="uppercase tracking-widest text-[10px] text-stone-500 block">Check In</span>
+                          <span className="font-medium text-stone-800">{hotel.check_in}</span>
+                        </div>
+                        <div>
+                          <span className="uppercase tracking-widest text-[10px] text-stone-500 block">Check Out</span>
+                          <span className="font-medium text-stone-800">{hotel.check_out}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

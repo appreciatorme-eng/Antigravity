@@ -2,7 +2,7 @@
 import React from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Navigation, Clock } from 'lucide-react';
+import { MapPin, Navigation, Clock, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
@@ -45,6 +45,93 @@ export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                     </p>
                 )}
             </div>
+
+            {/* Logistics Bento Box */}
+            {itinerary.logistics && (
+                <div className="max-w-7xl mx-auto mb-16">
+                    <div className="flex items-center gap-3 mb-6">
+                        <Badge className="rounded-full px-3 py-1 font-bold tracking-wider uppercase text-xs text-white border-0 shadow-sm" style={{ backgroundColor: brandColor }}>
+                            Logistics
+                        </Badge>
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Travel Details</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        {/* Flights */}
+                        {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
+                            <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
+                                <div className="mb-6 flex items-center justify-between">
+                                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                        <Plane className="w-6 h-6 text-slate-700" />
+                                    </div>
+                                    <span className="text-sm font-bold tracking-widest uppercase text-slate-400">Flights</span>
+                                </div>
+                                <div className="space-y-4">
+                                    {itinerary.logistics.flights.map(flight => (
+                                        <div key={flight.id} className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <div className="font-bold text-slate-800 text-lg">{flight.airline}</div>
+                                                <div className="text-xs font-bold tracking-wider text-slate-400 uppercase bg-white px-2 py-1 rounded-md shadow-sm border border-slate-100">{flight.flight_number}</div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-slate-600">
+                                                <div>
+                                                    <div className="font-bold text-xl">{flight.departure_airport}</div>
+                                                    <div className="text-sm font-medium mt-1">{flight.departure_time}</div>
+                                                </div>
+                                                <div className="flex-1 px-4 flex items-center">
+                                                    <div className="w-full h-px bg-slate-200 relative">
+                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-50 px-2 text-slate-300">
+                                                            <Navigation className="w-3 h-3 rotate-90" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="font-bold text-xl">{flight.arrival_airport}</div>
+                                                    <div className="text-sm font-medium mt-1">{flight.arrival_time}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Accommodation */}
+                        {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
+                            <div className="bg-slate-900 text-white rounded-[2rem] p-6 md:p-8 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                                {/* Subtle background gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+
+                                <div className="mb-6 flex items-center justify-between relative z-10">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center">
+                                        <MapPin className="w-6 h-6 text-white" />
+                                    </div>
+                                    <span className="text-sm font-bold tracking-widest uppercase text-white/40">Stays</span>
+                                </div>
+                                <div className="space-y-4 relative z-10">
+                                    {itinerary.logistics.hotels.map(hotel => (
+                                        <div key={hotel.id} className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-white/10">
+                                            <div className="font-bold text-xl mb-1">{hotel.name}</div>
+                                            <div className="text-sm text-white/60 mb-6">{hotel.address}</div>
+                                            <div className="flex justify-between items-center text-sm bg-black/20 p-3 rounded-xl">
+                                                <div>
+                                                    <span className="block text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Check-in</span>
+                                                    <span className="font-medium">{hotel.check_in}</span>
+                                                </div>
+                                                <div className="w-px h-8 bg-white/10"></div>
+                                                <div className="text-right">
+                                                    <span className="block text-[10px] uppercase tracking-widest text-white/40 mb-1 font-bold">Check-out</span>
+                                                    <span className="font-medium">{hotel.check_out}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Bento Grid Layout */}
             <div className="max-w-7xl mx-auto space-y-24">

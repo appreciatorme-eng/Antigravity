@@ -29,6 +29,31 @@ export interface Day {
     activities: Activity[];
 }
 
+export interface FlightDetails {
+    id: string;
+    airline: string;
+    flight_number: string;
+    departure_airport: string;
+    arrival_airport: string;
+    departure_time: string;
+    arrival_time: string;
+    confirmation?: string;
+}
+
+export interface HotelDetails {
+    id: string;
+    name: string;
+    address: string;
+    check_in: string;
+    check_out: string;
+    confirmation?: string;
+}
+
+export interface Logistics {
+    flights?: FlightDetails[];
+    hotels?: HotelDetails[];
+}
+
 export interface ItineraryResult {
     trip_title: string;
     title?: string; // Alias for trip_title used in templates
@@ -40,6 +65,7 @@ export interface ItineraryResult {
     budget?: string;
     interests?: string[];
     tips?: string[];
+    logistics?: Logistics;
     branding?: {
         logoUrl?: string;
         primaryColor?: string;

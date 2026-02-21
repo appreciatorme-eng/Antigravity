@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Clock, Navigation, CheckCircle2, ChevronDown } from 'lucide-react';
+import { MapPin, Clock, Navigation, CheckCircle2, ChevronDown, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
@@ -66,6 +66,84 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                     <ChevronDown className="w-8 h-8" />
                 </button>
             </div>
+
+            {/* Logistics Section */}
+            {itinerary.logistics && (
+                <div className="bg-slate-900 text-white relative z-20 border-b border-white/10">
+                    <div className="max-w-7xl mx-auto px-6 py-24">
+                        <div className="text-center mb-16">
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Trip Logistics</h2>
+                            <div className="w-16 h-1 mx-auto rounded" style={{ backgroundColor: brandColor }} />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            {/* Flights */}
+                            {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
+                                <div className="space-y-8">
+                                    <h3 className="text-2xl font-light tracking-widest uppercase flex items-center gap-4 text-white/80">
+                                        <Plane className="w-6 h-6" style={{ color: brandColor }} /> Flight Manifest
+                                    </h3>
+                                    <div className="space-y-6">
+                                        {itinerary.logistics.flights.map(flight => (
+                                            <div key={flight.id} className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 hover:bg-white/10 transition-colors">
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div className="font-bold text-2xl">{flight.airline}</div>
+                                                    <Badge className="bg-white/10 text-white hover:bg-white/20 px-3 py-1 font-mono tracking-wider">
+                                                        {flight.flight_number}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <div className="text-4xl font-light mb-2">{flight.departure_airport}</div>
+                                                        <div className="text-white/50">{flight.departure_time}</div>
+                                                    </div>
+                                                    <div className="flex-1 px-8">
+                                                        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/30 to-transparent relative">
+                                                            <Plane className="w-4 h-4 text-white/50 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-4xl font-light mb-2">{flight.arrival_airport}</div>
+                                                        <div className="text-white/50">{flight.arrival_time}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hotels */}
+                            {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
+                                <div className="space-y-8">
+                                    <h3 className="text-2xl font-light tracking-widest uppercase flex items-center gap-4 text-white/80">
+                                        <MapPin className="w-6 h-6" style={{ color: brandColor }} /> Accommodations
+                                    </h3>
+                                    <div className="space-y-6">
+                                        {itinerary.logistics.hotels.map(hotel => (
+                                            <div key={hotel.id} className="bg-white/5 backdrop-blur-md rounded-3xl p-8 border border-white/10 hover:bg-white/10 transition-colors">
+                                                <h4 className="font-bold text-2xl mb-2">{hotel.name}</h4>
+                                                <p className="text-white/50 mb-8 font-light leading-relaxed">{hotel.address}</p>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-black/30 rounded-2xl p-4">
+                                                        <span className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">Check-In</span>
+                                                        <span className="text-lg font-medium">{hotel.check_in}</span>
+                                                    </div>
+                                                    <div className="bg-black/30 rounded-2xl p-4">
+                                                        <span className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">Check-Out</span>
+                                                        <span className="text-lg font-medium">{hotel.check_out}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Immersive Day Sections */}
             <div className="bg-slate-50 relative z-20">

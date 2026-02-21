@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info, Plane } from 'lucide-react';
 
 const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
     itinerary,
@@ -73,6 +73,61 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Logistics Section */}
+            {itinerary.logistics && (
+                <div className="max-w-5xl mx-auto px-6 pt-12">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Flights */}
+                        {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Plane className="w-5 h-5" style={{ color: brandColor }} /> Air Travel
+                                </h3>
+                                <div className="space-y-4">
+                                    {itinerary.logistics.flights.map(flight => (
+                                        <div key={flight.id} className="p-4 rounded-lg bg-gray-50 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between">
+                                            <div>
+                                                <div className="font-semibold text-gray-900">{flight.airline} <span className="text-gray-500 font-normal ml-1">{flight.flight_number}</span></div>
+                                                <div className="text-sm font-medium text-gray-600 mt-1 flex items-center gap-2">
+                                                    {flight.departure_airport} <Navigation className="w-3 h-3 text-gray-400 rotate-90" /> {flight.arrival_airport}
+                                                </div>
+                                            </div>
+                                            <div className="mt-2 md:mt-0 md:text-right">
+                                                <div className="font-semibold text-gray-900">{flight.departure_time}</div>
+                                                <div className="text-sm text-gray-500">{flight.arrival_time}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Hotels */}
+                        {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <MapPin className="w-5 h-5" style={{ color: brandColor }} /> Accommodation
+                                </h3>
+                                <div className="space-y-4">
+                                    {itinerary.logistics.hotels.map(hotel => (
+                                        <div key={hotel.id} className="p-4 rounded-lg bg-gray-50 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between">
+                                            <div>
+                                                <div className="font-semibold text-gray-900">{hotel.name}</div>
+                                                <div className="text-sm text-gray-500 mt-1">{hotel.address}</div>
+                                            </div>
+                                            <div className="mt-2 md:mt-0 md:text-right text-sm">
+                                                <div className="text-gray-700"><span className="text-gray-400 mr-2 text-xs font-bold uppercase tracking-wider">In</span> <span className="font-medium">{hotel.check_in}</span></div>
+                                                <div className="text-gray-700 mt-0.5"><span className="text-gray-400 mr-2 text-xs font-bold uppercase tracking-wider">Out</span> <span className="font-medium">{hotel.check_out}</span></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Timeline Content */}
             <div className="max-w-5xl mx-auto px-6 py-12">

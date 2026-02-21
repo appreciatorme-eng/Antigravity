@@ -68,6 +68,58 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
 
                     {/* Main Content Area */}
                     <div className="lg:col-span-8 space-y-12">
+
+                        {/* Logistics Section */}
+                        {itineraryData.logistics && (
+                            <section className="space-y-6">
+                                {itineraryData.logistics.flights && itineraryData.logistics.flights.length > 0 && (
+                                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                                        <h3 className="text-xl font-serif text-stone-800 mb-6 flex items-center gap-3">
+                                            <Plane className="w-5 h-5 text-stone-400" /> Flight Details
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {itineraryData.logistics.flights.map(flight => (
+                                                <div key={flight.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-stone-50 rounded-xl border border-stone-100/50">
+                                                    <div>
+                                                        <div className="font-bold text-lg text-stone-800 tracking-tight">{flight.airline} <span className="text-stone-500 font-medium">{flight.flight_number}</span></div>
+                                                        <div className="text-sm font-medium text-stone-500 mt-2 uppercase tracking-wider">
+                                                            {flight.departure_airport} <span className="mx-2 text-stone-300">✈</span> {flight.arrival_airport}
+                                                        </div>
+                                                    </div>
+                                                    <div className="md:text-right mt-4 md:mt-0">
+                                                        <div className="text-stone-900 font-medium">{flight.departure_time}</div>
+                                                        <div className="text-stone-500 text-sm mt-1">{flight.arrival_time}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {itineraryData.logistics.hotels && itineraryData.logistics.hotels.length > 0 && (
+                                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                                        <h3 className="text-xl font-serif text-stone-800 mb-6 flex items-center gap-3">
+                                            <MapPin className="w-5 h-5 text-stone-400" /> Accommodation
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {itineraryData.logistics.hotels.map(hotel => (
+                                                <div key={hotel.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-stone-50 rounded-xl border border-stone-100/50">
+                                                    <div>
+                                                        <div className="font-bold text-lg text-stone-800 tracking-tight">{hotel.name}</div>
+                                                        <div className="text-sm text-stone-500 mt-2">{hotel.address}</div>
+                                                    </div>
+                                                    <div className="md:text-right mt-4 md:mt-0 text-sm">
+                                                        <div className="text-stone-600 mb-1"><span className="uppercase tracking-widest text-xs font-bold text-stone-400 mr-2">IN</span> <span className="font-medium text-stone-900">{hotel.check_in}</span></div>
+                                                        <div className="text-stone-600"><span className="uppercase tracking-widest text-xs font-bold text-stone-400 mr-2">OUT</span> <span className="font-medium text-stone-900">{hotel.check_out}</span></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
                         {itineraryData.days && itineraryData.days.map((day: Day) => (
                             <section key={day.day_number} className="relative">
                                 {/* Timeline Line */}

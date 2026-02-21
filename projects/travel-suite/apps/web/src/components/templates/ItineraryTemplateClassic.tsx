@@ -67,6 +67,57 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
                     <p className="mt-4 text-gray-700">{itineraryData.summary}</p>
                 </div>
 
+                {/* Logistics */}
+                {itineraryData.logistics && (
+                    <div className="mb-8 space-y-6">
+                        {itineraryData.logistics.flights && itineraryData.logistics.flights.length > 0 && (
+                            <div className="bg-white rounded-xl p-6 shadow-sm border border-blue-100">
+                                <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                                    <Plane className="w-5 h-5 text-blue-600" /> Flights
+                                </h3>
+                                <div className="space-y-4">
+                                    {itineraryData.logistics.flights.map(flight => (
+                                        <div key={flight.id} className="flex flex-col sm:flex-row justify-between p-4 bg-blue-50/50 rounded-lg">
+                                            <div>
+                                                <div className="font-semibold text-gray-900">{flight.airline} {flight.flight_number}</div>
+                                                <div className="text-sm text-gray-500 mt-1">
+                                                    {flight.departure_airport} ➔ {flight.arrival_airport}
+                                                </div>
+                                            </div>
+                                            <div className="sm:text-right mt-2 sm:mt-0">
+                                                <div className="text-sm font-medium text-gray-900">{flight.departure_time}</div>
+                                                <div className="text-sm text-gray-500">{flight.arrival_time}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {itineraryData.logistics.hotels && itineraryData.logistics.hotels.length > 0 && (
+                            <div className="bg-white rounded-xl p-6 shadow-sm border border-emerald-100">
+                                <h3 className="text-lg font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                                    <MapPin className="w-5 h-5 text-emerald-600" /> Accommodation
+                                </h3>
+                                <div className="space-y-4">
+                                    {itineraryData.logistics.hotels.map(hotel => (
+                                        <div key={hotel.id} className="flex flex-col sm:flex-row justify-between p-4 bg-emerald-50/50 rounded-lg">
+                                            <div>
+                                                <div className="font-semibold text-gray-900">{hotel.name}</div>
+                                                <div className="text-sm text-gray-500 mt-1">{hotel.address}</div>
+                                            </div>
+                                            <div className="sm:text-right mt-2 sm:mt-0">
+                                                <div className="text-sm font-medium text-gray-900">Check In: {hotel.check_in}</div>
+                                                <div className="text-sm text-gray-500">Check Out: {hotel.check_out}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Map */}
                 {itineraryData.days && (
                     <div className="h-72 rounded-xl overflow-hidden shadow-md border border-gray-200 mb-8 z-0 relative">
