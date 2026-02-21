@@ -16,16 +16,16 @@ export default async function SharedTripPage({
     // Fetch the shared record AND the org info (for branding)
     const { data: share, error: shareError } = await supabase
         .from("shared_itineraries")
-        .select(
-            `
+        .select(`
             *,
             itineraries (
                 *,
                 clients ( id, profiles ( full_name, email ) ),
-                organizations ( name, logo_url, primary_color )
+                profiles!itineraries_user_id_fkey (
+                    organizations ( name, logo_url, primary_color )
+                )
             )
-        `
-        )
+        `)
         .eq("share_code", token)
         .single();
 
@@ -83,7 +83,7 @@ export default async function SharedTripPage({
     };
 
     // Resolve the organization name for branding
-    const org = (itinerary as any).organizations;
+    const org = (itinerary as any).profiles?.organizations;
     const organizationName: string =
         (Array.isArray(org) ? org[0]?.name : org?.name) || "Travel Adventures";
 
