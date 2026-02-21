@@ -328,6 +328,7 @@ Make it practical and specific:
                                         days={days}
                                         budget={budget}
                                         interests={interests}
+                                        templateId={selectedTemplate}
                                     />
                                     <button
                                         onClick={() => setIsShareOpen(true)}

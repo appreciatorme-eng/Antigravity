@@ -12,6 +12,7 @@ interface SaveItineraryButtonProps {
     days: number;
     budget: string;
     interests: string[];
+    templateId?: string;
 }
 
 export default function SaveItineraryButton({
@@ -20,6 +21,7 @@ export default function SaveItineraryButton({
     days,
     budget,
     interests,
+    templateId = "safari_story",
 }: SaveItineraryButtonProps) {
     const router = useRouter();
     const supabase = createClient();
@@ -53,6 +55,7 @@ export default function SaveItineraryButton({
                     budget: budget,
                     interests: interests,
                     raw_data: itineraryData as any,
+                    template_id: templateId,
                 })
                 .select("id")
                 .single();

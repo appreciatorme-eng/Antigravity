@@ -11,12 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ItineraryResult } from "@/types/itinerary";
 import ClientAssignmentBlock from "@/components/ClientAssignmentBlock";
-import { SafariStoryView } from "@/components/itinerary-templates";
 
-const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
-    ssr: false,
-    loading: () => <div className="h-72 bg-gray-100 animate-pulse rounded-xl" />,
-});
+import {
+    SafariStoryView,
+    UrbanBriefView,
+    ProfessionalView,
+    LuxuryResortView,
+    VisualJourneyView,
+    BentoJourneyView,
+} from "@/components/itinerary-templates";
+import ItineraryTemplateClassic from "@/components/templates/ItineraryTemplateClassic";
+import ItineraryTemplateModern from "@/components/templates/ItineraryTemplateModern";
 
 const PDFDownloadButton = dynamic(
     () => import("@/components/pdf/PDFDownloadButton"),
@@ -35,13 +40,29 @@ interface TripDetailClientProps {
         raw_data: ItineraryResult;
         client_id?: string | null;
         clients?: any;
+        template_id?: string | null;
     };
+}
+
+function ItineraryView({ templateId, tripData }: { templateId: string; tripData: ItineraryResult }) {
+    switch (templateId) {
+        case "urban_brief": return <UrbanBriefView itinerary={tripData} />;
+        case "professional": return <ProfessionalView itinerary={tripData} />;
+        case "luxury_resort": return <LuxuryResortView itinerary={tripData} />;
+        case "visual_journey": return <VisualJourneyView itinerary={tripData} />;
+        case "bento_journey": return <BentoJourneyView itinerary={tripData} />;
+        case "classic": return <ItineraryTemplateClassic itineraryData={tripData} organizationName="GoBuddy Adventures" />;
+        case "modern": return <ItineraryTemplateModern itineraryData={tripData} organizationName="GoBuddy Adventures" />;
+        case "safari_story":
+        default: return <SafariStoryView itinerary={tripData} />;
+    }
 }
 
 export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
     const [showShareModal, setShowShareModal] = useState(false);
     const tripData = itinerary.raw_data;
     const clientName = itinerary.clients?.profiles?.full_name || null;
+    const templateId = itinerary.template_id || "safari_story";
 
     return (
         <>
@@ -70,7 +91,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                         </div>
                     </div>
 
-                    {/* Trip Info Card — full width */}
+                    {/* Trip Info Card */}
                     <Card className="bg-white/50 backdrop-blur-sm border-gray-200 shadow-sm print:hidden mb-8">
                         <CardContent className="pt-6">
                             <div className="mb-6 text-center md:text-left">
@@ -102,9 +123,9 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Itinerary rendered in default (Safari Story) view */}
+                    {/* Render itinerary in the template it was saved with */}
                     <div id="itinerary-pdf-content" className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                        <SafariStoryView itinerary={tripData} />
+                        <ItineraryView templateId={templateId} tripData={tripData} />
                     </div>
                 </div>
             </main>

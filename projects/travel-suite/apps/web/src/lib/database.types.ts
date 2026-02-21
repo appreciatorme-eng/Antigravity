@@ -673,6 +673,7 @@ export type Database = {
           interests: string[] | null
           raw_data: Json
           summary: string | null
+          template_id: string | null
           trip_title: string
           updated_at: string | null
           user_id: string | null
@@ -687,6 +688,7 @@ export type Database = {
           interests?: string[] | null
           raw_data: Json
           summary?: string | null
+          template_id?: string | null
           trip_title: string
           updated_at?: string | null
           user_id?: string | null
@@ -701,6 +703,7 @@ export type Database = {
           interests?: string[] | null
           raw_data?: Json
           summary?: string | null
+          template_id?: string | null
           trip_title?: string
           updated_at?: string | null
           user_id?: string | null
