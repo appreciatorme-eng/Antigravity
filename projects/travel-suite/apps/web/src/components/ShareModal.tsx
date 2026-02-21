@@ -9,10 +9,9 @@ interface ShareModalProps {
     onClose: () => void;
     itineraryId: string;
     tripTitle: string;
-    templateId?: string;
 }
 
-export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, templateId = "safari_story" }: ShareModalProps) {
+export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle }: ShareModalProps) {
     const supabase = createClient();
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -24,23 +23,18 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
         setError("");
 
         try {
-            // Check if a share link already exists for this itinerary
+            // If a share link already exists for this itinerary, just reuse it exactly as-is
+            // (the template was chosen in the planner and should not be overridden here)
             const { data: existing } = await supabase
                 .from("shared_itineraries")
-                .select("id, share_code")
+                .select("share_code")
                 .eq("itinerary_id", itineraryId)
                 .maybeSingle();
 
             if (existing) {
-                // Update the template on the existing row and reuse its share_code
-                await supabase
-                    .from("shared_itineraries")
-                    .update({ template_id: templateId })
-                    .eq("id", existing.id);
-
                 setShareUrl(`${window.location.origin}/share/${existing.share_code}`);
             } else {
-                // Create a fresh share link
+                // Brand-new share — create with the default template (safari_story)
                 const shareToken = crypto.randomUUID();
                 const expiresAt = new Date();
                 expiresAt.setMonth(expiresAt.getMonth() + 1);
@@ -51,7 +45,7 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
                         itinerary_id: itineraryId,
                         share_code: shareToken,
                         expires_at: expiresAt.toISOString(),
-                        template_id: templateId,
+                        template_id: "safari_story",
                     });
 
                 if (insertError) throw insertError;
