@@ -409,7 +409,7 @@ Make it practical and specific:
                         </div> {/* End inner animate container */}
 
                         {/* FULL WIDTH LAYOUT FOR TEMPLATES */}
-                        <div className="w-full mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                        <div id="itinerary-pdf-content" className="w-full mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                             {/* Template-Based Itinerary Display */}
                             {selectedTemplate === 'safari_story' && (
                                 <SafariStoryView itinerary={result!} />
