@@ -127,8 +127,9 @@ const defaultStyles = mapboxToken ? {
   dark: `https://api.mapbox.com/styles/v1/mapbox/dark-v11/style?access_token=${mapboxToken}`,
   light: `https://api.mapbox.com/styles/v1/mapbox/light-v11/style?access_token=${mapboxToken}`,
 } : {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  // OpenFreeMap: completely free, no API key, no rate limits, open-source tiles
+  dark: "https://tiles.openfreemap.org/styles/liberty",
+  light: "https://tiles.openfreemap.org/styles/bright",
 };
 
 type MapStyleOption = string | MapLibreGL.StyleSpecification;
