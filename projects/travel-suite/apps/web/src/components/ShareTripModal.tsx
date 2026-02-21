@@ -106,10 +106,60 @@ const ProfessionalThumb = () => (
     </svg>
 );
 
+const LuxuryThumb = () => (
+    <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="120" fill="#000000" />
+        <rect width="200" height="40" fill="#ccb27a" fillOpacity="0.15" />
+        <rect x="60" y="15" width="80" height="8" rx="4" fill="#ffffff" fillOpacity="0.9" />
+        <rect x="80" y="27" width="40" height="3" rx="1.5" fill="#ccb27a" />
+        {[0, 1].map((i) => (
+            <g key={i} transform={`translate(${15 + i * 90}, 50)`}>
+                <rect width="80" height="60" rx="6" fill="#ffffff" fillOpacity="0.05" stroke="#ffffff" strokeOpacity="0.1" />
+                <rect x="5" y="5" width="70" height="25" rx="4" fill="#ffffff" fillOpacity="0.1" />
+                <rect x="10" y="38" width="50" height="4" rx="2" fill="#ffffff" fillOpacity="0.8" />
+            </g>
+        ))}
+    </svg>
+);
+
+const VisualThumb = () => (
+    <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="120" fill="#f8fafc" />
+        <rect width="200" height="40" fill="#0f172a" />
+        <rect x="20" y="20" width="100" height="8" rx="4" fill="#ffffff" />
+        {[0, 1].map((i) => (
+            <g key={i} transform={`translate(15, ${50 + i * 35})`}>
+                <rect x={i % 2 === 0 ? 0 : 100} width="70" height="25" rx="4" fill="#0f172a" fillOpacity="0.1" />
+                <rect x={i % 2 === 0 ? 80 : 0} y="5" width="90" height="4" rx="2" fill="#0f172a" fillOpacity="0.8" />
+            </g>
+        ))}
+    </svg>
+);
+
+const ExecutiveThumb = () => (
+    <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="120" fill="#ffffff" />
+        <rect width="80" height="120" fill="#f4f4f5" />
+        <rect x="10" y="90" width="50" height="6" rx="3" fill="#000000" fillOpacity="0.2" />
+        <rect x="100" y="20" width="70" height="6" rx="3" fill="#18181b" />
+        <line x1="110" y1="40" x2="110" y2="100" stroke="#e4e4e7" strokeWidth="2" />
+        {[0, 1].map((i) => (
+            <g key={i} transform={`translate(110, ${50 + i * 30})`}>
+                <circle cx="0" cy="3" r="3" fill="#0ea5e9" />
+                <rect x="10" y="0" width="40" height="4" rx="2" fill="#3f3f46" />
+                <rect x="10" y="8" width="60" height="3" rx="1.5" fill="#a1a1aa" />
+            </g>
+        ))}
+    </svg>
+);
+
 const TEMPLATE_THUMBNAILS_RICH: Record<string, React.ReactNode> = {
     safari_story: <SafariThumb />,
     urban_brief: <UrbanThumb />,
     professional: <ProfessionalThumb />,
+    luxury_resort: <LuxuryThumb />,
+    visual_journey: <VisualThumb />,
+    executive_direct: <ExecutiveThumb />,
     // legacy share-modal templates:
     classic: (
         <div className="w-full h-full bg-gradient-to-br from-emerald-50 to-sky-100 p-2 flex flex-col gap-1.5">
@@ -149,6 +199,9 @@ const TEMPLATE_ACCENT: Record<string, string> = {
     safari_story: '#d97706',
     urban_brief: '#124ea2',
     professional: '#4f46e5',
+    luxury_resort: '#ccb27a',
+    visual_journey: '#e11d48',
+    executive_direct: '#0ea5e9',
     classic: '#10b981',
     modern: '#78716c',
 };

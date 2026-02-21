@@ -144,6 +144,72 @@ const TEMPLATE_OPTIONS = [
     accentColor: '#4f46e5',
     Preview: ProfessionalPreview,
   },
+  {
+    id: 'luxury_resort' as ItineraryTemplateId,
+    label: 'Luxury Resort',
+    description: 'Dark mode · Glass cards',
+    accentColor: '#ccb27a',
+    Preview: () => (
+      <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="130" fill="#000000" />
+        <rect width="200" height="40" fill="#ccb27a" fillOpacity="0.15" />
+        <rect x="60" y="15" width="80" height="8" rx="4" fill="#ffffff" fillOpacity="0.9" />
+        <rect x="80" y="27" width="40" height="3" rx="1.5" fill="#ccb27a" />
+        {[0, 1].map((i) => (
+          <g key={i} transform={`translate(${15 + i * 90}, 50)`}>
+            <rect width="80" height="60" rx="6" fill="#ffffff" fillOpacity="0.05" stroke="#ffffff" strokeOpacity="0.1" />
+            <rect x="5" y="5" width="70" height="25" rx="4" fill="#ffffff" fillOpacity="0.1" />
+            <rect x="10" y="38" width="50" height="4" rx="2" fill="#ffffff" fillOpacity="0.8" />
+            <rect x="10" y="46" width="30" height="3" rx="1.5" fill="#ffffff" fillOpacity="0.4" />
+          </g>
+        ))}
+      </svg>
+    ),
+  },
+  {
+    id: 'visual_journey' as ItineraryTemplateId,
+    label: 'Visual Journey',
+    description: 'Immersive · Large photos',
+    accentColor: '#e11d48',
+    Preview: () => (
+      <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="130" fill="#f8fafc" />
+        <rect width="200" height="45" fill="#0f172a" />
+        <rect x="20" y="25" width="100" height="8" rx="4" fill="#ffffff" />
+        {[0, 1].map((i) => (
+          <g key={i} transform={`translate(15, ${55 + i * 35})`}>
+            <rect x={i % 2 === 0 ? 0 : 100} width="70" height="25" rx="4" fill="#0f172a" fillOpacity="0.1" />
+            <rect x={i % 2 === 0 ? 80 : 0} y="5" width="90" height="4" rx="2" fill="#0f172a" fillOpacity="0.8" />
+            <rect x={i % 2 === 0 ? 80 : 0} y="15" width="60" height="3" rx="1.5" fill="#94a3b8" />
+          </g>
+        ))}
+      </svg>
+    ),
+  },
+  {
+    id: 'executive_direct' as ItineraryTemplateId,
+    label: 'Executive Direct',
+    description: 'Left sticky image · Scrolling rigt',
+    accentColor: '#0ea5e9',
+    Preview: () => (
+      <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect width="200" height="130" fill="#ffffff" />
+        <rect width="80" height="130" fill="#f4f4f5" />
+        <rect x="10" y="90" width="50" height="6" rx="3" fill="#000000" fillOpacity="0.2" />
+        <rect x="10" y="102" width="30" height="3" rx="1.5" fill="#000000" fillOpacity="0.1" />
+        <rect x="100" y="20" width="70" height="6" rx="3" fill="#18181b" />
+        <rect x="100" y="32" width="40" height="3" rx="1.5" fill="#a1a1aa" />
+        <line x1="110" y1="50" x2="110" y2="110" stroke="#e4e4e7" strokeWidth="2" />
+        {[0, 1].map((i) => (
+          <g key={i} transform={`translate(110, ${60 + i * 30})`}>
+            <circle cx="0" cy="3" r="3" fill="#0ea5e9" />
+            <rect x="10" y="0" width="40" height="4" rx="2" fill="#3f3f46" />
+            <rect x="10" y="8" width="60" height="3" rx="1.5" fill="#a1a1aa" />
+          </g>
+        ))}
+      </svg>
+    ),
+  },
 ] as const;
 
 export function TemplateSwitcher({ currentTemplate, onTemplateChange }: TemplateSwitcherProps) {

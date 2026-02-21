@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
-import { SafariStoryView, UrbanBriefView, ProfessionalView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
+import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, ExecutiveDirectView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -414,9 +414,18 @@ Make it practical and specific:
                         {selectedTemplate === 'professional' && (
                             <ProfessionalView itinerary={result} />
                         )}
+                        {selectedTemplate === 'luxury_resort' && (
+                            <LuxuryResortView itinerary={result} />
+                        )}
+                        {selectedTemplate === 'visual_journey' && (
+                            <VisualJourneyView itinerary={result} />
+                        )}
+                        {selectedTemplate === 'executive_direct' && (
+                            <ExecutiveDirectView itinerary={result} />
+                        )}
 
                         {/* Classic Accordion — only shown when no template view is selected */}
-                        {!(['safari_story', 'urban_brief', 'professional'] as string[]).includes(selectedTemplate) && (
+                        {!(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'executive_direct'] as string[]).includes(selectedTemplate) && (
                             <div className="space-y-6">
                                 {result.days.map((day: Day, dayIndex: number) => {
                                     const isExpanded = expandedDays.has(day.day_number);

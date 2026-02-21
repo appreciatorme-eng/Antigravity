@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
