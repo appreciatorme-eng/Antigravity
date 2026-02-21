@@ -258,22 +258,7 @@
     font-weight: 500;
   }
 
-  /* Dark mode overrides for print */
-  .dark\:text-white,
-  .dark\:text-slate-100,
-  .dark\:text-slate-200 {
-    color: #000 !important;
-  }
-
-  .dark\:bg-slate-900,
-  .dark\:bg-slate-950\/40 {
-    background-color: #fff !important;
-  }
-
-  .dark\:border-slate-700,
-  .dark\:border-white\/10 {
-    border-color: #ddd !important;
-  }
+  /* Dark mode overrides temporarily removed to preserve visual fidelity for templates in print */
 
   /* Ensure white backgrounds in print */
   .bg-white\/80,
