@@ -48,9 +48,17 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                         {itinerary.trip_title || 'The Escape'}
                     </h1>
                     {client && (
-                        <h2 className="text-2xl md:text-3xl font-serif mb-6 italic" style={{ color: brandColor }}>
-                            Prepared exclusively for {client.name}
-                        </h2>
+                        <div className="mb-10 animate-in fade-in slide-in-from-left duration-1000">
+                            <h2 className="text-2xl md:text-3xl font-serif mb-3 italic" style={{ color: brandColor }}>
+                                Prepared exclusively for {client.name}
+                            </h2>
+                            {(client.email || client.phone) && (
+                                <div className="flex gap-6 text-sm font-light tracking-[0.2em] opacity-50 uppercase">
+                                    {client.email && <span>{client.email}</span>}
+                                    {client.phone && <span>{client.phone}</span>}
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     <div className="flex flex-wrap items-center gap-6 text-lg sm:text-xl font-light opacity-80 mb-8">

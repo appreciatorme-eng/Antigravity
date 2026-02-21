@@ -21,9 +21,21 @@ export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                             {itinerary.trip_title || itinerary.title}
                         </h1>
                         {client && (
-                            <h2 className="text-xl md:text-2xl font-medium tracking-wide text-slate-500 mt-4 uppercase">
-                                For: {client.name}
-                            </h2>
+                            <div className="mt-4 flex flex-col md:flex-row items-center md:items-start gap-4">
+                                <h2 className="text-xl md:text-2xl font-medium tracking-wide text-slate-500 uppercase">
+                                    For: {client.name}
+                                </h2>
+                                {(client.email || client.phone) && (
+                                    <div className="flex gap-4 text-sm font-medium text-slate-400">
+                                        {client.email && (
+                                            <span className="bg-slate-200/50 px-3 py-1 rounded-full">{client.email}</span>
+                                        )}
+                                        {client.phone && (
+                                            <span className="bg-slate-200/50 px-3 py-1 rounded-full">{client.phone}</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

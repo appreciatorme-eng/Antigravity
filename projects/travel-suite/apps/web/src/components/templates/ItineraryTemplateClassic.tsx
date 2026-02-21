@@ -4,7 +4,7 @@ import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
 import Link from "next/link";
 
-export default function ItineraryTemplateClassic({ itineraryData, organizationName }: ItineraryTemplateProps) {
+export default function ItineraryTemplateClassic({ itineraryData, organizationName, client }: ItineraryTemplateProps) {
     return (
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-sky-50 flex flex-col">
             {/* Shared Header */}
@@ -22,6 +22,17 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
             <div className="max-w-4xl mx-auto w-full px-6 py-8 flex-1">
                 {/* Trip Header */}
                 <div className="mb-8">
+                    {client && (
+                        <div className="mb-4 text-emerald-700 font-medium">
+                            <span className="text-sm uppercase tracking-wider opacity-60 block mb-1">Prepared for</span>
+                            <div className="text-2xl font-serif">{client.name}</div>
+                            {(client.email || client.phone) && (
+                                <div className="text-xs mt-1 text-gray-500 font-normal">
+                                    {client.email} {client.email && client.phone && "•"} {client.phone}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <h1 className="text-3xl md:text-4xl font-serif text-secondary mb-3">
                         {itineraryData.trip_title}
                     </h1>

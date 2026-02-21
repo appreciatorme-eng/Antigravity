@@ -43,9 +43,21 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                                 {itinerary.trip_title}
                             </h1>
                             {client && (
-                                <h2 className="text-xl font-medium text-gray-600 mb-3 italic" style={{ color: brandColor }}>
-                                    Prepared exclusively for {client.name}
-                                </h2>
+                                <div className="mb-4 p-4 rounded-lg border border-gray-100 bg-gray-50/50 inline-block">
+                                    <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                        Client Information
+                                    </div>
+                                    <div className="text-xl font-bold" style={{ color: brandColor }}>
+                                        {client.name}
+                                    </div>
+                                    {(client.email || client.phone) && (
+                                        <div className="flex gap-4 mt-1 text-sm text-gray-600 font-medium">
+                                            {client.email && <span>{client.email}</span>}
+                                            {client.email && client.phone && <span className="text-gray-300">|</span>}
+                                            {client.phone && <span>{client.phone}</span>}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                             <p className="text-lg text-gray-600 leading-relaxed max-w-3xl">
                                 {itinerary.summary}

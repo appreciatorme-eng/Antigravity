@@ -40,9 +40,17 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                         {itinerary.destination || itinerary.trip_title}
                     </h1>
                     {client && (
-                        <h2 className="text-2xl md:text-3xl font-light text-white/90 mb-6 tracking-wide drop-shadow-md italic">
-                            A bespoke journey for {client.name}
-                        </h2>
+                        <div className="mb-10 animate-in fade-in zoom-in duration-1000">
+                            <h2 className="text-2xl md:text-3xl font-light text-white/90 mb-2 tracking-wide drop-shadow-md italic">
+                                A bespoke journey for {client.name}
+                            </h2>
+                            {(client.email || client.phone) && (
+                                <div className="flex justify-center gap-6 text-xs text-white/50 tracking-[0.3em] uppercase">
+                                    {client.email && <span>{client.email}</span>}
+                                    {client.phone && <span>{client.phone}</span>}
+                                </div>
+                            )}
+                        </div>
                     )}
                     {itinerary.summary && (
                         <p className="text-xl md:text-3xl text-white/90 font-light max-w-3xl mx-auto leading-relaxed drop-shadow-lg">

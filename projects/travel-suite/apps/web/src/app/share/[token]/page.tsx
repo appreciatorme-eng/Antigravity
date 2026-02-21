@@ -23,7 +23,7 @@ export default async function SharedTripPage({
             *,
             itineraries (
                 *,
-                clients ( id, profiles ( full_name, email ) ),
+                clients ( id, profiles ( full_name, email, phone ) ),
                 profiles!itineraries_user_id_fkey (
                     organizations!profiles_organization_id_fkey ( name, logo_url, primary_color )
                 )
@@ -94,12 +94,13 @@ export default async function SharedTripPage({
     const templateId: string = (share as any).template_id || "safari_story";
 
     // Resolve client data
-    let clientData: { name: string; email?: string } | null = null;
+    let clientData: { name: string; email?: string; phone?: string } | null = null;
     const clientRecord = (itinerary as any).clients;
     if (clientRecord && clientRecord.profiles) {
         clientData = {
             name: clientRecord.profiles.full_name || "Valued Client",
             email: clientRecord.profiles.email,
+            phone: clientRecord.profiles.phone,
         };
     }
 

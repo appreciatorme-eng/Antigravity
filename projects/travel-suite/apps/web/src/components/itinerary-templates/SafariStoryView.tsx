@@ -56,9 +56,16 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
             {itinerary.trip_title || itinerary.title || 'Safari Adventure'}
           </h1>
           {client && (
-            <h2 className="text-3xl font-serif text-stone-600 mb-6 italic" style={{ color: brandColor }}>
-              A private expedition for {client.name}
-            </h2>
+            <div className="mb-8">
+              <h2 className="text-3xl font-serif text-stone-600 italic" style={{ color: brandColor }}>
+                Exclusively prepared for {client.name}
+              </h2>
+              <div className="flex justify-center gap-4 mt-2 text-stone-500 text-sm">
+                {client.email && <span>{client.email}</span>}
+                {client.email && client.phone && <span>•</span>}
+                {client.phone && <span>{client.phone}</span>}
+              </div>
+            </div>
           )}
 
           {itinerary.destination && (

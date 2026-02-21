@@ -44,24 +44,30 @@ interface TripDetailClientProps {
     };
 }
 
-function ItineraryView({ templateId, tripData }: { templateId: string; tripData: ItineraryResult }) {
+function ItineraryView({ templateId, tripData, client }: { templateId: string; tripData: ItineraryResult; client?: { name: string; email?: string; phone?: string } | null }) {
     switch (templateId) {
-        case "urban_brief": return <UrbanBriefView itinerary={tripData} />;
-        case "professional": return <ProfessionalView itinerary={tripData} />;
-        case "luxury_resort": return <LuxuryResortView itinerary={tripData} />;
-        case "visual_journey": return <VisualJourneyView itinerary={tripData} />;
-        case "bento_journey": return <BentoJourneyView itinerary={tripData} />;
+        case "urban_brief": return <UrbanBriefView itinerary={tripData} client={client} />;
+        case "professional": return <ProfessionalView itinerary={tripData} client={client} />;
+        case "luxury_resort": return <LuxuryResortView itinerary={tripData} client={client} />;
+        case "visual_journey": return <VisualJourneyView itinerary={tripData} client={client} />;
+        case "bento_journey": return <BentoJourneyView itinerary={tripData} client={client} />;
         case "classic": return <ItineraryTemplateClassic itineraryData={tripData} organizationName="GoBuddy Adventures" />;
         case "modern": return <ItineraryTemplateModern itineraryData={tripData} organizationName="GoBuddy Adventures" />;
         case "safari_story":
-        default: return <SafariStoryView itinerary={tripData} />;
+        default: return <SafariStoryView itinerary={tripData} client={client} />;
     }
 }
 
 export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
     const [showShareModal, setShowShareModal] = useState(false);
     const tripData = itinerary.raw_data;
-    const clientName = itinerary.clients?.profiles?.full_name || null;
+    const clientProfiles = itinerary.clients?.profiles;
+    const clientData = clientProfiles ? {
+        name: clientProfiles.full_name || "Valued Client",
+        email: clientProfiles.email,
+        phone: clientProfiles.phone,
+    } : null;
+    const clientName = clientData?.name || null;
     const templateId = itinerary.template_id || "safari_story";
 
     return (
@@ -125,7 +131,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
 
                     {/* Render itinerary in the template it was saved with */}
                     <div id="itinerary-pdf-content" className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                        <ItineraryView templateId={templateId} tripData={tripData} />
+                        <ItineraryView templateId={templateId} tripData={tripData} client={clientData} />
                     </div>
                 </div>
             </main>

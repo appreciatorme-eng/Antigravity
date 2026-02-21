@@ -3,7 +3,7 @@ import { MapPin, Calendar, Clock, Plane, Compass } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
 
-export default function ItineraryTemplateModern({ itineraryData, organizationName }: ItineraryTemplateProps) {
+export default function ItineraryTemplateModern({ itineraryData, organizationName, client }: ItineraryTemplateProps) {
     return (
         <div className="min-h-screen bg-stone-50 font-sans text-stone-900 flex flex-col">
             {/* Modern Hero Header */}
@@ -29,6 +29,17 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
                             <MapPin className="w-4 h-4" />
                             <span className="tracking-wide uppercase text-xs font-semibold">{itineraryData.destination}</span>
                         </div>
+                        {client && (
+                            <div className="mb-4 animate-in fade-in slide-in-from-top duration-700">
+                                <span className="text-stone-400 text-xs font-bold uppercase tracking-[0.3em] block mb-2">Tailored for</span>
+                                <div className="text-2xl font-serif text-stone-100">{client.name}</div>
+                                {(client.email || client.phone) && (
+                                    <div className="text-[10px] mt-1 text-stone-500 font-medium tracking-widest uppercase">
+                                        {client.email} {client.email && client.phone && "•"} {client.phone}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <h1 className="text-4xl md:text-6xl font-serif mb-6 leading-tight">
                             {itineraryData.trip_title}
                         </h1>

@@ -7,6 +7,7 @@ export interface ItineraryTemplateProps {
     client?: {
         name: string;
         email?: string;
+        phone?: string;
     } | null;
 }
 

@@ -38,8 +38,15 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, cl
               BRIEF
             </div>
             {client && (
-              <div className="text-xs font-semibold text-gray-800 mt-2 uppercase tracking-tight">
-                For: {client.name}
+              <div className="mt-2 space-y-0.5">
+                <div className="text-xs font-semibold text-gray-800 uppercase tracking-tight">
+                  For: {client.name}
+                </div>
+                {(client.email || client.phone) && (
+                  <div className="text-[10px] text-gray-500 font-medium">
+                    {client.email} {client.email && client.phone && "•"} {client.phone}
+                  </div>
+                )}
               </div>
             )}
             <div className="text-xs text-gray-500 mt-1">
