@@ -1,4 +1,3 @@
-
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
@@ -37,4 +36,43 @@ export async function getAmadeusToken() {
     tokenExpiry = Date.now() + (data.expires_in * 1000);
 
     return cachedToken;
+}
+
+export interface AmadeusLocation {
+    iataCode?: string;
+    name?: string;
+    subType?: "CITY" | "AIRPORT" | string;
+    detailedName?: string;
+    address?: {
+        cityName?: string;
+        countryCode?: string;
+    };
+}
+
+export async function searchAmadeusLocations(
+    keyword: string,
+    subType: "CITY" | "AIRPORT" | "CITY,AIRPORT" = "CITY,AIRPORT",
+    limit = 8
+): Promise<AmadeusLocation[]> {
+    const token = await getAmadeusToken();
+    const normalizedKeyword = keyword.trim();
+
+    if (normalizedKeyword.length < 2) {
+        return [];
+    }
+
+    const url = `https://test.api.amadeus.com/v1/reference-data/locations?subType=${encodeURIComponent(subType)}&keyword=${encodeURIComponent(normalizedKeyword)}&page[limit]=${Math.min(Math.max(limit, 1), 20)}&view=LIGHT`;
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(`Amadeus Location Search Failed: ${JSON.stringify(error)}`);
+    }
+
+    const payload = await response.json();
+    return Array.isArray(payload?.data) ? (payload.data as AmadeusLocation[]) : [];
 }
