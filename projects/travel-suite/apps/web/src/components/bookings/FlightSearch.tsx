@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, Plane, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import { Search, Plane, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,36 +14,76 @@ interface FlightSearchProps {
     initialDestination?: string;
 }
 
+interface FlightSegment {
+    carrierCode: string;
+    number: string;
+    departure: {
+        iataCode: string;
+        at: string;
+    };
+    arrival: {
+        iataCode: string;
+        at: string;
+    };
+}
+
+interface FlightOffer {
+    id: string;
+    itineraries: Array<{
+        duration: string;
+        segments: FlightSegment[];
+    }>;
+    price: {
+        total: string;
+        currency: string;
+    };
+}
+
+const IATA_CODE_REGEX = /^[A-Z]{3}$/;
+
 export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDestination }: FlightSearchProps) {
     const [origin, setOrigin] = useState(initialOrigin || '');
     const [destination, setDestination] = useState(initialDestination || '');
     const [date, setDate] = useState(initialDate || '');
     const [loading, setLoading] = useState(false);
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<FlightOffer[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const handleSearch = async () => {
-        if (!origin || !destination || !date) return;
+        const originCode = origin.trim().toUpperCase();
+        const destinationCode = destination.trim().toUpperCase();
+
+        if (!originCode || !destinationCode || !date) {
+            setError('Origin, destination, and date are required.');
+            return;
+        }
+        if (!IATA_CODE_REGEX.test(originCode) || !IATA_CODE_REGEX.test(destinationCode)) {
+            setError('Use valid 3-letter IATA airport codes (e.g. DEL, BOM, JFK).');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/bookings/flights/search?originCode=${origin}&destinationCode=${destination}&date=${date}`);
+            const res = await fetch(
+                `/api/bookings/flights/search?originCode=${encodeURIComponent(originCode)}&destinationCode=${encodeURIComponent(destinationCode)}&date=${encodeURIComponent(date)}`
+            );
             const data = await res.json();
-            if (data.data) {
+            if (Array.isArray(data?.data)) {
                 setResults(data.data);
             } else {
                 setError(data.error || 'No flights found');
             }
-        } catch (err) {
+        } catch {
             setError('Failed to fetch flights');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatDuration = (pt: string) => pt.replace('PT', '').toLowerCase();
+    const formatDuration = (pt: string) => pt?.replace('PT', '').toLowerCase() || '';
 
-    const importFlight = (offer: any) => {
+    const importFlight = (offer: FlightOffer) => {
         const segment = offer.itineraries[0].segments[0];
         const flight: FlightDetails = {
             id: offer.id,
@@ -65,11 +105,21 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                 <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Origin (IATA)</label>
-                    <Input placeholder="DEL" value={origin} onChange={e => setOrigin(e.target.value.toUpperCase())} maxLength={3} />
+                    <Input
+                        placeholder="DEL"
+                        value={origin}
+                        onChange={e => setOrigin(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3))}
+                        maxLength={3}
+                    />
                 </div>
                 <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Destination (IATA)</label>
-                    <Input placeholder="BOM" value={destination} onChange={e => setDestination(e.target.value.toUpperCase())} maxLength={3} />
+                    <Input
+                        placeholder="BOM"
+                        value={destination}
+                        onChange={e => setDestination(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3))}
+                        maxLength={3}
+                    />
                 </div>
                 <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Date</label>
@@ -86,7 +136,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
             {error && <div className="text-red-500 text-sm text-center bg-red-50 p-3 rounded-lg">{error}</div>}
 
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                {results.map((offer) => {
+                {results.map((offer: FlightOffer) => {
                     const itin = offer.itineraries[0];
                     const firstSeg = itin.segments[0];
                     const lastSeg = itin.segments[itin.segments.length - 1];

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Plane, Hotel, Search, Sparkles, Globe, ShieldCheck, CreditCard, ArrowRight } from 'lucide-react';
+import Link from "next/link";
+import React, { useEffect, useMemo, useState } from "react";
+import { Plane, Hotel, Sparkles, Globe, ShieldCheck, CreditCard, ArrowRight } from "lucide-react";
 import { FlightSearch } from '@/components/bookings/FlightSearch';
 import { HotelSearch } from '@/components/bookings/HotelSearch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,19 +10,100 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { FlightDetails, HotelDetails } from '@/types/itinerary';
 
-export default function BookingsPage() {
-    const [lastImported, setLastImported] = useState<{ type: 'flight' | 'hotel', name: string } | null>(null);
+interface ItineraryOption {
+    id: string;
+    trip_title: string;
+    destination: string;
+    duration_days: number | null;
+    created_at: string | null;
+}
 
-    const handleFlightSelect = (flight: FlightDetails) => {
-        console.log("Selected flight:", flight);
-        setLastImported({ type: 'flight', name: `${flight.airline} ${flight.flight_number}` });
-        // In a real app, we would save this to the active trip or a global state/cart
+export default function BookingsPage() {
+    const [itineraries, setItineraries] = useState<ItineraryOption[]>([]);
+    const [selectedItineraryId, setSelectedItineraryId] = useState("");
+    const [loadingItineraries, setLoadingItineraries] = useState(true);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState("");
+    const [lastImported, setLastImported] = useState<{
+        type: 'flight' | 'hotel';
+        name: string;
+        itineraryTitle: string;
+    } | null>(null);
+
+    useEffect(() => {
+        const loadItineraries = async () => {
+            setLoadingItineraries(true);
+            setImportError("");
+            try {
+                const res = await fetch("/api/itineraries");
+                const json = await res.json();
+                if (!res.ok) {
+                    throw new Error(json.error || "Failed to load itineraries");
+                }
+                const nextItineraries: ItineraryOption[] = json.itineraries ?? [];
+                setItineraries(nextItineraries);
+                if (nextItineraries.length > 0) {
+                    setSelectedItineraryId((prev) => prev || nextItineraries[0].id);
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Failed to load itineraries";
+                setImportError(message);
+            } finally {
+                setLoadingItineraries(false);
+            }
+        };
+
+        loadItineraries();
+    }, []);
+
+    const selectedItinerary = useMemo(
+        () => itineraries.find((item) => item.id === selectedItineraryId) ?? null,
+        [itineraries, selectedItineraryId]
+    );
+
+    const importToItinerary = async (type: "flight" | "hotel", payload: FlightDetails | HotelDetails, displayName: string) => {
+        if (!selectedItineraryId) {
+            setImportError("Select an itinerary before importing bookings.");
+            return;
+        }
+
+        setImporting(true);
+        setImportError("");
+        try {
+            const res = await fetch(`/api/itineraries/${selectedItineraryId}/bookings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(
+                    type === "flight"
+                        ? { type, flight: payload }
+                        : { type, hotel: payload }
+                ),
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                throw new Error(json.error || "Import failed");
+            }
+
+            setLastImported({
+                type,
+                name: displayName,
+                itineraryTitle: selectedItinerary?.trip_title || "Selected itinerary",
+            });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Import failed";
+            setImportError(message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleFlightSelect = async (flight: FlightDetails) => {
+        await importToItinerary("flight", flight, `${flight.airline} ${flight.flight_number}`);
         setTimeout(() => setLastImported(null), 5000);
     };
 
-    const handleHotelSelect = (hotel: HotelDetails) => {
-        console.log("Selected hotel:", hotel);
-        setLastImported({ type: 'hotel', name: hotel.name });
+    const handleHotelSelect = async (hotel: HotelDetails) => {
+        await importToItinerary("hotel", hotel, hotel.name);
         setTimeout(() => setLastImported(null), 5000);
     };
 
@@ -67,6 +149,60 @@ export default function BookingsPage() {
             </div>
 
             <div className="max-w-6xl mx-auto px-6 -mt-10">
+                <Card className="mb-6 border-gray-100 dark:border-white/10 bg-white dark:bg-slate-900/70 shadow-lg">
+                    <CardContent className="p-5 md:p-6">
+                        <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
+                            <div className="flex-1 space-y-2">
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Import Destination</p>
+                                <label className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                    Select itinerary to receive selected flight/hotel details
+                                </label>
+                                <select
+                                    value={selectedItineraryId}
+                                    onChange={(event) => setSelectedItineraryId(event.target.value)}
+                                    disabled={loadingItineraries || itineraries.length === 0}
+                                    className="w-full h-11 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                                >
+                                    {loadingItineraries && <option>Loading itineraries...</option>}
+                                    {!loadingItineraries && itineraries.length === 0 && (
+                                        <option value="">No saved itineraries found</option>
+                                    )}
+                                    {itineraries.map((itinerary) => (
+                                        <option key={itinerary.id} value={itinerary.id}>
+                                            {itinerary.trip_title} · {itinerary.destination}
+                                        </option>
+                                    ))}
+                                </select>
+                                {itineraries.length === 0 && !loadingItineraries && (
+                                    <p className="text-xs text-gray-500">
+                                        Save an itinerary first from the planner to enable imports.
+                                    </p>
+                                )}
+                                {importError && (
+                                    <p className="text-xs text-red-500">{importError}</p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {selectedItineraryId ? (
+                                    <Link
+                                        href={`/trips/${selectedItineraryId}`}
+                                        className="inline-flex h-11 items-center rounded-lg border border-gray-200 dark:border-white/10 px-4 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                                    >
+                                        Open Itinerary
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/planner"
+                                        className="inline-flex h-11 items-center rounded-lg border border-gray-200 dark:border-white/10 px-4 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                                    >
+                                        Create Itinerary
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <Tabs defaultValue="flights" className="space-y-8">
                     <TabsList className="bg-white dark:bg-slate-900 p-1.5 h-16 rounded-2xl shadow-xl border border-gray-100 dark:border-white/5 w-full md:w-auto overflow-hidden">
                         <TabsTrigger
@@ -130,12 +266,17 @@ export default function BookingsPage() {
                         </div>
                         <div>
                             <p className="text-sm font-bold">Successfully Selected!</p>
-                            <p className="text-xs opacity-70">"{lastImported.name}" is ready to be added to your itinerary.</p>
+                            <p className="text-xs opacity-70">
+                                &quot;{lastImported.name}&quot; was imported to &quot;{lastImported.itineraryTitle}&quot;.
+                            </p>
                         </div>
                         <div className="ml-4 pl-4 border-l border-white/20">
-                            <button className="text-primary text-xs font-bold flex items-center gap-1 hover:underline">
-                                Go to Planner <ArrowRight className="w-3 h-3" />
-                            </button>
+                            <Link
+                                href={selectedItineraryId ? `/trips/${selectedItineraryId}` : "/trips"}
+                                className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+                            >
+                                {importing ? "Importing..." : "Open Trip"} <ArrowRight className="w-3 h-3" />
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -155,14 +296,14 @@ export default function BookingsPage() {
                         <Sparkles className="w-6 h-6 text-purple-600" />
                     </div>
                     <h4 className="font-bold">AI Recommendations</h4>
-                    <p className="text-sm text-gray-500">Our system analyzes your interests to highlight hotels you'll actually love.</p>
+                    <p className="text-sm text-gray-500">Our system analyzes your interests to highlight hotels you&apos;ll actually love.</p>
                 </Card>
                 <Card className="bg-white/50 dark:bg-white/5 border-none shadow-sm rounded-2xl p-6 space-y-4">
                     <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
                         <Globe className="w-6 h-6 text-blue-600" />
                     </div>
                     <h4 className="font-bold">24/7 Connectivity</h4>
-                    <p className="text-sm text-gray-500">Direct integration with the world's leading GDS systems for instant confirmation.</p>
+                    <p className="text-sm text-gray-500">Direct integration with the world&apos;s leading GDS systems for instant confirmation.</p>
                 </Card>
             </div>
         </main>

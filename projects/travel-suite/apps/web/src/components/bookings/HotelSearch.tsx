@@ -12,36 +12,57 @@ interface HotelSearchProps {
     initialCity?: string;
 }
 
+interface HotelResult {
+    hotelId: string;
+    name: string;
+    iataCode: string;
+    address?: {
+        cityName?: string;
+        lines?: string[];
+    };
+}
+
+const IATA_CITY_REGEX = /^[A-Z]{3}$/;
+
 export function HotelSearch({ onSelect, initialCity }: HotelSearchProps) {
     const [city, setCity] = useState(initialCity || '');
     const [loading, setLoading] = useState(false);
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<HotelResult[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const handleSearch = async () => {
-        if (!city) return;
+        const cityCode = city.trim().toUpperCase();
+        if (!cityCode) {
+            setError('City code is required.');
+            return;
+        }
+        if (!IATA_CITY_REGEX.test(cityCode)) {
+            setError('Use a valid 3-letter IATA city code (e.g. DEL, LON, NYC).');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/bookings/hotels/search?cityCode=${city}`);
+            const res = await fetch(`/api/bookings/hotels/search?cityCode=${encodeURIComponent(cityCode)}`);
             const data = await res.json();
-            if (data.data) {
+            if (Array.isArray(data?.data)) {
                 setResults(data.data);
             } else {
                 setError(data.error || 'No hotels found');
             }
-        } catch (err) {
+        } catch {
             setError('Failed to fetch hotels');
         } finally {
             setLoading(false);
         }
     };
 
-    const importHotel = (h: any) => {
+    const importHotel = (h: HotelResult) => {
         const hotel: HotelDetails = {
             id: h.hotelId,
             name: h.name,
-            address: h.iataCode,
+            address: h.address?.lines?.join(', ') || h.address?.cityName || h.iataCode,
             check_in: new Date().toISOString().split('T')[0],
             check_out: new Date(Date.now() + 86400000).toISOString().split('T')[0],
             source: 'amadeus',
@@ -54,7 +75,12 @@ export function HotelSearch({ onSelect, initialCity }: HotelSearchProps) {
             <div className="flex gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                 <div className="flex-1 space-y-1">
                     <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">City Code (IATA)</label>
-                    <Input placeholder="E.g. DEL, BOM, LHR" value={city} onChange={e => setCity(e.target.value.toUpperCase())} maxLength={3} />
+                    <Input
+                        placeholder="E.g. DEL, BOM, LHR"
+                        value={city}
+                        onChange={e => setCity(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3))}
+                        maxLength={3}
+                    />
                 </div>
                 <div className="flex items-end">
                     <Button onClick={handleSearch} disabled={loading} className="bg-blue-600 hover:bg-blue-700 px-8">
@@ -67,7 +93,7 @@ export function HotelSearch({ onSelect, initialCity }: HotelSearchProps) {
             {error && <div className="text-red-500 text-sm text-center bg-red-50 p-3 rounded-lg">{error}</div>}
 
             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                {results.map((h) => (
+                {results.map((h: HotelResult) => (
                     <Card key={h.hotelId} className="hover:border-blue-200 transition-colors shadow-sm cursor-pointer group" onClick={() => importHotel(h)}>
                         <CardContent className="p-4 flex justify-between items-center">
                             <div className="flex items-center gap-4">

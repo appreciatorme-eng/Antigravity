@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAmadeusToken } from '@/lib/external/amadeus';
+import { normalizeIataCode } from '@/lib/airport';
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        const cityCode = searchParams.get('cityCode'); // IATA city code
+        const cityCode = normalizeIataCode(searchParams.get('cityCode')); // IATA city code
 
         if (!cityCode) {
-            return NextResponse.json({ error: 'Missing cityCode parameter' }, { status: 400 });
+            return NextResponse.json({ error: 'Missing or invalid cityCode parameter' }, { status: 400 });
         }
 
         const token = await getAmadeusToken();
 
         // 1. Get List of Hotels in City
-        const listUrl = `https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city?cityCode=${cityCode}&radius=5&radiusUnit=KM&hotelSource=ALL`;
+        const listUrl = `https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(cityCode)}&radius=5&radiusUnit=KM&hotelSource=ALL`;
 
         const listResponse = await fetch(listUrl, {
             headers: {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Plane, Hotel, Plus, Trash2, Navigation, IndianRupee, Search } from 'lucide-react';
+import { Plane, Hotel, Plus, Trash2, Navigation, IndianRupee, Search, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FlightDetails, HotelDetails, Logistics, ItineraryResult } from '@/types/itinerary';
+import { FlightDetails, HotelDetails, ItineraryResult } from '@/types/itinerary';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import {
 import { FlightSearch } from '@/components/bookings/FlightSearch';
 import { HotelSearch } from '@/components/bookings/HotelSearch';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle } from 'lucide-react';
+import { guessIataCode } from '@/lib/airport';
 
 interface LogisticsManagerProps {
     data: ItineraryResult;
@@ -23,6 +23,7 @@ interface LogisticsManagerProps {
 export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
     const [isFlightSearchOpen, setIsFlightSearchOpen] = useState(false);
     const [isHotelSearchOpen, setIsHotelSearchOpen] = useState(false);
+    const destinationCode = guessIataCode(data.destination);
 
     const createEmptyFlight = (overrides?: Partial<FlightDetails>): FlightDetails => ({
         id: Math.random().toString(36).substr(2, 9),
@@ -51,7 +52,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
         setIsFlightSearchOpen(false);
     };
 
-    const updateFlight = (idx: number, field: keyof FlightDetails, val: string) => {
+    const updateFlight = <K extends keyof FlightDetails>(idx: number, field: K, val: FlightDetails[K]) => {
         const logistics = data.logistics || { flights: [], hotels: [] };
         const flights = [...(logistics.flights || [])];
         flights[idx] = { ...flights[idx], [field]: val };
@@ -111,7 +112,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                                 </DialogHeader>
                                 <FlightSearch
                                     onSelect={addFlight}
-                                    initialDestination={data.destination.substring(0, 3).toUpperCase()}
+                                    initialDestination={destinationCode || undefined}
                                 />
                             </DialogContent>
                         </Dialog>
@@ -154,7 +155,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                                 <Input
                                     className="pl-7"
                                     value={flight.price || ''}
-                                    onChange={e => updateFlight(idx, 'price' as any, e.target.value)}
+                                    onChange={e => updateFlight(idx, 'price', Number.parseFloat(e.target.value) || 0)}
                                     placeholder="0"
                                 />
                             </div>
@@ -190,7 +191,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                                 </DialogHeader>
                                 <HotelSearch
                                     onSelect={addHotel}
-                                    initialCity={data.destination.substring(0, 3).toUpperCase()}
+                                    initialCity={destinationCode || undefined}
                                 />
                             </DialogContent>
                         </Dialog>
