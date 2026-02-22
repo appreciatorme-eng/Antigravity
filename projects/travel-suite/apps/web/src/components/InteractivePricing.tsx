@@ -24,7 +24,9 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
     };
 
     // Calculate total
-    const baseTotal = pricing.basePrice; // Operator specifies the total base price for the given passengers
+    const baseCost = pricing.basePrice;
+    const markupMultiplier = 1 + (pricing.markupPercentage || 0) / 100;
+    const baseTotal = (baseCost * markupMultiplier) + (pricing.serviceFee || 0);
 
     let addOnsTotal = 0;
     pricing.availableAddOns?.forEach(addon => {
@@ -51,8 +53,11 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Base Itinerary</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Includes all standard accommodations and scheduled activities.</p>
                         </div>
-                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                            ₹{pricing.basePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <div className="text-xl font-bold text-gray-900 dark:text-gray-100 flex flex-col items-end">
+                            <span>₹{baseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            {(pricing.markupPercentage || pricing.serviceFee) ? (
+                                <span className="text-[10px] text-emerald-600 font-medium">Incl. Service Fees</span>
+                            ) : null}
                         </div>
                     </div>
 

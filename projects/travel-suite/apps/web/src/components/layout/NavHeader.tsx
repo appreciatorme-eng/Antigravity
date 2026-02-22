@@ -57,6 +57,7 @@ export default function NavHeader() {
 
     const navLinks = [
         { href: "/", label: "Home", icon: Compass },
+        { href: "/bookings", label: "Bookings", icon: Briefcase },
         { href: "/planner", label: "Plan Trip", icon: Map },
         ...(user ? [{ href: "/trips", label: "My Trips", icon: Briefcase }] : []),
         ...(userProfile?.role === "admin" ? [

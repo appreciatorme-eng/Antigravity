@@ -37,7 +37,10 @@ export interface FlightDetails {
     arrival_airport: string;
     departure_time: string;
     arrival_time: string;
+    price?: number;
+    currency?: string;
     confirmation?: string;
+    source?: 'manual' | 'amadeus';
 }
 
 export interface HotelDetails {
@@ -46,7 +49,10 @@ export interface HotelDetails {
     address: string;
     check_in: string;
     check_out: string;
+    price_per_night?: number;
+    currency?: string;
     confirmation?: string;
+    source?: 'manual' | 'amadeus';
 }
 
 export interface Logistics {
@@ -65,6 +71,8 @@ export interface PricingAddOn {
 export interface Pricing {
     basePrice: number;
     passengerCount: number;
+    markupPercentage?: number;
+    serviceFee?: number;
     availableAddOns?: PricingAddOn[];
 }
 

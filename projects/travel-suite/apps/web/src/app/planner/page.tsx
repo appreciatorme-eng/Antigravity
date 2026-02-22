@@ -19,6 +19,7 @@ import ItineraryBuilder from "@/components/ItineraryBuilder";
 import { InteractivePricing } from "@/components/InteractivePricing";
 import { LogisticsManager } from "@/components/planner/LogisticsManager";
 import { PricingManager } from "@/components/planner/PricingManager";
+import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -38,7 +39,6 @@ const INTEREST_OPTIONS = [
     '🛍️ Shopping', '🏰 History', '👨‍👩‍👧‍👦 Family'
 ];
 
-
 export default function PlannerPage() {
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(3);
@@ -50,6 +50,7 @@ export default function PlannerPage() {
     const [selectedTemplate, setSelectedTemplate] = useState<ItineraryTemplateId>('safari_story');
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [activeTab, setActiveTab] = useState<PlannerTab>('itinerary');
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])); // All days expanded by default
@@ -162,7 +163,6 @@ export default function PlannerPage() {
         setResult(null);
         setImages({});
 
-        // Construct a rich prompt from the form data
         const interestString = interests.length > 0
             ? ` focusing on ${interests.join(", ")}`
             : "";
@@ -186,8 +186,6 @@ Make it practical and specific:
             if (!res.ok) throw new Error(data.error || "Failed to generate");
 
             setResult(data);
-
-            // Trigger image fetch non-blocking
             fetchImagesForItinerary(data);
 
         } catch (e: unknown) {
@@ -219,7 +217,6 @@ Make it practical and specific:
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="p-6 md:p-8 space-y-8">
-                                {/* Destination Input */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                         <MapPin className="w-4 h-4 text-primary" /> Where to?
@@ -234,7 +231,6 @@ Make it practical and specific:
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Duration Input */}
                                     <div className="space-y-3">
                                         <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
@@ -249,7 +245,6 @@ Make it practical and specific:
                                         />
                                     </div>
 
-                                    {/* Budget Input */}
                                     <div className="space-y-3">
                                         <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                             <Wallet className="w-4 h-4 text-primary" /> Budget
@@ -271,7 +266,6 @@ Make it practical and specific:
                                     </div>
                                 </div>
 
-                                {/* Interests Input */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                         <Plane className="w-4 h-4 text-primary" /> Interests
@@ -317,7 +311,6 @@ Make it practical and specific:
                 ) : (
                     <>
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                            {/* Actions Bar */}
                             <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10 print:hidden">
                                 <Button
                                     variant="ghost"
@@ -355,258 +348,229 @@ Make it practical and specific:
                                 </div>
                             </div>
 
-                            {/* Itinerary Header */}
-                            <div className="text-center space-y-4">
-                                <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
-                                    {result.duration_days} Days in {result.destination}
-                                </Badge>
-                                <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
-                                <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
-                            </div>
+                            <PlannerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-                            {/* Map & Currency Converter */}
-                            <div className="grid lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
-                                    <ItineraryMap
-                                        destination={result.destination}
-                                        activities={result.days.flatMap((day: Day) =>
-                                            day.activities.map(act => ({
-                                                ...act,
-                                                // Ensure coordinates exist. If missing, fall back to null/undefined so the map component filters them out safely
-                                                coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
-                                            }))
-                                        )}
-                                    />
-                                </div>
-                                <div className="space-y-6">
-                                    <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
+                            {activeTab === 'itinerary' && (
+                                <div className="space-y-8 animate-fade-in-up">
+                                    <div className="text-center space-y-4">
+                                        <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
+                                            {result.duration_days} Days in {result.destination}
+                                        </Badge>
+                                        <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
+                                        <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
+                                    </div>
+
+                                    <div className="grid lg:grid-cols-3 gap-6">
+                                        <div className="lg:col-span-2 h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/10 relative">
+                                            <ItineraryMap
+                                                destination={result.destination}
+                                                activities={result.days.flatMap((day: Day) =>
+                                                    day.activities.map(act => ({
+                                                        ...act,
+                                                        coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
+                                                    }))
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="space-y-6">
+                                            <Card className="border-gray-200 dark:border-white/10 bg-white dark:bg-slate-950/40 shadow-md h-full">
+                                                <CardHeader className="pb-2">
+                                                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-300">Currency Converter</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="pt-4">
+                                                    <CurrencyConverter destination={result.destination} compact />
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    </div>
+
+                                    <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800/30 shadow-lg">
+                                        <CardHeader>
+                                            <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
+                                                <Cloud className="w-7 h-7 text-sky-600" />
+                                                Weather Forecast for {result.destination}
+                                            </CardTitle>
+                                            <CardDescription>Plan your activities around the weather</CardDescription>
                                         </CardHeader>
-                                        <CardContent className="pt-4">
-                                            <CurrencyConverter destination={result.destination} compact />
+                                        <CardContent>
+                                            <WeatherWidget destination={result.destination} days={result.duration_days} compact={false} />
                                         </CardContent>
                                     </Card>
-                                </div>
-                            </div>
 
-                            {/* Weather Forecast - Full Width Prominent Display */}
-                            <Card className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/20 border-sky-200 dark:border-sky-800/30 shadow-lg">
-                                <CardHeader>
-                                    <CardTitle className="text-2xl text-gray-800 dark:text-slate-100 flex items-center gap-3">
-                                        <Cloud className="w-7 h-7 text-sky-600" />
-                                        Weather Forecast for {result.destination}
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Plan your activities around the weather
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <WeatherWidget
-                                        destination={result.destination}
-                                        days={result.duration_days}
-                                        compact={false}
-                                    />
-                                </CardContent>
-                            </Card>
+                                    <Card className="bg-white dark:bg-slate-950 shadow-lg print:hidden">
+                                        <CardContent className="pt-6">
+                                            <TemplateSwitcher currentTemplate={selectedTemplate} onTemplateChange={setSelectedTemplate} />
+                                        </CardContent>
+                                    </Card>
 
-                            {/* Quick Edit Logistics & Pricing (Always visible outside Builder Mode) */}
-                            {!isEditing && (
-                                <div className="grid md:grid-cols-2 gap-8 bg-gray-50/50 dark:bg-slate-900/30 p-8 rounded-3xl border border-gray-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Quick Edit</Badge>
-                                        </div>
-                                        <LogisticsManager data={result!} onChange={setResult} />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">Quick Edit</Badge>
-                                        </div>
-                                        <PricingManager data={result!} onChange={setResult} />
-                                    </div>
-                                </div>
-                            )}
+                                    <div id="itinerary-pdf-content" className="w-full mt-16 animate-fade-in-up">
+                                        {isEditing ? (
+                                            <ItineraryBuilder data={result!} onChange={setResult} />
+                                        ) : (
+                                            <>
+                                                {selectedTemplate === 'safari_story' && <SafariStoryView itinerary={result!} />}
+                                                {selectedTemplate === 'urban_brief' && <UrbanBriefView itinerary={result!} />}
+                                                {selectedTemplate === 'professional' && <ProfessionalView itinerary={result!} />}
+                                                {selectedTemplate === 'luxury_resort' && <LuxuryResortView itinerary={result!} />}
+                                                {selectedTemplate === 'visual_journey' && <VisualJourneyView itinerary={result!} />}
+                                                {selectedTemplate === 'bento_journey' && <BentoJourneyView itinerary={result!} />}
 
-                            {/* Template Switcher */}
-                            <Card className="bg-white dark:bg-slate-950 shadow-lg print:hidden">
-                                <CardContent className="pt-6">
-                                    <TemplateSwitcher
-                                        currentTemplate={selectedTemplate}
-                                        onTemplateChange={setSelectedTemplate}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div> {/* End inner animate container */}
-
-                        {/* FULL WIDTH LAYOUT FOR TEMPLATES OR BUILDER */}
-                        <div id="itinerary-pdf-content" className="w-full mt-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-
-                            {isEditing ? (
-                                <ItineraryBuilder data={result!} onChange={setResult} />
-                            ) : (
-                                <>
-                                    {/* Template-Based Itinerary Display */}
-                                    {selectedTemplate === 'safari_story' && (
-                                        <SafariStoryView itinerary={result!} />
-                                    )}
-                                    {selectedTemplate === 'urban_brief' && (
-                                        <UrbanBriefView itinerary={result!} />
-                                    )}
-                                    {selectedTemplate === 'professional' && (
-                                        <ProfessionalView itinerary={result!} />
-                                    )}
-                                    {selectedTemplate === 'luxury_resort' && (
-                                        <LuxuryResortView itinerary={result!} />
-                                    )}
-                                    {selectedTemplate === 'visual_journey' && (
-                                        <VisualJourneyView itinerary={result!} />
-                                    )}
-                                    {selectedTemplate === 'bento_journey' && (
-                                        <BentoJourneyView itinerary={result!} />
-                                    )}
-                                </>
-                            )}
-
-                            {/* Classic Accordion (fallback) must remain constrained */}
-                            {!isEditing && !(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'bento_journey'] as string[]).includes(selectedTemplate) && (
-                                <div className="space-y-6 max-w-4xl mx-auto">
-                                    {result!.days.map((day: Day, dayIndex: number) => {
-                                        const isExpanded = expandedDays.has(day.day_number);
-                                        const isLastDay = dayIndex === result.days.length - 1;
-
-                                        return (
-                                            <div key={day.day_number} className="relative">
-                                                {/* Timeline connector */}
-                                                {!isLastDay && (
-                                                    <div className="absolute left-[30px] top-[60px] bottom-[-24px] w-[2px] border-l-2 border-dashed border-gray-300 dark:border-gray-600 hidden md:block" />
-                                                )}
-
-                                                {/* Timeline circle indicator */}
-                                                <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
-
-                                                {/* Day card with left margin for timeline on desktop */}
-                                                <div className="md:ml-16">
-                                                    {/* Accordion Header */}
-                                                    <button
-                                                        onClick={() => toggleDay(day.day_number)}
-                                                        className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
-                                                    >
-                                                        <h3 className="text-lg font-bold uppercase tracking-wide">
-                                                            DAY {day.day_number}
-                                                        </h3>
-                                                        <ChevronDown
-                                                            className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : '[.pdf-exporting_&]:rotate-180'}`}
-                                                        />
-                                                    </button>
-
-                                                    {/* Collapsible Content */}
-                                                    <div
-                                                        className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0 [.pdf-exporting_&]:max-h-[10000px] [.pdf-exporting_&]:opacity-100'
-                                                            }`}
-                                                    >
-                                                        <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
-                                                            {/* Theme subtitle */}
-                                                            <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">
-                                                                <span className="w-2 h-2 rounded-full bg-[#18974e]"></span>
-                                                                {day.theme}
-                                                            </p>
-
-                                                            {/* Activities */}
-                                                            <div className="space-y-8">
-                                                                {day.activities.map((act: Activity, idx: number) => {
-                                                                    const imgKey = activityImageKey(day.day_number, idx);
-                                                                    const imgUrl = images[imgKey];
-
-                                                                    return (
-                                                                        <div key={idx} className="group relative">
-                                                                            {/* Large Feature Image with Overlay */}
-                                                                            <div className="relative h-64 rounded-xl overflow-hidden shadow-md mb-4">
-                                                                                {imgUrl === undefined ? (
-                                                                                    <div className="relative w-full h-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                                                                                        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
-                                                                                    </div>
-                                                                                ) : imgUrl ? (
-                                                                                    <>
-                                                                                        <img
-                                                                                            src={imgUrl}
-                                                                                            alt={act.title}
-                                                                                            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-                                                                                            loading="lazy"
-                                                                                            referrerPolicy="no-referrer"
-                                                                                            onError={(e) => {
-                                                                                                e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
-                                                                                                e.currentTarget.onerror = null;
-                                                                                            }}
-                                                                                        />
-                                                                                        {/* Gradient overlay */}
-                                                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                                                                                        {/* Time badge */}
-                                                                                        <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">
-                                                                                            {act.time}
-                                                                                        </div>
-
-                                                                                        {/* Title overlay at bottom */}
-                                                                                        <div className="absolute bottom-0 left-0 right-0 p-6">
-                                                                                            <h4 className="text-2xl font-bold text-white mb-2">
-                                                                                                {act.title}
-                                                                                            </h4>
-                                                                                            <div className="flex items-center gap-2 text-white/90 text-sm">
-                                                                                                <MapPin className="w-4 h-4" />
-                                                                                                {act.location}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                                                        <span className="text-gray-400 dark:text-gray-500">No image available</span>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-
-                                                                            {/* Activity Details Below Image */}
-                                                                            <div className="space-y-3 px-2">
-                                                                                <p className="text-gray-700 dark:text-slate-200 leading-relaxed">
-                                                                                    {act.description}
+                                                {!(['safari_story', 'urban_brief', 'professional', 'luxury_resort', 'visual_journey', 'bento_journey'] as string[]).includes(selectedTemplate) && (
+                                                    <div className="space-y-6 max-w-4xl mx-auto">
+                                                        {result!.days.map((day: Day, dayIndex: number) => {
+                                                            const isExpanded = expandedDays.has(day.day_number);
+                                                            const isLastDay = dayIndex === result.days.length - 1;
+                                                            return (
+                                                                <div key={day.day_number} className="relative">
+                                                                    {!isLastDay && (
+                                                                        <div className="absolute left-[30px] top-[60px] bottom-[-24px] w-[2px] border-l-2 border-dashed border-gray-300 dark:border-gray-600 hidden md:block" />
+                                                                    )}
+                                                                    <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
+                                                                    <div className="md:ml-16">
+                                                                        <button
+                                                                            onClick={() => toggleDay(day.day_number)}
+                                                                            className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
+                                                                        >
+                                                                            <h3 className="text-lg font-bold uppercase tracking-wide">DAY {day.day_number}</h3>
+                                                                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                                                        </button>
+                                                                        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                                                            <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
+                                                                                <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">
+                                                                                    <span className="w-2 h-2 rounded-full bg-[#18974e]"></span>
+                                                                                    {day.theme}
                                                                                 </p>
-
-                                                                                {/* Metadata badges */}
-                                                                                <div className="flex flex-wrap gap-2">
-                                                                                    {act.duration && (
-                                                                                        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
-                                                                                            ⏱️ {act.duration}
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                    {act.cost && (
-                                                                                        <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
-                                                                                            💰 {act.cost}
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                    {act.transport && (
-                                                                                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
-                                                                                            🚇 {act.transport}
-                                                                                        </Badge>
-                                                                                    )}
+                                                                                <div className="space-y-8">
+                                                                                    {day.activities.map((act: Activity, idx: number) => {
+                                                                                        const imgKey = activityImageKey(day.day_number, idx);
+                                                                                        const imgUrl = images[imgKey];
+                                                                                        return (
+                                                                                            <div key={idx} className="group relative">
+                                                                                                <div className="relative h-64 rounded-xl overflow-hidden shadow-md mb-4">
+                                                                                                    {imgUrl === undefined ? (
+                                                                                                        <div className="relative w-full h-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                                                                                            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
+                                                                                                        </div>
+                                                                                                    ) : imgUrl ? (
+                                                                                                        <>
+                                                                                                            <img
+                                                                                                                src={imgUrl}
+                                                                                                                alt={act.title}
+                                                                                                                className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                                                                                                                loading="lazy"
+                                                                                                                referrerPolicy="no-referrer"
+                                                                                                                onError={(e) => {
+                                                                                                                    e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                                                                                    e.currentTarget.onerror = null;
+                                                                                                                }}
+                                                                                                            />
+                                                                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                                                                                            <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">{act.time}</div>
+                                                                                                            <div className="absolute bottom-0 left-0 right-0 p-6">
+                                                                                                                <h4 className="text-2xl font-bold text-white mb-2">{act.title}</h4>
+                                                                                                                <div className="flex items-center gap-2 text-white/90 text-sm"><MapPin className="w-4 h-4" />{act.location}</div>
+                                                                                                            </div>
+                                                                                                        </>
+                                                                                                    ) : (
+                                                                                                        <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                                                                            <span className="text-gray-400 dark:text-gray-500">No image available</span>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <div className="space-y-3 px-2">
+                                                                                                    <p className="text-gray-700 dark:text-slate-200 leading-relaxed">{act.description}</p>
+                                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                                        {act.duration && <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">⏱️ {act.duration}</Badge>}
+                                                                                                        {act.cost && <Badge variant="outline" className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">💰 {act.cost}</Badge>}
+                                                                                                        {act.transport && <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">🚇 {act.transport}</Badge>}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    })}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    {result!.pricing && (
+                                        <div className="mt-16 bg-white/60 dark:bg-slate-950/40 py-12 border-t border-gray-200 dark:border-white/10 rounded-2xl shadow-sm">
+                                            <InteractivePricing pricing={result!.pricing} />
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
-                            {/* Inject Pricing module at the bottom of the Preview */}
-                            {!isEditing && result!.pricing && (
-                                <div className="mt-16 bg-white/60 dark:bg-slate-950/40 py-12 border-t border-gray-200 dark:border-white/10 rounded-2xl shadow-sm">
-                                    <InteractivePricing pricing={result!.pricing} />
+                            {activeTab === 'logistics' && (
+                                <div className="space-y-8 animate-fade-in-up">
+                                    <div className="bg-gray-50/50 dark:bg-slate-900/30 p-8 rounded-3xl border border-gray-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Logistics & Bookings</h3>
+                                                    <p className="text-gray-500 dark:text-gray-400">Manage flights, hotels, and transportation for {result.destination}</p>
+                                                </div>
+                                                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-1">Professional Mode</Badge>
+                                            </div>
+                                            <LogisticsManager data={result!} onChange={setResult} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        <Card className="h-full">
+                                            <CardHeader>
+                                                <CardTitle className="text-lg flex items-center gap-2">
+                                                    <MapPin className="w-5 h-5 text-blue-600" /> Location Context
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="h-64">
+                                                <ItineraryMap
+                                                    destination={result.destination}
+                                                    activities={result.days.flatMap((day: Day) =>
+                                                        day.activities.map(act => ({
+                                                            ...act,
+                                                            coordinates: act.coordinates && act.coordinates.lat !== 0 ? act.coordinates : undefined
+                                                        }))
+                                                    )}
+                                                />
+                                            </CardContent>
+                                        </Card>
+                                        <WeatherWidget destination={result.destination} days={result.duration_days} compact={true} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'pricing' && (
+                                <div className="space-y-8 animate-fade-in-up">
+                                    <div className="bg-emerald-50/30 dark:bg-slate-900/30 p-8 rounded-3xl border border-emerald-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white">Investment Breakdown</h3>
+                                                    <p className="text-gray-500 dark:text-gray-400">Configure client pricing, margins, and optional add-ons</p>
+                                                </div>
+                                                <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-4 py-1">Financial Data</Badge>
+                                            </div>
+                                            <PricingManager data={result!} onChange={setResult} />
+                                        </div>
+                                    </div>
+
+                                    {result!.pricing && (
+                                        <div className="mt-8 bg-white/60 dark:bg-slate-950/40 py-12 px-6 border-t border-gray-200 dark:border-white/10 rounded-2xl shadow-sm">
+                                            <div className="text-center mb-10">
+                                                <h4 className="text-xl font-bold text-gray-800 dark:text-white">Client-Facing Preview</h4>
+                                                <p className="text-gray-500">This is how the interactive pricing will appear to your customers</p>
+                                            </div>
+                                            <InteractivePricing pricing={result!.pricing} />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -621,7 +585,6 @@ Make it practical and specific:
                     </div>
                 )}
 
-                {/* Share Trip Modal — renders as overlay when opened */}
                 {result && (
                     <ShareTripModal
                         isOpen={isShareOpen}

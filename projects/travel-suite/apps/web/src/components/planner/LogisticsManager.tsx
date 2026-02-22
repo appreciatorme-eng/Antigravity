@@ -1,10 +1,19 @@
-"use client";
-
-import React from 'react';
-import { Plane, Hotel, Plus, Trash2, Navigation, IndianRupee } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plane, Hotel, Plus, Trash2, Navigation, IndianRupee, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FlightDetails, HotelDetails, Logistics, ItineraryResult } from '@/types/itinerary';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger
+} from '@/components/ui/dialog';
+import { FlightSearch } from '@/components/bookings/FlightSearch';
+import { HotelSearch } from '@/components/bookings/HotelSearch';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle } from 'lucide-react';
 
 interface LogisticsManagerProps {
     data: ItineraryResult;
@@ -12,28 +21,34 @@ interface LogisticsManagerProps {
 }
 
 export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
-    const createEmptyFlight = (): FlightDetails => ({
+    const [isFlightSearchOpen, setIsFlightSearchOpen] = useState(false);
+    const [isHotelSearchOpen, setIsHotelSearchOpen] = useState(false);
+
+    const createEmptyFlight = (overrides?: Partial<FlightDetails>): FlightDetails => ({
         id: Math.random().toString(36).substr(2, 9),
         airline: '',
         flight_number: '',
         departure_airport: '',
         arrival_airport: '',
         departure_time: '',
-        arrival_time: ''
+        arrival_time: '',
+        ...overrides
     });
 
-    const createEmptyHotel = (): HotelDetails => ({
+    const createEmptyHotel = (overrides?: Partial<HotelDetails>): HotelDetails => ({
         id: Math.random().toString(36).substr(2, 9),
         name: '',
         address: '',
         check_in: '',
-        check_out: ''
+        check_out: '',
+        ...overrides
     });
 
-    const addFlight = () => {
+    const addFlight = (overrides?: FlightDetails) => {
         const logistics = data.logistics || { flights: [], hotels: [] };
         const flights = logistics.flights || [];
-        onChange({ ...data, logistics: { ...logistics, flights: [...flights, createEmptyFlight()] } });
+        onChange({ ...data, logistics: { ...logistics, flights: [...flights, overrides || createEmptyFlight()] } });
+        setIsFlightSearchOpen(false);
     };
 
     const updateFlight = (idx: number, field: keyof FlightDetails, val: string) => {
@@ -50,10 +65,11 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
         onChange({ ...data, logistics: { ...logistics, flights } });
     };
 
-    const addHotel = () => {
+    const addHotel = (overrides?: HotelDetails) => {
         const logistics = data.logistics || { flights: [], hotels: [] };
         const hotels = logistics.hotels || [];
-        onChange({ ...data, logistics: { ...logistics, hotels: [...hotels, createEmptyHotel()] } });
+        onChange({ ...data, logistics: { ...logistics, hotels: [...hotels, overrides || createEmptyHotel()] } });
+        setIsHotelSearchOpen(false);
     };
 
     const updateHotel = (idx: number, field: keyof HotelDetails, val: string) => {
@@ -82,29 +98,66 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                     <h3 className="font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-2">
                         <Plane className="w-4 h-4" /> Flights
                     </h3>
-                    <Button variant="outline" size="sm" onClick={addFlight} className="border-blue-200 hover:bg-blue-50 text-blue-700">
-                        <Plus className="w-4 h-4 mr-2" /> Add Flight
-                    </Button>
+                    <div className="flex gap-2">
+                        <Dialog open={isFlightSearchOpen} onOpenChange={setIsFlightSearchOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="bg-blue-600 text-white hover:bg-blue-700 border-none">
+                                    <Search className="w-4 h-4 mr-2" /> Search Amadeus
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                    <DialogTitle>Live Flight Search</DialogTitle>
+                                </DialogHeader>
+                                <FlightSearch
+                                    onSelect={addFlight}
+                                    initialDestination={data.destination.substring(0, 3).toUpperCase()}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                        <Button variant="outline" size="sm" onClick={() => addFlight()} className="border-blue-200 hover:bg-blue-50 text-blue-700">
+                            <Plus className="w-4 h-4 mr-2" /> Quick Add
+                        </Button>
+                    </div>
                 </div>
                 {(data.logistics?.flights || []).map((flight, idx) => (
                     <div key={flight.id} className="grid md:grid-cols-12 gap-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 p-4 rounded-lg items-start shadow-sm">
                         <div className="md:col-span-3 space-y-2">
-                            <label className="text-xs text-gray-500">Airline</label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs text-gray-500">Airline</label>
+                                {flight.source === 'amadeus' && (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 py-0 h-4 text-[10px] gap-0.5">
+                                        <CheckCircle className="w-2 h-2" /> Verified
+                                    </Badge>
+                                )}
+                            </div>
                             <Input value={flight.airline} onChange={e => updateFlight(idx, 'airline', e.target.value)} placeholder="E.g. Delta" />
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-xs text-gray-500">Flight #</label>
                             <Input value={flight.flight_number} onChange={e => updateFlight(idx, 'flight_number', e.target.value)} placeholder="DL 123" />
                         </div>
-                        <div className="md:col-span-3 space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="text-xs text-gray-500">Departure</label>
                             <Input value={flight.departure_airport} onChange={e => updateFlight(idx, 'departure_airport', e.target.value)} placeholder="JFK" />
                             <Input type="datetime-local" value={flight.departure_time} onChange={e => updateFlight(idx, 'departure_time', e.target.value)} />
                         </div>
-                        <div className="md:col-span-3 space-y-2">
+                        <div className="md:col-span-2 space-y-2">
                             <label className="text-xs text-gray-500">Arrival</label>
                             <Input value={flight.arrival_airport} onChange={e => updateFlight(idx, 'arrival_airport', e.target.value)} placeholder="LHR" />
                             <Input type="datetime-local" value={flight.arrival_time} onChange={e => updateFlight(idx, 'arrival_time', e.target.value)} />
+                        </div>
+                        <div className="md:col-span-2 space-y-2">
+                            <label className="text-xs text-gray-500">Price (Est.)</label>
+                            <div className="relative">
+                                <IndianRupee className="w-3 h-3 absolute left-3 top-3 text-gray-400" />
+                                <Input
+                                    className="pl-7"
+                                    value={flight.price || ''}
+                                    onChange={e => updateFlight(idx, 'price' as any, e.target.value)}
+                                    placeholder="0"
+                                />
+                            </div>
                         </div>
                         <div className="md:col-span-1 pt-6 text-right">
                             <Button variant="ghost" size="icon" onClick={() => removeFlight(idx)} className="text-red-500">
@@ -124,14 +177,39 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
                     <h3 className="font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
                         <Hotel className="w-4 h-4" /> Hotels & Accommodations
                     </h3>
-                    <Button variant="outline" size="sm" onClick={addHotel} className="border-emerald-200 hover:bg-emerald-50 text-emerald-700">
-                        <Plus className="w-4 h-4 mr-2" /> Add Hotel
-                    </Button>
+                    <div className="flex gap-2">
+                        <Dialog open={isHotelSearchOpen} onOpenChange={setIsHotelSearchOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700 border-none">
+                                    <Search className="w-4 h-4 mr-2" /> Search Amadeus
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                    <DialogTitle>Live Hotel Search</DialogTitle>
+                                </DialogHeader>
+                                <HotelSearch
+                                    onSelect={addHotel}
+                                    initialCity={data.destination.substring(0, 3).toUpperCase()}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                        <Button variant="outline" size="sm" onClick={() => addHotel()} className="border-emerald-200 hover:bg-emerald-50 text-emerald-700">
+                            <Plus className="w-4 h-4 mr-2" /> Quick Add
+                        </Button>
+                    </div>
                 </div>
                 {(data.logistics?.hotels || []).map((hotel, idx) => (
                     <div key={hotel.id} className="grid md:grid-cols-12 gap-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 p-4 rounded-lg items-start shadow-sm">
                         <div className="md:col-span-4 space-y-2">
-                            <label className="text-xs text-gray-500">Hotel Name</label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs text-gray-500">Hotel Name</label>
+                                {hotel.source === 'amadeus' && (
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 py-0 h-4 text-[10px] gap-0.5">
+                                        <CheckCircle className="w-2 h-2" /> Verified
+                                    </Badge>
+                                )}
+                            </div>
                             <Input value={hotel.name} onChange={e => updateHotel(idx, 'name', e.target.value)} placeholder="The Plaza" />
                         </div>
                         <div className="md:col-span-4 space-y-2">

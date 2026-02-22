@@ -53,28 +53,41 @@
   /* Matching mobile app_theme.dart */
 
   /* Border radius */
-  --radius: 0.75rem; /* 12px base */
+  --radius: 0.75rem;
+  /* 12px base */
 
   /* Brand Colors */
-  --primary: #00d084;              /* Vivid Green */
-  --primary-hover: #00b874;        /* Darker green */
-  --primary-light: #33dda0;        /* Lighter green */
+  --primary: #00d084;
+  /* Vivid Green */
+  --primary-hover: #00b874;
+  /* Darker green */
+  --primary-light: #33dda0;
+  /* Lighter green */
   --primary-foreground: #ffffff;
 
-  --secondary: #124ea2;            /* Royal Blue */
-  --secondary-hover: #0f3e85;      /* Darker blue */
-  --secondary-light: #1e5fbd;      /* Lighter blue */
+  --secondary: #124ea2;
+  /* Royal Blue */
+  --secondary-hover: #0f3e85;
+  /* Darker blue */
+  --secondary-light: #1e5fbd;
+  /* Lighter blue */
   --secondary-foreground: #ffffff;
 
   /* Reference Site Colors */
-  --gobuddy-blue: #124ea2;         /* Header blue from reference */
-  --gobuddy-green: #18974e;        /* Highlights green from reference */
+  --gobuddy-blue: #124ea2;
+  /* Header blue from reference */
+  --gobuddy-green: #18974e;
+  /* Highlights green from reference */
 
   /* Neutrals */
-  --background: #f5f5f5;           /* Soft Glass background */
-  --foreground: #124ea2;           /* Royal Blue for text */
-  --text-primary: #124ea2;         /* Royal Blue */
-  --text-secondary: #6b7280;       /* Gray-500 */
+  --background: #f5f5f5;
+  /* Soft Glass background */
+  --foreground: #124ea2;
+  /* Royal Blue for text */
+  --text-primary: #124ea2;
+  /* Royal Blue */
+  --text-secondary: #6b7280;
+  /* Gray-500 */
 
   /* Card surfaces */
   --card: #ffffff;
@@ -83,15 +96,22 @@
   --popover-foreground: #124ea2;
 
   /* Glass surfaces (with opacity) */
-  --glass-surface: rgba(255, 255, 255, 0.65);      /* ~65% white */
-  --glass-nav-surface: rgba(255, 255, 255, 0.85);  /* ~85% white */
-  --glass-border: rgba(255, 255, 255, 0.6);        /* ~60% white */
+  --glass-surface: rgba(255, 255, 255, 0.65);
+  /* ~65% white */
+  --glass-nav-surface: rgba(255, 255, 255, 0.85);
+  /* ~85% white */
+  --glass-border: rgba(255, 255, 255, 0.6);
+  /* ~60% white */
 
   /* Feedback colors */
-  --error: #ef4444;                /* Red-500 */
-  --success: #22c55e;              /* Green-500 */
-  --warning: #f59e0b;              /* Amber-500 */
-  --info: #3b82f6;                 /* Blue-500 */
+  --error: #ef4444;
+  /* Red-500 */
+  --success: #22c55e;
+  /* Green-500 */
+  --warning: #f59e0b;
+  /* Amber-500 */
+  --info: #3b82f6;
+  /* Blue-500 */
   --destructive: #ef4444;
 
   /* Component states */
@@ -123,34 +143,43 @@
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #00d084 0%, #00b874 100%);
   --gradient-background: linear-gradient(135deg, #e0f7fa 0%, #f5f5f5 50%, #e3f2fd 100%);
-  --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
 }
 
 .dark {
   /* === Dark Mode (Stitch Dark Variants) === */
 
   /* Background colors */
-  --background: #0a2f2a;           /* Dark teal */
-  --foreground: #ffffff;           /* White */
+  --background: #0a2f2a;
+  /* Dark teal */
+  --foreground: #ffffff;
+  /* White */
   --text-primary: #ffffff;
-  --text-secondary: #b0b0b0;       /* Light gray */
+  --text-secondary: #b0b0b0;
+  /* Light gray */
 
   /* Card surfaces */
-  --card: #0f3a33;                 /* Slightly lighter teal */
+  --card: #0f3a33;
+  /* Slightly lighter teal */
   --card-foreground: #ffffff;
   --popover: #0f3a33;
   --popover-foreground: #ffffff;
 
   /* Brand colors (unchanged) */
   --primary: #00d084;
-  --primary-foreground: #000000;   /* Black text on green */
-  --secondary: #00d084;            /* Use primary in dark mode */
+  --primary-foreground: #000000;
+  /* Black text on green */
+  --secondary: #00d084;
+  /* Use primary in dark mode */
   --secondary-foreground: #000000;
 
   /* Glass surfaces (darker) */
-  --glass-surface: rgba(255, 255, 255, 0.2);      /* ~20% white */
-  --glass-nav-surface: rgba(255, 255, 255, 0.25); /* ~25% white */
-  --glass-border: rgba(255, 255, 255, 0.15);      /* ~15% white */
+  --glass-surface: rgba(255, 255, 255, 0.2);
+  /* ~20% white */
+  --glass-nav-surface: rgba(255, 255, 255, 0.25);
+  /* ~25% white */
+  --glass-border: rgba(255, 255, 255, 0.15);
+  /* ~15% white */
 
   /* Component states */
   --muted: #0f3a33;
@@ -194,19 +223,23 @@
   }
 
   /* Typography hierarchy */
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     font-family: var(--font-serif);
   }
 
   .maplibregl-popup-content {
-    @apply bg-transparent! shadow-none! p-0! rounded-none!;
+    @apply bg-transparent ! shadow-none ! p-0 ! rounded-none !;
   }
+
   .maplibregl-popup-tip {
-    @apply hidden!;
+    @apply hidden !;
   }
 }
 
 @layer utilities {
+
   /* === Glassmorphism Utilities === */
   .glass {
     backdrop-filter: blur(16px);
@@ -266,10 +299,13 @@
 
   /* === Pulsing Dot Animation === */
   @keyframes pulse-scale {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: scale(0.75);
       opacity: 1;
     }
+
     50% {
       transform: scale(1.15);
       opacity: 0.9;
@@ -303,5 +339,21 @@
 
   .animate-shimmer {
     animation: shimmer 2s infinite;
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out forwards;
   }
 }

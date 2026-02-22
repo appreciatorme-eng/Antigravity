@@ -89,9 +89,9 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                 <IndianRupee className="w-5 h-5 text-emerald-500" /> Pricing & Add-ons
             </h2>
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Base Price (Total or Per Person)</label>
+                        <label className="text-sm font-medium">Base Cost (Before Markup)</label>
                         <Input
                             type="text"
                             value={formatIndianNumber(data.pricing?.basePrice || 0)}
@@ -100,7 +100,25 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Number of Passengers</label>
+                        <label className="text-sm font-medium">Markup (%)</label>
+                        <Input
+                            type="number"
+                            value={data.pricing?.markupPercentage || 0}
+                            onChange={(e) => updatePricing('markupPercentage' as any, parseFloat(e.target.value) || 0)}
+                            placeholder="10"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Service Fee (Flat)</label>
+                        <Input
+                            type="text"
+                            value={formatIndianNumber(data.pricing?.serviceFee || 0)}
+                            onChange={(e) => updatePricing('serviceFee' as any, parseIndianNumber(e.target.value))}
+                            placeholder="500"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Passengers</label>
                         <Input
                             type="number"
                             value={data.pricing?.passengerCount || 1}
