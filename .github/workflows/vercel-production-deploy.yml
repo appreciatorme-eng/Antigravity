@@ -1,0 +1,38 @@
+name: Vercel Production Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-production:
+    name: Deploy Web App to Vercel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/travel-suite/apps/web
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Pull Vercel project settings
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel Production
+        run: npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
