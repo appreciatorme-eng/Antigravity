@@ -13,9 +13,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { createClient } from '@/lib/supabase/server';
+import {
+  getIntegrationDisabledMessage,
+  isPaymentsIntegrationEnabled,
+} from '@/lib/integrations';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isPaymentsIntegrationEnabled()) {
+      return NextResponse.json(
+        {
+          received: false,
+          disabled: true,
+          error: getIntegrationDisabledMessage('payments'),
+        },
+        { status: 202 }
+      );
+    }
+
     // Get webhook signature from headers
     const signature = request.headers.get('x-razorpay-signature');
     if (!signature) {

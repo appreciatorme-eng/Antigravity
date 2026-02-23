@@ -63,40 +63,6 @@ interface HealthResponse {
     };
 }
 
-const mockStats: DashboardStats = {
-    totalDrivers: 12,
-    totalClients: 48,
-    activeTrips: 7,
-    pendingNotifications: 3,
-};
-
-const mockActivities: ActivityItem[] = [
-    {
-        id: "mock-activity-1",
-        type: "trip",
-        title: "New Trip Created",
-        description: "Kyoto Blossom Trail to Kyoto, Japan",
-        timestamp: "2026-02-10T10:20:00Z",
-        status: "confirmed",
-    },
-    {
-        id: "mock-activity-2",
-        type: "notification",
-        title: "Driver Assigned",
-        description: "Kenji Sato confirmed for day 1 pickup.",
-        timestamp: "2026-02-10T09:45:00Z",
-        status: "sent",
-    },
-    {
-        id: "mock-activity-3",
-        type: "trip",
-        title: "Trip Status Updated",
-        description: "Northern Lights Escape now in progress.",
-        timestamp: "2026-02-09T18:12:00Z",
-        status: "in_progress",
-    },
-];
-
 export default function AdminDashboard() {
     const supabase = createClient();
     const [stats, setStats] = useState<DashboardStats>({
@@ -109,18 +75,11 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<HealthResponse | null>(null);
     const [healthLoading, setHealthLoading] = useState(true);
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                if (useMockAdmin) {
-                    setStats(mockStats);
-                    setActivities(mockActivities);
-                    return;
-                }
-
                 // Get driver count
                 const { count: driverCount } = await supabase
                     .from("profiles")
@@ -193,7 +152,7 @@ export default function AdminDashboard() {
         };
 
         fetchData();
-    }, [supabase, useMockAdmin]);
+    }, [supabase]);
 
     useEffect(() => {
         let mounted = true;

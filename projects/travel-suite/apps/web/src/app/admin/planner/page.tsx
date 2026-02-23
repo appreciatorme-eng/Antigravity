@@ -5,24 +5,6 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 
-const mockItinerary = [
-    {
-        day: 1,
-        title: "Arrival & Gion Walk",
-        activities: ["Check-in at boutique ryokan", "Evening stroll in Gion", "Kaiseki dinner"],
-    },
-    {
-        day: 2,
-        title: "Arashiyama Highlights",
-        activities: ["Bamboo grove sunrise", "Tenryu-ji temple", "River cruise"],
-    },
-    {
-        day: 3,
-        title: "Fushimi Inari",
-        activities: ["Torii gate hike", "Sake tasting", "Tea ceremony"],
-    },
-];
-
 export default function PlannerPage() {
     return (
         <div className="space-y-8">
@@ -34,7 +16,7 @@ export default function PlannerPage() {
                 <div>
                     <span className="text-xs uppercase tracking-widest text-primary font-bold">Planner</span>
                     <h1 className="text-3xl font-serif text-secondary dark:text-white">Itinerary Planner</h1>
-                    <p className="text-text-secondary mt-1">Mock planner workflow and AI output.</p>
+                    <p className="text-text-secondary mt-1">Build itinerary drafts and refine plans for each trip.</p>
                 </div>
             </div>
 
@@ -80,30 +62,15 @@ export default function PlannerPage() {
                     <GlassCard padding="lg" rounded="2xl">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-lg font-serif text-secondary dark:text-white">Generated Plan</h2>
-                            <span className="text-xs text-text-secondary">Mock output</span>
+                            <span className="text-xs text-text-secondary">Live workspace data</span>
                         </div>
                         <div className="space-y-4">
-                            {mockItinerary.map((day) => (
-                                <div
-                                    key={day.day}
-                                    className="rounded-xl border border-white/20 bg-white/40 dark:bg-white/5 backdrop-blur-sm p-5"
-                                >
-                                    <p className="text-sm font-semibold text-secondary dark:text-white mb-3">
-                                        Day {day.day}: {day.title}
-                                    </p>
-                                    <ul className="space-y-2">
-                                        {day.activities.map((activity) => (
-                                            <li
-                                                key={activity}
-                                                className="text-sm text-text-secondary flex items-start gap-2"
-                                            >
-                                                <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                                                {activity}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
+                            <div className="rounded-xl border border-dashed border-white/30 bg-white/30 dark:bg-white/5 p-8 text-center">
+                                <p className="text-sm font-medium text-secondary dark:text-white">No generated plan yet</p>
+                                <p className="mt-1 text-xs text-text-secondary">
+                                    Use the planner form to generate itinerary content from your configured AI provider.
+                                </p>
+                            </div>
                         </div>
                     </GlassCard>
                 </div>

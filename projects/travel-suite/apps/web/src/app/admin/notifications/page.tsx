@@ -99,120 +99,6 @@ interface WhatsAppHealthPayload {
     }>;
 }
 
-const mockLogs: NotificationLog[] = [
-    {
-        id: "mock-log-1",
-        trip_id: "mock-trip-001",
-        recipient_id: "mock-user-1",
-        recipient_phone: null,
-        recipient_type: "client",
-        notification_type: "itinerary_update",
-        title: "Kyoto updates ready",
-        body: "Your itinerary has been refreshed with cherry blossom timings.",
-        status: "delivered",
-        error_message: null,
-        sent_at: "2026-02-10T09:22:00Z",
-        created_at: "2026-02-10T09:20:00Z",
-        profiles: {
-            full_name: "Ava Chen",
-            email: "ava.chen@example.com",
-        },
-    },
-    {
-        id: "mock-log-2",
-        trip_id: "mock-trip-002",
-        recipient_id: "mock-user-2",
-        recipient_phone: null,
-        recipient_type: "client",
-        notification_type: "driver_assignment",
-        title: "Driver assigned",
-        body: "Your driver for day 2 has been confirmed. Pickup at 8:30 AM.",
-        status: "sent",
-        error_message: null,
-        sent_at: "2026-02-08T18:05:00Z",
-        created_at: "2026-02-08T18:05:00Z",
-        profiles: {
-            full_name: "Liam Walker",
-            email: "liam.walker@example.com",
-        },
-    },
-    {
-        id: "mock-log-3",
-        trip_id: "mock-trip-002",
-        recipient_id: "mock-user-2",
-        recipient_phone: null,
-        recipient_type: "client",
-        notification_type: "flight_update",
-        title: "Flight update pending",
-        body: "We are waiting on the airline confirmation for your return leg.",
-        status: "pending",
-        error_message: null,
-        sent_at: null,
-        created_at: "2026-02-08T17:40:00Z",
-        profiles: {
-            full_name: "Liam Walker",
-            email: "liam.walker@example.com",
-        },
-    },
-    {
-        id: "mock-log-4",
-        trip_id: "mock-trip-001",
-        recipient_id: "mock-user-1",
-        recipient_phone: null,
-        recipient_type: "client",
-        notification_type: "payment_reminder",
-        title: "Deposit reminder",
-        body: "Your deposit is due in 3 days. Tap to review the invoice.",
-        status: "failed",
-        error_message: "Device token expired",
-        sent_at: "2026-02-06T12:11:00Z",
-        created_at: "2026-02-06T12:11:00Z",
-        profiles: {
-            full_name: "Ava Chen",
-            email: "ava.chen@example.com",
-        },
-    },
-];
-
-const mockWhatsAppHealth: WhatsAppHealthPayload = {
-    summary: {
-        total_driver_profiles: 6,
-        drivers_with_phone: 5,
-        drivers_missing_phone: 1,
-        active_trips_with_driver: 4,
-        stale_active_driver_trips: 1,
-        location_pings_last_1h: 18,
-        location_pings_last_24h: 163,
-        unmapped_external_drivers: 2,
-    },
-    latest_pings: [
-        {
-            driver_id: "mock-driver-1",
-            driver_name: "Kenji Sato",
-            trip_id: "mock-trip-001",
-            recorded_at: new Date().toISOString(),
-            age_minutes: 1,
-            status: "fresh",
-        },
-        {
-            driver_id: "mock-driver-2",
-            driver_name: "Elena Petrova",
-            trip_id: "mock-trip-002",
-            recorded_at: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
-            age_minutes: 22,
-            status: "stale",
-        },
-    ],
-    drivers_missing_phone_list: [
-        {
-            id: "mock-driver-missing-1",
-            full_name: "Driver Missing Phone",
-            email: "driver.missing@example.com",
-            phone: "+1 415 555 0100",
-        },
-    ],
-};
-
 export default function NotificationLogsPage() {
     const supabase = createClient();
     const [logs, setLogs] = useState<NotificationLog[]>([]);
@@ -242,23 +128,10 @@ export default function NotificationLogsPage() {
     const [deliveryFailedOnly, setDeliveryFailedOnly] = useState(true);
     const [deliverySummary, setDeliverySummary] = useState<Record<string, number>>({});
     const [retryingQueueId, setRetryingQueueId] = useState<string | null>(null);
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            if (useMockAdmin) {
-                setLogs(mockLogs);
-                setQueueHealth({
-                    pending: 3,
-                    processing: 1,
-                    sent: 24,
-                    failed: 2,
-                    upcomingHour: 2,
-                });
-                return;
-            }
-
             let query = supabase
                 .from("notification_logs")
                 .select(`
@@ -314,7 +187,7 @@ export default function NotificationLogsPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase, statusFilter, useMockAdmin]);
+    }, [supabase, statusFilter]);
 
     useEffect(() => {
         void fetchLogs();
@@ -323,11 +196,6 @@ export default function NotificationLogsPage() {
     const fetchWhatsAppHealth = useCallback(async () => {
         setHealthLoading(true);
         try {
-            if (useMockAdmin) {
-                setWhatsAppHealth(mockWhatsAppHealth);
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/whatsapp/health", {
                 headers: {
@@ -344,7 +212,7 @@ export default function NotificationLogsPage() {
         } finally {
             setHealthLoading(false);
         }
-    }, [supabase, useMockAdmin]);
+    }, [supabase]);
 
     useEffect(() => {
         void fetchWhatsAppHealth();
@@ -353,33 +221,6 @@ export default function NotificationLogsPage() {
     const fetchDeliveryTracking = useCallback(async () => {
         setDeliveryLoading(true);
         try {
-            if (useMockAdmin) {
-                setDeliveryRows([
-                    {
-                        id: "mock-delivery-1",
-                        queue_id: "mock-queue-1",
-                        trip_id: "mock-trip-001",
-                        channel: "whatsapp",
-                        status: "failed",
-                        attempt_number: 2,
-                        error_message: "Template not approved",
-                        created_at: new Date().toISOString(),
-                    },
-                    {
-                        id: "mock-delivery-2",
-                        queue_id: "mock-queue-2",
-                        trip_id: "mock-trip-002",
-                        channel: "push",
-                        status: "sent",
-                        attempt_number: 1,
-                        error_message: null,
-                        created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-                    },
-                ]);
-                setDeliverySummary({ sent: 12, failed: 3, skipped: 1 });
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const params = new URLSearchParams();
             params.set("limit", "40");
@@ -403,7 +244,7 @@ export default function NotificationLogsPage() {
         } finally {
             setDeliveryLoading(false);
         }
-    }, [supabase, useMockAdmin, deliveryChannel, deliveryFailedOnly]);
+    }, [supabase, deliveryChannel, deliveryFailedOnly]);
 
     useEffect(() => {
         void fetchDeliveryTracking();
@@ -457,12 +298,6 @@ export default function NotificationLogsPage() {
     const runQueueNow = async () => {
         try {
             setRunningQueue(true);
-            if (useMockAdmin) {
-                setActionMessage("Mock queue run complete.");
-                await fetchLogs();
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/notifications/process-queue", {
                 method: "POST",
@@ -492,12 +327,6 @@ export default function NotificationLogsPage() {
     const retryFailedQueue = async () => {
         try {
             setRetryingFailed(true);
-            if (useMockAdmin) {
-                setActionMessage("Mock retry complete.");
-                await fetchLogs();
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/notifications/retry-failed", {
                 method: "POST",
@@ -524,11 +353,6 @@ export default function NotificationLogsPage() {
     const cleanupExpiredShares = async () => {
         try {
             setCleaningShares(true);
-            if (useMockAdmin) {
-                setActionMessage("Mock cleanup complete.");
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/location/cleanup-expired", {
                 method: "POST",
@@ -557,11 +381,6 @@ export default function NotificationLogsPage() {
                 setNormalizingDriverId(driverId);
             } else {
                 setNormalizingAllDrivers(true);
-            }
-
-            if (useMockAdmin) {
-                setActionMessage("Mock normalization complete.");
-                return;
             }
 
             const { data: { session } } = await supabase.auth.getSession();
@@ -599,12 +418,6 @@ export default function NotificationLogsPage() {
     const retrySingleQueueItem = async (queueId: string) => {
         try {
             setRetryingQueueId(queueId);
-            if (useMockAdmin) {
-                setActionMessage("Mock retry queued.");
-                await fetchDeliveryTracking();
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/notifications/delivery/retry", {
                 method: "POST",

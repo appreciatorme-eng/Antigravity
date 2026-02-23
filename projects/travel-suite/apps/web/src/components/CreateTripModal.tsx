@@ -15,11 +15,6 @@ interface Client {
     email: string;
 }
 
-const mockClients: Client[] = [
-    { id: "mock-client-1", full_name: "Ava Chen", email: "ava.chen@example.com" },
-    { id: "mock-client-2", full_name: "Liam Walker", email: "liam.walker@example.com" },
-];
-
 interface CreateTripModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -28,7 +23,6 @@ interface CreateTripModalProps {
 
 export default function CreateTripModal({ open, onOpenChange, onSuccess }: CreateTripModalProps) {
     const supabase = createClient();
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     // Form State
     const [clientId, setClientId] = useState("");
@@ -49,11 +43,6 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
     const fetchClients = useCallback(async () => {
         setLoadingClients(true);
-        if (useMockAdmin) {
-            setClients(mockClients);
-            setLoadingClients(false);
-            return;
-        }
 
         const { data: { session } } = await supabase.auth.getSession();
         const response = await fetch("/api/admin/clients", {
@@ -78,7 +67,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             }))
         );
         setLoadingClients(false);
-    }, [supabase, useMockAdmin]);
+    }, [supabase]);
 
     useEffect(() => {
         if (open) {
@@ -116,7 +105,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
             setGeneratedData(data as ItineraryResult);
 
-            // Auto-fill dates if possible (mock for now, usually AI returns relative days)
+            // Auto-fill dates if possible (fallback for cases where AI returns relative days)
             // But we can set duration at least in the summary
 
         } catch (error) {

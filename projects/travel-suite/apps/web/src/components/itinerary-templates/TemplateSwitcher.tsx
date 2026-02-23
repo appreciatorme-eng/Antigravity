@@ -10,7 +10,7 @@ interface TemplateSwitcherProps {
 
 /* ─────────────────────────────────────────────
    Inline SVG thumbnail previews – one per template
-   Each is a tiny ~100×70 proportional mockup
+   Each is a tiny ~100×70 proportional preview
 ───────────────────────────────────────────── */
 
 const SafariPreview = () => (

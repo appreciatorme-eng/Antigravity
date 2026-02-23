@@ -352,119 +352,6 @@ interface OverpassResponse {
     elements?: OverpassElement[];
 }
 
-const mockTripsById: Record<string, Trip> = {
-    "mock-trip-001": {
-        id: "mock-trip-001",
-        status: "confirmed",
-        start_date: "2026-03-12",
-        end_date: "2026-03-17",
-        destination: "Kyoto, Japan",
-        profiles: {
-            id: "mock-user-1",
-            full_name: "Ava Chen",
-            email: "ava.chen@example.com",
-        },
-        itineraries: {
-            id: "mock-itinerary-1",
-            trip_title: "Kyoto Blossom Trail",
-            duration_days: 5,
-            destination: "Kyoto, Japan",
-            raw_data: {
-                days: [
-                    { day_number: 1, theme: "Arrival & Gion", activities: [] },
-                    { day_number: 2, theme: "Arashiyama & Bamboo", activities: [] },
-                    { day_number: 3, theme: "Fushimi Inari", activities: [] },
-                    { day_number: 4, theme: "Tea Ceremony", activities: [] },
-                    { day_number: 5, theme: "Departure", activities: [] },
-                ],
-            },
-        },
-    },
-    "mock-trip-002": {
-        id: "mock-trip-002",
-        status: "in_progress",
-        start_date: "2026-02-20",
-        end_date: "2026-02-27",
-        destination: "Reykjavik, Iceland",
-        profiles: {
-            id: "mock-user-2",
-            full_name: "Liam Walker",
-            email: "liam.walker@example.com",
-        },
-        itineraries: {
-            id: "mock-itinerary-2",
-            trip_title: "Northern Lights Escape",
-            duration_days: 7,
-            destination: "Reykjavik, Iceland",
-            raw_data: {
-                days: [
-                    { day_number: 1, theme: "Blue Lagoon", activities: [] },
-                    { day_number: 2, theme: "Golden Circle", activities: [] },
-                    { day_number: 3, theme: "Aurora Chase", activities: [] },
-                    { day_number: 4, theme: "Ice Caves", activities: [] },
-                    { day_number: 5, theme: "City Exploration", activities: [] },
-                    { day_number: 6, theme: "Whale Watching", activities: [] },
-                    { day_number: 7, theme: "Departure", activities: [] },
-                ],
-            },
-        },
-    },
-};
-
-const mockDriversList: Driver[] = [
-    {
-        id: "mock-driver-1",
-        full_name: "Kenji Sato",
-        phone: "+81 90 1234 5678",
-        vehicle_type: "sedan",
-        vehicle_plate: "KY-1204",
-    },
-    {
-        id: "mock-driver-2",
-        full_name: "Elena Petrova",
-        phone: "+354 770 5566",
-        vehicle_type: "suv",
-        vehicle_plate: "ICE-447",
-    },
-];
-
-const mockAssignments: Record<number, DriverAssignment> = {
-    1: {
-        day_number: 1,
-        external_driver_id: "mock-driver-1",
-        pickup_time: "08:30",
-        pickup_location: "Kyoto Station",
-        notes: "Meet at north exit.",
-    },
-};
-
-const mockAccommodations: Record<number, Accommodation> = {
-    1: {
-        day_number: 1,
-        hotel_name: "Hoshinoya Kyoto",
-        address: "Arashiyama, Kyoto",
-        check_in_time: "15:00",
-        contact_phone: "+81 75 871 0001",
-    },
-};
-
-const mockNotificationLog = [
-    {
-        id: "mock-log-1",
-        title: "Driver assigned",
-        body: "Kenji Sato confirmed for day 1 pickup.",
-        status: "delivered",
-        sent_at: "2026-02-10T09:45:00Z",
-    },
-    {
-        id: "mock-log-2",
-        title: "Itinerary update",
-        body: "Added tea ceremony timing and local guide details.",
-        status: "sent",
-        sent_at: "2026-02-09T16:30:00Z",
-    },
-];
-
 export default function TripDetailPage() {
     const params = useParams();
     const tripId = params.id as string;
@@ -502,20 +389,9 @@ export default function TripDetailPage() {
     );
 
     const supabase = createClient();
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchData = useCallback(async () => {
         if (!tripId) return;
-        if (useMockAdmin) {
-            const mockTrip = mockTripsById[tripId] ?? mockTripsById["mock-trip-001"];
-            setTrip(mockTrip);
-            setItineraryDays((mockTrip.itineraries?.raw_data?.days ?? []).map(enrichDayDurations).map(buildDaySchedule));
-            setDrivers(mockDriversList);
-            setAssignments(mockAssignments);
-            setAccommodations(mockAccommodations);
-            setLoading(false);
-            return;
-        }
 
         let { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -555,7 +431,7 @@ export default function TripDetailPage() {
         setLatestDriverLocation(payload.latestDriverLocation || null);
 
         setLoading(false);
-    }, [supabase, tripId, useMockAdmin]);
+    }, [supabase, tripId]);
 
     useEffect(() => {
         void fetchData();
@@ -563,7 +439,7 @@ export default function TripDetailPage() {
 
     useEffect(() => {
         const loadExistingShare = async () => {
-            if (!tripId || useMockAdmin) return;
+            if (!tripId) return;
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 const response = await fetch(`/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`, {
@@ -581,7 +457,7 @@ export default function TripDetailPage() {
         };
 
         void loadExistingShare();
-    }, [activeDay, tripId, useMockAdmin, supabase.auth]);
+    }, [activeDay, tripId, supabase.auth]);
 
     useEffect(() => {
         const timers = hotelSearchDebounceRef.current;
@@ -933,13 +809,6 @@ out center tags 80;
         if (!trip?.profiles?.id && !notificationEmail.trim()) return;
 
         try {
-            if (useMockAdmin) {
-                alert("Mock notification sent to client!");
-                setNotificationOpen(false);
-                setNotificationBody("");
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const payload: Record<string, unknown> = {
                 tripId,
@@ -981,12 +850,6 @@ out center tags 80;
 
     const createLiveLocationShare = async () => {
         if (!tripId) return;
-        if (useMockAdmin) {
-            const mockUrl = `http://localhost:3000/live/mock-${tripId}-d${activeDay}`;
-            setLiveLocationUrl(mockUrl);
-            alert(`Mock live location link created:\n${mockUrl}`);
-            return;
-        }
 
         setCreatingLiveLink(true);
         try {
@@ -1026,11 +889,6 @@ out center tags 80;
 
     const revokeLiveLocationShare = async () => {
         if (!tripId || !liveLocationUrl) return;
-        if (useMockAdmin) {
-            setLiveLocationUrl("");
-            alert("Mock live link revoked");
-            return;
-        }
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -1269,32 +1127,6 @@ out center tags 80;
                     </button>
                 </div>
             </div>
-
-            {useMockAdmin && (
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-sm font-semibold text-gray-900">Mock Notification Log</h2>
-                        <span className="text-xs text-gray-500">Demo only</span>
-                    </div>
-                    <div className="space-y-3">
-                        {mockNotificationLog.map((log) => (
-                            <div
-                                key={log.id}
-                                className="flex items-start justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
-                            >
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">{log.title}</div>
-                                    <div className="text-xs text-gray-500">{log.body}</div>
-                                </div>
-                                <div className="text-xs text-gray-500 text-right">
-                                    <div className="capitalize">{log.status}</div>
-                                    <div>{new Date(log.sent_at).toLocaleString()}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">

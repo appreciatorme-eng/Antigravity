@@ -48,39 +48,6 @@ interface Client {
     trips_count?: number;
 }
 
-const mockClients: Client[] = [
-    {
-        id: "mock-client-1",
-        role: "client",
-        full_name: "Ava Chen",
-        email: "ava.chen@example.com",
-        phone: "+1 (415) 555-1122",
-        avatar_url: null,
-        created_at: "2024-11-08T12:00:00Z",
-        trips_count: 3,
-    },
-    {
-        id: "mock-client-2",
-        role: "client",
-        full_name: "Liam Walker",
-        email: "liam.walker@example.com",
-        phone: "+44 20 7946 0901",
-        avatar_url: null,
-        created_at: "2025-02-19T09:30:00Z",
-        trips_count: 2,
-    },
-    {
-        id: "mock-client-3",
-        role: "client",
-        full_name: "Sofia Ramirez",
-        email: "sofia.ramirez@example.com",
-        phone: "+34 91 123 4567",
-        avatar_url: null,
-        created_at: "2025-06-04T15:15:00Z",
-        trips_count: 1,
-    },
-];
-
 const LIFECYCLE_STAGES = [
     "lead",
     "prospect",
@@ -135,16 +102,10 @@ export default function ClientsPage() {
         referralSource: "",
         sourceChannel: "",
     });
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchClients = useCallback(async () => {
         setLoading(true);
         try {
-            if (useMockAdmin) {
-                setClients(mockClients);
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const headers: Record<string, string> = {};
             if (session?.access_token) {
@@ -164,7 +125,7 @@ export default function ClientsPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase, useMockAdmin]);
+    }, [supabase]);
 
     useEffect(() => {
         void fetchClients();
@@ -263,65 +224,6 @@ export default function ClientsPage() {
         setFormError(null);
 
         try {
-            if (useMockAdmin) {
-                if (editingClientId) {
-                    setClients((prev) => prev.map((c) => c.id === editingClientId ? {
-                        ...c,
-                        full_name: formData.full_name.trim(),
-                        email: formData.email.trim(),
-                        phone: formData.phone.trim() || null,
-                        preferred_destination: formData.preferredDestination || null,
-                        travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
-                        budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
-                        budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
-                        travel_style: formData.travelStyle || null,
-                        interests: formData.interests
-                            ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
-                            : null,
-                        home_airport: formData.homeAirport || null,
-                        notes: formData.notes || null,
-                        lead_status: formData.leadStatus || "new",
-                        client_tag: formData.clientTag || "standard",
-                        phase_notifications_enabled: formData.phaseNotificationsEnabled,
-                        lifecycle_stage: formData.lifecycleStage || "lead",
-                        marketing_opt_in: formData.marketingOptIn,
-                        referral_source: formData.referralSource || null,
-                        source_channel: formData.sourceChannel || null,
-                    } : c));
-                } else {
-                    const newClient: Client = {
-                        id: `mock-client-${Date.now()}`,
-                        full_name: formData.full_name.trim(),
-                        email: formData.email.trim(),
-                        phone: formData.phone.trim() || null,
-                        avatar_url: null,
-                        created_at: new Date().toISOString(),
-                        preferred_destination: formData.preferredDestination || null,
-                        travelers_count: formData.travelersCount ? Number(formData.travelersCount) : null,
-                        budget_min: formData.budgetMin ? Number(formData.budgetMin) : null,
-                        budget_max: formData.budgetMax ? Number(formData.budgetMax) : null,
-                        travel_style: formData.travelStyle || null,
-                        interests: formData.interests
-                            ? formData.interests.split(",").map((item) => item.trim()).filter(Boolean)
-                            : null,
-                        home_airport: formData.homeAirport || null,
-                        notes: formData.notes || null,
-                        lead_status: formData.leadStatus || "new",
-                        client_tag: formData.clientTag || "standard",
-                        phase_notifications_enabled: formData.phaseNotificationsEnabled,
-                        lifecycle_stage: formData.lifecycleStage || "lead",
-                        marketing_opt_in: formData.marketingOptIn,
-                        referral_source: formData.referralSource || null,
-                        source_channel: formData.sourceChannel || null,
-                        trips_count: 0,
-                    };
-                    setClients((prev) => [newClient, ...prev]);
-                }
-                setModalOpen(false);
-                resetForm();
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
 
             const url = "/api/admin/clients";
@@ -358,11 +260,6 @@ export default function ClientsPage() {
         }
 
         try {
-            if (useMockAdmin) {
-                setClients((prev) => prev.filter((client) => client.id !== clientId));
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch(`/api/admin/clients?id=${clientId}`, {
                 method: "DELETE",
@@ -385,17 +282,6 @@ export default function ClientsPage() {
     const handleRoleOverride = async (clientId: string, role: "client" | "driver") => {
         setRoleUpdatingId(clientId);
         try {
-            if (useMockAdmin) {
-                if (role === "driver") {
-                    setClients((prev) => prev.filter((client) => client.id !== clientId));
-                } else {
-                    setClients((prev) => prev.map((client) => (
-                        client.id === clientId ? { ...client, role } : client
-                    )));
-                }
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
                 method: "PATCH",
@@ -428,13 +314,6 @@ export default function ClientsPage() {
     const handleLifecycleStageChange = async (clientId: string, lifecycleStage: string) => {
         setStageUpdatingId(clientId);
         try {
-            if (useMockAdmin) {
-                setClients((prev) => prev.map((client) => (
-                    client.id === clientId ? { ...client, lifecycle_stage: lifecycleStage } : client
-                )));
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
                 method: "PATCH",
@@ -463,13 +342,6 @@ export default function ClientsPage() {
     const handleClientTagChange = async (clientId: string, clientTag: string) => {
         setTagUpdatingId(clientId);
         try {
-            if (useMockAdmin) {
-                setClients((prev) => prev.map((client) => (
-                    client.id === clientId ? { ...client, client_tag: clientTag } : client
-                )));
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
                 method: "PATCH",

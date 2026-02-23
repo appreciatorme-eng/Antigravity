@@ -20,6 +20,7 @@
 
 # next.js
 /.next/
+/.next_cache_prebuild_*/
 /out/
 
 # production

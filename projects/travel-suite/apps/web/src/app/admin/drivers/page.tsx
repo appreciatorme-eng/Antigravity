@@ -48,39 +48,6 @@ interface DriverAccountJoinRow {
     } | null;
 }
 
-const mockDrivers: ExternalDriver[] = [
-    {
-        id: "mock-driver-1",
-        organization_id: "mock-org",
-        full_name: "Kenji Sato",
-        phone: "+81 90 1234 5678",
-        vehicle_type: "sedan",
-        vehicle_plate: "KY-1204",
-        vehicle_capacity: 3,
-        languages: ["Japanese", "English"],
-        notes: "Specializes in Kyoto transfers.",
-        is_active: true,
-        created_at: "2026-01-10T09:00:00Z",
-        updated_at: "2026-02-05T11:00:00Z",
-        photo_url: null,
-    },
-    {
-        id: "mock-driver-2",
-        organization_id: "mock-org",
-        full_name: "Elena Petrova",
-        phone: "+354 770 5566",
-        vehicle_type: "suv",
-        vehicle_plate: "ICE-447",
-        vehicle_capacity: 4,
-        languages: ["English", "Russian"],
-        notes: "Northern lights expert.",
-        is_active: true,
-        created_at: "2026-01-18T12:00:00Z",
-        updated_at: "2026-02-02T10:30:00Z",
-        photo_url: null,
-    },
-];
-
 const VEHICLE_TYPES = [
     { value: "", label: "Select type" },
     { value: "sedan", label: "Sedan" },
@@ -105,7 +72,6 @@ export default function DriversPage() {
     const [driverAccountLinks, setDriverAccountLinks] = useState<Record<string, DriverAccountLink>>({});
     const [linkEmailByDriver, setLinkEmailByDriver] = useState<Record<string, string>>({});
     const [organizationId, setOrganizationId] = useState<string | null>(null);
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     // Form state
     const [formData, setFormData] = useState<Partial<NewDriver>>({
@@ -192,12 +158,6 @@ export default function DriversPage() {
     }, [organizationId, supabase]);
 
     const fetchDrivers = useCallback(async () => {
-        if (useMockAdmin) {
-            setDrivers(mockDrivers);
-            setLoading(false);
-            return;
-        }
-
         setLoading(true);
         try {
             const orgId = await ensureOrganizationId();
@@ -254,7 +214,7 @@ export default function DriversPage() {
         } finally {
             setLoading(false);
         }
-    }, [ensureOrganizationId, supabase, useMockAdmin]);
+    }, [ensureOrganizationId, supabase]);
 
     useEffect(() => {
         void fetchDrivers();
@@ -266,52 +226,6 @@ export default function DriversPage() {
         setError(null);
 
         try {
-            if (useMockAdmin) {
-                if (editingDriver) {
-                    setDrivers((prev) =>
-                        prev.map((driver) =>
-                            driver.id === editingDriver.id
-                                ? {
-                                    ...driver,
-                                    full_name: formData.full_name || driver.full_name,
-                                    phone: formData.phone || driver.phone,
-                                    vehicle_type: (formData.vehicle_type as ExternalDriver["vehicle_type"]) || driver.vehicle_type,
-                                    vehicle_plate: formData.vehicle_plate || driver.vehicle_plate,
-                                    vehicle_capacity: formData.vehicle_capacity || driver.vehicle_capacity,
-                                    languages: formData.languages || driver.languages,
-                                    notes: formData.notes || driver.notes,
-                                    updated_at: new Date().toISOString(),
-                                }
-                                : driver
-                        )
-                    );
-                    setSuccess("Driver updated successfully (mock)");
-                } else {
-                    const newDriver: ExternalDriver = {
-                        id: `mock-driver-${Date.now()}`,
-                        organization_id: "mock-org",
-                        full_name: formData.full_name || "New Driver",
-                        phone: formData.phone || "",
-                        vehicle_type: (formData.vehicle_type as ExternalDriver["vehicle_type"]) || "sedan",
-                        vehicle_plate: formData.vehicle_plate || "",
-                        vehicle_capacity: formData.vehicle_capacity || 4,
-                        languages: formData.languages || [],
-                        notes: formData.notes || "",
-                        is_active: true,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                        photo_url: null,
-                    };
-                    setDrivers((prev) => [newDriver, ...prev]);
-                    setSuccess("Driver added successfully (mock)");
-                }
-
-                setShowModal(false);
-                setEditingDriver(null);
-                resetForm();
-                return;
-            }
-
             const resolvedOrganizationId = await ensureOrganizationId();
 
             if (editingDriver) {
@@ -360,13 +274,6 @@ export default function DriversPage() {
     const handleDelete = async () => {
         if (!deleteConfirm) return;
 
-        if (useMockAdmin) {
-            setDrivers((prev) => prev.filter((item) => item.id !== deleteConfirm.id));
-            setSuccess("Driver deleted successfully (mock)");
-            setDeleteConfirm(null);
-            return;
-        }
-
         const { error } = await supabase
             .from("external_drivers")
             .delete()
@@ -394,22 +301,6 @@ export default function DriversPage() {
         setError(null);
 
         try {
-            if (useMockAdmin) {
-                setDriverAccountLinks((prev) => ({
-                    ...prev,
-                    [driver.id]: {
-                        id: `mock-link-${driver.id}`,
-                        external_driver_id: driver.id,
-                        profile_id: "mock-profile-id",
-                        is_active: true,
-                        profile_email: email,
-                        profile_name: "Mock Driver User",
-                    },
-                }));
-                setSuccess("Driver linked to app account (mock).");
-                return;
-            }
-
             const { data: profile, error: profileError } = await supabase
                 .from("profiles")
                 .select("id,email,full_name,role")
@@ -475,16 +366,6 @@ export default function DriversPage() {
         setError(null);
 
         try {
-            if (useMockAdmin) {
-                setDriverAccountLinks((prev) => {
-                    const clone = { ...prev };
-                    delete clone[driver.id];
-                    return clone;
-                });
-                setSuccess("Driver link removed (mock).");
-                return;
-            }
-
             const { error } = await supabase
                 .from("driver_accounts")
                 .delete()

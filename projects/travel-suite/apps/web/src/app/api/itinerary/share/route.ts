@@ -1,34 +1,66 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { sendItineraryToWhatsApp } from "@/lib/external/whatsapp";
+import { sendWhatsAppText } from "@/lib/whatsapp.server";
+import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import {
+    getIntegrationDisabledMessage,
+    isWhatsAppIntegrationEnabled,
+} from "@/lib/integrations";
 
 const ShareSchema = z.object({
     phoneNumber: z.string().min(10, "Phone number must be valid"),
-    tripTitle: z.string(),
-    itineraryData: z.any(), // In a real app we'd upload PDF and pass URL. Here we mock it.
+    tripTitle: z.string().min(1),
+    shareUrl: z.string().url().optional(),
+    pdfUrl: z.string().url().optional(),
+}).refine((value) => Boolean(value.shareUrl || value.pdfUrl), {
+    message: "Provide shareUrl or pdfUrl",
 });
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
-        const { phoneNumber, tripTitle } = ShareSchema.parse(body);
-
-        // In a real app:
-        // 1. Generate PDF buffer on server
-        // 2. Upload to S3/Supabase Storage -> get Public URL
-        // 3. Send URL via WhatsApp
-
-        // For Mock: We just pass a fake URL
-        const mockPdfUrl = `https://travelsuite.app/itineraries/${Date.now()}.pdf`;
-
-        const success = await sendItineraryToWhatsApp(phoneNumber, tripTitle, mockPdfUrl);
-
-        if (!success) {
-            return NextResponse.json({ error: "Failed to send WhatsApp message" }, { status: 500 });
+        if (!isWhatsAppIntegrationEnabled()) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    disabled: true,
+                    error: getIntegrationDisabledMessage("whatsapp"),
+                },
+                { status: 202 }
+            );
         }
 
-        return NextResponse.json({ success: true, message: "Sent successfully" });
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { phoneNumber, tripTitle, shareUrl, pdfUrl } = ShareSchema.parse(body);
+        const itineraryUrl = shareUrl || pdfUrl;
+
+        const result = await sendWhatsAppText(
+            phoneNumber,
+            `Your itinerary "${tripTitle}" is ready. View details here: ${itineraryUrl}`
+        );
+
+        if (!result.success) {
+            return NextResponse.json(
+                { error: result.error || "Failed to send WhatsApp message" },
+                { status: 502 }
+            );
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: "Sent successfully",
+            provider: result.provider,
+            messageId: result.messageId,
+        });
 
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Internal Error";

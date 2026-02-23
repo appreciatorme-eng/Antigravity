@@ -37,43 +37,6 @@ interface Trip {
     } | null;
 }
 
-const mockTrips: Trip[] = [
-    {
-        id: "mock-trip-001",
-        status: "confirmed",
-        start_date: "2026-03-12",
-        end_date: "2026-03-17",
-        destination: "Kyoto, Japan",
-        created_at: "2026-02-01T10:00:00Z",
-        profiles: {
-            full_name: "Ava Chen",
-            email: "ava.chen@example.com",
-        },
-        itineraries: {
-            trip_title: "Kyoto Blossom Trail",
-            duration_days: 5,
-            destination: "Kyoto, Japan",
-        },
-    },
-    {
-        id: "mock-trip-002",
-        status: "in_progress",
-        start_date: "2026-02-20",
-        end_date: "2026-02-27",
-        destination: "Reykjavik, Iceland",
-        created_at: "2026-01-15T14:30:00Z",
-        profiles: {
-            full_name: "Liam Walker",
-            email: "liam.walker@example.com",
-        },
-        itineraries: {
-            trip_title: "Northern Lights Escape",
-            duration_days: 7,
-            destination: "Reykjavik, Iceland",
-        },
-    },
-];
-
 const STATUS_OPTIONS = [
     { value: "all", label: "All Status" },
     { value: "draft", label: "Draft" },
@@ -90,15 +53,9 @@ export default function AdminTripsPage() {
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const supabase = createClient();
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
 
     const fetchTrips = useCallback(async () => {
         setLoading(true);
-        if (useMockAdmin) {
-            setTrips(mockTrips);
-            setLoading(false);
-            return;
-        }
 
         const { data: { session } } = await supabase.auth.getSession();
         const response = await fetch(`/api/admin/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
@@ -117,7 +74,7 @@ export default function AdminTripsPage() {
         const payload = await response.json();
         setTrips(payload.trips || []);
         setLoading(false);
-    }, [supabase, statusFilter, searchQuery, useMockAdmin]);
+    }, [supabase, statusFilter, searchQuery]);
 
     useEffect(() => {
         void fetchTrips();

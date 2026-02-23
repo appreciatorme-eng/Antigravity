@@ -80,32 +80,8 @@ function getStageLabel(value: string | null | undefined): string {
     return STAGE_LABELS[value as LifecycleStage] || value;
 }
 
-const mockClients: ClientCard[] = [
-    { id: "c1", full_name: "Ava Chen", email: "ava@example.com", phone: "+1 415 555 1010", phase_notifications_enabled: true, lifecycle_stage: "lead", lead_status: "new" },
-    { id: "c2", full_name: "Liam Walker", email: "liam@example.com", phone: "+44 20 7000 1000", phase_notifications_enabled: true, lifecycle_stage: "payment_pending", lead_status: "qualified" },
-    { id: "c3", full_name: "Sofia Ramirez", email: "sofia@example.com", phone: "+34 91 123 4567", phase_notifications_enabled: false, lifecycle_stage: "review", lead_status: "contacted" },
-];
-
-const mockEvents: StageEvent[] = [
-    {
-        id: "e1",
-        profile_id: "c2",
-        from_stage: "proposal",
-        to_stage: "payment_pending",
-        created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-        profile: { full_name: "Liam Walker", email: "liam@example.com" },
-        changed_by_profile: { full_name: "Admin User", email: "admin@example.com" },
-    },
-];
-
-const mockContacts: ContactItem[] = [
-    { id: "ct1", full_name: "Nora Patel", email: "nora@example.com", phone: "+1 650 555 2211", source: "phone_import" },
-    { id: "ct2", full_name: "Raj Kumar", email: null, phone: "+91 98 7654 3210", source: "manual" },
-];
-
 export default function AdminKanbanPage() {
     const supabase = createClient();
-    const useMockAdmin = process.env.NEXT_PUBLIC_MOCK_ADMIN === "true";
     const [clients, setClients] = useState<ClientCard[]>([]);
     const [contacts, setContacts] = useState<ContactItem[]>([]);
     const [events, setEvents] = useState<StageEvent[]>([]);
@@ -122,13 +98,6 @@ export default function AdminKanbanPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            if (useMockAdmin) {
-                setClients(mockClients);
-                setContacts(mockContacts);
-                setEvents(mockEvents);
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const headers: Record<string, string> = {};
             if (session?.access_token) {
@@ -179,7 +148,7 @@ export default function AdminKanbanPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase, useMockAdmin]);
+    }, [supabase]);
 
     useEffect(() => {
         void fetchData();
@@ -231,11 +200,6 @@ export default function AdminKanbanPage() {
         if ((client.lifecycle_stage || "lead") === stage) return;
         setMovingClientId(client.id);
         try {
-            if (useMockAdmin) {
-                setClients((prev) => prev.map((row) => (row.id === client.id ? { ...row, lifecycle_stage: stage } : row)));
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
                 method: "PATCH",
@@ -263,13 +227,6 @@ export default function AdminKanbanPage() {
     const toggleClientPhaseNotifications = async (client: ClientCard, enabled: boolean) => {
         setMovingClientId(client.id);
         try {
-            if (useMockAdmin) {
-                setClients((prev) => prev.map((row) => (
-                    row.id === client.id ? { ...row, phase_notifications_enabled: enabled } : row
-                )));
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
                 method: "PATCH",
@@ -306,23 +263,6 @@ export default function AdminKanbanPage() {
     const promoteContactToLead = async (contact: ContactItem) => {
         setPromotingContactId(contact.id);
         try {
-            if (useMockAdmin) {
-                setContacts((prev) => prev.filter((item) => item.id !== contact.id));
-                setClients((prev) => [
-                    {
-                        id: `new-${contact.id}`,
-                        full_name: contact.full_name,
-                        email: contact.email,
-                        phone: contact.phone,
-                        phase_notifications_enabled: true,
-                        lifecycle_stage: "lead",
-                        lead_status: "new",
-                    },
-                    ...prev,
-                ]);
-                return;
-            }
-
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch(`/api/admin/contacts/${contact.id}/promote`, {
                 method: "POST",
@@ -367,20 +307,6 @@ export default function AdminKanbanPage() {
                 email: item.email?.[0] || "",
                 phone: item.tel?.[0] || "",
             }));
-
-            if (useMockAdmin) {
-                setContacts((prev) => [
-                    ...payloadContacts.map((c, idx) => ({
-                        id: `mock-import-${Date.now()}-${idx}`,
-                        full_name: c.full_name || "Imported Contact",
-                        email: c.email || null,
-                        phone: c.phone || null,
-                        source: "phone_import",
-                    })),
-                    ...prev,
-                ]);
-                return;
-            }
 
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/contacts", {
@@ -430,20 +356,6 @@ export default function AdminKanbanPage() {
 
             if (contactsPayload.length === 0) {
                 alert("No valid contact rows found in CSV.");
-                return;
-            }
-
-            if (useMockAdmin) {
-                setContacts((prev) => [
-                    ...contactsPayload.map((c, idx) => ({
-                        id: `mock-csv-${Date.now()}-${idx}`,
-                        full_name: c.full_name || "Imported Contact",
-                        email: c.email || null,
-                        phone: c.phone || null,
-                        source: "csv_import",
-                    })),
-                    ...prev,
-                ]);
                 return;
             }
 
