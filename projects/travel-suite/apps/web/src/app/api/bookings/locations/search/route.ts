@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   const kindRaw = (request.nextUrl.searchParams.get('kind') || 'flight').trim().toLowerCase();
   const kind: 'flight' | 'hotel' = kindRaw === 'hotel' ? 'hotel' : 'flight';
 
-  if (query.length < (kind === 'flight' ? 1 : 2)) {
+  if (query.length < 1) {
     return NextResponse.json({ suggestions: [] });
   }
 

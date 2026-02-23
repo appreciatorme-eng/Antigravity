@@ -17,27 +17,27 @@ const TemplateLoading = () => (
 );
 
 const SafariStoryView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.SafariStoryView),
+    () => import("@/components/itinerary-templates/SafariStoryView"),
     { loading: TemplateLoading }
 );
 const UrbanBriefView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.UrbanBriefView),
+    () => import("@/components/itinerary-templates/UrbanBriefView").then((mod) => mod.UrbanBriefView),
     { loading: TemplateLoading }
 );
 const ProfessionalView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.ProfessionalView),
+    () => import("@/components/itinerary-templates/ProfessionalView"),
     { loading: TemplateLoading }
 );
 const LuxuryResortView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.LuxuryResortView),
+    () => import("@/components/itinerary-templates/LuxuryResortView"),
     { loading: TemplateLoading }
 );
 const VisualJourneyView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.VisualJourneyView),
+    () => import("@/components/itinerary-templates/VisualJourneyView"),
     { loading: TemplateLoading }
 );
 const BentoJourneyView = dynamic(
-    () => import("@/components/itinerary-templates").then((mod) => mod.BentoJourneyView),
+    () => import("@/components/itinerary-templates/BentoJourneyView"),
     { loading: TemplateLoading }
 );
 const ItineraryTemplateClassic = dynamic(

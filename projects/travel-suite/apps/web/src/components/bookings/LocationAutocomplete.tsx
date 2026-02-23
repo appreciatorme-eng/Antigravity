@@ -41,7 +41,7 @@ export function LocationAutocomplete({
     const rootRef = useRef<HTMLDivElement | null>(null);
 
     const query = value.trim();
-    const minimumQueryLength = kind === "flight" ? 1 : 2;
+    const minimumQueryLength = 1;
     const shouldSearch = query.length >= minimumQueryLength;
 
     useEffect(() => {

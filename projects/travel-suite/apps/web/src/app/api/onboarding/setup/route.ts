@@ -42,6 +42,56 @@ const slugify = (value: string) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 50);
 
+function isUniqueConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as { code?: string; message?: string; details?: string };
+  const blob = `${record.message || ''} ${record.details || ''}`.toLowerCase();
+  return record.code === '23505' || blob.includes('duplicate key') || blob.includes('unique constraint');
+}
+
+async function slugExists(slug: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('organizations')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data?.id);
+}
+
+function appendSlugSuffix(base: string, suffix: string): string {
+  const normalizedSuffix = suffix.replace(/[^a-z0-9]/g, '').slice(0, 8) || 'org';
+  const budget = Math.max(8, 50 - normalizedSuffix.length - 1);
+  const trimmedBase = base.slice(0, budget).replace(/-+$/g, '');
+  return `${trimmedBase || 'agency'}-${normalizedSuffix}`;
+}
+
+async function generateUniqueOrganizationSlug(companyName: string, userId: string): Promise<string> {
+  const baseSlug = slugify(companyName) || `agency-${userId.slice(0, 8)}`;
+  const fallbackSeed = userId.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const firstCandidate = baseSlug;
+
+  if (!(await slugExists(firstCandidate))) {
+    return firstCandidate;
+  }
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const randomPart = Math.random().toString(36).slice(2, 6);
+    const timePart = Date.now().toString(36).slice(-4);
+    const suffix = `${fallbackSeed.slice(0, 2)}${timePart}${randomPart}${attempt.toString(36)}`;
+    const candidate = appendSlugSuffix(baseSlug, suffix);
+    if (!(await slugExists(candidate))) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Unable to generate a unique organization slug');
+}
+
 async function getAuthenticatedUser() {
   const serverClient = await createServerClient();
   const {
@@ -251,6 +301,10 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!organizationSlug) {
+      organizationSlug = await generateUniqueOrganizationSlug(companyName, auth.user.id);
+    }
+
     const organizationBasePayload = {
       name: companyName,
       owner_id: auth.user.id,
@@ -259,33 +313,45 @@ export async function POST(request: Request) {
     };
 
     if (!organizationId) {
-      const baseSlug = slugify(companyName) || `agency-${auth.user.id.slice(0, 8)}`;
-      const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+      let insertedOrg: { id: string; slug: string } | null = null;
+      let orgInsertError: { message?: string } | null = null;
 
-      const orgInsertPayload = {
-        ...organizationBasePayload,
-        slug: uniqueSlug,
-        itinerary_template: itineraryTemplate,
-      };
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const uniqueSlug = await generateUniqueOrganizationSlug(companyName, auth.user.id);
 
-      let { data: insertedOrg, error: orgInsertError } = await supabaseAdmin
-        .from('organizations')
-        .insert(orgInsertPayload)
-        .select('id, slug')
-        .single();
-
-      if (orgInsertError && isMissingColumnError(orgInsertError, 'itinerary_template')) {
-        const fallbackPayload = {
+        const orgInsertPayload = {
           ...organizationBasePayload,
           slug: uniqueSlug,
+          itinerary_template: itineraryTemplate,
         };
-        const fallbackResult = await supabaseAdmin
+
+        let insertResult = await supabaseAdmin
           .from('organizations')
-          .insert(fallbackPayload)
+          .insert(orgInsertPayload)
           .select('id, slug')
           .single();
-        insertedOrg = fallbackResult.data;
-        orgInsertError = fallbackResult.error;
+
+        if (insertResult.error && isMissingColumnError(insertResult.error, 'itinerary_template')) {
+          insertResult = await supabaseAdmin
+            .from('organizations')
+            .insert({
+              ...organizationBasePayload,
+              slug: uniqueSlug,
+            })
+            .select('id, slug')
+            .single();
+        }
+
+        if (!insertResult.error && insertResult.data) {
+          insertedOrg = insertResult.data;
+          orgInsertError = null;
+          break;
+        }
+
+        orgInsertError = insertResult.error;
+        if (!isUniqueConstraintError(insertResult.error)) {
+          break;
+        }
       }
 
       if (orgInsertError || !insertedOrg) {
