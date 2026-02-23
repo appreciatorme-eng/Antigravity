@@ -7,7 +7,16 @@ import { generateEmbedding } from './embeddings';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder' });
+let cachedOpenAiClient: OpenAI | null | undefined;
+
+function getOpenAiClient(): OpenAI | null {
+    if (cachedOpenAiClient !== undefined) {
+        return cachedOpenAiClient;
+    }
+    const key = process.env.OPENAI_API_KEY;
+    cachedOpenAiClient = key ? new OpenAI({ apiKey: key }) : null;
+    return cachedOpenAiClient;
+}
 
 export interface RAGItineraryRequest {
     destination: string;
@@ -100,7 +109,8 @@ export async function assembleItinerary(
     }
 
     // Use GPT-4o-mini to intelligently modify template
-    if (!process.env.OPENAI_API_KEY) {
+    const openai = getOpenAiClient();
+    if (!openai) {
         console.log('⚠️ OpenAI not configured - returning closest template without modification');
         return formatTemplateAsItinerary(fullTemplate);
     }

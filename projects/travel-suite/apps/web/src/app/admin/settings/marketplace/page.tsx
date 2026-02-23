@@ -27,6 +27,7 @@ import { GlassInput } from "@/components/glass/GlassInput";
 import { useToast } from "@/components/ui/toast";
 import SearchableCreatableMultiSelect from "@/components/forms/SearchableCreatableMultiSelect";
 import {
+    fetchMarketplaceOptionCatalog,
     mergeMarketplaceOptions,
     SERVICE_REGION_OPTIONS,
     SPECIALTY_OPTIONS,
@@ -100,13 +101,19 @@ export default function MarketplaceSettingsPage() {
     const [docExpiry, setDocExpiry] = useState("");
 
     const [successMessage, setSuccessMessage] = useState(false);
+    const [marketplaceRegionCatalog, setMarketplaceRegionCatalog] = useState<string[]>(
+        SERVICE_REGION_OPTIONS
+    );
+    const [marketplaceSpecialtyCatalog, setMarketplaceSpecialtyCatalog] = useState<string[]>(
+        SPECIALTY_OPTIONS
+    );
     const serviceRegionOptions = useMemo(
-        () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, formData.service_regions),
-        [formData.service_regions]
+        () => mergeMarketplaceOptions(marketplaceRegionCatalog, formData.service_regions),
+        [formData.service_regions, marketplaceRegionCatalog]
     );
     const specialtyOptions = useMemo(
-        () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, formData.specialties),
-        [formData.specialties]
+        () => mergeMarketplaceOptions(marketplaceSpecialtyCatalog, formData.specialties),
+        [formData.specialties, marketplaceSpecialtyCatalog]
     );
 
     const fetchData = useCallback(async () => {
@@ -159,6 +166,22 @@ export default function MarketplaceSettingsPage() {
     useEffect(() => {
         void fetchData();
     }, [fetchData]);
+
+    useEffect(() => {
+        const loadMarketplaceOptions = async () => {
+            const payload = await fetchMarketplaceOptionCatalog();
+            if (!payload) return;
+
+            if (payload.service_regions.length > 0) {
+                setMarketplaceRegionCatalog(payload.service_regions);
+            }
+            if (payload.specialties.length > 0) {
+                setMarketplaceSpecialtyCatalog(payload.specialties);
+            }
+        };
+
+        void loadMarketplaceOptions();
+    }, []);
 
     const handleSave = async () => {
         if (!organization?.id) return;

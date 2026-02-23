@@ -9,6 +9,7 @@ import {
 } from '@/components/pdf/itinerary-types';
 import SearchableCreatableMultiSelect from '@/components/forms/SearchableCreatableMultiSelect';
 import {
+  fetchMarketplaceOptionCatalog,
   mergeMarketplaceOptions,
   SERVICE_REGION_OPTIONS,
   SPECIALTY_OPTIONS,
@@ -65,19 +66,38 @@ function OnboardingPageContent() {
   const [marketplaceDescription, setMarketplaceDescription] = useState('');
   const [serviceRegions, setServiceRegions] = useState<string[]>([]);
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [marketplaceRegionCatalog, setMarketplaceRegionCatalog] = useState<string[]>(
+    SERVICE_REGION_OPTIONS
+  );
+  const [marketplaceSpecialtyCatalog, setMarketplaceSpecialtyCatalog] = useState<string[]>(
+    SPECIALTY_OPTIONS
+  );
 
   const serviceRegionOptions = useMemo(
-    () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, serviceRegions),
-    [serviceRegions]
+    () => mergeMarketplaceOptions(marketplaceRegionCatalog, serviceRegions),
+    [marketplaceRegionCatalog, serviceRegions]
   );
   const specialtyOptions = useMemo(
-    () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, specialties),
-    [specialties]
+    () => mergeMarketplaceOptions(marketplaceSpecialtyCatalog, specialties),
+    [marketplaceSpecialtyCatalog, specialties]
   );
 
   useEffect(() => {
     void loadOnboardingData();
+    void loadMarketplaceOptions();
   }, []);
+
+  async function loadMarketplaceOptions() {
+    const payload = await fetchMarketplaceOptionCatalog();
+    if (!payload) return;
+
+    if (payload.service_regions.length > 0) {
+      setMarketplaceRegionCatalog(payload.service_regions);
+    }
+    if (payload.specialties.length > 0) {
+      setMarketplaceSpecialtyCatalog(payload.specialties);
+    }
+  }
 
   async function loadOnboardingData() {
     setLoading(true);

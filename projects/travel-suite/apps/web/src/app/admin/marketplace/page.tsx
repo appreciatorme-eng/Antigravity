@@ -20,6 +20,7 @@ import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import {
+    fetchMarketplaceOptionCatalog,
     mergeMarketplaceOptions,
     SERVICE_REGION_OPTIONS,
     SPECIALTY_OPTIONS,
@@ -47,6 +48,12 @@ export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [regionFilter, setRegionFilter] = useState("");
     const [specialtyFilter, setSpecialtyFilter] = useState("");
+    const [marketplaceRegionCatalog, setMarketplaceRegionCatalog] = useState<string[]>(
+        SERVICE_REGION_OPTIONS
+    );
+    const [marketplaceSpecialtyCatalog, setMarketplaceSpecialtyCatalog] = useState<string[]>(
+        SPECIALTY_OPTIONS
+    );
 
     const fetchProfiles = useCallback(async () => {
         setLoading(true);
@@ -81,13 +88,36 @@ export default function MarketplacePage() {
         return () => clearTimeout(timer);
     }, [fetchProfiles]);
 
+    useEffect(() => {
+        const loadMarketplaceOptions = async () => {
+            const payload = await fetchMarketplaceOptionCatalog();
+            if (!payload) return;
+            if (payload.service_regions.length > 0) {
+                setMarketplaceRegionCatalog(payload.service_regions);
+            }
+            if (payload.specialties.length > 0) {
+                setMarketplaceSpecialtyCatalog(payload.specialties);
+            }
+        };
+
+        void loadMarketplaceOptions();
+    }, []);
+
     const allRegions = useMemo(
-        () => mergeMarketplaceOptions(SERVICE_REGION_OPTIONS, profiles.flatMap((profile) => profile.service_regions || [])),
-        [profiles]
+        () =>
+            mergeMarketplaceOptions(
+                marketplaceRegionCatalog,
+                profiles.flatMap((profile) => profile.service_regions || [])
+            ),
+        [marketplaceRegionCatalog, profiles]
     );
     const allSpecialties = useMemo(
-        () => mergeMarketplaceOptions(SPECIALTY_OPTIONS, profiles.flatMap((profile) => profile.specialties || [])),
-        [profiles]
+        () =>
+            mergeMarketplaceOptions(
+                marketplaceSpecialtyCatalog,
+                profiles.flatMap((profile) => profile.specialties || [])
+            ),
+        [marketplaceSpecialtyCatalog, profiles]
     );
 
     return (

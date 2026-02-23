@@ -149,3 +149,72 @@ export const mergeMarketplaceOptions = (
 
   return Array.from(normalized.values()).sort((a, b) => a.localeCompare(b));
 };
+
+const MARKETPLACE_OPTION_MAX_LENGTH = 80;
+const MARKETPLACE_OPTION_MAX_ITEMS = 400;
+
+function normalizeOptionValue(value: unknown, maxLength = MARKETPLACE_OPTION_MAX_LENGTH): string | null {
+  const candidate = String(value || "").trim();
+  if (!candidate) return null;
+  return candidate.slice(0, maxLength);
+}
+
+export function normalizeMarketplaceOptionList(
+  values: unknown,
+  maxItems = MARKETPLACE_OPTION_MAX_ITEMS
+): string[] {
+  if (!Array.isArray(values)) return [];
+
+  const deduped = new Map<string, string>();
+  for (const value of values) {
+    const normalized = normalizeOptionValue(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (!deduped.has(key)) {
+      deduped.set(key, normalized);
+    }
+    if (deduped.size >= maxItems) {
+      break;
+    }
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => a.localeCompare(b));
+}
+
+export type MarketplaceOptionCatalog = {
+  service_regions: string[];
+  specialties: string[];
+  source?: string;
+  generated_at?: string;
+};
+
+export function normalizeMarketplaceOptionCatalog(payload: unknown): MarketplaceOptionCatalog | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as Record<string, unknown>;
+
+  return {
+    service_regions: normalizeMarketplaceOptionList(record.service_regions),
+    specialties: normalizeMarketplaceOptionList(record.specialties),
+    source: normalizeOptionValue(record.source, 64) || undefined,
+    generated_at: normalizeOptionValue(record.generated_at, 64) || undefined,
+  };
+}
+
+export async function fetchMarketplaceOptionCatalog(
+  signal?: AbortSignal
+): Promise<MarketplaceOptionCatalog | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const response = await fetch("/api/marketplace/options", {
+      cache: "no-store",
+      signal,
+    });
+
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return normalizeMarketplaceOptionCatalog(payload);
+  } catch {
+    return null;
+  }
+}

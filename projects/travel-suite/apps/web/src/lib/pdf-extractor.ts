@@ -7,9 +7,16 @@ import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/database.types';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || 'placeholder',
-});
+let cachedOpenAiClient: OpenAI | null | undefined;
+
+function getOpenAiClient(): OpenAI | null {
+    if (cachedOpenAiClient !== undefined) {
+        return cachedOpenAiClient;
+    }
+    const key = process.env.OPENAI_API_KEY;
+    cachedOpenAiClient = key ? new OpenAI({ apiKey: key }) : null;
+    return cachedOpenAiClient;
+}
 
 export interface ExtractedTemplate {
     name: string;
@@ -73,7 +80,8 @@ async function pdfToBase64(pdfUrl: string): Promise<string> {
  * Extract tour template data from PDF using GPT-4o Vision
  */
 export async function extractTemplateFromPDF(pdfUrl: string): Promise<ExtractionResult> {
-    if (!process.env.OPENAI_API_KEY) {
+    const openai = getOpenAiClient();
+    if (!openai) {
         return {
             success: false,
             confidence: 0,

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
+import { sanitizeText } from "@/lib/security/sanitize";
 
 const supabaseAdmin = createAdminClient();
 
@@ -28,6 +30,114 @@ type MarketplaceProfileRow = {
     reviews: MarketplaceReviewRow[] | null;
     [key: string]: unknown;
 };
+
+const MarketplacePatchSchema = z.object({
+    description: z.unknown().optional(),
+    service_regions: z.array(z.unknown()).optional(),
+    specialties: z.array(z.unknown()).optional(),
+    margin_rate: z.union([z.number(), z.string(), z.null()]).optional(),
+    request_verification: z.boolean().optional(),
+    rate_card: z.array(z.unknown()).optional(),
+    gallery_urls: z.array(z.unknown()).optional(),
+    compliance_documents: z.array(z.unknown()).optional(),
+});
+
+const ALLOWED_VERIFICATION_STATUSES = new Set(["none", "pending", "verified", "rejected"]);
+
+function sanitizeQueryText(value: unknown, maxLength = 120): string {
+    const cleaned = sanitizeText(value, { maxLength });
+    return cleaned.replace(/[^a-zA-Z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function sanitizeStringList(value: unknown, maxItems: number, maxLength: number): string[] {
+    if (!Array.isArray(value)) return [];
+    const deduped = new Map<string, string>();
+    for (const entry of value) {
+        const normalized = sanitizeText(entry, { maxLength });
+        if (!normalized) continue;
+        const key = normalized.toLowerCase();
+        if (!deduped.has(key)) {
+            deduped.set(key, normalized);
+        }
+        if (deduped.size >= maxItems) break;
+    }
+    return Array.from(deduped.values());
+}
+
+function sanitizeHttpUrl(value: unknown): string | null {
+    const candidate = sanitizeText(value, { maxLength: 2048 });
+    if (!candidate) return null;
+    try {
+        const parsed = new URL(candidate);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+        return parsed.toString();
+    } catch {
+        return null;
+    }
+}
+
+function sanitizeMarginRate(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") return null;
+    const numeric = typeof value === "number" ? value : Number.parseFloat(String(value));
+    if (!Number.isFinite(numeric)) return null;
+    const bounded = Math.min(100, Math.max(0, numeric));
+    return Number(bounded.toFixed(2));
+}
+
+function sanitizeVerificationStatus(value: unknown): string | null {
+    const status = sanitizeText(value, { maxLength: 24 }).toLowerCase();
+    return ALLOWED_VERIFICATION_STATUSES.has(status) ? status : null;
+}
+
+function sanitizeRateCard(value: unknown): Array<{ id: string; service: string; margin: number }> {
+    if (!Array.isArray(value)) return [];
+    const output: Array<{ id: string; service: string; margin: number }> = [];
+    for (const entry of value.slice(0, 100)) {
+        if (!entry || typeof entry !== "object") continue;
+        const record = entry as Record<string, unknown>;
+        const service = sanitizeText(record.service, { maxLength: 120 });
+        const margin = sanitizeMarginRate(record.margin);
+        if (!service || margin === null) continue;
+        output.push({
+            id: sanitizeText(record.id, { maxLength: 64 }) || `rate-${output.length + 1}`,
+            service,
+            margin,
+        });
+    }
+    return output;
+}
+
+function sanitizeComplianceDocuments(value: unknown): Array<{
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    expiry_date?: string;
+}> {
+    if (!Array.isArray(value)) return [];
+    const output: Array<{ id: string; name: string; url: string; type: string; expiry_date?: string }> = [];
+
+    for (const entry of value.slice(0, 100)) {
+        if (!entry || typeof entry !== "object") continue;
+        const record = entry as Record<string, unknown>;
+        const name = sanitizeText(record.name, { maxLength: 120 });
+        const url = sanitizeHttpUrl(record.url);
+        if (!name || !url) continue;
+
+        const expiryRaw = sanitizeText(record.expiry_date, { maxLength: 16 });
+        const expiryDate = /^\d{4}-\d{2}-\d{2}$/.test(expiryRaw) ? expiryRaw : undefined;
+
+        output.push({
+            id: sanitizeText(record.id, { maxLength: 64 }) || `doc-${output.length + 1}`,
+            name,
+            url,
+            type: sanitizeText(record.type, { maxLength: 64 }) || "Other",
+            expiry_date: expiryDate,
+        });
+    }
+
+    return output;
+}
 
 async function getAuthContext(req: Request) {
     const authHeader = req.headers.get("authorization");
@@ -69,10 +179,10 @@ export async function GET(req: Request) {
         }
 
         const url = new URL(req.url);
-        const region = url.searchParams.get("region");
-        const specialty = url.searchParams.get("specialty");
-        const query = url.searchParams.get("q");
-        const verification = url.searchParams.get("verification");
+        const region = sanitizeText(url.searchParams.get("region"), { maxLength: 80 });
+        const specialty = sanitizeText(url.searchParams.get("specialty"), { maxLength: 80 });
+        const query = sanitizeQueryText(url.searchParams.get("q"), 120);
+        const verification = sanitizeVerificationStatus(url.searchParams.get("verification"));
 
         let supabaseQuery = supabaseAdmin
             .from("marketplace_profiles")
@@ -93,12 +203,12 @@ export async function GET(req: Request) {
             supabaseQuery = supabaseQuery.contains("specialties", [specialty]);
         }
         if (query) {
-            // Use full-text search on description and ILIKE on organization name
+            const wildcard = `%${query.replace(/\s+/g, "%")}%`;
             type QueryWithOr = typeof supabaseQuery & {
                 or: (filters: string) => typeof supabaseQuery;
             };
             supabaseQuery = (supabaseQuery as QueryWithOr).or(
-                `organization.name.ilike.%${query}%,search_vector.fts.${query}`
+                `organization.name.ilike.${wildcard},description.ilike.${wildcard}`
             );
         }
 
@@ -115,19 +225,26 @@ export async function GET(req: Request) {
             const avgRating = ratings.length > 0
                 ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
                 : 0;
+
+            const normalizedServiceRegions = sanitizeStringList(item.service_regions, 80, 80);
+            const normalizedSpecialties = sanitizeStringList(item.specialties, 80, 80);
+            const normalizedGalleryUrls = sanitizeStringList(item.gallery_urls, 40, 2048)
+                .map((value) => sanitizeHttpUrl(value))
+                .filter((value): value is string => Boolean(value));
+
             return {
                 ...item,
-                description: item.description || "",
-                service_regions: Array.isArray(item.service_regions) ? item.service_regions : [],
-                specialties: Array.isArray(item.specialties) ? item.specialties : [],
-                gallery_urls: Array.isArray(item.gallery_urls) ? item.gallery_urls : [],
-                rate_card: Array.isArray(item.rate_card) ? item.rate_card : [],
-                compliance_documents: Array.isArray(item.compliance_documents) ? item.compliance_documents : [],
-                organization_name: item.organization?.name,
-                organization_logo: item.organization?.logo_url,
+                description: sanitizeText(item.description, { maxLength: 4000, preserveNewlines: true }),
+                service_regions: normalizedServiceRegions,
+                specialties: normalizedSpecialties,
+                gallery_urls: normalizedGalleryUrls,
+                rate_card: sanitizeRateCard(item.rate_card),
+                compliance_documents: sanitizeComplianceDocuments(item.compliance_documents),
+                organization_name: sanitizeText(item.organization?.name, { maxLength: 160 }),
+                organization_logo: sanitizeHttpUrl(item.organization?.logo_url),
                 average_rating: avgRating,
                 review_count: ratings.length,
-                verification_status: item.verification_status || "none"
+                verification_status: sanitizeVerificationStatus(item.verification_status) || "none"
             };
         });
 
@@ -154,24 +271,33 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ error: "Organization not found" }, { status: 400 });
         }
 
-        const body = await req.json();
-        const { description, service_regions, specialties, margin_rate, request_verification, rate_card, gallery_urls, compliance_documents } = body;
-        const descriptionValue = typeof description === "string" ? description : null;
-        const marginRateValue = typeof margin_rate === "number" ? margin_rate : null;
+        const body = await req.json().catch(() => null);
+        const parsed = MarketplacePatchSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: "Invalid request body", details: parsed.error.flatten() },
+                { status: 400 }
+            );
+        }
 
         const updates: MarketplaceProfileUpsert = {
             organization_id: profile.organization_id,
-            description: descriptionValue,
-            service_regions: Array.isArray(service_regions) ? service_regions : [],
-            specialties: Array.isArray(specialties) ? specialties : [],
-            margin_rate: marginRateValue,
-            rate_card: Array.isArray(rate_card) ? rate_card : [],
-            gallery_urls: Array.isArray(gallery_urls) ? gallery_urls : [],
-            compliance_documents: Array.isArray(compliance_documents) ? compliance_documents : [],
+            description: sanitizeText(parsed.data.description, {
+                maxLength: 4000,
+                preserveNewlines: true,
+            }) || null,
+            service_regions: sanitizeStringList(parsed.data.service_regions, 80, 80),
+            specialties: sanitizeStringList(parsed.data.specialties, 80, 80),
+            margin_rate: sanitizeMarginRate(parsed.data.margin_rate),
+            rate_card: sanitizeRateCard(parsed.data.rate_card),
+            gallery_urls: sanitizeStringList(parsed.data.gallery_urls, 40, 2048)
+                .map((value) => sanitizeHttpUrl(value))
+                .filter((value): value is string => Boolean(value)),
+            compliance_documents: sanitizeComplianceDocuments(parsed.data.compliance_documents),
             updated_at: new Date().toISOString()
         };
 
-        if (request_verification) {
+        if (parsed.data.request_verification) {
             updates.verification_status = "pending";
             updates.is_verified = false;
         }
