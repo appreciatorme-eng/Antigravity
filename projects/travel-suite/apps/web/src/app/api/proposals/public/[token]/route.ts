@@ -92,6 +92,12 @@ type PublicAddOn = {
   is_selected: boolean;
 };
 
+const asNullableNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
 const asNumber = (value: unknown, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -100,6 +106,40 @@ const asNumber = (value: unknown, fallback = 0) => {
 const normalizeText = (value: unknown) => {
   const text = String(value || '').trim();
   return text.length ? text : null;
+};
+
+const normalizeTemplate = (value: unknown): ProposalTemplate => {
+  if (!value) return null;
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? normalizeTemplate(value[0]) : null;
+  }
+
+  if (typeof value !== 'object') return null;
+  const template = value as Record<string, unknown>;
+
+  return {
+    name: normalizeText(template.name),
+    destination: normalizeText(template.destination),
+    duration_days: asNullableNumber(template.duration_days),
+    description: normalizeText(template.description),
+    hero_image_url: normalizeText(template.hero_image_url),
+  };
+};
+
+const normalizeProposal = (value: unknown): LoadedProposal => {
+  const proposal = (value || {}) as Record<string, unknown>;
+
+  return {
+    id: String(proposal.id || ''),
+    title: String(proposal.title || ''),
+    total_price: asNullableNumber(proposal.total_price),
+    client_selected_price: asNullableNumber(proposal.client_selected_price),
+    status: normalizeText(proposal.status),
+    expires_at: normalizeText(proposal.expires_at),
+    viewed_at: normalizeText(proposal.viewed_at),
+    tour_templates: normalizeTemplate(proposal.tour_templates),
+  };
 };
 
 async function loadProposalByToken(token: string) {
@@ -166,7 +206,7 @@ async function buildPublicPayload(shareToken: string) {
     return loaded;
   }
 
-  const proposal = loaded.proposal as LoadedProposal;
+  const proposal = normalizeProposal(loaded.proposal);
 
   if (!proposal.viewed_at && proposal.status !== 'approved') {
     await supabaseAdmin
@@ -345,7 +385,7 @@ export async function POST(
       return NextResponse.json({ error: loaded.error }, { status: loaded.status });
     }
 
-    const proposal = loaded.proposal as LoadedProposal;
+    const proposal = normalizeProposal(loaded.proposal);
     const body = await request.json();
     const action = String(body?.action || '').trim();
 
