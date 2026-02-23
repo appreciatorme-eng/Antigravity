@@ -1,9 +1,25 @@
 
 import { createClient } from "@/lib/supabase/server";
+import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Car, Phone, Mail, FileText, Languages, User, Link2, CalendarDays, MapPin, ShieldCheck, BadgeCheck } from "lucide-react";
+import { Car, Phone, Languages, User, Link2, CalendarDays, MapPin, ShieldCheck } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+
+type AssignmentTrip = {
+    start_date: string | null;
+    itineraries?: {
+        destination?: string | null;
+    } | null;
+} | null;
+
+type DriverAssignment = {
+    id: string;
+    day_number: number | null;
+    pickup_time: string | null;
+    pickup_location: string | null;
+    trip?: AssignmentTrip | AssignmentTrip[] | null;
+};
 
 export default async function DriverDetailsPage({
     params,
@@ -73,10 +89,15 @@ export default async function DriverDetailsPage({
     // Merge unique languages
     const allLanguages = Array.from(new Set([...externalLanguages, ...profileLanguages]));
 
-    const formatDate = (dateStr: string | null) => {
+    const formatDate = (dateStr?: string | null) => {
         if (!dateStr) return "N/A";
         return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     };
+
+    const normalizedAssignments = ((assignments || []) as DriverAssignment[]).map((assignment) => {
+        const trip = Array.isArray(assignment.trip) ? assignment.trip[0] || null : assignment.trip || null;
+        return { ...assignment, trip };
+    });
 
     return (
         <div className="space-y-8">
@@ -95,11 +116,15 @@ export default async function DriverDetailsPage({
             <GlassCard padding="lg" rounded="2xl">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                     <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 bg-white/60 dark:bg-white/10 rounded-full flex items-center justify-center border border-white/20 text-2xl font-medium text-secondary dark:text-white">
+                        <div className="w-16 h-16 bg-white/60 dark:bg-white/10 rounded-full flex items-center justify-center border border-white/20 text-2xl font-medium text-secondary dark:text-white relative overflow-hidden">
                             {/* Use profile avatar if available, else initials */}
                             {profile?.avatar_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={profile.avatar_url} alt={driver.full_name} className="w-full h-full rounded-full object-cover" />
+                                <Image
+                                    src={profile.avatar_url}
+                                    alt={`${driver.full_name} avatar`}
+                                    fill
+                                    className="rounded-full object-cover"
+                                />
                             ) : (
                                 driver.full_name.charAt(0).toUpperCase()
                             )}
@@ -221,7 +246,7 @@ export default async function DriverDetailsPage({
                         </h2>
 
                         <div className="space-y-3">
-                            {assignments && assignments.length > 0 ? assignments.map((assignment: any) => (
+                            {normalizedAssignments.length > 0 ? normalizedAssignments.map((assignment) => (
                                 <div key={assignment.id} className="p-3 bg-white/40 dark:bg-white/5 rounded-lg border border-white/20">
                                     <div className="text-sm font-semibold text-secondary dark:text-white">{assignment.trip?.itineraries?.destination || "Unknown Trip"}</div>
                                     <div className="text-xs text-text-secondary mt-1 flex justify-between">

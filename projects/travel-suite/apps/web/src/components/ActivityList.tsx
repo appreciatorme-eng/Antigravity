@@ -90,7 +90,7 @@ export default function ActivityList({
   }
 
   return (
-    <div className="space-y-2 relative">
+    <div className="space-y-2 relative" role="list" aria-label="Trip activities">
       {isReordering && (
         <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-lg">
           <div className="text-sm text-gray-600">Updating order...</div>
@@ -102,6 +102,7 @@ export default function ActivityList({
           key={activity.id}
           activity={activity}
           index={index}
+          totalItems={activities.length}
           onReorder={handleReorder}
         >
           <div className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:border-[#9c7c46] transition-colors">
@@ -155,6 +156,7 @@ export default function ActivityList({
                 onClick={() => onRemove(activity.id)}
                 className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 title="Remove activity"
+                aria-label={`Remove activity ${activity.title}`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -166,7 +168,7 @@ export default function ActivityList({
       {/* Instructions */}
       {editable && activities.length > 1 && (
         <div className="text-xs text-gray-500 text-center py-2">
-          💡 Hover over an activity and drag the handle to reorder
+          Hover over an activity and drag the handle to reorder. Keyboard: focus an activity and press Alt plus Arrow keys.
         </div>
       )}
     </div>

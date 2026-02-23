@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
@@ -36,6 +36,9 @@ export function GlassModal({
   closeOnEscape = true,
 }: GlassModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const descriptionId = useId();
 
   // Handle escape key
   useEffect(() => {
@@ -71,32 +74,52 @@ export function GlassModal({
     const modal = modalRef.current;
     if (!modal) return;
 
-    const focusableElements = modal.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    const firstElement = focusableElements[0] as HTMLElement;
-    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const getFocusableElements = () =>
+      Array.from(
+        modal.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+
+    const focusableElements = getFocusableElements();
+    const firstElement = focusableElements[0] || modal;
 
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
 
+      const nodes = getFocusableElements();
+      if (nodes.length === 0) {
+        e.preventDefault();
+        modal.focus();
+        return;
+      }
+
+      const currentFirst = nodes[0];
+      const currentLast = nodes[nodes.length - 1];
+
       if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
+        if (document.activeElement === currentFirst || document.activeElement === modal) {
           e.preventDefault();
-          lastElement?.focus();
+          currentLast.focus();
         }
       } else {
-        if (document.activeElement === lastElement) {
+        if (document.activeElement === currentLast) {
           e.preventDefault();
-          firstElement?.focus();
+          currentFirst.focus();
         }
       }
     };
 
     document.addEventListener('keydown', handleTab);
-    firstElement?.focus();
+    firstElement.focus();
 
-    return () => document.removeEventListener('keydown', handleTab);
+    return () => {
+      document.removeEventListener('keydown', handleTab);
+      previousFocusedElementRef.current?.focus();
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -133,10 +156,11 @@ export function GlassModal({
           'max-h-[90vh] overflow-hidden flex flex-col',
           sizeStyles[size]
         )}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={title ? 'modal-title' : undefined}
-        aria-describedby={description ? 'modal-description' : undefined}
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
       >
         {/* Header */}
         {(title || showCloseButton) && (
@@ -144,7 +168,7 @@ export function GlassModal({
             <div className="flex-1">
               {title && (
                 <h2
-                  id="modal-title"
+                  id={titleId}
                   className="text-xl font-serif text-secondary dark:text-white"
                 >
                   {title}
@@ -152,7 +176,7 @@ export function GlassModal({
               )}
               {description && (
                 <p
-                  id="modal-description"
+                  id={descriptionId}
                   className="mt-1 text-sm text-text-secondary"
                 >
                   {description}

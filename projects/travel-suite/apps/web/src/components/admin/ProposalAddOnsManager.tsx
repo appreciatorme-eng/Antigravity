@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Image from 'next/image';
 import {
   Plus,
   Search,
@@ -72,15 +73,12 @@ export default function ProposalAddOnsManager({
   const [selectedCategory, setSelectedCategory] = useState('All');
   const { toast } = useToast();
 
-  useEffect(() => {
-    void loadData();
-  }, [proposalId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: proposalRows, error: proposalRowsError } = await (supabase as any)
         .from('proposal_add_ons')
         .select('*')
@@ -91,6 +89,7 @@ export default function ProposalAddOnsManager({
         throw proposalRowsError;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const formattedProposalRows: ProposalAddOn[] = (proposalRows || []).map((row: any) => ({
         id: row.id,
         proposal_id: row.proposal_id,
@@ -132,7 +131,11 @@ export default function ProposalAddOnsManager({
     } finally {
       setLoading(false);
     }
-  }
+  }, [proposalId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   async function syncProposalPrice() {
     const supabase = createClient();
@@ -159,6 +162,7 @@ export default function ProposalAddOnsManager({
 
       const shouldSelect = transport ? !selectedTransportExists : false;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('proposal_add_ons').insert({
         proposal_id: proposalId,
         add_on_id: addon.id,
@@ -199,6 +203,7 @@ export default function ProposalAddOnsManager({
     try {
       const supabase = createClient();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('proposal_add_ons')
         .delete()
@@ -230,6 +235,7 @@ export default function ProposalAddOnsManager({
       const nextValue = !proposalAddOn.is_selected;
 
       if (isTransportCategory(proposalAddOn.category) && nextValue) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
           .from('proposal_add_ons')
           .update({ is_selected: false })
@@ -237,6 +243,7 @@ export default function ProposalAddOnsManager({
           .ilike('category', 'transport');
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('proposal_add_ons')
         .update({ is_selected: nextValue })
@@ -353,7 +360,14 @@ export default function ProposalAddOnsManager({
             <GlassCard key={proposalAddOn.id} padding="lg" rounded="xl">
               <div className="flex items-start gap-4">
                 {proposalAddOn.image_url ? (
-                  <img src={proposalAddOn.image_url} alt={proposalAddOn.name} className="w-20 h-20 rounded-lg object-cover" />
+                  <div className="w-20 h-20 rounded-lg overflow-hidden relative">
+                    <Image
+                      src={proposalAddOn.image_url}
+                      alt={proposalAddOn.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="w-20 h-20 rounded-lg bg-gradient-app flex items-center justify-center">
                     <Package className="w-8 h-8 text-primary" />

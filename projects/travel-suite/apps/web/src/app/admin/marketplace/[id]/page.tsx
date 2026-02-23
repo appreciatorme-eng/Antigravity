@@ -5,20 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
     Star,
     MapPin,
-    Trophy,
     Building2,
     ShieldCheck,
-    Tag,
     MessageSquare,
     ChevronLeft,
-    Clock,
-    DollarSign,
-    Send,
     ExternalLink,
     RefreshCcw,
     Image as ImageIcon,
     List,
-    CheckCircle2,
     Lock,
     FileText,
     ShieldAlert
@@ -301,8 +295,13 @@ export default function OperatorDetailPage() {
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {profile.gallery_urls.map((url, idx) => (
-                                    <div key={idx} className="aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl group">
-                                        <img src={url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <div key={idx} className="aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-xl group relative">
+                                        <Image
+                                            src={url}
+                                            alt={`${profile.organization_name} gallery image ${idx + 1}`}
+                                            fill
+                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -320,7 +319,13 @@ export default function OperatorDetailPage() {
                                     <h4 className="font-semibold text-white">Rate this partner</h4>
                                     <div className="flex gap-2">
                                         {[1, 2, 3, 4, 5].map(s => (
-                                            <button key={s} onClick={() => setNewRating(s)} className={`transition-all ${newRating >= s ? "text-yellow-400" : "text-slate-800"}`}>
+                                            <button
+                                                key={s}
+                                                type="button"
+                                                onClick={() => setNewRating(s)}
+                                                className={`transition-all ${newRating >= s ? "text-yellow-400" : "text-slate-800"}`}
+                                                aria-label={`Rate ${s} out of 5`}
+                                            >
                                                 <Star size={24} className={newRating >= s ? "fill-yellow-400" : ""} />
                                             </button>
                                         ))}
@@ -341,8 +346,15 @@ export default function OperatorDetailPage() {
                             {reviews.map(rev => (
                                 <GlassCard key={rev.id} className="p-6 space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-800 overflow-hidden shrink-0">
-                                            {rev.reviewer.logo_url ? <img src={rev.reviewer.logo_url} className="w-full h-full object-cover" /> : <Building2 size={16} className="m-2 text-slate-600" />}
+                                        <div className="w-8 h-8 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative">
+                                            {rev.reviewer.logo_url ? (
+                                                <Image
+                                                    src={rev.reviewer.logo_url}
+                                                    alt={`${rev.reviewer.name || "Reviewer"} logo`}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            ) : <Building2 size={16} className="m-2 text-slate-600" />}
                                         </div>
                                         <div>
                                             <div className="text-sm font-bold text-white">{rev.reviewer.name}</div>

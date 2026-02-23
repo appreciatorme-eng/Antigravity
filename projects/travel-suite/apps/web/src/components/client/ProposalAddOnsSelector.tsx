@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Image from 'next/image';
 import {
   Check,
   DollarSign,
@@ -53,15 +54,12 @@ export default function ProposalAddOnsSelector({
   const [proposalAddOns, setProposalAddOns] = useState<ProposalAddOn[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    void loadAddOns();
-  }, [proposalId]);
-
-  async function loadAddOns() {
+  const loadAddOns = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('proposal_add_ons')
         .select('*')
@@ -70,6 +68,7 @@ export default function ProposalAddOnsSelector({
 
       if (error) throw error;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const formatted: ProposalAddOn[] = (data || []).map((item: any) => ({
         id: item.id,
         proposal_id: item.proposal_id,
@@ -89,7 +88,11 @@ export default function ProposalAddOnsSelector({
     } finally {
       setLoading(false);
     }
-  }
+  }, [proposalId]);
+
+  useEffect(() => {
+    void loadAddOns();
+  }, [loadAddOns]);
 
   async function syncProposalPrice() {
     const supabase = createClient();
@@ -114,6 +117,7 @@ export default function ProposalAddOnsSelector({
       const nextSelected = !addOn.is_selected;
 
       if (isTransportCategory(addOn.category) && nextSelected) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
           .from('proposal_add_ons')
           .update({ is_selected: false })
@@ -121,6 +125,7 @@ export default function ProposalAddOnsSelector({
           .ilike('category', 'transport');
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('proposal_add_ons')
         .update({ is_selected: nextSelected })
@@ -310,7 +315,14 @@ export default function ProposalAddOnsSelector({
                     </div>
 
                     {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
+                      <div className="w-16 h-16 rounded-lg overflow-hidden relative flex-shrink-0">
+                        <Image
+                          src={item.image_url}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                     ) : (
                       <div className="w-16 h-16 rounded-lg bg-gradient-app flex items-center justify-center flex-shrink-0">
                         <Package className="w-6 h-6 text-primary" />

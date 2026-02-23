@@ -8,14 +8,13 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface GlassCardProps {
+interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
   blur?: 'sm' | 'md' | 'lg';
   opacity?: 'low' | 'medium' | 'high';
   rounded?: 'md' | 'lg' | 'xl' | '2xl' | 'pill';
-  onClick?: () => void;
 }
 
 const paddingClasses = {
@@ -54,6 +53,7 @@ export function GlassCard({
   opacity = 'medium',
   rounded = 'xl',
   onClick,
+  ...rest
 }: GlassCardProps) {
   return (
     <div
@@ -78,6 +78,7 @@ export function GlassCard({
         className
       )}
       onClick={onClick}
+      {...rest}
     >
       {children}
     </div>

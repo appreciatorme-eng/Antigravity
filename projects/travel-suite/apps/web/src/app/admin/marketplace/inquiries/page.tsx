@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import {
     Inbox,
-    Send,
     MessageSquare,
     Clock,
-    CheckCircle2,
     Building2,
     ArrowUpRight,
     ArrowDownLeft,
-    ChevronRight,
     RefreshCcw,
     ExternalLink
 } from "lucide-react";
@@ -119,18 +117,46 @@ export default function MarketplaceInquiriesPage() {
                             </div>
                         </GlassCard>
                     ) : (
-                        inquiries[activeTab].map((inq) => (
+                        inquiries[activeTab].map((inq) => {
+                            const canMarkRead = !inq.read_at && activeTab === "received";
+                            const targetName = activeTab === "received" ? inq.sender?.name : inq.receiver?.name;
+
+                            return (
                             <GlassCard
                                 key={inq.id}
-                                className={`p-0 overflow-hidden border-l-4 transition-all hover:bg-white/[0.02] ${!inq.read_at && activeTab === "received" ? "border-l-blue-500 bg-blue-500/5" : "border-l-transparent"}`}
-                                onClick={() => !inq.read_at && activeTab === "received" && markAsRead(inq.id)}
+                                className={`p-0 overflow-hidden border-l-4 transition-all hover:bg-white/[0.02] ${canMarkRead ? "border-l-blue-500 bg-blue-500/5" : "border-l-transparent"}`}
+                                onClick={() => canMarkRead && markAsRead(inq.id)}
+                                role={canMarkRead ? "button" : undefined}
+                                tabIndex={canMarkRead ? 0 : undefined}
+                                aria-label={canMarkRead ? `Mark inquiry from ${targetName || "partner"} as read` : undefined}
+                                onKeyDown={(event) => {
+                                    if (!canMarkRead) return;
+                                    if (event.key === "Enter" || event.key === " ") {
+                                        event.preventDefault();
+                                        void markAsRead(inq.id);
+                                    }
+                                }}
                             >
                                 <div className="p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
-                                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden flex-shrink-0">
+                                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden flex-shrink-0 relative">
                                         {activeTab === "received" ? (
-                                            inq.sender?.logo_url ? <img src={inq.sender.logo_url} className="w-full h-full object-cover" /> : <Building2 size={24} className="text-slate-500" />
+                                            inq.sender?.logo_url ? (
+                                                <Image
+                                                    src={inq.sender.logo_url}
+                                                    alt={`${inq.sender?.name || "Sender"} logo`}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            ) : <Building2 size={24} className="text-slate-500" />
                                         ) : (
-                                            inq.receiver?.logo_url ? <img src={inq.receiver.logo_url} className="w-full h-full object-cover" /> : <Building2 size={24} className="text-slate-500" />
+                                            inq.receiver?.logo_url ? (
+                                                <Image
+                                                    src={inq.receiver.logo_url}
+                                                    alt={`${inq.receiver?.name || "Receiver"} logo`}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                            ) : <Building2 size={24} className="text-slate-500" />
                                         )}
                                     </div>
 
@@ -166,7 +192,8 @@ export default function MarketplaceInquiriesPage() {
                                     </div>
                                 </div>
                             </GlassCard>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             )}

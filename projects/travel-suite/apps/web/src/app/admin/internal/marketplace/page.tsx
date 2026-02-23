@@ -1,23 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import {
     ShieldAlert,
     Check,
     X,
     Building2,
     ExternalLink,
-    RefreshCcw,
-    AlertCircle
+    RefreshCcw
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
 
+interface PendingVerificationRequest {
+    id: string;
+    organization_id: string;
+    updated_at: string;
+    organization?: {
+        name?: string | null;
+        logo_url?: string | null;
+    } | null;
+}
+
 export default function InternalMarketplaceAdmin() {
-    const supabase = createClient();
-    const [pending, setPending] = useState<any[]>([]);
+    const [pending, setPending] = useState<PendingVerificationRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchPending = async () => {
@@ -72,8 +80,17 @@ export default function InternalMarketplaceAdmin() {
                     {pending.map((req) => (
                         <GlassCard key={req.id} className="p-6 flex items-center justify-between gap-6 border border-slate-800">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0">
-                                    {req.organization?.logo_url ? <img src={req.organization.logo_url} className="w-full h-full object-cover" /> : <Building2 className="m-3 text-slate-600" />}
+                                <div className="w-12 h-12 bg-slate-800 rounded-xl overflow-hidden flex-shrink-0 relative">
+                                    {req.organization?.logo_url ? (
+                                        <Image
+                                            src={req.organization.logo_url}
+                                            alt={`${req.organization?.name || "Organization"} logo`}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <Building2 className="m-3 text-slate-600" />
+                                    )}
                                 </div>
                                 <div>
                                     <h3 className="text-white font-bold">{req.organization?.name}</h3>
@@ -91,6 +108,7 @@ export default function InternalMarketplaceAdmin() {
                                     variant="secondary"
                                     className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 px-3"
                                     onClick={() => handleVerify(req.organization_id, 'rejected')}
+                                    aria-label={`Reject verification request for ${req.organization?.name || "organization"}`}
                                 >
                                     <X size={18} />
                                 </GlassButton>

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import {
     BarChart3,
     RefreshCcw,
@@ -169,9 +170,14 @@ export default function MarketplaceAnalyticsPage() {
                                 {stats.recent_views.map((view, idx) => (
                                     <div key={idx} className="p-4 flex items-center justify-between hover:bg-slate-800/50 transition-colors">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700">
+                                            <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700 relative">
                                                 {view.organizations?.logo_url ? (
-                                                    <img src={view.organizations.logo_url} className="w-full h-full object-cover" />
+                                                    <Image
+                                                        src={view.organizations.logo_url}
+                                                        alt={`${view.organizations?.name || "Organization"} logo`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
                                                 ) : (
                                                     <Building2 size={18} className="text-slate-600" />
                                                 )}
@@ -213,9 +219,14 @@ export default function MarketplaceAnalyticsPage() {
                                     <div key={idx} className="p-4 hover:bg-slate-800/50 transition-colors space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700">
+                                                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-slate-700 relative">
                                                     {inquiry.organizations?.logo_url ? (
-                                                        <img src={inquiry.organizations.logo_url} className="w-full h-full object-cover" />
+                                                        <Image
+                                                            src={inquiry.organizations.logo_url}
+                                                            alt={`${inquiry.organizations?.name || "Organization"} logo`}
+                                                            fill
+                                                            className="object-cover"
+                                                        />
                                                     ) : (
                                                         <Building2 size={14} className="text-slate-600" />
                                                     )}
@@ -234,7 +245,7 @@ export default function MarketplaceAnalyticsPage() {
                                             </GlassButton>
                                         </div>
                                         <p className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
-                                            "{inquiry.message}"
+                                            &ldquo;{inquiry.message}&rdquo;
                                         </p>
                                     </div>
                                 ))}
