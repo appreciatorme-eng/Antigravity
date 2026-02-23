@@ -80,6 +80,7 @@ export default function AdminProposalViewPage() {
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [sendingProposal, setSendingProposal] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
   const { toast } = useToast();
 
@@ -264,25 +265,64 @@ export default function AdminProposalViewPage() {
   }
 
   async function sendProposal() {
-    if (!proposal) return;
+    if (!proposal || sendingProposal) return;
 
-    // TODO: Integrate with email/WhatsApp sending
-    const shareUrl = `${window.location.origin}/p/${proposal.share_token}`;
+    setSendingProposal(true);
+    try {
+      const response = await fetch(`/api/proposals/${proposal.id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          channels: { email: true, whatsapp: true },
+        }),
+      });
 
-    // For now, just copy link and show instructions
-    await navigator.clipboard.writeText(shareUrl);
-    toast({
-      title: 'Share link copied',
-      description: 'Send this link to your client. Email/WhatsApp integration will automate this next.',
-      variant: 'info',
-      durationMs: 7000,
-    });
+      const payload = await response.json().catch(() => ({} as Record<string, unknown>));
+      if (!response.ok) {
+        throw new Error(String(payload.error || 'Failed to send proposal'));
+      }
 
-    // Update status to sent
-    const supabase = createClient();
-    await supabase.from('proposals').update({ status: 'sent' }).eq('id', proposal.id);
+      const emailSent = payload.email === true;
+      const whatsappSent = payload.whatsapp === true;
+      const channelSummary = [emailSent ? 'Email' : null, whatsappSent ? 'WhatsApp' : null]
+        .filter(Boolean)
+        .join(' + ');
 
-    loadProposal();
+      if (emailSent || whatsappSent) {
+        toast({
+          title: 'Proposal sent',
+          description: `Delivered via ${channelSummary || 'selected channels'}.`,
+          variant: 'success',
+        });
+      } else {
+        toast({
+          title: 'Proposal delivery failed',
+          description: 'No channels were delivered. Check integration settings.',
+          variant: 'error',
+        });
+      }
+
+      if (Array.isArray(payload.errors) && payload.errors.length > 0) {
+        toast({
+          title: 'Delivery notices',
+          description: payload.errors.map(String).join(' | '),
+          variant: 'info',
+          durationMs: 8000,
+        });
+      }
+
+      await loadProposal();
+    } catch (error) {
+      toast({
+        title: 'Send failed',
+        description: error instanceof Error ? error.message : 'Unable to send proposal',
+        variant: 'error',
+      });
+    } finally {
+      setSendingProposal(false);
+    }
   }
 
   async function loadVersionHistory() {
@@ -379,7 +419,7 @@ export default function AdminProposalViewPage() {
             </GlassButton>
           )}
 
-          <GlassButton variant="primary" onClick={sendProposal}>
+          <GlassButton variant="primary" onClick={sendProposal} loading={sendingProposal} disabled={sendingProposal}>
             <Send className="w-4 h-4" />
             Send to Client
           </GlassButton>

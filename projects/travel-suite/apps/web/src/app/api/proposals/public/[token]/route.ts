@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeText } from '@/lib/security/sanitize';
 
 function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -91,6 +92,15 @@ type PublicAddOn = {
   quantity: number;
   is_selected: boolean;
 };
+
+const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+
+function sanitizeShareToken(value: unknown): string | null {
+  const token = sanitizeText(value, { maxLength: 200 });
+  if (!token) return null;
+  if (!SHARE_TOKEN_REGEX.test(token)) return null;
+  return token;
+}
 
 const asNullableNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -354,7 +364,12 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = await params;
+    const { token: rawToken } = await params;
+    const token = sanitizeShareToken(rawToken);
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid proposal token' }, { status: 400 });
+    }
+
     const payload = await buildPublicPayload(token);
 
     if ('error' in payload) {
@@ -378,7 +393,12 @@ export async function POST(
 ) {
   try {
     const supabaseAdmin = getSupabaseAdminClient();
-    const { token } = await params;
+    const { token: rawToken } = await params;
+    const token = sanitizeShareToken(rawToken);
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid proposal token' }, { status: 400 });
+    }
+
     const loaded = await loadProposalByToken(token);
 
     if ('error' in loaded) {
@@ -387,7 +407,7 @@ export async function POST(
 
     const proposal = normalizeProposal(loaded.proposal);
     const body = await request.json();
-    const action = String(body?.action || '').trim();
+    const action = sanitizeText(body?.action, { maxLength: 40 });
 
     if (!action) {
       return NextResponse.json({ error: 'Action is required' }, { status: 400 });

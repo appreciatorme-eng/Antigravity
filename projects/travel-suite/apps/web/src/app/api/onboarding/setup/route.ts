@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 
 const supabaseAdmin = createAdminClient();
 
@@ -18,6 +19,45 @@ type OnboardingOrganization = {
 const normalizeTemplate = (value: unknown): 'safari_story' | 'urban_brief' => {
   const candidate = String(value || '').trim();
   return TEMPLATE_OPTIONS.has(candidate) ? (candidate as 'safari_story' | 'urban_brief') : 'safari_story';
+};
+
+const normalizeHttpUrl = (value: unknown): string | null => {
+  const candidate = sanitizeText(value, { maxLength: 2048 });
+  if (!candidate) return null;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const normalizeHexColor = (value: unknown): string | null => {
+  const candidate = sanitizeText(value, { maxLength: 16 });
+  if (!candidate) return null;
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(candidate) ? candidate : null;
+};
+
+const sanitizeStringArray = (
+  value: unknown,
+  options: { maxLength: number; maxItems: number }
+): string[] => {
+  if (!Array.isArray(value)) return [];
+
+  const output: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const normalized = sanitizeText(entry, { maxLength: options.maxLength });
+    if (!normalized) continue;
+    const dedupeKey = normalized.toLowerCase();
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    output.push(normalized);
+    if (output.length >= options.maxItems) break;
+  }
+
+  return output;
 };
 
 const isMissingColumnError = (error: unknown, column: string): boolean => {
@@ -206,7 +246,8 @@ export async function GET() {
     const auth = await getAuthenticatedUser();
     if ('error' in auth) return auth.error;
 
-    const profile = await ensureProfile(auth.user.id, auth.user.email || null);
+    const safeUserEmail = sanitizeEmail(auth.user.email);
+    const profile = await ensureProfile(auth.user.id, safeUserEmail);
     const organization = await getOrganization(profile.organization_id);
     const marketplace = await getMarketplaceProfile(profile.organization_id);
 
@@ -217,7 +258,7 @@ export async function GET() {
       onboardingComplete,
       profile: {
         full_name: profile.full_name || '',
-        email: profile.email || auth.user.email || '',
+        email: profile.email || safeUserEmail || '',
         phone: profile.phone || '',
         phone_whatsapp: profile.phone_whatsapp || '',
         bio: profile.bio || '',
@@ -260,29 +301,29 @@ export async function POST(request: Request) {
     if ('error' in auth) return auth.error;
 
     const body = await request.json();
+    const safeUserEmail = sanitizeEmail(auth.user.email);
 
-    const operatorName = String(body.operatorName || '').trim();
-    const companyName = String(body.companyName || '').trim();
-    const phone = String(body.phone || '').trim();
-    const whatsappPhone = String(body.whatsappPhone || '').trim();
-    const bio = String(body.bio || '').trim();
-    const marketplaceDescription = String(body.marketplaceDescription || '').trim();
-    const logoUrl = String(body.logoUrl || '').trim();
-    const primaryColor = String(body.primaryColor || '').trim();
+    const operatorName = sanitizeText(body.operatorName, { maxLength: 120 });
+    const companyName = sanitizeText(body.companyName, { maxLength: 120 });
+    const phone = sanitizePhone(body.phone) || '';
+    const whatsappPhone = sanitizePhone(body.whatsappPhone) || '';
+    const bio = sanitizeText(body.bio, { maxLength: 2400, preserveNewlines: true });
+    const marketplaceDescription = sanitizeText(body.marketplaceDescription, {
+      maxLength: 3200,
+      preserveNewlines: true,
+    });
+    const logoUrl = normalizeHttpUrl(body.logoUrl);
+    const primaryColor = normalizeHexColor(body.primaryColor);
     const itineraryTemplate = normalizeTemplate(body.itineraryTemplate);
 
-    const serviceRegions = Array.isArray(body.serviceRegions)
-      ? body.serviceRegions.map((value: unknown) => String(value).trim()).filter(Boolean)
-      : [];
-    const specialties = Array.isArray(body.specialties)
-      ? body.specialties.map((value: unknown) => String(value).trim()).filter(Boolean)
-      : [];
+    const serviceRegions = sanitizeStringArray(body.serviceRegions, { maxLength: 80, maxItems: 40 });
+    const specialties = sanitizeStringArray(body.specialties, { maxLength: 80, maxItems: 40 });
 
     if (!companyName) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
     }
 
-    const profile = await ensureProfile(auth.user.id, auth.user.email || null);
+    const profile = await ensureProfile(auth.user.id, safeUserEmail);
 
     let organizationId = profile.organization_id || null;
     let organizationSlug = '';
@@ -308,7 +349,7 @@ export async function POST(request: Request) {
     const organizationBasePayload = {
       name: companyName,
       owner_id: auth.user.id,
-      logo_url: logoUrl || null,
+      logo_url: logoUrl,
       primary_color: primaryColor || '#f26430',
     };
 
@@ -399,8 +440,8 @@ export async function POST(request: Request) {
     const { error: profileUpdateError } = await supabaseAdmin
       .from('profiles')
       .update({
-        full_name: operatorName || profile.full_name || auth.user.email?.split('@')[0] || 'Operator',
-        email: auth.user.email || profile.email || null,
+        full_name: operatorName || profile.full_name || safeUserEmail?.split('@')[0] || 'Operator',
+        email: safeUserEmail || profile.email || null,
         phone: phone || null,
         phone_whatsapp: whatsappPhone || null,
         bio: bio || null,
