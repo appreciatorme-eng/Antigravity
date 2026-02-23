@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const cleanupSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 async function isAdmin(authHeader: string | null): Promise<{ userId: string | null }> {
     if (!authHeader?.startsWith("Bearer ")) return { userId: null };
@@ -24,7 +23,7 @@ async function isAdmin(authHeader: string | null): Promise<{ userId: string | nu
 }
 
 function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ")) return false;
+    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
     const token = authHeader.substring(7);
     return token === supabaseServiceKey;
 }

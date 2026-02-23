@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
-const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
+
+type OrganizationOwnerJoin = {
+    name: string | null;
+    profiles: { email: string | null } | Array<{ email: string | null }> | null;
+};
 
 async function requireAdminUser() {
     const supabase = await createClient();
@@ -38,12 +41,12 @@ async function requireAdminUser() {
     return { user, profile };
 }
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         const auth = await requireAdminUser();
         if ("error" in auth) return auth.error;
 
-        const { data, error } = await (supabaseAdmin as any)
+        const { data, error } = await supabaseAdmin
             .from("marketplace_profiles")
             .select(`
                 *,
@@ -53,8 +56,9 @@ export async function GET(request: Request) {
 
         if (error) throw error;
         return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -68,7 +72,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
         }
 
-        const { data, error } = await (supabaseAdmin as any)
+        const { data, error } = await supabaseAdmin
             .from("marketplace_profiles")
             .update({
                 verification_status: status,
@@ -88,14 +92,17 @@ export async function POST(request: Request) {
                     .select("name, profiles!owner_id(email)")
                     .eq("id", orgId)
                     .single();
+                const organization = orgInfo as OrganizationOwnerJoin | null;
+                const ownerProfile = Array.isArray(organization?.profiles)
+                    ? organization?.profiles[0]
+                    : organization?.profiles;
+                const receiverEmail = ownerProfile?.email || null;
 
-                const receiverEmail = (orgInfo as any)?.profiles?.email;
-
-                if (receiverEmail && orgInfo) {
+                if (receiverEmail && organization) {
                     const { sendVerificationNotification } = await import("@/lib/marketplace-emails");
                     await sendVerificationNotification({
                         receiverEmail,
-                        orgName: orgInfo.name,
+                        orgName: organization.name || "Your Organization",
                         status: status as 'verified' | 'rejected',
                         settingsUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/admin/settings/marketplace`
                     });
@@ -106,7 +113,8 @@ export async function POST(request: Request) {
         })();
 
         return NextResponse.json(data);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

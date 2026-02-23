@@ -1,10 +1,33 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
+
+type MarketplaceReviewRow = {
+    rating: number | null;
+};
+
+type MarketplaceProfileUpsert = Database["public"]["Tables"]["marketplace_profiles"]["Insert"];
+
+type MarketplaceOrganizationJoin = {
+    name: string | null;
+    logo_url: string | null;
+} | null;
+
+type MarketplaceProfileRow = {
+    description: string | null;
+    service_regions: unknown;
+    specialties: unknown;
+    gallery_urls: unknown;
+    rate_card: unknown;
+    compliance_documents: unknown;
+    verification_status: string | null;
+    organization: MarketplaceOrganizationJoin;
+    reviews: MarketplaceReviewRow[] | null;
+    [key: string]: unknown;
+};
 
 async function getAuthContext(req: Request) {
     const authHeader = req.headers.get("authorization");
@@ -71,7 +94,12 @@ export async function GET(req: Request) {
         }
         if (query) {
             // Use full-text search on description and ILIKE on organization name
-            supabaseQuery = (supabaseQuery as any).or(`organization.name.ilike.%${query}%,search_vector.fts.${query}`);
+            type QueryWithOr = typeof supabaseQuery & {
+                or: (filters: string) => typeof supabaseQuery;
+            };
+            supabaseQuery = (supabaseQuery as QueryWithOr).or(
+                `organization.name.ilike.%${query}%,search_vector.fts.${query}`
+            );
         }
 
         const { data, error } = await supabaseQuery
@@ -81,8 +109,9 @@ export async function GET(req: Request) {
         if (error) throw error;
 
         // Process data to include average rating and flatten organization info
-        const results = data.map((item: any) => {
-            const ratings = item.reviews?.map((r: any) => r.rating) || [];
+        const rows = (data || []) as unknown as MarketplaceProfileRow[];
+        const results = rows.map((item) => {
+            const ratings = (item.reviews || []).map((review) => Number(review.rating || 0));
             const avgRating = ratings.length > 0
                 ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
                 : 0;
@@ -103,9 +132,10 @@ export async function GET(req: Request) {
         });
 
         return NextResponse.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Marketplace GET error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -126,13 +156,15 @@ export async function PATCH(req: Request) {
 
         const body = await req.json();
         const { description, service_regions, specialties, margin_rate, request_verification, rate_card, gallery_urls, compliance_documents } = body;
+        const descriptionValue = typeof description === "string" ? description : null;
+        const marginRateValue = typeof margin_rate === "number" ? margin_rate : null;
 
-        const updates: any = {
+        const updates: MarketplaceProfileUpsert = {
             organization_id: profile.organization_id,
-            description,
+            description: descriptionValue,
             service_regions: Array.isArray(service_regions) ? service_regions : [],
             specialties: Array.isArray(specialties) ? specialties : [],
-            margin_rate: typeof margin_rate === "number" ? margin_rate : null,
+            margin_rate: marginRateValue,
             rate_card: Array.isArray(rate_card) ? rate_card : [],
             gallery_urls: Array.isArray(gallery_urls) ? gallery_urls : [],
             compliance_documents: Array.isArray(compliance_documents) ? compliance_documents : [],
@@ -153,8 +185,9 @@ export async function PATCH(req: Request) {
         if (error) throw error;
 
         return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Marketplace PATCH error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
