@@ -31,6 +31,21 @@ jobs:
       - name: Pull Vercel project settings
         run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
+      - name: Remove unsupported cron config for Hobby deploys
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const file = 'projects/travel-suite/apps/web/vercel.json';
+          const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+          if (Array.isArray(config.crons)) {
+            delete config.crons;
+            fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\n');
+            console.log('Removed "crons" from vercel.json for this CI deploy run.');
+          } else {
+            console.log('No cron config found.');
+          }
+          NODE
+
       - name: Deploy to Vercel Production
         run: |
           npx vercel deploy --prod --yes --token="$VERCEL_TOKEN" \
