@@ -1,12 +1,21 @@
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-builds",
-});
+const openaiApiKey = process.env.OPENAI_API_KEY || "";
+const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
+
+const DEFAULT_MATCH_THRESHOLD = 0.8;
+
+function resolveSemanticMatchThreshold(): number {
+    const raw = Number(process.env.SEMANTIC_CACHE_MATCH_THRESHOLD);
+    if (Number.isFinite(raw) && raw > 0) {
+        return Math.max(0.5, Math.min(raw, 0.98));
+    }
+    return DEFAULT_MATCH_THRESHOLD;
+}
 
 export async function getSemanticMatch(prompt: string, destination: string, days: number) {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
         return null;
     }
 
@@ -22,11 +31,11 @@ export async function getSemanticMatch(prompt: string, destination: string, days
 
         const embedding = embeddingResponse.data[0].embedding;
 
-        // 2. Query Supabase for semantic match
-        // similarity threshold = 0.90 (highly similar)
+        // 2. Query Supabase for semantic match.
+        // Lower threshold to increase cache reuse and reduce LLM cost.
         const { data, error } = await (supabase as any).rpc('match_itineraries', {
             query_embedding: embedding,
-            match_threshold: 0.90,
+            match_threshold: resolveSemanticMatchThreshold(),
             match_count: 1,
             filter_destination: destination,
             filter_days: days
@@ -49,7 +58,7 @@ export async function getSemanticMatch(prompt: string, destination: string, days
 }
 
 export async function saveSemanticMatch(prompt: string, destination: string, days: number, itineraryData: any) {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
         return null;
     }
 
