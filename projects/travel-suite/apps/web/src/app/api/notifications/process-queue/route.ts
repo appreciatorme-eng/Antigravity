@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/lib/database.types";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
     renderTemplate,
     renderWhatsAppTemplate,
@@ -19,11 +18,11 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
+import type { Json } from "@/lib/database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
-const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = createAdminClient();
 
 type QueueStatus = "pending" | "processing" | "sent" | "failed" | "cancelled";
 
@@ -34,7 +33,7 @@ interface QueueItem {
     recipient_phone: string | null;
     recipient_type: "client" | "driver" | "admin" | null;
     notification_type: string;
-    payload: any;
+    payload: unknown;
     attempts: number;
     status: QueueStatus;
 }
@@ -43,6 +42,22 @@ const DEFAULT_MAX_ATTEMPTS = Number(process.env.NOTIFICATION_QUEUE_MAX_ATTEMPTS 
 const BASE_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_BASE_MINUTES || "5");
 const MAX_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_MAX_MINUTES || "60");
 
+function toRecord(value: unknown): Record<string, unknown> {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+
+    return {};
+}
+
+function toJsonObject(value: unknown): { [key: string]: Json | undefined } {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        return value as { [key: string]: Json | undefined };
+    }
+
+    return {};
+}
+
 async function resolveOrganizationIdForQueueItem(item: QueueItem): Promise<string | null> {
     if (item.trip_id) {
         const { data: trip } = await supabaseAdmin
@@ -50,7 +65,8 @@ async function resolveOrganizationIdForQueueItem(item: QueueItem): Promise<strin
             .select("organization_id")
             .eq("id", item.trip_id)
             .maybeSingle();
-        if ((trip as any)?.organization_id) return (trip as any).organization_id;
+        const tripRow = trip as { organization_id?: string | null } | null;
+        if (tripRow?.organization_id) return tripRow.organization_id;
     }
 
     if (item.user_id) {
@@ -91,7 +107,7 @@ async function trackDeliveryStatus(params: {
         status: params.status,
         attempt_number: params.attemptNumber,
         error_message: params.errorMessage || null,
-        metadata: (params.metadata as any) || {},
+        metadata: toJsonObject(params.metadata),
         sent_at: params.status === "sent" ? nowIso : null,
         failed_at: params.status === "failed" ? nowIso : null,
     });
@@ -127,7 +143,7 @@ async function moveToDeadLetter(params: {
         recipient_phone: params.item.recipient_phone,
         recipient_type: params.item.recipient_type,
         notification_type: params.item.notification_type,
-        payload: (params.item.payload as any) || {},
+        payload: toJsonObject(params.item.payload),
         attempts: params.attempts,
         error_message: params.reason,
         failed_channels: params.failedChannels,
@@ -163,7 +179,7 @@ async function getAdminUserId(authHeader: string | null): Promise<string | null>
 }
 
 function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ")) return false;
+    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
     const token = authHeader.substring(7);
     return token === supabaseServiceKey;
 }
@@ -210,9 +226,10 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
     }
 
     const { data: existing } = await existingQuery.maybeSingle();
+    const existingShare = existing as { share_token?: string | null } | null;
 
-    if ((existing as any)?.share_token) {
-        return (existing as any).share_token;
+    if (existingShare?.share_token) {
+        return existingShare.share_token;
     }
 
     const shareToken = crypto.randomUUID().replace(/-/g, "");
@@ -222,21 +239,22 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
         .from("trip_location_shares")
         .insert({
             trip_id: tripId!,
-            day_number: dayNumber as any,
+            day_number: dayNumber,
             share_token: shareToken,
             is_active: true,
             expires_at: expiresAt,
         })
         .select("share_token")
         .single();
+    const insertedShare = inserted as { share_token?: string | null } | null;
 
-    return (inserted as any)?.share_token || null;
+    return insertedShare?.share_token || null;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     const startedAt = Date.now();
-    const requestId = getRequestId(request as any);
-    const requestContext = getRequestContext(request as any, requestId);
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
 
     try {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
@@ -244,7 +262,7 @@ export async function POST(request: Request) {
 
         const secretAuthorized = isCronSecretHeader(headerSecret);
         const bearerCronAuthorized = isCronSecretBearer(authHeader);
-        const signedAuthorized = isSignedCronRequest(request as any);
+        const signedAuthorized = isSignedCronRequest(request);
         const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
         const adminAuthorized = await isAdminBearerToken(authHeader);
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
@@ -291,7 +309,7 @@ export async function POST(request: Request) {
 
             const attempts = Number(row.attempts || 0) + 1;
             const organizationId = await resolveOrganizationIdForQueueItem(row);
-            const payload = row.payload || {};
+            const payload = toRecord(row.payload);
             const templateKey = getStringPayloadValue(payload, "template_key");
             const templateVars = ((payload.template_vars as TemplateVars | undefined) || {}) as TemplateVars;
             let title = getStringPayloadValue(payload, "title") || "Trip Notification";

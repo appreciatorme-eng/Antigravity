@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { isCronSecretBearer } from "@/lib/security/cron-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = createAdminClient();
 
 function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ")) return false;
+    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
     return authHeader.substring(7) === supabaseServiceKey;
 }
 

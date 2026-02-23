@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Define strict types for the database entities we're working with
 type ProposalDay = {
@@ -21,9 +21,24 @@ type ProposalActivity = {
     is_selected: boolean;
 };
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
+
+function normalizeTemplateDestination(
+    tourTemplates: { destination?: string | null } | { destination?: string | null }[] | null
+): string {
+    if (Array.isArray(tourTemplates)) {
+        const firstDestination = tourTemplates[0]?.destination;
+        return typeof firstDestination === "string" && firstDestination.trim().length > 0
+            ? firstDestination.trim()
+            : "Unknown Destination";
+    }
+
+    if (tourTemplates && typeof tourTemplates.destination === "string" && tourTemplates.destination.trim().length > 0) {
+        return tourTemplates.destination.trim();
+    }
+
+    return "Unknown Destination";
+}
 
 async function getAdminUserId(req: Request) {
     const authHeader = req.headers.get("authorization");
@@ -77,6 +92,10 @@ export async function POST(
         if (!startDateStr) {
             return NextResponse.json({ error: "Start date is required" }, { status: 400 });
         }
+        const startDate = new Date(startDateStr);
+        if (Number.isNaN(startDate.getTime())) {
+            return NextResponse.json({ error: "Invalid start date" }, { status: 400 });
+        }
 
         // 1. Fetch Proposal with all related data
         const { data: proposal, error: proposalError } = await supabaseAdmin
@@ -103,18 +122,25 @@ export async function POST(
 
         if (daysError) throw daysError;
         const days = (daysData || []) as ProposalDay[];
+        if (days.length === 0) {
+            return NextResponse.json({ error: "Proposal has no day plan to convert" }, { status: 400 });
+        }
 
         // Fetch ALL activities for this proposal in one query
         const dayIds = days.map(d => d.id);
-        const { data: activitiesData, error: activitiesError } = await supabaseAdmin
-            .from("proposal_activities")
-            .select("*")
-            .in("proposal_day_id", dayIds)
-            .eq("is_selected", true) // Only include selected activities
-            .order("display_order", { ascending: true });
+        let activitiesData: ProposalActivity[] = [];
+        if (dayIds.length > 0) {
+            const { data, error: activitiesError } = await supabaseAdmin
+                .from("proposal_activities")
+                .select("*")
+                .in("proposal_day_id", dayIds)
+                .eq("is_selected", true) // Only include selected activities
+                .order("display_order", { ascending: true });
 
-        if (activitiesError) throw activitiesError;
-        const allActivities = (activitiesData || []) as ProposalActivity[];
+            if (activitiesError) throw activitiesError;
+            activitiesData = (data || []) as ProposalActivity[];
+        }
+        const allActivities = activitiesData;
 
         // 3. Construct Itinerary JSON Structure
         const itineraryDays = days.map(day => {
@@ -136,8 +162,14 @@ export async function POST(
             };
         });
 
-        const durationDays = days.length;
-        const startDate = new Date(startDateStr);
+        if (!proposal.client_id) {
+            return NextResponse.json({ error: "Proposal client is not set" }, { status: 400 });
+        }
+
+        const destination = normalizeTemplateDestination(
+            proposal.tour_templates as { destination?: string | null } | { destination?: string | null }[] | null
+        );
+        const durationDays = Math.max(1, days.length);
         const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + durationDays - 1); // e.g. 1 day trip starts/ends same day
 
@@ -145,12 +177,12 @@ export async function POST(
         const itineraryPayload = {
             user_id: proposal.client_id,
             trip_title: proposal.title,
-            destination: proposal.tour_templates?.destination || "Unknown Destination",
+            destination,
             summary: `Created from proposal: ${proposal.title}`,
             duration_days: durationDays,
             raw_data: {
                 trip_title: proposal.title,
-                destination: proposal.tour_templates?.destination || "Unknown Destination",
+                destination,
                 days: itineraryDays,
                 duration_days: durationDays,
                 summary: `Created from proposal: ${proposal.title}`

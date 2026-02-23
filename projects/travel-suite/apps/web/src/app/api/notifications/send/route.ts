@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { sendNotificationToUser, sendNotificationToTripUsers } from "@/lib/notifications";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import {
     getRequestContext,
@@ -9,9 +9,7 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 export async function POST(request: NextRequest) {
     const startedAt = Date.now();

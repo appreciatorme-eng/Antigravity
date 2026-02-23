@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 interface TripListRow {
     id: string;
@@ -138,7 +136,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
-        const trips = ((data || []) as TripListRow[]).map((t) => {
+        const trips = ((data || []) as unknown as TripListRow[]).map((t) => {
             const profile = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
             const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
 
