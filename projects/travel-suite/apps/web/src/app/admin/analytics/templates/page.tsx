@@ -6,53 +6,95 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTopTemplatesByUsage, type TopTemplate } from '@/lib/analytics/template-analytics';
-import { TrendingUp, Eye, Target, Calendar, BarChart3 } from 'lucide-react';
+import { TrendingUp, Eye, Target, Calendar, BarChart3, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/toast';
 
 export default function TemplateAnalyticsPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<TopTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<7 | 30 | 90>(30);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadOrganizationId();
-  }, []);
+  const resolveOrganizationId = useCallback(async () => {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    if (organizationId) {
-      loadTemplates();
+    if (authError || !user) {
+      throw new Error('Unauthorized access');
     }
-  }, [organizationId, timePeriod]);
 
-  const loadOrganizationId = async () => {
-    // TODO: Get from auth context or session
-    // For now, using placeholder
-    setOrganizationId('org-placeholder');
-  };
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single();
 
-  const loadTemplates = async () => {
-    if (!organizationId) return;
+    if (profileError || !profile?.organization_id) {
+      throw new Error('Unable to resolve organization');
+    }
 
-    setLoading(true);
+    return profile.organization_id;
+  }, [supabase]);
+
+  const loadTemplates = useCallback(async (showToast = false) => {
+    if (showToast) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
 
-    const result = await getTopTemplatesByUsage(organizationId, 20, timePeriod);
+    try {
+      const resolvedOrgId = organizationId || (await resolveOrganizationId());
+      if (!organizationId) {
+        setOrganizationId(resolvedOrgId);
+      }
 
-    if (result.success && result.data) {
-      setTemplates(result.data);
-    } else {
-      setError(result.error || 'Failed to load templates');
+      const result = await getTopTemplatesByUsage(resolvedOrgId, 20, timePeriod);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load templates');
+      }
+
+      setTemplates(result.data || []);
+
+      if (showToast) {
+        toast({
+          title: 'Template analytics refreshed',
+          description: 'Latest usage and conversion stats are loaded.',
+          variant: 'success',
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load templates';
+      setError(message);
+      setTemplates([]);
+      toast({
+        title: 'Template analytics failed',
+        description: message,
+        variant: 'error',
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  }, [organizationId, resolveOrganizationId, timePeriod, toast]);
 
-    setLoading(false);
-  };
+  useEffect(() => {
+    void loadTemplates(false);
+  }, [loadTemplates]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -67,6 +109,12 @@ export default function TemplateAnalyticsPage() {
           <p className="text-text-secondary mt-1">
             Track which tour templates are most popular and convert best
           </p>
+        </div>
+        <div className="ml-auto">
+          <GlassButton variant="outline" size="sm" loading={refreshing} onClick={() => void loadTemplates(true)}>
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </GlassButton>
         </div>
       </div>
 

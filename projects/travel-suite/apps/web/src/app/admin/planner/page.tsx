@@ -87,20 +87,42 @@ export default function PlannerPage() {
         setError(null);
 
         try {
+            const {
+                data: { user },
+                error: authError,
+            } = await supabase.auth.getUser();
+
+            if (authError || !user) {
+                throw new Error("Unauthorized access");
+            }
+
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("organization_id")
+                .eq("id", user.id)
+                .single();
+
+            if (profileError || !profile?.organization_id) {
+                throw new Error("Unable to resolve organization");
+            }
+
             const [itinerariesRes, tripsRes, cacheRes] = await Promise.all([
                 supabase
                     .from("itineraries")
                     .select("id,trip_title,destination,duration_days,budget,interests,updated_at")
+                    .eq("user_id", user.id)
                     .order("updated_at", { ascending: false })
                     .limit(12),
                 supabase
                     .from("trips")
                     .select("id,status,start_date,end_date,created_at,itinerary_id,itineraries(trip_title,destination,duration_days)")
+                    .eq("organization_id", profile.organization_id)
                     .order("created_at", { ascending: false })
                     .limit(12),
                 supabase
                     .from("itinerary_cache")
                     .select("id,destination,duration_days,usage_count,last_used_at,created_at,generation_source,quality_score")
+                    .eq("created_by", user.id)
                     .order("created_at", { ascending: false })
                     .limit(12),
             ]);

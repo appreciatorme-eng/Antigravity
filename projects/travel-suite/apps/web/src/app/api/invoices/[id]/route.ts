@@ -32,7 +32,7 @@ export async function GET(
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.organization_id) {
@@ -84,7 +84,7 @@ export async function PUT(
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.organization_id) {
@@ -148,7 +148,7 @@ export async function DELETE(
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id')
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.organization_id) {
