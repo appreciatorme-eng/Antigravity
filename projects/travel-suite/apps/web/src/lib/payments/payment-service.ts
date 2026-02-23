@@ -124,7 +124,7 @@ export class PaymentService {
       .maybeSingle();
 
     // Ensure Razorpay customer exists
-    const customerId = await this.ensureCustomer(options.organizationId);
+    await this.ensureCustomer(options.organizationId);
 
     // Calculate GST
     const companyState = this.resolveCompanyState(org?.billing_state);
@@ -139,7 +139,6 @@ export class PaymentService {
     // Create Razorpay subscription
     const razorpaySubscription = await razorpay.subscriptions.create({
       plan_id: `plan_${options.planId}`,
-      customer_id: customerId,
       customer_notify: 1,
       total_count: options.billingCycle === 'monthly' ? 12 : 1, // 12 monthly or 1 annual
       quantity: 1,
