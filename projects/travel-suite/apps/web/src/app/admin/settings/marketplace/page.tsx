@@ -293,6 +293,9 @@ export default function MarketplaceSettingsPage() {
         );
     }
 
+    const organizationName = organization?.name?.trim() || "Organization";
+    const organizationLogoUrl = organization?.logo_url?.trim();
+
     return (
         <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1200px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -326,14 +329,18 @@ export default function MarketplaceSettingsPage() {
                         {/* Hero Header */}
                         <div className="flex items-center gap-6 pb-8 border-b border-slate-200 dark:border-slate-800">
                             <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-                                {organization?.logo_url ? (
-                                    <img src={organization.logo_url} alt={organization.name} className="object-cover w-full h-full" />
+                                {organizationLogoUrl ? (
+                                    <img
+                                        src={organizationLogoUrl}
+                                        alt={`${organizationName} logo`}
+                                        className="object-cover w-full h-full"
+                                    />
                                 ) : (
                                     <Building2 size={32} className="text-slate-500 dark:text-slate-600" />
                                 )}
                             </div>
                             <div className="space-y-1">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{organization?.name}</h3>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{organizationName}</h3>
                                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-500">
                                     {formData.verification_status === 'verified' ? (
                                         <div className="flex items-center gap-1.5 text-blue-400 font-medium">
@@ -491,7 +498,11 @@ export default function MarketplaceSettingsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {formData.gallery_urls.map((url, idx) => (
                                     <div key={idx} className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
-                                        <img src={url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <img
+                                            src={url}
+                                            alt={`Gallery image ${idx + 1}`}
+                                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                        />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button onClick={() => removeImage(url)} className="p-2 bg-red-500 rounded-full text-white transform hover:scale-110 transition-transform">
                                                 <Trash2 size={16} />
