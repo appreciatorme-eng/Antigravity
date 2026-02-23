@@ -27,6 +27,7 @@ import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { useToast } from "@/components/ui/toast";
 
 interface Driver {
     id: string;
@@ -378,6 +379,7 @@ export default function TripDetailPage() {
     const [notificationBody, setNotificationBody] = useState("");
     const [notificationEmail, setNotificationEmail] = useState("");
     const [useEmailTarget, setUseEmailTarget] = useState(false);
+    const { toast } = useToast();
     const geocodeCacheRef = useRef(new Map<string, { lat: number; lng: number }>());
     const hotelSearchDebounceRef = useRef<Record<number, number | null>>({});
     const timeOptions = useMemo(
@@ -796,10 +798,18 @@ out center tags 80;
 
             // Refresh data
             await fetchData();
-            alert("Changes saved successfully!");
+            toast({
+                title: "Changes saved",
+                description: "Trip updates were saved successfully.",
+                variant: "success",
+            });
         } catch (error) {
             console.error("Error saving:", error);
-            alert("Error saving changes");
+            toast({
+                title: "Save failed",
+                description: "Error saving changes",
+                variant: "error",
+            });
         }
 
         setSaving(false);
@@ -833,18 +843,30 @@ out center tags 80;
             });
 
             if (response.ok) {
-                alert("Notification sent to client!");
+                toast({
+                    title: "Notification sent",
+                    description: "Update was sent to the client.",
+                    variant: "success",
+                });
                 setNotificationOpen(false);
                 setNotificationBody("");
                 setNotificationEmail("");
                 setUseEmailTarget(false);
             } else {
                 const error = await response.json();
-                alert(`Failed to send notification: ${error.error || "Unknown error"}`);
+                toast({
+                    title: "Notification failed",
+                    description: `Failed to send notification: ${error.error || "Unknown error"}`,
+                    variant: "error",
+                });
             }
         } catch (error) {
             console.error("Error sending notification:", error);
-            alert("Error sending notification");
+            toast({
+                title: "Notification failed",
+                description: "Error sending notification",
+                variant: "error",
+            });
         }
     };
 
@@ -869,7 +891,11 @@ out center tags 80;
 
             const payload = await response.json();
             if (!response.ok) {
-                alert(payload?.error || "Failed to create live location link");
+                toast({
+                    title: "Live link failed",
+                    description: payload?.error || "Failed to create live location link",
+                    variant: "error",
+                });
                 return;
             }
 
@@ -877,11 +903,19 @@ out center tags 80;
             setLiveLocationUrl(url);
             if (url) {
                 await navigator.clipboard.writeText(url);
-                alert("Live location link created and copied to clipboard.");
+                toast({
+                    title: "Live link created",
+                    description: "Live location link created and copied to clipboard.",
+                    variant: "success",
+                });
             }
         } catch (error) {
             console.error("Live location share error:", error);
-            alert("Failed to create live location share");
+            toast({
+                title: "Live link failed",
+                description: "Failed to create live location share",
+                variant: "error",
+            });
         } finally {
             setCreatingLiveLink(false);
         }
@@ -904,14 +938,26 @@ out center tags 80;
 
             const payload = await response.json();
             if (!response.ok) {
-                alert(payload?.error || "Failed to revoke live link");
+                toast({
+                    title: "Revoke failed",
+                    description: payload?.error || "Failed to revoke live link",
+                    variant: "error",
+                });
                 return;
             }
             setLiveLocationUrl("");
-            alert(`Revoked ${payload.revoked || 0} active live link(s)`);
+            toast({
+                title: "Live links revoked",
+                description: `Revoked ${payload.revoked || 0} active live link(s)`,
+                variant: "success",
+            });
         } catch (error) {
             console.error("Revoke live link error:", error);
-            alert("Failed to revoke live link");
+            toast({
+                title: "Revoke failed",
+                description: "Failed to revoke live link",
+                variant: "error",
+            });
         }
     };
 

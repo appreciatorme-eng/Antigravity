@@ -4,6 +4,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ItineraryResult } from '@/types/itinerary';
+import { useToast } from '@/components/ui/toast';
 import {
   downloadItineraryPdf,
   fetchItineraryPdfPreferences,
@@ -29,6 +30,7 @@ export default function PDFDownloadButton({
 }: PDFDownloadButtonProps) {
   const [generating, setGenerating] = useState(false);
   const [template, setTemplate] = useState<ItineraryTemplateId>(DEFAULT_ITINERARY_TEMPLATE);
+  const { toast } = useToast();
 
   useEffect(() => {
     let mounted = true;
@@ -57,7 +59,11 @@ export default function PDFDownloadButton({
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast({
+        title: 'PDF generation failed',
+        description: 'Failed to generate PDF. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setGenerating(false);
     }

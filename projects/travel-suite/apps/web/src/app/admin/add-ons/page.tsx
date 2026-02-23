@@ -20,6 +20,7 @@ import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassModal, GlassConfirmModal } from '@/components/glass/GlassModal';
 import { GlassTextarea, GlassSelect } from '@/components/glass/GlassInput';
+import { useToast } from '@/components/ui/toast';
 
 /**
  * Add-ons Management Page (Upsell Engine)
@@ -63,6 +64,7 @@ const getCategoryColor = (category: string) => {
 };
 
 export default function AddOnsPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const [filteredAddOns, setFilteredAddOns] = useState<AddOn[]>([]);
@@ -279,7 +281,11 @@ export default function AddOnsPage() {
       closeModal();
     } catch (error) {
       console.error('Error saving add-on:', error);
-      alert(error instanceof Error ? error.message : 'Failed to save add-on');
+      toast({
+        title: 'Save failed',
+        description: error instanceof Error ? error.message : 'Failed to save add-on',
+        variant: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -318,7 +324,11 @@ export default function AddOnsPage() {
       setAddOnToDelete(null);
     } catch (error) {
       console.error('Error deleting add-on:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete add-on');
+      toast({
+        title: 'Delete failed',
+        description: error instanceof Error ? error.message : 'Failed to delete add-on',
+        variant: 'error',
+      });
     }
   }
 
@@ -348,7 +358,11 @@ export default function AddOnsPage() {
       await loadData();
     } catch (error) {
       console.error('Error toggling active status:', error);
-      alert('Failed to update add-on status');
+      toast({
+        title: 'Status update failed',
+        description: 'Failed to update add-on status',
+        variant: 'error',
+      });
     }
   }
 

@@ -28,6 +28,7 @@ import ProposalAddOnsManager from '@/components/admin/ProposalAddOnsManager';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
+import { useToast } from '@/components/ui/toast';
 
 interface Proposal {
   id: string;
@@ -80,6 +81,7 @@ export default function AdminProposalViewPage() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
+  const { toast } = useToast();
 
   // Real-time subscription
   const { isSubscribed } = useRealtimeProposal({
@@ -234,8 +236,19 @@ export default function AdminProposalViewPage() {
   function copyShareLink() {
     if (!proposal) return;
     const shareUrl = `${window.location.origin}/p/${proposal.share_token}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Share link copied to clipboard!');
+    void navigator.clipboard.writeText(shareUrl).then(() => {
+      toast({
+        title: 'Share link copied',
+        description: 'Proposal link copied to clipboard.',
+        variant: 'success',
+      });
+    }).catch(() => {
+      toast({
+        title: 'Copy failed',
+        description: 'Unable to copy share link.',
+        variant: 'error',
+      });
+    });
   }
 
   async function markCommentResolved(commentId: string) {
@@ -257,11 +270,13 @@ export default function AdminProposalViewPage() {
     const shareUrl = `${window.location.origin}/p/${proposal.share_token}`;
 
     // For now, just copy link and show instructions
-    navigator.clipboard.writeText(shareUrl);
-
-    alert(
-      `Share link copied to clipboard!\n\nSend this link to your client:\n${shareUrl}\n\n(Email/WhatsApp integration coming soon)`
-    );
+    await navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: 'Share link copied',
+      description: 'Send this link to your client. Email/WhatsApp integration will automate this next.',
+      variant: 'info',
+      durationMs: 7000,
+    });
 
     // Update status to sent
     const supabase = createClient();

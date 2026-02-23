@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/toast';
 
 interface Client {
   id: string;
@@ -46,6 +47,7 @@ interface AddOn {
 
 export default function CreateProposalPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,7 +212,11 @@ export default function CreateProposalPage() {
     const phone = newClient.phone.trim();
 
     if (!fullName || !email) {
-      alert('Name and email are required');
+      toast({
+        title: 'Missing client details',
+        description: 'Name and email are required.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -260,7 +266,11 @@ export default function CreateProposalPage() {
 
   async function handleCreateProposal() {
     if (!selectedClientId || !selectedTemplateId) {
-      alert('Please select both a client and a template');
+      toast({
+        title: 'Selection required',
+        description: 'Please select both a client and a template.',
+        variant: 'warning',
+      });
       return;
     }
 

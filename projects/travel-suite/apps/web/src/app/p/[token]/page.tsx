@@ -17,6 +17,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import Image from 'next/image';
+import { useToast } from '@/components/ui/toast';
+import { z } from 'zod';
 
 interface Proposal {
   id: string;
@@ -98,6 +100,91 @@ interface PublicProposalPayload {
   addOns: ProposalAddOn[];
 }
 
+const ProposalSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  total_price: z.coerce.number(),
+  client_selected_price: z.coerce.number().nullable().optional(),
+  status: z.string(),
+  expires_at: z.string().nullable(),
+  template_name: z.string().optional(),
+  destination: z.string().optional(),
+  duration_days: z.coerce.number().optional(),
+  description: z.string().nullable().optional(),
+  hero_image_url: z.string().nullable().optional(),
+});
+
+const ProposalAddOnSchema = z.object({
+  id: z.string(),
+  proposal_id: z.string(),
+  add_on_id: z.string().nullable(),
+  name: z.string(),
+  description: z.string().nullable(),
+  category: z.string(),
+  image_url: z.string().nullable(),
+  unit_price: z.coerce.number(),
+  quantity: z.coerce.number(),
+  is_selected: z.boolean(),
+});
+
+const ProposalDaySchema = z.object({
+  id: z.string(),
+  proposal_id: z.string(),
+  day_number: z.coerce.number(),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  is_approved: z.boolean(),
+});
+
+const ProposalActivitySchema = z.object({
+  id: z.string(),
+  proposal_day_id: z.string(),
+  time: z.string().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  location: z.string().nullable(),
+  image_url: z.string().nullable(),
+  price: z.coerce.number(),
+  is_optional: z.boolean(),
+  is_premium: z.boolean(),
+  is_selected: z.boolean(),
+  display_order: z.coerce.number(),
+});
+
+const ProposalAccommodationSchema = z.object({
+  id: z.string(),
+  proposal_day_id: z.string(),
+  hotel_name: z.string(),
+  star_rating: z.coerce.number(),
+  room_type: z.string().nullable(),
+  price_per_night: z.coerce.number(),
+  amenities: z.array(z.string()).nullable(),
+  image_url: z.string().nullable(),
+});
+
+const ProposalCommentSchema = z.object({
+  id: z.string(),
+  proposal_day_id: z.string().nullable(),
+  author_name: z.string(),
+  comment: z.string(),
+  created_at: z.string(),
+});
+
+const PublicProposalPayloadSchema = z.object({
+  proposal: ProposalSchema,
+  days: z.array(ProposalDaySchema),
+  activitiesByDay: z.record(z.string(), z.array(ProposalActivitySchema)),
+  accommodationsByDay: z.record(z.string(), ProposalAccommodationSchema),
+  comments: z.array(ProposalCommentSchema),
+  addOns: z.array(ProposalAddOnSchema),
+});
+
+const PublicActionResponseSchema = z.object({
+  error: z.string().optional(),
+  client_selected_price: z.coerce.number().optional(),
+  status: z.string().optional(),
+});
+
 export default function PublicProposalPage() {
   const params = useParams();
   const shareToken = params.token as string;
@@ -120,6 +207,7 @@ export default function PublicProposalPage() {
   const [commentEmail, setCommentEmail] = useState('');
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     void loadProposal();
@@ -133,14 +221,22 @@ export default function PublicProposalPage() {
       const response = await fetch(`/api/proposals/public/${shareToken}`, {
         cache: 'no-store',
       });
-      const payload = (await response.json()) as PublicProposalPayload | { error: string };
+      const rawPayload = await response.json();
 
-      if (!response.ok || !('proposal' in payload)) {
-        setError('error' in payload ? payload.error : 'Proposal not found or link has expired');
+      if (!response.ok) {
+        const errorPayload = z.object({ error: z.string().optional() }).safeParse(rawPayload);
+        setError(errorPayload.success ? errorPayload.data.error || 'Proposal not found or link has expired' : 'Proposal not found or link has expired');
         return;
       }
 
-      const bundle = payload as PublicProposalPayload;
+      const parsed = PublicProposalPayloadSchema.safeParse(rawPayload);
+      if (!parsed.success) {
+        console.error('Invalid proposal payload:', parsed.error.flatten());
+        setError('Invalid proposal data format');
+        return;
+      }
+
+      const bundle = parsed.data as PublicProposalPayload;
       setProposal(bundle.proposal);
       setDays(bundle.days || []);
       setActivities(bundle.activitiesByDay || {});
@@ -172,7 +268,12 @@ export default function PublicProposalPage() {
       body: JSON.stringify(body),
     });
 
-    const payload = (await response.json()) as { error?: string; client_selected_price?: number; status?: string };
+    const rawPayload = await response.json();
+    const parsed = PublicActionResponseSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      throw new Error('Invalid response from server');
+    }
+    const payload = parsed.data;
     if (!response.ok) {
       throw new Error(payload.error || 'Action failed');
     }
@@ -250,7 +351,11 @@ export default function PublicProposalPage() {
 
   async function submitComment() {
     if (!proposal || !commentText.trim() || !commentName.trim()) {
-      alert('Please enter your name and comment');
+      toast({
+        title: 'Missing details',
+        description: 'Please enter your name and comment.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -269,10 +374,18 @@ export default function PublicProposalPage() {
       // Reset form
       setCommentText('');
       setCommentDayId(null);
-      alert('Comment submitted successfully!');
+      toast({
+        title: 'Comment submitted',
+        description: 'Your comment was sent to the operator.',
+        variant: 'success',
+      });
     } catch (error) {
       console.error('Error submitting comment:', error);
-      alert('An error occurred');
+      toast({
+        title: 'Comment failed',
+        description: 'An error occurred while submitting your comment.',
+        variant: 'error',
+      });
     } finally {
       setSubmittingComment(false);
     }
@@ -291,10 +404,18 @@ export default function PublicProposalPage() {
       });
       await loadProposal();
       setProposal((prev) => (prev ? { ...prev, status: 'approved' } : null));
-      alert('✅ Proposal approved! The tour operator will be notified.');
+      toast({
+        title: 'Proposal approved',
+        description: 'The tour operator has been notified.',
+        variant: 'success',
+      });
     } catch (error) {
       console.error('Error approving proposal:', error);
-      alert('Failed to approve proposal');
+      toast({
+        title: 'Approval failed',
+        description: 'Failed to approve proposal',
+        variant: 'error',
+      });
     }
   }
 

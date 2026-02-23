@@ -24,6 +24,7 @@ import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassConfirmModal } from '@/components/glass/GlassModal';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassListSkeleton } from '@/components/glass/GlassSkeleton';
+import { useToast } from '@/components/ui/toast';
 
 interface Proposal {
   id: string;
@@ -61,6 +62,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: BadgeVariant; icon
 };
 
 export default function ProposalsPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,9 +161,18 @@ export default function ProposalsPage() {
 
       if (error) {
         console.error('Error deleting proposal:', error);
-        alert('Failed to delete proposal');
+        toast({
+          title: 'Delete failed',
+          description: 'Failed to delete proposal',
+          variant: 'error',
+        });
       } else {
         loadProposals();
+        toast({
+          title: 'Proposal deleted',
+          description: 'Proposal has been removed.',
+          variant: 'success',
+        });
       }
     } catch (error) {
       console.error('Error deleting proposal:', error);
@@ -172,8 +183,19 @@ export default function ProposalsPage() {
 
   function copyShareLink(shareToken: string) {
     const shareUrl = `${window.location.origin}/p/${shareToken}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Share link copied to clipboard!');
+    void navigator.clipboard.writeText(shareUrl).then(() => {
+      toast({
+        title: 'Share link copied',
+        description: 'Proposal share link copied to clipboard.',
+        variant: 'success',
+      });
+    }).catch(() => {
+      toast({
+        title: 'Copy failed',
+        description: 'Unable to copy share link. Please copy manually.',
+        variant: 'error',
+      });
+    });
   }
 
   const filteredProposals = proposals.filter((proposal) => {

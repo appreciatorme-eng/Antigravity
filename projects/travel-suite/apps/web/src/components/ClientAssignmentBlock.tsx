@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User, Check, ChevronDown, UserPlus, X, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 interface Client {
     id: string;
@@ -30,6 +31,7 @@ export default function ClientAssignmentBlock({ itineraryId, initialClientId }: 
     const [newClientName, setNewClientName] = useState("");
     const [newClientEmail, setNewClientEmail] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { toast } = useToast();
 
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -156,7 +158,11 @@ export default function ClientAssignmentBlock({ itineraryId, initialClientId }: 
             }
         } catch (error) {
             console.error("Failed to create new client", error);
-            alert("Failed to create client. You may need Administrator permissions.");
+            toast({
+                title: "Client creation failed",
+                description: "Failed to create client. You may need Administrator permissions.",
+                variant: "error",
+            });
         } finally {
             setIsSubmitting(false);
         }

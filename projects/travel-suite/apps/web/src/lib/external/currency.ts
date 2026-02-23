@@ -8,6 +8,7 @@
  * @see https://www.frankfurter.app/docs/
  */
 import { fetchWithRetry } from "@/lib/network/retry";
+import { z } from "zod";
 
 export interface ExchangeRates {
     base: string;
@@ -23,6 +24,21 @@ export interface ConversionResult {
     rate: number;
     date: string;
 }
+
+const FrankfurterRatesSchema = z.object({
+    base: z.string().min(3),
+    date: z.string(),
+    rates: z.record(z.string(), z.number()),
+});
+
+const FrankfurterConversionSchema = z.object({
+    amount: z.number(),
+    base: z.string().min(3),
+    date: z.string(),
+    rates: z.record(z.string(), z.number()),
+});
+
+const FrankfurterCurrenciesSchema = z.record(z.string(), z.string());
 
 // Common currency symbols
 const currencySymbols: Record<string, string> = {
@@ -76,11 +92,16 @@ export async function getExchangeRates(baseCurrency: string = "USD"): Promise<Ex
         }
 
         const data = await response.json();
+        const parsed = FrankfurterRatesSchema.safeParse(data);
+        if (!parsed.success) {
+            console.error("Invalid exchange rate payload:", parsed.error.flatten());
+            return null;
+        }
 
         return {
-            base: data.base,
-            date: data.date,
-            rates: data.rates,
+            base: parsed.data.base,
+            date: parsed.data.date,
+            rates: parsed.data.rates,
         };
     } catch (error) {
         console.error(`Exchange rate fetch error:`, error);
@@ -124,14 +145,25 @@ export async function convertCurrency(
         }
 
         const data = await response.json();
+        const parsed = FrankfurterConversionSchema.safeParse(data);
+        if (!parsed.success) {
+            console.error("Invalid conversion payload:", parsed.error.flatten());
+            return null;
+        }
+
+        const resultAmount = parsed.data.rates[to];
+        if (typeof resultAmount !== "number" || !Number.isFinite(resultAmount)) {
+            console.error(`Conversion payload missing target currency: ${to}`);
+            return null;
+        }
 
         return {
-            from: data.base,
+            from: parsed.data.base,
             to,
-            amount: data.amount,
-            result: data.rates[to],
-            rate: data.rates[to] / data.amount,
-            date: data.date,
+            amount: parsed.data.amount,
+            result: resultAmount,
+            rate: resultAmount / parsed.data.amount,
+            date: parsed.data.date,
         };
     } catch (error) {
         console.error(`Currency conversion error:`, error);
@@ -155,7 +187,14 @@ export async function getAvailableCurrencies(): Promise<Record<string, string> |
             return null;
         }
 
-        return await response.json();
+        const data = await response.json();
+        const parsed = FrankfurterCurrenciesSchema.safeParse(data);
+        if (!parsed.success) {
+            console.error("Invalid currencies payload:", parsed.error.flatten());
+            return null;
+        }
+
+        return parsed.data;
     } catch (error) {
         console.error(`Currencies list error:`, error);
         return null;

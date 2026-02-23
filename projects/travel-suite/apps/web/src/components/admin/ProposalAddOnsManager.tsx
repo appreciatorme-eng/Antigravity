@@ -16,6 +16,7 @@ import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassModal } from '@/components/glass/GlassModal';
+import { useToast } from '@/components/ui/toast';
 
 interface AddOn {
   id: string;
@@ -69,6 +70,7 @@ export default function ProposalAddOnsManager({
   const [modalOpen, setModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const { toast } = useToast();
 
   useEffect(() => {
     void loadData();
@@ -171,7 +173,11 @@ export default function ProposalAddOnsManager({
 
       if (error) {
         console.error('Error adding add-on:', error);
-        alert('Failed to add add-on');
+        toast({
+          title: 'Add-on add failed',
+          description: 'Failed to add add-on',
+          variant: 'error',
+        });
         return;
       }
 
@@ -200,7 +206,11 @@ export default function ProposalAddOnsManager({
 
       if (error) {
         console.error('Error removing add-on:', error);
-        alert('Failed to remove add-on');
+        toast({
+          title: 'Add-on removal failed',
+          description: 'Failed to remove add-on',
+          variant: 'error',
+        });
         return;
       }
 
@@ -234,7 +244,11 @@ export default function ProposalAddOnsManager({
 
       if (error) {
         console.error('Error updating add-on:', error);
-        alert('Failed to update add-on selection');
+        toast({
+          title: 'Selection update failed',
+          description: 'Failed to update add-on selection',
+          variant: 'error',
+        });
         return;
       }
 

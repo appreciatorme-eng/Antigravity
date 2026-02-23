@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Send, Check, Phone } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface ShareItineraryProps {
     tripTitle: string;
@@ -13,6 +14,7 @@ export default function ShareItinerary({ tripTitle }: ShareItineraryProps) {
     const [phoneNumber, setPhoneNumber] = useState("");
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
+    const { toast } = useToast();
 
     const handleSend = async () => {
         if (!phoneNumber) return;
@@ -30,17 +32,30 @@ export default function ShareItinerary({ tripTitle }: ShareItineraryProps) {
 
             if (res.ok) {
                 setSent(true);
+                toast({
+                    title: "Itinerary shared",
+                    description: "Message sent successfully.",
+                    variant: "success",
+                });
                 setTimeout(() => {
                     setSent(false);
                     setIsOpen(false);
                     setPhoneNumber("");
                 }, 3000);
             } else {
-                alert("Failed to send. Check console.");
+                toast({
+                    title: "Send failed",
+                    description: "Failed to send. Check console.",
+                    variant: "error",
+                });
             }
         } catch (e) {
             console.error(e);
-            alert("Error sending message");
+            toast({
+                title: "Send failed",
+                description: "Error sending message",
+                variant: "error",
+            });
         } finally {
             setLoading(false);
         }

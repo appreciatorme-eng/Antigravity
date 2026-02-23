@@ -21,6 +21,7 @@ import {
     normalizeItineraryTemplateId,
     type ItineraryTemplateId,
 } from "@/components/pdf/itinerary-types";
+import { useToast } from "@/components/ui/toast";
 
 interface Organization {
     id: string;
@@ -65,6 +66,7 @@ const isMissingColumnError = (error: unknown, column: string): boolean => {
 
 export default function SettingsPage() {
     const supabase = createClient();
+    const { toast } = useToast();
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -141,9 +143,18 @@ export default function SettingsPage() {
 
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
+            toast({
+                title: "Settings saved",
+                description: "Organization settings were updated.",
+                variant: "success",
+            });
         } catch (error) {
             console.error("Error saving settings:", error);
-            alert("Failed to save settings. Please try again.");
+            toast({
+                title: "Save failed",
+                description: "Failed to save settings. Please try again.",
+                variant: "error",
+            });
         } finally {
             setSaving(false);
         }
@@ -180,9 +191,18 @@ export default function SettingsPage() {
 
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
+            toast({
+                title: "Workflow rules saved",
+                description: "Lifecycle notification rules were updated.",
+                variant: "success",
+            });
         } catch (error) {
             console.error("Error saving workflow rules:", error);
-            alert(error instanceof Error ? error.message : "Failed to save workflow rules");
+            toast({
+                title: "Workflow save failed",
+                description: error instanceof Error ? error.message : "Failed to save workflow rules",
+                variant: "error",
+            });
         } finally {
             setRulesSaving(false);
         }

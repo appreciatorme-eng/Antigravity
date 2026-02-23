@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Loader2, Download } from 'lucide-react';
 import type { ItineraryResult } from '@/types/itinerary';
+import { useToast } from '@/components/ui/toast';
 
 interface DownloadPDFButtonProps {
   data: ItineraryResult;
@@ -11,6 +12,7 @@ interface DownloadPDFButtonProps {
 
 const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName }) => {
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleDownload = async () => {
     if (loading) return;
@@ -96,7 +98,11 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
       } else {
         errorMessage = String(error);
       }
-      alert(`Failed to generate PDF: ${errorMessage}\nPlease try again.`);
+      toast({
+        title: 'PDF generation failed',
+        description: `Failed to generate PDF: ${errorMessage}`,
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }

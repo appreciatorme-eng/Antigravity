@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Sparkles, MapPin, Calendar, User, Upload, Link as LinkIcon, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
+import { useToast } from "@/components/ui/toast";
 
 interface Client {
     id: string;
@@ -23,6 +24,7 @@ interface CreateTripModalProps {
 
 export default function CreateTripModal({ open, onOpenChange, onSuccess }: CreateTripModalProps) {
     const supabase = createClient();
+    const { toast } = useToast();
 
     // Form State
     const [clientId, setClientId] = useState("");
@@ -110,7 +112,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
         } catch (error) {
             console.error("AI Generation Error:", error);
-            alert(error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.");
+            toast({
+                title: "Generation failed",
+                description: error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.",
+                variant: "error",
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -132,7 +138,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setGeneratedData(data.itinerary as ItineraryResult);
         } catch (error) {
             console.error("URL Import Error:", error);
-            alert(error instanceof Error ? error.message : "Failed to import from URL.");
+            toast({
+                title: "URL import failed",
+                description: error instanceof Error ? error.message : "Failed to import from URL.",
+                variant: "error",
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -156,7 +166,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setGeneratedData(data.itinerary as ItineraryResult);
         } catch (error) {
             console.error("PDF Import Error:", error);
-            alert(error instanceof Error ? error.message : "Failed to parse PDF.");
+            toast({
+                title: "PDF import failed",
+                description: error instanceof Error ? error.message : "Failed to parse PDF.",
+                variant: "error",
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -164,7 +178,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
     const handleCreateTrip = async () => {
         if (!clientId || !startDate || !endDate) {
-            alert("Please fill in all required fields (Client and Dates)");
+            toast({
+                title: "Missing required fields",
+                description: "Please fill in all required fields (Client and Dates).",
+                variant: "warning",
+            });
             return;
         }
 
@@ -198,10 +216,19 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
             onSuccess();
             onOpenChange(false);
+            toast({
+                title: "Trip created",
+                description: "Trip was created successfully.",
+                variant: "success",
+            });
 
         } catch (error) {
             console.error("Error creating trip:", error);
-            alert(error instanceof Error ? error.message : "Failed to create trip. Please try again.");
+            toast({
+                title: "Trip creation failed",
+                description: error instanceof Error ? error.message : "Failed to create trip. Please try again.",
+                variant: "error",
+            });
         } finally {
             setCreating(false);
         }

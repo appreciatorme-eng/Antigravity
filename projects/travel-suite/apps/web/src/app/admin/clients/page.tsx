@@ -21,6 +21,7 @@ import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { useToast } from "@/components/ui/toast";
 
 interface Client {
     id: string;
@@ -72,6 +73,7 @@ const LIFECYCLE_STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> 
 
 export default function ClientsPage() {
     const supabase = createClient();
+    const { toast } = useToast();
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -275,7 +277,11 @@ export default function ClientsPage() {
 
             setClients((prev) => prev.filter((client) => client.id !== clientId));
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to delete client");
+            toast({
+                title: "Delete failed",
+                description: error instanceof Error ? error.message : "Failed to delete client",
+                variant: "error",
+            });
         }
     };
 
@@ -305,7 +311,11 @@ export default function ClientsPage() {
                 )));
             }
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to update role");
+            toast({
+                title: "Role update failed",
+                description: error instanceof Error ? error.message : "Failed to update role",
+                variant: "error",
+            });
         } finally {
             setRoleUpdatingId(null);
         }
@@ -333,7 +343,11 @@ export default function ClientsPage() {
                 client.id === clientId ? { ...client, lifecycle_stage: lifecycleStage } : client
             )));
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to update lifecycle stage");
+            toast({
+                title: "Lifecycle update failed",
+                description: error instanceof Error ? error.message : "Failed to update lifecycle stage",
+                variant: "error",
+            });
         } finally {
             setStageUpdatingId(null);
         }
@@ -361,7 +375,11 @@ export default function ClientsPage() {
                 client.id === clientId ? { ...client, client_tag: clientTag } : client
             )));
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to update client tag");
+            toast({
+                title: "Tag update failed",
+                description: error instanceof Error ? error.message : "Failed to update client tag",
+                variant: "error",
+            });
         } finally {
             setTagUpdatingId(null);
         }

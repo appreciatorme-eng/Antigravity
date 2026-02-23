@@ -6,6 +6,7 @@ import { MapPin, Calendar, Wallet, ArrowRight, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
 
 interface Trip {
     id: string;
@@ -56,6 +57,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
     const supabase = createClient();
     const [items, setItems] = useState<Trip[]>(trips);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const { toast } = useToast();
 
     const handleDelete = async (e: React.MouseEvent, tripId: string) => {
         e.preventDefault(); // don't navigate to trip page
@@ -68,7 +70,11 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
         if (!error) {
             setItems((prev) => prev.filter((t) => t.id !== tripId));
         } else {
-            alert("Failed to delete trip. Please try again.");
+            toast({
+                title: "Delete failed",
+                description: "Failed to delete trip. Please try again.",
+                variant: "error",
+            });
         }
         setDeleting(null);
     };

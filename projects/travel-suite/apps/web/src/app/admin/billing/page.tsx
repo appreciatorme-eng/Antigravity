@@ -7,6 +7,8 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
+import { z } from "zod";
 
 interface Subscription {
   id: string;
@@ -36,6 +38,45 @@ interface Invoice {
     email: string;
   };
 }
+
+const SubscriptionSchema = z.object({
+  id: z.string(),
+  plan_id: z.string(),
+  status: z.string(),
+  billing_cycle: z.string(),
+  amount: z.coerce.number(),
+  gst_amount: z.coerce.number(),
+  total_amount: z.coerce.number(),
+  current_period_end: z.string(),
+  cancel_at_period_end: z.boolean(),
+});
+
+const InvoiceSchema = z.object({
+  id: z.string(),
+  amount: z.coerce.number(),
+  subtotal: z.coerce.number(),
+  cgst: z.coerce.number(),
+  sgst: z.coerce.number(),
+  igst: z.coerce.number(),
+  currency: z.string(),
+  status: z.string(),
+  due_date: z.string(),
+  created_at: z.string(),
+  clients: z
+    .object({
+      name: z.string(),
+      email: z.string(),
+    })
+    .optional(),
+});
+
+const SubscriptionResponseSchema = z.object({
+  subscription: SubscriptionSchema.nullish(),
+});
+
+const InvoicesResponseSchema = z.object({
+  invoices: z.array(InvoiceSchema).default([]),
+});
 
 const plans = [
   {
@@ -125,6 +166,7 @@ export default function BillingPage() {
   const [upgrading, setUpgrading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -137,14 +179,24 @@ export default function BillingPage() {
       const subRes = await fetch("/api/subscriptions");
       if (subRes.ok) {
         const subData = await subRes.json();
-        setSubscription(subData.subscription);
+        const parsed = SubscriptionResponseSchema.safeParse(subData);
+        if (parsed.success) {
+          setSubscription((parsed.data.subscription as Subscription | null) || null);
+        } else {
+          console.error("Invalid subscriptions payload:", parsed.error.flatten());
+        }
       }
 
       // Load invoices
       const invRes = await fetch("/api/invoices?limit=10");
       if (invRes.ok) {
         const invData = await invRes.json();
-        setInvoices(invData.invoices || []);
+        const parsed = InvoicesResponseSchema.safeParse(invData);
+        if (parsed.success) {
+          setInvoices(parsed.data.invoices as Invoice[]);
+        } else {
+          console.error("Invalid invoices payload:", parsed.error.flatten());
+        }
       }
     } catch (error) {
       console.error("Error loading billing data:", error);
@@ -171,14 +223,26 @@ export default function BillingPage() {
         await loadData();
         setShowUpgradeModal(false);
         setSelectedPlan(null);
-        // TODO: Show success message
+        toast({
+          title: "Subscription updated",
+          description: "Your plan has been updated successfully.",
+          variant: "success",
+        });
       } else {
         const error = await response.json();
-        alert(`Failed to upgrade: ${error.error}`);
+        toast({
+          title: "Upgrade failed",
+          description: `Failed to upgrade: ${error.error}`,
+          variant: "error",
+        });
       }
     } catch (error) {
       console.error("Error upgrading subscription:", error);
-      alert("Failed to upgrade subscription. Please try again.");
+      toast({
+        title: "Upgrade failed",
+        description: "Failed to upgrade subscription. Please try again.",
+        variant: "error",
+      });
     } finally {
       setUpgrading(false);
     }
@@ -198,14 +262,26 @@ export default function BillingPage() {
       if (response.ok) {
         await loadData();
         setShowCancelModal(false);
-        // TODO: Show success message
+        toast({
+          title: "Cancellation scheduled",
+          description: "Subscription will cancel at the end of the current period.",
+          variant: "success",
+        });
       } else {
         const error = await response.json();
-        alert(`Failed to cancel: ${error.error}`);
+        toast({
+          title: "Cancellation failed",
+          description: `Failed to cancel: ${error.error}`,
+          variant: "error",
+        });
       }
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      alert("Failed to cancel subscription. Please try again.");
+      toast({
+        title: "Cancellation failed",
+        description: "Failed to cancel subscription. Please try again.",
+        variant: "error",
+      });
     } finally {
       setCancelling(false);
     }

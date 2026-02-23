@@ -11,6 +11,7 @@ import { useState } from 'react';
 import DraggableActivity from './DraggableActivity';
 import { reorderActivities } from '@/lib/activities/reorder';
 import { X, Clock, DollarSign, MapPin } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 interface Activity {
   id: string;
@@ -54,6 +55,7 @@ export default function ActivityList({
   editable = true,
 }: ActivityListProps) {
   const [isReordering, setIsReordering] = useState(false);
+  const { toast } = useToast();
 
   const handleReorder = async (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
@@ -69,7 +71,11 @@ export default function ActivityList({
     );
 
     if (!result.success) {
-      alert(`Failed to reorder: ${result.error}`);
+      toast({
+        title: 'Failed to reorder activities',
+        description: result.error || 'Unknown error',
+        variant: 'error',
+      });
     }
 
     setIsReordering(false);

@@ -6,6 +6,7 @@
  * @see https://open-meteo.com
  */
 import { fetchWithRetry } from "@/lib/network/retry";
+import { z } from "zod";
 
 export interface WeatherForecast {
     date: string;
@@ -56,6 +57,28 @@ const weatherCodeDescriptions: Record<number, string> = {
     99: "Thunderstorm with heavy hail",
 };
 
+const OpenMeteoGeocodeSchema = z.object({
+    results: z
+        .array(
+            z.object({
+                latitude: z.number(),
+                longitude: z.number(),
+                name: z.string(),
+            })
+        )
+        .optional(),
+});
+
+const OpenMeteoForecastSchema = z.object({
+    daily: z.object({
+        time: z.array(z.string()),
+        temperature_2m_max: z.array(z.number()),
+        temperature_2m_min: z.array(z.number()),
+        precipitation_sum: z.array(z.number()),
+        weathercode: z.array(z.number()),
+    }),
+});
+
 /**
  * Geocode a location name to get coordinates
  */
@@ -73,13 +96,18 @@ async function geocodeLocation(locationName: string): Promise<{ lat: number; lon
         }
 
         const data = await response.json();
+        const parsed = OpenMeteoGeocodeSchema.safeParse(data);
+        if (!parsed.success) {
+            console.error(`Invalid geocoding payload for ${locationName}:`, parsed.error.flatten());
+            return null;
+        }
 
-        if (!data.results || data.results.length === 0) {
+        if (!parsed.data.results || parsed.data.results.length === 0) {
             console.warn(`No geocoding results for: ${locationName}`);
             return null;
         }
 
-        const result = data.results[0];
+        const result = parsed.data.results[0];
         return {
             lat: result.latitude,
             lon: result.longitude,
@@ -112,19 +140,31 @@ async function fetchWeatherForecast(
         }
 
         const data = await response.json();
-
-        if (!data.daily) {
+        const parsed = OpenMeteoForecastSchema.safeParse(data);
+        if (!parsed.success) {
+            console.error("Invalid weather payload:", parsed.error.flatten());
             return [];
         }
 
+        const daily = parsed.data.daily;
+        const lengths = [
+            daily.time.length,
+            daily.temperature_2m_max.length,
+            daily.temperature_2m_min.length,
+            daily.precipitation_sum.length,
+            daily.weathercode.length,
+        ];
+        const minLength = Math.min(...lengths);
+        if (minLength === 0) return [];
+
         const forecasts: WeatherForecast[] = [];
-        for (let i = 0; i < data.daily.time.length; i++) {
-            const code = data.daily.weathercode[i];
+        for (let i = 0; i < minLength; i++) {
+            const code = daily.weathercode[i];
             forecasts.push({
-                date: data.daily.time[i],
-                tempMax: Math.round(data.daily.temperature_2m_max[i]),
-                tempMin: Math.round(data.daily.temperature_2m_min[i]),
-                precipitation: data.daily.precipitation_sum[i],
+                date: daily.time[i],
+                tempMax: Math.round(daily.temperature_2m_max[i]),
+                tempMin: Math.round(daily.temperature_2m_min[i]),
+                precipitation: daily.precipitation_sum[i],
                 weatherCode: code,
                 weatherDescription: weatherCodeDescriptions[code] || "Unknown",
             });

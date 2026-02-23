@@ -11,6 +11,7 @@ import { Download, Mail, Loader2 } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { ProposalDocument } from './ProposalDocument';
 import { GlassButton } from '../glass/GlassButton';
+import { useToast } from '@/components/ui/toast';
 
 interface ProposalPDFButtonProps {
   proposalId: string;
@@ -29,6 +30,7 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const { toast } = useToast();
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -52,7 +54,11 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast({
+        title: 'PDF generation failed',
+        description: 'Failed to generate PDF. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setDownloading(false);
     }
@@ -60,7 +66,11 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
 
   const handleEmail = async () => {
     if (!clientEmail) {
-      alert('Client email not available');
+      toast({
+        title: 'Email unavailable',
+        description: 'Client email not available.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -75,39 +85,52 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
       ).toBlob();
 
       // Convert blob to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          const encoded = base64data.split(',')[1];
+          if (!encoded) {
+            reject(new Error('Failed to encode PDF blob'));
+            return;
+          }
+          resolve(encoded);
+        };
+        reader.onerror = () => {
+          reject(new Error('Failed to read PDF blob'));
+        };
+      });
 
-      reader.onloadend = async () => {
-        const base64data = reader.result as string;
-        const base64 = base64data.split(',')[1];
+      // Send email via API
+      const response = await fetch('/api/proposals/send-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposal_id: proposalId,
+          client_email: clientEmail,
+          pdf_base64: base64,
+          proposal_title: proposalData.title,
+        }),
+      });
 
-        // Send email via API
-        const response = await fetch('/api/proposals/send-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            proposal_id: proposalId,
-            client_email: clientEmail,
-            pdf_base64: base64,
-            proposal_title: proposalData.title,
-          }),
+      if (response.ok) {
+        toast({
+          title: 'PDF emailed',
+          description: `PDF sent successfully to ${clientEmail}.`,
+          variant: 'success',
         });
-
-        if (response.ok) {
-          alert(`PDF sent successfully to ${clientEmail}!`);
-        } else {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to send email');
-        }
-      };
-
-      reader.onerror = () => {
-        throw new Error('Failed to read PDF blob');
-      };
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send email');
+      }
     } catch (error) {
       console.error('Error emailing PDF:', error);
-      alert('Failed to send PDF via email. Please try again.');
+      toast({
+        title: 'Email failed',
+        description: 'Failed to send PDF via email. Please try again.',
+        variant: 'error',
+      });
     } finally {
       setEmailing(false);
     }

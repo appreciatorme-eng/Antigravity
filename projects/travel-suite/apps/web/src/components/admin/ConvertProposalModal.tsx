@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, CheckCircle } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface ConvertProposalModalProps {
     open: boolean;
@@ -23,10 +24,15 @@ export default function ConvertProposalModal({
 }: ConvertProposalModalProps) {
     const [startDate, setStartDate] = useState("");
     const [converting, setConverting] = useState(false);
+    const { toast } = useToast();
 
     const handleConvert = async () => {
         if (!startDate) {
-            alert("Please select a start date for the trip.");
+            toast({
+                title: "Start date required",
+                description: "Please select a start date for the trip.",
+                variant: "warning",
+            });
             return;
         }
 
@@ -48,9 +54,18 @@ export default function ConvertProposalModal({
 
             onSuccess(data.tripId);
             onOpenChange(false);
+            toast({
+                title: "Proposal converted",
+                description: "Trip was created successfully.",
+                variant: "success",
+            });
         } catch (error) {
             console.error("Error converting proposal:", error);
-            alert(error instanceof Error ? error.message : "Failed to convert proposal");
+            toast({
+                title: "Conversion failed",
+                description: error instanceof Error ? error.message : "Failed to convert proposal",
+                variant: "error",
+            });
         } finally {
             setConverting(false);
         }

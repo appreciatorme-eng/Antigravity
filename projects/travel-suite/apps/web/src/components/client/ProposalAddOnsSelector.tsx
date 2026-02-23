@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
+import { useToast } from '@/components/ui/toast';
 
 interface ProposalAddOn {
   id: string;
@@ -50,6 +51,7 @@ export default function ProposalAddOnsSelector({
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [proposalAddOns, setProposalAddOns] = useState<ProposalAddOn[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     void loadAddOns();
@@ -126,7 +128,11 @@ export default function ProposalAddOnsSelector({
 
       if (error) {
         console.error('Error updating add-on:', error);
-        alert('Failed to update selection');
+        toast({
+          title: 'Selection update failed',
+          description: 'Failed to update selection',
+          variant: 'error',
+        });
         return;
       }
 
