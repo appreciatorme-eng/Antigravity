@@ -1,17 +1,36 @@
-export type NotificationTemplateKey =
-    | "pickup_reminder_client"
-    | "pickup_reminder_driver"
-    | "trip_delay_update"
-    | "driver_reassigned"
-    | "payment_confirmed"
-    | "lifecycle_lead"
-    | "lifecycle_prospect"
-    | "lifecycle_proposal"
-    | "lifecycle_payment_pending"
-    | "lifecycle_payment_confirmed"
-    | "lifecycle_active"
-    | "lifecycle_review"
-    | "lifecycle_past";
+export const NOTIFICATION_TEMPLATE_KEYS = [
+    "pickup_reminder_client",
+    "pickup_reminder_driver",
+    "trip_delay_update",
+    "driver_reassigned",
+    "payment_confirmed",
+    "lifecycle_lead",
+    "lifecycle_prospect",
+    "lifecycle_proposal",
+    "lifecycle_payment_pending",
+    "lifecycle_payment_confirmed",
+    "lifecycle_active",
+    "lifecycle_review",
+    "lifecycle_past",
+] as const;
+
+export type NotificationTemplateKey = (typeof NOTIFICATION_TEMPLATE_KEYS)[number];
+
+export const NOTIFICATION_TEMPLATE_LABELS: Record<NotificationTemplateKey, string> = {
+    pickup_reminder_client: "Pickup Reminder (Client)",
+    pickup_reminder_driver: "Pickup Reminder (Driver)",
+    trip_delay_update: "Trip Delay Update",
+    driver_reassigned: "Driver Reassigned",
+    payment_confirmed: "Payment Confirmed",
+    lifecycle_lead: "Lifecycle: Lead",
+    lifecycle_prospect: "Lifecycle: Prospect",
+    lifecycle_proposal: "Lifecycle: Proposal",
+    lifecycle_payment_pending: "Lifecycle: Payment Pending",
+    lifecycle_payment_confirmed: "Lifecycle: Payment Confirmed",
+    lifecycle_active: "Lifecycle: Active",
+    lifecycle_review: "Lifecycle: Review Request",
+    lifecycle_past: "Lifecycle: Closed",
+};
 
 export interface TemplateVars {
     pickup_time?: string;

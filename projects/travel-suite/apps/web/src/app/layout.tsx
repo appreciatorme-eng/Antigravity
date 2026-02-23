@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/print.css";
 import NavHeader from "@/components/layout/NavHeader";
+import AppProviders from "@/components/providers/AppProviders";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -36,8 +37,10 @@ export default function RootLayout({
       <body
         className={`${cormorant.variable} ${poppins.variable} ${inter.variable} antialiased font-sans`}
       >
-        <NavHeader />
-        <main>{children}</main>
+        <AppProviders>
+          <NavHeader />
+          <main>{children}</main>
+        </AppProviders>
       </body>
     </html>
   );
