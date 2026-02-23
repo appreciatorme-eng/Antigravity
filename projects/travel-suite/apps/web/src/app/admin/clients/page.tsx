@@ -49,6 +49,29 @@ interface Client {
     trips_count?: number;
 }
 
+interface FeatureLimitSnapshot {
+    allowed: boolean;
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    tier: string;
+    resetAt: string | null;
+}
+
+function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (payload?.code !== "FEATURE_LIMIT_EXCEEDED") {
+        return fallback;
+    }
+
+    const limit = Number(payload?.limit || 0);
+    const used = Number(payload?.used || 0);
+    const feature = String(payload?.feature || "usage");
+    if (limit > 0) {
+        return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
+    }
+    return payload?.error || fallback;
+}
+
 const LIFECYCLE_STAGES = [
     "lead",
     "prospect",
@@ -84,6 +107,7 @@ export default function ClientsPage() {
     const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
     const [stageUpdatingId, setStageUpdatingId] = useState<string | null>(null);
     const [tagUpdatingId, setTagUpdatingId] = useState<string | null>(null);
+    const [clientLimit, setClientLimit] = useState<FeatureLimitSnapshot | null>(null);
     const [formData, setFormData] = useState({
         full_name: "",
         email: "",
@@ -113,6 +137,30 @@ export default function ClientsPage() {
             if (session?.access_token) {
                 headers.Authorization = `Bearer ${session.access_token}`;
             }
+
+            void (async () => {
+                try {
+                    const limitsResponse = await fetch("/api/subscriptions/limits", {
+                        headers,
+                        cache: "no-store",
+                    });
+                    if (!limitsResponse.ok) return;
+                    const payload = await limitsResponse.json();
+                    const limit = payload?.limits?.clients;
+                    if (!limit) return;
+                    setClientLimit({
+                        allowed: Boolean(limit.allowed),
+                        used: Number(limit.used || 0),
+                        limit: limit.limit === null ? null : Number(limit.limit || 0),
+                        remaining: limit.remaining === null ? null : Number(limit.remaining || 0),
+                        tier: String(limit.tier || "free"),
+                        resetAt: limit.resetAt || null,
+                    });
+                } catch {
+                    // best-effort only
+                }
+            })();
+
             const response = await fetch("/api/admin/clients", { headers });
 
             if (!response.ok) {
@@ -242,8 +290,13 @@ export default function ClientsPage() {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || `Failed to ${editingClientId ? 'update' : 'create'} client`);
+                const payload = await response.json();
+                throw new Error(
+                    formatFeatureLimitError(
+                        payload,
+                        payload.error || `Failed to ${editingClientId ? "update" : "create"} client`
+                    )
+                );
             }
 
             await fetchClients();
@@ -385,6 +438,9 @@ export default function ClientsPage() {
         }
     };
 
+    const visibleClientLimit =
+        clientLimit && clientLimit.limit !== null ? clientLimit : null;
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             {/* Header */}
@@ -417,6 +473,43 @@ export default function ClientsPage() {
                     </GlassButton>
                 </div>
             </div>
+
+            {visibleClientLimit && (
+                <div className={`rounded-xl border p-4 flex items-center justify-between gap-3 ${
+                    visibleClientLimit.allowed
+                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                        : "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
+                }`}>
+                    <div>
+                        <p className={`text-sm font-medium ${
+                            visibleClientLimit.allowed
+                                ? "text-emerald-900 dark:text-emerald-200"
+                                : "text-amber-900 dark:text-amber-200"
+                        }`}>
+                            Client usage: {visibleClientLimit.used}/{visibleClientLimit.limit}
+                        </p>
+                        <p className={`text-xs mt-1 ${
+                            visibleClientLimit.allowed
+                                ? "text-emerald-700 dark:text-emerald-300"
+                                : "text-amber-700 dark:text-amber-300"
+                        }`}>
+                            {visibleClientLimit.allowed
+                                ? `${visibleClientLimit.remaining ?? 0} client slots remaining on your ${visibleClientLimit.tier} plan.`
+                                : "Client limit reached. Upgrade your plan to add more clients."}
+                        </p>
+                    </div>
+                    <Link
+                        href="/admin/billing"
+                        className={`text-sm font-medium hover:underline ${
+                            visibleClientLimit.allowed
+                                ? "text-emerald-800 dark:text-emerald-300"
+                                : "text-amber-800 dark:text-amber-300"
+                        }`}
+                    >
+                        Open Billing
+                    </Link>
+                </div>
+            )}
 
             {/* Create Client Modal */}
             <GlassModal

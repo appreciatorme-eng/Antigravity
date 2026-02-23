@@ -4,6 +4,9 @@ export const NOTIFICATION_TEMPLATE_KEYS = [
     "trip_delay_update",
     "driver_reassigned",
     "payment_confirmed",
+    "post_trip_review_day1",
+    "post_trip_referral_day7",
+    "post_trip_reengage_day30",
     "lifecycle_lead",
     "lifecycle_prospect",
     "lifecycle_proposal",
@@ -22,6 +25,9 @@ export const NOTIFICATION_TEMPLATE_LABELS: Record<NotificationTemplateKey, strin
     trip_delay_update: "Trip Delay Update",
     driver_reassigned: "Driver Reassigned",
     payment_confirmed: "Payment Confirmed",
+    post_trip_review_day1: "Post-Trip: Review Request (Day 1)",
+    post_trip_referral_day7: "Post-Trip: Referral Request (Day 7)",
+    post_trip_reengage_day30: "Post-Trip: Re-engage (Day 30)",
     lifecycle_lead: "Lifecycle: Lead",
     lifecycle_prospect: "Lifecycle: Prospect",
     lifecycle_proposal: "Lifecycle: Proposal",
@@ -90,6 +96,21 @@ export function renderTemplate(template: NotificationTemplateKey, vars: Template
             return {
                 title: "Payment Confirmed",
                 body: `Hi ${clientName}, your payment is confirmed. Your booking is secured and trip operations will proceed as scheduled.`,
+            };
+        case "post_trip_review_day1":
+            return {
+                title: "How Was Your Trip?",
+                body: `Hi ${clientName}, we hope you enjoyed ${tripTitle}. We'd love your quick feedback while your experience is still fresh.`,
+            };
+        case "post_trip_referral_day7":
+            return {
+                title: "Know Someone Planning a Trip?",
+                body: `Hi ${clientName}, if you know anyone planning travel to ${destination}, we'd be grateful for a referral.`,
+            };
+        case "post_trip_reengage_day30":
+            return {
+                title: "Ready for Your Next Journey?",
+                body: `Hi ${clientName}, it's been a month since ${tripTitle}. If you'd like, we can start planning your next trip.`,
             };
         case "lifecycle_lead":
             return {
@@ -179,6 +200,24 @@ export function renderWhatsAppTemplate(
         case "payment_confirmed":
             return {
                 name: process.env.WHATSAPP_TEMPLATE_PAYMENT_CONFIRMED || "payment_confirmed_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "post_trip_review_day1":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_FOLLOWUP_REVIEW || "post_trip_review_day1_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "post_trip_referral_day7":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_FOLLOWUP_REFERRAL || "post_trip_referral_day7_v1",
+                languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+                bodyParams: [clientName, destination],
+            };
+        case "post_trip_reengage_day30":
+            return {
+                name: process.env.WHATSAPP_TEMPLATE_FOLLOWUP_REENGAGE || "post_trip_reengage_day30_v1",
                 languageCode: process.env.WHATSAPP_TEMPLATE_LANG || "en",
                 bodyParams: [clientName, destination],
             };

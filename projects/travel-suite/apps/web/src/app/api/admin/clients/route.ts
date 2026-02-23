@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
 const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
@@ -17,6 +18,24 @@ const lifecycleTemplateByStage: Record<string, string> = {
     review: "lifecycle_review",
     past: "lifecycle_past",
 };
+
+function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof getFeatureLimitStatus>>) {
+    return NextResponse.json(
+        {
+            error: `You've reached your ${limitStatus.limit} ${limitStatus.label} on the ${limitStatus.tier} plan.`,
+            code: "FEATURE_LIMIT_EXCEEDED",
+            feature: limitStatus.feature,
+            tier: limitStatus.tier,
+            used: limitStatus.used,
+            limit: limitStatus.limit,
+            remaining: limitStatus.remaining,
+            reset_at: limitStatus.resetAt,
+            upgrade_plan: limitStatus.upgradePlan,
+            billing_path: "/admin/billing",
+        },
+        { status: 402 }
+    );
+}
 
 async function getAdminUserId(req: Request) {
     const authHeader = req.headers.get("authorization");
@@ -100,6 +119,17 @@ export async function POST(req: Request) {
                 .eq("phone_normalized", normalizedPhone)
                 .maybeSingle();
             existingProfile = phoneProfile ?? null;
+        }
+
+        if (!existingProfile?.id) {
+            const clientLimitStatus = await getFeatureLimitStatus(
+                supabaseAdmin,
+                adminProfile.organization_id,
+                "clients"
+            );
+            if (!clientLimitStatus.allowed) {
+                return featureLimitExceededResponse(clientLimitStatus);
+            }
         }
 
         const updates = {

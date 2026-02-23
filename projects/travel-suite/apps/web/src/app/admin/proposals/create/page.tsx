@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
@@ -45,6 +45,30 @@ interface AddOn {
   is_active: boolean;
 }
 
+interface FeatureLimitSnapshot {
+  allowed: boolean;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  resetAt: string | null;
+  tier: string;
+  upgradePlan: string | null;
+}
+
+function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (payload?.code !== 'FEATURE_LIMIT_EXCEEDED') {
+    return fallback;
+  }
+
+  const limit = Number(payload?.limit || 0);
+  const used = Number(payload?.used || 0);
+  const feature = String(payload?.feature || 'usage');
+  if (limit > 0) {
+    return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
+  }
+  return payload?.error || fallback;
+}
+
 export default function CreateProposalPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -81,12 +105,9 @@ export default function CreateProposalPage() {
   // Proposal options state
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
+  const [proposalLimit, setProposalLimit] = useState<FeatureLimitSnapshot | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
@@ -122,6 +143,7 @@ export default function CreateProposalPage() {
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`;
       }
+      await loadProposalLimit(headers);
       const clientsResp = await fetch('/api/admin/clients', { headers });
       if (!clientsResp.ok) {
         const payload = await clientsResp.json().catch(() => ({}));
@@ -130,15 +152,17 @@ export default function CreateProposalPage() {
         setClients([]);
       } else {
         const payload = await clientsResp.json();
-        const clientsData = Array.isArray(payload?.clients) ? payload.clients : [];
+        const clientsData = Array.isArray(payload?.clients)
+          ? (payload.clients as Client[])
+          : [];
         const formattedClients = clientsData
-          .map((client: any) => ({
+          .map((client) => ({
             id: client.id,
             full_name: client.full_name || 'Unknown',
             email: client.email || '',
             phone: client.phone || '',
           }))
-          .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || ''));
+          .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
         setClients(formattedClients);
       }
 
@@ -161,8 +185,10 @@ export default function CreateProposalPage() {
         const addOnsResp = await fetch('/api/add-ons');
         if (addOnsResp.ok) {
           const payload = await addOnsResp.json();
-          const list = Array.isArray(payload?.addOns) ? payload.addOns : [];
-          const active = list.filter((a: any) => a?.is_active !== false);
+          const list = Array.isArray(payload?.addOns)
+            ? (payload.addOns as AddOn[])
+            : [];
+          const active = list.filter((a) => a?.is_active !== false);
           setAddOns(active);
         } else {
           console.warn('Add-ons failed to load:', await addOnsResp.text().catch(() => ''));
@@ -177,6 +203,43 @@ export default function CreateProposalPage() {
       setError('Failed to load data');
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  async function loadProposalLimit(headers?: Record<string, string>) {
+    try {
+      const limitsResp = await fetch('/api/subscriptions/limits', {
+        headers,
+        cache: 'no-store',
+      });
+
+      if (!limitsResp.ok) {
+        return null;
+      }
+
+      const payload = await limitsResp.json();
+      const proposals = payload?.limits?.proposals;
+      if (!proposals) {
+        return null;
+      }
+
+      const normalized: FeatureLimitSnapshot = {
+        allowed: Boolean(proposals.allowed),
+        used: Number(proposals.used || 0),
+        limit: proposals.limit === null ? null : Number(proposals.limit || 0),
+        remaining: proposals.remaining === null ? null : Number(proposals.remaining || 0),
+        resetAt: proposals.resetAt || null,
+        tier: String(proposals.tier || 'free'),
+        upgradePlan: proposals.upgradePlan ? String(proposals.upgradePlan) : null,
+      };
+      setProposalLimit(normalized);
+      return normalized;
+    } catch {
+      return null;
     }
   }
 
@@ -241,7 +304,7 @@ export default function CreateProposalPage() {
       const payload = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         console.error('Create client failed:', payload);
-        setError(payload?.error || 'Failed to create client');
+        setError(formatFeatureLimitError(payload, payload?.error || 'Failed to create client'));
         return;
       }
 
@@ -274,139 +337,107 @@ export default function CreateProposalPage() {
       return;
     }
 
+    const freshLimit = await loadProposalLimit();
+    const effectiveLimit = freshLimit || proposalLimit;
+    if (effectiveLimit && !effectiveLimit.allowed) {
+      const limitText =
+        effectiveLimit.limit !== null
+          ? `${effectiveLimit.used}/${effectiveLimit.limit}`
+          : `${effectiveLimit.used}`;
+      const message = `Proposal limit reached (${limitText}). Upgrade in Billing to continue creating proposals.`;
+      setError(message);
+      toast({
+        title: 'Limit reached',
+        description: message,
+        variant: 'warning',
+      });
+      return;
+    }
+
     setCreating(true);
     setError(null);
 
     try {
       const supabase = createClient();
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError('Please log in');
-        return;
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
+      const response = await fetch('/api/admin/proposals/create', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          templateId: selectedTemplateId,
+          clientId: selectedClientId,
+          proposalTitle: proposalTitle || undefined,
+          expirationDays,
+          selectedVehicleId: selectedVehicleId || null,
+          selectedAddOnIds: Array.from(selectedAddOnIds),
+        }),
+      });
 
-      if (!profile?.organization_id) {
-        setError('Organization not found');
-        return;
-      }
-
-      // Use the clone_template_to_proposal RPC function
-      const { data: proposalId, error: cloneError } = await supabase.rpc(
-        'clone_template_to_proposal',
-        {
-          p_template_id: selectedTemplateId,
-          p_client_id: selectedClientId,
-          p_created_by: user.id,
-        }
-      );
-
-      if (cloneError) {
-        console.error('Error cloning template:', cloneError);
-        setError('Failed to create proposal. Please try again.');
-        return;
-      }
-
-      // Persist selected options (vehicle type + add-ons) into proposal_add_ons if the table exists.
-      try {
-        const availableVehicles = addOns.filter((a) => a.category === 'Transport');
-        const defaultVehicleId =
-          selectedVehicleId || (availableVehicles.length > 0 ? availableVehicles[0].id : '');
-
-        const addOnRows: Array<{ addOn: AddOn; selected: boolean }> = [];
-        for (const vehicle of availableVehicles) {
-          addOnRows.push({
-            addOn: vehicle,
-            selected: vehicle.id === defaultVehicleId,
-          });
-        }
-
-        for (const addOnId of selectedAddOnIds) {
-          const found = addOns.find((a) => a.id === addOnId);
-          if (!found) continue;
-          addOnRows.push({
-            addOn: found,
-            selected: true,
-          });
-        }
-
-        const dedupedRows = new Map<string, { addOn: AddOn; selected: boolean }>();
-        for (const row of addOnRows) {
-          dedupedRows.set(row.addOn.id, row);
-        }
-
-        if (proposalId && dedupedRows.size > 0) {
-          const insertPayload = Array.from(dedupedRows.values()).map(({ addOn, selected }) => ({
-            proposal_id: proposalId,
-            add_on_id: addOn.id,
-            name: addOn.name,
-            description: addOn.description || null,
-            category: addOn.category,
-            image_url: addOn.image_url || null,
-            unit_price: Number(addOn.price) || 0,
-            quantity: 1,
-            is_selected: selected,
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = formatFeatureLimitError(
+          payload,
+          payload?.error || 'Failed to create proposal. Please try again.'
+        );
+        setError(message);
+        if (payload?.code === 'FEATURE_LIMIT_EXCEEDED') {
+          setProposalLimit((prev) => ({
+            allowed: false,
+            used: Number(payload?.used || prev?.used || 0),
+            limit: payload?.limit === null ? null : Number(payload?.limit || prev?.limit || 0),
+            remaining:
+              payload?.remaining === null
+                ? null
+                : Number(payload?.remaining || prev?.remaining || 0),
+            resetAt: payload?.reset_at || prev?.resetAt || null,
+            tier: String(payload?.tier || prev?.tier || 'free'),
+            upgradePlan: payload?.upgrade_plan ? String(payload.upgrade_plan) : prev?.upgradePlan || null,
           }));
-
-          // proposal_add_ons may not exist in older DBs; keep this best-effort and avoid strict typing.
-          await (supabase as any).from('proposal_add_ons').insert(insertPayload);
         }
-
-        // Keep client_selected_price aligned after creation.
-        if (proposalId) {
-          const { data: newPrice } = await supabase.rpc('calculate_proposal_price', {
-            p_proposal_id: proposalId,
-          });
-          if (newPrice !== null && newPrice !== undefined) {
-            await supabase
-              .from('proposals')
-              .update({ client_selected_price: newPrice })
-              .eq('id', proposalId);
-          }
-        }
-      } catch (e) {
-        console.warn('Option persistence skipped:', e);
+        return;
       }
 
-      // Update proposal title if custom title was provided
-      if (proposalTitle && proposalId) {
-        const { error: updateError } = await supabase
-          .from('proposals')
-          .update({ title: proposalTitle })
-          .eq('id', proposalId);
-
-        if (updateError) {
-          console.error('Error updating proposal title:', updateError);
-        }
+      if (payload?.limit) {
+        setProposalLimit({
+          allowed: Boolean(payload.limit.allowed),
+          used: Number(payload.limit.used || 0),
+          limit: payload.limit.limit === null ? null : Number(payload.limit.limit || 0),
+          remaining:
+            payload.limit.remaining === null ? null : Number(payload.limit.remaining || 0),
+          resetAt: payload.limit.resetAt || null,
+          tier: String(payload.limit.tier || 'free'),
+          upgradePlan: payload.limit.upgradePlan ? String(payload.limit.upgradePlan) : null,
+        });
       }
 
-      // Set expiration date if specified
-      if (expirationDays > 0 && proposalId) {
-        const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + expirationDays);
+      const proposalId = String(payload?.proposalId || '').trim();
+      if (!proposalId) {
+        setError('Proposal created but no proposal id was returned.');
+        return;
+      }
 
-        const { error: expirationError } = await supabase
-          .from('proposals')
-          .update({ expires_at: expirationDate.toISOString() })
-          .eq('id', proposalId);
+      if (sendEmail) {
+        const sendResponse = await fetch(`/api/proposals/${proposalId}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channels: { email: true, whatsapp: false } }),
+        });
 
-        if (expirationError) {
-          console.error('Error setting expiration:', expirationError);
+        if (!sendResponse.ok) {
+          const sendPayload = await sendResponse.json().catch(() => ({}));
+          console.warn('Proposal created but notification failed:', sendPayload?.error || sendPayload);
         }
       }
 
-      // TODO: Send email notification if sendEmail is true
-      // This would integrate with your existing email system
-
-      // Redirect to the proposal view
       router.push(`/admin/proposals/${proposalId}`);
     } catch (error) {
       console.error('Error creating proposal:', error);
@@ -454,6 +485,8 @@ export default function CreateProposalPage() {
     return total;
   })();
   const estimatedTotal = (selectedTemplate?.base_price || 0) + selectedExtrasTotal;
+  const visibleProposalLimit =
+    proposalLimit && proposalLimit.limit !== null ? proposalLimit : null;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -480,6 +513,43 @@ export default function CreateProposalPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
           <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      {visibleProposalLimit && (
+        <div
+          className={`rounded-lg border p-4 flex items-center justify-between gap-3 ${
+            visibleProposalLimit.allowed
+              ? 'bg-emerald-50 border-emerald-200'
+              : 'bg-amber-50 border-amber-200'
+          }`}
+        >
+          <div>
+            <p
+              className={`text-sm font-medium ${
+                visibleProposalLimit.allowed ? 'text-emerald-900' : 'text-amber-900'
+              }`}
+            >
+              Proposal usage this month: {visibleProposalLimit.used}/{visibleProposalLimit.limit}
+            </p>
+            <p
+              className={`text-xs mt-1 ${
+                visibleProposalLimit.allowed ? 'text-emerald-700' : 'text-amber-700'
+              }`}
+            >
+              {visibleProposalLimit.allowed
+                ? `${visibleProposalLimit.remaining ?? 0} proposals remaining on your ${visibleProposalLimit.tier} plan.`
+                : 'Limit reached. Upgrade your plan to continue creating proposals.'}
+            </p>
+          </div>
+          <Link
+            href="/admin/billing"
+            className={`text-sm font-medium underline-offset-2 hover:underline ${
+              visibleProposalLimit.allowed ? 'text-emerald-800' : 'text-amber-800'
+            }`}
+          >
+            Open Billing
+          </Link>
         </div>
       )}
 
@@ -931,7 +1001,7 @@ export default function CreateProposalPage() {
               className="w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
             />
             <label htmlFor="sendEmail" className="text-sm text-[#6f5b3e]">
-              Send email notification to client (Coming soon)
+              Send email notification to client after proposal creation
             </label>
           </div>
         </div>
@@ -969,10 +1039,10 @@ export default function CreateProposalPage() {
         <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 What happens next?</h3>
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
           <li>A proposal will be created from the selected template</li>
-          <li>You'll be able to customize activities and pricing</li>
+          <li>You&apos;ll be able to customize activities and pricing</li>
           <li>A unique shareable link will be generated</li>
           <li>The client can view, comment, and approve the proposal</li>
-          <li>You'll get real-time notifications when the client interacts</li>
+          <li>You&apos;ll get real-time notifications when the client interacts</li>
         </ul>
       </div>
     </div>

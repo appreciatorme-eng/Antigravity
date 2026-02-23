@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
 const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
@@ -13,15 +14,46 @@ interface TripListRow {
     end_date: string | null;
     created_at: string;
     organization_id: string;
-    profiles: {
-        full_name: string | null;
-        email: string | null;
-    } | null;
-    itineraries: {
-        trip_title: string | null;
-        duration_days: number | null;
-        destination: string | null;
-    } | null;
+    profiles:
+        | {
+              full_name: string | null;
+              email: string | null;
+          }
+        | Array<{
+              full_name: string | null;
+              email: string | null;
+          }>
+        | null;
+    itineraries:
+        | {
+              trip_title: string | null;
+              duration_days: number | null;
+              destination: string | null;
+          }
+        | Array<{
+              trip_title: string | null;
+              duration_days: number | null;
+              destination: string | null;
+          }>
+        | null;
+}
+
+function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof getFeatureLimitStatus>>) {
+    return NextResponse.json(
+        {
+            error: `You've reached your ${limitStatus.limit} ${limitStatus.label} on the ${limitStatus.tier} plan.`,
+            code: "FEATURE_LIMIT_EXCEEDED",
+            feature: limitStatus.feature,
+            tier: limitStatus.tier,
+            used: limitStatus.used,
+            limit: limitStatus.limit,
+            remaining: limitStatus.remaining,
+            reset_at: limitStatus.resetAt,
+            upgrade_plan: limitStatus.upgradePlan,
+            billing_path: "/admin/billing",
+        },
+        { status: 402 }
+    );
 }
 
 async function getAdminUserId(req: NextRequest) {
@@ -106,7 +138,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
-        const trips = (data || []).map((t: any) => {
+        const trips = ((data || []) as TripListRow[]).map((t) => {
             const profile = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
             const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
 
@@ -158,6 +190,15 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
         if (!clientProfile || clientProfile.organization_id !== admin.organizationId) {
             return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+        }
+
+        const tripLimitStatus = await getFeatureLimitStatus(
+            supabaseAdmin,
+            admin.organizationId,
+            "trips"
+        );
+        if (!tripLimitStatus.allowed) {
+            return featureLimitExceededResponse(tripLimitStatus);
         }
 
         const itineraryPayload = {

@@ -5,15 +5,38 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User, Upload, Link as LinkIcon, FileText } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User, Link as LinkIcon, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
+import Link from "next/link";
 
 interface Client {
     id: string;
     full_name: string;
     email: string;
+}
+
+interface FeatureLimitSnapshot {
+    allowed: boolean;
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    tier: string;
+}
+
+function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (payload?.code !== "FEATURE_LIMIT_EXCEEDED") {
+        return fallback;
+    }
+
+    const limit = Number(payload?.limit || 0);
+    const used = Number(payload?.used || 0);
+    const feature = String(payload?.feature || "usage");
+    if (limit > 0) {
+        return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
+    }
+    return payload?.error || fallback;
 }
 
 interface CreateTripModalProps {
@@ -42,6 +65,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [clients, setClients] = useState<Client[]>([]);
     const [loadingClients, setLoadingClients] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [tripLimit, setTripLimit] = useState<FeatureLimitSnapshot | null>(null);
 
     const fetchClients = useCallback(async () => {
         setLoadingClients(true);
@@ -74,6 +98,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     useEffect(() => {
         if (open) {
             void fetchClients();
+            void loadTripLimit();
             // Reset state on open
             setClientId("");
             setStartDate("");
@@ -86,6 +111,27 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setImportMode("ai");
         }
     }, [open, fetchClients]);
+
+    const loadTripLimit = async () => {
+        try {
+            const response = await fetch("/api/subscriptions/limits", {
+                cache: "no-store",
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const limit = payload?.limits?.trips;
+            if (!limit) return;
+            setTripLimit({
+                allowed: Boolean(limit.allowed),
+                used: Number(limit.used || 0),
+                limit: limit.limit === null ? null : Number(limit.limit || 0),
+                remaining: limit.remaining === null ? null : Number(limit.remaining || 0),
+                tier: String(limit.tier || "free"),
+            });
+        } catch {
+            // best-effort only
+        }
+    };
 
     const handleGenerateAI = async () => {
         if (!prompt) return;
@@ -210,8 +256,25 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Failed to create trip");
+                const payload = await response.json();
+                if (payload?.code === "FEATURE_LIMIT_EXCEEDED") {
+                    setTripLimit((prev) => ({
+                        allowed: false,
+                        used: Number(payload?.used || prev?.used || 0),
+                        limit: payload?.limit === null ? null : Number(payload?.limit || prev?.limit || 0),
+                        remaining:
+                            payload?.remaining === null
+                                ? null
+                                : Number(payload?.remaining || prev?.remaining || 0),
+                        tier: String(payload?.tier || prev?.tier || "free"),
+                    }));
+                }
+                throw new Error(
+                    formatFeatureLimitError(
+                        payload,
+                        payload.error || "Failed to create trip"
+                    )
+                );
             }
 
             onSuccess();
@@ -234,6 +297,8 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }
     };
 
+    const visibleTripLimit = tripLimit && tripLimit.limit !== null ? tripLimit : null;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -248,6 +313,39 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">
+                    {visibleTripLimit && (
+                        <div className={`rounded-lg border p-3 ${
+                            visibleTripLimit.allowed
+                                ? "bg-emerald-50 border-emerald-200"
+                                : "bg-amber-50 border-amber-200"
+                        }`}>
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className={`text-sm font-medium ${
+                                        visibleTripLimit.allowed ? "text-emerald-900" : "text-amber-900"
+                                    }`}>
+                                        Trips this month: {visibleTripLimit.used}/{visibleTripLimit.limit}
+                                    </p>
+                                    <p className={`text-xs mt-1 ${
+                                        visibleTripLimit.allowed ? "text-emerald-700" : "text-amber-700"
+                                    }`}>
+                                        {visibleTripLimit.allowed
+                                            ? `${visibleTripLimit.remaining ?? 0} trips remaining on your ${visibleTripLimit.tier} plan.`
+                                            : "Trip limit reached. Upgrade in Billing to create more trips this month."}
+                                    </p>
+                                </div>
+                                <Link
+                                    href="/admin/billing"
+                                    className={`text-xs font-medium hover:underline ${
+                                        visibleTripLimit.allowed ? "text-emerald-800" : "text-amber-800"
+                                    }`}
+                                >
+                                    Open Billing
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
