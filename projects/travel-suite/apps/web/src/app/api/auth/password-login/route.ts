@@ -1,25 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { enforceRateLimit } from "@/lib/security/rate-limit";
-import { sanitizeEmail } from "@/lib/security/sanitize";
 
 const LoginSchema = z.object({
   email: z.string().min(3).max(320),
   password: z.string().min(6).max(256),
 });
 
-const RATE_LIMIT_CONFIG = {
-  namespace: "auth-password-login",
-  max: 8,
-  window: "10 m" as const,
+type RateLimitResult = {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
 };
 
-function withRateLimitHeaders(
-  response: NextResponse,
-  limiter: Awaited<ReturnType<typeof enforceRateLimit>> | null
-) {
-  if (!limiter) return response;
+const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function sanitizeEmail(input: string): string | null {
+  const email = input.trim().toLowerCase();
+  if (!email || email.length > 320) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
+function getRequestIp(request: NextRequest): string {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  return realIp || "unknown";
+}
+
+function enforceLocalRateLimit(request: NextRequest, email: string): RateLimitResult {
+  const now = Date.now();
+  const key = `${getRequestIp(request)}:${email}`;
+  const existing = loginAttempts.get(key);
+
+  if (!existing || existing.resetAt <= now) {
+    const resetAt = now + RATE_LIMIT_WINDOW_MS;
+    loginAttempts.set(key, { count: 1, resetAt });
+    return {
+      success: true,
+      limit: RATE_LIMIT_MAX,
+      remaining: RATE_LIMIT_MAX - 1,
+      reset: resetAt,
+    };
+  }
+
+  const nextCount = existing.count + 1;
+  loginAttempts.set(key, { count: nextCount, resetAt: existing.resetAt });
+
+  const success = nextCount <= RATE_LIMIT_MAX;
+  return {
+    success,
+    limit: RATE_LIMIT_MAX,
+    remaining: Math.max(0, RATE_LIMIT_MAX - nextCount),
+    reset: existing.resetAt,
+  };
+}
+
+function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) {
   response.headers.set("x-ratelimit-limit", String(limiter.limit));
   response.headers.set("x-ratelimit-remaining", String(limiter.remaining));
   response.headers.set("x-ratelimit-reset", String(limiter.reset));
@@ -43,8 +87,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
   }
 
-  const rateLimit = await enforceRateLimit(request, email, RATE_LIMIT_CONFIG);
-  if (rateLimit && !rateLimit.success) {
+  const rateLimit = enforceLocalRateLimit(request, email);
+  if (!rateLimit.success) {
     const retryAfterSeconds = Math.max(
       1,
       Math.ceil((rateLimit.reset - Date.now()) / 1000)
