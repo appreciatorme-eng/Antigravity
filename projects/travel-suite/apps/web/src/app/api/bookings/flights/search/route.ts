@@ -1,89 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAmadeusToken, searchAmadeusLocations } from '@/lib/external/amadeus';
 import { guessIataCode, normalizeIataCode } from '@/lib/airport';
+import { getAmadeusToken, resolveAmadeusBaseUrl } from '@/lib/external/amadeus';
 
-async function resolveLocationCode(rawCode: string | null, rawText: string | null) {
-    const fromCode = normalizeIataCode(rawCode);
-    if (fromCode) return fromCode;
-
-    const guessed = normalizeIataCode(guessIataCode(rawText));
-    if (guessed) return guessed;
-
-    const text = rawText?.trim() || '';
-    if (text.length < 2) return null;
-
-    const suggestions = await searchAmadeusLocations(text, "CITY,AIRPORT", 5);
-    const first = suggestions.find((item) => normalizeIataCode(item.iataCode));
-    return normalizeIataCode(first?.iataCode);
+function parsePositiveInt(value: string | null, fallback: number) {
+  const parsed = Number.parseInt(value || '', 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
 }
 
-export async function GET(req: NextRequest) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const originCode = await resolveLocationCode(searchParams.get('originCode'), searchParams.get('origin'));
-        const destinationCode = await resolveLocationCode(searchParams.get('destinationCode'), searchParams.get('destination'));
-        const date = searchParams.get('date')?.trim() || '';
-        const returnDate = searchParams.get('returnDate')?.trim() || '';
-        const tripType = searchParams.get('tripType') === 'round_trip' ? 'round_trip' : 'one_way';
-        const adultsRaw = Number.parseInt(searchParams.get('adults') || '1', 10);
-        const adults = Number.isFinite(adultsRaw) && adultsRaw > 0 && adultsRaw <= 9 ? adultsRaw : 1;
+function isValidDateInput(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime());
+}
 
-        if (!originCode || !destinationCode || !date) {
-            return NextResponse.json({
-                error: 'Missing required parameters. Provide origin/destination (IATA or city) and date.',
-            }, { status: 400 });
-        }
+function resolveAirportCode(text: string, codeInput: string) {
+  return normalizeIataCode(codeInput) || normalizeIataCode(guessIataCode(text)) || '';
+}
 
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD.' }, { status: 400 });
-        }
-        if (tripType === 'round_trip') {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(returnDate)) {
-                return NextResponse.json({ error: 'Round-trip requires a valid returnDate in YYYY-MM-DD format.' }, { status: 400 });
-            }
-            if (returnDate <= date) {
-                return NextResponse.json({ error: 'Return date must be after departure date.' }, { status: 400 });
-            }
-        }
+export async function GET(request: NextRequest) {
+  const origin = (request.nextUrl.searchParams.get('origin') || '').trim();
+  const destination = (request.nextUrl.searchParams.get('destination') || '').trim();
+  const originCodeInput = (request.nextUrl.searchParams.get('originCode') || '').trim();
+  const destinationCodeInput = (request.nextUrl.searchParams.get('destinationCode') || '').trim();
+  const departureDate = (request.nextUrl.searchParams.get('date') || '').trim();
+  const returnDate = (request.nextUrl.searchParams.get('returnDate') || '').trim();
+  const tripTypeRaw = (request.nextUrl.searchParams.get('tripType') || 'one_way').trim();
+  const tripType = tripTypeRaw === 'round_trip' ? 'round_trip' : 'one_way';
+  const adults = Math.min(parsePositiveInt(request.nextUrl.searchParams.get('adults'), 1), 9);
 
-        const token = await getAmadeusToken();
+  const originCode = resolveAirportCode(origin, originCodeInput);
+  const destinationCode = resolveAirportCode(destination, destinationCodeInput);
 
-        const query = new URLSearchParams({
-            originLocationCode: originCode,
-            destinationLocationCode: destinationCode,
-            departureDate: date,
-            adults: String(adults),
-            max: '8',
-        });
-        if (tripType === 'round_trip') {
-            query.set('returnDate', returnDate);
-        }
-        const amadeusUrl = `https://test.api.amadeus.com/v2/shopping/flight-offers?${query.toString()}`;
-
-        const response = await fetch(amadeusUrl, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            return NextResponse.json(error, { status: response.status });
-        }
-
-        const data = await response.json();
-        return NextResponse.json({
-            ...data,
-            query: {
-                tripType,
-                originCode,
-                destinationCode,
-                departureDate: date,
-                returnDate: tripType === 'round_trip' ? returnDate : null,
-            },
-        });
-    } catch (error) {
-        console.error('Flight Search Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  if (!originCode || !destinationCode || !departureDate) {
+    return NextResponse.json(
+      {
+        error: 'Origin, destination, and departure date are required',
+      },
+      { status: 400 }
+    );
+  }
+  if (originCode === destinationCode) {
+    return NextResponse.json({ error: 'Origin and destination must be different' }, { status: 400 });
+  }
+  if (!isValidDateInput(departureDate)) {
+    return NextResponse.json({ error: 'Invalid departure date format. Use YYYY-MM-DD' }, { status: 400 });
+  }
+  if (tripType === 'round_trip') {
+    if (!returnDate || !isValidDateInput(returnDate)) {
+      return NextResponse.json(
+        { error: 'Valid return date is required for round-trip search' },
+        { status: 400 }
+      );
     }
+    if (returnDate <= departureDate) {
+      return NextResponse.json({ error: 'Return date must be after departure date' }, { status: 400 });
+    }
+  }
+
+  try {
+    const token = await getAmadeusToken();
+    const amadeusBaseUrl = resolveAmadeusBaseUrl();
+
+    const params = new URLSearchParams({
+      originLocationCode: originCode,
+      destinationLocationCode: destinationCode,
+      departureDate,
+      adults: String(adults),
+      max: '30',
+      currencyCode: 'USD',
+    });
+
+    if (tripType === 'round_trip' && returnDate) {
+      params.set('returnDate', returnDate);
+    }
+
+    const response = await fetch(
+      `${amadeusBaseUrl}/v2/shopping/flight-offers?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      }
+    );
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const errorMessage =
+        payload?.errors?.[0]?.detail ||
+        payload?.errors?.[0]?.title ||
+        payload?.error_description ||
+        'Failed to fetch flight offers';
+      return NextResponse.json({ error: errorMessage }, { status: 502 });
+    }
+
+    return NextResponse.json({
+      data: Array.isArray(payload?.data) ? payload.data : [],
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Flight search failed',
+      },
+      { status: 500 }
+    );
+  }
 }

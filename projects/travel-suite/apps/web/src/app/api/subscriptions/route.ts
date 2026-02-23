@@ -9,16 +9,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
+import { z } from 'zod';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
+import { sanitizeEmail, sanitizeText } from '@/lib/security/sanitize';
 
-export async function GET(request: NextRequest) {
+const PlanRequestSchema = z.object({
+  plan_id: z.enum(['pro_monthly', 'pro_annual', 'enterprise']),
+  billing_cycle: z.enum(['monthly', 'annual']).default('monthly'),
+});
+
+const DEFAULT_PLAN_AMOUNTS: Record<'pro_monthly' | 'pro_annual' | 'enterprise', number> = {
+  pro_monthly: 4999,
+  pro_annual: 49990,
+  enterprise: 15000,
+};
+
+function getEnvPlanAmount(planId: 'pro_monthly' | 'pro_annual' | 'enterprise') {
+  const envKey = `SUBSCRIPTION_PRICE_${planId.toUpperCase()}`;
+  const raw = process.env[envKey];
+  if (!raw) return null;
+  const amount = Number(raw);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+async function resolvePlanAmount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  planId: 'pro_monthly' | 'pro_annual' | 'enterprise',
+  billingCycle: 'monthly' | 'annual'
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: dbPlan, error } = await (supabase as any)
+    // subscription_plans may not yet be present in generated DB types.
+    .from('subscription_plans')
+    .select('amount')
+    .eq('plan_id', planId)
+    .eq('billing_cycle', billingCycle)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!error && dbPlan?.amount !== null && dbPlan?.amount !== undefined) {
+    const amount = Number(dbPlan.amount);
+    if (Number.isFinite(amount) && amount > 0) return amount;
+  }
+
+  const envAmount = getEnvPlanAmount(planId);
+  if (envAmount) return envAmount;
+
+  return DEFAULT_PLAN_AMOUNTS[planId];
+}
+
+export async function GET() {
   try {
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
       error: userError,
@@ -28,7 +74,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id')
@@ -39,10 +84,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    // Get current subscription
-    const subscription = await paymentService.getCurrentSubscription(
-      profile.organization_id
-    );
+    const subscription = await paymentService.getCurrentSubscription(profile.organization_id);
 
     return NextResponse.json({ subscription });
   } catch (error) {
@@ -66,7 +108,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
       error: userError,
@@ -76,7 +117,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization with details
     const { data: profile } = await supabase
       .from('profiles')
       .select('organization_id, organizations(name, billing_email, billing_state)')
@@ -87,46 +127,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    const org = (profile as any).organizations;
+    const org = (profile as { organizations?: { name?: string | null; billing_email?: string | null; billing_state?: string | null } | null }).organizations;
 
-    // Parse request body
     const body = await request.json();
-    const {
-      plan_id,
-      billing_cycle = 'monthly',
-    } = body;
-
-    // Validate plan
-    const validPlans = ['pro_monthly', 'pro_annual', 'enterprise'];
-    if (!validPlans.includes(plan_id)) {
+    const parsed = PlanRequestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid plan ID' },
+        { error: 'Invalid plan request', details: parsed.error.flatten() },
         { status: 400 }
       );
     }
+    const { plan_id, billing_cycle } = parsed.data;
+    const amount = await resolvePlanAmount(supabase, plan_id, billing_cycle);
+    const safeBillingState = sanitizeText(org?.billing_state, { maxLength: 64 }) || undefined;
+    const safeCustomerEmail = sanitizeEmail(org?.billing_email) || sanitizeEmail(user.email) || '';
+    const safeCustomerName = sanitizeText(org?.name, { maxLength: 120 }) || 'Travel Suite';
 
-    // Calculate amount based on plan
-    let amount = 0;
-    if (plan_id === 'pro_monthly') {
-      amount = 4999; // ₹4,999/month
-    } else if (plan_id === 'pro_annual') {
-      amount = 49990; // ₹49,990/year (save 2 months)
-    } else if (plan_id === 'enterprise') {
-      amount = 15000; // ₹15,000/month (custom pricing)
-    }
-
-    // Create subscription using payment service
     const subscriptionId = await paymentService.createSubscription({
       organizationId: profile.organization_id,
       planId: plan_id,
       billingCycle: billing_cycle,
       amount,
-      customerEmail: org.billing_email || user.email || '',
-      customerName: org.name,
-      billingState: org.billing_state,
+      customerEmail: safeCustomerEmail,
+      customerName: safeCustomerName,
+      billingState: safeBillingState,
     });
 
-    // Fetch created subscription
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('*')

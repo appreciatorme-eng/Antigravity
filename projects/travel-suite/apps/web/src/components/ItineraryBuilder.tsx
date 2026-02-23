@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Activity, Day, ItineraryResult } from '@/types/itinerary';
+import { Activity, ItineraryResult } from '@/types/itinerary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -117,6 +117,31 @@ function SortableActivityItem({ activity, dayIndex, actIndex, updateActivity, re
 // Main Builder Component
 // ----------------------------------------------------------------------
 export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderProps) {
+    const [draftData, setDraftData] = useState<ItineraryResult>(data);
+    const commitTimerRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        setDraftData(data);
+    }, [data]);
+
+    useEffect(() => {
+        return () => {
+            if (commitTimerRef.current) {
+                window.clearTimeout(commitTimerRef.current);
+            }
+        };
+    }, []);
+
+    const queueChange = (nextData: ItineraryResult) => {
+        setDraftData(nextData);
+        if (commitTimerRef.current) {
+            window.clearTimeout(commitTimerRef.current);
+        }
+        commitTimerRef.current = window.setTimeout(() => {
+            onChange(nextData);
+        }, 280);
+    };
+
     const sensors = useSensors(
         usePointerSensor(),
         useKeyboardSensor()
@@ -132,21 +157,21 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
 
     // --- State Handlers: Activities ---
     const updateActivity = (dIdx: number, aIdx: number, field: keyof Activity, val: string) => {
-        const newDays = [...data.days];
+        const newDays = [...draftData.days];
         newDays[dIdx].activities[aIdx] = { ...newDays[dIdx].activities[aIdx], [field]: val };
-        onChange({ ...data, days: newDays });
+        queueChange({ ...draftData, days: newDays });
     };
 
     const removeActivity = (dIdx: number, aIdx: number) => {
-        const newDays = [...data.days];
+        const newDays = [...draftData.days];
         newDays[dIdx].activities.splice(aIdx, 1);
-        onChange({ ...data, days: newDays });
+        queueChange({ ...draftData, days: newDays });
     };
 
     const addActivity = (dIdx: number) => {
-        const newDays = [...data.days];
+        const newDays = [...draftData.days];
         newDays[dIdx].activities.push(createEmptyActivity());
-        onChange({ ...data, days: newDays });
+        queueChange({ ...draftData, days: newDays });
     };
 
     // --- Drag and Drop Logic ---
@@ -154,12 +179,12 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
         const { active, over } = event;
 
         if (over && active.id !== over.id) {
-            const oldIndex = data.days[dayIndex].activities.findIndex((_, i) => `${dayIndex}-${i}` === active.id);
-            const newIndex = data.days[dayIndex].activities.findIndex((_, i) => `${dayIndex}-${i}` === over.id);
+            const oldIndex = draftData.days[dayIndex].activities.findIndex((_, i) => `${dayIndex}-${i}` === active.id);
+            const newIndex = draftData.days[dayIndex].activities.findIndex((_, i) => `${dayIndex}-${i}` === over.id);
 
-            const newDays = [...data.days];
+            const newDays = [...draftData.days];
             newDays[dayIndex].activities = arrayMove(newDays[dayIndex].activities, oldIndex, newIndex);
-            onChange({ ...data, days: newDays });
+            queueChange({ ...draftData, days: newDays });
         }
     }
 
@@ -188,23 +213,23 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Trip Title</label>
                         <Input
-                            value={data.trip_title || ''}
-                            onChange={(e) => onChange({ ...data, trip_title: e.target.value, title: e.target.value })}
+                            value={draftData.trip_title || ''}
+                            onChange={(e) => queueChange({ ...draftData, trip_title: e.target.value, title: e.target.value })}
                         />
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Destination</label>
                         <Input
-                            value={data.destination || ''}
-                            onChange={(e) => onChange({ ...data, destination: e.target.value })}
+                            value={draftData.destination || ''}
+                            onChange={(e) => queueChange({ ...draftData, destination: e.target.value })}
                         />
                     </div>
                 </div>
                 <div className="space-y-2 flex-1">
                     <label className="text-sm font-medium">Summary</label>
                     <Textarea
-                        value={data.summary || ''}
-                        onChange={(e) => onChange({ ...data, summary: e.target.value })}
+                        value={draftData.summary || ''}
+                        onChange={(e) => queueChange({ ...draftData, summary: e.target.value })}
                         className="h-24 resize-none"
                     />
                 </div>
@@ -212,14 +237,14 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
 
             {/* Logistics Section (Flights & Hotels) */}
             <div className="pt-8 border-t border-gray-200 dark:border-white/10">
-                <LogisticsManager data={data} onChange={onChange} />
+                <LogisticsManager data={draftData} onChange={queueChange} />
             </div>
 
 
             {/* Daily Itinerary Section */}
             <div className="space-y-12 pt-8 border-t border-gray-200 dark:border-white/10">
                 <h2 className="text-2xl font-bold font-serif text-center">Daily Schedule</h2>
-                {data.days.map((day, dayIndex) => {
+                {draftData.days.map((day, dayIndex) => {
                     const activityIds = day.activities.map((_, i) => `${dayIndex}-${i}`);
 
                     return (
@@ -229,9 +254,9 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
                                 <Input
                                     value={day.theme || ''}
                                     onChange={(e) => {
-                                        const newDays = [...data.days];
+                                        const newDays = [...draftData.days];
                                         newDays[dayIndex].theme = e.target.value;
-                                        onChange({ ...data, days: newDays });
+                                        queueChange({ ...draftData, days: newDays });
                                     }}
                                     placeholder="Day Theme (e.g. Arrival & Orientation)"
                                     className="flex-1 font-semibold"
@@ -276,7 +301,7 @@ export default function ItineraryBuilder({ data, onChange }: ItineraryBuilderPro
 
             {/* Pricing Section */}
             <div className="pt-8 border-t border-gray-200 dark:border-white/10">
-                <PricingManager data={data} onChange={onChange} />
+                <PricingManager data={draftData} onChange={queueChange} />
             </div>
 
             {/* Disclaimer */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowRightLeft, RefreshCw, Loader2 } from "lucide-react";
 
 // Popular travel currencies
@@ -69,6 +69,7 @@ export default function CurrencyConverter({
     } | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const debounceRef = useRef<number | null>(null);
 
     // If destination prop changes while component is mounted, update the toCurrency
     useEffect(() => {
@@ -77,15 +78,19 @@ export default function CurrencyConverter({
         }
     }, [destination]);
 
-    const convert = async () => {
-        if (!amount || isNaN(Number(amount))) return;
+    const convert = useCallback(async (
+        amountInput: string = amount,
+        fromInput: string = fromCurrency,
+        toInput: string = toCurrency
+    ) => {
+        if (!amountInput || isNaN(Number(amountInput))) return;
 
         setLoading(true);
         setError("");
 
         try {
             const res = await fetch(
-                `/api/currency?amount=${amount}&from=${fromCurrency}&to=${toCurrency}`
+                `/api/currency?amount=${amountInput}&from=${fromInput}&to=${toInput}`
             );
             const data = await res.json();
 
@@ -102,7 +107,7 @@ export default function CurrencyConverter({
         } finally {
             setLoading(false);
         }
-    };
+    }, [amount, fromCurrency, toCurrency]);
 
     const swapCurrencies = () => {
         setFromCurrency(toCurrency);
@@ -110,13 +115,27 @@ export default function CurrencyConverter({
         setResult(null);
     };
 
-    // Auto-convert on currency change
     useEffect(() => {
-        if (amount) {
-            convert();
+        if (!amount || isNaN(Number(amount))) {
+            setResult(null);
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fromCurrency, toCurrency]);
+
+        if (debounceRef.current) {
+            window.clearTimeout(debounceRef.current);
+        }
+
+        debounceRef.current = window.setTimeout(() => {
+            void convert(amount, fromCurrency, toCurrency);
+        }, 350);
+
+        return () => {
+            if (debounceRef.current) {
+                window.clearTimeout(debounceRef.current);
+                debounceRef.current = null;
+            }
+        };
+    }, [amount, fromCurrency, toCurrency, convert]);
 
     if (compact) {
         return (
@@ -133,7 +152,7 @@ export default function CurrencyConverter({
                             type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            onBlur={convert}
+                            onBlur={() => void convert()}
                             className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
                             placeholder="Amount"
                         />
@@ -257,7 +276,7 @@ export default function CurrencyConverter({
 
                 {/* Convert Button */}
                 <button
-                    onClick={convert}
+                    onClick={() => void convert()}
                     disabled={loading || !amount}
                     className="w-full py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
                 >

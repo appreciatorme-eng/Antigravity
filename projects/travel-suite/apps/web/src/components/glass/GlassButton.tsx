@@ -7,7 +7,7 @@
 
 'use client';
 
-import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { ButtonHTMLAttributes, MouseEvent, forwardRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
@@ -28,8 +28,10 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     className,
     children,
     disabled,
+    onClick,
     ...props
   }, ref) => {
+    const [submitting, setSubmitting] = useState(false);
     const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variantStyles = {
@@ -47,6 +49,26 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     };
 
     const widthStyles = fullWidth ? 'w-full' : '';
+    const isDisabled = disabled || loading || submitting;
+
+    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+      if (isDisabled) {
+        event.preventDefault();
+        return;
+      }
+
+      if (!onClick) return;
+
+      const maybeResult = (onClick as (evt: MouseEvent<HTMLButtonElement>) => unknown)(event);
+      if (!maybeResult || typeof (maybeResult as Promise<unknown>)?.then !== 'function') {
+        return;
+      }
+
+      setSubmitting(true);
+      (maybeResult as Promise<unknown>).finally(() => {
+        setSubmitting(false);
+      });
+    };
 
     return (
       <button
@@ -58,10 +80,11 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           widthStyles,
           className
         )}
-        disabled={disabled || loading}
+        disabled={isDisabled}
+        onClick={handleClick}
         {...props}
       >
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {(loading || submitting) && <Loader2 className="w-4 h-4 animate-spin" />}
         {children}
       </button>
     );

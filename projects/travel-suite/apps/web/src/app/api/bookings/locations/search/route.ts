@@ -1,84 +1,91 @@
-import { NextRequest, NextResponse } from "next/server";
-import { searchAmadeusLocations } from "@/lib/external/amadeus";
+import { NextRequest, NextResponse } from 'next/server';
+import { guessIataCode, normalizeIataCode } from '@/lib/airport';
+import { searchAmadeusLocations } from '@/lib/external/amadeus';
 
-interface LocationSuggestion {
-    id: string;
-    iataCode: string;
-    cityName: string;
-    name: string;
-    subType: string;
-    countryCode?: string;
-    detailedName?: string;
-    label: string;
+type LocationSuggestion = {
+  id: string;
+  iataCode: string;
+  cityName: string;
+  name: string;
+  subType: string;
+  countryCode?: string;
+  detailedName?: string;
+  label: string;
+};
+
+function fallbackSuggestion(query: string, kind: 'flight' | 'hotel'): LocationSuggestion[] {
+  const cityName = query.trim();
+  if (!cityName) return [];
+
+  const guessed = normalizeIataCode(guessIataCode(cityName));
+  if (!guessed && kind === 'flight') return [];
+
+  const iataCode = guessed || cityName.slice(0, 3).toUpperCase();
+  return [
+    {
+      id: `fallback-${iataCode}-${cityName.toLowerCase()}`,
+      iataCode,
+      cityName,
+      name: cityName,
+      subType: kind === 'hotel' ? 'CITY' : 'AIRPORT',
+      label: `${cityName} (${iataCode})`,
+    },
+  ];
 }
 
-interface RawLocation {
-    iataCode?: string;
-    name?: string;
-    subType?: string;
-    detailedName?: string;
-    address?: {
-        cityName?: string;
-        countryCode?: string;
-    };
-}
+export async function GET(request: NextRequest) {
+  const query = (request.nextUrl.searchParams.get('q') || '').trim();
+  const kindRaw = (request.nextUrl.searchParams.get('kind') || 'flight').trim().toLowerCase();
+  const kind: 'flight' | 'hotel' = kindRaw === 'hotel' ? 'hotel' : 'flight';
 
-function toSuggestion(location: RawLocation, index: number): LocationSuggestion | null {
-    const iataCode = typeof location.iataCode === "string" ? location.iataCode.toUpperCase() : "";
-    if (!iataCode) return null;
+  if (query.length < (kind === 'flight' ? 1 : 2)) {
+    return NextResponse.json({ suggestions: [] });
+  }
 
-    const cityName =
-        typeof location.address?.cityName === "string" && location.address.cityName.trim().length > 0
-            ? location.address.cityName.trim()
-            : typeof location.name === "string"
-                ? location.name.trim()
-                : iataCode;
+  try {
+    const subType = kind === 'hotel' ? 'CITY' : 'CITY,AIRPORT';
+    const locations = await searchAmadeusLocations(query, subType, 10);
 
-    const name =
-        typeof location.name === "string" && location.name.trim().length > 0
-            ? location.name.trim()
-            : cityName;
+    const suggestions = locations.reduce<LocationSuggestion[]>((acc, location, index) => {
+        const cityName = (location.address?.cityName || location.name || query).trim();
+        const iataCode =
+          normalizeIataCode(location.iataCode) ||
+          normalizeIataCode(guessIataCode(cityName)) ||
+          '';
+        const name = (location.name || cityName).trim();
+        const subTypeValue = (location.subType || 'CITY').trim();
 
-    const subType = typeof location.subType === "string" ? location.subType : "CITY";
-    const detailedName = typeof location.detailedName === "string" ? location.detailedName : undefined;
-    const countryCode =
-        typeof location.address?.countryCode === "string" ? location.address.countryCode.toUpperCase() : undefined;
-
-    const label = `${cityName} (${iataCode})`;
-
-    return {
-        id: `${iataCode}-${subType}-${index}`,
-        iataCode,
-        cityName,
-        name,
-        subType,
-        detailedName,
-        countryCode,
-        label,
-    };
-}
-
-export async function GET(req: NextRequest) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const q = searchParams.get("q")?.trim() || "";
-        const kind = searchParams.get("kind")?.trim() || "flight";
-
-        if (q.length < 2) {
-            return NextResponse.json({ suggestions: [] });
+        if (!iataCode && kind === 'flight') {
+          return acc;
         }
 
-        const subType = kind === "hotel" ? "CITY" : "CITY,AIRPORT";
-        const locations = await searchAmadeusLocations(q, subType);
+        acc.push({
+          id: `${iataCode || 'LOC'}-${cityName}-${index}`.toLowerCase(),
+          iataCode: iataCode || cityName.slice(0, 3).toUpperCase(),
+          cityName,
+          name,
+          subType: subTypeValue,
+          countryCode: location.address?.countryCode?.trim() || undefined,
+          detailedName: location.detailedName?.trim() || undefined,
+          label: `${cityName} (${iataCode || cityName.slice(0, 3).toUpperCase()})`,
+        });
 
-        const suggestions = locations
-            .map((location) => location as RawLocation)
-            .map(toSuggestion)
-            .filter((item): item is LocationSuggestion => item !== null);
+        return acc;
+      }, []);
 
-        return NextResponse.json({ suggestions });
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to search locations";
-        return NextResponse.json({ error: message }, { status: 500 });
+    if (suggestions.length > 0) {
+      return NextResponse.json({ suggestions });
     }
+
+    return NextResponse.json({ suggestions: fallbackSuggestion(query, kind) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load location suggestions';
+    return NextResponse.json(
+      {
+        suggestions: fallbackSuggestion(query, kind),
+        warning: message,
+      },
+      { status: 200 }
+    );
+  }
 }

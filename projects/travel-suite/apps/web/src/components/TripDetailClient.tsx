@@ -12,16 +12,42 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ItineraryResult } from "@/types/itinerary";
 import ClientAssignmentBlock from "@/components/ClientAssignmentBlock";
 
-import {
-    SafariStoryView,
-    UrbanBriefView,
-    ProfessionalView,
-    LuxuryResortView,
-    VisualJourneyView,
-    BentoJourneyView,
-} from "@/components/itinerary-templates";
-import ItineraryTemplateClassic from "@/components/templates/ItineraryTemplateClassic";
-import ItineraryTemplateModern from "@/components/templates/ItineraryTemplateModern";
+const TemplateLoading = () => (
+    <div className="py-16 text-center text-sm text-gray-500">Loading itinerary view…</div>
+);
+
+const SafariStoryView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.SafariStoryView),
+    { loading: TemplateLoading }
+);
+const UrbanBriefView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.UrbanBriefView),
+    { loading: TemplateLoading }
+);
+const ProfessionalView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.ProfessionalView),
+    { loading: TemplateLoading }
+);
+const LuxuryResortView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.LuxuryResortView),
+    { loading: TemplateLoading }
+);
+const VisualJourneyView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.VisualJourneyView),
+    { loading: TemplateLoading }
+);
+const BentoJourneyView = dynamic(
+    () => import("@/components/itinerary-templates").then((mod) => mod.BentoJourneyView),
+    { loading: TemplateLoading }
+);
+const ItineraryTemplateClassic = dynamic(
+    () => import("@/components/templates/ItineraryTemplateClassic"),
+    { loading: TemplateLoading }
+);
+const ItineraryTemplateModern = dynamic(
+    () => import("@/components/templates/ItineraryTemplateModern"),
+    { loading: TemplateLoading }
+);
 
 const PDFDownloadButton = dynamic(
     () => import("@/components/pdf/PDFDownloadButton"),
@@ -39,7 +65,13 @@ interface TripDetailClientProps {
         summary?: string | null;
         raw_data: ItineraryResult;
         client_id?: string | null;
-        clients?: any;
+        clients?: {
+            profiles?: {
+                full_name?: string | null;
+                email?: string | null;
+                phone?: string | null;
+            } | null;
+        } | null;
         template_id?: string | null;
     };
 }
@@ -64,8 +96,8 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
     const clientProfiles = itinerary.clients?.profiles;
     const clientData = clientProfiles ? {
         name: clientProfiles.full_name || "Valued Client",
-        email: clientProfiles.email,
-        phone: clientProfiles.phone,
+        email: clientProfiles.email || undefined,
+        phone: clientProfiles.phone || undefined,
     } : null;
     const clientName = clientData?.name || null;
     const templateId = itinerary.template_id || "safari_story";

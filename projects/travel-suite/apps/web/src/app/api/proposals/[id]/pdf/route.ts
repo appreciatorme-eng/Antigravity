@@ -95,6 +95,13 @@ export async function GET(
       return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
     }
 
+    if (shareToken && proposal.expires_at) {
+      const expiresAt = new Date(proposal.expires_at);
+      if (Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
+        return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+      }
+    }
+
     // proposal_add_ons type may not exist in generated Database types yet.
     const { data: proposalAddOns } = await (supabase as any)
       .from('proposal_add_ons')
