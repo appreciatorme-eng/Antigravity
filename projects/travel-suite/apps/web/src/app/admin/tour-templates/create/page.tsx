@@ -13,6 +13,7 @@ import {
   Upload,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/toast';
 
 interface TemplateDay {
   id: string;
@@ -48,6 +49,7 @@ interface TemplateAccommodation {
 
 export default function CreateTemplatePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
   // Template basic info
@@ -194,7 +196,11 @@ export default function CreateTemplatePage() {
 
   const handleSave = async () => {
     if (!name || !destination) {
-      alert('Please fill in template name and destination');
+      toast({
+        title: 'Missing required fields',
+        description: 'Please fill in template name and destination.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -206,7 +212,11 @@ export default function CreateTemplatePage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        alert('Please log in');
+        toast({
+          title: 'Login required',
+          description: 'Please log in to save a template.',
+          variant: 'warning',
+        });
         return;
       }
 
@@ -217,7 +227,11 @@ export default function CreateTemplatePage() {
         .single();
 
       if (!profile?.organization_id) {
-        alert('Organization not found');
+        toast({
+          title: 'Organization not found',
+          description: 'Your profile is not linked to an organization.',
+          variant: 'error',
+        });
         return;
       }
 
@@ -242,7 +256,11 @@ export default function CreateTemplatePage() {
 
       if (templateError) {
         console.error('Error creating template:', templateError);
-        alert('Failed to create template');
+        toast({
+          title: 'Failed to create template',
+          description: templateError.message,
+          variant: 'error',
+        });
         return;
       }
 
@@ -308,11 +326,19 @@ export default function CreateTemplatePage() {
         }
       }
 
-      alert('Template created successfully!');
+      toast({
+        title: 'Template created',
+        description: 'Your tour template has been saved successfully.',
+        variant: 'success',
+      });
       router.push('/admin/tour-templates');
     } catch (error) {
       console.error('Error saving template:', error);
-      alert('Failed to save template');
+      toast({
+        title: 'Failed to save template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     } finally {
       setSaving(false);
     }

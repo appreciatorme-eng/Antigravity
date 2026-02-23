@@ -29,6 +29,7 @@ import { useParams } from "next/navigation";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { useToast } from "@/components/ui/toast";
 
 interface RateCardItem {
     id: string;
@@ -73,10 +74,25 @@ interface Review {
     };
 }
 
+interface MarketplaceListItem extends MarketplaceProfile {
+    organization_id: string;
+}
+
+type MarketplaceProfileLookupClient = {
+    from: (table: string) => {
+        select: (columns: string) => {
+            eq: (column: string, value: string) => {
+                single: () => Promise<{ data: { is_verified?: boolean | null } | null }>;
+            };
+        };
+    };
+};
+
 export default function OperatorDetailPage() {
     const params = useParams();
     const targetOrgId = params.id as string;
     const supabase = createClient();
+    const { toast } = useToast();
 
     const [profile, setProfile] = useState<MarketplaceProfile | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -109,7 +125,8 @@ export default function OperatorDetailPage() {
                 setCurrentUserOrgId(userProfile?.organization_id || null);
 
                 if (userProfile?.organization_id) {
-                    const { data: marketProfile } = await (supabase as any)
+                    const dynamicClient = supabase as unknown as MarketplaceProfileLookupClient;
+                    const { data: marketProfile } = await dynamicClient
                         .from("marketplace_profiles")
                         .select("is_verified")
                         .eq("organization_id", userProfile.organization_id)
@@ -120,8 +137,8 @@ export default function OperatorDetailPage() {
 
             const profRes = await fetch(`/api/marketplace?q=`, { headers });
             if (profRes.ok) {
-                const allProfs = await profRes.json();
-                const found = allProfs.find((p: any) => p.organization_id === targetOrgId);
+                const allProfs = (await profRes.json()) as MarketplaceListItem[];
+                const found = allProfs.find((p) => p.organization_id === targetOrgId);
                 setProfile(found || null);
             }
 
@@ -176,8 +193,12 @@ export default function OperatorDetailPage() {
             setNewComment("");
             setNewRating(5);
             void fetchData();
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            toast({
+                title: "Failed to submit review",
+                description: error instanceof Error ? error.message : "Unknown error",
+                variant: "error",
+            });
         } finally {
             setSubmittingReview(false);
         }
@@ -201,8 +222,12 @@ export default function OperatorDetailPage() {
             setInquirySent(true);
             setInquiryMessage("");
             setTimeout(() => { setShowInquiryModal(false); setInquirySent(false); }, 3000);
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            toast({
+                title: "Failed to send inquiry",
+                description: error instanceof Error ? error.message : "Unknown error",
+                variant: "error",
+            });
         } finally {
             setSubmittingInquiry(false);
         }
@@ -324,7 +349,7 @@ export default function OperatorDetailPage() {
                                             <div className="flex gap-0.5">{[1, 2, 3, 4, 5].map(s => <Star key={s} size={10} className={rev.rating >= s ? "text-yellow-500 fill-yellow-500" : "text-slate-800"} />)}</div>
                                         </div>
                                     </div>
-                                    <p className="text-slate-400 text-sm italic">"{rev.comment}"</p>
+                                    <p className="text-slate-400 text-sm italic">&ldquo;{rev.comment}&rdquo;</p>
                                 </GlassCard>
                             ))}
                         </div>

@@ -9,6 +9,10 @@ export function resolveAmadeusBaseUrl() {
 
   const envMode = (process.env.AMADEUS_ENV || 'production').trim().toLowerCase();
   if (envMode === 'test' || envMode === 'sandbox') {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('AMADEUS_ENV was set to test/sandbox in production. Using live API instead.');
+      return 'https://api.amadeus.com';
+    }
     return 'https://test.api.amadeus.com';
   }
 

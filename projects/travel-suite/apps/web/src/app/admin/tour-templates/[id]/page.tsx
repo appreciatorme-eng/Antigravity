@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useToast } from '@/components/ui/toast';
 
 interface TourTemplate {
   id: string;
@@ -70,6 +71,7 @@ interface TemplateAccommodation {
 export default function ViewTemplatePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const templateId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -183,12 +185,21 @@ export default function ViewTemplatePage() {
 
       if (error) {
         console.error('Error deleting template:', error);
-        alert('Failed to delete template');
+        toast({
+          title: 'Failed to delete template',
+          description: error.message,
+          variant: 'error',
+        });
       } else {
         router.push('/admin/tour-templates');
       }
     } catch (error) {
       console.error('Error deleting template:', error);
+      toast({
+        title: 'Failed to delete template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     }
   }
 

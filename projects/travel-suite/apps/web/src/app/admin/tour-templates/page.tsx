@@ -25,6 +25,7 @@ import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassConfirmModal } from '@/components/glass/GlassModal';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassCardSkeleton } from '@/components/glass/GlassSkeleton';
+import { useToast } from '@/components/ui/toast';
 
 interface TourTemplate {
   id: string;
@@ -46,6 +47,7 @@ interface TourTemplate {
 }
 
 export default function TourTemplatesPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<TourTemplate[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,12 +147,21 @@ export default function TourTemplatesPage() {
 
       if (error) {
         console.error('Error deleting template:', error);
-        alert('Failed to delete template');
+        toast({
+          title: 'Failed to delete template',
+          description: error.message,
+          variant: 'error',
+        });
       } else {
         loadTemplates();
       }
     } catch (error) {
       console.error('Error deleting template:', error);
+      toast({
+        title: 'Failed to delete template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     } finally {
       setDeleteConfirm(null);
     }
@@ -168,14 +179,27 @@ export default function TourTemplatesPage() {
 
       if (error) {
         console.error('Error cloning template:', error);
-        alert('Failed to clone template');
+        toast({
+          title: 'Failed to clone template',
+          description: error.message,
+          variant: 'error',
+        });
         return;
       }
 
       loadTemplates();
-      alert('Template cloned successfully with all days and activities!');
+      toast({
+        title: 'Template cloned',
+        description: 'Template cloned successfully with all days and activities.',
+        variant: 'success',
+      });
     } catch (error) {
       console.error('Error cloning template:', error);
+      toast({
+        title: 'Failed to clone template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     }
   }
 

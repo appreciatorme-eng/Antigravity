@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { useToast } from "@/components/ui/toast";
 
 type LifecycleStage =
     | "lead"
@@ -82,6 +83,7 @@ function getStageLabel(value: string | null | undefined): string {
 
 export default function AdminKanbanPage() {
     const supabase = createClient();
+    const { toast } = useToast();
     const [clients, setClients] = useState<ClientCard[]>([]);
     const [contacts, setContacts] = useState<ContactItem[]>([]);
     const [events, setEvents] = useState<StageEvent[]>([]);
@@ -218,7 +220,11 @@ export default function AdminKanbanPage() {
             await fetchData();
         } catch (error) {
             console.error("Stage move failed:", error);
-            alert(error instanceof Error ? error.message : "Failed to move stage");
+            toast({
+                title: "Failed to move stage",
+                description: error instanceof Error ? error.message : "Failed to move stage",
+                variant: "error",
+            });
         } finally {
             setMovingClientId(null);
         }
@@ -246,7 +252,11 @@ export default function AdminKanbanPage() {
             )));
         } catch (error) {
             console.error("Toggle phase notifications failed:", error);
-            alert(error instanceof Error ? error.message : "Failed to update client notification toggle");
+            toast({
+                title: "Failed to update notifications",
+                description: error instanceof Error ? error.message : "Failed to update client notification toggle",
+                variant: "error",
+            });
         } finally {
             setMovingClientId(null);
         }
@@ -276,7 +286,11 @@ export default function AdminKanbanPage() {
             }
             await fetchData();
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to move contact to lead");
+            toast({
+                title: "Failed to promote contact",
+                description: error instanceof Error ? error.message : "Failed to move contact to lead",
+                variant: "error",
+            });
         } finally {
             setPromotingContactId(null);
         }
@@ -293,7 +307,11 @@ export default function AdminKanbanPage() {
         }).contacts;
 
         if (!contactsApi?.select) {
-            alert("Phone contact picker is not supported in this browser. Use CSV import.");
+            toast({
+                title: "Phone contact picker unavailable",
+                description: "This browser does not support phone contact picker. Use CSV import.",
+                variant: "warning",
+            });
             return;
         }
 
@@ -324,7 +342,11 @@ export default function AdminKanbanPage() {
             if (!response.ok) throw new Error(payload?.error || "Failed to import contacts");
             await fetchData();
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to import phone contacts");
+            toast({
+                title: "Failed to import phone contacts",
+                description: error instanceof Error ? error.message : "Failed to import phone contacts",
+                variant: "error",
+            });
         } finally {
             setImportingContacts(false);
         }
@@ -336,7 +358,11 @@ export default function AdminKanbanPage() {
             const text = await file.text();
             const lines = text.split(/\r?\n/).filter(Boolean);
             if (lines.length < 2) {
-                alert("CSV needs headers and at least one contact row.");
+                toast({
+                    title: "Invalid CSV",
+                    description: "CSV needs headers and at least one contact row.",
+                    variant: "warning",
+                });
                 return;
             }
 
@@ -355,7 +381,11 @@ export default function AdminKanbanPage() {
             }).filter((item) => item.full_name || item.email || item.phone);
 
             if (contactsPayload.length === 0) {
-                alert("No valid contact rows found in CSV.");
+                toast({
+                    title: "No valid rows",
+                    description: "No valid contact rows found in CSV.",
+                    variant: "warning",
+                });
                 return;
             }
 
@@ -375,7 +405,11 @@ export default function AdminKanbanPage() {
             if (!response.ok) throw new Error(payload?.error || "Failed to import CSV contacts");
             await fetchData();
         } catch (error) {
-            alert(error instanceof Error ? error.message : "Failed to import CSV contacts");
+            toast({
+                title: "Failed to import CSV contacts",
+                description: error instanceof Error ? error.message : "Failed to import CSV contacts",
+                variant: "error",
+            });
         } finally {
             setImportingContacts(false);
             if (csvInputRef.current) {

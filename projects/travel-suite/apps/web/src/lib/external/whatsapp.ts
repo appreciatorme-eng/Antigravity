@@ -1,54 +1,43 @@
+import "server-only";
 
-/**
- * WhatsApp Cloud API Wrapper (Mock)
- * 
- * In a production environment, this would use the Facebook Graph API.
- * https://developers.facebook.com/docs/whatsapp/cloud-api
- */
+import { sendWhatsAppText } from "@/lib/whatsapp.server";
 
-// Mock configuration check (placeholders for future real integration)
-const _WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || "mock_token";
-const _WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "mock_phone_id";
-void _WHATSAPP_TOKEN;
-void _WHATSAPP_PHONE_ID;
+function normalizeText(value: string, maxLength: number): string {
+    return value.trim().slice(0, maxLength);
+}
 
-export async function sendItineraryToWhatsApp(phoneNumber: string, itineraryTitle: string, pdfUrl: string): Promise<boolean> {
-    console.log(`[WhatsApp Mock] Preparing to send itinerary "${itineraryTitle}" to ${phoneNumber}`);
+function normalizeUrl(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+        return url.toString();
+    } catch {
+        return null;
+    }
+}
 
-    // Validate phone number format (basic check)
-    if (!phoneNumber.match(/^\+?[1-9]\d{1,14}$/)) {
-        console.error("[WhatsApp Mock] Invalid phone number format");
+export async function sendItineraryToWhatsApp(
+    phoneNumber: string,
+    itineraryTitle: string,
+    pdfUrl: string
+): Promise<boolean> {
+    const normalizedTitle = normalizeText(itineraryTitle, 120);
+    const normalizedPdfUrl = normalizeUrl(pdfUrl);
+
+    if (!phoneNumber?.trim() || !normalizedTitle || !normalizedPdfUrl) {
         return false;
     }
 
-    // In real implementation:
-    // const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`;
-    // const payload: WhatsAppMessagePayload = {
-    //     messaging_product: "whatsapp",
-    //     to: phoneNumber,
-    //     type: "template",
-    //     template: {
-    //         name: "itinerary_share",
-    //         language: { code: "en_US" },
-    //         components: [
-    //             {
-    //                 type: "body",
-    //                 parameters: [
-    //                     { type: "text", text: itineraryTitle },
-    //                     { type: "text", text: pdfUrl }
-    //                 ]
-    //             }
-    //         ]
-    //     }
-    // };
-    // await fetch(url, { ... });
+    const message = `Hi, your itinerary "${normalizedTitle}" is ready: ${normalizedPdfUrl}`;
+    const result = await sendWhatsAppText(phoneNumber, message);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!result.success) {
+        console.error("[WhatsApp] Failed to send itinerary message", {
+            error: result.error,
+        });
+    }
 
-    console.log(`[WhatsApp Mock] 🚀 Successfully sent template 'itinerary_share' to ${phoneNumber}`);
-    console.log(`[WhatsApp Mock] > Title: ${itineraryTitle}`);
-    console.log(`[WhatsApp Mock] > Link: ${pdfUrl}`);
-
-    return true;
+    return result.success;
 }

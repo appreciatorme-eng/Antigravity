@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/toast';
 
 interface TemplateDay {
   id: string;
@@ -50,6 +51,7 @@ interface TemplateAccommodation {
 export default function EditTemplatePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const templateId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,11 @@ export default function EditTemplatePage() {
 
       if (templateError || !template) {
         console.error('Error loading template:', templateError);
-        alert('Template not found');
+        toast({
+          title: 'Template not found',
+          description: 'The template may have been removed or is inaccessible.',
+          variant: 'error',
+        });
         router.push('/admin/tour-templates');
         return;
       }
@@ -166,7 +172,11 @@ export default function EditTemplatePage() {
       }
     } catch (error) {
       console.error('Error loading template:', error);
-      alert('Failed to load template');
+      toast({
+        title: 'Failed to load template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -294,7 +304,11 @@ export default function EditTemplatePage() {
 
   const handleSave = async () => {
     if (!name || !destination) {
-      alert('Please fill in template name and destination');
+      toast({
+        title: 'Missing required fields',
+        description: 'Please fill in template name and destination.',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -319,7 +333,11 @@ export default function EditTemplatePage() {
 
       if (templateError) {
         console.error('Error updating template:', templateError);
-        alert('Failed to update template');
+        toast({
+          title: 'Failed to update template',
+          description: templateError.message,
+          variant: 'error',
+        });
         return;
       }
 
@@ -395,11 +413,19 @@ export default function EditTemplatePage() {
         }
       }
 
-      alert('Template updated successfully!');
+      toast({
+        title: 'Template updated',
+        description: 'Your template changes were saved successfully.',
+        variant: 'success',
+      });
       router.push(`/admin/tour-templates/${templateId}`);
     } catch (error) {
       console.error('Error saving template:', error);
-      alert('Failed to save template');
+      toast({
+        title: 'Failed to save template',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'error',
+      });
     } finally {
       setSaving(false);
     }

@@ -23,6 +23,7 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
+import { useToast } from "@/components/ui/toast";
 import SearchableCreatableMultiSelect from "@/components/forms/SearchableCreatableMultiSelect";
 import {
     mergeMarketplaceOptions,
@@ -44,11 +45,39 @@ interface ComplianceDocument {
     expiry_date?: string;
 }
 
+interface OrganizationSummary {
+    id: string;
+    name?: string | null;
+    logo_url?: string | null;
+}
+
+interface MarketplaceSettingsRow {
+    description?: string | null;
+    service_regions?: string[] | null;
+    specialties?: string[] | null;
+    margin_rate?: number | null;
+    verification_status?: string | null;
+    gallery_urls?: string[] | null;
+    rate_card?: RateCardItem[] | null;
+    compliance_documents?: ComplianceDocument[] | null;
+}
+
+type MarketplaceSettingsLookupClient = {
+    from: (table: string) => {
+        select: (columns: string) => {
+            eq: (column: string, value: string) => {
+                single: () => Promise<{ data: MarketplaceSettingsRow | null }>;
+            };
+        };
+    };
+};
+
 export default function MarketplaceSettingsPage() {
     const supabase = createClient();
+    const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [organization, setOrganization] = useState<any>(null);
+    const [organization, setOrganization] = useState<OrganizationSummary | null>(null);
     const [formData, setFormData] = useState({
         description: "",
         service_regions: [] as string[],
@@ -99,7 +128,8 @@ export default function MarketplaceSettingsPage() {
                     .single();
                 setOrganization({ ...org, id: profile.organization_id });
 
-                const { data: marketProfile } = await (supabase as any)
+                const dynamicClient = supabase as unknown as MarketplaceSettingsLookupClient;
+                const { data: marketProfile } = await dynamicClient
                     .from("marketplace_profiles")
                     .select("*")
                     .eq("organization_id", profile.organization_id)
@@ -159,8 +189,12 @@ export default function MarketplaceSettingsPage() {
 
             setSuccessMessage(true);
             setTimeout(() => setSuccessMessage(false), 3000);
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            toast({
+                title: "Failed to save settings",
+                description: error instanceof Error ? error.message : "Unknown error",
+                variant: "error",
+            });
         } finally {
             setSaving(false);
         }
@@ -192,8 +226,12 @@ export default function MarketplaceSettingsPage() {
             setFormData(prev => ({ ...prev, verification_status: 'pending' }));
             setSuccessMessage(true);
             setTimeout(() => setSuccessMessage(false), 3000);
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error) {
+            toast({
+                title: "Failed to request verification",
+                description: error instanceof Error ? error.message : "Unknown error",
+                variant: "error",
+            });
         } finally {
             setSaving(false);
         }
@@ -260,7 +298,7 @@ export default function MarketplaceSettingsPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="space-y-2">
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Marketplace Settings</h1>
-                    <p className="text-slate-600 dark:text-slate-400">Manage your organization's presence and credentials in the partner network.</p>
+                    <p className="text-slate-600 dark:text-slate-400">Manage your organization&apos;s presence and credentials in the partner network.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {successMessage && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { validateExtractedTour, type ExtractedTourData } from '@/lib/import/types';
 import ImportPreview from '@/components/import/ImportPreview';
+import { useToast } from '@/components/ui/toast';
 import { Upload, Link as LinkIcon, Loader2, FileText, Globe, AlertCircle } from 'lucide-react';
 
 type ImportMethod = 'pdf' | 'url' | null;
@@ -12,6 +13,7 @@ type ImportStatus = 'idle' | 'extracting' | 'previewing' | 'saving' | 'error';
 
 export default function ImportTourPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [importMethod, setImportMethod] = useState<ImportMethod>(null);
   const [status, setStatus] = useState<ImportStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -241,7 +243,11 @@ export default function ImportTourPage() {
       }
 
       // Success! Redirect to template view
-      alert('Template imported successfully!');
+      toast({
+        title: 'Template imported',
+        description: 'Tour template imported successfully.',
+        variant: 'success',
+      });
       router.push(`/admin/tour-templates/${template.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save template');

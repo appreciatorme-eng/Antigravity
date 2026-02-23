@@ -78,7 +78,7 @@ export function reorderArray<T>(array: T[], fromIndex: number, toIndex: number):
  *   );
  *
  *   if (!result.success) {
- *     alert('Failed to reorder');
+ *     toast({ title: 'Failed to reorder', variant: 'error' });
  *   }
  * };
  * ```
