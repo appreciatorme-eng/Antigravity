@@ -14,9 +14,6 @@ jobs:
   deploy-production:
     name: Deploy Web App to Vercel
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: projects/travel-suite/apps/web
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -35,4 +32,7 @@ jobs:
         run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Deploy to Vercel Production
-        run: npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
+        run: |
+          npx vercel deploy --prod --yes --token="$VERCEL_TOKEN" \
+            --meta githubCommitSha="$GITHUB_SHA" \
+            --meta githubCommitRef="$GITHUB_REF_NAME"
