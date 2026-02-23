@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 function minutesSince(iso?: string | null): number | null {
     if (!iso) return null;
@@ -75,9 +73,15 @@ export async function GET(req: NextRequest) {
                 .eq("is_active", true),
         ]);
 
-        const driverIds = Array.from(new Set((activeTrips || []).map((trip) => trip.driver_id).filter(Boolean)));
+        const driverIds = Array.from(
+            new Set(
+                (activeTrips || [])
+                    .map((trip) => trip.driver_id)
+                    .filter((driverId): driverId is string => typeof driverId === "string" && driverId.length > 0)
+            )
+        );
 
-        const latestByDriver = new Map<string, { recorded_at: string; trip_id: string | null }>();
+        const latestByDriver = new Map<string, { recorded_at: string | null; trip_id: string | null }>();
         if (driverIds.length > 0) {
             const { data: locationData } = await supabaseAdmin
                 .from("driver_locations")

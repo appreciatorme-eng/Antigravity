@@ -5,8 +5,8 @@
  * Handles subscriptions, invoices, payment methods, and GST calculations.
  */
 
-import { razorpay } from './razorpay-stub';
-import type { Order, Payment, Subscription, Customer, Invoice } from './razorpay-stub';
+import { razorpay } from './razorpay';
+import type { Order } from './razorpay';
 import { createClient } from '@/lib/supabase/server';
 import { calculateGST } from '../tax/gst-calculator';
 
@@ -50,6 +50,14 @@ interface RecordPaymentOptions {
 }
 
 export class PaymentService {
+  private resolveCompanyState(defaultState?: string | null): string {
+    const configured =
+      process.env.GST_COMPANY_STATE ||
+      process.env.NEXT_PUBLIC_GST_COMPANY_STATE ||
+      defaultState;
+    return (configured || 'MAHARASHTRA').toUpperCase();
+  }
+
   /**
    * Create or get Razorpay customer for organization
    */
@@ -59,7 +67,7 @@ export class PaymentService {
     // Check if customer already exists
     const { data: org } = await supabase
       .from('organizations')
-      .select('razorpay_customer_id, name, gstin')
+      .select('razorpay_customer_id, name, gstin, owner_id')
       .eq('id', organizationId)
       .single();
 
@@ -72,10 +80,22 @@ export class PaymentService {
       return org.razorpay_customer_id;
     }
 
+    let ownerEmail: string | undefined;
+    if (org.owner_id) {
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', org.owner_id)
+        .maybeSingle();
+      ownerEmail = ownerProfile?.email || undefined;
+    }
+
+    const customerEmail = ownerEmail ?? `no-reply+${organizationId}@example.com`;
+
     // Create new Razorpay customer
     const customer = await razorpay.customers.create({
       name: org.name,
-      email: '', // TODO: Fetch owner email or support billing_email
+      email: customerEmail,
       gstin: org.gstin || undefined,
       notes: {
         organization_id: organizationId,
@@ -97,11 +117,17 @@ export class PaymentService {
   async createSubscription(options: CreateSubscriptionOptions): Promise<string> {
     const supabase = await createClient();
 
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('billing_state')
+      .eq('id', options.organizationId)
+      .maybeSingle();
+
     // Ensure Razorpay customer exists
     const customerId = await this.ensureCustomer(options.organizationId);
 
     // Calculate GST
-    const companyState = 'MAHARASHTRA'; // TODO: Get from config
+    const companyState = this.resolveCompanyState(org?.billing_state);
     const gst = calculateGST(
       options.amount,
       companyState,
@@ -113,6 +139,7 @@ export class PaymentService {
     // Create Razorpay subscription
     const razorpaySubscription = await razorpay.subscriptions.create({
       plan_id: `plan_${options.planId}`,
+      customer_id: customerId,
       customer_notify: 1,
       total_count: options.billingCycle === 'monthly' ? 12 : 1, // 12 monthly or 1 annual
       quantity: 1,
@@ -145,7 +172,7 @@ export class PaymentService {
         current_period_start: currentPeriodStart.toISOString(),
         current_period_end: currentPeriodEnd.toISOString(),
         next_billing_date: currentPeriodEnd.toISOString(),
-        trial_start: null, // TODO: Implement trial period
+        trial_start: null,
         trial_end: null,
       })
       .select()
@@ -243,21 +270,30 @@ export class PaymentService {
     }
 
     // Calculate GST
-    const companyState = 'MAHARASHTRA'; // TODO: Get from config
+    const companyState = this.resolveCompanyState(org.billing_state);
     const customerState = options.placeOfSupply || org.billing_state || companyState;
     const gst = calculateGST(options.amount, companyState, customerState);
 
     const totalAmount = options.amount + gst.totalGst;
+    const invoiceItems =
+      options.items && options.items.length > 0
+        ? options.items
+        : [
+            {
+              description: options.description || 'Invoice',
+              amount: totalAmount,
+              quantity: 1,
+            },
+          ];
 
     // Create Razorpay invoice (optional, for payment link)
     const customerId = await this.ensureCustomer(options.organizationId);
     const razorpayInvoice = await razorpay.invoices.create({
       customer_id: customerId,
       type: 'invoice',
-      amount: Math.round(totalAmount * 100), // Convert to paise
       currency: options.currency || 'INR',
       description: options.description || 'Invoice',
-      line_items: options.items?.map(item => ({
+      line_items: invoiceItems.map(item => ({
         name: item.description,
         amount: Math.round(item.amount * 100),
         quantity: item.quantity || 1,
@@ -399,7 +435,10 @@ export class PaymentService {
    * Verify payment signature from webhook
    */
   verifyWebhookSignature(body: string, signature: string): boolean {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || 'test_secret';
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
+    }
     return razorpay.webhooks.validateSignature(body, signature, webhookSecret);
   }
 

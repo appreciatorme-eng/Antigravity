@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { parseWhatsAppLocationMessages } from "@/lib/whatsapp.server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "";
-const appSecret = process.env.WHATSAPP_APP_SECRET || "";
+const supabaseAdmin = createAdminClient();
+const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || null;
+const appSecret = process.env.WHATSAPP_APP_SECRET || null;
 const allowUnsignedWebhook = process.env.WHATSAPP_ALLOW_UNSIGNED_WEBHOOK === "true";
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 function toIsoFromUnixSeconds(value: string): string {
     const parsed = Number(value);

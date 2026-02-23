@@ -22,7 +22,7 @@ const isOnboardingComplete = (profile: {
 } | null) =>
   !!profile?.organization_id && profile.role === 'admin' && Number(profile.onboarding_step || 0) >= 2;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 const TEMPLATE_OPTIONS = new Set(['safari_story', 'urban_brief']);
+
+type OnboardingOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  itinerary_template: string | null;
+};
 
 const normalizeTemplate = (value: unknown): 'safari_story' | 'urban_brief' => {
   const candidate = String(value || '').trim();
@@ -79,7 +86,7 @@ async function ensureProfile(userId: string, email: string | null) {
   return inserted;
 }
 
-async function getOrganization(organizationId: string | null) {
+async function getOrganization(organizationId: string | null): Promise<OnboardingOrganization | null> {
   if (!organizationId) return null;
   const { data: organizationWithTemplate, error: organizationWithTemplateError } = await supabaseAdmin
     .from('organizations')
@@ -88,7 +95,23 @@ async function getOrganization(organizationId: string | null) {
     .maybeSingle();
 
   if (!organizationWithTemplateError) {
-    return organizationWithTemplate ?? null;
+    if (!organizationWithTemplate) return null;
+    const org = organizationWithTemplate as unknown as {
+      id: string;
+      name: string;
+      slug: string;
+      logo_url: string | null;
+      primary_color: string | null;
+      itinerary_template?: string | null;
+    };
+    return {
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      logo_url: org.logo_url,
+      primary_color: org.primary_color,
+      itinerary_template: org.itinerary_template ?? 'safari_story',
+    };
   }
 
   if (!isMissingColumnError(organizationWithTemplateError, 'itinerary_template')) {
@@ -108,7 +131,11 @@ async function getOrganization(organizationId: string | null) {
 
   return organizationWithoutTemplate
     ? {
-        ...organizationWithoutTemplate,
+        id: organizationWithoutTemplate.id,
+        name: organizationWithoutTemplate.name,
+        slug: organizationWithoutTemplate.slug,
+        logo_url: organizationWithoutTemplate.logo_url,
+        primary_color: organizationWithoutTemplate.primary_color,
         itinerary_template: 'safari_story',
       }
     : null;

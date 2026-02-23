@@ -4,10 +4,12 @@ import { Database } from '../database.types';
 
 export async function createClient() {
     const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dev-anon-key';
 
     return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key',
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {

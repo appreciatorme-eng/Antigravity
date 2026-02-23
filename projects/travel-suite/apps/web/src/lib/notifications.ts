@@ -1,11 +1,7 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-
-// Use service role for server-side operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 export interface NotificationPayload {
     userId: string;
@@ -101,6 +97,9 @@ export async function sendNotificationToTripUsers(
 
         if (tripError || !trip) {
             return { success: false, sentCount: 0, error: "Trip not found" };
+        }
+        if (!trip.client_id) {
+            return { success: false, sentCount: 0, error: "Trip has no client assigned" };
         }
 
         // Send to trip owner

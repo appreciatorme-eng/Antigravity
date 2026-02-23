@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Supabase configuration missing for public proposal API");
+  }
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 type ProposalSummary = {
   id: string;
@@ -20,6 +25,73 @@ type ProposalSummary = {
   hero_image_url?: string;
 };
 
+type ProposalTemplate = {
+  name: string | null;
+  destination: string | null;
+  duration_days: number | null;
+  description: string | null;
+  hero_image_url: string | null;
+} | null;
+
+type LoadedProposal = {
+  id: string;
+  title: string;
+  total_price: number | null;
+  client_selected_price: number | null;
+  status: string | null;
+  expires_at: string | null;
+  viewed_at: string | null;
+  tour_templates?: ProposalTemplate;
+};
+
+type PublicDay = {
+  id: string;
+  proposal_id: string;
+  day_number: number;
+  title: string | null;
+  description: string | null;
+  is_approved: boolean;
+};
+
+type PublicActivity = {
+  id: string;
+  proposal_day_id: string;
+  time: string | null;
+  title: string;
+  description: string | null;
+  location: string | null;
+  image_url: string | null;
+  price: number;
+  is_optional: boolean;
+  is_premium: boolean;
+  is_selected: boolean;
+  display_order: number;
+};
+
+type PublicAccommodation = {
+  id: string;
+  proposal_day_id: string;
+  hotel_name: string;
+  star_rating: number;
+  room_type: string | null;
+  price_per_night: number;
+  amenities: string[] | null;
+  image_url: string | null;
+};
+
+type PublicAddOn = {
+  id: string;
+  proposal_id: string;
+  add_on_id: string | null;
+  name: string;
+  description: string | null;
+  category: string;
+  image_url: string | null;
+  unit_price: number;
+  quantity: number;
+  is_selected: boolean;
+};
+
 const asNumber = (value: unknown, fallback = 0) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -31,6 +103,7 @@ const normalizeText = (value: unknown) => {
 };
 
 async function loadProposalByToken(token: string) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const { data, error } = await supabaseAdmin
     .from('proposals')
     .select(
@@ -60,6 +133,7 @@ async function loadProposalByToken(token: string) {
 }
 
 async function recalculateProposalPrice(proposalId: string) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const { data: newPrice, error } = await supabaseAdmin.rpc('calculate_proposal_price', {
     p_proposal_id: proposalId,
   });
@@ -86,12 +160,13 @@ async function recalculateProposalPrice(proposalId: string) {
 }
 
 async function buildPublicPayload(shareToken: string) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const loaded = await loadProposalByToken(shareToken);
   if ('error' in loaded) {
     return loaded;
   }
 
-  const proposal = loaded.proposal as any;
+  const proposal = loaded.proposal as LoadedProposal;
 
   if (!proposal.viewed_at && proposal.status !== 'approved') {
     await supabaseAdmin
@@ -132,7 +207,7 @@ async function buildPublicPayload(shareToken: string) {
     .eq('proposal_id', proposal.id)
     .order('day_number', { ascending: true });
 
-  const days = (daysData || []).map((day: any) => ({
+  const days: PublicDay[] = (daysData || []).map((day) => ({
     id: day.id,
     proposal_id: day.proposal_id,
     day_number: day.day_number,
@@ -143,8 +218,8 @@ async function buildPublicPayload(shareToken: string) {
 
   const dayIds = days.map((day) => day.id);
 
-  let activitiesByDay: Record<string, any[]> = {};
-  let accommodationsByDay: Record<string, any> = {};
+  const activitiesByDay: Record<string, PublicActivity[]> = {};
+  const accommodationsByDay: Record<string, PublicAccommodation> = {};
 
   if (dayIds.length > 0) {
     const { data: activitiesData } = await supabaseAdmin
@@ -211,7 +286,7 @@ async function buildPublicPayload(shareToken: string) {
     .eq('proposal_id', proposal.id)
     .order('category', { ascending: true });
 
-  const addOns = (addOnsData || []).map((addOn: any) => ({
+  const addOns: PublicAddOn[] = (addOnsData || []).map((addOn) => ({
     id: addOn.id,
     proposal_id: addOn.proposal_id,
     add_on_id: addOn.add_on_id || null,
@@ -262,6 +337,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdminClient();
     const { token } = await params;
     const loaded = await loadProposalByToken(token);
 
@@ -269,7 +345,7 @@ export async function POST(
       return NextResponse.json({ error: loaded.error }, { status: loaded.status });
     }
 
-    const proposal = loaded.proposal as any;
+    const proposal = loaded.proposal as LoadedProposal;
     const body = await request.json();
     const action = String(body?.action || '').trim();
 

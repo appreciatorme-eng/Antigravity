@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 
-const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co');
-const supabaseServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key');
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createAdminClient();
 
 function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {
     const response = NextResponse.json({ ...body, request_id: requestId }, init);
@@ -69,7 +67,9 @@ export async function GET(req: NextRequest) {
         const rows = data || [];
         const profileIds = Array.from(
             new Set(
-                rows.flatMap((row) => [row.profile_id, row.changed_by].filter(Boolean))
+                rows
+                    .flatMap((row) => [row.profile_id, row.changed_by])
+                    .filter((profileId): profileId is string => typeof profileId === "string" && profileId.length > 0)
             )
         );
 
