@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isCronSecretBearer } from "@/lib/security/cron-auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+function isServiceRoleBearer(authHeader: string | null): boolean {
+    if (!authHeader?.startsWith("Bearer ")) return false;
+    return authHeader.substring(7) === supabaseServiceKey;
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,20 +18,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const token = authHeader.substring(7);
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (authError || !authData?.user) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-        }
+        const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
+        const bearerCronAuthorized = isCronSecretBearer(authHeader);
 
-        const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("role")
-            .eq("id", authData.user.id)
-            .maybeSingle();
+        let adminUserId: string | null = null;
+        if (!serviceRoleAuthorized && !bearerCronAuthorized) {
+            const token = authHeader.substring(7);
+            const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+            if (authError || !authData?.user) {
+                return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+            }
 
-        if (profile?.role !== "admin") {
-            return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+            const { data: profile } = await supabaseAdmin
+                .from("profiles")
+                .select("role")
+                .eq("id", authData.user.id)
+                .maybeSingle();
+
+            if (profile?.role !== "admin" && profile?.role !== "super_admin") {
+                return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+            }
+
+            adminUserId = authData.user.id;
         }
 
         const { data, error } = await supabaseAdmin
@@ -42,15 +56,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        await supabaseAdmin.from("notification_logs").insert({
-            notification_type: "manual",
-            recipient_type: "admin",
-            recipient_id: authData.user.id,
-            title: "Queue Retry Failed",
-            body: `Moved ${data?.length || 0} failed queue item(s) back to pending.`,
-            status: "sent",
-            sent_at: new Date().toISOString(),
-        });
+        if (adminUserId) {
+            await supabaseAdmin.from("notification_logs").insert({
+                notification_type: "manual",
+                recipient_type: "admin",
+                recipient_id: adminUserId,
+                title: "Queue Retry Failed",
+                body: `Moved ${data?.length || 0} failed queue item(s) back to pending.`,
+                status: "sent",
+                sent_at: new Date().toISOString(),
+            });
+        }
 
         return NextResponse.json({
             ok: true,
@@ -62,4 +78,8 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+export async function GET(request: NextRequest) {
+    return POST(request);
 }

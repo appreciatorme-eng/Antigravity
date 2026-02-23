@@ -3,5 +3,19 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm ci --legacy-peer-deps",
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "crons": [
+    {
+      "path": "/api/notifications/process-queue",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/notifications/retry-failed",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/notifications/schedule-followups",
+      "schedule": "15 2 * * *"
+    }
+  ]
 }

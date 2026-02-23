@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
+import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
 
-const queueSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const supabaseAdmin = createAdminClient();
 
 const FOLLOW_UP_STEPS = [
@@ -99,11 +99,12 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
     const headerSecret = request.headers.get("x-notification-cron-secret") || "";
 
-    const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
+    const secretAuthorized = isCronSecretHeader(headerSecret);
+    const bearerCronAuthorized = isCronSecretBearer(authHeader);
     const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
     const adminAuthorized = await isAdminBearerToken(authHeader);
 
-    if (!secretAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
+    if (!secretAuthorized && !bearerCronAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -227,4 +228,8 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

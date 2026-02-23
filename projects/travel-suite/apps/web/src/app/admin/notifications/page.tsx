@@ -115,6 +115,7 @@ export default function NotificationLogsPage() {
     });
     const [runningQueue, setRunningQueue] = useState(false);
     const [retryingFailed, setRetryingFailed] = useState(false);
+    const [schedulingFollowups, setSchedulingFollowups] = useState(false);
     const [cleaningShares, setCleaningShares] = useState(false);
     const [actionMessage, setActionMessage] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -350,6 +351,35 @@ export default function NotificationLogsPage() {
         }
     };
 
+    const scheduleFollowupsNow = async () => {
+        try {
+            setSchedulingFollowups(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/notifications/schedule-followups?limit=300", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session?.access_token || ""}`,
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                setActionError(payload?.error || "Failed to schedule follow-up notifications");
+                return;
+            }
+
+            setActionMessage(
+                `Follow-up scheduler scanned ${payload?.scanned || 0} trips, queued ${payload?.queued || 0}, skipped ${payload?.skipped_existing || 0}.`
+            );
+            await fetchLogs();
+            await fetchDeliveryTracking();
+        } catch (error) {
+            console.error("Schedule followups error:", error);
+            setActionError("Failed to schedule follow-up notifications");
+        } finally {
+            setSchedulingFollowups(false);
+        }
+    };
+
     const cleanupExpiredShares = async () => {
         try {
             setCleaningShares(true);
@@ -508,6 +538,16 @@ export default function NotificationLogsPage() {
                 >
                     <RefreshCcw className="w-4 h-4" />
                     Retry Failed
+                </GlassButton>
+                <GlassButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={scheduleFollowupsNow}
+                    disabled={schedulingFollowups}
+                    loading={schedulingFollowups}
+                >
+                    <MessageCircle className="w-4 h-4" />
+                    Schedule Follow-ups
                 </GlassButton>
                 <GlassButton
                     variant="ghost"

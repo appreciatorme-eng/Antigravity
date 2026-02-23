@@ -5,6 +5,7 @@ import { Database } from "@/lib/database.types";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
+import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
 import {
     renderTemplate,
     renderWhatsAppTemplate,
@@ -21,7 +22,6 @@ import {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key';
-const queueSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
 const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
@@ -242,14 +242,20 @@ export async function POST(request: Request) {
         const headerSecret = request.headers.get("x-notification-cron-secret") || "";
         const authHeader = request.headers.get("authorization");
 
-        const secretAuthorized = !!queueSecret && headerSecret === queueSecret;
-        const { pathname, origin } = new URL(request.url);
+        const secretAuthorized = isCronSecretHeader(headerSecret);
+        const bearerCronAuthorized = isCronSecretBearer(authHeader);
         const signedAuthorized = isSignedCronRequest(request as any);
         const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
         const adminAuthorized = await isAdminBearerToken(authHeader);
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
 
-        if (!secretAuthorized && !signedAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
+        if (
+            !secretAuthorized &&
+            !bearerCronAuthorized &&
+            !signedAuthorized &&
+            !serviceRoleAuthorized &&
+            !adminAuthorized
+        ) {
             logEvent("warn", "Notification queue run unauthorized", requestContext);
             return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
         }
@@ -534,4 +540,8 @@ export async function POST(request: Request) {
             { status: 500 }
         );
     }
+}
+
+export async function GET(request: NextRequest) {
+    return POST(request);
 }
