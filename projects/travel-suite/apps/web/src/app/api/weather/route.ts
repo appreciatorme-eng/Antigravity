@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWeatherForLocation, getWeatherForLocations } from "@/lib/external/weather";
+import { getWeatherForLocation, getWeatherForLocations, type LocationWeather } from "@/lib/external/weather";
+import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+
+const WEATHER_TTL_SECONDS = 6 * 60 * 60;
+const WEATHER_CACHE_HEADERS = {
+    "Cache-Control": "public, max-age=600, stale-while-revalidate=3600",
+};
+
+interface MultiLocationWeatherResponse {
+    locations: Record<string, LocationWeather>;
+    requested: string[];
+    found: string[];
+}
+
+function normalizedLocationKey(location: string): string {
+    return location.trim().toLowerCase().replace(/\s+/g, "_");
+}
 
 /**
  * GET /api/weather?location=Paris
@@ -19,6 +35,12 @@ export async function GET(request: NextRequest) {
     try {
         // Single location
         if (location) {
+            const cacheKey = `weather:single:v1:${normalizedLocationKey(location)}:${forecastDays}`;
+            const cached = await getCachedJson<LocationWeather>(cacheKey);
+            if (cached) {
+                return NextResponse.json(cached, { headers: WEATHER_CACHE_HEADERS });
+            }
+
             const weather = await getWeatherForLocation(location, forecastDays);
 
             if (!weather) {
@@ -28,7 +50,8 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            return NextResponse.json(weather);
+            await setCachedJson(cacheKey, weather, WEATHER_TTL_SECONDS);
+            return NextResponse.json(weather, { headers: WEATHER_CACHE_HEADERS });
         }
 
         // Multiple locations
@@ -49,13 +72,22 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            const weatherData = await getWeatherForLocations(locationList, forecastDays);
+            const normalizedLocations = [...locationList].map(normalizedLocationKey).sort();
+            const cacheKey = `weather:multi:v1:${normalizedLocations.join(",")}:${forecastDays}`;
+            const cached = await getCachedJson<MultiLocationWeatherResponse>(cacheKey);
+            if (cached) {
+                return NextResponse.json(cached, { headers: WEATHER_CACHE_HEADERS });
+            }
 
-            return NextResponse.json({
+            const weatherData = await getWeatherForLocations(locationList, forecastDays);
+            const payload: MultiLocationWeatherResponse = {
                 locations: weatherData,
                 requested: locationList,
                 found: Object.keys(weatherData),
-            });
+            };
+
+            await setCachedJson(cacheKey, payload, WEATHER_TTL_SECONDS);
+            return NextResponse.json(payload, { headers: WEATHER_CACHE_HEADERS });
         }
 
         return NextResponse.json(

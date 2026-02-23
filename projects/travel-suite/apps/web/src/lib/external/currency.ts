@@ -7,6 +7,7 @@
  * 
  * @see https://www.frankfurter.app/docs/
  */
+import { fetchWithRetry } from "@/lib/network/retry";
 
 export interface ExchangeRates {
     base: string;
@@ -63,8 +64,10 @@ const currencySymbols: Record<string, string> = {
  */
 export async function getExchangeRates(baseCurrency: string = "USD"): Promise<ExchangeRates | null> {
     try {
-        const response = await fetch(
-            `https://api.frankfurter.app/latest?from=${baseCurrency.toUpperCase()}`
+        const response = await fetchWithRetry(
+            `https://api.frankfurter.app/latest?from=${baseCurrency.toUpperCase()}`,
+            undefined,
+            { retries: 2, timeoutMs: 5000 }
         );
 
         if (!response.ok) {
@@ -109,8 +112,10 @@ export async function convertCurrency(
             };
         }
 
-        const response = await fetch(
-            `https://api.frankfurter.app/latest?amount=${amount}&from=${from}&to=${to}`
+        const response = await fetchWithRetry(
+            `https://api.frankfurter.app/latest?amount=${amount}&from=${from}&to=${to}`,
+            undefined,
+            { retries: 2, timeoutMs: 5000 }
         );
 
         if (!response.ok) {
@@ -139,7 +144,11 @@ export async function convertCurrency(
  */
 export async function getAvailableCurrencies(): Promise<Record<string, string> | null> {
     try {
-        const response = await fetch("https://api.frankfurter.app/currencies");
+        const response = await fetchWithRetry(
+            "https://api.frankfurter.app/currencies",
+            undefined,
+            { retries: 2, timeoutMs: 5000 }
+        );
 
         if (!response.ok) {
             console.error(`Currencies list failed:`, response.status);

@@ -5,6 +5,7 @@
  * 
  * @see https://open-meteo.com
  */
+import { fetchWithRetry } from "@/lib/network/retry";
 
 export interface WeatherForecast {
     date: string;
@@ -60,8 +61,10 @@ const weatherCodeDescriptions: Record<number, string> = {
  */
 async function geocodeLocation(locationName: string): Promise<{ lat: number; lon: number; name: string } | null> {
     try {
-        const response = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`
+        const response = await fetchWithRetry(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`,
+            undefined,
+            { retries: 2, timeoutMs: 5000 }
         );
 
         if (!response.ok) {
@@ -97,8 +100,10 @@ async function fetchWeatherForecast(
     days: number = 7
 ): Promise<WeatherForecast[]> {
     try {
-        const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&forecast_days=${days}&timezone=auto`
+        const response = await fetchWithRetry(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&forecast_days=${days}&timezone=auto`,
+            undefined,
+            { retries: 2, timeoutMs: 5000 }
         );
 
         if (!response.ok) {
