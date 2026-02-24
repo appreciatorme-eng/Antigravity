@@ -33,6 +33,9 @@ type MarketplaceProfileRow = {
     gallery_urls: unknown;
     rate_card: unknown;
     compliance_documents: unknown;
+    margin_rate: unknown;
+    updated_at: unknown;
+    is_verified: unknown;
     verification_status: string | null;
     organization: MarketplaceOrganizationJoin;
     reviews: MarketplaceReviewRow[] | null;
@@ -51,6 +54,15 @@ const MarketplacePatchSchema = z.object({
 });
 
 const ALLOWED_VERIFICATION_STATUSES = new Set(["none", "pending", "verified", "rejected"]);
+const ALLOWED_SORT_OPTIONS = new Set([
+    "verified_first",
+    "top_rated",
+    "most_reviewed",
+    "recent",
+    "margin_high",
+    "margin_low",
+    "discovery",
+]);
 
 function sanitizeQueryText(value: unknown, maxLength = 120): string {
     const cleaned = sanitizeText(value, { maxLength });
@@ -95,6 +107,17 @@ function sanitizeMarginRate(value: unknown): number | null {
 function sanitizeVerificationStatus(value: unknown): string | null {
     const status = sanitizeText(value, { maxLength: 24 }).toLowerCase();
     return ALLOWED_VERIFICATION_STATUSES.has(status) ? status : null;
+}
+
+function sanitizeSort(value: unknown): string {
+    const sort = sanitizeText(value, { maxLength: 40 }).toLowerCase();
+    return ALLOWED_SORT_OPTIONS.has(sort) ? sort : "verified_first";
+}
+
+function sanitizeMinRating(value: unknown): number {
+    const numeric = Number.parseFloat(String(value ?? ""));
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.max(0, Math.min(5, numeric));
 }
 
 function sanitizeRateCard(value: unknown): Array<{ id: string; service: string; margin: number }> {
@@ -195,6 +218,9 @@ export async function GET(req: NextRequest) {
         const specialty = sanitizeText(url.searchParams.get("specialty"), { maxLength: 80 });
         const query = sanitizeQueryText(url.searchParams.get("q"), 120);
         const verification = sanitizeVerificationStatus(url.searchParams.get("verification"));
+        const sort = sanitizeSort(url.searchParams.get("sort"));
+        const minRating = sanitizeMinRating(url.searchParams.get("min_rating"));
+        const verifiedOnly = sanitizeText(url.searchParams.get("verified_only"), { maxLength: 8 }) === "true";
 
         let supabaseQuery = supabaseAdmin
             .from("marketplace_profiles")
@@ -206,6 +232,9 @@ export async function GET(req: NextRequest) {
 
         if (verification) {
             supabaseQuery = supabaseQuery.eq("verification_status", verification);
+        }
+        if (verifiedOnly) {
+            supabaseQuery = supabaseQuery.eq("is_verified", true);
         }
 
         if (region) {
@@ -232,7 +261,7 @@ export async function GET(req: NextRequest) {
 
         // Process data to include average rating and flatten organization info
         const rows = (data || []) as unknown as MarketplaceProfileRow[];
-        const results = rows.map((item) => {
+        const mapped = rows.map((item) => {
             const ratings = (item.reviews || []).map((review) => Number(review.rating || 0));
             const avgRating = ratings.length > 0
                 ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
@@ -243,6 +272,26 @@ export async function GET(req: NextRequest) {
             const normalizedGalleryUrls = sanitizeStringList(item.gallery_urls, 40, 2048)
                 .map((value) => sanitizeHttpUrl(value))
                 .filter((value): value is string => Boolean(value));
+            const normalizedRateCard = sanitizeRateCard(item.rate_card);
+            const normalizedComplianceDocuments = sanitizeComplianceDocuments(item.compliance_documents);
+            const normalizedMarginRate = sanitizeMarginRate(item.margin_rate);
+            const normalizedUpdatedAt = sanitizeText(item.updated_at, { maxLength: 80 }) || null;
+            const isVerified = item.is_verified === true;
+
+            const profileCompleteness =
+                (sanitizeText(item.description, { maxLength: 4000, preserveNewlines: true }) ? 20 : 0) +
+                (normalizedServiceRegions.length > 0 ? 20 : 0) +
+                (normalizedSpecialties.length > 0 ? 20 : 0) +
+                (normalizedGalleryUrls.length > 0 ? 15 : 0) +
+                (normalizedRateCard.length > 0 ? 15 : 0) +
+                (normalizedComplianceDocuments.length > 0 ? 10 : 0);
+            const ratingScore = Math.min(25, avgRating * 5);
+            const reviewVolumeScore = Math.min(10, Math.log10(ratings.length + 1) * 10);
+            const verificationScore = isVerified ? 20 : (item.verification_status === "pending" ? 5 : 0);
+            const discoveryScore = Math.min(
+                100,
+                Math.round(profileCompleteness + ratingScore + reviewVolumeScore + verificationScore)
+            );
 
             return {
                 ...item,
@@ -250,14 +299,61 @@ export async function GET(req: NextRequest) {
                 service_regions: normalizedServiceRegions,
                 specialties: normalizedSpecialties,
                 gallery_urls: normalizedGalleryUrls,
-                rate_card: sanitizeRateCard(item.rate_card),
-                compliance_documents: sanitizeComplianceDocuments(item.compliance_documents),
+                margin_rate: normalizedMarginRate,
+                updated_at: normalizedUpdatedAt,
+                is_verified: isVerified,
+                rate_card: normalizedRateCard,
+                compliance_documents: normalizedComplianceDocuments,
                 organization_name: sanitizeText(item.organization?.name, { maxLength: 160 }),
                 organization_logo: sanitizeHttpUrl(item.organization?.logo_url),
                 average_rating: avgRating,
                 review_count: ratings.length,
-                verification_status: sanitizeVerificationStatus(item.verification_status) || "none"
+                verification_status: sanitizeVerificationStatus(item.verification_status) || "none",
+                discovery_score: discoveryScore,
             };
+        });
+
+        const filtered = mapped.filter((item) => item.average_rating >= minRating);
+
+        const results = filtered.sort((a, b) => {
+            if (sort === "top_rated") {
+                if (b.average_rating !== a.average_rating) return b.average_rating - a.average_rating;
+                return b.review_count - a.review_count;
+            }
+            if (sort === "most_reviewed") {
+                if (b.review_count !== a.review_count) return b.review_count - a.review_count;
+                return b.average_rating - a.average_rating;
+            }
+            if (sort === "recent") {
+                const aTime = Date.parse(String(a.updated_at || "")) || 0;
+                const bTime = Date.parse(String(b.updated_at || "")) || 0;
+                return bTime - aTime;
+            }
+            if (sort === "margin_high") {
+                const aMargin = Number(a.margin_rate || 0);
+                const bMargin = Number(b.margin_rate || 0);
+                return bMargin - aMargin;
+            }
+            if (sort === "margin_low") {
+                const aMargin = Number(a.margin_rate || 0);
+                const bMargin = Number(b.margin_rate || 0);
+                return aMargin - bMargin;
+            }
+            if (sort === "discovery") {
+                return Number(b.discovery_score || 0) - Number(a.discovery_score || 0);
+            }
+
+            // Default: verified partners first, then best discovery score, then freshness.
+            const aVerified = a.is_verified ? 1 : 0;
+            const bVerified = b.is_verified ? 1 : 0;
+            if (bVerified !== aVerified) return bVerified - aVerified;
+
+            const scoreDiff = Number(b.discovery_score || 0) - Number(a.discovery_score || 0);
+            if (scoreDiff !== 0) return scoreDiff;
+
+            const aTime = Date.parse(String(a.updated_at || "")) || 0;
+            const bTime = Date.parse(String(b.updated_at || "")) || 0;
+            return bTime - aTime;
         });
 
         const durationMs = Date.now() - startedAt;
@@ -265,6 +361,9 @@ export async function GET(req: NextRequest) {
             ...requestContext,
             user_id: user.id,
             organization_id: profile.organization_id,
+            sort,
+            min_rating: minRating,
+            verified_only: verifiedOnly,
             results_count: results.length,
             durationMs,
         });
@@ -272,6 +371,9 @@ export async function GET(req: NextRequest) {
             request_id: requestId,
             user_id: user.id,
             organization_id: profile.organization_id,
+            sort,
+            min_rating: minRating,
+            verified_only: verifiedOnly,
             results_count: results.length,
             duration_ms: durationMs,
         });

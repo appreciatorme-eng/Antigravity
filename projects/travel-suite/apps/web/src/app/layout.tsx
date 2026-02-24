@@ -26,6 +26,19 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "GoBuddy Adventures",
   description: "AI-Powered Travel Planning by GoBuddy",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-512.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icons/icon-192.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "GoBuddy",
+  },
 };
 
 export default function RootLayout({

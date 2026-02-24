@@ -3,15 +3,33 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
-import type { Database, Json } from '@/lib/database.types';
+import type { Json } from '@/lib/database.types';
 
 const supabaseAdmin = createAdminClient();
 
 const ShareActionSchema = z.object({
-  action: z.enum(['comment', 'approve']),
+  action: z.enum([
+    'comment',
+    'approve',
+    'save_preferences',
+    'add_wishlist',
+    'remove_wishlist',
+    'mark_offline_ready',
+  ]),
   author: z.string().max(120).optional(),
   comment: z.string().max(2000).optional(),
   name: z.string().max(120).optional(),
+  wishlist_item: z.string().max(160).optional(),
+  preferences: z
+    .object({
+      budget_preference: z.string().max(40).optional(),
+      pace: z.string().max(40).optional(),
+      room_preference: z.string().max(120).optional(),
+      must_have: z.array(z.string().max(80)).max(20).optional(),
+      avoid: z.array(z.string().max(80)).max(20).optional(),
+      notes: z.string().max(1000).optional(),
+    })
+    .optional(),
 });
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
@@ -21,6 +39,29 @@ type ShareComment = {
   author: string;
   comment: string;
   created_at: string;
+};
+
+type SharePreferences = {
+  budget_preference?: string;
+  pace?: string;
+  room_preference?: string;
+  must_have?: string[];
+  avoid?: string[];
+  notes?: string;
+};
+
+type ShareRow = {
+  id: string;
+  itinerary_id: string | null;
+  client_comments: Json;
+  expires_at: string | null;
+  status: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  client_preferences?: Json;
+  wishlist_items?: Json;
+  self_service_status?: string | null;
+  offline_pack_ready?: boolean | null;
 };
 
 function sanitizeShareToken(value: unknown): string | null {
@@ -66,6 +107,44 @@ function parseCommentArray(value: Json | null | undefined): ShareComment[] {
   return comments;
 }
 
+function parseStringArray(value: Json | null | undefined, maxLength: number, maxItems: number): string[] {
+  if (!Array.isArray(value)) return [];
+  const unique = new Map<string, string>();
+  for (const entry of value) {
+    const sanitized = sanitizeText(entry, { maxLength });
+    if (!sanitized) continue;
+    const key = sanitized.toLowerCase();
+    if (!unique.has(key)) unique.set(key, sanitized);
+    if (unique.size >= maxItems) break;
+  }
+  return Array.from(unique.values());
+}
+
+function parsePreferences(value: Json | null | undefined): SharePreferences {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  return {
+    budget_preference: sanitizeText(record.budget_preference, { maxLength: 40 }) || undefined,
+    pace: sanitizeText(record.pace, { maxLength: 40 }) || undefined,
+    room_preference: sanitizeText(record.room_preference, { maxLength: 120 }) || undefined,
+    must_have: parseStringArray(record.must_have as Json, 80, 20),
+    avoid: parseStringArray(record.avoid as Json, 80, 20),
+    notes: sanitizeText(record.notes, { maxLength: 1000, preserveNewlines: true }) || undefined,
+  };
+}
+
+function sanitizePreferences(input: z.infer<typeof ShareActionSchema>['preferences']): SharePreferences {
+  if (!input) return {};
+  return {
+    budget_preference: sanitizeText(input.budget_preference, { maxLength: 40 }) || undefined,
+    pace: sanitizeText(input.pace, { maxLength: 40 }) || undefined,
+    room_preference: sanitizeText(input.room_preference, { maxLength: 120 }) || undefined,
+    must_have: parseStringArray((input.must_have || []) as unknown as Json, 80, 20),
+    avoid: parseStringArray((input.avoid || []) as unknown as Json, 80, 20),
+    notes: sanitizeText(input.notes, { maxLength: 1000, preserveNewlines: true }) || undefined,
+  };
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -93,11 +172,25 @@ export async function GET(
     }
 
     const comments = parseCommentArray(share.client_comments);
+    const preferences = parsePreferences((share as { client_preferences?: Json }).client_preferences);
+    const wishlistItems = parseStringArray(
+      (share as { wishlist_items?: Json }).wishlist_items,
+      160,
+      50
+    );
     return NextResponse.json({
       status: share.status || 'viewed',
       approved_by: share.approved_by || null,
       approved_at: share.approved_at || null,
       comments,
+      preferences,
+      wishlist_items: wishlistItems,
+      self_service_status:
+        sanitizeText((share as { self_service_status?: unknown }).self_service_status, {
+          maxLength: 24,
+        }) || 'active',
+      offline_pack_ready:
+        (share as { offline_pack_ready?: unknown }).offline_pack_ready === true,
       expires_at: share.expires_at || null,
     });
   } catch {
@@ -124,9 +217,21 @@ export async function POST(
 
     const { action } = parsed.data;
 
-    const { data: shareData, error: shareError } = await supabaseAdmin
+    const dynamicAdmin = supabaseAdmin as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            single: () => Promise<{ data: ShareRow | null; error: { message: string } | null }>;
+          };
+        };
+      };
+    };
+
+    const { data: shareData, error: shareError } = await dynamicAdmin
       .from('shared_itineraries')
-      .select('id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at')
+      .select(
+        'id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at, client_preferences, wishlist_items, self_service_status, offline_pack_ready'
+      )
       .eq('share_code', token)
       .single();
 
@@ -158,7 +263,7 @@ export async function POST(
         created_at: new Date().toISOString(),
       };
 
-      const commentUpdatePayload: Database['public']['Tables']['shared_itineraries']['Update'] = {
+      const commentUpdatePayload = {
         client_comments: [...existingComments, newComment],
         status: 'commented',
       };
@@ -180,7 +285,7 @@ export async function POST(
         return NextResponse.json({ error: 'Approver name is required' }, { status: 400 });
       }
 
-      const approveUpdatePayload: Database['public']['Tables']['shared_itineraries']['Update'] = {
+      const approveUpdatePayload = {
         status: 'approved',
         approved_by: name,
         approved_at: new Date().toISOString(),
@@ -196,6 +301,104 @@ export async function POST(
       }
 
       return NextResponse.json({ success: true });
+    }
+
+    if (action === 'save_preferences') {
+      const preferences = sanitizePreferences(parsed.data.preferences);
+      const updatePayload = {
+        client_preferences: preferences,
+        status: share.status === 'approved' ? 'approved' : 'commented',
+        self_service_status: 'updated',
+      };
+
+      const { error: updateError } = await supabaseAdmin
+        .from('shared_itineraries')
+        .update(updatePayload as never)
+        .eq('id', share.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, preferences });
+    }
+
+    if (action === 'add_wishlist') {
+      const item = sanitizeText(parsed.data.wishlist_item, { maxLength: 160 });
+      if (!item) {
+        return NextResponse.json({ error: 'Wishlist item is required' }, { status: 400 });
+      }
+
+      const existingWishlist = parseStringArray(
+        (share as { wishlist_items?: Json }).wishlist_items,
+        160,
+        50
+      );
+      const exists = existingWishlist.some(
+        (value) => value.toLowerCase() === item.toLowerCase()
+      );
+      const updatedWishlist = exists ? existingWishlist : [...existingWishlist, item].slice(0, 50);
+
+      const { error: updateError } = await supabaseAdmin
+        .from('shared_itineraries')
+        .update({
+          wishlist_items: updatedWishlist,
+          status: share.status === 'approved' ? 'approved' : 'commented',
+          self_service_status: 'updated',
+        } as never)
+        .eq('id', share.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, wishlist_items: updatedWishlist });
+    }
+
+    if (action === 'remove_wishlist') {
+      const item = sanitizeText(parsed.data.wishlist_item, { maxLength: 160 });
+      if (!item) {
+        return NextResponse.json({ error: 'Wishlist item is required' }, { status: 400 });
+      }
+
+      const existingWishlist = parseStringArray(
+        (share as { wishlist_items?: Json }).wishlist_items,
+        160,
+        50
+      );
+      const updatedWishlist = existingWishlist.filter(
+        (value) => value.toLowerCase() !== item.toLowerCase()
+      );
+
+      const { error: updateError } = await supabaseAdmin
+        .from('shared_itineraries')
+        .update({
+          wishlist_items: updatedWishlist,
+          self_service_status: 'updated',
+        } as never)
+        .eq('id', share.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, wishlist_items: updatedWishlist });
+    }
+
+    if (action === 'mark_offline_ready') {
+      const { error: updateError } = await supabaseAdmin
+        .from('shared_itineraries')
+        .update({
+          offline_pack_ready: true,
+          self_service_status: 'updated',
+        } as never)
+        .eq('id', share.id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, offline_pack_ready: true });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

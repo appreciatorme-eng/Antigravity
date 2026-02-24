@@ -33,8 +33,8 @@ import {
     FileSpreadsheet,
     Plane,
     ShoppingBag,
-    Store,
     Building2,
+    Megaphone,
 } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 
@@ -49,6 +49,7 @@ const sidebarLinks = [
     { href: "/admin/clients", label: "Clients", icon: Users },
     { href: "/admin/tour-templates", label: "Tour Templates", icon: Globe },
     { href: "/admin/proposals", label: "Proposals", icon: FileSpreadsheet },
+    { href: "/admin/social", label: "Social Studio", icon: Megaphone },
     { href: "/admin/add-ons", label: "Add-ons", icon: ShoppingBag },
     { href: "/admin/kanban", label: "Kanban", icon: Columns3 },
     { href: "/admin/activity", label: "Activity", icon: ClipboardList },

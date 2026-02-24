@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId, setRequestIdHeader } from "@/lib/api/response";
 import {
@@ -154,20 +155,54 @@ export async function POST(request: NextRequest) {
             return setRequestIdHeader(errorResponse, requestId);
         }
 
-        const { orgId, status } = await request.json();
+        const body = await request.json().catch(() => ({}));
+        const orgId = sanitizeText((body as { orgId?: unknown }).orgId, { maxLength: 120 });
+        const status = sanitizeText((body as { status?: unknown }).status, { maxLength: 24 });
+        const notes = sanitizeText((body as { notes?: unknown }).notes, {
+            maxLength: 1000,
+            preserveNewlines: true,
+        });
+        const levelRaw = sanitizeText((body as { level?: unknown }).level, { maxLength: 24 }).toLowerCase();
+        const verificationLevel = levelRaw === "gold" || levelRaw === "platinum" ? levelRaw : "standard";
+
         if (!orgId || (status !== "verified" && status !== "rejected")) {
             return withRequestId({ error: "Invalid request payload" }, requestId, { status: 400 });
         }
 
-        const { data, error } = await supabaseAdmin
+        const verificationPayload = {
+            verification_status: status,
+            is_verified: status === "verified",
+            verified_at: status === "verified" ? new Date().toISOString() : null,
+            verification_notes: notes || null,
+            verification_level: status === "verified" ? verificationLevel : "standard",
+        };
+
+        let data: Record<string, unknown> | null = null;
+        let error: { message: string } | null = null;
+
+        const primaryUpdate = await supabaseAdmin
             .from("marketplace_profiles")
-            .update({
-                verification_status: status,
-                is_verified: status === "verified",
-            })
+            .update(verificationPayload as never)
             .eq("organization_id", orgId)
             .select()
             .single();
+        data = (primaryUpdate.data as Record<string, unknown> | null) || null;
+        error = primaryUpdate.error ? { message: primaryUpdate.error.message } : null;
+
+        if (error?.message?.includes("column")) {
+            const legacyUpdate = await supabaseAdmin
+                .from("marketplace_profiles")
+                .update({
+                    verification_status: status,
+                    is_verified: status === "verified",
+                })
+                .eq("organization_id", orgId)
+                .select()
+                .single();
+
+            data = (legacyUpdate.data as Record<string, unknown> | null) || null;
+            error = legacyUpdate.error ? { message: legacyUpdate.error.message } : null;
+        }
 
         if (error) throw error;
 
@@ -219,6 +254,8 @@ export async function POST(request: NextRequest) {
             user_id: auth.user.id,
             organization_id: orgId,
             verification_status: status,
+            verification_level: verificationLevel,
+            has_notes: Boolean(notes),
             notification_attempted: notification.attempted,
             notification_sent: notification.sent,
             durationMs,
@@ -228,6 +265,8 @@ export async function POST(request: NextRequest) {
             user_id: auth.user.id,
             organization_id: orgId,
             verification_status: status,
+            verification_level: verificationLevel,
+            has_notes: Boolean(notes),
             notification_attempted: notification.attempted,
             notification_sent: notification.sent,
             duration_ms: durationMs,

@@ -39,6 +39,7 @@ interface MarketplaceProfile {
     review_count: number;
     is_verified: boolean;
     verification_status?: string;
+    discovery_score?: number;
 }
 
 export default function MarketplacePage() {
@@ -48,6 +49,9 @@ export default function MarketplacePage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [regionFilter, setRegionFilter] = useState("");
     const [specialtyFilter, setSpecialtyFilter] = useState("");
+    const [sortOption, setSortOption] = useState("verified_first");
+    const [minRating, setMinRating] = useState("0");
+    const [verifiedOnly, setVerifiedOnly] = useState(false);
     const [marketplaceRegionCatalog, setMarketplaceRegionCatalog] = useState<string[]>(
         SERVICE_REGION_OPTIONS
     );
@@ -63,6 +67,9 @@ export default function MarketplacePage() {
             if (searchTerm) url.searchParams.set("q", searchTerm);
             if (regionFilter) url.searchParams.set("region", regionFilter);
             if (specialtyFilter) url.searchParams.set("specialty", specialtyFilter);
+            if (sortOption) url.searchParams.set("sort", sortOption);
+            if (minRating && minRating !== "0") url.searchParams.set("min_rating", minRating);
+            if (verifiedOnly) url.searchParams.set("verified_only", "true");
 
             const headers: Record<string, string> = {};
             if (session?.access_token) {
@@ -79,7 +86,7 @@ export default function MarketplacePage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase, searchTerm, regionFilter, specialtyFilter]);
+    }, [supabase, searchTerm, regionFilter, specialtyFilter, sortOption, minRating, verifiedOnly]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -221,6 +228,48 @@ export default function MarketplacePage() {
                                 </select>
                             </div>
 
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-slate-400">Sort</label>
+                                <select
+                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
+                                    value={sortOption}
+                                    onChange={(e) => setSortOption(e.target.value)}
+                                >
+                                    <option value="verified_first">Verified First</option>
+                                    <option value="discovery">Best Discovery Score</option>
+                                    <option value="top_rated">Top Rated</option>
+                                    <option value="most_reviewed">Most Reviewed</option>
+                                    <option value="recent">Recently Updated</option>
+                                    <option value="margin_high">Highest Margin</option>
+                                    <option value="margin_low">Lowest Margin</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-slate-400">Minimum Rating</label>
+                                <select
+                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
+                                    value={minRating}
+                                    onChange={(e) => setMinRating(e.target.value)}
+                                >
+                                    <option value="0">Any Rating</option>
+                                    <option value="3">3.0+</option>
+                                    <option value="3.5">3.5+</option>
+                                    <option value="4">4.0+</option>
+                                    <option value="4.5">4.5+</option>
+                                </select>
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={verifiedOnly}
+                                    onChange={(e) => setVerifiedOnly(e.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-500"
+                                />
+                                Verified operators only
+                            </label>
+
                             <GlassButton
                                 variant="outline"
                                 className="w-full text-slate-400 hover:text-white"
@@ -228,6 +277,9 @@ export default function MarketplacePage() {
                                     setSearchTerm("");
                                     setRegionFilter("");
                                     setSpecialtyFilter("");
+                                    setSortOption("verified_first");
+                                    setMinRating("0");
+                                    setVerifiedOnly(false);
                                 }}
                             >
                                 Clear All
@@ -302,8 +354,12 @@ export default function MarketplacePage() {
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Margin</div>
+                                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Discovery</div>
                                                     <div className="text-lg font-bold text-blue-400">
+                                                        {Math.max(0, Math.min(100, Math.round(Number(profile.discovery_score || 0))))}/100
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-1">Margin</div>
+                                                    <div className="text-sm font-semibold text-slate-300">
                                                         {profile.margin_rate ? `${profile.margin_rate}%` : "Negotiable"}
                                                     </div>
                                                 </div>

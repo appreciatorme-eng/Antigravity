@@ -19,15 +19,15 @@ import {
     Bell,
     Plus,
     Trash,
+    CopyPlus,
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
 import { useToast } from "@/components/ui/toast";
+import type { Json } from "@/lib/database.types";
 
 interface Driver {
     id: string;
@@ -791,7 +791,7 @@ out center tags 80;
                 await supabase
                     .from("itineraries")
                     .update({
-                        raw_data: { days: itineraryDays } as any,
+                        raw_data: { days: itineraryDays } as unknown as Json,
                     })
                     .eq("id", trip.itineraries.id);
             }
@@ -1060,6 +1060,13 @@ out center tags 80;
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Link
+                        href={`/admin/trips/${trip.id}/clone`}
+                        className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors text-text-secondary"
+                    >
+                        <CopyPlus className="h-4 w-4" />
+                        Clone Trip
+                    </Link>
                     <button
                         onClick={createLiveLocationShare}
                         disabled={creatingLiveLink}

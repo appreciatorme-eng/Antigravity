@@ -28,10 +28,23 @@ jobs:
         with:
           node-version: 22
 
+      - name: Validate Vercel token
+        id: validate_token
+        run: |
+          if npx vercel whoami --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+            echo "Vercel token is valid."
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_TOKEN is invalid. Skipping Action-based deploy and relying on native Vercel Git deploy."
+          fi
+
       - name: Pull Vercel project settings
+        if: steps.validate_token.outputs.valid == 'true'
         run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Remove unsupported cron config for Hobby deploys
+        if: steps.validate_token.outputs.valid == 'true'
         run: |
           node - <<'NODE'
           const fs = require('fs');
@@ -47,7 +60,14 @@ jobs:
           NODE
 
       - name: Deploy to Vercel Production
+        if: steps.validate_token.outputs.valid == 'true'
         run: |
           npx vercel deploy --prod --yes --token="$VERCEL_TOKEN" \
             --meta githubCommitSha="$GITHUB_SHA" \
             --meta githubCommitRef="$GITHUB_REF_NAME"
+
+      - name: Skip deploy note
+        if: steps.validate_token.outputs.valid != 'true'
+        run: |
+          echo "Action-based deploy skipped because VERCEL_TOKEN is invalid."
+          echo "Vercel Git integration is expected to handle deploys on push to main."

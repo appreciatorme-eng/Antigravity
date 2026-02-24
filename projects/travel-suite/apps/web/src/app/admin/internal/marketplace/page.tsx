@@ -27,6 +27,8 @@ interface PendingVerificationRequest {
 export default function InternalMarketplaceAdmin() {
     const [pending, setPending] = useState<PendingVerificationRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [notesByOrg, setNotesByOrg] = useState<Record<string, string>>({});
+    const [levelByOrg, setLevelByOrg] = useState<Record<string, "standard" | "gold" | "platinum">>({});
 
     const fetchPending = async () => {
         setLoading(true);
@@ -50,7 +52,12 @@ export default function InternalMarketplaceAdmin() {
             await fetch("/api/admin/marketplace/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ orgId, status })
+                body: JSON.stringify({
+                    orgId,
+                    status,
+                    notes: notesByOrg[orgId] || "",
+                    level: levelByOrg[orgId] || "standard",
+                })
             });
             void fetchPending();
         } catch (error) {
@@ -103,22 +110,49 @@ export default function InternalMarketplaceAdmin() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
-                                <GlassButton
-                                    variant="secondary"
-                                    className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 px-3"
-                                    onClick={() => handleVerify(req.organization_id, 'rejected')}
-                                    aria-label={`Reject verification request for ${req.organization?.name || "organization"}`}
-                                >
-                                    <X size={18} />
-                                </GlassButton>
-                                <GlassButton
-                                    className="bg-green-600 text-white hover:bg-green-500 px-3"
-                                    onClick={() => handleVerify(req.organization_id, 'verified')}
-                                >
-                                    <Check size={18} />
-                                    Approve
-                                </GlassButton>
+                            <div className="w-full max-w-md space-y-2">
+                                <textarea
+                                    className="w-full rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs px-3 py-2"
+                                    placeholder="Verification notes (optional)"
+                                    value={notesByOrg[req.organization_id] || ""}
+                                    onChange={(event) =>
+                                        setNotesByOrg((previous) => ({
+                                            ...previous,
+                                            [req.organization_id]: event.target.value,
+                                        }))
+                                    }
+                                />
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={levelByOrg[req.organization_id] || "standard"}
+                                        onChange={(event) =>
+                                            setLevelByOrg((previous) => ({
+                                                ...previous,
+                                                [req.organization_id]: event.target.value as "standard" | "gold" | "platinum",
+                                            }))
+                                        }
+                                        className="rounded-lg border border-slate-700 bg-slate-900 text-slate-200 text-xs px-2 py-1.5"
+                                    >
+                                        <option value="standard">Standard</option>
+                                        <option value="gold">Gold</option>
+                                        <option value="platinum">Platinum</option>
+                                    </select>
+                                    <GlassButton
+                                        variant="secondary"
+                                        className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 px-3"
+                                        onClick={() => handleVerify(req.organization_id, 'rejected')}
+                                        aria-label={`Reject verification request for ${req.organization?.name || "organization"}`}
+                                    >
+                                        <X size={18} />
+                                    </GlassButton>
+                                    <GlassButton
+                                        className="bg-green-600 text-white hover:bg-green-500 px-3"
+                                        onClick={() => handleVerify(req.organization_id, 'verified')}
+                                    >
+                                        <Check size={18} />
+                                        Approve
+                                    </GlassButton>
+                                </div>
                             </div>
                         </GlassCard>
                     ))}

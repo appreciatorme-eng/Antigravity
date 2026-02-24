@@ -24,11 +24,13 @@ interface TripListRow {
         | null;
     itineraries:
         | {
+              id: string | null;
               trip_title: string | null;
               duration_days: number | null;
               destination: string | null;
           }
         | Array<{
+              id: string | null;
               trip_title: string | null;
               duration_days: number | null;
               destination: string | null;
@@ -115,6 +117,7 @@ export async function GET(req: NextRequest) {
                     email
                 ),
                 itineraries:itinerary_id (
+                    id,
                     trip_title,
                     duration_days,
                     destination
@@ -152,10 +155,12 @@ export async function GET(req: NextRequest) {
                     email: profile.email
                 } : null,
                 itineraries: itinerary ? {
+                    id: itinerary.id,
                     trip_title: itinerary.trip_title,
                     duration_days: itinerary.duration_days,
                     destination: itinerary.destination
                 } : null,
+                itinerary_id: itinerary?.id || null,
                 destination: itinerary?.destination || "TBD",
             };
         });
