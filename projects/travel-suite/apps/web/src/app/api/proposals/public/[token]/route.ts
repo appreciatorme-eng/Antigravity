@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sanitizeText } from '@/lib/security/sanitize';
+import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 
 function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,6 +37,8 @@ type ProposalTemplate = {
 type LoadedProposal = {
   id: string;
   title: string;
+  client_id: string | null;
+  created_by: string | null;
   total_price: number | null;
   client_selected_price: number | null;
   status: string | null;
@@ -94,12 +96,20 @@ type PublicAddOn = {
 };
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+const IDENTIFIER_REGEX = /^[A-Za-z0-9_-]{6,120}$/;
 
 function sanitizeShareToken(value: unknown): string | null {
   const token = sanitizeText(value, { maxLength: 200 });
   if (!token) return null;
   if (!SHARE_TOKEN_REGEX.test(token)) return null;
   return token;
+}
+
+function sanitizeIdentifier(value: unknown): string | null {
+  const id = sanitizeText(value, { maxLength: 120 });
+  if (!id) return null;
+  if (!IDENTIFIER_REGEX.test(id)) return null;
+  return id;
 }
 
 const asNullableNumber = (value: unknown): number | null => {
@@ -143,6 +153,8 @@ const normalizeProposal = (value: unknown): LoadedProposal => {
   return {
     id: String(proposal.id || ''),
     title: String(proposal.title || ''),
+    client_id: normalizeText(proposal.client_id),
+    created_by: normalizeText(proposal.created_by),
     total_price: asNullableNumber(proposal.total_price),
     client_selected_price: asNullableNumber(proposal.client_selected_price),
     status: normalizeText(proposal.status),
@@ -160,6 +172,8 @@ async function loadProposalByToken(token: string) {
       `
       id,
       title,
+      client_id,
+      created_by,
       total_price,
       client_selected_price,
       status,
@@ -414,7 +428,7 @@ export async function POST(
     }
 
     if (action === 'toggleActivity') {
-      const activityId = String(body.activityId || '').trim();
+      const activityId = sanitizeIdentifier(body.activityId);
       const selected = !!body.selected;
       if (!activityId) {
         return NextResponse.json({ error: 'Activity id is required' }, { status: 400 });
@@ -459,7 +473,7 @@ export async function POST(
     }
 
     if (action === 'toggleAddOn') {
-      const addOnId = String(body.addOnId || '').trim();
+      const addOnId = sanitizeIdentifier(body.addOnId);
       const selected = !!body.selected;
       if (!addOnId) {
         return NextResponse.json({ error: 'Add-on id is required' }, { status: 400 });
@@ -502,7 +516,7 @@ export async function POST(
     }
 
     if (action === 'selectVehicle') {
-      const addOnId = String(body.addOnId || '').trim();
+      const addOnId = sanitizeIdentifier(body.addOnId);
       if (!addOnId) {
         return NextResponse.json({ error: 'Vehicle add-on id is required' }, { status: 400 });
       }
@@ -542,10 +556,10 @@ export async function POST(
     }
 
     if (action === 'comment') {
-      const authorName = normalizeText(body.authorName);
-      const authorEmail = normalizeText(body.authorEmail);
-      const comment = normalizeText(body.comment);
-      const proposalDayId = normalizeText(body.proposalDayId);
+      const authorName = sanitizeText(body.authorName, { maxLength: 120 });
+      const authorEmail = sanitizeEmail(body.authorEmail);
+      const comment = sanitizeText(body.comment, { maxLength: 2000, preserveNewlines: true });
+      const proposalDayId = sanitizeIdentifier(body.proposalDayId);
 
       if (!authorName || !comment) {
         return NextResponse.json({ error: 'Name and comment are required' }, { status: 400 });
@@ -587,7 +601,9 @@ export async function POST(
     }
 
     if (action === 'approve') {
-      const approvedBy = normalizeText(body.approvedBy);
+      const approvedBy = sanitizeText(body.approvedBy, { maxLength: 120 });
+      const approvedEmail = sanitizeEmail(body.approvedEmail);
+      const requestPayment = body.requestPayment === true;
       if (!approvedBy) {
         return NextResponse.json({ error: 'Approver name is required' }, { status: 400 });
       }
@@ -605,7 +621,82 @@ export async function POST(
         return NextResponse.json({ error: approveError.message }, { status: 400 });
       }
 
-      return NextResponse.json({ success: true, status: 'approved' });
+      let paymentRequestQueued = false;
+      let paymentRequestError: string | undefined;
+      if (requestPayment) {
+        const nowIso = new Date().toISOString();
+        let operatorEmail: string | null = null;
+        let operatorPhone: string | null = null;
+        let operatorUserId: string | null = null;
+        let clientName: string | null = null;
+        let clientPhone: string | null = null;
+        let clientEmail: string | null = approvedEmail;
+
+        if (proposal.created_by) {
+          const { data: operatorProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, phone, phone_whatsapp')
+            .eq('id', proposal.created_by)
+            .maybeSingle();
+
+          if (operatorProfile) {
+            operatorUserId = sanitizeIdentifier(operatorProfile.id);
+            operatorEmail = sanitizeEmail(operatorProfile.email);
+            operatorPhone =
+              sanitizePhone(operatorProfile.phone_whatsapp) || sanitizePhone(operatorProfile.phone);
+          }
+        }
+
+        if (proposal.client_id) {
+          const { data: clientProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('full_name, email, phone, phone_whatsapp')
+            .eq('id', proposal.client_id)
+            .maybeSingle();
+
+          if (clientProfile) {
+            clientName = sanitizeText(clientProfile.full_name, { maxLength: 120 });
+            clientPhone = sanitizePhone(clientProfile.phone_whatsapp) || sanitizePhone(clientProfile.phone);
+            clientEmail = clientEmail || sanitizeEmail(clientProfile.email);
+          }
+        }
+
+        const { error: queueError } = await supabaseAdmin.from('notification_queue').insert({
+          notification_type: 'proposal_payment_request',
+          status: 'pending',
+          scheduled_for: nowIso,
+          user_id: operatorUserId,
+          recipient_type: 'admin',
+          recipient_email: operatorEmail,
+          recipient_phone: operatorPhone,
+          channel_preference: operatorPhone ? 'whatsapp_first' : 'email_only',
+          payload: {
+            title: 'Client requested payment link',
+            body: `Proposal "${proposal.title}" was approved by ${approvedBy}.`,
+            proposal_id: proposal.id,
+            proposal_title: proposal.title,
+            approved_by: approvedBy,
+            approved_email: approvedEmail || null,
+            client_name: clientName,
+            client_email: clientEmail || null,
+            client_phone: clientPhone,
+          },
+        });
+
+        if (queueError) {
+          paymentRequestError = queueError.message;
+        } else {
+          paymentRequestQueued = true;
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        status: 'approved',
+        request_payment: requestPayment,
+        payment_request_queued: paymentRequestQueued,
+        warning: paymentRequestError,
+      });
     }
 
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });

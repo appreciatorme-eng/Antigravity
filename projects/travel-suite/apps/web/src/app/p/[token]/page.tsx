@@ -11,6 +11,7 @@ import {
   Home,
   MessageCircle,
   CheckCircle,
+  CreditCard,
   ChevronDown,
   ChevronUp,
   Download,
@@ -207,6 +208,9 @@ export default function PublicProposalPage() {
   const [commentEmail, setCommentEmail] = useState('');
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [approvalName, setApprovalName] = useState('');
+  const [approvalEmail, setApprovalEmail] = useState('');
+  const [submittingApproval, setSubmittingApproval] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -391,22 +395,36 @@ export default function PublicProposalPage() {
     }
   }
 
-  async function approveProposal() {
+  async function approveProposal(requestPayment = false) {
     if (!proposal) return;
 
-    const clientName = prompt('Please enter your name to approve this proposal:');
-    if (!clientName) return;
+    const approverName = approvalName.trim() || commentName.trim();
+    const approverEmail = approvalEmail.trim() || commentEmail.trim();
 
+    if (!approverName) {
+      toast({
+        title: 'Name required',
+        description: 'Please enter your full name before approving.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    setSubmittingApproval(true);
     try {
       await performPublicAction({
         action: 'approve',
-        approvedBy: clientName,
+        approvedBy: approverName,
+        approvedEmail: approverEmail || null,
+        requestPayment,
       });
       await loadProposal();
       setProposal((prev) => (prev ? { ...prev, status: 'approved' } : null));
       toast({
-        title: 'Proposal approved',
-        description: 'The tour operator has been notified.',
+        title: requestPayment ? 'Approved and payment requested' : 'Proposal approved',
+        description: requestPayment
+          ? 'The operator has been notified to share your payment link.'
+          : 'The tour operator has been notified.',
         variant: 'success',
       });
     } catch (error) {
@@ -416,6 +434,8 @@ export default function PublicProposalPage() {
         description: 'Failed to approve proposal',
         variant: 'error',
       });
+    } finally {
+      setSubmittingApproval(false);
     }
   }
 
@@ -432,10 +452,20 @@ export default function PublicProposalPage() {
   }
 
   const displayedPrice = proposal?.client_selected_price ?? proposal?.total_price ?? 0;
+  const expiresDate = proposal?.expires_at ? new Date(proposal.expires_at) : null;
+  const hasValidExpiry = Boolean(expiresDate && Number.isFinite(expiresDate.getTime()));
+  const expiresInDays =
+    hasValidExpiry && expiresDate
+      ? Math.ceil((expiresDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5efe6]">
+      <div
+        className="min-h-screen flex items-center justify-center bg-[#f5efe6]"
+        role="status"
+        aria-live="polite"
+      >
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#9c7c46] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-lg text-gray-600">Loading your proposal...</div>
@@ -446,7 +476,11 @@ export default function PublicProposalPage() {
 
   if (error || !proposal) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5efe6] p-4">
+      <div
+        className="min-h-screen flex items-center justify-center bg-[#f5efe6] p-4"
+        role="alert"
+        aria-live="assertive"
+      >
         <div className="max-w-md w-full bg-white rounded-2xl border border-red-200 p-8 text-center">
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Proposal Not Found</h1>
@@ -491,6 +525,14 @@ export default function PublicProposalPage() {
                 <DollarSign className="w-5 h-5" />
                 ${displayedPrice.toFixed(2)}
               </div>
+              {hasValidExpiry && expiresInDays !== null ? (
+                <div className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm">
+                  <Calendar className="w-4 h-4" />
+                  {expiresInDays >= 0
+                    ? `Expires in ${expiresInDays} day${expiresInDays === 1 ? '' : 's'}`
+                    : 'Expired'}
+                </div>
+              ) : null}
             </div>
             <div className="mt-6">
               <a
@@ -552,6 +594,7 @@ export default function PublicProposalPage() {
                           name="vehicle"
                           checked={a.is_selected}
                           onChange={() => selectVehicle(a.id)}
+                          aria-label={`Select vehicle option ${a.name}`}
                           className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 focus:ring-[#9c7c46]"
                         />
                         <div className="flex-1 min-w-0">
@@ -586,6 +629,7 @@ export default function PublicProposalPage() {
                           type="checkbox"
                           checked={a.is_selected}
                           onChange={() => toggleAddOn(a.id)}
+                          aria-label={`Toggle add-on ${a.name}`}
                           className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
                         />
                         <div className="flex-1 min-w-0">
@@ -639,7 +683,10 @@ export default function PublicProposalPage() {
               >
                 {/* Day Header */}
                 <button
+                  type="button"
                   onClick={() => toggleDay(day.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`day-panel-${day.id}`}
                   className="w-full p-6 flex items-center justify-between hover:bg-[#f8f1e6]/30 transition-colors text-left"
                 >
                   <div>
@@ -659,7 +706,7 @@ export default function PublicProposalPage() {
 
                 {/* Day Content */}
                 {isExpanded && (
-                  <div className="border-t border-[#eadfcd]">
+                  <div id={`day-panel-${day.id}`} className="border-t border-[#eadfcd]">
                     {/* Activities */}
                     {dayActivities.length > 0 && (
                       <div className="p-6 space-y-4">
@@ -678,6 +725,7 @@ export default function PublicProposalPage() {
                                   type="checkbox"
                                   checked={activity.is_selected}
                                   onChange={() => toggleActivity(activity.id, day.id)}
+                                  aria-label={`Toggle optional activity ${activity.title}`}
                                   className="w-5 h-5 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
                                 />
                               </div>
@@ -878,6 +926,7 @@ export default function PublicProposalPage() {
             </div>
 
             <button
+              type="button"
               onClick={submitComment}
               disabled={submittingComment}
               className="px-6 py-3 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50"
@@ -907,21 +956,68 @@ export default function PublicProposalPage() {
           )}
         </div>
 
-        {/* Approve Button */}
+        {/* Approval Actions */}
         {proposal.status !== 'approved' && (
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200 p-8 text-center">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-              Love This Itinerary?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Approve this proposal to confirm your booking and move forward!
-            </p>
-            <button
-              onClick={approveProposal}
-              className="px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-lg"
-            >
-              ✅ Approve This Proposal
-            </button>
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200 p-8">
+            <div className="text-center">
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+                Ready to confirm this itinerary?
+              </h3>
+              <p className="text-gray-600">
+                Approve now and optionally ask the operator to share a payment link.
+              </p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="text-left">
+                <label htmlFor="approval-name" className="block text-sm font-medium text-[#1b140a] mb-2">
+                  Full name *
+                </label>
+                <input
+                  id="approval-name"
+                  type="text"
+                  value={approvalName}
+                  onChange={(event) => setApprovalName(event.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46] focus:border-transparent"
+                />
+              </div>
+
+              <div className="text-left">
+                <label htmlFor="approval-email" className="block text-sm font-medium text-[#1b140a] mb-2">
+                  Email (optional)
+                </label>
+                <input
+                  id="approval-email"
+                  type="email"
+                  value={approvalEmail}
+                  onChange={(event) => setApprovalEmail(event.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => approveProposal(false)}
+                disabled={submittingApproval}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <CheckCircle className="w-4 h-4" />
+                {submittingApproval ? 'Submitting...' : 'Approve Proposal'}
+              </button>
+              <button
+                type="button"
+                onClick={() => approveProposal(true)}
+                disabled={submittingApproval}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#1b140a] text-white text-sm font-semibold rounded-lg hover:bg-[#342715] transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <CreditCard className="w-4 h-4" />
+                {submittingApproval ? 'Submitting...' : 'Approve & Request Payment'}
+              </button>
+            </div>
           </div>
         )}
       </div>

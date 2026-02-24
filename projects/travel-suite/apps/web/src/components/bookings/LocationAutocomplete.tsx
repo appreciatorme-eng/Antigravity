@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Loader2, MapPin, PlaneTakeoff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -34,10 +34,13 @@ export function LocationAutocomplete({
     onValueChange,
     onSelectSuggestion,
 }: LocationAutocompleteProps) {
+    const inputId = useId();
+    const listboxId = `${inputId}-listbox`;
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
     const [error, setError] = useState("");
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
     const rootRef = useRef<HTMLDivElement | null>(null);
 
     const query = value.trim();
@@ -60,6 +63,7 @@ export function LocationAutocomplete({
             setSuggestions([]);
             setLoading(false);
             setError("");
+            setActiveIndex(-1);
             return;
         }
 
@@ -77,11 +81,13 @@ export function LocationAutocomplete({
                     throw new Error(json.error || "Failed to load suggestions");
                 }
                 setSuggestions(Array.isArray(json.suggestions) ? json.suggestions : []);
+                setActiveIndex(-1);
             } catch (error) {
                 if ((error as { name?: string })?.name === "AbortError") return;
                 const message = error instanceof Error ? error.message : "Failed to load suggestions";
                 setError(message);
                 setSuggestions([]);
+                setActiveIndex(-1);
             } finally {
                 setLoading(false);
             }
@@ -97,26 +103,83 @@ export function LocationAutocomplete({
         return open && (loading || suggestions.length > 0 || !!error) && shouldSearch;
     }, [error, loading, open, shouldSearch, suggestions.length]);
 
+    useEffect(() => {
+        if (!open) {
+            setActiveIndex(-1);
+        }
+    }, [open]);
+
+    function commitSuggestion(suggestion: LocationSuggestion) {
+        onSelectSuggestion(suggestion);
+        onValueChange(suggestion.cityName);
+        setOpen(false);
+        setActiveIndex(-1);
+    }
+
     return (
         <div className="space-y-2" ref={rootRef}>
-            <label className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">{label}</label>
+            <label htmlFor={inputId} className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">{label}</label>
             <div className="relative">
                 <Input
+                    id={inputId}
                     value={value}
                     onChange={(event) => {
                         onValueChange(event.target.value);
                         setOpen(true);
                     }}
                     onFocus={() => setOpen(true)}
+                    onKeyDown={(event) => {
+                        if (!showDropdown || loading || suggestions.length === 0) {
+                            if (event.key === "Escape") setOpen(false);
+                            return;
+                        }
+
+                        if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setActiveIndex((previous) => {
+                                const next = previous + 1;
+                                return next >= suggestions.length ? 0 : next;
+                            });
+                            return;
+                        }
+
+                        if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            setActiveIndex((previous) => {
+                                if (previous <= 0) return suggestions.length - 1;
+                                return previous - 1;
+                            });
+                            return;
+                        }
+
+                        if (event.key === "Enter" && activeIndex >= 0 && activeIndex < suggestions.length) {
+                            event.preventDefault();
+                            commitSuggestion(suggestions[activeIndex]);
+                            return;
+                        }
+
+                        if (event.key === "Escape") {
+                            event.preventDefault();
+                            setOpen(false);
+                        }
+                    }}
                     placeholder={placeholder}
                     className="h-12 pl-11 pr-3 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
+                    role="combobox"
+                    aria-expanded={showDropdown}
+                    aria-controls={listboxId}
+                    aria-autocomplete="list"
                 />
                 <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
                     {kind === "flight" ? <PlaneTakeoff className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
                 </span>
 
                 {showDropdown && (
-                    <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+                    <div
+                        id={listboxId}
+                        role="listbox"
+                        className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+                    >
                         {loading && (
                             <div className="p-3 text-sm text-slate-500 flex items-center gap-2">
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -131,16 +194,17 @@ export function LocationAutocomplete({
                         )}
                         {!loading && !error && suggestions.length > 0 && (
                             <ul className="max-h-64 overflow-y-auto">
-                                {suggestions.map((item) => (
+                                {suggestions.map((item, index) => (
                                     <li key={item.id}>
                                         <button
                                             type="button"
-                                            onClick={() => {
-                                                onSelectSuggestion(item);
-                                                onValueChange(item.cityName);
-                                                setOpen(false);
-                                            }}
-                                            className="w-full text-left px-4 py-3 hover:bg-emerald-50 transition-colors"
+                                            role="option"
+                                            aria-selected={activeIndex === index}
+                                            onMouseEnter={() => setActiveIndex(index)}
+                                            onClick={() => commitSuggestion(item)}
+                                            className={`w-full text-left px-4 py-3 transition-colors ${
+                                                activeIndex === index ? "bg-emerald-50" : "hover:bg-emerald-50"
+                                            }`}
                                         >
                                             <div className="flex items-center justify-between gap-3">
                                                 <div>
