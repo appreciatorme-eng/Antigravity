@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
-
-function getSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error("Supabase configuration missing for public proposal API");
-  }
-  return createClient(supabaseUrl, supabaseServiceKey);
-}
+import { createAdminClient } from '@/lib/supabase/admin';
+const supabaseAdmin = createAdminClient();
 
 type ProposalSummary = {
   id: string;
@@ -165,7 +157,6 @@ const normalizeProposal = (value: unknown): LoadedProposal => {
 };
 
 async function loadProposalByToken(token: string) {
-  const supabaseAdmin = getSupabaseAdminClient();
   const { data, error } = await supabaseAdmin
     .from('proposals')
     .select(
@@ -197,7 +188,6 @@ async function loadProposalByToken(token: string) {
 }
 
 async function recalculateProposalPrice(proposalId: string) {
-  const supabaseAdmin = getSupabaseAdminClient();
   const { data: newPrice, error } = await supabaseAdmin.rpc('calculate_proposal_price', {
     p_proposal_id: proposalId,
   });
@@ -224,7 +214,6 @@ async function recalculateProposalPrice(proposalId: string) {
 }
 
 async function buildPublicPayload(shareToken: string) {
-  const supabaseAdmin = getSupabaseAdminClient();
   const loaded = await loadProposalByToken(shareToken);
   if ('error' in loaded) {
     return loaded;
@@ -406,7 +395,6 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const supabaseAdmin = getSupabaseAdminClient();
     const { token: rawToken } = await params;
     const token = sanitizeShareToken(rawToken);
     if (!token) {
