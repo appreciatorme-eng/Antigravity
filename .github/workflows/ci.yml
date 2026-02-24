@@ -20,9 +20,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    name: Detect Changed Areas
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      agents: ${{ steps.filter.outputs.agents }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'projects/travel-suite/apps/web/**'
+              - '.github/workflows/ci.yml'
+            agents:
+              - 'projects/travel-suite/apps/agents/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'projects/travel-suite/apps/mobile/**'
+              - '.github/workflows/ci.yml'
+            migrations:
+              - 'projects/travel-suite/supabase/migrations/**'
+              - '.github/workflows/ci.yml'
+
   # ─── Web App (Next.js) ───
   web-lint-build:
     name: Web – Lint & Build
+    needs: detect-changes
+    if: needs.detect-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,6 +85,8 @@ jobs:
   # ─── AI Agents (Python / FastAPI) ───
   agents-lint:
     name: Agents – Lint & Test
+    needs: detect-changes
+    if: needs.detect-changes.outputs.agents == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -93,6 +124,8 @@ jobs:
   # ─── Flutter Mobile ───
   mobile-analyze:
     name: Mobile – Analyze
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mobile == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -116,6 +149,8 @@ jobs:
   # ─── Supabase Migrations (syntax check) ───
   migrations-check:
     name: Migrations – Syntax Check
+    needs: detect-changes
+    if: needs.detect-changes.outputs.migrations == 'true'
     runs-on: ubuntu-latest
 
     steps:
