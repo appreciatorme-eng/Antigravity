@@ -4,10 +4,32 @@
  * GET /api/add-ons/stats - Revenue and analytics for add-ons
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest) {
+interface AddOnSaleRelation {
+  name: string | null;
+  organization_id: string;
+}
+
+interface AddOnSaleRow {
+  amount_paid: number | string | null;
+  add_on_id: string | null;
+  add_ons: AddOnSaleRelation | AddOnSaleRelation[] | null;
+}
+
+function asNumber(value: number | string | null | undefined): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function getRelation(value: AddOnSaleRow['add_ons']): AddOnSaleRelation | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] || null;
+  return value;
+}
+
+export async function GET() {
   try {
     const supabase = await createClient();
 
@@ -46,15 +68,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate total revenue
-    const totalRevenue = sales?.reduce((sum, sale) => {
-      return sum + (parseFloat(sale.amount_paid as any) || 0);
+    const typedSales = (sales || []) as AddOnSaleRow[];
+
+    const totalRevenue = typedSales.reduce((sum, sale) => {
+      return sum + asNumber(sale.amount_paid);
     }, 0) || 0;
 
     // Calculate most popular add-ons
     const addOnCounts = new Map<string, { name: string; count: number }>();
-    sales?.forEach((sale: any) => {
+    typedSales.forEach((sale) => {
       const addOnId = sale.add_on_id;
-      const addOnName = sale.add_ons?.name || 'Unknown';
+      if (!addOnId) return;
+      const addOnName = getRelation(sale.add_ons)?.name || 'Unknown';
 
       if (addOnCounts.has(addOnId)) {
         const existing = addOnCounts.get(addOnId)!;
@@ -89,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalRevenue,
-      totalSales: sales?.length || 0,
+      totalSales: typedSales.length,
       topAddOn,
       totalAddOns: totalAddOns || 0,
       activeAddOns: activeAddOns || 0,

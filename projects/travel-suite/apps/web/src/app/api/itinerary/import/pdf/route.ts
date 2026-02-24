@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
-const pdfParse = require('pdf-parse');
+import { PDFParse } from 'pdf-parse';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +52,14 @@ export async function POST(req: Request) {
         }
 
         const formData = await req.formData();
-        const file = formData.get('file') as File;
-
-        if (!file) {
+        const fileEntry = formData.get('file');
+        if (!(fileEntry instanceof File)) {
             return NextResponse.json({ error: 'PDF file is required' }, { status: 400 });
+        }
+        const file = fileEntry;
+
+        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+            return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
         }
 
         console.log(`\n🔍 Scraping PDF import: ${file.name}`);
@@ -65,8 +69,10 @@ export async function POST(req: Request) {
         const buffer = Buffer.from(arrayBuffer);
 
         // Parse text from PDF
-        const pdfData = await pdfParse(buffer);
-        let rawText = pdfData.text.replace(/\s+/g, ' ').trim();
+        const parser = new PDFParse({ data: buffer });
+        const pdfData = await parser.getText();
+        await parser.destroy();
+        const rawText = pdfData.text.replace(/\s+/g, ' ').trim();
 
         if (!rawText || rawText.length < 50) {
             return NextResponse.json({ error: 'Could not extract useful text from this PDF. It might be entirely images.' }, { status: 422 });
@@ -100,8 +106,9 @@ export async function POST(req: Request) {
             itinerary: itineraryJson
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("PDF Import Error:", error);
-        return NextResponse.json({ error: error.message || 'Failed to import from PDF' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to import from PDF';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

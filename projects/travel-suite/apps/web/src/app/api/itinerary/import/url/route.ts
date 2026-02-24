@@ -2,9 +2,20 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import * as cheerio from 'cheerio';
-import OpenAI from 'openai';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy_key' });
+
+function isPrivateOrLocalHost(hostname: string): boolean {
+    const normalized = hostname.trim().toLowerCase();
+    if (!normalized) return true;
+    if (normalized === 'localhost' || normalized.endsWith('.local')) return true;
+    if (normalized === '::1') return true;
+    if (normalized.startsWith('127.')) return true;
+    if (normalized.startsWith('10.')) return true;
+    if (normalized.startsWith('192.168.')) return true;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
+    return false;
+}
 
 const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS. 
 I am going to give you raw scraped text from a travel agency website for a specific tour. 
@@ -50,10 +61,26 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { url } = await req.json();
+        const parsedBody = await req.json().catch(() => null);
+        const url = typeof parsedBody?.url === 'string' ? parsedBody.url.trim() : '';
 
-        if (!url || typeof url !== 'string') {
+        if (!url) {
             return NextResponse.json({ error: 'Valid URL is required' }, { status: 400 });
+        }
+
+        let parsedUrl: URL;
+        try {
+            parsedUrl = new URL(url);
+        } catch {
+            return NextResponse.json({ error: 'URL format is invalid' }, { status: 400 });
+        }
+
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            return NextResponse.json({ error: 'Only http/https URLs are supported' }, { status: 400 });
+        }
+
+        if (isPrivateOrLocalHost(parsedUrl.hostname)) {
+            return NextResponse.json({ error: 'Local or private network URLs are not allowed' }, { status: 400 });
         }
 
         console.log(`\n🔍 Scraping URL import: ${url}`);
@@ -77,7 +104,7 @@ export async function POST(req: Request) {
         // Remove noisy elements
         $('nav, footer, header, script, style, noscript, svg, img, iframe').remove();
 
-        let rawText = $('body').text().replace(/\s+/g, ' ').trim();
+        const rawText = $('body').text().replace(/\s+/g, ' ').trim();
 
         if (!rawText || rawText.length < 50) {
             return NextResponse.json({ error: 'Could not extract useful text from this URL' }, { status: 422 });
@@ -111,8 +138,9 @@ export async function POST(req: Request) {
             itinerary: itineraryJson
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("URL Import Error:", error);
-        return NextResponse.json({ error: error.message || 'Failed to import from URL' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to import from URL';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

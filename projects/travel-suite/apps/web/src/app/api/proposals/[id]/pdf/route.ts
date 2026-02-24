@@ -8,8 +8,9 @@
 import React from 'react';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderToStream } from '@react-pdf/renderer';
+import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
+import type { Database } from '@/lib/database.types';
 
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
@@ -17,6 +18,60 @@ const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
 };
 
 const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9-_]+/g, '_');
+
+type OrganizationBrand = {
+  name: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
+};
+
+type ProfileWithOrganization = {
+  organization_id: string | null;
+  organizations: OrganizationBrand | OrganizationBrand[] | null;
+};
+
+type ClientProfile = {
+  full_name: string | null;
+  email: string | null;
+};
+
+type ProposalActivityRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  time: string | null;
+  location: string | null;
+  price: number | null;
+  is_optional: boolean | null;
+  is_selected: boolean | null;
+};
+
+type ProposalAccommodationRow = {
+  id: string;
+  hotel_name: string | null;
+  room_type: string | null;
+  check_in_date: string | null;
+  check_out_date: string | null;
+  price_per_night: number | null;
+  is_selected: boolean | null;
+};
+
+type ProposalDayRow = {
+  day_number: number;
+  title: string | null;
+  description: string | null;
+  proposal_activities: ProposalActivityRow[] | null;
+  proposal_accommodations: ProposalAccommodationRow[] | null;
+};
+
+type ProposalQueryRow = Database['public']['Tables']['proposals']['Row'] & {
+  clients: { profiles: ClientProfile | ClientProfile[] | null } | null;
+  organizations: OrganizationBrand | OrganizationBrand[] | null;
+  tour_templates: { destination: string | null } | { destination: string | null }[] | null;
+  proposal_days: ProposalDayRow[] | null;
+};
+
+type ProposalAddOnRow = Database['public']['Tables']['proposal_add_ons']['Row'];
 
 export async function GET(
   request: Request,
@@ -32,7 +87,7 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     let userOrganizationId: string | null = null;
-    let userOrganization: any = null;
+    let userOrganization: OrganizationBrand | null = null;
 
     if (user) {
       const { data: profile } = await supabase
@@ -41,8 +96,9 @@ export async function GET(
         .eq('id', user.id)
         .single();
 
-      userOrganizationId = profile?.organization_id || null;
-      userOrganization = normalizeRelation((profile as any)?.organizations);
+      const profileRow = (profile as ProfileWithOrganization | null) || null;
+      userOrganizationId = profileRow?.organization_id || null;
+      userOrganization = normalizeRelation(profileRow?.organizations || null);
     }
 
     if (!user && !shareToken) {
@@ -102,35 +158,36 @@ export async function GET(
       }
     }
 
-    // proposal_add_ons type may not exist in generated Database types yet.
-    const { data: proposalAddOns } = await (supabase as any)
+    const { data: proposalAddOns } = await supabase
       .from('proposal_add_ons')
       .select('*')
       .eq('proposal_id', id);
 
-    const p = proposal as any;
-    const clientProfile = normalizeRelation(p.clients?.profiles);
-    const proposalOrganization = normalizeRelation(p.organizations) || userOrganization;
+    const proposalRow = proposal as ProposalQueryRow;
+    const clientProfile = normalizeRelation(proposalRow.clients?.profiles || null);
+    const proposalOrganization = normalizeRelation(proposalRow.organizations) || userOrganization;
+    const templateDestination = normalizeRelation(proposalRow.tour_templates)?.destination || 'Destination';
+    const proposalDays = proposalRow.proposal_days || [];
 
     const proposalData = {
-      id: proposal.id,
-      title: proposal.title,
-      total_price: Number(proposal.total_price || 0),
-      client_selected_price: proposal.client_selected_price,
-      status: proposal.status || 'draft',
-      created_at: proposal.created_at || new Date().toISOString(),
-      destination: p.tour_templates?.destination || 'Destination',
-      duration_days: p.proposal_days?.length || undefined,
+      id: proposalRow.id,
+      title: proposalRow.title,
+      total_price: Number(proposalRow.total_price || 0),
+      client_selected_price: proposalRow.client_selected_price,
+      status: proposalRow.status || 'draft',
+      created_at: proposalRow.created_at || new Date().toISOString(),
+      destination: templateDestination,
+      duration_days: proposalDays.length || undefined,
       currency: 'USD',
       client_name: clientProfile?.full_name || 'Valued Customer',
-      client_email: clientProfile?.email,
+      client_email: clientProfile?.email || undefined,
       days:
-        p.proposal_days?.map((day: any) => ({
+        proposalDays.map((day) => ({
           day_number: day.day_number,
           title: day.title || `Day ${day.day_number}`,
           description: day.description || undefined,
           activities:
-            day.proposal_activities?.map((activity: any) => ({
+            (day.proposal_activities || []).map((activity) => ({
               id: activity.id,
               title: activity.title,
               description: activity.description || undefined,
@@ -139,9 +196,9 @@ export async function GET(
               price: Number(activity.price || 0),
               is_optional: activity.is_optional === true,
               is_selected: activity.is_selected !== false,
-            })) || [],
+            })),
           accommodations:
-            day.proposal_accommodations?.map((accommodation: any) => ({
+            (day.proposal_accommodations || []).map((accommodation) => ({
               id: accommodation.id,
               name: accommodation.hotel_name || 'Accommodation',
               type: accommodation.room_type || undefined,
@@ -149,12 +206,12 @@ export async function GET(
               check_out: accommodation.check_out_date || undefined,
               price: Number(accommodation.price_per_night || 0),
               is_selected: accommodation.is_selected !== false,
-            })) || [],
-        })) || [],
+            })),
+        })),
     };
 
     const formattedAddOns =
-      proposalAddOns?.map((addOn: any) => ({
+      (proposalAddOns as ProposalAddOnRow[] | null)?.map((addOn) => ({
         id: addOn.id,
         name: addOn.name,
         category: addOn.category,
@@ -164,14 +221,16 @@ export async function GET(
         is_selected: addOn.is_selected !== false,
       })) || [];
 
+    const document = React.createElement(ProposalDocument, {
+      proposal: proposalData,
+      addOns: formattedAddOns,
+      organizationName: proposalOrganization?.name || 'Travel Suite',
+      organizationLogo: proposalOrganization?.logo_url || null,
+      primaryColor: proposalOrganization?.primary_color || '#00d084',
+    }) as unknown as React.ReactElement<DocumentProps>;
+
     const stream = await renderToStream(
-      React.createElement(ProposalDocument, {
-        proposal: proposalData,
-        addOns: formattedAddOns,
-        organizationName: proposalOrganization?.name || 'Travel Suite',
-        organizationLogo: proposalOrganization?.logo_url || null,
-        primaryColor: proposalOrganization?.primary_color || '#00d084',
-      }) as any
+      document
     );
 
     const chunks: Buffer[] = [];
