@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
+import type { Database } from "@/lib/database.types";
 
 const ProposalCreateSchema = z.object({
   templateId: z.string().uuid(),
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (addOnRows.length > 0) {
-      const insertPayload = addOnRows.map(({ addOn, selected }) => ({
+      const insertPayload: Database["public"]["Tables"]["proposal_add_ons"]["Insert"][] = addOnRows.map(({ addOn, selected }) => ({
         proposal_id: proposalId,
         add_on_id: addOn.id,
         name: addOn.name,
@@ -170,8 +171,7 @@ export async function POST(req: NextRequest) {
       }));
 
       // proposal_add_ons is optional on older DBs. Best-effort insert only.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (admin.adminClient as any).from("proposal_add_ons").insert(insertPayload);
+      await admin.adminClient.from("proposal_add_ons").insert(insertPayload);
     }
 
     const { data: newPrice } = await admin.adminClient.rpc("calculate_proposal_price", {

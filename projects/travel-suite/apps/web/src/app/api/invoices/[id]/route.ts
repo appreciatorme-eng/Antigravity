@@ -7,11 +7,37 @@
  * - DELETE /api/invoices/[id] - Delete invoice
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { z } from 'zod';
+import { sanitizeText } from '@/lib/security/sanitize';
+import type { Database, Json } from '@/lib/database.types';
+
+const InvoiceUpdateSchema = z.object({
+  status: z.string().min(1).max(60).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+  due_date: z.string().optional().nullable(),
+});
+
+function asObjectJson(value: Json | null): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function normalizeDueDate(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(trimmed);
+  if (!Number.isFinite(parsed.getTime())) return undefined;
+  return parsed.toISOString();
+}
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -92,14 +118,46 @@ export async function PUT(
     }
 
     // Parse request body
-    const body = await request.json();
-    const { status, notes, due_date } = body;
+    const body = await request.json().catch(() => null);
+    const parsed = InvoiceUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid invoice update payload', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     // Build update object
-    const updates: any = {};
+    const updates: Database['public']['Tables']['invoices']['Update'] = {};
+    const status = sanitizeText(parsed.data.status, { maxLength: 60 });
     if (status) updates.status = status;
-    if (notes !== undefined) updates.notes = notes;
-    if (due_date) updates.due_date = due_date;
+
+    const normalizedDueDate = normalizeDueDate(parsed.data.due_date);
+    if (normalizedDueDate !== undefined) {
+      updates.due_date = normalizedDueDate;
+    }
+
+    if (parsed.data.notes !== undefined) {
+      const safeNotes = sanitizeText(parsed.data.notes, {
+        maxLength: 2000,
+        preserveNewlines: true,
+      });
+      const { data: existingInvoice } = await supabase
+        .from('invoices')
+        .select('metadata')
+        .eq('id', id)
+        .eq('organization_id', profile.organization_id)
+        .maybeSingle();
+      const existingMeta = asObjectJson(existingInvoice?.metadata || null);
+      updates.metadata = {
+        ...existingMeta,
+        notes: safeNotes || null,
+      };
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No invoice fields to update' }, { status: 400 });
+    }
 
     // Update invoice
     const { data: invoice, error } = await supabase
@@ -127,7 +185,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

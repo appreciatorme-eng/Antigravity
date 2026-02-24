@@ -66,15 +66,16 @@ export async function POST(req: NextRequest) {
   }
 
   // URL / preview path (JSON)
-  let body: any;
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const method = typeof body?.method === 'string' ? body.method : '';
-  const url = typeof body?.url === 'string' ? body.url : '';
+  const payload = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const method = typeof payload.method === 'string' ? payload.method : '';
+  const url = typeof payload.url === 'string' ? payload.url : '';
 
   if (!url) {
     return NextResponse.json({ success: false, error: 'Missing url' }, { status: 400 });
@@ -92,4 +93,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: false, error: 'Invalid method' }, { status: 400 });
 }
-

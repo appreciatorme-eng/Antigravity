@@ -14,6 +14,32 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 // Allow up to 60s for AI generation + geocoding
 export const maxDuration = 60;
 
+type CoordinatesLike = {
+    lat?: number;
+    lng?: number;
+};
+
+type ActivityLike = Record<string, unknown> & {
+    location?: string;
+    coordinates?: CoordinatesLike;
+};
+
+type DayLike = Record<string, unknown> & {
+    activities?: ActivityLike[];
+    theme?: string;
+};
+
+type ItineraryLike = Record<string, unknown> & {
+    trip_title?: string;
+    destination?: string;
+    duration_days?: number;
+    summary?: string;
+    budget?: string;
+    interests?: string[];
+    days?: DayLike[];
+    base_template_id?: string;
+};
+
 // Initialize rate limiter globally if env vars are present
 let ratelimit: Ratelimit | null = null;
 // Use try/catch so missing/placeholder variables at build-time don't break Next.js
@@ -126,16 +152,20 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * Geocode all activity locations in an itinerary
  * Adds accurate coordinates to activities that have locations but no/invalid coordinates
  */
-async function geocodeItineraryActivities(itinerary: any): Promise<any> {
+async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<ItineraryLike> {
     try {
         // Get city center for proximity bias
-        const cityProximity = await getCityCenter(itinerary.destination);
+        const destination = typeof itinerary.destination === 'string' ? itinerary.destination : '';
+        const cityProximity = await getCityCenter(destination);
 
         let geocodedCount = 0;
         let skippedCount = 0;
 
-        for (const day of itinerary.days) {
-            for (const activity of day.activities) {
+        const itineraryDays = Array.isArray(itinerary.days) ? itinerary.days : [];
+
+        for (const day of itineraryDays) {
+            const activities = Array.isArray(day.activities) ? day.activities : [];
+            for (const activity of activities) {
                 // Skip if activity already has valid coordinates
                 if (
                     activity.coordinates &&
@@ -219,16 +249,17 @@ export async function POST(req: NextRequest) {
             days,
             undefined, // budget - we'll get this from AI response
             undefined  // interests - we'll get this from AI response
-        );
+        ) as ItineraryLike | null;
 
         if (cachedItinerary) {
             // Skip cached fallback itineraries (generated when AI was unavailable)
-            const isFallback = typeof cachedItinerary.summary === 'string' &&
-                cachedItinerary.summary.includes('AI planner was unavailable');
+            const summary = typeof cachedItinerary.summary === 'string' ? cachedItinerary.summary : '';
+            const isFallback = summary.includes('AI planner was unavailable');
 
             // Skip cache if it has old New York fallback coordinates (40.7, -74.0 area)
-            const hasValidCoordinates = cachedItinerary.days?.some((day: any) =>
-                day.activities?.some((activity: any) => {
+            const cachedDays = Array.isArray(cachedItinerary.days) ? cachedItinerary.days : [];
+            const hasValidCoordinates = cachedDays.some((day) =>
+                (Array.isArray(day.activities) ? day.activities : []).some((activity) => {
                     const lat = activity.coordinates?.lat;
                     const lng = activity.coordinates?.lng;
                     if (!lat || !lng) return false;
@@ -406,7 +437,7 @@ export async function POST(req: NextRequest) {
             required: ["trip_title", "destination", "duration_days", "summary", "days"]
         };
 
-        let itinerary: any;
+        let itinerary: ItineraryLike | null = null;
         const finalPrompt = `Create a ${days}-day travel itinerary for: "${prompt}".
 
 Requirements:
@@ -463,7 +494,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                         response_format: { type: 'json_object' }
                     });
                     const responseContent = chatCompletion.choices[0]?.message?.content || "";
-                    itinerary = JSON.parse(responseContent);
+                    itinerary = JSON.parse(responseContent) as ItineraryLike;
                     console.log(`✅ [GROQ] Successfully generated itinerary.`);
                 } catch (groqError) {
                     console.error(`❌ [GROQ] Failed:`, groqError);
@@ -484,7 +515,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 });
                 const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
                 const responseText = result.response.text();
-                itinerary = JSON.parse(responseText.trim());
+                itinerary = JSON.parse(responseText.trim()) as ItineraryLike;
                 console.log(`✅ [GEMINI] Successfully generated itinerary.`);
             }
 
@@ -499,6 +530,10 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         }
 
         // Defensive normalization for UI expectations.
+        if (!itinerary || typeof itinerary !== 'object') {
+            itinerary = await buildFallbackItinerary(prompt, days) as ItineraryLike;
+        }
+
         if (typeof itinerary.duration_days !== "number" || !Number.isFinite(itinerary.duration_days)) {
             itinerary.duration_days = days;
         }
@@ -508,9 +543,9 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
             !Array.isArray(itinerary.days) ||
             (Array.isArray(itinerary.days) && itinerary.days.length < days);
 
-        let fallbackData: any = null;
+        let fallbackData: ItineraryLike | null = null;
         if (needsFallback) {
-            fallbackData = await buildFallbackItinerary(prompt, days);
+            fallbackData = await buildFallbackItinerary(prompt, days) as ItineraryLike;
         }
 
         if (typeof itinerary.summary !== "string" || itinerary.summary.trim().length < 10) {
@@ -536,7 +571,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
             'Final Exploration & Departure'
         ];
 
-        itinerary.days = itinerary.days.slice(0, days).map((d: any, idx: number) => ({
+        const itineraryDays = Array.isArray(itinerary.days) ? itinerary.days : [];
+        itinerary.days = itineraryDays.slice(0, days).map((d: DayLike, idx: number) => ({
             ...d,
             day_number: idx + 1,
             theme: typeof d?.theme === "string" && d.theme.trim().length > 0 ? d.theme : fallbackThemes[idx % fallbackThemes.length],
@@ -544,7 +580,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         }));
         // If the model returned fewer days, pad with fallbacks.
         if (itinerary.days.length < days && fallbackData) {
-            const pad = fallbackData.days.slice(itinerary.days.length);
+            const fallbackDays = Array.isArray(fallbackData.days) ? fallbackData.days : [];
+            const pad = fallbackDays.slice(itinerary.days.length);
             itinerary.days = itinerary.days.concat(pad);
         }
 
