@@ -167,12 +167,15 @@ async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<Iti
             const activities = Array.isArray(day.activities) ? day.activities : [];
             for (const activity of activities) {
                 // Skip if activity already has valid coordinates
+                const existingLat = activity.coordinates?.lat;
+                const existingLng = activity.coordinates?.lng;
                 if (
-                    activity.coordinates &&
-                    activity.coordinates.lat !== 0 &&
-                    activity.coordinates.lng !== 0 &&
-                    Math.abs(activity.coordinates.lat) <= 90 &&
-                    Math.abs(activity.coordinates.lng) <= 180
+                    typeof existingLat === 'number' &&
+                    typeof existingLng === 'number' &&
+                    existingLat !== 0 &&
+                    existingLng !== 0 &&
+                    Math.abs(existingLat) <= 90 &&
+                    Math.abs(existingLng) <= 180
                 ) {
                     skippedCount++;
                     continue;
