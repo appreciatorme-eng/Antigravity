@@ -109,8 +109,11 @@ export async function GET(request: NextRequest) {
     try {
         const auth = await requireAdminUser();
         if ("error" in auth) {
-            auth.error.headers.set("x-request-id", requestId);
-            return auth.error;
+            const errorResponse =
+                auth.error ||
+                NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            errorResponse.headers.set("x-request-id", requestId);
+            return errorResponse;
         }
 
         const { data, error } = await supabaseAdmin
@@ -155,8 +158,11 @@ export async function POST(request: NextRequest) {
     try {
         const auth = await requireAdminUser();
         if ("error" in auth) {
-            auth.error.headers.set("x-request-id", requestId);
-            return auth.error;
+            const errorResponse =
+                auth.error ||
+                NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            errorResponse.headers.set("x-request-id", requestId);
+            return errorResponse;
         }
 
         const { orgId, status } = await request.json();
