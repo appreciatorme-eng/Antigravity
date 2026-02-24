@@ -1,8 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
 import type { Database } from "@/lib/database.types";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const UpdateInquirySchema = z.object({
     id: z.string().min(6).max(80),
@@ -17,12 +24,28 @@ type MarketplaceInquiryWithOrg = Database["public"]["Tables"]["marketplace_inqui
     receiver?: OrganizationSummary | OrganizationSummary[] | null;
 };
 
-export async function GET(_request: Request) {
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
+
+export async function GET(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     const supabase = await createClient();
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) {
+            logEvent("warn", "Marketplace inquiries list unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        }
 
         const { data: profile } = await supabase
             .from("profiles")
@@ -31,7 +54,11 @@ export async function GET(_request: Request) {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "No organization" }, { status: 403 });
+            logEvent("warn", "Marketplace inquiries list missing organization", {
+                ...requestContext,
+                user_id: user.id,
+            });
+            return withRequestId({ error: "No organization" }, requestId, { status: 403 });
         }
 
         const orgId = profile.organization_id;
@@ -60,19 +87,45 @@ export async function GET(_request: Request) {
 
         const received = (receivedData || []) as MarketplaceInquiryWithOrg[];
         const sent = (sentData || []) as MarketplaceInquiryWithOrg[];
-        return NextResponse.json({ received, sent });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace inquiries list fetched", {
+            ...requestContext,
+            user_id: user.id,
+            received_count: received.length,
+            sent_count: sent.length,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.inquiries.list", {
+            request_id: requestId,
+            user_id: user.id,
+            received_count: received.length,
+            sent_count: sent.length,
+            duration_ms: durationMs,
+        });
+        return withRequestId({ received, sent }, requestId);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to load marketplace inquiries";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace inquiries list failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.inquiries.list.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     const supabase = await createClient();
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) {
+            logEvent("warn", "Marketplace inquiry update unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        }
 
         const { data: profile } = await supabase
             .from("profiles")
@@ -80,13 +133,21 @@ export async function PATCH(request: Request) {
             .eq("id", user.id)
             .single();
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "Organization not configured" }, { status: 403 });
+            logEvent("warn", "Marketplace inquiry update missing organization", {
+                ...requestContext,
+                user_id: user.id,
+            });
+            return withRequestId({ error: "Organization not configured" }, requestId, { status: 403 });
         }
 
         const payloadRaw = await request.json().catch(() => null);
         const parsed = UpdateInquirySchema.safeParse(payloadRaw);
         if (!parsed.success) {
-            return NextResponse.json({ error: "Invalid update payload", details: parsed.error.flatten() }, { status: 400 });
+            return withRequestId(
+                { error: "Invalid update payload", details: parsed.error.flatten() },
+                requestId,
+                { status: 400 }
+            );
         }
 
         const updates: Database["public"]["Tables"]["marketplace_inquiries"]["Update"] = {};
@@ -96,7 +157,7 @@ export async function PATCH(request: Request) {
         updates.updated_at = new Date().toISOString();
 
         if (!updates.status && !updates.read_at) {
-            return NextResponse.json({ error: "No changes requested" }, { status: 400 });
+            return withRequestId({ error: "No changes requested" }, requestId, { status: 400 });
         }
 
         const { data, error } = await supabase
@@ -108,9 +169,31 @@ export async function PATCH(request: Request) {
             .single();
 
         if (error) throw error;
-        return NextResponse.json(data);
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace inquiry updated", {
+            ...requestContext,
+            user_id: user.id,
+            inquiry_id: data?.id,
+            status: updates.status || null,
+            mark_read: Boolean(updates.read_at),
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.inquiries.update", {
+            request_id: requestId,
+            user_id: user.id,
+            inquiry_id: data?.id || null,
+            status: updates.status || null,
+            mark_read: Boolean(updates.read_at),
+            duration_ms: durationMs,
+        });
+        return withRequestId(data, requestId);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to update marketplace inquiry";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace inquiry update failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.inquiries.update.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

@@ -1,9 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -168,14 +175,28 @@ async function getAuthContext(req: Request) {
     return { user: null, profile: null };
 }
 
-export async function GET(req: Request) {
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
+
+export async function GET(req: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
     try {
         const { user, profile } = await getAuthContext(req);
         if (!user || !profile) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace list unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
         if (!profile.organization_id) {
-            return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+            return withRequestId({ error: "Organization not configured" }, requestId, { status: 400 });
         }
 
         const url = new URL(req.url);
@@ -248,34 +269,58 @@ export async function GET(req: Request) {
             };
         });
 
-        return NextResponse.json(results);
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace list fetched", {
+            ...requestContext,
+            user_id: user.id,
+            organization_id: profile.organization_id,
+            results_count: results.length,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.list", {
+            request_id: requestId,
+            user_id: user.id,
+            organization_id: profile.organization_id,
+            results_count: results.length,
+            duration_ms: durationMs,
+        });
+        return withRequestId(results, requestId);
     } catch (error: unknown) {
-        console.error("Marketplace GET error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace list failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.list.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(req: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
     try {
         const { user, profile } = await getAuthContext(req);
         if (!user || !profile) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace profile update unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         if (profile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return withRequestId({ error: "Forbidden" }, requestId, { status: 403 });
         }
 
         if (!profile.organization_id) {
-            return NextResponse.json({ error: "Organization not found" }, { status: 400 });
+            return withRequestId({ error: "Organization not found" }, requestId, { status: 400 });
         }
 
         const body = await req.json().catch(() => null);
         const parsed = MarketplacePatchSchema.safeParse(body);
         if (!parsed.success) {
-            return NextResponse.json(
+            return withRequestId(
                 { error: "Invalid request body", details: parsed.error.flatten() },
+                requestId,
                 { status: 400 }
             );
         }
@@ -310,10 +355,29 @@ export async function PATCH(req: Request) {
 
         if (error) throw error;
 
-        return NextResponse.json(data);
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace profile upserted", {
+            ...requestContext,
+            user_id: user.id,
+            organization_id: profile.organization_id,
+            request_verification: parsed.data.request_verification === true,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.profile.update", {
+            request_id: requestId,
+            user_id: user.id,
+            organization_id: profile.organization_id,
+            request_verification: parsed.data.request_verification === true,
+            duration_ms: durationMs,
+        });
+        return withRequestId(data, requestId);
     } catch (error: unknown) {
-        console.error("Marketplace PATCH error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace profile update failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.profile.update.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

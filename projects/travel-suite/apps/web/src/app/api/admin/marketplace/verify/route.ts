@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -86,10 +92,26 @@ async function requireAdminUser() {
     return { user, profile };
 }
 
-export async function GET() {
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
+
+export async function GET(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     try {
         const auth = await requireAdminUser();
-        if ("error" in auth) return auth.error;
+        if ("error" in auth) {
+            auth.error.headers.set("x-request-id", requestId);
+            return auth.error;
+        }
 
         const { data, error } = await supabaseAdmin
             .from("marketplace_profiles")
@@ -100,21 +122,46 @@ export async function GET() {
             .eq("verification_status", "pending");
 
         if (error) throw error;
-        return NextResponse.json(data);
+        const pendingCount = Array.isArray(data) ? data.length : 0;
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace pending verifications fetched", {
+            ...requestContext,
+            user_id: auth.user.id,
+            pending_count: pendingCount,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.marketplace.verify.list", {
+            request_id: requestId,
+            user_id: auth.user.id,
+            pending_count: pendingCount,
+            duration_ms: durationMs,
+        });
+        return withRequestId(data || [], requestId);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace pending verifications fetch failed", error, requestContext);
+        void captureOperationalMetric("api.admin.marketplace.verify.list.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     try {
         const auth = await requireAdminUser();
-        if ("error" in auth) return auth.error;
+        if ("error" in auth) {
+            auth.error.headers.set("x-request-id", requestId);
+            return auth.error;
+        }
 
         const { orgId, status } = await request.json();
         if (!orgId || (status !== "verified" && status !== "rejected")) {
-            return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+            return withRequestId({ error: "Invalid request payload" }, requestId, { status: 400 });
         }
 
         const { data, error } = await supabaseAdmin
@@ -171,12 +218,37 @@ export async function POST(request: Request) {
             notification
         );
 
-        return NextResponse.json({
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace verification status updated", {
+            ...requestContext,
+            user_id: auth.user.id,
+            organization_id: orgId,
+            verification_status: status,
+            notification_attempted: notification.attempted,
+            notification_sent: notification.sent,
+            durationMs,
+        });
+        void captureOperationalMetric("api.admin.marketplace.verify.update", {
+            request_id: requestId,
+            user_id: auth.user.id,
+            organization_id: orgId,
+            verification_status: status,
+            notification_attempted: notification.attempted,
+            notification_sent: notification.sent,
+            duration_ms: durationMs,
+        });
+
+        return withRequestId({
             ...data,
             notification,
-        });
+        }, requestId);
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace verification update failed", error, requestContext);
+        void captureOperationalMetric("api.admin.marketplace.verify.update.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

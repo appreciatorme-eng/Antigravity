@@ -1,19 +1,45 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sanitizeText } from "@/lib/security/sanitize";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
+
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
 
 export async function POST(
-    _request: Request,
+    request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     const supabase = await createClient();
-    const { id: targetOrgId } = await context.params;
+    const params = await context.params;
+    const targetOrgId = sanitizeText(params.id, { maxLength: 120 });
+    if (!targetOrgId) {
+        return withRequestId({ error: "Invalid organization id" }, requestId, { status: 400 });
+    }
 
     try {
         const {
             data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace view tracking unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const { data: viewerProfile } = await supabase
@@ -23,7 +49,7 @@ export async function POST(
             .single();
 
         if (!viewerProfile?.organization_id) {
-            return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+            return withRequestId({ error: "Organization not configured" }, requestId, { status: 400 });
         }
 
         // Resolve target profile_id
@@ -36,14 +62,22 @@ export async function POST(
             .single();
 
         if (profileError || !profile) {
-            return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+            return withRequestId({ error: "Profile not found" }, requestId, { status: 404 });
         }
 
         const viewerOrgId = viewerProfile.organization_id;
 
         // Prevent self-views if viewer is same as target
         if (viewerOrgId === targetOrgId) {
-            return NextResponse.json({ skipped: true, reason: "self_view" });
+            void captureOperationalMetric("api.marketplace.view.track", {
+                request_id: requestId,
+                user_id: user.id,
+                target_org_id: targetOrgId,
+                viewer_org_id: viewerOrgId,
+                skipped: true,
+                reason: "self_view",
+            });
+            return withRequestId({ skipped: true, reason: "self_view" }, requestId);
         }
 
         // Record the view
@@ -57,10 +91,30 @@ export async function POST(
 
         if (error) throw error;
 
-        return NextResponse.json({ success: true });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace profile view recorded", {
+            ...requestContext,
+            user_id: user.id,
+            target_org_id: targetOrgId,
+            viewer_org_id: viewerOrgId,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.view.track", {
+            request_id: requestId,
+            user_id: user.id,
+            target_org_id: targetOrgId,
+            viewer_org_id: viewerOrgId,
+            skipped: false,
+            duration_ms: durationMs,
+        });
+        return withRequestId({ success: true }, requestId);
     } catch (error: unknown) {
-        console.error("Error recording view:", error);
         const message = error instanceof Error ? error.message : "Failed to record marketplace profile view";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace view tracking failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.view.track.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

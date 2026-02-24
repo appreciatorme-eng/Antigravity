@@ -1,9 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const InquiryCreateSchema = z.object({
     subject: z.string().max(160).optional(),
@@ -68,17 +74,31 @@ async function trackInquiryNotification(
     });
 }
 
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
+
 export async function POST(
-    request: Request,
+    request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     const supabase = await createClient();
     const { id: targetOrgId } = await context.params;
 
     try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (!user || authError) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace inquiry create unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const { data: profile } = await supabase
@@ -88,13 +108,13 @@ export async function POST(
             .single();
 
         if (!profile || !profile.organization_id) {
-            return NextResponse.json({ error: "User has no organization" }, { status: 403 });
+            return withRequestId({ error: "User has no organization" }, requestId, { status: 403 });
         }
 
         const senderOrgId = profile.organization_id;
 
         if (senderOrgId === targetOrgId) {
-            return NextResponse.json({ error: "Cannot send inquiry to your own organization" }, { status: 400 });
+            return withRequestId({ error: "Cannot send inquiry to your own organization" }, requestId, { status: 400 });
         }
 
         const { data: targetProfile } = await supabase
@@ -106,13 +126,13 @@ export async function POST(
             .maybeSingle();
 
         if (!targetProfile) {
-            return NextResponse.json({ error: "Operator not available in marketplace" }, { status: 404 });
+            return withRequestId({ error: "Operator not available in marketplace" }, requestId, { status: 404 });
         }
 
         const payloadRaw = await request.json().catch(() => null);
         const parsed = InquiryCreateSchema.safeParse(payloadRaw);
         if (!parsed.success) {
-            return NextResponse.json({ error: "Invalid inquiry payload", details: parsed.error.flatten() }, { status: 400 });
+            return withRequestId({ error: "Invalid inquiry payload", details: parsed.error.flatten() }, requestId, { status: 400 });
         }
 
         const subject = sanitizeText(parsed.data.subject, { maxLength: 160 }) || "Partnership Inquiry";
@@ -121,7 +141,7 @@ export async function POST(
             preserveNewlines: true,
         });
         if (!message) {
-            return NextResponse.json({ error: "Message is required" }, { status: 400 });
+            return withRequestId({ error: "Message is required" }, requestId, { status: 400 });
         }
 
         const { data, error } = await supabase
@@ -194,13 +214,39 @@ export async function POST(
             );
         }
 
-        return NextResponse.json({
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace inquiry created", {
+            ...requestContext,
+            user_id: user.id,
+            sender_org_id: senderOrgId,
+            receiver_org_id: targetOrgId,
+            inquiry_id: inquiryId || null,
+            notification_attempted: notification.attempted,
+            notification_sent: notification.sent,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.inquiry.create", {
+            request_id: requestId,
+            user_id: user.id,
+            sender_org_id: senderOrgId,
+            receiver_org_id: targetOrgId,
+            inquiry_id: inquiryId || null,
+            notification_attempted: notification.attempted,
+            notification_sent: notification.sent,
+            duration_ms: durationMs,
+        });
+
+        return withRequestId({
             ...data,
             notification,
-        });
+        }, requestId);
     } catch (error: unknown) {
-        console.error("Error creating inquiry:", error);
         const message = error instanceof Error ? error.message : "Failed to create inquiry";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace inquiry create failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.inquiry.create.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

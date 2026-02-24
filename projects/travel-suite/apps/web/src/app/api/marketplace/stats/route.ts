@@ -1,14 +1,35 @@
 import { createClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
+
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
 
 export async function GET(request: NextRequest) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     const supabase = await createClient();
 
     try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace stats unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         // 1. Get user's org
@@ -20,7 +41,7 @@ export async function GET(request: NextRequest) {
         if (profileError) throw profileError;
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "No organization found" }, { status: 404 });
+            return withRequestId({ error: "No organization found" }, requestId, { status: 404 });
         }
 
         const orgId = profile.organization_id;
@@ -35,7 +56,7 @@ export async function GET(request: NextRequest) {
 
         if (!marketProfile) {
             // No profile -> no stats
-            return NextResponse.json({
+            return withRequestId({
                 views: 0,
                 inquiries: 0,
                 conversion_rate: 0,
@@ -97,7 +118,24 @@ export async function GET(request: NextRequest) {
             .limit(5);
         if (recentInquiriesError) throw recentInquiriesError;
 
-        return NextResponse.json({
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace stats fetched", {
+            ...requestContext,
+            user_id: user.id,
+            organization_id: orgId,
+            views: totalViews,
+            inquiries: totalInquiries,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.stats.get", {
+            request_id: requestId,
+            user_id: user.id,
+            organization_id: orgId,
+            views: totalViews,
+            inquiries: totalInquiries,
+            duration_ms: durationMs,
+        });
+        return withRequestId({
             views: totalViews,
             inquiries: totalInquiries,
             conversion_rate: conversionRate,
@@ -106,8 +144,12 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error: unknown) {
-        console.error("Error fetching marketplace stats:", error);
         const message = error instanceof Error ? error.message : "Internal Server Error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace stats fetch failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.stats.get.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

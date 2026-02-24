@@ -1,6 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { sanitizeText } from "@/lib/security/sanitize";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -33,12 +41,26 @@ async function getAuthContext(req: Request) {
     return { user: null, profile: null };
 }
 
-export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+    const payload =
+        body && typeof body === "object" && !Array.isArray(body)
+            ? { ...(body as Record<string, unknown>), request_id: requestId }
+            : body;
+    const response = NextResponse.json(payload, init);
+    response.headers.set("x-request-id", requestId);
+    return response;
+}
+
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
     try {
         const { id: targetOrgId } = await context.params;
         const { user, profile } = await getAuthContext(req);
         if (!user || !profile || !profile.organization_id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace reviews list unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const { data: targetProfile } = await supabaseAdmin
@@ -50,7 +72,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
             .maybeSingle();
 
         if (!targetProfile) {
-            return NextResponse.json([], { status: 200 });
+            return withRequestId([], requestId, { status: 200 });
         }
 
         const { data, error } = await supabaseAdmin
@@ -64,31 +86,58 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
         if (error) throw error;
 
-        return NextResponse.json(data);
+        const durationMs = Date.now() - startedAt;
+        const reviewsCount = Array.isArray(data) ? data.length : 0;
+        logEvent("info", "Marketplace reviews fetched", {
+            ...requestContext,
+            user_id: user.id,
+            target_org_id: targetOrgId,
+            reviews_count: reviewsCount,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.reviews.list", {
+            request_id: requestId,
+            user_id: user.id,
+            target_org_id: targetOrgId,
+            reviews_count: reviewsCount,
+            duration_ms: durationMs,
+        });
+        return withRequestId(data || [], requestId);
     } catch (error: unknown) {
-        console.error("Marketplace Review GET error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace reviews list failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.reviews.list.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }
 
-export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+    const startedAt = Date.now();
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
     try {
         const { id } = await context.params;
-        const targetOrgId = id;
+        const targetOrgId = sanitizeText(id, { maxLength: 120 });
+        if (!targetOrgId) {
+            return withRequestId({ error: "Invalid organization id" }, requestId, { status: 400 });
+        }
         const { user, profile } = await getAuthContext(req);
         if (!user || !profile) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            logEvent("warn", "Marketplace review create unauthorized", requestContext);
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const reviewerOrgId = profile.organization_id;
 
         if (!reviewerOrgId) {
-            return NextResponse.json({ error: "Reviewer must belong to an organization" }, { status: 400 });
+            return withRequestId({ error: "Reviewer must belong to an organization" }, requestId, { status: 400 });
         }
 
         if (reviewerOrgId === targetOrgId) {
-            return NextResponse.json({ error: "You cannot review your own organization" }, { status: 400 });
+            return withRequestId({ error: "You cannot review your own organization" }, requestId, { status: 400 });
         }
 
         const { data: targetProfile } = await supabaseAdmin
@@ -100,14 +149,19 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
             .maybeSingle();
 
         if (!targetProfile) {
-            return NextResponse.json({ error: "Operator not available in marketplace" }, { status: 404 });
+            return withRequestId({ error: "Operator not available in marketplace" }, requestId, { status: 404 });
         }
 
-        const body = await req.json();
-        const { rating, comment } = body;
+        const body = await req.json().catch(() => ({}));
+        const ratingRaw = (body as { rating?: unknown }).rating;
+        const rating = Number(ratingRaw);
+        const comment = sanitizeText((body as { comment?: unknown }).comment, {
+            maxLength: 2000,
+            preserveNewlines: true,
+        });
 
-        if (typeof rating !== "number" || rating < 1 || rating > 5) {
-            return NextResponse.json({ error: "Rating must be between 1 and 5" }, { status: 400 });
+        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+            return withRequestId({ error: "Rating must be between 1 and 5" }, requestId, { status: 400 });
         }
 
         const { data, error } = await supabaseAdmin
@@ -116,7 +170,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
                 reviewer_org_id: reviewerOrgId,
                 target_org_id: targetOrgId,
                 rating,
-                comment,
+                comment: comment || null,
                 created_at: new Date().toISOString()
             })
             .select()
@@ -124,10 +178,31 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
         if (error) throw error;
 
-        return NextResponse.json(data);
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace review created", {
+            ...requestContext,
+            user_id: user.id,
+            reviewer_org_id: reviewerOrgId,
+            target_org_id: targetOrgId,
+            rating,
+            durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.reviews.create", {
+            request_id: requestId,
+            user_id: user.id,
+            reviewer_org_id: reviewerOrgId,
+            target_org_id: targetOrgId,
+            rating,
+            duration_ms: durationMs,
+        });
+        return withRequestId(data, requestId);
     } catch (error: unknown) {
-        console.error("Marketplace Review POST error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        logError("Marketplace review create failed", error, requestContext);
+        void captureOperationalMetric("api.marketplace.reviews.create.error", {
+            request_id: requestId,
+            error: message,
+        });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

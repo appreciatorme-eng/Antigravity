@@ -9,6 +9,13 @@ import {
 } from "@/lib/marketplace-options";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { captureOperationalMetric } from "@/lib/observability/metrics";
+import {
+  getRequestContext,
+  getRequestId,
+  logError,
+  logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 const CACHE_KEY = "marketplace:options:v1";
@@ -159,11 +166,25 @@ async function loadFromMarketplaceProfiles(): Promise<DynamicOptionCatalog> {
   };
 }
 
+function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
+  const payload =
+    body && typeof body === "object" && !Array.isArray(body)
+      ? { ...(body as Record<string, unknown>), request_id: requestId }
+      : body;
+  const response = NextResponse.json(payload, init);
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+  const requestId = getRequestId(request);
+  const requestContext = getRequestContext(request, requestId);
   try {
     const { user } = await getAuthContext(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      logEvent("warn", "Marketplace options unauthorized", requestContext);
+      return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
     }
 
     const refresh = request.nextUrl.searchParams.get("refresh");
@@ -177,7 +198,21 @@ export async function GET(request: NextRequest) {
         generated_at: string;
       }>(CACHE_KEY);
       if (cached) {
-        return NextResponse.json(cached, { headers: CACHE_HEADERS });
+        const durationMs = Date.now() - startedAt;
+        logEvent("info", "Marketplace options served from cache", {
+          ...requestContext,
+          user_id: user.id,
+          source: cached.source,
+          durationMs,
+        });
+        void captureOperationalMetric("api.marketplace.options.get", {
+          request_id: requestId,
+          user_id: user.id,
+          source: cached.source,
+          cache_hit: true,
+          duration_ms: durationMs,
+        });
+        return withRequestId(cached, requestId, { headers: CACHE_HEADERS });
       }
     }
 
@@ -203,16 +238,40 @@ export async function GET(request: NextRequest) {
     };
 
     await setCachedJson(CACHE_KEY, payload, CACHE_TTL_SECONDS);
-    return NextResponse.json(payload, { headers: CACHE_HEADERS });
+    const durationMs = Date.now() - startedAt;
+    logEvent("info", "Marketplace options generated", {
+      ...requestContext,
+      user_id: user.id,
+      source,
+      service_regions: payload.service_regions.length,
+      specialties: payload.specialties.length,
+      durationMs,
+    });
+    void captureOperationalMetric("api.marketplace.options.get", {
+      request_id: requestId,
+      user_id: user.id,
+      source,
+      cache_hit: false,
+      service_regions: payload.service_regions.length,
+      specialties: payload.specialties.length,
+      duration_ms: durationMs,
+    });
+    return withRequestId(payload, requestId, { headers: CACHE_HEADERS });
   } catch (error) {
     const message = getErrorMessage(error);
-    return NextResponse.json(
+    logError("Marketplace options fetch failed", error, requestContext);
+    void captureOperationalMetric("api.marketplace.options.get.error", {
+      request_id: requestId,
+      error: message,
+    });
+    return withRequestId(
       {
         service_regions: SERVICE_REGION_OPTIONS,
         specialties: SPECIALTY_OPTIONS,
         source: "fallback_defaults",
         warning: message,
       },
+      requestId,
       { status: 200, headers: CACHE_HEADERS }
     );
   }
