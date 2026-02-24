@@ -15,6 +15,15 @@ const ShareActionSchema = z.object({
   name: z.string().max(120).optional(),
 });
 
+const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+
+function sanitizeShareToken(value: unknown): string | null {
+  const token = sanitizeText(value, { maxLength: 200 });
+  if (!token) return null;
+  if (!SHARE_TOKEN_REGEX.test(token)) return null;
+  return token;
+}
+
 function isExpired(expiresAt: string | null): boolean {
   if (!expiresAt) return false;
   const parsed = new Date(expiresAt);
@@ -28,7 +37,10 @@ export async function GET(
 ) {
   try {
     const { token: rawToken } = await params;
-    const token = sanitizeText(rawToken, { maxLength: 200 });
+    const token = sanitizeShareToken(rawToken);
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+    }
 
     const { data: share, error: shareError } = await (supabaseAdmin as any)
       .from('shared_itineraries')
@@ -63,7 +75,10 @@ export async function POST(
 ) {
   try {
     const { token: rawToken } = await params;
-    const token = sanitizeText(rawToken, { maxLength: 200 });
+    const token = sanitizeShareToken(rawToken);
+    if (!token) {
+      return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+    }
 
     const body = await request.json().catch(() => ({}));
     const parsed = ShareActionSchema.safeParse(body);
