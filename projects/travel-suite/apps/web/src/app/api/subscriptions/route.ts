@@ -27,6 +27,20 @@ const DEFAULT_PLAN_AMOUNTS: Record<'pro_monthly' | 'pro_annual' | 'enterprise', 
   enterprise: 15000,
 };
 
+interface UntypedQueryBuilder<T> {
+  select(columns: string): UntypedQueryBuilder<T>;
+  eq(column: string, value: unknown): UntypedQueryBuilder<T>;
+  maybeSingle(): Promise<{ data: T | null; error: { message?: string } | null }>;
+}
+
+interface UntypedSupabaseClient {
+  from<T>(table: string): UntypedQueryBuilder<T>;
+}
+
+interface SubscriptionPlanAmountRow {
+  amount: number | string | null;
+}
+
 function getEnvPlanAmount(planId: 'pro_monthly' | 'pro_annual' | 'enterprise') {
   const envKey = `SUBSCRIPTION_PRICE_${planId.toUpperCase()}`;
   const raw = process.env[envKey];
@@ -40,15 +54,15 @@ async function resolvePlanAmount(
   planId: 'pro_monthly' | 'pro_annual' | 'enterprise',
   billingCycle: 'monthly' | 'annual'
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: dbPlan, error } = await (supabase as any)
-    // subscription_plans may not yet be present in generated DB types.
+  const untypedSupabase = supabase as unknown as UntypedSupabaseClient;
+  const { data: dbPlan, error } = await untypedSupabase
+    // subscription_plans may exist in SQL before generated DB types are refreshed.
     .from('subscription_plans')
     .select('amount')
     .eq('plan_id', planId)
     .eq('billing_cycle', billingCycle)
     .eq('is_active', true)
-    .maybeSingle();
+    .maybeSingle() as { data: SubscriptionPlanAmountRow | null; error: { message?: string } | null };
 
   if (!error && dbPlan?.amount !== null && dbPlan?.amount !== undefined) {
     const amount = Number(dbPlan.amount);
