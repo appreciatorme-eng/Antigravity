@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guessIataCode, normalizeIataCode } from '@/lib/airport';
 import { getAmadeusToken, resolveAmadeusBaseUrl } from '@/lib/external/amadeus';
+import { fetchWithRetry } from '@/lib/network/retry';
 
 function parsePositiveInt(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value || '', 10);
@@ -75,13 +76,18 @@ export async function GET(request: NextRequest) {
       params.set('returnDate', returnDate);
     }
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${amadeusBaseUrl}/v2/shopping/flight-offers?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
         cache: 'no-store',
+      },
+      {
+        retries: 2,
+        timeoutMs: 10000,
+        baseDelayMs: 250,
       }
     );
 

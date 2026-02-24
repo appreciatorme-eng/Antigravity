@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAmadeusToken, resolveAmadeusBaseUrl, searchAmadeusLocations } from '@/lib/external/amadeus';
 import { guessIataCode, normalizeIataCode } from '@/lib/airport';
+import { fetchWithRetry } from '@/lib/network/retry';
 
 type HotelResult = {
   hotelId: string;
@@ -56,12 +57,20 @@ export async function GET(req: NextRequest) {
 
     const listUrl = `${amadeusBaseUrl}/v1/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(cityCode)}&radius=${radius}&radiusUnit=KM&hotelSource=ALL`;
 
-    const listResponse = await fetch(listUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const listResponse = await fetchWithRetry(
+      listUrl,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
       },
-      cache: 'no-store',
-    });
+      {
+        retries: 2,
+        timeoutMs: 10000,
+        baseDelayMs: 250,
+      }
+    );
 
     if (!listResponse.ok) {
       const error = await listResponse.json().catch(() => ({}));
@@ -80,10 +89,18 @@ export async function GET(req: NextRequest) {
 
     if (hotelIds.length > 0 && checkInDate && checkOutDate) {
       const offersUrl = `${amadeusBaseUrl}/v3/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIds.join(','))}&checkInDate=${encodeURIComponent(checkInDate)}&checkOutDate=${encodeURIComponent(checkOutDate)}&adults=1&roomQuantity=1&bestRateOnly=true`;
-      const offersResponse = await fetch(offersUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
+      const offersResponse = await fetchWithRetry(
+        offersUrl,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        },
+        {
+          retries: 2,
+          timeoutMs: 10000,
+          baseDelayMs: 250,
+        }
+      );
 
       if (offersResponse.ok) {
         const offersPayload = await offersResponse.json().catch(() => ({}));

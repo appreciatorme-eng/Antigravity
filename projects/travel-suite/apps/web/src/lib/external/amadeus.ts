@@ -1,5 +1,9 @@
+import { fetchWithRetry } from '@/lib/network/retry';
+
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
+const AMADEUS_RETRIES = 2;
+const AMADEUS_TIMEOUT_MS = 9000;
 
 export function resolveAmadeusBaseUrl() {
   const explicit = process.env.AMADEUS_BASE_URL?.trim();
@@ -32,17 +36,25 @@ export async function getAmadeusToken() {
     return cachedToken;
   }
 
-  const response = await fetch(`${amadeusBaseUrl}/v1/security/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const response = await fetchWithRetry(
+    `${amadeusBaseUrl}/v1/security/oauth2/token`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
     },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
+    {
+      retries: AMADEUS_RETRIES,
+      timeoutMs: AMADEUS_TIMEOUT_MS,
+      baseDelayMs: 250,
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json();
@@ -81,11 +93,19 @@ export async function searchAmadeusLocations(
   }
 
   const url = `${amadeusBaseUrl}/v1/reference-data/locations?subType=${encodeURIComponent(subType)}&keyword=${encodeURIComponent(normalizedKeyword)}&page[limit]=${Math.min(Math.max(limit, 1), 20)}&view=LIGHT`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
+  const response = await fetchWithRetry(
+    url,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+    {
+      retries: AMADEUS_RETRIES,
+      timeoutMs: AMADEUS_TIMEOUT_MS,
+      baseDelayMs: 250,
+    }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
