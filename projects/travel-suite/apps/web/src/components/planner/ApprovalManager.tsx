@@ -16,6 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import {
+  isQueueableMutation,
+  queueOfflineMutationWithSync,
+  requestOfflineQueueStatus,
+  triggerOfflineReplay,
+} from "@/lib/pwa/offline-mutations";
 
 interface ApprovalManagerProps {
   token: string;
@@ -51,6 +57,8 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
   const [wishlistInput, setWishlistInput] = useState("");
   const [wishlistItems, setWishlistItems] = useState<string[]>([]);
   const [preferences, setPreferences] = useState<Preferences>({});
+  const [queuedMutations, setQueuedMutations] = useState(0);
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false);
 
   const mustHaveValue = useMemo(() => (preferences.must_have || []).join(", "), [preferences.must_have]);
   const avoidValue = useMemo(() => (preferences.avoid || []).join(", "), [preferences.avoid]);
@@ -61,6 +69,15 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
       .map((item) => item.trim())
       .filter(Boolean)
       .slice(0, 20);
+
+  const refreshQueueStatus = useCallback(async () => {
+    try {
+      const queueSize = await requestOfflineQueueStatus();
+      setQueuedMutations(queueSize);
+    } catch {
+      // best effort
+    }
+  }, []);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -81,19 +98,86 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus]);
+    void refreshQueueStatus();
+
+    const handleOnline = async () => {
+      const replay = await triggerOfflineReplay();
+      await refreshQueueStatus();
+      if (replay.replayed > 0) {
+        await loadStatus();
+        toast({
+          title: "Offline updates synced",
+          description: `${replay.replayed} queued change(s) were delivered.`,
+          variant: "success",
+        });
+      }
+    };
+
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      const payload = event.data;
+      if (!payload || typeof payload !== "object") return;
+      if ((payload as { type?: string }).type !== "OFFLINE_MUTATIONS_REPLAYED") return;
+      void refreshQueueStatus();
+      if (typeof (payload as { replayed?: unknown }).replayed === "number" && (payload as { replayed: number }).replayed > 0) {
+        void loadStatus();
+      }
+    };
+
+    const handleOnlineEvent = () => {
+      void handleOnline();
+    };
+
+    window.addEventListener("online", handleOnlineEvent);
+
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnlineEvent);
+      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+      }
+    };
+  }, [loadStatus, refreshQueueStatus, toast]);
 
   const postAction = async (payload: Record<string, unknown>) => {
-    const response = await fetch(`/api/share/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data?.error || "Request failed");
+    const endpoint = `/api/share/${token}`;
+    const payloadBody = JSON.stringify(payload);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payloadBody,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 202 && data?.offlineQueued) {
+        await refreshQueueStatus();
+        return data;
+      }
+      if (!response.ok) {
+        throw new Error(data?.error || "Request failed");
+      }
+      await refreshQueueStatus();
+      return data;
+    } catch (error) {
+      if (!isQueueableMutation(endpoint, "POST")) {
+        throw error;
+      }
+
+      const queued = await queueOfflineMutationWithSync({
+        url: endpoint,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payloadBody,
+        lastError: error instanceof Error ? error.message : "Network failure",
+      });
+      if (!queued) throw error;
+
+      await refreshQueueStatus();
+      return { success: true, offlineQueued: true, queueId: queued.id };
     }
-    return data;
   };
 
   const handleComment = async () => {
@@ -105,13 +189,25 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         author: authorName,
         comment: newComment,
       });
-      setComments((prev) => [data.comment, ...prev]);
+      if (data?.offlineQueued) {
+        const queuedComment: Comment = {
+          id: `queued-${Date.now()}`,
+          author: authorName,
+          comment: newComment,
+          created_at: new Date().toISOString(),
+        };
+        setComments((prev) => [queuedComment, ...prev]);
+      } else {
+        setComments((prev) => [data.comment as Comment, ...prev]);
+      }
       setNewComment("");
       if (status !== "approved") setStatus("commented");
       toast({
-        title: "Comment sent",
-        description: "Your feedback was saved and shared with the operator.",
-        variant: "success",
+        title: data?.offlineQueued ? "Comment queued offline" : "Comment sent",
+        description: data?.offlineQueued
+          ? "Your feedback was saved locally and will sync when online."
+          : "Your feedback was saved and shared with the operator.",
+        variant: data?.offlineQueued ? "warning" : "success",
       });
     } catch (error) {
       toast({
@@ -136,14 +232,16 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
 
     setIsSubmitting(true);
     try {
-      await postAction({ action: "approve", name: approvalName });
+      const data = await postAction({ action: "approve", name: approvalName });
       setStatus("approved");
       setApprovedBy(approvalName);
       setApprovedAt(new Date().toISOString());
       toast({
-        title: "Trip approved",
-        description: "The operator has been notified.",
-        variant: "success",
+        title: data?.offlineQueued ? "Approval queued offline" : "Trip approved",
+        description: data?.offlineQueued
+          ? "Approval was saved offline and will be delivered when online."
+          : "The operator has been notified.",
+        variant: data?.offlineQueued ? "warning" : "success",
       });
     } catch (error) {
       toast({
@@ -159,15 +257,17 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
   const handleSavePreferences = async () => {
     setIsSubmitting(true);
     try {
-      await postAction({
+      const data = await postAction({
         action: "save_preferences",
         preferences,
       });
       if (status !== "approved") setStatus("commented");
       toast({
-        title: "Preferences saved",
-        description: "Your customization requests were saved.",
-        variant: "success",
+        title: data?.offlineQueued ? "Preferences queued offline" : "Preferences saved",
+        description: data?.offlineQueued
+          ? "Customization changes were queued and will sync when online."
+          : "Your customization requests were saved.",
+        variant: data?.offlineQueued ? "warning" : "success",
       });
     } catch (error) {
       toast({
@@ -188,12 +288,22 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         action: "add_wishlist",
         wishlist_item: wishlistInput,
       });
-      setWishlistItems(Array.isArray(data.wishlist_items) ? data.wishlist_items : []);
+      if (Array.isArray(data.wishlist_items)) {
+        setWishlistItems(data.wishlist_items as string[]);
+      } else {
+        setWishlistItems((prev) => {
+          const exists = prev.some((item) => item.toLowerCase() === wishlistInput.trim().toLowerCase());
+          if (exists) return prev;
+          return [...prev, wishlistInput.trim()];
+        });
+      }
       setWishlistInput("");
       toast({
-        title: "Added to wish list",
-        description: "Your requested experience was saved.",
-        variant: "success",
+        title: data?.offlineQueued ? "Wish list item queued offline" : "Added to wish list",
+        description: data?.offlineQueued
+          ? "The request was queued and will sync when online."
+          : "Your requested experience was saved.",
+        variant: data?.offlineQueued ? "warning" : "success",
       });
     } catch (error) {
       toast({
@@ -213,7 +323,11 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         action: "remove_wishlist",
         wishlist_item: item,
       });
-      setWishlistItems(Array.isArray(data.wishlist_items) ? data.wishlist_items : []);
+      if (Array.isArray(data.wishlist_items)) {
+        setWishlistItems(data.wishlist_items as string[]);
+      } else {
+        setWishlistItems((prev) => prev.filter((entry) => entry.toLowerCase() !== item.toLowerCase()));
+      }
     } catch (error) {
       toast({
         title: "Remove failed",
@@ -233,11 +347,13 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
       });
     }
     try {
-      await postAction({ action: "mark_offline_ready" });
+      const data = await postAction({ action: "mark_offline_ready" });
       toast({
-        title: "Offline pack requested",
-        description: "This itinerary was marked for offline access.",
-        variant: "success",
+        title: data?.offlineQueued ? "Offline request queued" : "Offline pack requested",
+        description: data?.offlineQueued
+          ? "Your request was saved offline and will sync when online."
+          : "This itinerary was marked for offline access.",
+        variant: data?.offlineQueued ? "warning" : "success",
       });
     } catch (error) {
       toast({
@@ -245,6 +361,32 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "error",
       });
+    }
+  };
+
+  const handleSyncQueuedChanges = async () => {
+    setIsSyncingQueue(true);
+    try {
+      const replay = await triggerOfflineReplay();
+      await refreshQueueStatus();
+      toast({
+        title: replay.replayed > 0 ? "Queued updates synced" : "No queued updates synced",
+        description: replay.replayed > 0
+          ? `${replay.replayed} update(s) delivered, ${replay.remaining} pending.`
+          : "Keep this page open and reconnect to deliver pending updates.",
+        variant: replay.replayed > 0 ? "success" : "warning",
+      });
+      if (replay.replayed > 0) {
+        await loadStatus();
+      }
+    } catch {
+      toast({
+        title: "Sync failed",
+        description: "Queued updates could not be replayed right now.",
+        variant: "error",
+      });
+    } finally {
+      setIsSyncingQueue(false);
     }
   };
 
@@ -256,6 +398,25 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-8 mb-20">
+      {queuedMutations > 0 && (
+        <Card className="border border-amber-200 bg-amber-50/80">
+          <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="text-sm text-amber-900">
+              {queuedMutations} change(s) are queued offline and waiting to sync.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleSyncQueuedChanges()}
+              disabled={isSyncingQueue}
+              className="border-amber-300 text-amber-900 hover:bg-amber-100"
+            >
+              {isSyncingQueue ? "Syncing..." : "Sync queued changes"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card
         className={`overflow-hidden border-2 transition-all ${
           status === "approved" ? "border-emerald-500 bg-emerald-50/30" : "border-blue-100 shadow-xl"
