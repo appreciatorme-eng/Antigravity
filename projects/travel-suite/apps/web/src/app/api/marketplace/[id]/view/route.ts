@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(
-    request: Request,
+    _request: Request,
     context: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createClient();
@@ -58,8 +58,9 @@ export async function POST(
         if (error) throw error;
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error recording view:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to record marketplace profile view";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

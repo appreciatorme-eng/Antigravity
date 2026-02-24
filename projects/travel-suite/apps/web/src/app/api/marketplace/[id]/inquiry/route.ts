@@ -1,5 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { sanitizeText } from "@/lib/security/sanitize";
+
+const InquiryCreateSchema = z.object({
+    subject: z.string().max(160).optional(),
+    message: z.string().min(1).max(5000),
+});
+
+function normalizeRelation<T>(value: T | T[] | null | undefined): T | null {
+    if (!value) return null;
+    return Array.isArray(value) ? value[0] || null : value;
+}
+
+type ReceiverOrgWithOwner = {
+    name: string;
+    profiles: { email: string | null } | { email: string | null }[] | null;
+};
 
 export async function POST(
     request: Request,
@@ -30,7 +47,7 @@ export async function POST(
             return NextResponse.json({ error: "Cannot send inquiry to your own organization" }, { status: 400 });
         }
 
-        const { data: targetProfile } = await (supabase as any)
+        const { data: targetProfile } = await supabase
             .from("marketplace_profiles")
             .select("organization_id")
             .eq("organization_id", targetOrgId)
@@ -42,18 +59,27 @@ export async function POST(
             return NextResponse.json({ error: "Operator not available in marketplace" }, { status: 404 });
         }
 
-        const { subject, message } = await request.json();
+        const payloadRaw = await request.json().catch(() => null);
+        const parsed = InquiryCreateSchema.safeParse(payloadRaw);
+        if (!parsed.success) {
+            return NextResponse.json({ error: "Invalid inquiry payload", details: parsed.error.flatten() }, { status: 400 });
+        }
 
+        const subject = sanitizeText(parsed.data.subject, { maxLength: 160 }) || "Partnership Inquiry";
+        const message = sanitizeText(parsed.data.message, {
+            maxLength: 5000,
+            preserveNewlines: true,
+        });
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
 
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
             .from("marketplace_inquiries")
             .insert({
                 sender_org_id: senderOrgId,
                 receiver_org_id: targetOrgId,
-                subject: subject || "Partnership Inquiry",
+                subject,
                 message,
                 status: "pending"
             })
@@ -75,20 +101,22 @@ export async function POST(
 
                 // Fetch receiver owner email
                 // Join organizations with profiles via owner_id
-                const { data: receiverInfo } = await supabase
+                const { data: receiverInfoData } = await supabase
                     .from("organizations")
                     .select("name, profiles!owner_id(email)")
                     .eq("id", targetOrgId)
                     .single();
 
-                const receiverEmail = (receiverInfo as any)?.profiles?.email;
+                const receiverInfo = (receiverInfoData as ReceiverOrgWithOwner | null) || null;
+                const receiverOwner = normalizeRelation(receiverInfo?.profiles || null);
+                const receiverEmail = receiverOwner?.email || null;
 
                 if (receiverEmail && senderOrg) {
                     const { sendInquiryNotification } = await import("@/lib/marketplace-emails");
                     await sendInquiryNotification({
                         receiverEmail,
                         senderOrgName: senderOrg.name,
-                        subject: subject || "Partnership Inquiry",
+                        subject,
                         message,
                         inquiryUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/admin/marketplace/inquiries`
                     });
@@ -99,8 +127,9 @@ export async function POST(
         })();
 
         return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating inquiry:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Failed to create inquiry";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
