@@ -43,6 +43,12 @@ function makeShareUrl(request: NextRequest, shareToken: string) {
   return `${base.replace(/\/$/, "")}/p/${shareToken}`;
 }
 
+const EMAIL_MAX_ATTEMPTS = 3;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function sendProposalEmail(
   toEmail: string,
   subject: string,
@@ -61,26 +67,44 @@ async function sendProposalEmail(
     };
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: senderEmail,
-      to: [toEmail],
-      subject,
-      html,
-    }),
-  });
+  for (let attempt = 1; attempt <= EMAIL_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: senderEmail,
+          to: [toEmail],
+          subject,
+          html,
+        }),
+      });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    return { success: false, error: body || `Email send failed (${response.status})` };
+      if (response.ok) {
+        return { success: true };
+      }
+
+      const body = await response.text().catch(() => "");
+      const isRetryable = response.status === 429 || response.status >= 500;
+      if (!isRetryable || attempt === EMAIL_MAX_ATTEMPTS) {
+        return { success: false, error: body || `Email send failed (${response.status})` };
+      }
+    } catch (error: unknown) {
+      if (attempt === EMAIL_MAX_ATTEMPTS) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Email send failed",
+        };
+      }
+    }
+
+    await wait(250 * attempt);
   }
 
-  return { success: true };
+  return { success: false, error: "Email send failed" };
 }
 
 export async function POST(

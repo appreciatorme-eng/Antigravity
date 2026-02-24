@@ -17,12 +17,18 @@ export interface WhatsAppLocationMessage {
     timestamp: string;
 }
 
+const WHATSAPP_MAX_ATTEMPTS = 3;
+
 function normalizePhone(phone: string): string {
     return phone.replace(/[^\d+]/g, "").replace(/^00/, "+");
 }
 
 function normalizeWaId(waId: string): string {
     return waId.replace(/\D/g, "");
+}
+
+function wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function callMetaWhatsAppApi(payload: Record<string, unknown>): Promise<WhatsAppSendResult> {
@@ -37,37 +43,54 @@ async function callMetaWhatsAppApi(payload: Record<string, unknown>): Promise<Wh
         };
     }
 
-    try {
-        const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-        });
+    for (let attempt = 1; attempt <= WHATSAPP_MAX_ATTEMPTS; attempt += 1) {
+        try {
+            const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
 
-        const body = await response.json();
-        if (!response.ok) {
-            return {
-                success: false,
-                provider: "meta_cloud_api",
-                error: body?.error?.message || `HTTP ${response.status}`,
-            };
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                return {
+                    success: true,
+                    provider: "meta_cloud_api",
+                    messageId: (body as { messages?: Array<{ id?: string }> })?.messages?.[0]?.id,
+                };
+            }
+
+            const providerError =
+                (body as { error?: { message?: string } })?.error?.message || `HTTP ${response.status}`;
+            const isRetryable = response.status === 429 || response.status >= 500;
+            if (!isRetryable || attempt === WHATSAPP_MAX_ATTEMPTS) {
+                return {
+                    success: false,
+                    provider: "meta_cloud_api",
+                    error: providerError,
+                };
+            }
+        } catch (error: unknown) {
+            if (attempt === WHATSAPP_MAX_ATTEMPTS) {
+                return {
+                    success: false,
+                    provider: "meta_cloud_api",
+                    error: error instanceof Error ? error.message : "Unknown WhatsApp error",
+                };
+            }
         }
 
-        return {
-            success: true,
-            provider: "meta_cloud_api",
-            messageId: body?.messages?.[0]?.id,
-        };
-    } catch (error) {
-        return {
-            success: false,
-            provider: "meta_cloud_api",
-            error: error instanceof Error ? error.message : "Unknown WhatsApp error",
-        };
+        await wait(300 * attempt);
     }
+
+    return {
+        success: false,
+        provider: "meta_cloud_api",
+        error: "WhatsApp send failed",
+    };
 }
 
 export async function sendWhatsAppText(phone: string, message: string): Promise<WhatsAppSendResult> {
