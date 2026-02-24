@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
                 conversion_rate: 0,
                 recent_views: [],
                 recent_inquiries: []
-            });
+            }, requestId);
         }
 
         // 3. Get Views Count
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
             conversion_rate: conversionRate,
             recent_views: recentViews || [],
             recent_inquiries: recentInquiries || []
-        });
+        }, requestId);
 
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal Server Error";
