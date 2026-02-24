@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
     ArrowRight,
     Compass,
@@ -26,7 +27,16 @@ interface ItineraryOption {
     created_at: string | null;
 }
 
+type BookingTab = "flights" | "hotels";
+
+function readBookingTabFromSearch(search: string): BookingTab {
+    const tab = new URLSearchParams(search).get("tab");
+    return tab === "hotels" ? "hotels" : "flights";
+}
+
 export default function BookingsPage() {
+    const router = useRouter();
+    const pathname = usePathname();
     const [itineraries, setItineraries] = useState<ItineraryOption[]>([]);
     const [selectedItineraryId, setSelectedItineraryId] = useState("");
     const [loadingItineraries, setLoadingItineraries] = useState(true);
@@ -37,6 +47,17 @@ export default function BookingsPage() {
         name: string;
         itineraryTitle: string;
     } | null>(null);
+    const [activeTab, setActiveTab] = useState<BookingTab>("flights");
+
+    useEffect(() => {
+        const syncFromLocation = () => {
+            setActiveTab(readBookingTabFromSearch(window.location.search));
+        };
+
+        syncFromLocation();
+        window.addEventListener("popstate", syncFromLocation);
+        return () => window.removeEventListener("popstate", syncFromLocation);
+    }, [pathname]);
 
     useEffect(() => {
         const loadItineraries = async () => {
@@ -113,6 +134,16 @@ export default function BookingsPage() {
     const handleHotelSelect = async (hotel: HotelDetails) => {
         await importToItinerary("hotel", hotel, hotel.name);
         setTimeout(() => setLastImported(null), 5000);
+    };
+
+    const handleTabChange = (value: string) => {
+        const nextTab: BookingTab = value === "hotels" ? "hotels" : "flights";
+        setActiveTab(nextTab);
+
+        const params = new URLSearchParams(window.location.search);
+        params.set("tab", nextTab);
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     };
 
     return (
@@ -202,7 +233,7 @@ export default function BookingsPage() {
 
             <section className="px-6">
                 <div className="max-w-7xl mx-auto">
-                    <Tabs defaultValue="flights" className="space-y-8">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
                         <TabsList className="h-14 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-lg shadow-slate-900/5">
                             <TabsTrigger
                                 value="flights"

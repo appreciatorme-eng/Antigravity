@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Cormorant_Garamond, Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/print.css";
@@ -38,7 +39,9 @@ export default function RootLayout({
         className={`${cormorant.variable} ${poppins.variable} ${inter.variable} antialiased font-sans`}
       >
         <AppProviders>
-          <NavHeader />
+          <Suspense fallback={null}>
+            <NavHeader />
+          </Suspense>
           <main>{children}</main>
         </AppProviders>
       </body>

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings, Bell } from "lucide-react";
+import { Plane, Menu, X, User, LogOut, Map, Compass, Briefcase, Settings, Bell, Hotel } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 
@@ -15,6 +15,7 @@ interface UserProfile {
 export default function NavHeader() {
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const supabase = createClient();
 
     const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -55,18 +56,41 @@ export default function NavHeader() {
         router.refresh();
     };
 
-    const navLinks = [
-        { href: "/", label: "Home", icon: Compass },
-        { href: "/bookings", label: "Bookings", icon: Briefcase },
-        { href: "/planner", label: "Plan Trip", icon: Map },
-        ...(user ? [{ href: "/trips", label: "My Trips", icon: Briefcase }] : []),
+    type BookingTab = "flights" | "hotels";
+    type NavLink = {
+        href: string;
+        path: string;
+        label: string;
+        icon: typeof Compass;
+        bookingTab?: BookingTab;
+    };
+
+    const navLinks: NavLink[] = [
+        { href: "/", path: "/", label: "Home", icon: Compass },
+        { href: "/bookings?tab=flights", path: "/bookings", label: "Flights", icon: Plane, bookingTab: "flights" },
+        { href: "/bookings?tab=hotels", path: "/bookings", label: "Hotels", icon: Hotel, bookingTab: "hotels" },
+        { href: "/planner", path: "/planner", label: "Plan Trip", icon: Map },
+        ...(user ? [{ href: "/trips", path: "/trips", label: "My Trips", icon: Briefcase }] : []),
         ...(userProfile?.role === "admin" ? [
-            { href: "/admin", label: "Admin", icon: Settings },
-            { href: "/admin/settings/notifications", label: "Notifications", icon: Bell },
+            { href: "/admin", path: "/admin", label: "Admin", icon: Settings },
+            { href: "/admin/settings/notifications", path: "/admin/settings/notifications", label: "Notifications", icon: Bell },
         ] : []),
     ];
 
-    const isActive = (href: string) => pathname === href;
+    const currentBookingTab: BookingTab =
+        searchParams.get("tab") === "hotels" ? "hotels" : "flights";
+
+    const isActive = (link: NavLink) => {
+        if (pathname !== link.path) {
+            return false;
+        }
+
+        if (link.path === "/bookings" && link.bookingTab) {
+            return currentBookingTab === link.bookingTab;
+        }
+
+        return true;
+    };
 
     return (
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
@@ -88,7 +112,7 @@ export default function NavHeader() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive(link.href)
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isActive(link)
                                     ? "bg-primary/10 text-primary"
                                     : "text-gray-600 hover:bg-gray-100 hover:text-secondary"
                                     }`}
@@ -164,7 +188,7 @@ export default function NavHeader() {
                                     key={link.href}
                                     href={link.href}
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isActive(link.href)
+                                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isActive(link)
                                         ? "bg-primary/10 text-primary"
                                         : "text-gray-600 hover:bg-gray-100"
                                         }`}
