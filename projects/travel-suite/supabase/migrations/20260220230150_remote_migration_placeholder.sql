@@ -1,0 +1,2 @@
+-- Remote migration placeholder: 20260220230150
+-- This file aligns local migration history with the already-applied remote migration version.
