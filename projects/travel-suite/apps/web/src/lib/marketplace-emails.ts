@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "@/lib/network/retry";
+
 export type EmailResult = {
     success: boolean;
     skipped?: boolean;
@@ -7,11 +9,6 @@ export type EmailResult = {
 
 const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.WELCOME_FROM_EMAIL || "marketplace@itinerary.ai";
-const EMAIL_MAX_ATTEMPTS = 3;
-
-function wait(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }): Promise<EmailResult> {
     if (!apiKey) {
@@ -19,12 +16,13 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
         return { success: false, skipped: true, reason: "missing_api_key" };
     }
 
-    for (let attempt = 1; attempt <= EMAIL_MAX_ATTEMPTS; attempt += 1) {
-        try {
-            const response = await fetch("https://api.resend.com/emails", {
+    try {
+        const response = await fetchWithRetry(
+            "https://api.resend.com/emails",
+            {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiKey}`,
+                    Authorization: `Bearer ${apiKey}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
@@ -33,31 +31,27 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
                     subject,
                     html,
                 }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                return { success: true, messageId: data.id };
+            },
+            {
+                retries: 2,
+                timeoutMs: 8000,
+                baseDelayMs: 300,
             }
+        );
 
+        if (!response.ok) {
             const error = await response.text().catch(() => "");
-            const isRetryable = response.status === 429 || response.status >= 500;
-            if (!isRetryable || attempt === EMAIL_MAX_ATTEMPTS) {
-                return { success: false, reason: error || `HTTP ${response.status}` };
-            }
-        } catch (error: unknown) {
-            if (attempt === EMAIL_MAX_ATTEMPTS) {
-                return {
-                    success: false,
-                    reason: error instanceof Error ? error.message : "email_send_failed",
-                };
-            }
+            return { success: false, reason: error || `HTTP ${response.status}` };
         }
 
-        await wait(250 * attempt);
+        const data = await response.json().catch(() => ({}));
+        return { success: true, messageId: typeof data?.id === "string" ? data.id : undefined };
+    } catch (error: unknown) {
+        return {
+            success: false,
+            reason: error instanceof Error ? error.message : "email_send_failed",
+        };
     }
-
-    return { success: false, reason: "email_send_failed" };
 }
 
 export async function sendInquiryNotification(params: {

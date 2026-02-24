@@ -1,3 +1,5 @@
+import { fetchWithRetry } from "@/lib/network/retry";
+
 export type WelcomeEmailResult = {
     success: boolean;
     skipped?: boolean;
@@ -31,19 +33,27 @@ export async function sendWelcomeEmail(payload: WelcomeEmailPayload): Promise<We
       </div>
     `;
 
-    const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+    const response = await fetchWithRetry(
+        "https://api.resend.com/emails",
+        {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                from: fromEmail,
+                to: payload.toEmail,
+                subject,
+                html,
+            }),
         },
-        body: JSON.stringify({
-            from: fromEmail,
-            to: payload.toEmail,
-            subject,
-            html,
-        }),
-    });
+        {
+            retries: 2,
+            timeoutMs: 8000,
+            baseDelayMs: 300,
+        }
+    );
 
     if (!response.ok) {
         const errorBody = await response.text();

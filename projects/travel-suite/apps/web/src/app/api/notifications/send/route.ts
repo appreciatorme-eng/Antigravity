@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { sendNotificationToUser, sendNotificationToTripUsers } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeEmail, sanitizeText } from "@/lib/security/sanitize";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
     getRequestContext,
     getRequestId,
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
             logEvent("warn", "Notification send unauthorized: missing bearer token", requestContext);
-            return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const token = authHeader.substring(7);
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
                 ...requestContext,
                 auth_error: authError?.message,
             });
-            return NextResponse.json({ error: "Invalid token", request_id: requestId }, { status: 401 });
+            return withRequestId({ error: "Invalid token" }, requestId, { status: 401 });
         }
 
         const rateLimit = await enforceRateLimit({
@@ -91,8 +92,9 @@ export async function POST(request: NextRequest) {
         });
         if (!rateLimit.success) {
             const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
-            const response = NextResponse.json(
-                { error: "Too many notification requests. Please retry later.", request_id: requestId },
+            const response = withRequestId(
+                { error: "Too many notification requests. Please retry later." },
+                requestId,
                 { status: 429 }
             );
             response.headers.set("retry-after", String(retryAfterSeconds));
@@ -113,14 +115,15 @@ export async function POST(request: NextRequest) {
                 ...requestContext,
                 user_id: user.id,
             });
-            return NextResponse.json({ error: "Admin access required", request_id: requestId }, { status: 403 });
+            return withRequestId({ error: "Admin access required" }, requestId, { status: 403 });
         }
 
         const rawBody = await request.json().catch(() => null);
         const parsed = NotificationSendSchema.safeParse(rawBody);
         if (!parsed.success) {
-            return NextResponse.json(
-                { error: "Invalid request body", details: parsed.error.flatten(), request_id: requestId },
+            return withRequestId(
+                { error: "Invalid request body", details: parsed.error.flatten() },
+                requestId,
                 { status: 400 }
             );
         }
@@ -134,10 +137,7 @@ export async function POST(request: NextRequest) {
         const data = sanitizeNotificationData(parsed.data.data);
 
         if (!title || !messageBody) {
-            return NextResponse.json(
-                { error: "Title and body are required", request_id: requestId },
-                { status: 400 }
-            );
+            return withRequestId({ error: "Title and body are required" }, requestId, { status: 400 });
         }
 
         let result;
@@ -156,8 +156,9 @@ export async function POST(request: NextRequest) {
             }
 
             if (!resolvedUserId) {
-                return NextResponse.json(
-                    { error: "Unable to resolve user for notification", request_id: requestId },
+                return withRequestId(
+                    { error: "Unable to resolve user for notification" },
+                    requestId,
                     { status: 400 }
                 );
             }
@@ -190,9 +191,7 @@ export async function POST(request: NextRequest) {
                 trip_id: tripId || null,
                 durationMs,
             });
-            const response = NextResponse.json({ ...result, request_id: requestId });
-            response.headers.set("x-request-id", requestId);
-            return response;
+            return withRequestId(result, requestId);
         }
 
         logEvent("warn", "Notification send failed", {
@@ -202,7 +201,7 @@ export async function POST(request: NextRequest) {
             error: result.error,
             durationMs,
         });
-        return NextResponse.json({ error: result.error, request_id: requestId }, { status: 500 });
+        return withRequestId({ error: result.error }, requestId, { status: 500 });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
         logError("Send notification endpoint crashed", error, requestContext);
@@ -210,6 +209,6 @@ export async function POST(request: NextRequest) {
             request_id: requestId,
             error: message,
         });
-        return NextResponse.json({ error: message, request_id: requestId }, { status: 500 });
+        return withRequestId({ error: message }, requestId, { status: 500 });
     }
 }

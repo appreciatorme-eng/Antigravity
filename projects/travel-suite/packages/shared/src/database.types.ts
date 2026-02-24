@@ -542,30 +542,45 @@ export type Database = {
             }
             shared_itineraries: {
                 Row: {
+                    approved_at: string | null
+                    approved_by: string | null
+                    client_comments: Json
                     created_at: string | null
                     expires_at: string | null
                     id: string
                     itinerary_id: string | null
                     recipient_phone: string | null
                     share_code: string
+                    status: string
+                    template_id: string | null
                     viewed_at: string | null
                 }
                 Insert: {
+                    approved_at?: string | null
+                    approved_by?: string | null
+                    client_comments?: Json
                     created_at?: string | null
                     expires_at?: string | null
                     id?: string
                     itinerary_id?: string | null
                     recipient_phone?: string | null
                     share_code: string
+                    status?: string
+                    template_id?: string | null
                     viewed_at?: string | null
                 }
                 Update: {
+                    approved_at?: string | null
+                    approved_by?: string | null
+                    client_comments?: Json
                     created_at?: string | null
                     expires_at?: string | null
                     id?: string
                     itinerary_id?: string | null
                     recipient_phone?: string | null
                     share_code?: string
+                    status?: string
+                    template_id?: string | null
                     viewed_at?: string | null
                 }
                 Relationships: [

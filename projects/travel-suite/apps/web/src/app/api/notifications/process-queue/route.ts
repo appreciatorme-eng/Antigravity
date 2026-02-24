@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
     renderTemplate,
     renderWhatsAppTemplate,
@@ -275,7 +276,7 @@ export async function POST(request: NextRequest) {
             !adminAuthorized
         ) {
             logEvent("warn", "Notification queue run unauthorized", requestContext);
-            return NextResponse.json({ error: "Unauthorized", request_id: requestId }, { status: 401 });
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
         }
 
         const { data: dueRows, error: dueError } = await supabaseAdmin
@@ -288,7 +289,7 @@ export async function POST(request: NextRequest) {
 
         if (dueError) {
             logError("Notification queue fetch failed", dueError, requestContext);
-            return NextResponse.json({ error: dueError.message, request_id: requestId }, { status: 500 });
+            return withRequestId({ error: dueError.message }, requestId, { status: 500 });
         }
 
         const rows = (dueRows || []) as QueueItem[];
@@ -533,15 +534,12 @@ export async function POST(request: NextRequest) {
             durationMs,
         });
 
-        const response = NextResponse.json({
+        return withRequestId({
             ok: true,
-            request_id: requestId,
             processed: rows.length,
             sent,
             failed,
-        });
-        response.headers.set("x-request-id", requestId);
-        return response;
+        }, requestId);
     } catch (error) {
         Sentry.captureException(error);
         logError("Notification queue run crashed", error, requestContext);
@@ -550,11 +548,9 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : "Unknown error",
         });
 
-        return NextResponse.json(
-            {
-                request_id: requestId,
-                error: error instanceof Error ? error.message : "Unknown error",
-            },
+        return withRequestId(
+            { error: error instanceof Error ? error.message : "Unknown error" },
+            requestId,
             { status: 500 }
         );
     }

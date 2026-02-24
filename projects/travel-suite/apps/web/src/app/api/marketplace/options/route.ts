@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import {
@@ -10,6 +10,7 @@ import {
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
   getRequestContext,
   getRequestId,
@@ -164,16 +165,6 @@ async function loadFromMarketplaceProfiles(): Promise<DynamicOptionCatalog> {
     service_regions: Array.from(regions.values()),
     specialties: Array.from(specialties.values()),
   };
-}
-
-function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
-  const payload =
-    body && typeof body === "object" && !Array.isArray(body)
-      ? { ...(body as Record<string, unknown>), request_id: requestId }
-      : body;
-  const response = NextResponse.json(payload, init);
-  response.headers.set("x-request-id", requestId);
-  return response;
 }
 
 export async function GET(request: NextRequest) {

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { fetchWithRetry } from "@/lib/network/retry";
 
 type Currency = "INR" | "USD";
 
@@ -106,15 +107,23 @@ async function requestRazorpay<T>(
 ): Promise<T> {
   const { keyId, keySecret } = getRazorpayCredentials();
   const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-  const response = await fetch(`https://api.razorpay.com/v1${path}`, {
-    method,
-    headers: {
-      Authorization: `Basic ${authHeader}`,
-      "Content-Type": "application/json",
+  const response = await fetchWithRetry(
+    `https://api.razorpay.com/v1${path}`,
+    {
+      method,
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
     },
-    body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
-  });
+    {
+      retries: 2,
+      timeoutMs: 9000,
+      baseDelayMs: 300,
+    }
+  );
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {

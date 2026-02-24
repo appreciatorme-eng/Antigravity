@@ -295,6 +295,10 @@ CREATE TABLE IF NOT EXISTS public.shared_itineraries (
     itinerary_id UUID REFERENCES public.itineraries(id) ON DELETE CASCADE,
     share_code TEXT UNIQUE NOT NULL,
     recipient_phone TEXT,
+    status TEXT NOT NULL DEFAULT 'viewed',
+    approved_by TEXT,
+    approved_at TIMESTAMPTZ,
+    client_comments JSONB NOT NULL DEFAULT '[]'::jsonb,
     expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
     viewed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -305,6 +309,7 @@ ALTER TABLE public.shared_itineraries ENABLE ROW LEVEL SECURITY;
 
 -- Index for fast lookups
 CREATE INDEX IF NOT EXISTS idx_shared_itineraries_code ON public.shared_itineraries(share_code);
+CREATE INDEX IF NOT EXISTS idx_shared_itineraries_status ON public.shared_itineraries(status);
 
 -- Anyone with the share code can view (public access via share_code)
 CREATE POLICY "Anyone can view shared itinerary by code" 

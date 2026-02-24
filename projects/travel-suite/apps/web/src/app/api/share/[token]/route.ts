@@ -23,13 +23,6 @@ type ShareComment = {
   created_at: string;
 };
 
-type SharedItineraryRow = Database['public']['Tables']['shared_itineraries']['Row'] & {
-  status?: string | null;
-  approved_by?: string | null;
-  approved_at?: string | null;
-  client_comments?: Json | null;
-};
-
 function sanitizeShareToken(value: unknown): string | null {
   const token = sanitizeText(value, { maxLength: 200 });
   if (!token) return null;
@@ -90,7 +83,7 @@ export async function GET(
       .eq('share_code', token)
       .single();
 
-    const share = (shareData as SharedItineraryRow | null) || null;
+    const share = shareData;
     if (shareError || !share) {
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
@@ -137,7 +130,7 @@ export async function POST(
       .eq('share_code', token)
       .single();
 
-    const share = (shareData as SharedItineraryRow | null) || null;
+    const share = shareData;
     if (shareError || !share) {
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
@@ -165,10 +158,10 @@ export async function POST(
         created_at: new Date().toISOString(),
       };
 
-      const commentUpdatePayload = {
+      const commentUpdatePayload: Database['public']['Tables']['shared_itineraries']['Update'] = {
         client_comments: [...existingComments, newComment],
         status: 'commented',
-      } as unknown as Database['public']['Tables']['shared_itineraries']['Update'];
+      };
 
       const { error: updateError } = await supabaseAdmin
         .from('shared_itineraries')
@@ -187,11 +180,11 @@ export async function POST(
         return NextResponse.json({ error: 'Approver name is required' }, { status: 400 });
       }
 
-      const approveUpdatePayload = {
+      const approveUpdatePayload: Database['public']['Tables']['shared_itineraries']['Update'] = {
         status: 'approved',
         approved_by: name,
         approved_at: new Date().toISOString(),
-      } as unknown as Database['public']['Tables']['shared_itineraries']['Update'];
+      };
 
       const { error: updateError } = await supabaseAdmin
         .from('shared_itineraries')

@@ -1,17 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureOperationalMetric } from '@/lib/observability/metrics';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
+import { jsonWithRequestId as withRequestId } from '@/lib/api/response';
 
 const supabaseAdmin = createAdminClient();
-
-function withRequestId(body: Record<string, unknown>, requestId: string, init?: ResponseInit) {
-  const response = NextResponse.json({ ...body, request_id: requestId }, init);
-  response.headers.set('x-request-id', requestId);
-  return response;
-}
 
 function normalizePhone(phone?: string | null): string | null {
   return sanitizePhone(phone);

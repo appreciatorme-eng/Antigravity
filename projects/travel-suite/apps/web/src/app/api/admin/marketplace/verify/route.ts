@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { jsonWithRequestId as withRequestId, setRequestIdHeader } from "@/lib/api/response";
 import {
     getRequestContext,
     getRequestId,
@@ -92,16 +93,6 @@ async function requireAdminUser() {
     return { user, profile };
 }
 
-function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
-    const payload =
-        body && typeof body === "object" && !Array.isArray(body)
-            ? { ...(body as Record<string, unknown>), request_id: requestId }
-            : body;
-    const response = NextResponse.json(payload, init);
-    response.headers.set("x-request-id", requestId);
-    return response;
-}
-
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();
     const requestId = getRequestId(request);
@@ -112,8 +103,7 @@ export async function GET(request: NextRequest) {
             const errorResponse =
                 auth.error ||
                 NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            errorResponse.headers.set("x-request-id", requestId);
-            return errorResponse;
+            return setRequestIdHeader(errorResponse, requestId);
         }
 
         const { data, error } = await supabaseAdmin
@@ -161,8 +151,7 @@ export async function POST(request: NextRequest) {
             const errorResponse =
                 auth.error ||
                 NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            errorResponse.headers.set("x-request-id", requestId);
-            return errorResponse;
+            return setRequestIdHeader(errorResponse, requestId);
         }
 
         const { orgId, status } = await request.json();

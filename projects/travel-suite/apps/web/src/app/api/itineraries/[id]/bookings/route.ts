@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/database.types";
 import type { FlightDetails, HotelDetails, ItineraryResult } from "@/types/itinerary";
+import { getRequestId } from "@/lib/observability/logger";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 
 const FlightSchema = z.object({
   id: z.string().min(1),
@@ -52,17 +54,19 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const requestId = getRequestId(req);
   try {
     const { id } = await params;
     if (!id) {
-      return NextResponse.json({ error: "Missing itinerary id" }, { status: 400 });
+      return withRequestId({ error: "Missing itinerary id" }, requestId, { status: 400 });
     }
 
     const body = await req.json().catch(() => null);
     const parsed = ImportBookingSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
+      return withRequestId(
         { error: "Invalid request body", details: parsed.error.flatten() },
+        requestId,
         { status: 400 }
       );
     }
@@ -73,7 +77,7 @@ export async function POST(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
     }
 
     const { data: itinerary, error: itineraryError } = await supabase
@@ -84,7 +88,7 @@ export async function POST(
       .single();
 
     if (itineraryError || !itinerary) {
-      return NextResponse.json({ error: "Itinerary not found" }, { status: 404 });
+      return withRequestId({ error: "Itinerary not found" }, requestId, { status: 404 });
     }
 
     const rawData = toItineraryPayload(itinerary.raw_data);
@@ -120,19 +124,19 @@ export async function POST(
       .eq("user_id", user.id);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 });
+      return withRequestId({ error: updateError.message }, requestId, { status: 400 });
     }
 
-    return NextResponse.json({
+    return withRequestId({
       success: true,
       itineraryId: id,
       totals: {
         flights: rawData.logistics?.flights?.length ?? 0,
         hotels: rawData.logistics?.hotels?.length ?? 0,
       },
-    });
+    }, requestId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return withRequestId({ error: message }, requestId, { status: 500 });
   }
 }

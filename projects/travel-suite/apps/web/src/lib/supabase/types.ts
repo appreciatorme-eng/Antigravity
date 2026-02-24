@@ -208,28 +208,43 @@ export interface Database {
             }
             shared_itineraries: {
                 Row: {
+                    approved_at: string | null
+                    approved_by: string | null
+                    client_comments: Json
                     id: string
                     itinerary_id: string | null
                     share_code: string
                     recipient_phone: string | null
+                    status: string
+                    template_id: string | null
                     expires_at: string
                     viewed_at: string | null
                     created_at: string
                 }
                 Insert: {
+                    approved_at?: string | null
+                    approved_by?: string | null
+                    client_comments?: Json
                     id?: string
                     itinerary_id?: string | null
                     share_code: string
                     recipient_phone?: string | null
+                    status?: string
+                    template_id?: string | null
                     expires_at?: string
                     viewed_at?: string | null
                     created_at?: string
                 }
                 Update: {
+                    approved_at?: string | null
+                    approved_by?: string | null
+                    client_comments?: Json
                     id?: string
                     itinerary_id?: string | null
                     share_code?: string
                     recipient_phone?: string | null
+                    status?: string
+                    template_id?: string | null
                     expires_at?: string
                     viewed_at?: string | null
                     created_at?: string

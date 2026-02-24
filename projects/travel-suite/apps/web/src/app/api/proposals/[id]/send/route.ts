@@ -9,6 +9,7 @@ import {
 } from "@/lib/integrations";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import type { Database } from "@/lib/database.types";
+import { fetchWithRetry } from "@/lib/network/retry";
 
 const SendProposalSchema = z.object({
   channels: z
@@ -43,12 +44,6 @@ function makeShareUrl(request: NextRequest, shareToken: string) {
   return `${base.replace(/\/$/, "")}/p/${shareToken}`;
 }
 
-const EMAIL_MAX_ATTEMPTS = 3;
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function sendProposalEmail(
   toEmail: string,
   subject: string,
@@ -67,9 +62,10 @@ async function sendProposalEmail(
     };
   }
 
-  for (let attempt = 1; attempt <= EMAIL_MAX_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
+  try {
+    const response = await fetchWithRetry(
+      "https://api.resend.com/emails",
+      {
         method: "POST",
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
@@ -81,30 +77,26 @@ async function sendProposalEmail(
           subject,
           html,
         }),
-      });
+      },
+      {
+        retries: 2,
+        timeoutMs: 8000,
+        baseDelayMs: 300,
+      }
+    );
 
-      if (response.ok) {
-        return { success: true };
-      }
-
-      const body = await response.text().catch(() => "");
-      const isRetryable = response.status === 429 || response.status >= 500;
-      if (!isRetryable || attempt === EMAIL_MAX_ATTEMPTS) {
-        return { success: false, error: body || `Email send failed (${response.status})` };
-      }
-    } catch (error: unknown) {
-      if (attempt === EMAIL_MAX_ATTEMPTS) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Email send failed",
-        };
-      }
+    if (response.ok) {
+      return { success: true };
     }
 
-    await wait(250 * attempt);
+    const body = await response.text().catch(() => "");
+    return { success: false, error: body || `Email send failed (${response.status})` };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Email send failed",
+    };
   }
-
-  return { success: false, error: "Email send failed" };
 }
 
 export async function POST(

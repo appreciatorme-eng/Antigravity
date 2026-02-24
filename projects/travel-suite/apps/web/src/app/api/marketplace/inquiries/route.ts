@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
 import type { Database } from "@/lib/database.types";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
     getRequestContext,
     getRequestId,
@@ -23,16 +24,6 @@ type MarketplaceInquiryWithOrg = Database["public"]["Tables"]["marketplace_inqui
     sender?: OrganizationSummary | OrganizationSummary[] | null;
     receiver?: OrganizationSummary | OrganizationSummary[] | null;
 };
-
-function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
-    const payload =
-        body && typeof body === "object" && !Array.isArray(body)
-            ? { ...(body as Record<string, unknown>), request_id: requestId }
-            : body;
-    const response = NextResponse.json(payload, init);
-    response.headers.set("x-request-id", requestId);
-    return response;
-}
 
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();

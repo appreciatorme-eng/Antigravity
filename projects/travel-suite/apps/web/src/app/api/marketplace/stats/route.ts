@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import {
     getRequestContext,
@@ -7,16 +7,7 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
-
-function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
-    const payload =
-        body && typeof body === "object" && !Array.isArray(body)
-            ? { ...(body as Record<string, unknown>), request_id: requestId }
-            : body;
-    const response = NextResponse.json(payload, init);
-    response.headers.set("x-request-id", requestId);
-    return response;
-}
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();

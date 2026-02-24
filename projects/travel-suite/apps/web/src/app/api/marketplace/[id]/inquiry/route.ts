@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
     getRequestContext,
     getRequestId,
@@ -72,16 +73,6 @@ async function trackInquiryNotification(
         sent: status.sent,
         reason: status.reason,
     });
-}
-
-function withRequestId(body: unknown, requestId: string, init?: ResponseInit) {
-    const payload =
-        body && typeof body === "object" && !Array.isArray(body)
-            ? { ...(body as Record<string, unknown>), request_id: requestId }
-            : body;
-    const response = NextResponse.json(payload, init);
-    response.headers.set("x-request-id", requestId);
-    return response;
 }
 
 export async function POST(
