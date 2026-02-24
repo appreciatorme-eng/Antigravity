@@ -202,13 +202,6 @@ export async function POST(
         return NextResponse.json({ error: updateError.message }, { status: 400 });
       }
 
-      if (share.itinerary_id) {
-        await supabaseAdmin
-          .from('itineraries')
-          .update({ status: 'approved' })
-          .eq('id', share.itinerary_id);
-      }
-
       return NextResponse.json({ success: true });
     }
 
