@@ -1,4 +1,3 @@
-
 import { createClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -13,11 +12,12 @@ export async function GET(request: NextRequest) {
         }
 
         // 1. Get user's org
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("organization_id")
             .eq("id", user.id)
             .single();
+        if (profileError) throw profileError;
 
         if (!profile?.organization_id) {
             return NextResponse.json({ error: "No organization found" }, { status: 404 });
@@ -26,11 +26,12 @@ export async function GET(request: NextRequest) {
         const orgId = profile.organization_id;
 
         // 2. Get Marketplace Profile
-        const { data: marketProfile } = await supabase
+        const { data: marketProfile, error: marketProfileError } = await supabase
             .from("marketplace_profiles")
             .select("id")
             .eq("organization_id", orgId)
             .single();
+        if (marketProfileError) throw marketProfileError;
 
         if (!marketProfile) {
             // No profile -> no stats
@@ -44,16 +45,18 @@ export async function GET(request: NextRequest) {
         }
 
         // 3. Get Views Count
-        const { count: viewsCount } = await supabase
+        const { count: viewsCount, error: viewsError } = await supabase
             .from("marketplace_profile_views")
             .select("*", { count: "exact", head: true })
             .eq("profile_id", marketProfile.id);
+        if (viewsError) throw viewsError;
 
         // 4. Get Inquiries Count
-        const { count: inquiriesCount } = await supabase
+        const { count: inquiriesCount, error: inquiriesError } = await supabase
             .from("marketplace_inquiries")
             .select("*", { count: "exact", head: true })
             .eq("receiver_org_id", orgId);
+        if (inquiriesError) throw inquiriesError;
 
         const totalViews = viewsCount || 0;
         const totalInquiries = inquiriesCount || 0;
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
             : "0.0";
 
         // 5. Get Recent Views (last 5)
-        const { data: recentViews } = await supabase
+        const { data: recentViews, error: recentViewsError } = await supabase
             .from("marketplace_profile_views")
             .select(`
                 viewed_at,
@@ -75,9 +78,10 @@ export async function GET(request: NextRequest) {
             .eq("profile_id", marketProfile.id)
             .order("viewed_at", { ascending: false })
             .limit(5);
+        if (recentViewsError) throw recentViewsError;
 
         // 6. Get Recent Inquiries (last 5)
-        const { data: recentInquiries } = await supabase
+        const { data: recentInquiries, error: recentInquiriesError } = await supabase
             .from("marketplace_inquiries")
             .select(`
                 created_at,
@@ -91,6 +95,7 @@ export async function GET(request: NextRequest) {
             .eq("receiver_org_id", orgId)
             .order("created_at", { ascending: false })
             .limit(5);
+        if (recentInquiriesError) throw recentInquiriesError;
 
         return NextResponse.json({
             views: totalViews,
@@ -100,8 +105,9 @@ export async function GET(request: NextRequest) {
             recent_inquiries: recentInquiries || []
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching marketplace stats:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal Server Error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
