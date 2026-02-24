@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/auth/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
 
 function isDebugEndpointEnabled() {
-  if (process.env.NODE_ENV !== 'production') return true;
+  if (process.env.NODE_ENV === 'production') return false;
   return process.env.ENABLE_DEBUG_ENDPOINT === 'true' || process.env.ENABLE_DEBUG_ENDPOINT === '1';
 }
 

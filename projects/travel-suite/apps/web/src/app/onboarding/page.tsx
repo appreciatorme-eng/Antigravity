@@ -2,7 +2,7 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Building2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Building2, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
 import {
   ITINERARY_TEMPLATE_OPTIONS,
   type ItineraryTemplateId,
@@ -41,6 +41,31 @@ interface OnboardingPayload {
   } | null;
 }
 
+const WIZARD_STEPS = [
+  {
+    id: 1,
+    title: 'Business Basics',
+    description: 'Set your operator identity and visual branding.',
+  },
+  {
+    id: 2,
+    title: 'Services & Market',
+    description: 'Define regions, specialties, and your marketplace pitch.',
+  },
+  {
+    id: 3,
+    title: 'Proposal Style',
+    description: 'Choose the default itinerary template your clients will see.',
+  },
+  {
+    id: 4,
+    title: 'Review & Launch',
+    description: 'Confirm details and activate your admin workspace.',
+  },
+] as const;
+
+const TOTAL_WIZARD_STEPS = WIZARD_STEPS.length;
+
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,6 +79,7 @@ function OnboardingPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<number>(1);
 
   const [operatorName, setOperatorName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -80,6 +106,17 @@ function OnboardingPageContent() {
   const specialtyOptions = useMemo(
     () => mergeMarketplaceOptions(marketplaceSpecialtyCatalog, specialties),
     [marketplaceSpecialtyCatalog, specialties]
+  );
+  const stepProgress = useMemo(
+    () => Math.round((currentStep / TOTAL_WIZARD_STEPS) * 100),
+    [currentStep]
+  );
+  const activeStep = WIZARD_STEPS[currentStep - 1];
+  const selectedTemplateMeta = useMemo(
+    () =>
+      ITINERARY_TEMPLATE_OPTIONS.find((option) => option.id === itineraryTemplate) ||
+      ITINERARY_TEMPLATE_OPTIONS[0],
+    [itineraryTemplate]
   );
 
   useEffect(() => {
@@ -148,6 +185,11 @@ function OnboardingPageContent() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
+    if (currentStep < TOTAL_WIZARD_STEPS) {
+      handleNextStep();
+      return;
+    }
+
     if (!companyName.trim()) {
       setError('Company name is required');
       return;
@@ -192,6 +234,29 @@ function OnboardingPageContent() {
     }
   }
 
+  function validateCurrentStep(): boolean {
+    if (currentStep === 1 && !companyName.trim()) {
+      setError('Company name is required to continue.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function handleNextStep() {
+    if (!validateCurrentStep()) {
+      return;
+    }
+
+    setError(null);
+    setCurrentStep((previous) => Math.min(TOTAL_WIZARD_STEPS, previous + 1));
+  }
+
+  function handlePreviousStep() {
+    setError(null);
+    setCurrentStep((previous) => Math.max(1, previous - 1));
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8f5ef] to-[#efe4d2]">
@@ -232,130 +297,237 @@ function OnboardingPageContent() {
         ) : null}
 
         <form onSubmit={handleSubmit} className="bg-white border border-[#eadfcd] rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Operator Name</label>
-              <input
-                value={operatorName}
-                onChange={(event) => setOperatorName(event.target.value)}
-                placeholder="e.g. Nidhi Salgame"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+          <div className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-4 md:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#9c7c46] font-semibold">
+                  Step {currentStep} of {TOTAL_WIZARD_STEPS}
+                </p>
+                <h2 className="text-lg font-semibold text-[#1b140a] mt-1">{activeStep.title}</h2>
+                <p className="text-sm text-[#6f5b3e] mt-1">{activeStep.description}</p>
+              </div>
+              <span className="text-sm font-semibold text-[#9c7c46]">{stepProgress}%</span>
+            </div>
+            <div className="mt-4 h-2 w-full rounded-full bg-[#f1e6d5] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#9c7c46] to-[#c89d54] transition-all duration-300"
+                style={{ width: `${stepProgress}%` }}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Company Name *</label>
-              <input
-                required
-                value={companyName}
-                onChange={(event) => setCompanyName(event.target.value)}
-                placeholder="e.g. Wander Beyond Boundaries"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Phone</label>
-              <input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="+254..."
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">WhatsApp</label>
-              <input
-                value={whatsappPhone}
-                onChange={(event) => setWhatsappPhone(event.target.value)}
-                placeholder="+91..."
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Logo URL</label>
-              <input
-                value={logoUrl}
-                onChange={(event) => setLogoUrl(event.target.value)}
-                placeholder="https://..."
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Primary Color</label>
-              <input
-                type="color"
-                value={primaryColor}
-                onChange={(event) => setPrimaryColor(event.target.value)}
-                className="w-full h-11 p-1 rounded-lg border border-[#eadfcd] bg-white"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Default Itinerary PDF Template</label>
-              <select
-                value={itineraryTemplate}
-                onChange={(event) => setItineraryTemplate(event.target.value as ItineraryTemplateId)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              >
-                {ITINERARY_TEMPLATE_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label} — {option.description}
-                  </option>
-                ))}
-              </select>
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+              {WIZARD_STEPS.map((step) => (
+                <div
+                  key={step.id}
+                  className={`rounded-lg border px-2 py-1.5 text-[11px] text-center transition-colors ${
+                    step.id === currentStep
+                      ? 'border-[#c89d54] bg-[#fff7ea] text-[#7c6032]'
+                      : step.id < currentStep
+                      ? 'border-[#d9c7aa] bg-white text-[#7c6032]'
+                      : 'border-[#eadfcd] bg-white text-[#a18a66]'
+                  }`}
+                >
+                  {step.title}
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Operator Bio</label>
-              <textarea
-                rows={3}
-                value={bio}
-                onChange={(event) => setBio(event.target.value)}
-                placeholder="Tell clients about your expertise and team."
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
+          {currentStep === 1 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Operator Name</label>
+                <input
+                  value={operatorName}
+                  onChange={(event) => setOperatorName(event.target.value)}
+                  placeholder="e.g. Nidhi Salgame"
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Company Name *</label>
+                <input
+                  required
+                  value={companyName}
+                  onChange={(event) => setCompanyName(event.target.value)}
+                  placeholder="e.g. Wander Beyond Boundaries"
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Phone</label>
+                <input
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="+254..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">WhatsApp</label>
+                <input
+                  value={whatsappPhone}
+                  onChange={(event) => setWhatsappPhone(event.target.value)}
+                  placeholder="+91..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Logo URL</label>
+                <input
+                  value={logoUrl}
+                  onChange={(event) => setLogoUrl(event.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Primary Color</label>
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(event) => setPrimaryColor(event.target.value)}
+                  className="w-full h-11 p-1 rounded-lg border border-[#eadfcd] bg-white"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Marketplace Description</label>
-              <textarea
-                rows={4}
-                value={marketplaceDescription}
-                onChange={(event) => setMarketplaceDescription(event.target.value)}
-                placeholder="What makes your tours unique?"
-                className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-              />
-            </div>
-            <div>
-              <SearchableCreatableMultiSelect
-                label="Area of Operations"
-                selectedValues={serviceRegions}
-                onChange={setServiceRegions}
-                options={serviceRegionOptions}
-                placeholder="Search places (e.g. Kenya, Dubai, Bali) or add new..."
-                helperText="Start typing to autofill from the global destination list. If missing, add custom."
-              />
-            </div>
-            <div>
-              <SearchableCreatableMultiSelect
-                label="Specialties"
-                selectedValues={specialties}
-                onChange={setSpecialties}
-                options={specialtyOptions}
-                placeholder="Search specialties or add new..."
-                helperText="Select from common tour specialties, or add your own niche offerings."
-              />
-            </div>
-          </div>
+          ) : null}
 
-          <div className="pt-2 flex items-center justify-end">
+          {currentStep === 2 ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Operator Bio</label>
+                <textarea
+                  rows={3}
+                  value={bio}
+                  onChange={(event) => setBio(event.target.value)}
+                  placeholder="Tell clients about your expertise and team."
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Marketplace Description</label>
+                <textarea
+                  rows={4}
+                  value={marketplaceDescription}
+                  onChange={(event) => setMarketplaceDescription(event.target.value)}
+                  placeholder="What makes your tours unique?"
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                />
+              </div>
+              <div>
+                <SearchableCreatableMultiSelect
+                  label="Area of Operations"
+                  selectedValues={serviceRegions}
+                  onChange={setServiceRegions}
+                  options={serviceRegionOptions}
+                  placeholder="Search places (e.g. Kenya, Dubai, Bali) or add new..."
+                  helperText="Start typing to autofill from the global destination list. If missing, add custom."
+                />
+              </div>
+              <div>
+                <SearchableCreatableMultiSelect
+                  label="Specialties"
+                  selectedValues={specialties}
+                  onChange={setSpecialties}
+                  options={specialtyOptions}
+                  placeholder="Search specialties or add new..."
+                  helperText="Select from common tour specialties, or add your own niche offerings."
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {currentStep === 3 ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6f5b3e] mb-1.5">Default Itinerary PDF Template</label>
+                <select
+                  value={itineraryTemplate}
+                  onChange={(event) => setItineraryTemplate(event.target.value as ItineraryTemplateId)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-[#eadfcd] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                >
+                  {ITINERARY_TEMPLATE_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label} — {option.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[#9c7c46] font-semibold">
+                  Selected Template
+                </p>
+                <h3 className="text-lg font-semibold text-[#1b140a] mt-1">{selectedTemplateMeta.label}</h3>
+                <p className="text-sm text-[#6f5b3e] mt-1">{selectedTemplateMeta.description}</p>
+              </div>
+            </div>
+          ) : null}
+
+          {currentStep === 4 ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#eadfcd] p-4">
+                <h3 className="text-sm font-semibold text-[#1b140a] mb-3">Business Profile</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-[#6f5b3e]">
+                  <p><span className="font-medium text-[#1b140a]">Operator:</span> {operatorName || 'Not set'}</p>
+                  <p><span className="font-medium text-[#1b140a]">Company:</span> {companyName || 'Not set'}</p>
+                  <p><span className="font-medium text-[#1b140a]">Phone:</span> {phone || 'Not set'}</p>
+                  <p><span className="font-medium text-[#1b140a]">WhatsApp:</span> {whatsappPhone || 'Not set'}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[#eadfcd] p-4">
+                <h3 className="text-sm font-semibold text-[#1b140a] mb-3">Marketplace</h3>
+                <p className="text-sm text-[#6f5b3e]">
+                  <span className="font-medium text-[#1b140a]">Regions:</span>{' '}
+                  {serviceRegions.length ? serviceRegions.join(', ') : 'Not set'}
+                </p>
+                <p className="text-sm text-[#6f5b3e] mt-1">
+                  <span className="font-medium text-[#1b140a]">Specialties:</span>{' '}
+                  {specialties.length ? specialties.join(', ') : 'Not set'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#eadfcd] p-4">
+                <h3 className="text-sm font-semibold text-[#1b140a] mb-3">Template & Branding</h3>
+                <p className="text-sm text-[#6f5b3e]">
+                  <span className="font-medium text-[#1b140a]">Template:</span> {selectedTemplateMeta.label}
+                </p>
+                <p className="text-sm text-[#6f5b3e] mt-1">
+                  <span className="font-medium text-[#1b140a]">Primary color:</span> {primaryColor}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="pt-2 flex items-center justify-between">
             <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#9c7c46] text-white hover:bg-[#8a6d3e] disabled:opacity-60 disabled:cursor-not-allowed"
+              type="button"
+              onClick={handlePreviousStep}
+              disabled={currentStep === 1 || saving}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {saving ? 'Saving...' : 'Complete Setup'}
+              <ArrowLeft className="w-4 h-4" />
+              Back
             </button>
+
+            {currentStep < TOTAL_WIZARD_STEPS ? (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#9c7c46] text-white hover:bg-[#8a6d3e] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#9c7c46] text-white hover:bg-[#8a6d3e] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {saving ? 'Saving...' : 'Complete Setup'}
+              </button>
+            )}
           </div>
         </form>
       </div>
