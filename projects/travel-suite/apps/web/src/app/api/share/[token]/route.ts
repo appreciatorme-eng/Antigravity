@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
+import type { Database, Json } from '@/lib/database.types';
 
 const supabaseAdmin = createAdminClient();
 
@@ -16,6 +15,20 @@ const ShareActionSchema = z.object({
 });
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+
+type ShareComment = {
+  id: string;
+  author: string;
+  comment: string;
+  created_at: string;
+};
+
+type SharedItineraryRow = Database['public']['Tables']['shared_itineraries']['Row'] & {
+  status?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  client_comments?: Json | null;
+};
 
 function sanitizeShareToken(value: unknown): string | null {
   const token = sanitizeText(value, { maxLength: 200 });
@@ -31,6 +44,35 @@ function isExpired(expiresAt: string | null): boolean {
   return parsed.getTime() < Date.now();
 }
 
+function parseCommentArray(value: Json | null | undefined): ShareComment[] {
+  if (!Array.isArray(value)) return [];
+
+  const comments: ShareComment[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+
+    const record = entry as Record<string, unknown>;
+    const id = sanitizeText(record.id, { maxLength: 120 }) || randomUUID();
+    const author = sanitizeText(record.author, { maxLength: 120 }) || 'Guest';
+    const comment = sanitizeText(record.comment, {
+      maxLength: 2000,
+      preserveNewlines: true,
+    });
+    const createdAt =
+      sanitizeText(record.created_at, { maxLength: 80 }) || new Date().toISOString();
+
+    if (!comment) continue;
+    comments.push({
+      id,
+      author,
+      comment,
+      created_at: createdAt,
+    });
+  }
+
+  return comments;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -42,12 +84,13 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
     }
 
-    const { data: share, error: shareError } = await (supabaseAdmin as any)
+    const { data: shareData, error: shareError } = await supabaseAdmin
       .from('shared_itineraries')
       .select('*')
       .eq('share_code', token)
       .single();
 
+    const share = (shareData as SharedItineraryRow | null) || null;
     if (shareError || !share) {
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
@@ -56,13 +99,13 @@ export async function GET(
       return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
     }
 
-    const shareRow = share as any;
+    const comments = parseCommentArray(share.client_comments);
     return NextResponse.json({
-      status: shareRow.status || 'viewed',
-      approved_by: shareRow.approved_by,
-      approved_at: shareRow.approved_at,
-      comments: shareRow.client_comments || [],
-      expires_at: shareRow.expires_at || null,
+      status: share.status || 'viewed',
+      approved_by: share.approved_by || null,
+      approved_at: share.approved_at || null,
+      comments,
+      expires_at: share.expires_at || null,
     });
   } catch {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
@@ -88,12 +131,13 @@ export async function POST(
 
     const { action } = parsed.data;
 
-    const { data: share, error: shareError } = await (supabaseAdmin as any)
+    const { data: shareData, error: shareError } = await supabaseAdmin
       .from('shared_itineraries')
       .select('id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at')
       .eq('share_code', token)
       .single();
 
+    const share = (shareData as SharedItineraryRow | null) || null;
     if (shareError || !share) {
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
@@ -113,10 +157,7 @@ export async function POST(
         return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
       }
 
-      const shareRow = share as any;
-      const existingComments = Array.isArray(shareRow.client_comments)
-        ? shareRow.client_comments
-        : [];
+      const existingComments = parseCommentArray(share.client_comments);
       const newComment = {
         id: randomUUID(),
         author,
@@ -124,12 +165,14 @@ export async function POST(
         created_at: new Date().toISOString(),
       };
 
-      const { error: updateError } = await (supabaseAdmin as any)
+      const commentUpdatePayload = {
+        client_comments: [...existingComments, newComment],
+        status: 'commented',
+      } as unknown as Database['public']['Tables']['shared_itineraries']['Update'];
+
+      const { error: updateError } = await supabaseAdmin
         .from('shared_itineraries')
-        .update({
-          client_comments: [...existingComments, newComment],
-          status: 'commented',
-        })
+        .update(commentUpdatePayload)
         .eq('id', share.id);
 
       if (updateError) {
@@ -144,13 +187,15 @@ export async function POST(
         return NextResponse.json({ error: 'Approver name is required' }, { status: 400 });
       }
 
-      const { error: updateError } = await (supabaseAdmin as any)
+      const approveUpdatePayload = {
+        status: 'approved',
+        approved_by: name,
+        approved_at: new Date().toISOString(),
+      } as unknown as Database['public']['Tables']['shared_itineraries']['Update'];
+
+      const { error: updateError } = await supabaseAdmin
         .from('shared_itineraries')
-        .update({
-          status: 'approved',
-          approved_by: name,
-          approved_at: new Date().toISOString(),
-        })
+        .update(approveUpdatePayload)
         .eq('id', share.id);
 
       if (updateError) {
@@ -158,7 +203,7 @@ export async function POST(
       }
 
       if (share.itinerary_id) {
-        await (supabaseAdmin as any)
+        await supabaseAdmin
           .from('itineraries')
           .update({ status: 'approved' })
           .eq('id', share.itinerary_id);

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -10,6 +8,7 @@ import {
   isWhatsAppIntegrationEnabled,
 } from "@/lib/integrations";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
+import type { Database } from "@/lib/database.types";
 
 const SendProposalSchema = z.object({
   channels: z
@@ -24,6 +23,20 @@ function normalizeRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] || null : value;
 }
+
+type ProposalRecipientProfile = {
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  phone_whatsapp: string | null;
+};
+
+type ProposalSendRow = Database["public"]["Tables"]["proposals"]["Row"] & {
+  clients:
+    | { profiles: ProposalRecipientProfile | ProposalRecipientProfile[] | null }
+    | { profiles: ProposalRecipientProfile | ProposalRecipientProfile[] | null }[]
+    | null;
+};
 
 function makeShareUrl(request: NextRequest, shareToken: string) {
   const base = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
@@ -106,7 +119,7 @@ export async function POST(
   }
 
   const supabaseAdmin = admin.adminClient;
-  const { data: proposal, error: proposalError } = await (supabaseAdmin as any)
+  const { data: proposalData, error: proposalError } = await supabaseAdmin
     .from("proposals")
     .select(
       `
@@ -130,6 +143,7 @@ export async function POST(
     .eq("organization_id", admin.organizationId)
     .maybeSingle();
 
+  const proposal = (proposalData as ProposalSendRow | null) || null;
   if (proposalError || !proposal) {
     return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
   }
@@ -145,15 +159,8 @@ export async function POST(
   const shareUrl = makeShareUrl(request, shareToken);
 
   const clientProfile = normalizeRelation(
-    normalizeRelation((proposal as any).clients)?.profiles
-  ) as
-    | {
-        full_name?: string | null;
-        email?: string | null;
-        phone?: string | null;
-        phone_whatsapp?: string | null;
-      }
-    | null;
+    normalizeRelation(proposal.clients)?.profiles || null
+  );
 
   const recipientName =
     sanitizeText(clientProfile?.full_name, { maxLength: 120 }) || "Traveler";
@@ -224,7 +231,7 @@ export async function POST(
       ? proposal.status
       : "sent";
 
-  await (supabaseAdmin as any)
+  await supabaseAdmin
     .from("proposals")
     .update({
       status: nextStatus,
@@ -233,7 +240,7 @@ export async function POST(
     })
     .eq("id", proposalId);
 
-  await (supabaseAdmin as any).from("notification_logs").insert({
+  await supabaseAdmin.from("notification_logs").insert({
     recipient_id: admin.userId,
     recipient_type: "admin",
     notification_type: "proposal_send",
