@@ -12,8 +12,11 @@ import {
     Building2,
     ShieldCheck,
     Tag,
-    ArrowRight
+    ArrowRight,
+    Sparkles,
+    Store
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { GlassInput } from "@/components/glass/GlassInput";
@@ -128,306 +131,282 @@ export default function MarketplacePage() {
     );
 
     return (
-        <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                            <Trophy size={24} />
-                        </div>
-                        <h1 className="text-3xl font-bold tracking-tight text-white">Partner Marketplace</h1>
+        <div className="min-h-screen pb-24 lg:pb-12">
+            {/* 1. HERO SECTION (Immersive & Premium) */}
+            <div className="relative rounded-3xl overflow-hidden bg-slate-950 px-6 py-16 lg:px-12 lg:py-24 mx-4 mt-4 lg:mx-8 mb-8 shadow-2xl isolate">
+                <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900 to-slate-800 pointer-events-none" />
+                
+                {/* Abstract Glowing Orbs */}
+                <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] pointer-events-none mix-blend-screen" />
+                <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen" />
+
+                <div className="relative z-10 w-full flex flex-col lg:flex-row gap-12 items-center justify-between">
+                    <div className="max-w-3xl space-y-6">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                            <Sparkles className="w-4 h-4 text-blue-400" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-300">B2B Network</span>
+                        </motion.div>
+                        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl lg:text-7xl font-extrabold tracking-tight text-white drop-shadow-sm leading-tight">
+                            The Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Marketplace</span>
+                        </motion.h1>
+                        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg lg:text-xl text-slate-400 max-w-2xl leading-relaxed">
+                            Discover, vet, and connect with elite ground handlers and local operators worldwide. Scale your operations with absolute confidence.
+                        </motion.p>
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="pt-4 flex flex-wrap gap-4">
+                            <Link href="/settings/marketplace">
+                                <button className="px-6 py-3 rounded-full bg-white text-slate-950 font-bold shadow-[0_0_30px_-5px_theme(colors.white)] hover:shadow-[0_0_40px_-5px_theme(colors.white)] active:scale-95 transition-all duration-300 flex items-center gap-2">
+                                    <Store className="w-5 h-5" />
+                                    Manage Your Listing
+                                </button>
+                            </Link>
+                        </motion.div>
                     </div>
-                    <p className="text-slate-400 text-lg">
-                        Discover and connect with trusted tour operators and local partners.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Link href="/settings/marketplace">
-                        <GlassButton variant="secondary" className="flex items-center gap-2">
-                            Manage Your Listing
-                        </GlassButton>
-                    </Link>
+
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="hidden lg:grid grid-cols-2 gap-4 w-full max-w-sm">
+                        <div className="p-6 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center">
+                            <div className="text-4xl font-black text-white">{profiles.length}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-2">Active Partners</div>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col items-center justify-center text-center">
+                            <div className="text-4xl font-black text-white">4.8</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mt-2">Avg Rating</div>
+                        </div>
+                        <div className="col-span-2 p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 to-indigo-500/10 backdrop-blur-xl border border-blue-500/20 shadow-2xl flex items-center justify-center gap-3">
+                            <ShieldCheck className="w-6 h-6 text-blue-400" />
+                            <span className="text-sm font-semibold text-blue-100">100% Verified Professionals</span>
+                        </div>
+                    </motion.div>
                 </div>
             </div>
 
-            {/* Sub-header Banner */}
-            <GlassCard className="p-6 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-20 -mt-20"></div>
-                <div className="relative z-10 flex flex-col md:flex-row gap-6 items-center">
-                    <div className="flex-1 space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-sm font-medium border border-green-500/20">
-                            <ShieldCheck size={14} />
-                            Verified Trusted Partners
-                        </div>
-                        <h2 className="text-2xl font-semibold text-white">Scale your business with the right partners</h2>
-                        <p className="text-slate-400 max-w-2xl">
-                            Our marketplace only hosts registered tour operators. Read peer reviews, compare margins,
-                            and find partners that align with your service standards.
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                        <div className="p-3">
-                            <div className="text-2xl font-bold text-white">{profiles.length}</div>
-                            <div className="text-xs text-slate-500 uppercase tracking-wider">Active Partners</div>
-                        </div>
-                        <div className="p-3 border-x border-slate-800">
-                            <div className="text-2xl font-bold text-white">4.8</div>
-                            <div className="text-xs text-slate-500 uppercase tracking-wider">Avg. Rating</div>
-                        </div>
-                        <div className="p-3">
-                            <div className="text-2xl font-bold text-white">12+</div>
-                            <div className="text-xs text-slate-500 uppercase tracking-wider">Regions</div>
-                        </div>
-                    </div>
-                </div>
-            </GlassCard>
-
-            {/* Filters and List */}
-            <div className="flex flex-col lg:flex-row gap-8">
-                {/* Sidebar Filters */}
-                <div className="w-full lg:w-72 flex-shrink-0 space-y-6">
-                    <GlassCard className="p-6 sticky top-24">
-                        <div className="flex items-center gap-2 mb-6">
-                            <Filter size={18} className="text-blue-400" />
-                            <h3 className="font-semibold text-white">Filter Results</h3>
+            {/* 2. MAIN CONTENT AREA (Premium Filters & List) */}
+            <div className="px-4 lg:px-8 max-w-[1600px] mx-auto flex flex-col xl:flex-row gap-8">
+                
+                {/* 2a. Sidebar Filters */}
+                <div className="w-full xl:w-72 flex-shrink-0">
+                    <div className="sticky top-24 p-6 rounded-3xl bg-white dark:bg-slate-900/50 shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-6">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Filter size={18} className="text-blue-500 dark:text-blue-400" />
+                            <h3 className="font-bold text-slate-900 dark:text-white">Refine Search</h3>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400">Search</label>
-                                <GlassInput
-                                    placeholder="Operator name..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    icon={Search}
-                                />
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Search</label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Operator name..." 
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
+                                    />
+                                </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400">Region</label>
-                                <select
-                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
-                                    value={regionFilter}
-                                    onChange={(e) => setRegionFilter(e.target.value)}
-                                >
-                                    <option value="">All Regions</option>
-                                    {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
-                                </select>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Region</label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-sm cursor-pointer"
+                                        value={regionFilter}
+                                        onChange={(e) => setRegionFilter(e.target.value)}
+                                    >
+                                        <option value="">All Regions</option>
+                                        {allRegions.map((r: string) => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <ArrowRight size={14} className="rotate-90" />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400">Specialty</label>
-                                <select
-                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
-                                    value={specialtyFilter}
-                                    onChange={(e) => setSpecialtyFilter(e.target.value)}
-                                >
-                                    <option value="">All Specialties</option>
-                                    {allSpecialties.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Specialty</label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-sm cursor-pointer"
+                                        value={specialtyFilter}
+                                        onChange={(e) => setSpecialtyFilter(e.target.value)}
+                                    >
+                                        <option value="">All Specialties</option>
+                                        {allSpecialties.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <ArrowRight size={14} className="rotate-90" />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400">Sort</label>
-                                <select
-                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
-                                    value={sortOption}
-                                    onChange={(e) => setSortOption(e.target.value)}
-                                >
-                                    <option value="verified_first">Verified First</option>
-                                    <option value="discovery">Best Discovery Score</option>
-                                    <option value="top_rated">Top Rated</option>
-                                    <option value="most_reviewed">Most Reviewed</option>
-                                    <option value="recent">Recently Updated</option>
-                                    <option value="margin_high">Highest Margin</option>
-                                    <option value="margin_low">Lowest Margin</option>
-                                </select>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Sort By</label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none shadow-sm cursor-pointer"
+                                        value={sortOption}
+                                        onChange={(e) => setSortOption(e.target.value)}
+                                    >
+                                        <option value="verified_first">Verified First</option>
+                                        <option value="discovery">Best Discovery Score</option>
+                                        <option value="top_rated">Top Rated</option>
+                                        <option value="most_reviewed">Most Reviewed</option>
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                        <ArrowRight size={14} className="rotate-90" />
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-sm font-medium text-slate-400">Minimum Rating</label>
-                                <select
-                                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 appearance-none"
-                                    value={minRating}
-                                    onChange={(e) => setMinRating(e.target.value)}
-                                >
-                                    <option value="0">Any Rating</option>
-                                    <option value="3">3.0+</option>
-                                    <option value="3.5">3.5+</option>
-                                    <option value="4">4.0+</option>
-                                    <option value="4.5">4.5+</option>
-                                </select>
+                            <div className="pt-2">
+                                <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 cursor-pointer hover:border-blue-500/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={verifiedOnly}
+                                        onChange={(e) => setVerifiedOnly(e.target.checked)}
+                                        className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 focus:ring-blue-500 cursor-pointer text-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Verified strictly</span>
+                                </label>
                             </div>
 
-                            <label className="flex items-center gap-2 text-sm text-slate-300">
-                                <input
-                                    type="checkbox"
-                                    checked={verifiedOnly}
-                                    onChange={(e) => setVerifiedOnly(e.target.checked)}
-                                    className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-500"
-                                />
-                                Verified operators only
-                            </label>
-
-                            <GlassButton
-                                variant="outline"
-                                className="w-full text-slate-400 hover:text-white"
-                                onClick={() => {
-                                    setSearchTerm("");
-                                    setRegionFilter("");
-                                    setSpecialtyFilter("");
-                                    setSortOption("verified_first");
-                                    setMinRating("0");
-                                    setVerifiedOnly(false);
-                                }}
+                            <button
+                                onClick={() => { setSearchTerm(""); setRegionFilter(""); setSpecialtyFilter(""); setSortOption("verified_first"); setMinRating("0"); setVerifiedOnly(false); }}
+                                className="w-full py-2.5 px-4 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors mt-2"
                             >
-                                Clear All
-                            </GlassButton>
+                                Clear all filters
+                            </button>
                         </div>
-                    </GlassCard>
+                    </div>
                 </div>
 
-                {/* Main Content */}
-                <div className="flex-1 space-y-6">
+                {/* 2b. Partner Grid */}
+                <div className="flex-1">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                            <RefreshCcw className="animate-spin text-blue-400" size={32} />
-                            <p className="text-slate-500 font-medium">Scanning the marketplace...</p>
+                        <div className="flex flex-col items-center justify-center py-32 space-y-6">
+                            <div className="relative w-16 h-16 flex items-center justify-center">
+                                <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
+                                <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin" />
+                                <RefreshCcw className="w-6 h-6 text-blue-500 absolute" />
+                            </div>
+                            <p className="text-slate-500 font-medium animate-pulse">Scanning global network...</p>
                         </div>
                     ) : profiles.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 px-6 text-center bg-gradient-to-b from-slate-900/50 to-slate-900/10 rounded-3xl border border-dashed border-slate-700/50 shadow-inner relative overflow-hidden">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,transparent_70%)]" />
-                            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80 mb-6 drop-shadow-2xl">
-                                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#oasisGradient)" fillOpacity="0.1" stroke="#3b82f6" strokeWidth="0.5" />
-                                <path d="M12 17L12 7" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M9 10L15 10" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M7 14L17 14" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M4 12C4 12 6 9 12 9C18 9 20 12 20 12" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 2" />
-                                <defs>
-                                    <linearGradient id="oasisGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#3b82f6" />
-                                        <stop offset="1" stopColor="#60a5fa" stopOpacity="0" />
-                                    </linearGradient>
-                                </defs>
-                            </svg>
-                            <h3 className="text-2xl font-bold text-white mb-2 relative z-10">No partners found in this oasis.</h3>
-                            <p className="text-slate-400 mb-8 max-w-sm relative z-10">
-                                We couldn't find any operators matching your exact filters. Expand your search or invite a trusted ground handler.
-                            </p>
-                            <div className="flex items-center gap-4 relative z-10">
-                                <GlassButton variant="outline" onClick={() => { setSearchTerm(""); setRegionFilter(""); setSpecialtyFilter(""); setVerifiedOnly(false); }} className="text-slate-300">
-                                    Clear Filters
-                                </GlassButton>
-                                <GlassButton variant="primary" className="bg-gradient-premium shadow-lg shadow-blue-500/20">
-                                    <Tag className="w-4 h-4 mr-2" />
-                                    Invite a Partner
-                                </GlassButton>
+                        <div className="flex flex-col items-center justify-center py-24 px-6 text-center bg-white dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden h-full">
+                            <div className="w-20 h-20 mb-6 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                                <Search className="w-10 h-10 text-blue-500" />
                             </div>
+                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 relative z-10">No partners found.</h3>
+                            <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm relative z-10">
+                                Try expanding your search criteria or invite a trusted ground handler directly to the network.
+                            </p>
+                            <button onClick={() => { setSearchTerm(""); setRegionFilter(""); setSpecialtyFilter(""); setVerifiedOnly(false); }} className="px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors">
+                                Clear Filters
+                            </button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
-                            {profiles.map((profile) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+                            {profiles.map((profile: any, index: number) => (
                                 <Link key={profile.id} href={`/marketplace/${profile.organization_id}`}>
-                                    <GlassCard className="group p-0 overflow-hidden hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1">
-                                        <div className="p-6 space-y-6">
-                                            {/* Header */}
-                                            <div className="flex items-start justify-between gap-4">
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 20 }} 
+                                        animate={{ opacity: 1, y: 0 }} 
+                                        transition={{ delay: index * 0.05 }}
+                                        className="group relative p-1 rounded-[28px] bg-slate-200 dark:bg-slate-800 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-1"
+                                    >
+                                        <div className="absolute inset-0 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-blue-500 to-indigo-500" />
+                                        <div className="relative h-full rounded-[24px] bg-white dark:bg-[#0f172a] p-6 lg:p-8 flex flex-col justify-between overflow-hidden">
+                                            {/* Top Section */}
+                                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800/50 pb-6 mb-6">
                                                 <div className="flex items-start gap-4">
-                                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center border border-slate-700 overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+                                                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-950 flex items-center justify-center border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-sm group-hover:scale-105 transition-transform duration-300 shrink-0">
                                                         {profile.organization_logo ? (
-                                                            <Image
-                                                                src={profile.organization_logo}
-                                                                alt={profile.organization_name}
-                                                                fill
-                                                                className="object-cover"
-                                                            />
+                                                            <Image src={profile.organization_logo} alt={profile.organization_name} fill className="object-cover" />
                                                         ) : (
-                                                            <Building2 size={24} className="text-slate-600" />
+                                                            <Building2 size={24} className="text-slate-400 dark:text-slate-600" />
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors flex items-center gap-2">
+                                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2 line-clamp-1">
                                                             {profile.organization_name}
-                                                            {profile.is_verified && (
-                                                                <ShieldCheck size={16} className="text-green-400" />
-                                                            )}
+                                                            {profile.is_verified && <ShieldCheck size={16} className="text-blue-500" fill="currentColor" />}
                                                         </h3>
-                                                        {profile.verification_status === "pending" ? (
-                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-orange-500/15 text-orange-300 border border-orange-500/30">
-                                                                Pending verification
-                                                            </div>
-                                                        ) : profile.verification_status === "verified" ? (
-                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                                                                Verified
-                                                            </div>
-                                                        ) : (
-                                                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-500/15 text-slate-300 border border-slate-500/30">
-                                                                Draft profile
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center gap-1 mt-1">
+                                                        <div className="flex items-center gap-1.5 mt-1.5">
                                                             <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                                                            <span className="text-sm font-semibold text-slate-200">
+                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                                                 {profile.average_rating.toFixed(1)}
                                                             </span>
-                                                            <span className="text-sm text-slate-500">
+                                                            <span className="text-xs font-medium text-slate-500">
                                                                 ({profile.review_count} reviews)
                                                             </span>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Discovery</div>
-                                                    <div className="text-lg font-bold text-blue-400">
-                                                        {Math.max(0, Math.min(100, Math.round(Number(profile.discovery_score || 0))))}/100
-                                                    </div>
-                                                    <div className="text-[11px] text-slate-500 mt-1">Margin</div>
-                                                    <div className="text-sm font-semibold text-slate-300">
-                                                        {profile.margin_rate ? `${profile.margin_rate}%` : "Negotiable"}
+                                                        <div className="mt-2">
+                                                            {profile.verification_status === "verified" ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                                                                    Verified
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                                    Pending
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Description snippet */}
-                                            <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed h-10">
-                                                {profile.description || "No description provided."}
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed h-10 mb-6">
+                                                {profile.description || "Premium ground handler specializing in bespoke experiential travel."}
                                             </p>
 
-                                            {/* Tags */}
-                                            <div className="space-y-4">
+                                            {/* Tags container */}
+                                            <div className="space-y-4 flex-1">
                                                 <div className="flex flex-wrap gap-2">
-                                                    {profile.service_regions.slice(0, 3).map(region => (
-                                                        <span key={region} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-800/50 rounded-full text-xs font-medium text-slate-300 border border-slate-700/50">
-                                                            <MapPin size={10} className="text-blue-400" />
+                                                    {profile.service_regions.slice(0, 3).map((region: string) => (
+                                                        <span key={region} className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
+                                                            <MapPin size={10} className="text-slate-400" />
                                                             {region}
                                                         </span>
                                                     ))}
                                                     {profile.service_regions.length > 3 && (
-                                                        <span className="text-xs text-slate-500 self-center">
-                                                            +{profile.service_regions.length - 3} more
+                                                        <span className="text-[10px] text-slate-400 self-center font-bold px-1">
+                                                            +{profile.service_regions.length - 3}
                                                         </span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {profile.specialties.slice(0, 3).map(spec => (
-                                                        <span key={spec} className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/5 rounded-full text-xs font-medium text-purple-300 border border-purple-500/10">
-                                                            <Tag size={10} className="text-purple-400" />
+                                                    {profile.specialties.slice(0, 3).map((spec: string) => (
+                                                        <span key={spec} className="inline-flex items-center px-2.5 py-1 bg-blue-50/50 dark:bg-blue-500/5 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-500/10">
                                                             {spec}
                                                         </span>
                                                     ))}
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        {/* Footer Action */}
-                                        <div className="px-6 py-4 bg-slate-900/30 border-t border-slate-800/50 group-hover:bg-blue-500/5 transition-colors flex items-center justify-between">
-                                            <span className="text-sm font-medium text-slate-500 group-hover:text-blue-400 transition-colors">
-                                                View partnership details
-                                            </span>
-                                            <ArrowRight size={16} className="text-slate-600 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+                                            {/* Action bar */}
+                                            <div className="mt-8 pt-4 flex items-center justify-between border-t border-slate-50 dark:border-slate-800/50">
+                                                <div className="flex gap-4">
+                                                    <div>
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Discovery</div>
+                                                        <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                            {Math.max(0, Math.min(100, Math.round(Number(profile.discovery_score || 0))))}/100
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-px bg-slate-100 dark:bg-slate-800" />
+                                                    <div>
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margin</div>
+                                                        <div className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                            {profile.margin_rate ? `${profile.margin_rate}%` : "15-20%"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
+                                                    <ArrowRight size={14} className="text-slate-400 group-hover:text-white" />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </GlassCard>
+                                    </motion.div>
                                 </Link>
                             ))}
                         </div>
