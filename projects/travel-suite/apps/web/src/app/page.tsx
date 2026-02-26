@@ -4,87 +4,181 @@
 
 "use client";
 
-import { useDashboardStats } from "@/lib/queries/dashboard";
-import { createClient } from "@/lib/supabase/client";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { QuickQuoteModal } from "@/components/glass/QuickQuoteModal";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
-  Car,
   Users,
   Bell,
   Plus,
   History,
   Zap,
-  CreditCard,
   MessageSquare,
   ShieldCheck,
   Calculator,
+  ArrowUpRight,
+  Activity,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useDashboardStats } from "@/lib/queries/dashboard";
+import RevenueChart, { type RevenueMetricMode, type RevenueChartPoint } from "@/components/analytics/RevenueChart";
+import { QuickQuoteModal } from "@/components/glass/QuickQuoteModal";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
-import RevenueChart from "@/components/analytics/RevenueChart";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import { cn } from "@/lib/utils";
+import {
+  buildMoMDriverCallouts,
+  RANGE_TO_MONTHS,
+  type DashboardRange,
+} from "@/lib/analytics/adapters";
 
-interface DashboardStats {
-  totalDrivers: number;
-  totalClients: number;
-  activeTrips: number;
-  pendingNotifications: number;
-  marketplaceViews?: number;
-  marketplaceInquiries?: number;
-  conversionRate?: string;
+type TimeRange = DashboardRange;
+
+const RANGE_OPTIONS: Array<{ value: TimeRange; label: string }> = [
+  { value: "1y", label: "1Y" },
+  { value: "6m", label: "6M" },
+  { value: "3m", label: "3M" },
+  { value: "1m", label: "1M" },
+];
+
+const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
+  { value: "revenue", label: "Revenue" },
+  { value: "bookings", label: "Bookings" },
+];
+
+interface HealthResponse {
+  checks: {
+    database: { status: "healthy" | "degraded" | "down" | "unconfigured" };
+    firebase_fcm: { status: "healthy" | "degraded" | "down" | "unconfigured" };
+    whatsapp_api: { status: "healthy" | "degraded" | "down" | "unconfigured" };
+  };
 }
 
-interface ActivityItem {
-  id: string;
-  type: "trip" | "notification" | "inquiry";
-  title: string;
-  description: string;
-  timestamp: string;
+interface StatusItemProps {
+  icon: LucideIcon;
+  label: string;
   status: string;
+  color: string;
 }
 
 export default function DashboardPage() {
-  const supabase = createClient();
+  const router = useRouter();
   const { data, isLoading: loading } = useDashboardStats();
 
-  const stats = data?.stats || {
-    totalDrivers: 0,
-    totalClients: 0,
-    activeTrips: 0,
-    pendingNotifications: 0,
-    marketplaceViews: 0,
-    marketplaceInquiries: 0,
-    conversionRate: "0.0",
-  };
+  const stats =
+    data?.stats ||
+    ({
+      totalDrivers: 0,
+      totalClients: 0,
+      activeTrips: 0,
+      pendingNotifications: 0,
+      marketplaceViews: 0,
+      marketplaceInquiries: 0,
+      conversionRate: "0.0",
+    } as const);
+
   const activities = data?.activities || [];
-  const [health, setHealth] = useState<any>(null);
+
+  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [range, setRange] = useState<TimeRange>("6m");
+  const [metric, setMetric] = useState<RevenueMetricMode>("revenue");
 
   useEffect(() => {
     const fetchHealth = async () => {
       try {
         const res = await fetch("/api/admin/health");
-        if (res.ok) {
-          const data = await res.json();
-          setHealth(data);
-        }
-      } catch (e) {
-        console.error("Health check failed");
+        if (!res.ok) return;
+        const payload = (await res.json()) as HealthResponse;
+        setHealth(payload);
+      } catch {
+        // best effort only
       }
     };
-    fetchHealth();
+
+    void fetchHealth();
   }, []);
+
+  const filteredSeries = useMemo<RevenueChartPoint[]>(() => {
+    const take = RANGE_TO_MONTHS[range];
+    const series = data?.series || [];
+    return series.slice(-take);
+  }, [data?.series, range]);
+
+  const metricDrivers = useMemo(
+    () =>
+      buildMoMDriverCallouts(
+        filteredSeries.map((point) => ({
+          revenue: point.revenue,
+          bookings: point.bookings,
+          conversionRate: point.conversionRate,
+        }))
+      ),
+    [filteredSeries]
+  );
+
+  const kpiItems = [
+    {
+      label: "Active Trips",
+      value: stats.activeTrips,
+      icon: Zap,
+      trend: "+12%",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      href: "/analytics/drill-through?type=bookings&range=6m",
+    },
+    {
+      label: "Strategic Partners",
+      value: stats.totalClients,
+      icon: Users,
+      trend: "+3",
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+      href: "/analytics/drill-through?type=clients&range=6m",
+    },
+    {
+      label: "Marketplace",
+      value: `${stats.marketplaceViews || 0} / ${stats.marketplaceInquiries || 0}`,
+      icon: Plus,
+      trend: `${stats.conversionRate || "0.0"}% CR`,
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
+      href: "/analytics/drill-through?type=conversion&range=6m",
+    },
+    {
+      label: "Signal Queue",
+      value: stats.pendingNotifications,
+      icon: Bell,
+      trend: "-5%",
+      trendUp: false,
+      color: "text-rose-500",
+      bg: "bg-rose-500/10",
+      href: "/admin/insights",
+    },
+  ];
+
+  const handlePointSelect = (point: RevenueChartPoint) => {
+    const params = new URLSearchParams({
+      type: metric,
+      month: point.monthKey,
+      range,
+    });
+    router.push(`/analytics/drill-through?${params.toString()}`);
+  };
 
   return (
     <div className="space-y-10 pb-20">
-      {/* Command Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <motion.div
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+      >
         <div>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -108,41 +202,139 @@ export default function DashboardPage() {
             </GlassButton>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Strategic Stats Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard label="Active Trips" value={stats.activeTrips} icon={Zap} trend="+12%" color="text-emerald-500" bg="bg-emerald-500/10" loading={loading} />
-        <KPICard label="Strategic Partners" value={stats.totalClients} icon={Users} trend="+3" color="text-blue-500" bg="bg-blue-500/10" loading={loading} />
-        <KPICard label="Marketplace" value={(stats.marketplaceViews || 0) + " / " + (stats.marketplaceInquiries || 0)} icon={Plus} trend={(stats.conversionRate || "0.0") + "% CR"} color="text-amber-500" bg="bg-amber-500/10" loading={loading} />
-        <KPICard label="Signal Queue" value={stats.pendingNotifications} icon={Bell} trend="-5%" trendUp={false} color="text-rose-500" bg="bg-rose-500/10" loading={loading} />
-      </div>
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.06 }}
+      >
+        {kpiItems.map((item) => (
+          <motion.div
+            key={item.label}
+            whileHover={{ y: -2 }}
+            transition={{ type: "spring", stiffness: 360, damping: 26 }}
+          >
+            <Link href={item.href} className="block">
+              <KPICard {...item} loading={loading} />
+            </Link>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.12 }}
+      >
         <GlassCard className="lg:col-span-2" padding="xl">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Financial Trajectory</h3>
-              <p className="text-sm text-slate-500 font-medium">Revenue and booking conversion vs target</p>
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Financial Trajectory</h3>
+                <p className="text-sm text-slate-500 font-medium">
+                  Revenue, bookings, and conversion trend over the selected period.
+                </p>
+              </div>
+
+              <GlassButton
+                variant="outline"
+                className="h-9 px-3 text-xs"
+                onClick={() => {
+                  const params = new URLSearchParams({ type: metric, range });
+                  router.push(`/analytics/drill-through?${params.toString()}`);
+                }}
+              >
+                <Activity className="w-3.5 h-3.5 mr-1.5" />
+                Drill Through
+              </GlassButton>
             </div>
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-              <button className="px-4 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-slate-700 shadow-sm">Revenue</button>
-              <button className="px-4 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Volume</button>
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                {METRIC_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={cn(
+                      "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
+                      metric === option.value
+                        ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                    onClick={() => setMetric(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white dark:bg-slate-900 px-1 py-1">
+                {RANGE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={cn(
+                      "px-3 py-1.5 text-[11px] font-black rounded-lg tracking-wide transition-all",
+                      range === option.value
+                        ? "bg-primary text-white shadow-md shadow-primary/20"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                    onClick={() => setRange(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+
           <div className="w-full aspect-[21/9]">
-            <RevenueChart />
+            <RevenueChart data={filteredSeries} metric={metric} loading={loading} onPointSelect={handlePointSelect} />
           </div>
+
+          <div className="mt-4 text-[11px] text-text-muted font-semibold uppercase tracking-wider">
+            Tip: click a chart point to view drill-through records for that month.
+          </div>
+
+          {metricDrivers.length > 0 ? (
+            <div className="mt-4 grid gap-2 md:grid-cols-3">
+              {metricDrivers.map((driver) => (
+                <div
+                  key={driver.title}
+                  className={cn(
+                    "rounded-xl border px-3 py-2",
+                    driver.direction === "up"
+                      ? "border-emerald-100 bg-emerald-50/60"
+                      : driver.direction === "down"
+                        ? "border-rose-100 bg-rose-50/60"
+                        : "border-gray-200 bg-gray-50/70"
+                  )}
+                >
+                  <p className="text-[11px] font-black uppercase tracking-wider text-secondary">{driver.title}</p>
+                  <p className="mt-1 text-[11px] text-text-secondary">{driver.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </GlassCard>
 
         <div className="space-y-6">
-          <QuickActions />
-          <SystemHealth health={health} />
+          <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
+            <QuickActions />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.24 }}>
+            <SystemHealth health={health} />
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.2 }}
+      >
         <div className="lg:col-span-2">
           <ActivityFeed activities={activities} loading={loading} />
         </div>
@@ -165,19 +357,23 @@ export default function DashboardPage() {
                 Unlock advanced analytics, team collaboration, and automated reporting by upgrading your tier.
               </p>
             </div>
-            <Link href="/admin/billing" className="block w-full text-center py-3 text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <Link
+              href="/admin/billing"
+              className="flex items-center justify-center gap-2 w-full text-center py-3 text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
               Initialize Upgrade
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </GlassCard>
         </div>
-      </div>
+      </motion.div>
 
       <QuickQuoteModal isOpen={quoteOpen} onClose={() => setQuoteOpen(false)} />
     </div>
   );
 }
 
-function StatusItem({ icon: Icon, label, status, color }: any) {
+function StatusItem({ icon: Icon, label, status, color }: StatusItemProps) {
   return (
     <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
       <div className="flex items-center gap-3">

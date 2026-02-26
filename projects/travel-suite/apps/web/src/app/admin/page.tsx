@@ -38,7 +38,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassSelect } from "@/components/glass/GlassInput";
-import RevenueChart from "@/components/analytics/RevenueChart";
+import RevenueChart, { type RevenueChartPoint } from "@/components/analytics/RevenueChart";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -93,6 +93,15 @@ interface HealthResponse {
         notification_pipeline: { status: HealthStatus };
     };
 }
+
+const ADMIN_REVENUE_SERIES: RevenueChartPoint[] = [
+    { monthKey: "2025-08", label: "Aug", revenue: 86000, bookings: 9, conversionRate: 38 },
+    { monthKey: "2025-09", label: "Sep", revenue: 92000, bookings: 11, conversionRate: 41 },
+    { monthKey: "2025-10", label: "Oct", revenue: 105000, bookings: 12, conversionRate: 44 },
+    { monthKey: "2025-11", label: "Nov", revenue: 98000, bookings: 10, conversionRate: 37 },
+    { monthKey: "2025-12", label: "Dec", revenue: 117000, bookings: 14, conversionRate: 46 },
+    { monthKey: "2026-01", label: "Jan", revenue: 126000, bookings: 15, conversionRate: 48 },
+];
 
 export default function AdminDashboard() {
     const supabase = createClient();
@@ -193,7 +202,7 @@ export default function AdminDashboard() {
                         timestamp: notif.sent_at || new Date().toISOString(),
                         status: notif.status || "sent",
                     })),
-                    ...(marketStats?.recent_inquiries || []).map((inq: any) => ({
+                    ...(marketStats?.recent_inquiries || []).map((inq: { id?: string; created_at?: string; organizations?: { name?: string } }) => ({
                         id: inq.id || Math.random().toString(),
                         type: "inquiry" as const,
                         title: "Partner Inquiry",
@@ -380,7 +389,7 @@ export default function AdminDashboard() {
                                 </div>
 
                                 <p className="mt-4 text-[11px] text-text-muted font-medium italic">
-                                    "{stat.description}"
+                                    &ldquo;{stat.description}&rdquo;
                                 </p>
                             </div>
 
@@ -429,7 +438,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="w-full aspect-[21/9]">
-                        <RevenueChart />
+                        <RevenueChart data={ADMIN_REVENUE_SERIES} metric="revenue" />
                     </div>
                 </GlassCard>
 
