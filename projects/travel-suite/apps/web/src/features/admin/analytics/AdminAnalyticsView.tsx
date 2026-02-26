@@ -100,8 +100,8 @@ export function AdminAnalyticsView() {
         transition={{ duration: 0.28, delay: 0.04 }}
       >
         <div>
-          <h1 className="text-4xl font-serif text-secondary tracking-tight">Business Insights</h1>
-          <p className="mt-2 text-lg text-text-secondary">Cohort-aware analytics with per-widget drill-through.</p>
+          <h1 className="text-4xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-premium drop-shadow-sm tracking-tight mb-1">Business Insights</h1>
+          <p className="mt-2 text-lg text-slate-500 font-medium">Cohort-aware analytics with per-widget drill-through.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -214,19 +214,22 @@ export function AdminAnalyticsView() {
             href={`/analytics/drill-through?${drillBaseParams.toString()}&type=${item.type}`}
             className="block"
           >
-            <GlassCard padding="lg" className="group hover:-translate-y-0.5 transition-transform">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                  <item.icon className={`h-6 w-6 ${item.color}`} />
+            <GlassCard padding="lg" className="group hover:-translate-y-1 hover:shadow-card transition-all duration-300 animate-spring-up overflow-hidden relative border border-slate-200/50">
+              <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                    <item.icon className={`h-6 w-6 ${item.color}`} />
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary">
+                    Drill
+                    <ChevronRight className="h-3 w-3" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary">
-                  Drill
-                  <ChevronRight className="h-3 w-3" />
-                </div>
+                <div className="text-3xl font-bold text-secondary tabular-nums">{loading ? "..." : item.value}</div>
+                <p className="mt-1 text-sm font-medium text-text-secondary">{item.label}</p>
+                <p className="text-[11px] text-text-muted mt-1">{item.sub}</p>
               </div>
-              <div className="text-3xl font-bold text-secondary tabular-nums">{loading ? "..." : item.value}</div>
-              <p className="mt-1 text-sm font-medium text-text-secondary">{item.label}</p>
-              <p className="text-[11px] text-text-muted mt-1">{item.sub}</p>
             </GlassCard>
           </Link>
         ))}

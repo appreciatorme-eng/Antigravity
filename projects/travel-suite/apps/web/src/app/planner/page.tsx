@@ -206,13 +206,16 @@ Make it practical and specific:
 
                 {!result ? (
                     <div className="max-w-4xl mx-auto px-6 pb-10">
-                        <Card className="border-gray-100 dark:border-white/10 shadow-xl bg-white/80 dark:bg-slate-950/40 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700">
-                            <CardHeader className="bg-gradient-to-r from-emerald-50/50 to-sky-50/50 dark:from-white/5 dark:to-white/0 border-b border-gray-100 dark:border-white/10 pb-6">
-                                <CardTitle className="text-xl flex items-center gap-2 text-secondary">
-                                    <Sparkles className="w-5 h-5 text-primary" />
+                        <Card className="glass-card shadow-card animate-spring-up duration-700 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000" />
+                            <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-b border-emerald-100/50 dark:border-emerald-900/50 pb-6 relative z-10 transition-colors">
+                                <CardTitle className="text-2xl flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl dark:bg-emerald-900/50 dark:text-emerald-400">
+                                        <Sparkles className="w-5 h-5" />
+                                    </div>
                                     Start your adventure
                                 </CardTitle>
-                                <CardDescription>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">
                                     Tell us where you want to go, and we&apos;ll handle the rest.
                                 </CardDescription>
                             </CardHeader>
@@ -311,11 +314,11 @@ Make it practical and specific:
                 ) : (
                     <>
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border sticky top-4 z-20 backdrop-blur-md bg-white/80 border-gray-100 dark:bg-slate-950/40 dark:border-white/10 print:hidden">
+                            <div className="flex justify-between items-center p-4 rounded-2xl shadow-glass border sticky top-4 z-20 backdrop-blur-glass bg-white/80 border-slate-200/50 dark:bg-slate-900/60 dark:border-slate-800 print:hidden animate-fade-in-up">
                                 <Button
                                     variant="ghost"
                                     onClick={() => setResult(null)}
-                                    className="text-gray-500 dark:text-slate-300 hover:text-secondary"
+                                    className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all font-semibold rounded-xl"
                                 >
                                     ← Start Over
                                 </Button>
@@ -337,7 +340,7 @@ Make it practical and specific:
                                     </Button>
                                     <button
                                         onClick={() => setIsShareOpen(true)}
-                                        className="px-4 py-2 bg-white text-secondary hover:bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex items-center gap-2 transition-all text-sm font-medium"
+                                        className="px-4 py-2 bg-whatsapp hover:bg-whatsapp:hover text-white rounded-xl shadow-button flex items-center gap-2 transition-smooth text-sm font-bold"
                                     >
                                         <Share2 className="w-4 h-4" /> Share Trip
                                     </button>

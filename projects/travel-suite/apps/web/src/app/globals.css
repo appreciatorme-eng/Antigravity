@@ -223,4 +223,39 @@
   .animate-fade-in-up {
     animation: fade-in-up 0.3s ease-out forwards;
   }
+
+  @keyframes spring-up {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-spring-up {
+    animation: spring-up 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  /* WhatsApp Green specific for Indian Market highlighting */
+  .bg-whatsapp {
+    background-color: #25D366;
+  }
+  .text-whatsapp {
+    color: #25D366;
+  }
+  .hover\:bg-whatsapp\:hover:hover {
+    background-color: #1FAF54;
+  }
+  
+  /* Indian festive/premium highlights */
+  .bg-gradient-premium {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  }
+
+  .gold-accent {
+    color: #D4AF37;
+  }
 }
