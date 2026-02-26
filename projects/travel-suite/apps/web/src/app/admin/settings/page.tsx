@@ -10,7 +10,9 @@ import {
     Palette,
     Shield,
     Bell,
-    Check
+    Check,
+    Link2,
+    Smartphone
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -22,6 +24,8 @@ import {
     type ItineraryTemplateId,
 } from "@/components/pdf/itinerary-types";
 import { useToast } from "@/components/ui/toast";
+import { WhatsAppConnectModal } from "@/components/whatsapp/WhatsAppConnectModal";
+import { cn } from "@/lib/utils";
 
 interface Organization {
     id: string;
@@ -73,6 +77,10 @@ export default function SettingsPage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [workflowRules, setWorkflowRules] = useState<WorkflowRule[]>([]);
     const [rulesSaving, setRulesSaving] = useState(false);
+
+    // WhatsApp Connect State
+    const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
+    const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -322,9 +330,9 @@ export default function SettingsPage() {
                                     setOrganization((prev) =>
                                         prev
                                             ? {
-                                                  ...prev,
-                                                  itinerary_template: e.target.value as ItineraryTemplateId,
-                                              }
+                                                ...prev,
+                                                itinerary_template: e.target.value as ItineraryTemplateId,
+                                            }
                                             : null
                                     )
                                 }
@@ -340,6 +348,57 @@ export default function SettingsPage() {
                                 This template is pre-selected for itinerary PDF exports. Users can still switch templates during download.
                             </p>
                         </div>
+                    </div>
+                </GlassCard>
+
+                {/* Integrations */}
+                <GlassCard padding="none" rounded="2xl">
+                    <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Link2 className="w-5 h-5 text-emerald-500" />
+                            <h2 className="font-bold text-secondary dark:text-white">Service Integrations</h2>
+                        </div>
+                        <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold border border-primary/20">Premium Add-ons</span>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {[
+                            { name: 'Amadeus Booking API', desc: 'Flight, hotel, and vehicle reservation networking.', status: 'Connected' },
+                            { name: 'Stripe Payments', desc: 'Secure financial routing and proposal checkout.', status: 'Connected' },
+                            { name: 'Google Places & Maps', desc: 'Geospatial mapping and point of interest data.', status: 'Disconnected' },
+                            {
+                                name: 'WhatsApp Web Link',
+                                desc: 'Zero-cost meta bypass using device linking.',
+                                status: isWhatsAppConnected ? 'Connected' : 'Disconnected',
+                                accent: 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20 hover:bg-[#25D366]/20',
+                                action: () => setIsWhatsAppConnectOpen(true)
+                            },
+                        ].map(integration => (
+                            <div key={integration.name} className="flex items-center justify-between p-4 border border-gray-100 dark:border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-gray-50/50 dark:bg-white/5">
+                                <div>
+                                    <h4 className="font-bold text-secondary dark:text-white flex items-center gap-2">
+                                        {integration.name}
+                                        {integration.name === 'WhatsApp Web Link' && (
+                                            <span className="text-[10px] bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Recommended</span>
+                                        )}
+                                    </h4>
+                                    <p className="text-xs text-text-muted mt-1">{integration.desc}</p>
+                                </div>
+                                <GlassButton
+                                    type="button"
+                                    variant={integration.status === 'Connected' ? 'outline' : 'primary'}
+                                    size="sm"
+                                    onClick={integration.action}
+                                    className={cn(
+                                        "text-xs transition-colors",
+                                        integration.status === 'Connected'
+                                            ? (integration.name === 'WhatsApp Web Link' ? 'border-[#25D366]/30 text-[#1da650] bg-[#25D366]/10' : 'border-emerald-200 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400')
+                                            : (integration.accent || '')
+                                    )}
+                                >
+                                    {integration.status === 'Connected' ? 'Manage' : 'Link Device'}
+                                </GlassButton>
+                            </div>
+                        ))}
                     </div>
                 </GlassCard>
 
@@ -446,6 +505,12 @@ export default function SettingsPage() {
                     </GlassButton>
                 </div>
             </form>
+
+            <WhatsAppConnectModal
+                isOpen={isWhatsAppConnectOpen}
+                onClose={() => setIsWhatsAppConnectOpen(false)}
+                onConnected={() => setIsWhatsAppConnected(true)}
+            />
         </div>
     );
 }
