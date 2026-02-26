@@ -124,25 +124,25 @@ export default function CommandPalette() {
                                         Create New Trip
                                     </CommandItem>
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/marketplace"))}
+                                        onSelect={() => runCommand(() => router.push("/admin/marketplace"))}
                                         icon={<Calendar className="w-4 h-4" />}
                                     >
                                         Browse Marketplace
                                     </CommandItem>
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/billing"))}
+                                        onSelect={() => runCommand(() => router.push("/admin/billing"))}
                                         icon={<CreditCard className="w-4 h-4" />}
                                     >
                                         Open Billing
                                     </CommandItem>
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/social"))}
+                                        onSelect={() => runCommand(() => router.push("/admin/social"))}
                                         icon={<Megaphone className="w-4 h-4" />}
                                     >
                                         Social Studio
                                     </CommandItem>
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/add-ons"))}
+                                        onSelect={() => runCommand(() => router.push("/admin/add-ons"))}
                                         icon={<Package className="w-4 h-4" />}
                                     >
                                         Planner Add-ons Extension
