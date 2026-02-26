@@ -104,7 +104,7 @@ export default function MarketplaceAnalyticsPage() {
                     <p className="text-slate-400">Track your profile performance and partner engagement.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Link href="/admin/settings/marketplace">
+                    <Link href="/settings/marketplace">
                         <GlassButton variant="secondary">Manage Profile</GlassButton>
                     </Link>
                     <GlassButton onClick={fetchStats} className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function MarketplaceAnalyticsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <Link href={`/admin/marketplace/${view.viewer_org_id}`}>
+                                        <Link href={`/marketplace/${view.viewer_org_id}`}>
                                             <GlassButton variant="secondary" className="px-3 py-1.5 text-xs">View</GlassButton>
                                         </Link>
                                     </div>

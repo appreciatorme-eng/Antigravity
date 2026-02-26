@@ -81,13 +81,13 @@ export default function Sidebar({ className }: SidebarProps) {
                 { icon: LayoutDashboard, label: "Dashboard", href: "/" },
                 { icon: FileText, label: "Inquiries & Quotes", href: "/proposals" },
                 { icon: Briefcase, label: "Active Trips", href: "/trips" },
-                { 
-                    icon: Map, 
-                    label: "Itinerary Planner", 
+                {
+                    icon: Map,
+                    label: "Itinerary Planner",
                     href: "/planner",
                     subItems: [
-                        { icon: Plane, label: "Add-ons Extension", href: "/admin/add-ons" },
-                    ], 
+                        { icon: Plane, label: "Add-ons Extension", href: "/add-ons" },
+                    ],
                 },
                 { icon: Plane, label: "Flights & Hotels", href: "/bookings" },
             ]
@@ -96,7 +96,7 @@ export default function Sidebar({ className }: SidebarProps) {
             label: "OPERATIONS",
             items: [
                 { icon: Users, label: "Client CRM", href: "/clients" },
-                { icon: Truck, label: "Suppliers & Drivers", href: "/admin/drivers" },
+                { icon: Truck, label: "Suppliers & Drivers", href: "/drivers" },
                 { icon: Store, label: "B2B Marketplace", href: "/marketplace" },
                 { icon: Calendar, label: "Calendar", href: "/calendar" },
             ]
@@ -106,7 +106,7 @@ export default function Sidebar({ className }: SidebarProps) {
             items: [
                 { icon: Wallet, label: "Margins & Revenue", href: "/admin/revenue" },
                 { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
-                { icon: Megaphone, label: "Social Studio", href: "/admin/social" },
+                { icon: Megaphone, label: "Social Studio", href: "/social" },
                 { icon: Settings, label: "Settings", href: "/admin/settings" },
             ]
         }

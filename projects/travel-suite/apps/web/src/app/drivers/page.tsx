@@ -543,7 +543,7 @@ export default function DriversPage() {
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <Link href={`/admin/drivers/${driver.id}`} className="font-medium text-secondary dark:text-white hover:text-primary flex items-center gap-1">
+                                                    <Link href={`/drivers/${driver.id}`} className="font-medium text-secondary dark:text-white hover:text-primary flex items-center gap-1">
                                                         {driver.full_name}
                                                         <ExternalLink className="w-3 h-3 text-gray-400" />
                                                     </Link>

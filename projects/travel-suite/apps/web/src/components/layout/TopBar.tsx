@@ -34,7 +34,7 @@ export default function TopBar({ className }: TopBarProps) {
                         )} />
                         <input
                             type="text"
-                            placeholder="Search everything..."
+                            placeholder="Search PNR, Client, Itinerary (⌘K)..."
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
                             className="bg-transparent border-none outline-none text-sm w-full placeholder:text-gray-400 dark:text-slate-200"
@@ -59,14 +59,16 @@ export default function TopBar({ className }: TopBarProps) {
                         <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
                     </button>
 
-                    <button className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors group relative" title="WhatsApp Communications">
-                        <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                    <button className="relative p-2 text-white bg-whatsapp hover:bg-whatsapp:hover rounded-lg transition-transform hover:-translate-y-0.5 shadow-button group" title="WhatsApp Inbox">
+                        <MessageCircle className="w-5 h-5 transition-transform" />
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border border-white dark:border-slate-900 text-[9px] font-bold text-white shadow-sm">
+                            3
+                        </span>
                     </button>
 
-                    <button className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 text-sm font-medium">
+                    <button className="flex items-center gap-2 px-3 py-2 bg-gradient-premium text-white rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none font-semibold text-sm">
                         <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">New Project</span>
+                        <span className="hidden sm:inline tracking-tight text-white drop-shadow-sm">New Quote</span>
                     </button>
 
                     <div className="w-px h-6 bg-gray-200 dark:bg-slate-800 mx-1"></div>

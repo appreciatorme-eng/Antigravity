@@ -237,13 +237,13 @@ export default function OperatorDetailPage() {
         <div className="min-h-screen p-10 flex flex-col items-center justify-center space-y-4 text-center">
             <Building2 size={64} className="text-slate-700" />
             <h1 className="text-2xl font-bold text-white">Operator not found</h1>
-            <Link href="/admin/marketplace"><GlassButton>Back to Marketplace</GlassButton></Link>
+            <Link href="/marketplace"><GlassButton>Back to Marketplace</GlassButton></Link>
         </div>
     );
 
     return (
         <div className="min-h-screen p-6 lg:p-10 space-y-8 max-w-[1400px] mx-auto">
-            <Link href="/admin/marketplace" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+            <Link href="/marketplace" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
                 <ChevronLeft size={20} /> Back to Marketplace
             </Link>
 
@@ -382,7 +382,7 @@ export default function OperatorDetailPage() {
                                     <Lock className="mx-auto text-slate-600" size={24} />
                                     <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Verified Access Only</p>
                                     <p className="text-xs text-slate-500">Legal and safety documents are restricted to Verified Partners. Request verification in your settings to unlock access.</p>
-                                    <Link href="/admin/settings/marketplace">
+                                    <Link href="/settings/marketplace">
                                         <GlassButton variant="secondary" className="w-full text-[10px] py-1 mt-2">Get Verified</GlassButton>
                                     </Link>
                                 </div>

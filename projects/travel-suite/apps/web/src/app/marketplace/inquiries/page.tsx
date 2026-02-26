@@ -122,76 +122,76 @@ export default function MarketplaceInquiriesPage() {
                             const targetName = activeTab === "received" ? inq.sender?.name : inq.receiver?.name;
 
                             return (
-                            <GlassCard
-                                key={inq.id}
-                                className={`p-0 overflow-hidden border-l-4 transition-all hover:bg-white/[0.02] ${canMarkRead ? "border-l-blue-500 bg-blue-500/5" : "border-l-transparent"}`}
-                                onClick={() => canMarkRead && markAsRead(inq.id)}
-                                role={canMarkRead ? "button" : undefined}
-                                tabIndex={canMarkRead ? 0 : undefined}
-                                aria-label={canMarkRead ? `Mark inquiry from ${targetName || "partner"} as read` : undefined}
-                                onKeyDown={(event) => {
-                                    if (!canMarkRead) return;
-                                    if (event.key === "Enter" || event.key === " ") {
-                                        event.preventDefault();
-                                        void markAsRead(inq.id);
-                                    }
-                                }}
-                            >
-                                <div className="p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
-                                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden flex-shrink-0 relative">
-                                        {activeTab === "received" ? (
-                                            inq.sender?.logo_url ? (
-                                                <Image
-                                                    src={inq.sender.logo_url}
-                                                    alt={`${inq.sender?.name || "Sender"} logo`}
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            ) : <Building2 size={24} className="text-slate-500" />
-                                        ) : (
-                                            inq.receiver?.logo_url ? (
-                                                <Image
-                                                    src={inq.receiver.logo_url}
-                                                    alt={`${inq.receiver?.name || "Receiver"} logo`}
-                                                    fill
-                                                    className="object-cover"
-                                                />
-                                            ) : <Building2 size={24} className="text-slate-500" />
-                                        )}
-                                    </div>
-
-                                    <div className="flex-1 space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-white text-lg">
-                                                {activeTab === "received" ? inq.sender?.name : inq.receiver?.name}
-                                            </span>
-                                            {activeTab === "received" && !inq.read_at && (
-                                                <span className="bg-blue-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded text-white tracking-wider">New</span>
+                                <GlassCard
+                                    key={inq.id}
+                                    className={`p-0 overflow-hidden border-l-4 transition-all hover:bg-white/[0.02] ${canMarkRead ? "border-l-blue-500 bg-blue-500/5" : "border-l-transparent"}`}
+                                    onClick={() => canMarkRead && markAsRead(inq.id)}
+                                    role={canMarkRead ? "button" : undefined}
+                                    tabIndex={canMarkRead ? 0 : undefined}
+                                    aria-label={canMarkRead ? `Mark inquiry from ${targetName || "partner"} as read` : undefined}
+                                    onKeyDown={(event) => {
+                                        if (!canMarkRead) return;
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            void markAsRead(inq.id);
+                                        }
+                                    }}
+                                >
+                                    <div className="p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
+                                        <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-700 overflow-hidden flex-shrink-0 relative">
+                                            {activeTab === "received" ? (
+                                                inq.sender?.logo_url ? (
+                                                    <Image
+                                                        src={inq.sender.logo_url}
+                                                        alt={`${inq.sender?.name || "Sender"} logo`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                ) : <Building2 size={24} className="text-slate-500" />
+                                            ) : (
+                                                inq.receiver?.logo_url ? (
+                                                    <Image
+                                                        src={inq.receiver.logo_url}
+                                                        alt={`${inq.receiver?.name || "Receiver"} logo`}
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                ) : <Building2 size={24} className="text-slate-500" />
                                             )}
                                         </div>
-                                        <p className="text-slate-400 text-sm line-clamp-1">{inq.message}</p>
-                                        <div className="flex items-center gap-4 text-xs text-slate-500">
-                                            <span className="flex items-center gap-1">
-                                                <Clock size={12} />
-                                                {new Date(inq.created_at).toLocaleDateString()}
-                                            </span>
-                                            <span className="flex items-center gap-1 capitalize">
-                                                <span className={`w-2 h-2 rounded-full ${inq.status === 'pending' ? 'bg-orange-500' : 'bg-green-500'}`} />
-                                                {inq.status}
-                                            </span>
+
+                                        <div className="flex-1 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-white text-lg">
+                                                    {activeTab === "received" ? inq.sender?.name : inq.receiver?.name}
+                                                </span>
+                                                {activeTab === "received" && !inq.read_at && (
+                                                    <span className="bg-blue-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded text-white tracking-wider">New</span>
+                                                )}
+                                            </div>
+                                            <p className="text-slate-400 text-sm line-clamp-1">{inq.message}</p>
+                                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                                                <span className="flex items-center gap-1">
+                                                    <Clock size={12} />
+                                                    {new Date(inq.created_at).toLocaleDateString()}
+                                                </span>
+                                                <span className="flex items-center gap-1 capitalize">
+                                                    <span className={`w-2 h-2 rounded-full ${inq.status === 'pending' ? 'bg-orange-500' : 'bg-green-500'}`} />
+                                                    {inq.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 w-full md:w-auto">
+                                            <Link href={`/marketplace/${activeTab === "received" ? inq.sender_org_id : inq.receiver_org_id}`} className="flex-1 md:flex-none">
+                                                <GlassButton variant="secondary" className="w-full md:w-auto flex items-center gap-2 text-xs">
+                                                    View Profile
+                                                    <ExternalLink size={14} />
+                                                </GlassButton>
+                                            </Link>
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center gap-3 w-full md:w-auto">
-                                        <Link href={`/admin/marketplace/${activeTab === "received" ? inq.sender_org_id : inq.receiver_org_id}`} className="flex-1 md:flex-none">
-                                            <GlassButton variant="secondary" className="w-full md:w-auto flex items-center gap-2 text-xs">
-                                                View Profile
-                                                <ExternalLink size={14} />
-                                            </GlassButton>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </GlassCard>
+                                </GlassCard>
                             );
                         })
                     )}
