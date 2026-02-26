@@ -23,7 +23,9 @@ import {
     LogOut,
     User as UserIcon,
     Globe,
-    Megaphone
+    Megaphone,
+    MessageCircle,
+    Wallet
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion } from "framer-motion";
@@ -69,41 +71,41 @@ export default function Sidebar({ className }: SidebarProps) {
     };
 
     const quickAccessItems: SidebarNavItem[] = [
-        { icon: Store, label: "Marketplace", href: "/admin/marketplace" },
         { icon: CreditCard, label: "Billing", href: "/admin/billing" },
     ];
 
     const navGroups: Array<{ label: string; items: SidebarNavItem[] }> = [
         {
-            label: "OPERATE",
+            label: "WORKSPACE",
             items: [
                 { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-                { icon: Briefcase, label: "Trips", href: "/trips" },
-                { icon: Users, label: "Clients", href: "/clients" },
-                { icon: FileText, label: "Proposals", href: "/proposals" },
-            ]
-        },
-        {
-            label: "TOOLS",
-            items: [
-                {
-                    icon: Map,
-                    label: "Planner",
+                { icon: FileText, label: "Inquiries & Quotes", href: "/proposals" },
+                { icon: Briefcase, label: "Active Trips", href: "/trips" },
+                { 
+                    icon: Map, 
+                    label: "Itinerary Planner", 
                     href: "/planner",
                     subItems: [
                         { icon: Plane, label: "Add-ons Extension", href: "/admin/add-ons" },
-                    ],
+                    ], 
                 },
-                { icon: Plane, label: "Bookings", href: "/bookings" },
-                { icon: Calendar, label: "Calendar", href: "/calendar" },
-                { icon: Truck, label: "Drivers", href: "/admin/drivers" },
+                { icon: Plane, label: "Flights & Hotels", href: "/bookings" },
             ]
         },
         {
-            label: "BUSINESS",
+            label: "OPERATIONS",
             items: [
-                { icon: BarChart3, label: "Analytics", href: "/admin/revenue" },
-                { icon: Sparkles, label: "Insights", href: "/admin/insights" },
+                { icon: Users, label: "Client CRM", href: "/clients" },
+                { icon: Truck, label: "Suppliers & Drivers", href: "/admin/drivers" },
+                { icon: Store, label: "B2B Marketplace", href: "/marketplace" },
+                { icon: Calendar, label: "Calendar", href: "/calendar" },
+            ]
+        },
+        {
+            label: "INTELLIGENCE",
+            items: [
+                { icon: Wallet, label: "Margins & Revenue", href: "/admin/revenue" },
+                { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
                 { icon: Megaphone, label: "Social Studio", href: "/admin/social" },
                 { icon: Settings, label: "Settings", href: "/admin/settings" },
             ]
@@ -163,10 +165,10 @@ export default function Sidebar({ className }: SidebarProps) {
                                         <Link
                                             href={item.href}
                                             className={cn(
-                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
+                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 relative group overflow-hidden shadow-sm",
                                                 isActive
-                                                    ? "bg-primary/10 text-primary"
-                                                    : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                                                    ? "bg-gradient-to-r from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-primary/10"
+                                                    : "hover:bg-slate-800/80 hover:shadow-md text-slate-400 hover:text-slate-100 border border-transparent"
                                             )}
                                         >
                                             <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />
@@ -234,10 +236,10 @@ export default function Sidebar({ className }: SidebarProps) {
                                     key={item.href}
                                     href={item.href}
                                     className={cn(
-                                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
+                                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 relative group overflow-hidden shadow-sm",
                                         isActive
-                                            ? "bg-primary/10 text-primary"
-                                            : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                                            ? "bg-gradient-to-r from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-primary/10"
+                                            : "hover:bg-slate-800/80 hover:shadow-md text-slate-400 hover:text-slate-100 border border-transparent"
                                     )}
                                 >
                                     <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />
@@ -274,10 +276,10 @@ export default function Sidebar({ className }: SidebarProps) {
                                         <Link
                                             href={item.href}
                                             className={cn(
-                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
+                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 relative group overflow-hidden shadow-sm",
                                                 isActive
-                                                    ? "bg-primary/10 text-primary"
-                                                    : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                                                    ? "bg-gradient-to-r from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-primary/10"
+                                                    : "hover:bg-slate-800/80 hover:shadow-md text-slate-400 hover:text-slate-100 border border-transparent"
                                             )}
                                         >
                                             <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />

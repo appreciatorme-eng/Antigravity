@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Bell, Command, HelpCircle, Plus, Activity } from "lucide-react";
+import { Search, Bell, Command, HelpCircle, Plus, MessageCircle } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { useIsFetching } from "@tanstack/react-query";
@@ -57,6 +57,11 @@ export default function TopBar({ className }: TopBarProps) {
                     <button className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all relative">
                         <Bell className="w-5 h-5" />
                         <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                    </button>
+
+                    <button className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors group relative" title="WhatsApp Communications">
+                        <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900"></span>
                     </button>
 
                     <button className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 text-sm font-medium">

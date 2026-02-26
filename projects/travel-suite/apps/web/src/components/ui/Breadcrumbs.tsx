@@ -13,9 +13,9 @@ export function Breadcrumbs({ className }: { className?: string }) {
     if (paths.length <= 1) return null; // Only show on nested pages
 
     return (
-        <nav className={cn("flex items-center text-sm text-slate-500 mb-6", className)}>
-            <Link href="/" className="hover:text-primary transition-colors flex items-center">
-                <Home className="w-4 h-4" />
+        <nav className={cn("flex items-center px-4 py-2 mt-2 mb-6 w-max rounded-full bg-white/50 dark:bg-slate-900/50 backdrop-blur border border-slate-200/50 dark:border-slate-800/50 shadow-sm", className)}>
+            <Link href="/" className="hover:text-primary transition-colors flex items-center p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
+                <Home className="w-4 h-4 text-slate-400 group-hover:text-primary" />
             </Link>
 
             {paths.map((path, idx) => {
@@ -27,11 +27,13 @@ export function Breadcrumbs({ className }: { className?: string }) {
 
                 return (
                     <div key={path} className="flex items-center">
-                        <ChevronRight className="w-4 h-4 mx-2 opacity-50" />
+                        <ChevronRight className="w-3.5 h-3.5 mx-1.5 opacity-40 text-slate-400" />
                         {isLast ? (
-                            <span className="text-slate-900 dark:text-slate-100 font-medium">{formattedPath}</span>
+                            <span className="text-sm text-slate-900 dark:text-slate-100 font-bold px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 shadow-inner">
+                                {formattedPath}
+                            </span>
                         ) : (
-                            <Link href={href} className="hover:text-primary transition-colors">
+                            <Link href={href} className="text-sm font-medium hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800">
                                 {formattedPath}
                             </Link>
                         )}

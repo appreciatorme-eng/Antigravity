@@ -19,6 +19,9 @@ import {
   Calculator,
   ArrowUpRight,
   Activity,
+  Eye,
+  EyeOff,
+  MessageCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useDashboardStats } from "@/lib/queries/dashboard";
@@ -78,6 +81,7 @@ export default function DashboardPage() {
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [range, setRange] = useState<TimeRange>("6m");
   const [metric, setMetric] = useState<RevenueMetricMode>("revenue");
+  const [privacyBlur, setPrivacyBlur] = useState(false);
 
   const filteredSeries = useMemo<RevenueChartPoint[]>(() => {
     const take = RANGE_TO_MONTHS[range];
@@ -162,12 +166,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <GlassButton variant="outline" className="h-12 px-6" onClick={() => setQuoteOpen(true)}>
+          <GlassButton variant="outline" className="h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
+            <MessageCircle className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">New Lead</span>
+          </GlassButton>
+          <GlassButton variant="outline" className="h-12 px-6 transition-colors shadow-sm bg-white dark:bg-slate-900" onClick={() => setQuoteOpen(true)}>
             <Calculator className="w-4 h-4 mr-2" />
             Quick Quote
           </GlassButton>
           <Link href="/trips">
-            <GlassButton variant="primary" className="h-12 px-6 shadow-xl shadow-primary/20">
+            <GlassButton variant="primary" className="h-12 px-6 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-shadow">
               <Plus className="w-4 h-4 mr-2" />
               New Trip
             </GlassButton>
@@ -184,8 +192,9 @@ export default function DashboardPage() {
         {kpiItems.map((item) => (
           <motion.div
             key={item.label}
-            whileHover={{ y: -2 }}
-            transition={{ type: "spring", stiffness: 360, damping: 26 }}
+            whileHover={{ y: -4, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="group"
           >
             <Link href={item.href} className="block">
               <KPICard {...item} loading={loading} />
@@ -210,17 +219,31 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <GlassButton
-                variant="outline"
-                className="h-9 px-3 text-xs"
-                onClick={() => {
-                  const params = new URLSearchParams({ type: metric, range });
-                  router.push(`/analytics/drill-through?${params.toString()}`);
-                }}
-              >
-                <Activity className="w-3.5 h-3.5 mr-1.5" />
-                Drill Through
-              </GlassButton>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPrivacyBlur(!privacyBlur)}
+                  className={cn(
+                    "p-1.5 transition-colors rounded-lg border shadow-sm",
+                    privacyBlur
+                      ? "bg-primary/10 border-primary/20 text-primary"
+                      : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                  )}
+                  title="Toggle Margin Privacy"
+                >
+                  {privacyBlur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <GlassButton
+                  variant="outline"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => {
+                    const params = new URLSearchParams({ type: metric, range });
+                    router.push(`/analytics/drill-through?${params.toString()}`);
+                  }}
+                >
+                  <Activity className="w-3.5 h-3.5 mr-1.5" />
+                  Drill Through
+                </GlassButton>
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -260,7 +283,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="w-full aspect-[21/9]">
+          <div className={cn(
+            "w-full aspect-[21/9] transition-all duration-500 ease-in-out",
+            privacyBlur ? "blur-[6px] opacity-60 grayscale-[50%] select-none pointer-events-none" : "blur-none opacity-100"
+          )}>
             <RevenueChart data={filteredSeries} metric={metric} loading={loading} onPointSelect={handlePointSelect} />
           </div>
 
