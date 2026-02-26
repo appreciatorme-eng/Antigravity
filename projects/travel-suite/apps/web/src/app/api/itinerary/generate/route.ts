@@ -7,6 +7,7 @@ import { getSemanticMatch, saveSemanticMatch } from '@/lib/semantic-cache';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 import { populateItineraryImages } from '@/lib/image-search';
+import { getOrgAiUsageSnapshot, trackOrgAiUsage } from '@/lib/ai/cost-guardrails';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -50,8 +51,19 @@ try {
             limiter: Ratelimit.slidingWindow(5, '1 m'), // 5 requests per minute per user
         });
     }
-} catch (e) {
+} catch {
     console.warn("Ratelimit initialization failed (likely build step)");
+}
+
+const FORCE_LOW_COST_MODE = ["1", "true", "yes"].includes(
+    (process.env.AI_LOW_COST_MODE || "").toLowerCase()
+);
+const ESTIMATED_COST_GROQ_USD = Number(process.env.AI_ESTIMATED_COST_GROQ_USD || "0.006");
+const ESTIMATED_COST_GEMINI_FLASH_USD = Number(process.env.AI_ESTIMATED_COST_GEMINI_FLASH_USD || "0.012");
+
+function toSafeCost(value: number, fallback: number): number {
+    if (Number.isFinite(value) && value >= 0) return value;
+    return fallback;
 }
 
 function extractDestination(prompt: string): string {
@@ -241,6 +253,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { prompt, days } = parsed.data;
+    const usageSnapshot = await getOrgAiUsageSnapshot(user.id);
+    const lowCostMode = FORCE_LOW_COST_MODE || usageSnapshot.overCap;
 
     try {
         // Extract destination early for cache lookup
@@ -273,6 +287,7 @@ export async function POST(req: NextRequest) {
 
             if (!isFallback && hasValidCoordinates) {
                 console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
+                void trackOrgAiUsage(user.id, "cache_hit", 0);
                 return NextResponse.json(cachedItinerary);
             } else {
                 console.log(`⚠️ [TIER 1: CACHE INVALID] ${destination} - ${isFallback ? 'is fallback itinerary' : 'has old NY coordinates'} - regenerating`);
@@ -290,7 +305,7 @@ export async function POST(req: NextRequest) {
                 // We use ratelimit.redis (the internal redis client) to fetch the cache
                 // But the property might be private depending on Upstash versions, 
                 // so let's import and instantiate our own explicit Redis client to be safe.
-            } catch (e) { }
+            } catch { }
         }
 
         let redisStore: Redis | null = null;
@@ -300,10 +315,11 @@ export async function POST(req: NextRequest) {
                 const cachedRedis = await redisStore.get(redisCacheKey);
                 if (cachedRedis) {
                     console.log(`✅ [TIER 0: REDIS HIT] Fastest possible response!`);
+                    void trackOrgAiUsage(user.id, "cache_hit", 0);
                     return NextResponse.json(typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis);
                 }
             }
-        } catch (e) {
+        } catch {
             console.warn("Redis fallback missed / connection issue");
         }
 
@@ -314,6 +330,7 @@ export async function POST(req: NextRequest) {
             const semanticMatch = await getSemanticMatch(prompt, destination, days);
             if (semanticMatch) {
                 console.log(`✅ [TIER 0.5: SEMANTIC CACHE HIT] exact itinerary match saved API cost!`);
+                void trackOrgAiUsage(user.id, "cache_hit", 0);
                 return NextResponse.json(semanticMatch);
             }
         } catch (e) {
@@ -370,6 +387,7 @@ export async function POST(req: NextRequest) {
                         }
                     }
 
+                    void trackOrgAiUsage(user.id, "rag_hit", 0);
                     return NextResponse.json(geocodedItinerary);
                 }
             }
@@ -388,7 +406,24 @@ export async function POST(req: NextRequest) {
 
         if (!geminiApiKey && !groqApiKey) {
             console.warn('⚠️ No AI keys configured (GOOGLE_API_KEY / GROQ_API_KEY). Returning fallback itinerary.');
+            void trackOrgAiUsage(user.id, "fallback", 0);
             return NextResponse.json(await buildFallbackItinerary(prompt, days));
+        }
+
+        if (lowCostMode) {
+            console.log(
+                `💸 [LOW COST MODE] Heavy model generation skipped for user=${user.id}, org=${usageSnapshot.organizationId || "none"}, overCap=${usageSnapshot.overCap}`
+            );
+            const fallback = await buildFallbackItinerary(prompt, days);
+            if (usageSnapshot.overCap) {
+                fallback.summary =
+                    "A lightweight itinerary was generated because your organization reached its monthly AI usage cap. Increase cap in settings or retry next cycle.";
+            } else if (FORCE_LOW_COST_MODE) {
+                fallback.summary =
+                    "A lightweight itinerary was generated because AI low-cost mode is enabled for this environment.";
+            }
+            void trackOrgAiUsage(user.id, "fallback", 0);
+            return NextResponse.json(fallback);
         }
 
         const itinerarySchema: Schema = {
@@ -441,6 +476,8 @@ export async function POST(req: NextRequest) {
         };
 
         let itinerary: ItineraryLike | null = null;
+        let aiGenerationCostUsd = 0;
+        let aiGenerated = false;
         const finalPrompt = `Create a ${days}-day travel itinerary for: "${prompt}".
 
 Requirements:
@@ -498,6 +535,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                     });
                     const responseContent = chatCompletion.choices[0]?.message?.content || "";
                     itinerary = JSON.parse(responseContent) as ItineraryLike;
+                    aiGenerated = true;
+                    aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GROQ_USD, 0.006);
                     console.log(`✅ [GROQ] Successfully generated itinerary.`);
                 } catch (groqError) {
                     console.error(`❌ [GROQ] Failed:`, groqError);
@@ -519,6 +558,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
                 const responseText = result.response.text();
                 itinerary = JSON.parse(responseText.trim()) as ItineraryLike;
+                aiGenerated = true;
+                aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GEMINI_FLASH_USD, 0.012);
                 console.log(`✅ [GEMINI] Successfully generated itinerary.`);
             }
 
@@ -605,7 +646,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                     // Cache infinitely, Upstash allows max limit to naturally evict LRU items
                     await redisStore.set(redisCacheKey, JSON.stringify(geocodedItinerary));
                     console.log(`💾 Memorized Itinerary to Redis: ${redisCacheKey}`);
-                } catch (e) {
+                } catch {
                     console.error("Failed to memorize to Redis");
                 }
             }
@@ -629,6 +670,12 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
             console.log('⚠️ Skipping cache save for fallback itinerary');
         }
 
+        if (aiGenerated && !isFallbackItinerary) {
+            void trackOrgAiUsage(user.id, "ai_generation", aiGenerationCostUsd);
+        } else if (isFallbackItinerary) {
+            void trackOrgAiUsage(user.id, "fallback", 0);
+        }
+
         // Save to semantic pgvector cache asynchronously
         if (process.env.OPENAI_API_KEY && !isFallbackItinerary) {
             saveSemanticMatch(prompt, destination, days, geocodedItinerary)
@@ -640,6 +687,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
     } catch (error) {
         console.error("AI Generation Error:", error);
+        void trackOrgAiUsage(user.id, "fallback", 0);
         return NextResponse.json(await buildFallbackItinerary(prompt, days));
     }
 }

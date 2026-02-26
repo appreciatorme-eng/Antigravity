@@ -1321,6 +1321,8 @@ export type Database = {
       }
       organizations: {
         Row: {
+          ai_monthly_request_cap: number | null
+          ai_monthly_spend_cap_usd: number | null
           billing_address: Json | null
           billing_state: string | null
           created_at: string | null
@@ -1336,6 +1338,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_monthly_request_cap?: number | null
+          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1351,6 +1355,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_monthly_request_cap?: number | null
+          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1371,6 +1377,53 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_ai_usage: {
+        Row: {
+          ai_requests: number
+          cache_hits: number
+          created_at: string | null
+          estimated_cost_usd: number
+          fallback_count: number
+          id: string
+          month_start: string
+          organization_id: string
+          rag_hits: number
+          updated_at: string | null
+        }
+        Insert: {
+          ai_requests?: number
+          cache_hits?: number
+          created_at?: string | null
+          estimated_cost_usd?: number
+          fallback_count?: number
+          id?: string
+          month_start: string
+          organization_id: string
+          rag_hits?: number
+          updated_at?: string | null
+        }
+        Update: {
+          ai_requests?: number
+          cache_hits?: number
+          created_at?: string | null
+          estimated_cost_usd?: number
+          fallback_count?: number
+          id?: string
+          month_start?: string
+          organization_id?: string
+          rag_hits?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_ai_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

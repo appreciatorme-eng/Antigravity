@@ -3,6 +3,36 @@ import { test, expect } from "@playwright/test";
 const SAMPLE_ITINERARY_ID = "00000000-0000-0000-0000-000000000001";
 
 test.describe("Public API contracts", () => {
+  test("admin cache clear endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/clear-cache");
+    expect(response.status()).toBe(401);
+  });
+
+  test("location share GET endpoint requires authentication", async ({ request }) => {
+    const response = await request.get(
+      "/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1"
+    );
+    expect(response.status()).toBe(401);
+  });
+
+  test("location share POST endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/location/share", {
+      data: {
+        tripId: "00000000-0000-0000-0000-000000000001",
+        dayNumber: 1,
+        expiresHours: 24,
+      },
+    });
+    expect(response.status()).toBe(401);
+  });
+
+  test("location share DELETE endpoint requires authentication", async ({ request }) => {
+    const response = await request.delete(
+      "/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1"
+    );
+    expect(response.status()).toBe(401);
+  });
+
   test("debug endpoint is not publicly available", async ({ request }) => {
     const response = await request.get("/api/debug");
     expect([401, 404]).toContain(response.status());

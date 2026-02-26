@@ -31,7 +31,8 @@ import {
     ChevronRight,
     Search,
     Command,
-    Store
+    Store,
+    Sparkles
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -494,6 +495,21 @@ export default function AdminDashboard() {
                                     <div>
                                         <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Marketplace</h4>
                                         <p className="text-[10px] text-text-muted font-medium mt-0.5">Optimize your partner profile.</p>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
+                                </div>
+                            </GlassCard>
+                        </Link>
+
+                        <Link href="/admin/insights" className="group">
+                            <GlassCard padding="md" className="transition-all hover:bg-emerald-50/50 border-gray-100 group-hover:border-emerald-200">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Sparkles className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Insights Copilot</h4>
+                                        <p className="text-[10px] text-text-muted font-medium mt-0.5">ROI, risk, and upsell recommendations.</p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
                                 </div>

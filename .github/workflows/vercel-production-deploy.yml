@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "projects/travel-suite/apps/web/**"
+      - ".github/workflows/vercel-production-deploy.yml"
   workflow_dispatch:
 
 concurrency:
@@ -14,10 +17,15 @@ jobs:
   deploy-production:
     name: Deploy Web App to Vercel
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/travel-suite/apps/web
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      PRODUCTION_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_HEALTHCHECK_URL }}
 
     steps:
       - name: Checkout
@@ -31,7 +39,10 @@ jobs:
       - name: Validate Vercel token
         id: validate_token
         run: |
-          if npx vercel whoami --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_TOKEN is missing. Skipping Action-based Vercel deploy."
+          elif npx vercel whoami --token="$VERCEL_TOKEN" >/dev/null 2>&1; then
             echo "valid=true" >> "$GITHUB_OUTPUT"
             echo "Vercel token is valid."
           else
@@ -48,7 +59,7 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const file = 'projects/travel-suite/apps/web/vercel.json';
+          const file = 'vercel.json';
           const config = JSON.parse(fs.readFileSync(file, 'utf8'));
           if (Array.isArray(config.crons)) {
             delete config.crons;
@@ -66,8 +77,19 @@ jobs:
             --meta githubCommitSha="$GITHUB_SHA" \
             --meta githubCommitRef="$GITHUB_REF_NAME"
 
+      - name: Trigger Vercel Deploy Hook fallback
+        if: steps.validate_token.outputs.valid != 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: |
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+
       - name: Skip deploy note
         if: steps.validate_token.outputs.valid != 'true'
         run: |
           echo "Action-based deploy skipped because VERCEL_TOKEN is invalid."
           echo "Vercel Git integration is expected to handle deploys on push to main."
+
+      - name: Verify production health endpoint
+        if: env.PRODUCTION_HEALTHCHECK_URL != ''
+        run: |
+          echo "Checking $PRODUCTION_HEALTHCHECK_URL"
+          curl -fsS "$PRODUCTION_HEALTHCHECK_URL"

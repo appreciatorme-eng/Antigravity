@@ -2,6 +2,7 @@
 Rate limiting middleware for GoBuddy AI Agents.
 Prevents API abuse and protects upstream LLM quota (e.g., Gemini 1,500 req/day).
 """
+import os
 import time
 import logging
 from collections import defaultdict
@@ -10,6 +11,10 @@ from typing import Optional
 from fastapi import Request, HTTPException
 
 logger = logging.getLogger("gobuddy.rate_limit")
+RATE_LIMIT_DISABLED = (
+    os.getenv("DISABLE_RATE_LIMIT", "").lower() in {"1", "true", "yes"}
+    or os.getenv("ENV", "").lower() == "test"
+)
 
 
 class RateLimiter:
@@ -43,6 +48,9 @@ class RateLimiter:
         Raises:
             HTTPException 429 if rate limit exceeded
         """
+        if RATE_LIMIT_DISABLED:
+            return
+
         now = time.time()
 
         # Check per-minute limit

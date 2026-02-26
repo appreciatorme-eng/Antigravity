@@ -3,7 +3,7 @@ API Routes for GoBuddy AI Agents
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from pydantic import BaseModel, Field
 
 from agents.trip_planner import plan_trip, plan_trip_structured
@@ -167,6 +167,7 @@ async def chat_recommend(
     request: RecommendationRequest,
     raw_request: Request,
     user_id: str = Depends(get_user_id),
+    requested_user_id: Optional[str] = Query(default=None, alias="user_id"),
 ):
     """
     Get personalized destination recommendations.
@@ -175,14 +176,20 @@ async def chat_recommend(
     provides increasingly personalized suggestions.
     """
     try:
-        ai_limiter.check(get_client_key(raw_request, user_id))
+        effective_user_id = requested_user_id or user_id
+        if not requested_user_id and user_id == "dev-user":
+            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+
+        ai_limiter.check(get_client_key(raw_request, effective_user_id))
         result = await get_recommendations(
-            user_id=user_id,
+            user_id=effective_user_id,
             query=request.query,
             preferences=request.preferences,
             num_recommendations=request.num_recommendations,
         )
         return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Recommendation failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -192,17 +199,24 @@ async def chat_recommend(
 async def update_user_preferences(
     request: PreferenceUpdate,
     user_id: str = Depends(get_user_id),
+    requested_user_id: Optional[str] = Query(default=None, alias="user_id"),
 ):
     """
     Update user preferences for better recommendations.
     """
     try:
+        effective_user_id = requested_user_id or user_id
+        if not requested_user_id and user_id == "dev-user":
+            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+
         result = await update_preferences(
-            user_id=user_id,
+            user_id=effective_user_id,
             preference_type=request.preference_type,
             preference_value=request.preference_value,
         )
         return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Preference update failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -212,18 +226,25 @@ async def update_user_preferences(
 async def submit_feedback(
     request: FeedbackRequest,
     user_id: str = Depends(get_user_id),
+    requested_user_id: Optional[str] = Query(default=None, alias="user_id"),
 ):
     """
     Submit feedback about a destination for learning.
     """
     try:
+        effective_user_id = requested_user_id or user_id
+        if not requested_user_id and user_id == "dev-user":
+            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+
         result = await provide_feedback(
-            user_id=user_id,
+            user_id=effective_user_id,
             destination=request.destination,
             feedback=request.feedback,
             rating=request.rating,
         )
         return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Feedback submission failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -239,8 +260,11 @@ async def get_conversations(
     """
     Get conversation history for a user (if stored in database).
     """
-    # This would connect to the agent_conversations table
-    # For now, return a placeholder
+    if user_id != _current_user and _current_user != "dev-user":
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # This would connect to the agent_conversations table.
+    # For now, return a placeholder.
     return {
         "success": True,
         "data": {

@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Loader2, ShieldAlert } from "lucide-react";
-import AdminLayout from "@/components/layout/AdminLayout";
+import AdminShellLayout from "@/components/layout/AdminLayout";
 
 // Sidebar navigation links - moved to SideBar.tsx but keeping types if needed or just removing
 
@@ -22,7 +22,6 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     const router = useRouter();
-    const pathname = usePathname();
 
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
@@ -99,8 +98,8 @@ export default function AdminLayout({
     }
 
     return (
-        <AdminLayout>
+        <AdminShellLayout>
             {children}
-        </AdminLayout>
+        </AdminShellLayout>
     );
 }

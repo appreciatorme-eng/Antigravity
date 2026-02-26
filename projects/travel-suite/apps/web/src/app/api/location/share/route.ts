@@ -1,42 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
 
-const supabaseAdmin = createAdminClient();
-
-async function requireAdmin(req: NextRequest) {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-    }
-
-    const token = authHeader.substring(7);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData?.user) {
-        return { error: NextResponse.json({ error: "Invalid token" }, { status: 401 }) };
-    }
-
-    const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .single();
-
-    if (profile?.role !== "admin") {
-        return { error: NextResponse.json({ error: "Admin access required" }, { status: 403 }) };
-    }
-
-    return { userId: authData.user.id };
-}
+type AdminContext = Extract<RequireAdminResult, { ok: true }>;
 
 function buildLiveUrl(req: NextRequest, token: string) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
     return `${appUrl.replace(/\/$/, "")}/live/${token}`;
 }
 
+async function getScopedTrip(admin: AdminContext, tripId: string) {
+    let query = admin.adminClient
+        .from("trips")
+        .select("id, organization_id")
+        .eq("id", tripId)
+        .limit(1);
+
+    if (!admin.isSuperAdmin) {
+        if (!admin.organizationId) return null;
+        query = query.eq("organization_id", admin.organizationId);
+    }
+
+    const { data: trip, error } = await query.maybeSingle();
+    if (error || !trip) return null;
+    return trip;
+}
+
 export async function GET(req: NextRequest) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) return admin.response;
 
         const tripId = req.nextUrl.searchParams.get("tripId") || "";
         const dayNumberRaw = req.nextUrl.searchParams.get("dayNumber");
@@ -46,10 +38,15 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "tripId is required" }, { status: 400 });
         }
 
-        let query = supabaseAdmin
+        const trip = await getScopedTrip(admin, tripId);
+        if (!trip) {
+            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+        }
+
+        let query = admin.adminClient
             .from("trip_location_shares")
             .select("id,trip_id,day_number,share_token,expires_at,is_active")
-            .eq("trip_id", tripId)
+            .eq("trip_id", trip.id)
             .eq("is_active", true)
             .gt("expires_at", new Date().toISOString())
             .order("created_at", { ascending: false })
@@ -80,8 +77,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) return admin.response;
 
         const body = await req.json();
         const tripId = String(body.tripId || "").trim();
@@ -92,10 +89,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "tripId is required" }, { status: 400 });
         }
 
-        const existingQuery = supabaseAdmin
+        const trip = await getScopedTrip(admin, tripId);
+        if (!trip) {
+            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+        }
+
+        const existingQuery = admin.adminClient
             .from("trip_location_shares")
             .select("id,trip_id,day_number,share_token,expires_at,is_active")
-            .eq("trip_id", tripId)
+            .eq("trip_id", trip.id)
             .eq("is_active", true)
             .gt("expires_at", new Date().toISOString())
             .order("created_at", { ascending: false })
@@ -118,10 +120,10 @@ export async function POST(req: NextRequest) {
         const shareToken = crypto.randomUUID().replace(/-/g, "");
         const expiresAt = new Date(Date.now() + expiresHours * 60 * 60 * 1000).toISOString();
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await admin.adminClient
             .from("trip_location_shares")
             .insert({
-                trip_id: tripId,
+                trip_id: trip.id,
                 day_number: dayNumber,
                 share_token: shareToken,
                 created_by: admin.userId,
@@ -152,8 +154,8 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) return admin.response;
 
         const tripId = req.nextUrl.searchParams.get("tripId") || "";
         const dayNumber = Number(req.nextUrl.searchParams.get("dayNumber") || 0) || null;
@@ -166,15 +168,35 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
-        let query = supabaseAdmin.from("trip_location_shares").update({
+        let scopedTripId = tripId;
+        if (shareId) {
+            const { data: share, error: shareError } = await admin.adminClient
+                .from("trip_location_shares")
+                .select("id, trip_id")
+                .eq("id", shareId)
+                .maybeSingle();
+
+            if (shareError || !share) {
+                return NextResponse.json({ error: "Share not found" }, { status: 404 });
+            }
+
+            scopedTripId = share.trip_id || "";
+        }
+
+        const trip = await getScopedTrip(admin, scopedTripId);
+        if (!trip) {
+            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+        }
+
+        let query = admin.adminClient.from("trip_location_shares").update({
             is_active: false,
             expires_at: new Date().toISOString(),
         });
 
         if (shareId) {
-            query = query.eq("id", shareId);
+            query = query.eq("id", shareId).eq("trip_id", trip.id);
         } else {
-            query = query.eq("trip_id", tripId).eq("is_active", true);
+            query = query.eq("trip_id", trip.id).eq("is_active", true);
             if (dayNumber) {
                 query = query.eq("day_number", dayNumber);
             }
@@ -185,8 +207,8 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        await supabaseAdmin.from("notification_logs").insert({
-            trip_id: tripId || null,
+        await admin.adminClient.from("notification_logs").insert({
+            trip_id: trip.id,
             notification_type: "manual",
             recipient_type: "admin",
             recipient_id: admin.userId,

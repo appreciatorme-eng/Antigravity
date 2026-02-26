@@ -347,6 +347,17 @@ export class PaymentService {
   async recordPayment(options: RecordPaymentOptions): Promise<void> {
     const supabase = await createClient();
 
+    // Idempotency guard: webhook retries should not create duplicate payment records.
+    const { data: existingPayment } = await supabase
+      .from('invoice_payments')
+      .select('id, status')
+      .eq('reference', options.razorpayPaymentId)
+      .maybeSingle();
+
+    if (existingPayment?.id) {
+      return;
+    }
+
     // Get invoice
     const { data: invoice } = await supabase
       .from('invoices')
@@ -370,6 +381,7 @@ export class PaymentService {
         amount: options.amount,
         method: options.paymentMethod,
         payment_date: new Date().toISOString(),
+        reference: options.razorpayPaymentId,
         notes: JSON.stringify({
           razorpay_payment_id: options.razorpayPaymentId,
           razorpay_order_id: options.razorpayOrderId,
@@ -623,6 +635,19 @@ export class PaymentService {
     metadata: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   }): Promise<void> {
     const supabase = await createClient();
+
+    if (options.externalId) {
+      const { data: existingEvent } = await supabase
+        .from('payment_events')
+        .select('id')
+        .eq('event_type', options.eventType)
+        .eq('external_id', options.externalId)
+        .maybeSingle();
+
+      if (existingEvent?.id) {
+        return;
+      }
+    }
 
     await supabase.from('payment_events').insert({
       organization_id: options.organizationId,

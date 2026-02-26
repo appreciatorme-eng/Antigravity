@@ -163,7 +163,7 @@ async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
         .eq("id", authData.user.id)
         .maybeSingle();
 
-    return profile?.role === "admin";
+    return profile?.role === "admin" || profile?.role === "super_admin";
 }
 
 async function getAdminUserId(authHeader: string | null): Promise<string | null> {
@@ -176,7 +176,9 @@ async function getAdminUserId(authHeader: string | null): Promise<string | null>
         .select("role")
         .eq("id", authData.user.id)
         .maybeSingle();
-    return profile?.role === "admin" ? authData.user.id : null;
+    return profile?.role === "admin" || profile?.role === "super_admin"
+        ? authData.user.id
+        : null;
 }
 
 function isServiceRoleBearer(authHeader: string | null): boolean {

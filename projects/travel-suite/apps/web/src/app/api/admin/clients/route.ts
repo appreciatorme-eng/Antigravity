@@ -330,10 +330,36 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
         }
 
-        await supabaseAdmin.from("profiles").delete().eq("id", clientId);
+        const { data: profileSnapshot } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("id", clientId)
+            .maybeSingle();
+        const { data: clientSnapshot } = await supabaseAdmin
+            .from("clients")
+            .select("*")
+            .eq("id", clientId)
+            .maybeSingle();
+
+        const { error: profileDeleteError } = await supabaseAdmin
+            .from("profiles")
+            .delete()
+            .eq("id", clientId);
+
+        if (profileDeleteError) {
+            return NextResponse.json({ error: profileDeleteError.message }, { status: 400 });
+        }
+
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
 
         if (deleteError) {
+            // Best-effort compensating rollback so profile records are not silently lost.
+            if (profileSnapshot) {
+                await supabaseAdmin.from("profiles").upsert(profileSnapshot);
+            }
+            if (clientSnapshot) {
+                await supabaseAdmin.from("clients").upsert(clientSnapshot);
+            }
             return NextResponse.json({ error: deleteError.message }, { status: 400 });
         }
 

@@ -1,13 +1,13 @@
 """
 Trip Planner Multi-Agent Team
-Coordinates Researcher, Planner, and Budgeter agents for comprehensive trip planning
+Coordinates Researcher, Planner, and Budgeter agents for comprehensive trip planning.
 """
-import os
+from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Optional
 from pydantic import BaseModel, Field
 
 from agno.agent import Agent
-from agno.team import Team
 from agno.models.openai import OpenAIChat
 from agno.tools.duckduckgo import DuckDuckGoTools
 
@@ -46,6 +46,33 @@ class TripItinerary(BaseModel):
     days: list[DayPlan]
     packing_tips: list[str] = Field(default_factory=list)
     local_tips: list[str] = Field(default_factory=list)
+
+
+@dataclass
+class TeamShim:
+    """
+    Lightweight compatibility wrapper for multi-agent orchestration.
+
+    Newer Agno releases removed/relocated `agno.team.Team`. This shim keeps the
+    existing interface (`team.arun(...)`) used across the codebase and tests.
+    """
+
+    name: str
+    agents: list[Agent]
+    instructions: list[str]
+    mode: str = "sequential"
+
+    async def arun(self, prompt: str):
+        transcript = []
+        for agent in self.agents:
+            try:
+                result = await agent.arun(prompt)
+                content = getattr(result, "content", "") if result is not None else ""
+            except Exception as exc:
+                content = f"{agent.name} error: {exc}"
+            transcript.append(f"{agent.name}:\n{content}".strip())
+
+        return SimpleNamespace(content="\n\n".join(transcript))
 
 
 # Researcher Agent - Gathers destination information
@@ -102,7 +129,7 @@ budgeter = Agent(
 
 
 # Create the Trip Planner Team
-trip_planner_team = Team(
+trip_planner_team = TeamShim(
     name="TripPlannerTeam",
     agents=[researcher, planner, budgeter],
     instructions=[

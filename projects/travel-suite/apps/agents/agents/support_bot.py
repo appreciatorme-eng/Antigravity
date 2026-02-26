@@ -9,8 +9,14 @@ from typing import Optional
 
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-from agno.knowledge.text import TextKnowledge
-from agno.knowledge.combined import CombinedKnowledge
+try:
+    # agno < 0.2 naming
+    from agno.knowledge.text import TextKnowledge  # type: ignore
+    from agno.knowledge.combined import CombinedKnowledge  # type: ignore
+except ImportError:
+    # agno 0.1.0 naming in this repo's pinned requirements
+    from agno.knowledge.text import TextKnowledgeBase as TextKnowledge  # type: ignore
+    from agno.knowledge.combined import CombinedKnowledgeBase as CombinedKnowledge  # type: ignore
 
 logger = logging.getLogger("gobuddy.support_bot")
 

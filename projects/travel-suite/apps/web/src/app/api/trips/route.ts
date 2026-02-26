@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sanitizeText } from "@/lib/security/sanitize";
 
 const supabaseAdmin = createAdminClient();
+
+function sanitizeSearchTerm(input: string): string {
+    const safe = sanitizeText(input, { maxLength: 80 });
+    if (!safe) return "";
+    return safe.replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
+}
 
 interface TripListRow {
     id: string;
@@ -90,7 +97,7 @@ export async function GET(req: NextRequest) {
         // Staff/Admin access - show organization trips
         const { searchParams } = new URL(req.url);
         const status = searchParams.get("status") || "all";
-        const search = searchParams.get("search") || "";
+        const search = sanitizeSearchTerm(searchParams.get("search") || "");
 
         let query = supabaseAdmin
             .from("trips")

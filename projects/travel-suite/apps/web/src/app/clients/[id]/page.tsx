@@ -317,8 +317,9 @@ export default async function ClientProfilePage({
                                                     <h3 className="text-base font-bold text-secondary dark:text-white group-hover:text-primary transition-colors">
                                                         {(() => {
                                                             const itin = (trip as any).itineraries || (trip as any).itinerary;
-                                                            if (Array.isArray(itin)) return itin[0]?.destination || trip.destination || "Untitled Trip";
-                                                            return itin?.destination || trip.destination || "Untitled Trip";
+                                                            const tripDestination = (trip as any).destination;
+                                                            if (Array.isArray(itin)) return itin[0]?.destination || tripDestination || "Untitled Trip";
+                                                            return itin?.destination || tripDestination || "Untitled Trip";
                                                         })()}
                                                     </h3>
                                                     <span className="text-[9px] font-black uppercase tracking-widest text-text-muted opacity-50">#{trip.id.slice(0, 8)}</span>

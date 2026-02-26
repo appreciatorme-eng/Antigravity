@@ -29,6 +29,28 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
     expect(res.status()).toBe(403);
   });
 
+  authTest('forbids non-admin access to admin clear cache endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/clear-cache');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin location share access', async ({ clientPage }) => {
+    const res = await clientPage.request.get(
+      '/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1'
+    );
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin notification send', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/notifications/send', {
+      data: {
+        title: 'Unauthorized Test',
+        body: 'This should be rejected for non-admin users.',
+      },
+    });
+    expect(res.status()).toBe(403);
+  });
+
   authTest('forbids non-admin trip creation with cross-org style payload', async ({ clientPage }) => {
     const res = await clientPage.request.post('/api/admin/trips', {
       data: {

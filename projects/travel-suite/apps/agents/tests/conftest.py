@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Set test environment
 os.environ["ENV"] = "test"
 os.environ["OPENAI_API_KEY"] = "test-key"
+os.environ["ALLOW_DEV_AUTH_BYPASS"] = "true"
 
 
 @pytest.fixture
@@ -97,8 +98,8 @@ def mock_agno_agent():
 
 @pytest.fixture
 def mock_agno_team():
-    """Mock Agno Team class."""
-    with patch("agno.team.Team") as mock:
+    """Mock Team shim class."""
+    with patch("agents.trip_planner.TeamShim") as mock:
         team = MagicMock()
         team.arun = AsyncMock(return_value=MagicMock(content="Mock team response"))
         mock.return_value = team

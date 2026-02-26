@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+import { cn } from "@/lib/utils";
 
 // Lazy imports for Leaflet (SSR-safe via dynamic import in page.tsx)
 import L from "leaflet";

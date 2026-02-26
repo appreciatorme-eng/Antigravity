@@ -21,7 +21,7 @@ export function useDashboardStats() {
                 supabase.from("external_drivers").select("id", { count: "exact", head: true }),
                 supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "client"),
                 supabase.from("trips").select("id", { count: "exact", head: true }).eq("status", "active"),
-                supabase.from("notifications").select("id", { count: "exact", head: true }).eq("status", "pending"),
+                supabase.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "pending"),
             ]);
 
             // Fetch marketplace stats
@@ -42,7 +42,7 @@ export function useDashboardStats() {
                     .order("created_at", { ascending: false })
                     .limit(5),
                 supabase
-                    .from("notifications")
+                    .from("notification_logs")
                     .select("id, title, body, sent_at, status")
                     .order("sent_at", { ascending: false })
                     .limit(5),

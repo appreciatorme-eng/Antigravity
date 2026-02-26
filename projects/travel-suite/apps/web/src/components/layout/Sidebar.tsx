@@ -16,6 +16,7 @@ import {
     Truck,
     CreditCard,
     BarChart3,
+    Sparkles,
     Settings,
     ChevronLeft,
     ChevronRight,
@@ -84,6 +85,7 @@ export default function Sidebar({ className }: SidebarProps) {
             label: "BUSINESS",
             items: [
                 { icon: BarChart3, label: "Analytics", href: "/admin/revenue" },
+                { icon: Sparkles, label: "Insights", href: "/admin/insights" },
                 { icon: CreditCard, label: "Billing", href: "/admin/billing" },
                 { icon: Settings, label: "Settings", href: "/admin/settings" },
             ]

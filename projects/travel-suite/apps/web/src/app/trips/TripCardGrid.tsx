@@ -80,7 +80,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
             toast({
                 title: "Operation Failed",
                 description: "Failed to delete trip. Please check your permissions.",
-                variant: "destructive",
+                variant: "error",
             });
         }
         setDeleting(null);

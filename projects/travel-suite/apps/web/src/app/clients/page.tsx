@@ -297,7 +297,7 @@ export default function ClientsPage() {
             toast({
                 title: "Asset Updated",
                 description: `Identity profile ${editingClientId ? "updated" : "onboarded"} successfully.`,
-                variant: "default",
+                variant: "info",
             });
         } catch (error) {
             setFormError(error instanceof Error ? error.message : `System failure during profiling`);
@@ -393,7 +393,9 @@ export default function ClientsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <GlassButton
-                        onClick={fetchClients}
+                        onClick={() => {
+                            void fetchClients();
+                        }}
                         variant="ghost"
                         className="rounded-xl border-gray-100 h-14 w-14 p-0 shadow-sm"
                         title="Refresh"

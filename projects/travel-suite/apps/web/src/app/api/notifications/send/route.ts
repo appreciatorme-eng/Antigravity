@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { sendNotificationToUser, sendNotificationToTripUsers } from "@/lib/notifications";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeEmail, sanitizeText } from "@/lib/security/sanitize";
@@ -13,9 +13,9 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 
-const supabaseAdmin = createAdminClient();
 const NOTIFICATION_RATE_LIMIT_MAX = 40;
 const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+type AdminContext = Extract<RequireAdminResult, { ok: true }>;
 
 const NotificationSendSchema = z.object({
     type: z.unknown().optional(),
@@ -61,31 +61,84 @@ function sanitizeNotificationData(
     return output;
 }
 
+async function resolveScopedTrip(
+    admin: AdminContext,
+    tripId: string
+): Promise<{ id: string; organization_id: string | null } | null> {
+    let query = admin.adminClient
+        .from("trips")
+        .select("id, organization_id")
+        .eq("id", tripId)
+        .limit(1);
+
+    if (!admin.isSuperAdmin) {
+        if (!admin.organizationId) return null;
+        query = query.eq("organization_id", admin.organizationId);
+    }
+
+    const { data } = await query.maybeSingle();
+    return data || null;
+}
+
+async function resolveScopedRecipientUserId(
+    admin: AdminContext,
+    userId?: string,
+    email?: string | null
+): Promise<string | null> {
+    if (userId) {
+        let query = admin.adminClient
+            .from("profiles")
+            .select("id")
+            .eq("id", userId)
+            .limit(1);
+
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) return null;
+            query = query.eq("organization_id", admin.organizationId);
+        }
+
+        const { data } = await query.maybeSingle();
+        return data?.id || null;
+    }
+
+    if (!email) return null;
+
+    let query = admin.adminClient
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .limit(1);
+
+    if (!admin.isSuperAdmin) {
+        if (!admin.organizationId) return null;
+        query = query.eq("organization_id", admin.organizationId);
+    }
+
+    const { data } = await query.maybeSingle();
+    return data?.id || null;
+}
+
 export async function POST(request: NextRequest) {
     const startedAt = Date.now();
     const requestId = getRequestId(request);
     const requestContext = getRequestContext(request, requestId);
 
     try {
-        const authHeader = request.headers.get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            logEvent("warn", "Notification send unauthorized: missing bearer token", requestContext);
-            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
-        }
+        const admin = await requireAdmin(request, { requireOrganization: false });
+        if (!admin.ok) {
+            const status = admin.response.status || 401;
+            const fallbackMessage =
+                status === 403
+                    ? "Forbidden"
+                    : status === 400
+                        ? "Admin organization not configured"
+                        : "Unauthorized";
 
-        const token = authHeader.substring(7);
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-        if (authError || !user) {
-            logEvent("warn", "Notification send unauthorized: invalid token", {
-                ...requestContext,
-                auth_error: authError?.message,
-            });
-            return withRequestId({ error: "Invalid token" }, requestId, { status: 401 });
+            return withRequestId({ error: fallbackMessage }, requestId, { status });
         }
 
         const rateLimit = await enforceRateLimit({
-            identifier: user.id,
+            identifier: admin.userId,
             limit: NOTIFICATION_RATE_LIMIT_MAX,
             windowMs: NOTIFICATION_RATE_LIMIT_WINDOW_MS,
             prefix: "api:notifications:send",
@@ -102,20 +155,6 @@ export async function POST(request: NextRequest) {
             response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
             response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
             return response;
-        }
-
-        const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
-
-        if (profile?.role !== "admin") {
-            logEvent("warn", "Notification send forbidden for non-admin", {
-                ...requestContext,
-                user_id: user.id,
-            });
-            return withRequestId({ error: "Admin access required" }, requestId, { status: 403 });
         }
 
         const rawBody = await request.json().catch(() => null);
@@ -143,23 +182,26 @@ export async function POST(request: NextRequest) {
         let result;
 
         if (tripId && !userId && !email) {
-            result = await sendNotificationToTripUsers(tripId, title, messageBody, type);
-        } else {
-            let resolvedUserId = userId;
-            if (!resolvedUserId && email) {
-                const { data: targetProfile } = await supabaseAdmin
-                    .from("profiles")
-                    .select("id")
-                    .eq("email", email)
-                    .single();
-                resolvedUserId = targetProfile?.id || undefined;
+            const scopedTrip = await resolveScopedTrip(admin, tripId);
+            if (!scopedTrip) {
+                return withRequestId(
+                    { error: "Trip not found in your organization scope" },
+                    requestId,
+                    { status: 404 }
+                );
             }
+
+            result = await sendNotificationToTripUsers(tripId, title, messageBody, type, {
+                organizationId: scopedTrip.organization_id,
+            });
+        } else {
+            const resolvedUserId = await resolveScopedRecipientUserId(admin, userId, email);
 
             if (!resolvedUserId) {
                 return withRequestId(
-                    { error: "Unable to resolve user for notification" },
+                    { error: "Unable to resolve user in your organization scope" },
                     requestId,
-                    { status: 400 }
+                    { status: 404 }
                 );
             }
 

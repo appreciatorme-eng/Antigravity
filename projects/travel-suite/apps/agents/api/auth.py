@@ -17,6 +17,7 @@ security = HTTPBearer(auto_error=False)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+ALLOW_DEV_AUTH_BYPASS = os.getenv("ALLOW_DEV_AUTH_BYPASS", "").lower() in {"1", "true", "yes"}
 
 
 async def verify_supabase_token(
@@ -29,13 +30,27 @@ async def verify_supabase_token(
     Raises HTTPException 401 if the token is invalid or missing.
     """
     if not credentials:
+        if ALLOW_DEV_AUTH_BYPASS and (not SUPABASE_URL or not SUPABASE_ANON_KEY):
+            logger.warning(
+                "Missing auth header with ALLOW_DEV_AUTH_BYPASS enabled; "
+                "accepting dev identity for local/test workflows."
+            )
+            return {"sub": "dev-user", "email": "dev@localhost", "role": "authenticated"}
         raise HTTPException(status_code=401, detail="Missing authorization header")
 
     token = credentials.credentials
 
-    if not SUPABASE_URL:
-        logger.warning("SUPABASE_URL not set — skipping token verification in dev mode")
-        return {"sub": "dev-user", "email": "dev@localhost", "role": "authenticated"}
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        if ALLOW_DEV_AUTH_BYPASS:
+            logger.warning(
+                "Supabase auth env missing and ALLOW_DEV_AUTH_BYPASS enabled; "
+                "accepting dev token for non-production workflows."
+            )
+            return {"sub": "dev-user", "email": "dev@localhost", "role": "authenticated"}
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication provider is not configured",
+        )
 
     try:
         async with httpx.AsyncClient() as client:

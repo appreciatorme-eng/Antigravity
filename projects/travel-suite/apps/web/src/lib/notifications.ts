@@ -85,18 +85,29 @@ export async function sendNotificationToTripUsers(
     tripId: string,
     title: string,
     body: string,
-    notificationType: string
+    notificationType: string,
+    options?: {
+        organizationId?: string | null;
+    }
 ): Promise<{ success: boolean; sentCount: number; error?: string }> {
     try {
         // Get trip and its user
         const { data: trip, error: tripError } = await supabaseAdmin
             .from("trips")
-            .select("client_id")
+            .select("client_id, organization_id")
             .eq("id", tripId)
             .single();
 
         if (tripError || !trip) {
             return { success: false, sentCount: 0, error: "Trip not found" };
+        }
+
+        if (
+            options?.organizationId &&
+            trip.organization_id &&
+            trip.organization_id !== options.organizationId
+        ) {
+            return { success: false, sentCount: 0, error: "Trip not found in organization scope" };
         }
         if (!trip.client_id) {
             return { success: false, sentCount: 0, error: "Trip has no client assigned" };

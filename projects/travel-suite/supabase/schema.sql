@@ -1168,6 +1168,10 @@ CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice
 CREATE INDEX IF NOT EXISTS idx_invoice_payments_org_created
     ON public.invoice_payments(organization_id, created_at DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_payments_reference_unique
+    ON public.invoice_payments(reference)
+    WHERE reference IS NOT NULL;
+
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoice_payments ENABLE ROW LEVEL SECURITY;
 
@@ -1190,6 +1194,48 @@ CREATE POLICY "Admins can manage invoice payments"
             WHERE profiles.id = auth.uid()
               AND profiles.role = 'admin'
               AND profiles.organization_id = invoice_payments.organization_id
+        )
+    );
+
+-- ================================================
+-- ORG AI USAGE GUARDRAILS
+-- ================================================
+ALTER TABLE public.organizations
+    ADD COLUMN IF NOT EXISTS ai_monthly_request_cap INTEGER DEFAULT 400,
+    ADD COLUMN IF NOT EXISTS ai_monthly_spend_cap_usd NUMERIC(10,2) DEFAULT 25.00;
+
+CREATE TABLE IF NOT EXISTS public.organization_ai_usage (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    organization_id UUID REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
+    month_start DATE NOT NULL,
+    ai_requests INTEGER NOT NULL DEFAULT 0,
+    rag_hits INTEGER NOT NULL DEFAULT 0,
+    cache_hits INTEGER NOT NULL DEFAULT 0,
+    fallback_count INTEGER NOT NULL DEFAULT 0,
+    estimated_cost_usd NUMERIC(12,4) NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (organization_id, month_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_organization_ai_usage_org_month
+    ON public.organization_ai_usage(organization_id, month_start DESC);
+
+ALTER TABLE public.organization_ai_usage ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can view organization ai usage" ON public.organization_ai_usage;
+CREATE POLICY "Admins can view organization ai usage"
+    ON public.organization_ai_usage FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.profiles
+            WHERE profiles.id = auth.uid()
+              AND profiles.role IN ('admin', 'super_admin')
+              AND (
+                  profiles.role = 'super_admin'
+                  OR profiles.organization_id = organization_ai_usage.organization_id
+              )
         )
     );
 
