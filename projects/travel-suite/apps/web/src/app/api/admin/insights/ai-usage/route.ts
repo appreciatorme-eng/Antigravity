@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { toNumber } from "@/lib/admin/insights";
 
+function isSchemaDriftError(message: string | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes("does not exist") || normalized.includes("could not find");
+}
+
 function monthStartISO(date = new Date()): string {
   const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
   return start.toISOString().slice(0, 10);
@@ -32,7 +38,31 @@ export async function GET(req: NextRequest) {
 
   if (orgRes.error || usageRes.error) {
     const err = orgRes.error || usageRes.error;
-    return NextResponse.json({ error: err?.message || "Failed to load AI usage" }, { status: 500 });
+    if (!isSchemaDriftError(err?.message || undefined)) {
+      return NextResponse.json({ error: err?.message || "Failed to load AI usage" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      month_start: monthStart,
+      tier: "free",
+      caps: {
+        monthly_request_cap: 0,
+        monthly_spend_cap_usd: 0,
+      },
+      usage: {
+        ai_requests: 0,
+        estimated_cost_usd: 0,
+        rag_hits: 0,
+        cache_hits: 0,
+        fallback_count: 0,
+      },
+      utilization: {
+        requests_pct: 0,
+        spend_pct: 0,
+      },
+      degraded_mode_recommended: false,
+      unavailable_reason: "AI usage schema not available in this environment",
+    });
   }
 
   const requestCap = toNumber(orgRes.data.ai_monthly_request_cap, 0);

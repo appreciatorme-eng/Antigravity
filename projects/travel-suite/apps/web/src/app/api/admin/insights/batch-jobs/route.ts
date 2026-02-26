@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 
+function isSchemaDriftError(message: string | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes("does not exist") || normalized.includes("could not find");
+}
+
 const EnqueueSchema = z.object({
   job_type: z.enum(["recompute_analytics", "recompute_upsell", "refresh_copilot"]).default("recompute_analytics"),
   priority: z.enum(["low", "normal", "high"]).default("normal"),
@@ -24,6 +30,12 @@ export async function GET(req: NextRequest) {
     .limit(30);
 
   if (error) {
+    if (isSchemaDriftError(error.message)) {
+      return NextResponse.json({
+        jobs: [],
+        unavailable_reason: "notification queue schema not available in this environment",
+      });
+    }
     return NextResponse.json({ error: error.message || "Failed to list batch jobs" }, { status: 500 });
   }
 
@@ -68,6 +80,15 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error || !data) {
+    if (isSchemaDriftError(error?.message)) {
+      return NextResponse.json(
+        {
+          queued: false,
+          error: "Batch queue is unavailable until notification migrations are applied",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: error?.message || "Failed to enqueue job" }, { status: 500 });
   }
 

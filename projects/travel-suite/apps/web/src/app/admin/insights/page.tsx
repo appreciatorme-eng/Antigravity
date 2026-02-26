@@ -149,65 +149,95 @@ export default function AdminInsightsPage() {
           "Content-Type": "application/json",
         };
 
-        const [
-          actionQueueRes,
-          marginRes,
-          upsellRes,
-          requoteRes,
-          briefRes,
-          winLossRes,
-          usageRes,
-          jobsRes,
-        ] = await Promise.all([
-          fetch("/api/admin/insights/action-queue?limit=8", { headers }),
-          fetch("/api/admin/insights/margin-leak?daysBack=90&limit=6", { headers }),
-          fetch("/api/admin/insights/smart-upsell-timing?daysForward=30&limit=6", { headers }),
-          fetch("/api/admin/insights/auto-requote?daysBack=120&limit=6", { headers }),
-          fetch("/api/admin/insights/daily-brief?limit=5", { headers }),
-          fetch("/api/admin/insights/win-loss?daysBack=120", { headers }),
-          fetch("/api/admin/insights/ai-usage", { headers }),
-          fetch("/api/admin/insights/batch-jobs", { headers }),
-        ]);
+        const streamLoaders = [
+          {
+            key: "actionQueue" as const,
+            label: "action-queue",
+            run: () => fetch("/api/admin/insights/action-queue?limit=8", { headers }),
+          },
+          {
+            key: "marginLeak" as const,
+            label: "margin-leak",
+            run: () => fetch("/api/admin/insights/margin-leak?daysBack=90&limit=6", { headers }),
+          },
+          {
+            key: "smartUpsell" as const,
+            label: "smart-upsell",
+            run: () => fetch("/api/admin/insights/smart-upsell-timing?daysForward=30&limit=6", { headers }),
+          },
+          {
+            key: "autoRequote" as const,
+            label: "auto-requote",
+            run: () => fetch("/api/admin/insights/auto-requote?daysBack=120&limit=6", { headers }),
+          },
+          {
+            key: "dailyBrief" as const,
+            label: "daily-brief",
+            run: () => fetch("/api/admin/insights/daily-brief?limit=5", { headers }),
+          },
+          {
+            key: "winLoss" as const,
+            label: "win-loss",
+            run: () => fetch("/api/admin/insights/win-loss?daysBack=120", { headers }),
+          },
+          {
+            key: "aiUsage" as const,
+            label: "ai-usage",
+            run: () => fetch("/api/admin/insights/ai-usage", { headers }),
+          },
+          {
+            key: "batchJobs" as const,
+            label: "batch-jobs",
+            run: () => fetch("/api/admin/insights/batch-jobs", { headers }),
+          },
+        ];
 
-        if (
-          !actionQueueRes.ok ||
-          !marginRes.ok ||
-          !upsellRes.ok ||
-          !requoteRes.ok ||
-          !briefRes.ok ||
-          !winLossRes.ok ||
-          !usageRes.ok ||
-          !jobsRes.ok
-        ) {
-          throw new Error("One or more insight streams failed to load");
+        const settled = await Promise.allSettled(
+          streamLoaders.map(async (loader) => {
+            const response = await loader.run();
+            if (!response.ok) {
+              const payload = await response.json().catch(() => ({}));
+              throw new Error(`${loader.label}: ${payload?.error || response.statusText || response.status}`);
+            }
+            const json = await response.json();
+            return { key: loader.key, payload: json };
+          })
+        );
+
+        const failed: string[] = [];
+        for (const item of settled) {
+          if (item.status === "rejected") {
+            failed.push(item.reason instanceof Error ? item.reason.message : "unknown stream error");
+            continue;
+          }
+
+          const { key, payload } = item.value;
+          if (key === "actionQueue") setActionQueue(payload as ActionQueueData);
+          if (key === "marginLeak") setMarginLeak(payload as MarginLeakData);
+          if (key === "smartUpsell") setSmartUpsell(payload as SmartUpsellData);
+          if (key === "autoRequote") setAutoRequote(payload as AutoRequoteData);
+          if (key === "dailyBrief") setDailyBrief(payload as DailyBriefData);
+          if (key === "winLoss") setWinLoss(payload as WinLossData);
+          if (key === "aiUsage") setAiUsage(payload as AiUsageData);
+          if (key === "batchJobs") setBatchJobs(payload as BatchJobsData);
         }
 
-        const [actionQueueJson, marginJson, upsellJson, requoteJson, briefJson, winLossJson, usageJson, jobsJson] =
-          await Promise.all([
-            actionQueueRes.json(),
-            marginRes.json(),
-            upsellRes.json(),
-            requoteRes.json(),
-            briefRes.json(),
-            winLossRes.json(),
-            usageRes.json(),
-            jobsRes.json(),
-          ]);
+        if (failed.length === streamLoaders.length) {
+          const message = "All insight streams failed to load";
+          setError(message);
+          toast({ title: "Insights unavailable", description: message, variant: "error" });
+          return;
+        }
 
-        setActionQueue(actionQueueJson as ActionQueueData);
-        setMarginLeak(marginJson as MarginLeakData);
-        setSmartUpsell(upsellJson as SmartUpsellData);
-        setAutoRequote(requoteJson as AutoRequoteData);
-        setDailyBrief(briefJson as DailyBriefData);
-        setWinLoss(winLossJson as WinLossData);
-        setAiUsage(usageJson as AiUsageData);
-        setBatchJobs(jobsJson as BatchJobsData);
-
+        setError(null);
         if (showToast) {
           toast({
             title: "Insights refreshed",
-            description: "Growth intelligence feeds are updated.",
-            variant: "success",
+            description:
+              failed.length > 0
+                ? `Loaded with ${failed.length} stream issue${failed.length > 1 ? "s" : ""}.`
+                : "Growth intelligence feeds are updated.",
+            variant: failed.length > 0 ? "warning" : "success",
           });
         }
       } catch (err) {
