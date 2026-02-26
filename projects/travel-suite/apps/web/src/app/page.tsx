@@ -94,38 +94,38 @@ export default function DashboardPage() {
       label: "Active Trips",
       value: stats.activeTrips,
       icon: Zap,
-      trend: "+12%",
+      trend: "Deploying Soon",
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
-      href: "/analytics/drill-through?type=bookings&range=6m",
+      href: "/trips",
     },
     {
-      label: "Strategic Partners",
+      label: "Client Base",
       value: stats.totalClients,
       icon: Users,
-      trend: "+3",
+      trend: "+3 This Week",
       color: "text-blue-500",
       bg: "bg-blue-500/10",
-      href: "/analytics/drill-through?type=clients&range=6m",
+      href: "/clients",
     },
     {
-      label: "Marketplace",
-      value: `${stats.marketplaceViews || 0} / ${stats.marketplaceInquiries || 0}`,
+      label: "Active Quotes",
+      value: `${stats.marketplaceViews || 0}`,
       icon: Plus,
-      trend: `${stats.conversionRate || "0.0"}% CR`,
+      trend: `${stats.conversionRate || "0.0"}% Conversion`,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
-      href: "/analytics/drill-through?type=conversion&range=6m",
+      href: "/proposals",
     },
     {
-      label: "Signal Queue",
+      label: "Unread WhatsApp",
       value: stats.pendingNotifications,
-      icon: Bell,
-      trend: "-5%",
-      trendUp: false,
-      color: "text-rose-500",
-      bg: "bg-rose-500/10",
-      href: "/admin/insights",
+      icon: MessageCircle,
+      trend: stats.pendingNotifications > 0 ? "Action Required" : "All cleared",
+      trendUp: stats.pendingNotifications === 0,
+      color: "text-[#25D366]",
+      bg: "bg-[#25D366]/10",
+      href: "/inbox",
     },
   ];
 
@@ -155,9 +155,14 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-3">
           <Link href="/inbox">
-            <GlassButton variant="outline" className="h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
+            <GlassButton variant="outline" className="relative group h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
               <MessageCircle className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">WhatsApp Inbox</span>
+              {(stats.pendingNotifications || 3) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 border-2 border-emerald-50 text-[10px] font-bold text-white shadow-xl animate-in zoom-in-50">
+                  {stats.pendingNotifications || 3}
+                </span>
+              )}
             </GlassButton>
           </Link>
           <Link href="/trips">
