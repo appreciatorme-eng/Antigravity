@@ -21,29 +21,29 @@ interface TripListRow {
     created_at: string;
     organization_id: string;
     profiles:
-        | {
-              full_name: string | null;
-              email: string | null;
-          }
-        | Array<{
-              full_name: string | null;
-              email: string | null;
-          }>
-        | null;
+    | {
+        full_name: string | null;
+        email: string | null;
+    }
+    | Array<{
+        full_name: string | null;
+        email: string | null;
+    }>
+    | null;
     itineraries:
-        | {
-              id: string | null;
-              trip_title: string | null;
-              duration_days: number | null;
-              destination: string | null;
-          }
-        | Array<{
-              id: string | null;
-              trip_title: string | null;
-              duration_days: number | null;
-              destination: string | null;
-          }>
-        | null;
+    | {
+        id: string | null;
+        trip_title: string | null;
+        duration_days: number | null;
+        destination: string | null;
+    }
+    | Array<{
+        id: string | null;
+        trip_title: string | null;
+        duration_days: number | null;
+        destination: string | null;
+    }>
+    | null;
 }
 
 function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof getFeatureLimitStatus>>) {
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: tripError?.message || "Failed to create trip" }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, tripId: tripData.id });
+        return NextResponse.json({ success: true, tripId: tripData.id, itineraryId: itineraryData.id });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }

@@ -277,13 +277,43 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                 );
             }
 
+            const payloadData = await response.json();
+            const itineraryId = payloadData.itineraryId;
+
+            try {
+                // Auto-generate share link
+                const token = crypto.randomUUID();
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + 30);
+
+                const { error: shareError } = await supabase.from("shared_itineraries").insert({
+                    itinerary_id: itineraryId,
+                    share_code: token,
+                    expires_at: expiresAt.toISOString(),
+                    template_id: "safari_story",
+                });
+
+                if (shareError) throw shareError;
+
+                const shareLink = `${window.location.origin}/share/${token}`;
+                await navigator.clipboard.writeText(shareLink);
+
+                toast({
+                    title: "Trip Created & Link Copied! 🔗",
+                    description: "Share this magic quote with your client to close the deal.",
+                    durationMs: 4000,
+                    variant: "success",
+                });
+            } catch (err) {
+                toast({
+                    title: "Trip created",
+                    description: "Trip was created successfully.",
+                    variant: "success",
+                });
+            }
+
             onSuccess();
             onOpenChange(false);
-            toast({
-                title: "Trip created",
-                description: "Trip was created successfully.",
-                variant: "success",
-            });
 
         } catch (error) {
             console.error("Error creating trip:", error);
@@ -314,21 +344,18 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
                 <div className="space-y-6 py-4">
                     {visibleTripLimit && (
-                        <div className={`rounded-lg border p-3 ${
-                            visibleTripLimit.allowed
+                        <div className={`rounded-lg border p-3 ${visibleTripLimit.allowed
                                 ? "bg-emerald-50 border-emerald-200"
                                 : "bg-amber-50 border-amber-200"
-                        }`}>
+                            }`}>
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <p className={`text-sm font-medium ${
-                                        visibleTripLimit.allowed ? "text-emerald-900" : "text-amber-900"
-                                    }`}>
+                                    <p className={`text-sm font-medium ${visibleTripLimit.allowed ? "text-emerald-900" : "text-amber-900"
+                                        }`}>
                                         Trips this month: {visibleTripLimit.used}/{visibleTripLimit.limit}
                                     </p>
-                                    <p className={`text-xs mt-1 ${
-                                        visibleTripLimit.allowed ? "text-emerald-700" : "text-amber-700"
-                                    }`}>
+                                    <p className={`text-xs mt-1 ${visibleTripLimit.allowed ? "text-emerald-700" : "text-amber-700"
+                                        }`}>
                                         {visibleTripLimit.allowed
                                             ? `${visibleTripLimit.remaining ?? 0} trips remaining on your ${visibleTripLimit.tier} plan.`
                                             : "Trip limit reached. Upgrade in Billing to create more trips this month."}
@@ -336,9 +363,8 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                 </div>
                                 <Link
                                     href="/admin/billing"
-                                    className={`text-xs font-medium hover:underline ${
-                                        visibleTripLimit.allowed ? "text-emerald-800" : "text-amber-800"
-                                    }`}
+                                    className={`text-xs font-medium hover:underline ${visibleTripLimit.allowed ? "text-emerald-800" : "text-amber-800"
+                                        }`}
                                 >
                                     Open Billing
                                 </Link>

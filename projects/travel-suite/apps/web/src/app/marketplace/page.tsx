@@ -296,10 +296,34 @@ export default function MarketplacePage() {
                             <p className="text-slate-500 font-medium">Scanning the marketplace...</p>
                         </div>
                     ) : profiles.length === 0 ? (
-                        <div className="text-center py-20 bg-slate-900/20 rounded-3xl border border-dashed border-slate-800">
-                            <Building2 className="mx-auto text-slate-600 mb-4" size={48} />
-                            <h3 className="text-xl font-medium text-slate-300">No operators found</h3>
-                            <p className="text-slate-500 mt-2">Try adjusting your filters or search term.</p>
+                        <div className="flex flex-col items-center justify-center py-24 px-6 text-center bg-gradient-to-b from-slate-900/50 to-slate-900/10 rounded-3xl border border-dashed border-slate-700/50 shadow-inner relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,transparent_70%)]" />
+                            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80 mb-6 drop-shadow-2xl">
+                                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="url(#oasisGradient)" fillOpacity="0.1" stroke="#3b82f6" strokeWidth="0.5" />
+                                <path d="M12 17L12 7" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M9 10L15 10" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M7 14L17 14" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M4 12C4 12 6 9 12 9C18 9 20 12 20 12" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 2" />
+                                <defs>
+                                    <linearGradient id="oasisGradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                        <stop stopColor="#3b82f6" />
+                                        <stop offset="1" stopColor="#60a5fa" stopOpacity="0" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <h3 className="text-2xl font-bold text-white mb-2 relative z-10">No partners found in this oasis.</h3>
+                            <p className="text-slate-400 mb-8 max-w-sm relative z-10">
+                                We couldn't find any operators matching your exact filters. Expand your search or invite a trusted ground handler.
+                            </p>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <GlassButton variant="outline" onClick={() => { setSearchTerm(""); setRegionFilter(""); setSpecialtyFilter(""); setVerifiedOnly(false); }} className="text-slate-300">
+                                    Clear Filters
+                                </GlassButton>
+                                <GlassButton variant="primary" className="bg-gradient-premium shadow-lg shadow-blue-500/20">
+                                    <Tag className="w-4 h-4 mr-2" />
+                                    Invite a Partner
+                                </GlassButton>
+                            </div>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">

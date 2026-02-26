@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, Share2, Loader2 } from "lucide-react";
+import { Copy, Check, Share2, Loader2, Link2 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
+import { useToast } from "@/components/ui/toast";
 
 interface ShareTripModalProps {
     isOpen: boolean;
@@ -37,6 +38,7 @@ export default function ShareTripModal({
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState("");
     const supabase = createClient();
+    const { toast } = useToast();
 
     const generateShareLink = async () => {
         setLoading(true);
@@ -126,6 +128,12 @@ export default function ShareTripModal({
             navigator.clipboard.writeText(shareLink);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+
+            toast({
+                title: "Link Copied! 🔗",
+                description: "Share this quote with your client to close the deal.",
+                durationMs: 4000,
+            });
         }
     };
 

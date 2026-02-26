@@ -317,13 +317,13 @@ export function AdminRevenueView() {
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <a
-              href="/admin/billing"
+              href="/billing"
               className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/20 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/30"
             >
               View Billing
             </a>
             <a
-              href="/admin/add-ons"
+              href="/add-ons"
               className="inline-flex items-center rounded-lg border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:bg-white/30 dark:text-white"
             >
               Manage Add-ons

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search, Bell, Command, HelpCircle, Plus, MessageCircle } from "lucide-react";
+import Link from "next/link";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { useIsFetching } from "@tanstack/react-query";
@@ -59,12 +60,12 @@ export default function TopBar({ className }: TopBarProps) {
                         <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
                     </button>
 
-                    <button className="relative p-2 text-white bg-whatsapp hover:bg-whatsapp:hover rounded-lg transition-transform hover:-translate-y-0.5 shadow-button group" title="WhatsApp Inbox">
+                    <Link href="/inbox" className="relative p-2 text-white bg-whatsapp hover:bg-whatsapp:hover rounded-lg transition-transform hover:-translate-y-0.5 shadow-button group" title="WhatsApp Inbox">
                         <MessageCircle className="w-5 h-5 transition-transform" />
                         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border border-white dark:border-slate-900 text-[9px] font-bold text-white shadow-sm">
                             3
                         </span>
-                    </button>
+                    </Link>
 
                     <button className="flex items-center gap-2 px-3 py-2 bg-gradient-premium text-white rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none font-semibold text-sm">
                         <Plus className="w-4 h-4" />

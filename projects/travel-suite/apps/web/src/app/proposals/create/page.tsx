@@ -437,608 +437,608 @@ export default function CreateProposalPage() {
       }
 
       toast({ title: 'Success', description: 'Proposal initialized successfully.', variant: 'success' });
-    router.push(`/proposals/${proposalId}`);
-  } catch (error) {
-    console.error('Error creating proposal:', error);
-    setError('An unexpected error occurred');
-  } finally {
-    setCreating(false);
-  }
-}
-
-// Auto-generate title when client and template are selected
-useEffect(() => {
-  if (selectedClientId && selectedTemplateId && !proposalTitle) {
-    const client = clients.find((c) => c.id === selectedClientId);
-    const template = templates.find((t) => t.id === selectedTemplateId);
-
-    if (client && template) {
-      const generatedTitle = `${template.name} - ${client.full_name || 'Client'}`;
-      setProposalTitle(generatedTitle);
+      router.push(`/proposals/${proposalId}`);
+    } catch (error) {
+      console.error('Error creating proposal:', error);
+      setError('An unexpected error occurred');
+    } finally {
+      setCreating(false);
     }
   }
-}, [selectedClientId, selectedTemplateId, clients, templates, proposalTitle]);
 
-if (loading) {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-center">
-        <Loader2 className="w-8 h-8 text-[#9c7c46] animate-spin mx-auto mb-4" />
-        <div className="text-lg text-gray-600">Loading...</div>
+  // Auto-generate title when client and template are selected
+  useEffect(() => {
+    if (selectedClientId && selectedTemplateId && !proposalTitle) {
+      const client = clients.find((c) => c.id === selectedClientId);
+      const template = templates.find((t) => t.id === selectedTemplateId);
+
+      if (client && template) {
+        const generatedTitle = `${template.name} - ${client.full_name || 'Client'}`;
+        setProposalTitle(generatedTitle);
+      }
+    }
+  }, [selectedClientId, selectedTemplateId, clients, templates, proposalTitle]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-[#9c7c46] animate-spin mx-auto mb-4" />
+          <div className="text-lg text-gray-600">Loading...</div>
+        </div>
       </div>
-    </div>
-  );
-}
-
-const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-const vehicles = addOns.filter((a) => a.category === 'Transport');
-const optionalAddOns = addOns.filter((a) => a.category !== 'Transport');
-const selectedExtrasTotal = (() => {
-  const ids = new Set<string>(selectedAddOnIds);
-  if (selectedVehicleId) ids.add(selectedVehicleId);
-  let total = 0;
-  for (const id of ids) {
-    const a = addOns.find((x) => x.id === id);
-    if (a) total += Number(a.price) || 0;
+    );
   }
-  return total;
-})();
-const estimatedTotal = (selectedTemplate?.base_price || 0) + selectedExtrasTotal;
-const visibleProposalLimit =
-  proposalLimit && proposalLimit.limit !== null ? proposalLimit : null;
 
-return (
-  <div className="space-y-8 max-w-4xl mx-auto">
-    {/* Header */}
-    <div className="flex items-center gap-4">
-      <Link
-        href="/proposals"
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        <ArrowLeft className="w-5 h-5 text-gray-600" />
-      </Link>
-      <div>
-        <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
-          Create New Proposal
-        </h1>
-        <p className="text-sm text-[#6f5b3e]">
-          Select a client and template to create an interactive proposal
-        </p>
-      </div>
-    </div>
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  const vehicles = addOns.filter((a) => a.category === 'Transport');
+  const optionalAddOns = addOns.filter((a) => a.category !== 'Transport');
+  const selectedExtrasTotal = (() => {
+    const ids = new Set<string>(selectedAddOnIds);
+    if (selectedVehicleId) ids.add(selectedVehicleId);
+    let total = 0;
+    for (const id of ids) {
+      const a = addOns.find((x) => x.id === id);
+      if (a) total += Number(a.price) || 0;
+    }
+    return total;
+  })();
+  const estimatedTotal = (selectedTemplate?.base_price || 0) + selectedExtrasTotal;
+  const visibleProposalLimit =
+    proposalLimit && proposalLimit.limit !== null ? proposalLimit : null;
 
-    {/* Error Message */}
-    {error && (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-        <p className="text-sm text-red-800">{error}</p>
-      </div>
-    )}
-
-    {visibleProposalLimit && (
-      <div
-        className={`rounded-lg border p-4 flex items-center justify-between gap-3 ${visibleProposalLimit.allowed
-          ? 'bg-emerald-50 border-emerald-200'
-          : 'bg-amber-50 border-amber-200'
-          }`}
-      >
-        <div>
-          <p
-            className={`text-sm font-medium ${visibleProposalLimit.allowed ? 'text-emerald-900' : 'text-amber-900'
-              }`}
-          >
-            Proposal usage this month: {visibleProposalLimit.used}/{visibleProposalLimit.limit}
-          </p>
-          <p
-            className={`text-xs mt-1 ${visibleProposalLimit.allowed ? 'text-emerald-700' : 'text-amber-700'
-              }`}
-          >
-            {visibleProposalLimit.allowed
-              ? `${visibleProposalLimit.remaining ?? 0} proposals remaining on your ${visibleProposalLimit.tier} plan.`
-              : 'Limit reached. Upgrade your plan to continue creating proposals.'}
-          </p>
-        </div>
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center gap-4">
         <Link
-          href="/admin/billing"
-          className={`text-sm font-medium underline-offset-2 hover:underline ${visibleProposalLimit.allowed ? 'text-emerald-800' : 'text-amber-800'
-            }`}
+          href="/proposals"
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          Open Billing
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
-      </div>
-    )}
-
-    {/* Client Selection */}
-    <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-lg font-semibold text-[#1b140a]">Select Client</h2>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => loadData()}
-            className="inline-flex items-center gap-2 px-3 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
-            title="Refresh clients"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowCreateClient((v) => !v)}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
-            title="Create a client without leaving this page"
-          >
-            <UserPlus className="w-4 h-4" />
-            New Client
-          </button>
+        <div>
+          <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
+            Create New Proposal
+          </h1>
+          <p className="text-sm text-[#6f5b3e]">
+            Select a client and template to create an interactive proposal
+          </p>
         </div>
       </div>
 
-      {clientsError && (
-        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
-          {clientsError}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
 
-      <div className="relative">
-        <div className="flex items-stretch gap-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[#bda87f] absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={clientQuery}
-              onChange={(e) => {
-                setClientQuery(e.target.value);
-                setClientPickerOpen(true);
-              }}
-              onFocus={() => setClientPickerOpen(true)}
-              placeholder={clients.length ? 'Search client by name, email, or phone...' : 'No clients loaded yet'}
-              className="w-full pl-10 pr-10 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-              aria-label="Search and select client"
-            />
+      {visibleProposalLimit && (
+        <div
+          className={`rounded-lg border p-4 flex items-center justify-between gap-3 ${visibleProposalLimit.allowed
+            ? 'bg-emerald-50 border-emerald-200'
+            : 'bg-amber-50 border-amber-200'
+            }`}
+        >
+          <div>
+            <p
+              className={`text-sm font-medium ${visibleProposalLimit.allowed ? 'text-emerald-900' : 'text-amber-900'
+                }`}
+            >
+              Proposal usage this month: {visibleProposalLimit.used}/{visibleProposalLimit.limit}
+            </p>
+            <p
+              className={`text-xs mt-1 ${visibleProposalLimit.allowed ? 'text-emerald-700' : 'text-amber-700'
+                }`}
+            >
+              {visibleProposalLimit.allowed
+                ? `${visibleProposalLimit.remaining ?? 0} proposals remaining on your ${visibleProposalLimit.tier} plan.`
+                : 'Limit reached. Upgrade your plan to continue creating proposals.'}
+            </p>
+          </div>
+          <Link
+            href="/admin/billing"
+            className={`text-sm font-medium underline-offset-2 hover:underline ${visibleProposalLimit.allowed ? 'text-emerald-800' : 'text-amber-800'
+              }`}
+          >
+            Open Billing
+          </Link>
+        </div>
+      )}
+
+      {/* Client Selection */}
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold text-[#1b140a]">Select Client</h2>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setClientPickerOpen((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-50"
-              aria-label="Toggle client list"
+              onClick={() => loadData()}
+              className="inline-flex items-center gap-2 px-3 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+              title="Refresh clients"
             >
-              <ChevronDown className="w-4 h-4 text-[#6f5b3e]" />
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateClient((v) => !v)}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
+              title="Create a client without leaving this page"
+            >
+              <UserPlus className="w-4 h-4" />
+              New Client
             </button>
           </div>
-
-          {selectedClientId ? (
-            <button
-              type="button"
-              onClick={clearClientSelection}
-              className="inline-flex items-center gap-2 px-3 py-3 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
-              title="Clear selection"
-            >
-              <X className="w-4 h-4" />
-              Clear
-            </button>
-          ) : null}
         </div>
 
-        {selectedClient && (
-          <div className="mt-2 text-sm text-[#6f5b3e]">
-            Selected: <span className="font-medium text-[#1b140a]">{getClientLabel(selectedClient)}</span>
+        {clientsError && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+            {clientsError}
           </div>
         )}
 
-        {clientPickerOpen && (
-          <div className="absolute z-20 mt-2 w-full bg-white border border-[#eadfcd] rounded-xl shadow-lg overflow-hidden">
-            <div className="max-h-64 overflow-auto">
-              {filteredClientsForQuery().length === 0 ? (
-                <div className="p-4 text-sm text-[#6f5b3e]">No matching clients</div>
-              ) : (
-                filteredClientsForQuery().map((c) => {
-                  const isSelected = c.id === selectedClientId;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedClientId(c.id);
-                        setClientQuery(getClientLabel(c));
-                        setClientPickerOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[#f8f1e6] transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium text-[#1b140a] truncate">
-                          {c.full_name || 'Unnamed Client'}
-                        </div>
-                        <div className="text-xs text-[#6f5b3e] truncate">
-                          {[c.email, c.phone].filter(Boolean).join(' • ') || 'No contact details'}
-                        </div>
-                      </div>
-                      {isSelected ? <Check className="w-4 h-4 text-[#9c7c46]" /> : null}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="border-t border-[#eadfcd] p-3 flex items-center justify-between gap-2 bg-[#fffdf8]">
-              <Link
-                href="/admin/clients"
-                target="_blank"
-                className="text-sm text-[#6f5b3e] hover:underline"
-              >
-                Manage clients (opens new tab)
-              </Link>
+        <div className="relative">
+          <div className="flex items-stretch gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-[#bda87f] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={clientQuery}
+                onChange={(e) => {
+                  setClientQuery(e.target.value);
+                  setClientPickerOpen(true);
+                }}
+                onFocus={() => setClientPickerOpen(true)}
+                placeholder={clients.length ? 'Search client by name, email, or phone...' : 'No clients loaded yet'}
+                className="w-full pl-10 pr-10 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                aria-label="Search and select client"
+              />
               <button
                 type="button"
-                onClick={() => setClientPickerOpen(false)}
-                className="text-sm text-[#6f5b3e] hover:underline"
+                onClick={() => setClientPickerOpen((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-50"
+                aria-label="Toggle client list"
               >
-                Close
+                <ChevronDown className="w-4 h-4 text-[#6f5b3e]" />
+              </button>
+            </div>
+
+            {selectedClientId ? (
+              <button
+                type="button"
+                onClick={clearClientSelection}
+                className="inline-flex items-center gap-2 px-3 py-3 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+                title="Clear selection"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </button>
+            ) : null}
+          </div>
+
+          {selectedClient && (
+            <div className="mt-2 text-sm text-[#6f5b3e]">
+              Selected: <span className="font-medium text-[#1b140a]">{getClientLabel(selectedClient)}</span>
+            </div>
+          )}
+
+          {clientPickerOpen && (
+            <div className="absolute z-20 mt-2 w-full bg-white border border-[#eadfcd] rounded-xl shadow-lg overflow-hidden">
+              <div className="max-h-64 overflow-auto">
+                {filteredClientsForQuery().length === 0 ? (
+                  <div className="p-4 text-sm text-[#6f5b3e]">No matching clients</div>
+                ) : (
+                  filteredClientsForQuery().map((c) => {
+                    const isSelected = c.id === selectedClientId;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedClientId(c.id);
+                          setClientQuery(getClientLabel(c));
+                          setClientPickerOpen(false);
+                        }}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[#f8f1e6] transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium text-[#1b140a] truncate">
+                            {c.full_name || 'Unnamed Client'}
+                          </div>
+                          <div className="text-xs text-[#6f5b3e] truncate">
+                            {[c.email, c.phone].filter(Boolean).join(' • ') || 'No contact details'}
+                          </div>
+                        </div>
+                        {isSelected ? <Check className="w-4 h-4 text-[#9c7c46]" /> : null}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="border-t border-[#eadfcd] p-3 flex items-center justify-between gap-2 bg-[#fffdf8]">
+                <Link
+                  href="/clients"
+                  target="_blank"
+                  className="text-sm text-[#6f5b3e] hover:underline"
+                >
+                  Manage clients (opens new tab)
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setClientPickerOpen(false)}
+                  className="text-sm text-[#6f5b3e] hover:underline"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {showCreateClient && (
+          <div className="mt-6 p-4 rounded-xl border border-[#eadfcd] bg-[#fffdf8]">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-[#1b140a]">Create Client</h3>
+                <p className="text-xs text-[#6f5b3e]">Creates the client and makes them selectable here.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateClient(false)}
+                className="p-2 rounded-lg hover:bg-gray-50"
+                aria-label="Close create client"
+              >
+                <X className="w-4 h-4 text-[#6f5b3e]" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Full name</label>
+                <input
+                  type="text"
+                  value={newClient.full_name}
+                  onChange={(e) => setNewClient((p) => ({ ...p, full_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                  placeholder="e.g., John Smith"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newClient.email}
+                  onChange={(e) => setNewClient((p) => ({ ...p, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                  placeholder="e.g., john@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Phone (optional)</label>
+                <input
+                  type="tel"
+                  value={newClient.phone}
+                  onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                  placeholder="e.g., +1 555 123 4567"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateClient(false)}
+                className="px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickCreateClient}
+                disabled={creatingClient}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingClient ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                Create Client
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {showCreateClient && (
-        <div className="mt-6 p-4 rounded-xl border border-[#eadfcd] bg-[#fffdf8]">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-[#1b140a]">Create Client</h3>
-              <p className="text-xs text-[#6f5b3e]">Creates the client and makes them selectable here.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowCreateClient(false)}
-              className="p-2 rounded-lg hover:bg-gray-50"
-              aria-label="Close create client"
+      {/* Template Selection */}
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h2 className="text-lg font-semibold text-[#1b140a] mb-4">Select Template</h2>
+
+        {templates.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-[#6f5b3e] mb-4">No templates found</p>
+            <Link
+              href="/admin/tour-templates/create"
+              className="inline-flex items-center px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
             >
-              <X className="w-4 h-4 text-[#6f5b3e]" />
-            </button>
+              Create Template First
+            </Link>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Full name</label>
-              <input
-                type="text"
-                value={newClient.full_name}
-                onChange={(e) => setNewClient((p) => ({ ...p, full_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-                placeholder="e.g., John Smith"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Email</label>
-              <input
-                type="email"
-                value={newClient.email}
-                onChange={(e) => setNewClient((p) => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-                placeholder="e.g., john@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#6f5b3e] mb-1">Phone (optional)</label>
-              <input
-                type="tel"
-                value={newClient.phone}
-                onChange={(e) => setNewClient((p) => ({ ...p, phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-                placeholder="e.g., +1 555 123 4567"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCreateClient(false)}
-              className="px-4 py-2 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+        ) : (
+          <div className="space-y-4">
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+              className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleQuickCreateClient}
-              disabled={creatingClient}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {creatingClient ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              Create Client
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              <option value="">-- Choose a template --</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} {template.destination && `- ${template.destination}`} (
+                  {template.duration_days} days)
+                </option>
+              ))}
+            </select>
 
-    {/* Template Selection */}
-    <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
-      <h2 className="text-lg font-semibold text-[#1b140a] mb-4">Select Template</h2>
-
-      {templates.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-[#6f5b3e] mb-4">No templates found</p>
-          <Link
-            href="/admin/tour-templates/create"
-            className="inline-flex items-center px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
-          >
-            Create Template First
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <select
-            value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
-            className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-          >
-            <option value="">-- Choose a template --</option>
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name} {template.destination && `- ${template.destination}`} (
-                {template.duration_days} days)
-              </option>
-            ))}
-          </select>
-
-          {/* Template Preview */}
-          {selectedTemplate && (
-            <div className="mt-4 p-4 bg-[#f8f1e6] rounded-lg">
-              <h3 className="font-semibold text-[#1b140a] mb-2">Template Preview</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-[#bda87f]">Destination:</span>
-                  <div className="text-[#1b140a] font-medium">
-                    {selectedTemplate.destination || 'Not specified'}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[#bda87f]">Duration:</span>
-                  <div className="text-[#1b140a] font-medium">
-                    {selectedTemplate.duration_days} days
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[#bda87f]">Base Price:</span>
-                  <div className="text-[#1b140a] font-medium">
-                    ${(selectedTemplate.base_price || 0).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-
-    {/* Options & Add-ons */}
-    <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
-      <h2 className="text-lg font-semibold text-[#1b140a] mb-2">Options & Add-ons</h2>
-      <p className="text-sm text-[#6f5b3e] mb-4">
-        Choose a vehicle type and optional add-ons. These will appear on the proposal and update pricing dynamically.
-      </p>
-
-      {addOns.length === 0 ? (
-        <div className="text-sm text-[#6f5b3e]">
-          No add-ons found. Create them in{' '}
-          <Link href="/admin/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
-            Admin → Add-ons
-          </Link>{' '}
-          (opens new tab). Use category <span className="font-medium">Transport</span> for vehicle types.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <h3 className="text-sm font-semibold text-[#1b140a]">Vehicle Type</h3>
-              {selectedVehicleId ? (
-                <button
-                  type="button"
-                  onClick={() => setSelectedVehicleId('')}
-                  className="text-xs text-[#6f5b3e] hover:underline"
-                >
-                  Clear
-                </button>
-              ) : null}
-            </div>
-
-            {vehicles.length === 0 ? (
-              <div className="text-sm text-[#6f5b3e]">
-                No Transport add-ons found. Add vehicle options under category <span className="font-medium">Transport</span>.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {vehicles.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setSelectedVehicleId(v.id)}
-                    className={`p-4 rounded-xl border text-left transition-colors ${selectedVehicleId === v.id
-                      ? 'border-[#9c7c46] bg-[#f8f1e6]'
-                      : 'border-[#eadfcd] hover:bg-gray-50'
-                      }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium text-[#1b140a] truncate">{v.name}</div>
-                        {v.description ? (
-                          <div className="text-xs text-[#6f5b3e] mt-1">{v.description}</div>
-                        ) : null}
-                      </div>
-                      <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
-                        ${Number(v.price || 0).toFixed(2)}
-                      </div>
+            {/* Template Preview */}
+            {selectedTemplate && (
+              <div className="mt-4 p-4 bg-[#f8f1e6] rounded-lg">
+                <h3 className="font-semibold text-[#1b140a] mb-2">Template Preview</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-[#bda87f]">Destination:</span>
+                    <div className="text-[#1b140a] font-medium">
+                      {selectedTemplate.destination || 'Not specified'}
                     </div>
-                  </button>
-                ))}
+                  </div>
+                  <div>
+                    <span className="text-[#bda87f]">Duration:</span>
+                    <div className="text-[#1b140a] font-medium">
+                      {selectedTemplate.duration_days} days
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[#bda87f]">Base Price:</span>
+                    <div className="text-[#1b140a] font-medium">
+                      ${(selectedTemplate.base_price || 0).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
+        )}
+      </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-[#1b140a] mb-2">Optional Add-ons</h3>
-            {optionalAddOns.length === 0 ? (
-              <div className="text-sm text-[#6f5b3e]">No optional add-ons available.</div>
-            ) : (
-              <div className="space-y-2">
-                {optionalAddOns.slice(0, 30).map((a) => {
-                  const checked = selectedAddOnIds.has(a.id);
-                  return (
-                    <label
-                      key={a.id}
-                      className="flex items-start gap-3 p-3 rounded-xl border border-[#eadfcd] hover:bg-gray-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          setSelectedAddOnIds((prev) => {
-                            const next = new Set(prev);
-                            if (e.target.checked) next.add(a.id);
-                            else next.delete(a.id);
-                            return next;
-                          });
-                        }}
-                        className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-medium text-[#1b140a] truncate">{a.name}</div>
-                          <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
-                            ${Number(a.price || 0).toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="text-xs text-[#6f5b3e] mt-0.5 truncate">
-                          {[a.category, a.duration].filter(Boolean).join(' • ')}
-                        </div>
-                        {a.description ? (
-                          <div className="text-xs text-[#6f5b3e] mt-1">{a.description}</div>
-                        ) : null}
-                      </div>
-                    </label>
-                  );
-                })}
-                {optionalAddOns.length > 30 ? (
-                  <div className="text-xs text-[#6f5b3e]">
-                    Showing first 30 add-ons. Manage full list in{' '}
-                    <Link href="/admin/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
-                      Add-ons
-                    </Link>
-                    .
-                  </div>
+      {/* Options & Add-ons */}
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h2 className="text-lg font-semibold text-[#1b140a] mb-2">Options & Add-ons</h2>
+        <p className="text-sm text-[#6f5b3e] mb-4">
+          Choose a vehicle type and optional add-ons. These will appear on the proposal and update pricing dynamically.
+        </p>
+
+        {addOns.length === 0 ? (
+          <div className="text-sm text-[#6f5b3e]">
+            No add-ons found. Create them in{' '}
+            <Link href="/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
+              Admin → Add-ons
+            </Link>{' '}
+            (opens new tab). Use category <span className="font-medium">Transport</span> for vehicle types.
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h3 className="text-sm font-semibold text-[#1b140a]">Vehicle Type</h3>
+                {selectedVehicleId ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVehicleId('')}
+                    className="text-xs text-[#6f5b3e] hover:underline"
+                  >
+                    Clear
+                  </button>
                 ) : null}
               </div>
-            )}
-          </div>
 
-          <div className="p-4 rounded-xl border border-[#eadfcd] bg-[#fffdf8]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-[#1b140a]">Estimated Total</div>
-                <div className="text-xs text-[#6f5b3e]">
-                  Base template + selected options (final price also includes selected activities/hotels).
+              {vehicles.length === 0 ? (
+                <div className="text-sm text-[#6f5b3e]">
+                  No Transport add-ons found. Add vehicle options under category <span className="font-medium">Transport</span>.
                 </div>
-              </div>
-              <div className="text-xl font-semibold text-[#1b140a]">
-                ${Number(estimatedTotal || 0).toFixed(2)}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {vehicles.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setSelectedVehicleId(v.id)}
+                      className={`p-4 rounded-xl border text-left transition-colors ${selectedVehicleId === v.id
+                        ? 'border-[#9c7c46] bg-[#f8f1e6]'
+                        : 'border-[#eadfcd] hover:bg-gray-50'
+                        }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium text-[#1b140a] truncate">{v.name}</div>
+                          {v.description ? (
+                            <div className="text-xs text-[#6f5b3e] mt-1">{v.description}</div>
+                          ) : null}
+                        </div>
+                        <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
+                          ${Number(v.price || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-[#1b140a] mb-2">Optional Add-ons</h3>
+              {optionalAddOns.length === 0 ? (
+                <div className="text-sm text-[#6f5b3e]">No optional add-ons available.</div>
+              ) : (
+                <div className="space-y-2">
+                  {optionalAddOns.slice(0, 30).map((a) => {
+                    const checked = selectedAddOnIds.has(a.id);
+                    return (
+                      <label
+                        key={a.id}
+                        className="flex items-start gap-3 p-3 rounded-xl border border-[#eadfcd] hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedAddOnIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(a.id);
+                              else next.delete(a.id);
+                              return next;
+                            });
+                          }}
+                          className="mt-1 w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-medium text-[#1b140a] truncate">{a.name}</div>
+                            <div className="text-sm font-semibold text-[#1b140a] whitespace-nowrap">
+                              ${Number(a.price || 0).toFixed(2)}
+                            </div>
+                          </div>
+                          <div className="text-xs text-[#6f5b3e] mt-0.5 truncate">
+                            {[a.category, a.duration].filter(Boolean).join(' • ')}
+                          </div>
+                          {a.description ? (
+                            <div className="text-xs text-[#6f5b3e] mt-1">{a.description}</div>
+                          ) : null}
+                        </div>
+                      </label>
+                    );
+                  })}
+                  {optionalAddOns.length > 30 ? (
+                    <div className="text-xs text-[#6f5b3e]">
+                      Showing first 30 add-ons. Manage full list in{' '}
+                      <Link href="/add-ons" target="_blank" className="text-[#9c7c46] hover:underline">
+                        Add-ons
+                      </Link>
+                      .
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-xl border border-[#eadfcd] bg-[#fffdf8]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[#1b140a]">Estimated Total</div>
+                  <div className="text-xs text-[#6f5b3e]">
+                    Base template + selected options (final price also includes selected activities/hotels).
+                  </div>
+                </div>
+                <div className="text-xl font-semibold text-[#1b140a]">
+                  ${Number(estimatedTotal || 0).toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
 
-    {/* Proposal Settings */}
-    <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
-      <h2 className="text-lg font-semibold text-[#1b140a] mb-4">Proposal Settings</h2>
+      {/* Proposal Settings */}
+      <div className="bg-white rounded-2xl border border-[#eadfcd] p-6">
+        <h2 className="text-lg font-semibold text-[#1b140a] mb-4">Proposal Settings</h2>
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
-            Proposal Title
-          </label>
-          <input
-            type="text"
-            value={proposalTitle}
-            onChange={(e) => setProposalTitle(e.target.value)}
-            placeholder="e.g., Classic Dubai - John Smith"
-            className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-          />
-          <p className="text-xs text-[#bda87f] mt-1">
-            Auto-generated from template and client name
-          </p>
-        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
+              Proposal Title
+            </label>
+            <input
+              type="text"
+              value={proposalTitle}
+              onChange={(e) => setProposalTitle(e.target.value)}
+              placeholder="e.g., Classic Dubai - John Smith"
+              className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+            />
+            <p className="text-xs text-[#bda87f] mt-1">
+              Auto-generated from template and client name
+            </p>
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
-            Expiration (Days)
-          </label>
-          <input
-            type="number"
-            value={expirationDays}
-            onChange={(e) => setExpirationDays(parseInt(e.target.value) || 0)}
-            min="0"
-            max="90"
-            className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-          />
-          <p className="text-xs text-[#bda87f] mt-1">
-            Proposal will expire in {expirationDays} days (0 = never expires)
-          </p>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
+              Expiration (Days)
+            </label>
+            <input
+              type="number"
+              value={expirationDays}
+              onChange={(e) => setExpirationDays(parseInt(e.target.value) || 0)}
+              min="0"
+              max="90"
+              className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+            />
+            <p className="text-xs text-[#bda87f] mt-1">
+              Proposal will expire in {expirationDays} days (0 = never expires)
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sendEmail"
-            checked={sendEmail}
-            onChange={(e) => setSendEmail(e.target.checked)}
-            className="w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
-          />
-          <label htmlFor="sendEmail" className="text-sm text-[#6f5b3e]">
-            Send email notification to client after proposal creation
-          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="sendEmail"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+              className="w-4 h-4 text-[#9c7c46] border-gray-300 rounded focus:ring-[#9c7c46]"
+            />
+            <label htmlFor="sendEmail" className="text-sm text-[#6f5b3e]">
+              Send email notification to client after proposal creation
+            </label>
+          </div>
         </div>
       </div>
-    </div>
 
-    {/* Create Button */}
-    <div className="flex items-center justify-between">
-      <Link
-        href="/proposals"
-        className="px-6 py-3 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
-      >
-        Cancel
-      </Link>
-      <button
-        onClick={handleCreateProposal}
-        disabled={creating || !selectedClientId || !selectedTemplateId}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {creating ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Creating Proposal...
-          </>
-        ) : (
-          <>
-            <Send className="w-4 h-4" />
-            Create Proposal
-          </>
-        )}
-      </button>
-    </div>
+      {/* Create Button */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/proposals"
+          className="px-6 py-3 border border-[#eadfcd] text-[#6f5b3e] rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </Link>
+        <button
+          onClick={handleCreateProposal}
+          disabled={creating || !selectedClientId || !selectedTemplateId}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {creating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Creating Proposal...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              Create Proposal
+            </>
+          )}
+        </button>
+      </div>
 
-    {/* Help Text */}
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 What happens next?</h3>
-      <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-        <li>A proposal will be created from the selected template</li>
-        <li>You&apos;ll be able to customize activities and pricing</li>
-        <li>A unique shareable link will be generated</li>
-        <li>The client can view, comment, and approve the proposal</li>
-        <li>You&apos;ll get real-time notifications when the client interacts</li>
-      </ul>
+      {/* Help Text */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 What happens next?</h3>
+        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <li>A proposal will be created from the selected template</li>
+          <li>You&apos;ll be able to customize activities and pricing</li>
+          <li>A unique shareable link will be generated</li>
+          <li>The client can view, comment, and approve the proposal</li>
+          <li>You&apos;ll get real-time notifications when the client interacts</li>
+        </ul>
+      </div>
     </div>
-  </div>
-);
+  );
 }

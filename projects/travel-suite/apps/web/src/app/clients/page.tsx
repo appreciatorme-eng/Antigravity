@@ -25,7 +25,9 @@ import {
     Tag,
     ChevronRight,
     TrendingUp,
-    CheckCircle2
+    CheckCircle2,
+    MessageCircle,
+    IndianRupee
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -560,15 +562,32 @@ export default function ClientsPage() {
                                                 </div>
 
                                                 <div className="mt-4 flex flex-col gap-2">
-                                                    {client.client_tag && client.client_tag !== 'standard' && (
-                                                        <span className={cn(
-                                                            "w-fit text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-widest",
-                                                            client.client_tag === 'vip' ? "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-500" :
-                                                                "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-500"
-                                                        )}>
-                                                            {client.client_tag}
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {client.client_tag && client.client_tag !== 'standard' && (
+                                                            <span className={cn(
+                                                                "w-fit text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-widest",
+                                                                client.client_tag === 'vip' ? "bg-amber-50 border-amber-200 text-amber-700" :
+                                                                    "bg-blue-50 border-blue-200 text-blue-700"
+                                                            )}>
+                                                                {client.client_tag}
+                                                            </span>
+                                                        )}
+                                                        <span className="flex items-center gap-1 w-fit text-[8px] font-black px-1.5 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-emerald-700 uppercase tracking-widest">
+                                                            <IndianRupee className="w-2.5 h-2.5" />
+                                                            LTV: ₹{((client.trips_count || 1) * (client.budget_max || 85000)).toLocaleString('en-IN')}
                                                         </span>
-                                                    )}
+                                                    </div>
+
+                                                    {/* WhatsApp Timeline Preview */}
+                                                    <div className="mt-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 border border-slate-100 dark:border-slate-700/50">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <MessageCircle className="w-3 h-3 text-whatsapp" />
+                                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Latest Activity</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-600 dark:text-slate-400 line-clamp-1 italic">
+                                                            "{client.lifecycle_stage === 'proposal' ? 'Quote sent via WhatsApp.' : 'Waiting for client response...'}"
+                                                        </p>
+                                                    </div>
                                                 </div>
 
                                                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-800/80">

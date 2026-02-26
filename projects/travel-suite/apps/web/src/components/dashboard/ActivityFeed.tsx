@@ -79,7 +79,7 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
                 <div className="text-[10px] font-bold text-slate-400 mb-1">
                     {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
-                <Link href={isTrip ? `/trips/${activity.id}` : isInquiry ? "/admin/marketplace/analytics" : "#"}>
+                <Link href={isTrip ? `/trips/${activity.id}` : isInquiry ? "/marketplace" : "#"}>
                     <button className="text-[10px] font-black text-primary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Details</button>
                 </Link>
             </div>

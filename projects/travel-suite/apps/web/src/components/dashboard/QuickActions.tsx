@@ -21,14 +21,14 @@ export function QuickActions() {
                     accent="bg-primary/10 text-primary"
                 />
                 <QuickActionLink
-                    href="/admin/add-ons"
+                    href="/add-ons"
                     icon={Package}
                     label="Planner Add-ons Extension"
                     description="Manage upsells directly from planning workflow"
                     accent="bg-emerald-500/10 text-emerald-500"
                 />
                 <QuickActionLink
-                    href="/admin/social"
+                    href="/social"
                     icon={Megaphone}
                     label="Social Studio"
                     description="Generate and publish campaign-ready content"
@@ -42,7 +42,7 @@ export function QuickActions() {
                     accent="bg-blue-500/10 text-blue-500"
                 />
                 <QuickActionLink
-                    href="/admin/drivers"
+                    href="/drivers"
                     icon={Car}
                     label="Driver Status"
                     description="Real-time asset positioning"
