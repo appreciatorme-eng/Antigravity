@@ -10,8 +10,9 @@
 import { ButtonHTMLAttributes, MouseEvent, forwardRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { motion, HTMLMotionProps } from 'framer-motion';
 
-export interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface GlassButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
@@ -35,11 +36,11 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variantStyles = {
-      primary: 'bg-primary text-white hover:bg-opacity-90 shadow-button active:scale-95',
-      secondary: 'bg-secondary text-white hover:bg-opacity-90 shadow-button active:scale-95',
-      outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white active:scale-95',
-      ghost: 'text-secondary hover:bg-white/40 active:scale-95',
-      danger: 'bg-red-500 text-white hover:bg-red-600 shadow-button active:scale-95',
+      primary: 'bg-primary text-white hover:bg-opacity-90 shadow-button',
+      secondary: 'bg-secondary text-white hover:bg-opacity-90 shadow-button',
+      outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white',
+      ghost: 'text-secondary hover:bg-white/40',
+      danger: 'bg-red-500 text-white hover:bg-red-600 shadow-button',
     };
 
     const sizeStyles = {
@@ -71,8 +72,11 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     };
 
     return (
-      <button
+      <motion.button
         ref={ref}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(
           baseStyles,
           variantStyles[variant],
@@ -82,11 +86,11 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
         )}
         disabled={isDisabled}
         onClick={handleClick}
-        {...props}
+        {...(props as any)}
       >
         {(loading || submitting) && <Loader2 className="w-4 h-4 animate-spin" />}
         {children}
-      </button>
+      </motion.button>
     );
   }
 );

@@ -7,14 +7,16 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { motion, HTMLMotionProps } from 'framer-motion';
 
-interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
+interface GlassCardProps extends Omit<HTMLMotionProps<"div">, "children"> {
+  children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
   blur?: 'sm' | 'md' | 'lg';
   opacity?: 'low' | 'medium' | 'high';
   rounded?: 'md' | 'lg' | 'xl' | '2xl' | 'pill';
+  hoverEffect?: boolean;
 }
 
 const paddingClasses = {
@@ -53,10 +55,14 @@ export function GlassCard({
   opacity = 'medium',
   rounded = 'xl',
   onClick,
+  hoverEffect = false,
   ...rest
 }: GlassCardProps) {
   return (
-    <div
+    <motion.div
+      whileHover={hoverEffect || onClick ? { scale: 1.01, y: -2 } : {}}
+      whileTap={onClick ? { scale: 0.98 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
         // Base glass effect
         'relative overflow-hidden',
@@ -70,18 +76,18 @@ export function GlassCard({
         'shadow-[0_8px_32px_rgba(31,38,135,0.07)]',
 
         // Transition
-        'transition-all duration-200',
+        'transition-colors duration-200',
 
-        // Hover effect
-        onClick && 'cursor-pointer hover:shadow-[0_12px_40px_rgba(31,38,135,0.12)]',
+        // Hover effect tailwind replaced partially by framer-motion above, but we keep shadow hover
+        (hoverEffect || onClick) && 'cursor-pointer hover:shadow-[0_12px_40px_rgba(31,38,135,0.12)]',
 
         className
       )}
       onClick={onClick}
-      {...rest}
+      {...(rest as any)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 

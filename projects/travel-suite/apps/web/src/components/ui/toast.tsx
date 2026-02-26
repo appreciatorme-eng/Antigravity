@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Info, X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -108,40 +109,53 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 aria-live="polite"
                 aria-atomic="true"
             >
-                {toasts.map((item) => {
-                    const meta = variantMeta[item.variant || "info"];
-                    const Icon = meta.icon;
+                <AnimatePresence>
+                    {toasts.map((item) => {
+                        const meta = variantMeta[item.variant || "info"];
+                        const Icon = meta.icon;
 
-                    return (
-                        <div
-                            key={item.id}
-                            className={cn(
-                                "pointer-events-auto rounded-2xl border backdrop-blur-md shadow-[0_8px_32px_rgba(31,38,135,0.15)]",
-                                "animate-in fade-in slide-in-from-top-2 duration-200",
-                                meta.container
-                            )}
-                            role="status"
-                        >
-                            <div className="flex items-start gap-3 p-3">
-                                <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", meta.iconClass)} />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold text-secondary dark:text-white">{item.title}</p>
-                                    {item.description ? (
-                                        <p className="mt-1 text-xs text-text-secondary dark:text-slate-200">{item.description}</p>
-                                    ) : null}
+                        return (
+                            <motion.div
+                                key={item.id}
+                                layout
+                                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                                className={cn(
+                                    "pointer-events-auto relative overflow-hidden rounded-2xl border backdrop-blur-md shadow-[0_8px_32px_rgba(31,38,135,0.15)]",
+                                    meta.container
+                                )}
+                                role="status"
+                            >
+                                <div className="flex items-start gap-3 p-3">
+                                    <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", meta.iconClass)} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-secondary dark:text-white">{item.title}</p>
+                                        {item.description ? (
+                                            <p className="mt-1 text-xs text-text-secondary dark:text-slate-200">{item.description}</p>
+                                        ) : null}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => dismiss(item.id)}
+                                        className="relative z-10 rounded-lg p-1 text-text-secondary hover:bg-black/5 hover:text-secondary dark:hover:bg-white/10 dark:hover:text-white"
+                                        aria-label="Dismiss notification"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => dismiss(item.id)}
-                                    className="rounded-lg p-1 text-text-secondary hover:bg-white/50 hover:text-secondary dark:hover:bg-white/10 dark:hover:text-white"
-                                    aria-label="Dismiss notification"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
+                                {item.durationMs && item.durationMs > 0 && (
+                                    <motion.div
+                                        initial={{ width: "100%" }}
+                                        animate={{ width: "0%" }}
+                                        transition={{ duration: item.durationMs / 1000, ease: "linear" }}
+                                        className={cn("absolute bottom-0 left-0 h-1 bg-current opacity-20", meta.iconClass)}
+                                    />
+                                )}
+                            </motion.div>
+                        );
+                    })}
+                </AnimatePresence>
             </div>
         </ToastContext.Provider>
     );

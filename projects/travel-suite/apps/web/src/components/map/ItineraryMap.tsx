@@ -31,6 +31,15 @@ interface Coordinate {
     lng: number;
 }
 
+interface DriverLocationSnapshot {
+    latitude: number;
+    longitude: number;
+    recorded_at: string;
+    speed?: number | null;
+    heading?: number | null;
+    accuracy?: number | null;
+}
+
 interface Activity {
     title: string;
     location?: string;
@@ -39,9 +48,18 @@ interface Activity {
     coordinates?: Coordinate;
 }
 
-interface ItineraryMapProps {
+interface Day {
+    day_number: number;
     activities: Activity[];
+}
+
+interface ItineraryMapProps {
+    activities?: Activity[];
+    days?: Day[];
+    activeDay?: number;
     destination?: string;
+    driverLocation?: DriverLocationSnapshot | null;
+    className?: string;
 }
 
 // ── Haversine distance ───────────────────────────────────────────────────────
@@ -108,22 +126,45 @@ function optimizeRouteIndices(points: [number, number][], startIndex = 0): numbe
     return order;
 }
 
-// ── Numbered pin icon ─────────────────────────────────────────────────────────
+// ── Driver icon ──────────────────────────────────────────────────────────────
+function makeDriverIcon(heading: number = 0) {
+    return L.divIcon({
+        className: "",
+        html: `
+            <div style="
+                width:40px; height:40px; border-radius:12px;
+                background:#10b981; border:3px solid white;
+                display:flex; align-items:center; justify-content:center;
+                color:white;
+                box-shadow:0 8px 20px rgba(16,185,129,0.3);
+                transform: rotate(${heading}deg);
+                transition: transform 0.5s ease;
+            ">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 3.5c-2.5 0-5 2.5-5 5V12h5V8.5c0-2.5-2.5-5-5-5Z"/><path d="M10 10V5a2 2 0 0 1 4 0v5"/><path d="M19 17V11a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6"/><path d="M21 15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+                </svg>
+            </div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
+    });
+}
+
 function makeNumberedIcon(n: number) {
     return L.divIcon({
         className: "",
         html: `
             <div style="
-                width:36px; height:36px; border-radius:50%;
-                background:#1b140a; border:2.5px solid #c4a870;
+                width:32px; height:32px; border-radius:10px;
+                background:#0a1628; border:2px solid #10b981;
                 display:flex; align-items:center; justify-content:center;
-                color:#f5e7c6; font-weight:800; font-size:13px;
-                box-shadow:0 6px 14px rgba(20,16,12,0.4);
-                font-family:sans-serif;
+                color:#f1f5f9; font-weight:900; font-size:12px;
+                box-shadow:0 6px 16px rgba(0,0,0,0.3);
+                font-family:inherit;
             ">${n}</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-        popupAnchor: [0, -20],
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
     });
 }
 
@@ -159,22 +200,39 @@ function getCityCoords(destination?: string): [number, number] | null {
 }
 
 // ── Auto-fit bounds on mount ──────────────────────────────────────────────────
-function FitBounds({ positions }: { positions: [number, number][] }) {
+function FitBounds({ positions, driverLocation }: { positions: [number, number][], driverLocation?: [number, number] }) {
     const map = useMap();
     useEffect(() => {
-        if (positions.length > 0) {
-            const bounds = L.latLngBounds(positions.map(([lat, lng]) => L.latLng(lat, lng)));
+        const allPoints = [...positions];
+        if (driverLocation) allPoints.push(driverLocation);
+
+        if (allPoints.length > 0) {
+            const bounds = L.latLngBounds(allPoints.map(([lat, lng]) => L.latLng(lat, lng)));
             map.fitBounds(bounds, { padding: [55, 55], maxZoom: 14, animate: true });
         }
-    }, [map, positions]);
+    }, [map, positions, driverLocation]);
     return null;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function ItineraryMap({ activities, destination }: ItineraryMapProps) {
+export default function ItineraryMap({
+    activities = [],
+    days = [],
+    activeDay = 1,
+    destination,
+    driverLocation,
+    className
+}: ItineraryMapProps) {
+    const activeActivities = useMemo(() => {
+        if (days.length > 0) {
+            return days.find(d => d.day_number === activeDay)?.activities || [];
+        }
+        return activities;
+    }, [activities, days, activeDay]);
+
     const valid = useMemo(
         () =>
-            activities.filter(
+            activeActivities.filter(
                 (a) =>
                     a.coordinates &&
                     typeof a.coordinates.lat === "number" &&
@@ -182,16 +240,14 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                     a.coordinates.lat !== 0 &&
                     a.coordinates.lng !== 0
             ),
-        [activities]
+        [activeActivities]
     );
 
-    // [lat, lng] tuples for Leaflet (note: Leaflet uses lat,lng order)
     const positions = useMemo<[number, number][]>(
         () => valid.map((a) => [a.coordinates!.lat, a.coordinates!.lng]),
         [valid]
     );
 
-    // Optimise route line: nearest-neighbour + 2-opt (markers stay in original order)
     const optimizedLine = useMemo<[number, number][]>(() => {
         if (positions.length <= 1) return positions;
         const order = optimizeRouteIndices(positions, 0);
@@ -200,60 +256,69 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
 
     const totalKm = useMemo(() => totalDistanceKm(optimizedLine), [optimizedLine]);
 
-    // Leaflet Polyline uses [lat, lng] which is the same as positions
-    const routeLine = optimizedLine;
+    const driverPos = useMemo<[number, number] | null>(() => {
+        if (!driverLocation) return null;
+        return [driverLocation.latitude, driverLocation.longitude];
+    }, [driverLocation]);
 
-    if (valid.length === 0) {
+    if (valid.length === 0 && !driverPos) {
         const cityCenter = getCityCoords(destination);
         if (cityCenter) {
             return (
-                <MapContainer
-                    center={cityCenter}
-                    zoom={12}
-                    style={{ width: "100%", height: "100%" }}
-                    scrollWheelZoom
-                >
-                    <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                </MapContainer>
+                <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
+                    <MapContainer
+                        center={cityCenter}
+                        zoom={12}
+                        style={{ width: "100%", height: "100%" }}
+                        scrollWheelZoom
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                    </MapContainer>
+                </div>
             );
         }
 
         return (
-            <div className="h-full w-full bg-gray-50 flex flex-col items-center justify-center text-gray-400 rounded-lg border border-dashed border-gray-200 p-6">
+            <div className={cn("h-full w-full bg-gray-50 flex flex-col items-center justify-center text-gray-400 rounded-lg border border-dashed border-gray-200 p-6", className)}>
                 <MapPin className="w-8 h-8 mb-2 opacity-50" />
-                <p className="font-medium">No map locations found</p>
-                <p className="text-xs opacity-70">Add activities with locations to see them on the map.</p>
+                <p className="font-medium text-sm">No tactical locations found</p>
+                <p className="text-xs opacity-70">Add activities with coordinates to see them on the map.</p>
             </div>
         );
     }
 
-    const center = positions[0] ?? getCityCoords(destination) ?? [20, 0];
+    const center = driverPos ?? positions[0] ?? getCityCoords(destination) ?? [20, 0];
 
     return (
-        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
             {/* Route distance badge */}
-            <div
-                style={{
-                    position: "absolute",
-                    top: 12,
-                    left: 12,
-                    zIndex: 1000,
-                    background: "rgba(27,20,10,0.9)",
-                    color: "#f5e7c6",
-                    borderRadius: 9999,
-                    padding: "5px 12px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    boxShadow: "0 2px 8px rgba(20,16,12,0.3)",
-                    backdropFilter: "blur(4px)",
-                    pointerEvents: "none",
-                }}
-            >
-                Route: {totalKm.toFixed(1)} km
-            </div>
+            {totalKm > 0 && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 12,
+                        left: 12,
+                        zIndex: 1000,
+                        background: "rgba(10, 22, 40, 0.85)",
+                        color: "white",
+                        borderRadius: 12,
+                        padding: "6px 14px",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+                        backdropFilter: "blur(8px)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        pointerEvents: "none",
+                    }}
+                >
+                    Tactical Route: {totalKm.toFixed(1)} km
+                </div>
+            )}
 
             <MapContainer
                 center={center as [number, number]}
@@ -267,24 +332,21 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                     maxZoom={19}
                 />
 
-                {/* Auto-fit bounds to all markers */}
-                <FitBounds positions={positions} />
+                <FitBounds positions={positions} driverLocation={driverPos || undefined} />
 
-                {/* Route polyline — solid base + dashed overlay for clear visibility */}
-                {routeLine.length > 1 && (
+                {optimizedLine.length > 1 && (
                     <>
                         <Polyline
-                            positions={routeLine}
-                            pathOptions={{ color: "#c4a870", weight: 6, opacity: 0.35 }}
+                            positions={optimizedLine}
+                            pathOptions={{ color: "#10b981", weight: 6, opacity: 0.15 }}
                         />
                         <Polyline
-                            positions={routeLine}
-                            pathOptions={{ color: "#c4a870", weight: 3, opacity: 1, dashArray: "10 8" }}
+                            positions={optimizedLine}
+                            pathOptions={{ color: "#10b981", weight: 3, opacity: 0.8, dashArray: "1, 10" }}
                         />
                     </>
                 )}
 
-                {/* Activity markers */}
                 {valid.map((act, idx) => (
                     <Marker
                         key={idx}
@@ -292,24 +354,29 @@ export default function ItineraryMap({ activities, destination }: ItineraryMapPr
                         icon={makeNumberedIcon(idx + 1)}
                     >
                         <Popup>
-                            <div style={{ minWidth: 180, maxWidth: 240, padding: "2px 0" }}>
-                                <h4 style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 13, color: "#1b140a" }}>
-                                    {act.title}
-                                </h4>
-                                {(act.start_time || act.end_time) && (
-                                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6f5b3e" }}>
-                                        {act.start_time || "--:--"} – {act.end_time || "--:--"}
-                                    </p>
-                                )}
-                                {act.location && (
-                                    <p style={{ margin: 0, fontSize: 11, color: "#555", display: "flex", gap: 4, alignItems: "flex-start" }}>
-                                        📍 {act.location}
-                                    </p>
-                                )}
+                            <div className="p-1">
+                                <h4 className="font-bold text-sm text-slate-900">{act.title}</h4>
+                                {act.location && <p className="text-xs text-slate-500 mt-1">📍 {act.location}</p>}
+                                {act.start_time && <p className="text-xs font-mono text-emerald-600 mt-1">{act.start_time}</p>}
                             </div>
                         </Popup>
                     </Marker>
                 ))}
+
+                {driverPos && (
+                    <Marker
+                        position={driverPos}
+                        icon={makeDriverIcon(driverLocation?.heading || 0)}
+                    >
+                        <Popup>
+                            <div className="p-1 text-center">
+                                <h4 className="font-bold text-sm text-emerald-600">LIVE ASSET</h4>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Driver Location</p>
+                                <p className="text-xs mt-2 font-mono">{new Date(driverLocation!.recorded_at).toLocaleTimeString()}</p>
+                            </div>
+                        </Popup>
+                    </Marker>
+                )}
             </MapContainer>
         </div>
     );

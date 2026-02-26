@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Cormorant_Garamond, Poppins, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import "@/styles/print.css";
-import NavHeader from "@/components/layout/NavHeader";
 import AppProviders from "@/components/providers/AppProviders";
-
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["400", "700"], // Regular (400) and Bold (700) matching mobile
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"], // Regular, Medium, Semibold, Bold, ExtraBold
-});
+import AppShell from "@/components/layout/AppShell";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "GoBuddy Adventures",
-  description: "AI-Powered Travel Planning by GoBuddy",
+  title: "GoBuddy Adventures | Premium Tour Operator Suite",
+  description: "Enterprise-grade AI-Powered Travel Planning and Operations Management",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -47,15 +35,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${cormorant.variable} ${poppins.variable} ${inter.variable} antialiased font-sans`}
+        className={`${inter.variable} antialiased font-sans bg-white dark:bg-[#0a1628] text-slate-900 dark:text-slate-100`}
       >
         <AppProviders>
           <Suspense fallback={null}>
-            <NavHeader />
+            <AppShell>{children}</AppShell>
           </Suspense>
-          <main>{children}</main>
         </AppProviders>
       </body>
     </html>

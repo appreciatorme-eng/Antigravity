@@ -201,6 +201,11 @@ export default function AdminKanbanPage() {
     const moveToStage = async (client: ClientCard, stage: LifecycleStage) => {
         if ((client.lifecycle_stage || "lead") === stage) return;
         setMovingClientId(client.id);
+        const previousStage = client.lifecycle_stage;
+
+        // Optimistic update
+        setClients((prev) => prev.map((row) => (row.id === client.id ? { ...row, lifecycle_stage: stage } : row)));
+
         try {
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch("/api/admin/clients", {
@@ -216,9 +221,10 @@ export default function AdminKanbanPage() {
                 throw new Error(payload?.error || "Failed to update stage");
             }
 
-            setClients((prev) => prev.map((row) => (row.id === client.id ? { ...row, lifecycle_stage: stage } : row)));
             await fetchData();
         } catch (error) {
+            // Revert on failure
+            setClients((prev) => prev.map((row) => (row.id === client.id ? { ...row, lifecycle_stage: previousStage } : row)));
             console.error("Stage move failed:", error);
             toast({
                 title: "Failed to move stage",

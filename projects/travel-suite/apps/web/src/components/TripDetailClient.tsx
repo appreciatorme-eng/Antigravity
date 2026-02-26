@@ -104,69 +104,82 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
 
     return (
         <>
-            <main className="min-h-[calc(100vh-64px)] bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20">
-                <div className="max-w-5xl mx-auto px-6 py-8">
-
-                    {/* Top Navigation Bar */}
-                    <div className="flex justify-between items-center mb-8">
-                        <Link href="/trips">
-                            <Button variant="ghost" className="gap-2 text-gray-600 hover:text-secondary pl-0 hover:bg-transparent">
-                                <ArrowLeft className="w-4 h-4" />
-                                Back to Trips
-                            </Button>
-                        </Link>
-                        <div className="flex items-center gap-2">
-                            <ClientAssignmentBlock itineraryId={itinerary.id} initialClientId={itinerary.client_id} />
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowShareModal(true)}
-                                className="bg-white/80 backdrop-blur-sm shadow-sm gap-2 text-gray-700 font-medium"
-                            >
-                                <Link2 className="w-4 h-4" />
-                                Create Magic Link
-                            </Button>
-                            <PDFDownloadButton itinerary={tripData} clientName={clientName} showTemplateSelector={false} />
-                        </div>
+            <div className="space-y-8 pb-20">
+                {/* Top Navigation Bar */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <Link href="/trips">
+                        <Button variant="ghost" className="gap-2 text-slate-500 hover:text-primary pl-0 hover:bg-transparent transition-all">
+                            <ArrowLeft className="w-4 h-4" />
+                            BACK TO OPERATIONS
+                        </Button>
+                    </Link>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <ClientAssignmentBlock itineraryId={itinerary.id} initialClientId={itinerary.client_id} />
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowShareModal(true)}
+                            className="bg-white dark:bg-slate-900 shadow-sm gap-2 text-slate-700 dark:text-slate-300 font-bold border-slate-200 dark:border-white/10"
+                        >
+                            <Link2 className="w-4 h-4" />
+                            CREATE MAGIC LINK
+                        </Button>
+                        <PDFDownloadButton itinerary={tripData} clientName={clientName} showTemplateSelector={false} />
                     </div>
+                </div>
 
-                    {/* Trip Info Card */}
-                    <Card className="bg-white/50 backdrop-blur-sm border-gray-200 shadow-sm print:hidden mb-8">
-                        <CardContent className="pt-6">
-                            <div className="mb-6 text-center md:text-left">
-                                <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-4 tracking-tight leading-tight">
-                                    {itinerary.trip_title}
-                                </h1>
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-600 mb-6">
-                                    <div className="flex items-center gap-1.5 bg-white/80 px-3 py-1 rounded-full shadow-sm text-sm">
-                                        <MapPin className="w-4 h-4 text-primary" />
-                                        <span className="font-medium">{itinerary.destination}</span>
+                {/* Trip Info Card */}
+                <Card className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-md border-slate-200/60 dark:border-white/10 shadow-xl overflow-hidden rounded-[24px]">
+                    <CardContent className="p-8">
+                        <div className="flex flex-col md:flex-row justify-between gap-8">
+                            <div className="flex-1 space-y-6">
+                                <div className="space-y-2 text-center md:text-left">
+                                    <div className="flex items-center justify-center md:justify-start gap-2">
+                                        <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black tracking-widest uppercase border border-primary/20">
+                                            Mission Profile
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 bg-white/80 px-3 py-1 rounded-full shadow-sm text-sm">
-                                        <Calendar className="w-4 h-4 text-primary" />
-                                        <span className="font-medium">{itinerary.duration_days || 0} days</span>
+                                    <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                                        {itinerary.trip_title}
+                                    </h1>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/5">
+                                        <MapPin className="w-4 h-4 text-emerald-500" />
+                                        {itinerary.destination.toUpperCase()}
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/5">
+                                        <Calendar className="w-4 h-4 text-sky-500" />
+                                        {itinerary.duration_days || 0} DAYS
                                     </div>
                                     {itinerary.budget && (
-                                        <div className="flex items-center gap-1.5 bg-white/80 px-3 py-1 rounded-full shadow-sm text-sm">
-                                            <Wallet className="w-4 h-4 text-primary" />
-                                            <span className="font-medium">{itinerary.budget}</span>
+                                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/5">
+                                            <Wallet className="w-4 h-4 text-purple-500" />
+                                            {itinerary.budget.toUpperCase()}
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-gray-700 leading-relaxed font-light mb-6">{itinerary.summary}</p>
-                                <div className="flex flex-wrap gap-4">
-                                    <WeatherWidget destination={itinerary.destination} days={itinerary.duration_days || 1} />
-                                    <CurrencyConverter destination={itinerary.destination} compact />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
 
-                    {/* Render itinerary in the template it was saved with */}
-                    <div id="itinerary-pdf-content" className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                        <ItineraryView templateId={templateId} tripData={tripData} client={clientData} />
-                    </div>
+                                {itinerary.summary && (
+                                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-medium text-lg max-w-3xl">
+                                        {itinerary.summary}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col gap-4 justify-center">
+                                <WeatherWidget destination={itinerary.destination} days={itinerary.duration_days || 1} />
+                                <CurrencyConverter destination={itinerary.destination} compact />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Render itinerary in the template it was saved with */}
+                <div id="itinerary-pdf-content" className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                    <ItineraryView templateId={templateId} tripData={tripData} client={clientData} />
                 </div>
-            </main>
+            </div>
 
             <ShareModal
                 isOpen={showShareModal}

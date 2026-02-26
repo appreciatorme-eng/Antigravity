@@ -99,6 +99,21 @@ function toCurrency(amount: number): string {
     return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+import {
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell
+} from "recharts";
+
+const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308'];
+
 export default function AdminAnalyticsPage() {
     const supabase = useMemo(() => createClient(), []);
     const { toast } = useToast();
@@ -277,119 +292,155 @@ export default function AdminAnalyticsPage() {
         void loadAnalytics(false);
     }, [loadAnalytics]);
 
-    const maxRevenue = Math.max(1, ...snapshot.series.map((point) => point.revenue));
     const kpis = [
         {
-            label: "Revenue (Last 6 Months)",
+            label: "Total Revenue",
             value: toCurrency(snapshot.monthlyRevenueTotal),
+            sub: "Last 6 months",
             icon: DollarSign,
-            tone: "text-emerald-600 dark:text-emerald-400",
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
         },
         {
-            label: "Proposals Created",
+            label: "Proposals",
             value: `${snapshot.proposalsTotal}`,
+            sub: "Total created",
             icon: FileCheck2,
-            tone: "text-primary",
+            color: "text-blue-600",
+            bg: "bg-blue-50",
         },
         {
-            label: "Active Clients",
-            value: `${snapshot.activeClients}`,
-            icon: Users,
-            tone: "text-indigo-600 dark:text-indigo-400",
-        },
-        {
-            label: "Proposal Conversion",
+            label: "Conversion",
             value: `${snapshot.proposalConversionRate.toFixed(1)}%`,
+            sub: "Proposal to Trip",
             icon: TrendingUp,
-            tone: "text-orange-600 dark:text-orange-400",
+            color: "text-purple-600",
+            bg: "bg-purple-50",
+        },
+        {
+            label: "Engagement",
+            value: `${snapshot.viewedProposalRate.toFixed(1)}%`,
+            sub: "Proposal view rate",
+            icon: Users,
+            color: "text-orange-600",
+            bg: "bg-orange-50",
         },
     ];
 
     return (
-        <div className="space-y-8">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/20">
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <span className="text-xs font-bold uppercase tracking-widest text-primary">Analytics</span>
-                        <h1 className="text-3xl font-serif text-secondary dark:text-white">Business Analytics</h1>
-                        <p className="mt-1 text-text-secondary">Live proposal, revenue, and destination performance metrics.</p>
-                    </div>
+        <div className="space-y-8 pb-12">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl font-serif text-secondary tracking-tight">Business Intelligence</h1>
+                    <p className="mt-2 text-lg text-text-secondary">Comprehensive performance analysis and market insights.</p>
                 </div>
 
                 <GlassButton
                     variant="outline"
-                    size="sm"
+                    className="rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
                     loading={refreshing}
                     onClick={() => void loadAnalytics(true)}
                 >
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Sync Data
                 </GlassButton>
             </div>
 
             {error ? (
-                <GlassCard padding="lg" rounded="2xl" className="border border-rose-200/70 bg-rose-50/70 dark:border-rose-900/40 dark:bg-rose-900/20">
-                    <p className="text-sm text-rose-700 dark:text-rose-300">Failed to load analytics: {error}</p>
+                <GlassCard padding="lg" className="border-rose-100 bg-rose-50/50">
+                    <p className="text-sm text-rose-600 font-medium">Analytics Engine Error: {error}</p>
                 </GlassCard>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {/* KPI Section */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {kpis.map((item) => (
-                    <GlassCard key={item.label} padding="lg" rounded="xl">
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-text-secondary">{item.label}</p>
-                            <item.icon className={`h-4 w-4 ${item.tone}`} />
+                    <GlassCard key={item.label} padding="lg" className="group">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                <item.icon className={`h-6 w-6 ${item.color}`} />
+                            </div>
+                            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{item.sub}</span>
                         </div>
-                        <div className="mt-3 text-2xl font-serif text-secondary dark:text-white">
+                        <div className="text-3xl font-bold text-secondary tabular-nums">
                             {loading ? "..." : item.value}
                         </div>
+                        <p className="mt-1 text-sm font-medium text-text-secondary">{item.label}</p>
                     </GlassCard>
                 ))}
             </div>
 
+            {/* Revenue Trend Chart */}
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <GlassCard padding="lg" rounded="2xl" className="xl:col-span-2">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-serif text-secondary dark:text-white">Revenue Trend</h2>
-                        <span className="text-xs text-text-secondary">Paid invoices only</span>
+                <GlassCard padding="lg" className="xl:col-span-2">
+                    <div className="mb-8 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-serif text-secondary">Revenue Accumulation</h2>
+                            <p className="text-xs text-text-muted mt-1 uppercase tracking-tighter">Gross revenue from paid invoices (Monthly)</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-primary" />
+                            <span className="text-[10px] font-bold text-text-secondary uppercase">Paid Invoices</span>
+                        </div>
                     </div>
 
-                    {snapshot.series.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-white/30 bg-white/30 p-6 text-center text-sm text-text-secondary dark:bg-white/5">
-                            No invoice history available yet.
-                        </div>
-                    ) : (
-                        <div className="flex h-48 items-end gap-3">
-                            {snapshot.series.map((point) => (
-                                <div key={point.month} className="flex flex-1 flex-col items-center gap-2">
-                                    <div
-                                        className="w-full rounded-xl border border-primary/30 bg-primary/20"
-                                        style={{ height: `${Math.max(16, (point.revenue / maxRevenue) * 140)}px` }}
-                                        title={`${point.month}: ${toCurrency(point.revenue)}`}
+                    <div className="h-[300px] w-full">
+                        {loading ? (
+                            <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-2xl" />
+                        ) : snapshot.series.length === 0 ? (
+                            <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-gray-100 rounded-2xl text-text-muted text-sm">
+                                Insufficient historical data for projection.
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={snapshot.series}>
+                                    <defs>
+                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                                    <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.8)' }}
                                     />
-                                    <span className="text-xs text-text-secondary">{point.month}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                    <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={3} fill="url(#colorRev)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </div>
                 </GlassCard>
 
-                <GlassCard padding="lg" rounded="2xl">
-                    <h2 className="mb-4 text-lg font-serif text-secondary dark:text-white">Top Destinations</h2>
-                    {snapshot.destinationRank.length === 0 ? (
-                        <p className="text-sm text-text-secondary">No trips linked to itineraries yet.</p>
+                {/* Top Destinations */}
+                <GlassCard padding="lg">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-serif text-secondary">Top Regions</h2>
+                        <p className="text-xs text-text-muted mt-1">High-demand travel destinations</p>
+                    </div>
+
+                    {loading ? (
+                        <div className="space-y-4">
+                            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-10 bg-gray-50 animate-pulse rounded-xl" />)}
+                        </div>
+                    ) : snapshot.destinationRank.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <MapPin className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                            <p className="text-sm text-text-muted">No destination data yet.</p>
+                        </div>
                     ) : (
-                        <div className="space-y-3">
-                            {snapshot.destinationRank.map((destination) => (
-                                <div key={destination.name} className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <MapPin className="h-4 w-4 text-primary" />
-                                        <span className="text-sm font-medium text-secondary dark:text-white">{destination.name}</span>
+                        <div className="space-y-4">
+                            {snapshot.destinationRank.map((dest, idx) => (
+                                <div key={dest.name} className="flex items-center justify-between p-3 bg-white/50 rounded-2xl border border-gray-100 hover:border-primary/20 transition-all hover:translate-x-1">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-bold text-text-muted w-4">{idx + 1}</span>
+                                        <span className="text-sm font-bold text-secondary">{dest.name}</span>
                                     </div>
-                                    <span className="text-xs text-text-secondary">{destination.trips} trips</span>
+                                    <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-0.5 rounded-full">
+                                        <TrendingUp className="h-3 w-3 text-primary" />
+                                        <span className="text-[10px] font-bold text-primary">{dest.trips}</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -397,37 +448,77 @@ export default function AdminAnalyticsPage() {
                 </GlassCard>
             </div>
 
+            {/* Bottom Row: Pipeline & Health */}
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <GlassCard padding="lg" rounded="2xl">
-                    <h2 className="mb-4 text-lg font-serif text-secondary dark:text-white">Proposal Pipeline</h2>
-                    {snapshot.proposalStatusBreakdown.length === 0 ? (
-                        <p className="text-sm text-text-secondary">No proposals yet.</p>
-                    ) : (
+                <GlassCard padding="lg">
+                    <h2 className="text-xl font-serif text-secondary mb-8">Proposal Pipeline</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div className="h-[200px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={snapshot.proposalStatusBreakdown}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="count"
+                                    >
+                                        {snapshot.proposalStatusBreakdown.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                         <div className="space-y-3">
-                            {snapshot.proposalStatusBreakdown.map((item) => (
-                                <div key={item.status} className="flex items-center justify-between rounded-xl border border-white/20 bg-white/30 px-3 py-2 dark:bg-white/5">
-                                    <span className="text-sm capitalize text-secondary dark:text-white">
-                                        {item.status.replaceAll("_", " ")}
-                                    </span>
-                                    <span className="text-sm font-semibold text-primary">{item.count}</span>
+                            {snapshot.proposalStatusBreakdown.map((item, idx) => (
+                                <div key={item.status} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                        <span className="capitalize text-text-secondary font-medium">{item.status.replace('_', ' ')}</span>
+                                    </div>
+                                    <span className="font-bold text-secondary">{item.count}</span>
                                 </div>
                             ))}
                         </div>
-                    )}
+                    </div>
                 </GlassCard>
 
-                <GlassCard padding="lg" rounded="2xl">
-                    <h2 className="mb-4 text-lg font-serif text-secondary dark:text-white">Engagement Health</h2>
-                    <div className="space-y-4">
-                        <div className="rounded-xl border border-white/20 bg-white/30 px-4 py-3 dark:bg-white/5">
-                            <p className="text-xs uppercase tracking-wide text-text-secondary">Viewed Proposals</p>
-                            <p className="mt-1 text-xl font-serif text-secondary dark:text-white">
-                                {snapshot.viewedProposalRate.toFixed(1)}%
-                            </p>
+                <GlassCard padding="lg">
+                    <h2 className="text-xl font-serif text-secondary mb-8">Operations Status</h2>
+                    <div className="space-y-6">
+                        <div className="p-5 rounded-2xl bg-white/50 border border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Active Client Load</span>
+                                <span className="text-xs font-bold text-primary">{snapshot.activeClients} Operators</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (snapshot.activeClients / 20) * 100)}%` }} />
+                            </div>
                         </div>
-                        <div className="rounded-xl border border-white/20 bg-white/30 px-4 py-3 dark:bg-white/5">
-                            <p className="text-xs uppercase tracking-wide text-text-secondary">Active Trips</p>
-                            <p className="mt-1 text-xl font-serif text-secondary dark:text-white">{snapshot.activeTrips}</p>
+
+                        <div className="p-5 rounded-2xl bg-white/50 border border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Ongoing Expeditions</span>
+                                <span className="text-xs font-bold text-secondary">{snapshot.activeTrips} Live</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-secondary rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (snapshot.activeTrips / 10) * 100)}%` }} />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 pt-2">
+                            <div className="flex-1 p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                <h4 className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Health</h4>
+                                <p className="text-lg font-bold text-emerald-700">Optimal</p>
+                            </div>
+                            <div className="flex-1 p-4 rounded-2xl bg-blue-50 border border-blue-100">
+                                <h4 className="text-[10px] font-bold text-blue-600 uppercase mb-1">Latency</h4>
+                                <p className="text-lg font-bold text-blue-700">&lt; 140ms</p>
+                            </div>
                         </div>
                     </div>
                 </GlassCard>

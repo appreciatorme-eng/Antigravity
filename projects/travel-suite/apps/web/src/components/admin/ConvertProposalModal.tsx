@@ -38,7 +38,7 @@ export default function ConvertProposalModal({
 
         setConverting(true);
         try {
-            const response = await fetch(`/api/admin/proposals/${proposalId}/convert`, {
+            const response = await fetch(`/api/proposals/${proposalId}/convert`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

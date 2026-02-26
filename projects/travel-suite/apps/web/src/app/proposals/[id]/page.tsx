@@ -362,7 +362,7 @@ export default function AdminProposalViewPage() {
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold font-serif text-secondary dark:text-white mb-2">Proposal Not Found</h2>
           <Link
-            href="/admin/proposals"
+            href="/proposals"
             className="text-primary hover:underline"
           >
             Back to Proposals
@@ -381,7 +381,7 @@ export default function AdminProposalViewPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/admin/proposals"
+            href="/proposals"
             className="p-2 hover:bg-white/40 dark:hover:bg-white/5 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-text-secondary" />
