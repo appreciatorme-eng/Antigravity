@@ -31,6 +31,11 @@ interface AnalyticsRawState {
   clientCount: number;
 }
 
+interface QueryResult<T> {
+  data: T[] | null;
+  error: { message?: string | null } | null;
+}
+
 const EMPTY_RAW_STATE: AnalyticsRawState = {
   proposals: [],
   trips: [],
@@ -268,52 +273,52 @@ export function useAdminAnalytics() {
 
         const orgId = profile.organization_id;
 
-        let proposalsRes = await supabase
+        let proposalsRes: QueryResult<ProposalRow> = (await supabase
           .from("proposals")
           .select("status,total_price,created_at,viewed_at,created_by,client_id")
-          .eq("organization_id", orgId);
+          .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
 
         if (proposalsRes.error && isColumnMissingError(proposalsRes.error.message)) {
-          proposalsRes = await supabase
+          proposalsRes = (await supabase
             .from("proposals")
             .select("status,total_price,created_at,viewed_at")
-            .eq("organization_id", orgId);
+            .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
         }
 
-        let tripsRes = await supabase
+        let tripsRes: QueryResult<TripRow> = (await supabase
           .from("trips")
           .select("status,created_at,owner_id,client_id,itineraries(destination)")
-          .eq("organization_id", orgId);
+          .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
 
         if (tripsRes.error && isColumnMissingError(tripsRes.error.message)) {
-          tripsRes = await supabase
+          tripsRes = (await supabase
             .from("trips")
             .select("status,created_at,itineraries(destination)")
-            .eq("organization_id", orgId);
+            .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
         }
 
-        let invoicesRes = await supabase
+        let invoicesRes: QueryResult<InvoiceRow> = (await supabase
           .from("invoices")
           .select("status,total_amount,created_at,client_id")
-          .eq("organization_id", orgId);
+          .eq("organization_id", orgId)) as unknown as QueryResult<InvoiceRow>;
 
         if (invoicesRes.error && isColumnMissingError(invoicesRes.error.message)) {
-          invoicesRes = await supabase
+          invoicesRes = (await supabase
             .from("invoices")
             .select("status,total_amount,created_at")
-            .eq("organization_id", orgId);
+            .eq("organization_id", orgId)) as unknown as QueryResult<InvoiceRow>;
         }
 
-        let profilesRes = await supabase
+        let profilesRes: QueryResult<ProfileRow> = (await supabase
           .from("profiles")
           .select("id,full_name,role,source_channel,preferred_destination")
-          .eq("organization_id", orgId);
+          .eq("organization_id", orgId)) as unknown as QueryResult<ProfileRow>;
 
         if (profilesRes.error && isColumnMissingError(profilesRes.error.message)) {
-          profilesRes = await supabase
+          profilesRes = (await supabase
             .from("profiles")
             .select("id,full_name,role")
-            .eq("organization_id", orgId);
+            .eq("organization_id", orgId)) as unknown as QueryResult<ProfileRow>;
         }
 
         const clientsRes = await supabase
