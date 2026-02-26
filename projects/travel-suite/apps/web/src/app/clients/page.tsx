@@ -1,7 +1,7 @@
 /**
- * Client Database - Mission Control
- * 
- * Central hub for managing client intelligence, relationships, and operational pipelines.
+ * Client Directory
+ *
+ * Central hub for managing client relationships and operational pipelines.
  */
 
 "use client";
@@ -103,7 +103,7 @@ const LIFECYCLE_STAGE_LABELS: Record<(typeof LIFECYCLE_STAGES)[number], string> 
     proposal: "Proposal",
     payment_pending: "Payment Pending",
     payment_confirmed: "Payment Confirmed",
-    active: "Active Deployment",
+    active: "Active Trip",
     review: "Review",
     past: "Closed",
 };
@@ -258,7 +258,7 @@ export default function ClientsPage() {
 
     const handleSaveClient = async () => {
         if (!formData.full_name.trim() || !formData.email.trim()) {
-            setFormError("Identity and communication vector (email) required.");
+            setFormError("Name and email are required.");
             return;
         }
 
@@ -365,7 +365,7 @@ export default function ClientsPage() {
             trend: "Optimal"
         },
         {
-            label: "Closed Missions",
+            label: "Closed",
             value: clients.filter((c) => ["past", "review"].includes(c.lifecycle_stage || "")).length,
             icon: CheckCircle2,
             color: "text-violet-600",
@@ -381,14 +381,14 @@ export default function ClientsPage() {
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
-                            Identity Registry
+                            Client Directory
                         </div>
                     </div>
                     <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
                         Clients
                     </h1>
                     <p className="text-text-muted text-lg font-medium max-w-2xl">
-                        Comprehensive intelligence on client journeys and relationships.
+                        Overview of your client relationships.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -396,7 +396,7 @@ export default function ClientsPage() {
                         onClick={fetchClients}
                         variant="ghost"
                         className="rounded-xl border-gray-100 h-14 w-14 p-0 shadow-sm"
-                        title="Refresh Intelligence"
+                        title="Refresh"
                     >
                         <RefreshCcw className={cn("w-5 h-5", loading && "animate-spin")} />
                     </GlassButton>
@@ -406,7 +406,7 @@ export default function ClientsPage() {
                         className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
                     >
                         <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
-                        <span className="text-xs font-black uppercase tracking-widest">Register Identity</span>
+                        <span className="text-xs font-black uppercase tracking-widest">Add Client</span>
                     </GlassButton>
                 </div>
             </div>
@@ -456,7 +456,7 @@ export default function ClientsPage() {
                 </div>
             )}
 
-            {/* Tactical Stats Grid */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat) => (
                     <GlassCard key={stat.label} padding="lg" className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg border-gray-100 dark:border-slate-800">
@@ -486,7 +486,7 @@ export default function ClientsPage() {
                         <Search className="w-5 h-5 text-text-muted mr-4" />
                         <input
                             type="text"
-                            placeholder="Interrogate database by identity, communication origin, or digital signature..."
+                            placeholder="Search by name, email, or phone..."
                             className="flex-1 bg-transparent border-none focus:ring-0 text-secondary dark:text-white placeholder:text-text-muted/50 text-sm h-12 font-medium"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -499,7 +499,7 @@ export default function ClientsPage() {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">Operational Pipeline</h2>
+                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">Client List</h2>
                         <p className="text-xs text-text-muted mt-1 font-medium">Strategic lifecycle management across client segments.</p>
                     </div>
                 </div>
@@ -538,7 +538,7 @@ export default function ClientsPage() {
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0">
                                                         <h3 className="text-sm font-bold text-secondary dark:text-white truncate">
-                                                            {client.full_name || "Guest Entity"}
+                                                            {client.full_name || "Guest"}
                                                         </h3>
                                                         <p className="text-[10px] font-medium text-text-muted truncate mt-0.5">
                                                             {client.email || "Confidential Vector"}
@@ -588,7 +588,7 @@ export default function ClientsPage() {
                                                     </div>
                                                     {client.trips_count ? (
                                                         <span className="text-[9px] font-black text-primary bg-primary/5 px-2 py-1 rounded border border-primary/20 uppercase tracking-widest">
-                                                            {client.trips_count} Missions
+                                                            {client.trips_count} Trips
                                                         </span>
                                                     ) : null}
                                                 </div>
@@ -609,7 +609,7 @@ export default function ClientsPage() {
                     setModalOpen(false);
                     resetForm();
                 }}
-                title={editingClientId ? "Update Entity Parameters" : "Register Identity"}
+                title={editingClientId ? "Update Client" : "Add Client"}
             >
                 <p className="text-sm font-medium text-text-secondary mb-6">
                     Establish a new client tracking profile to monitor logistical footprints and deployment status.
@@ -665,7 +665,7 @@ export default function ClientsPage() {
                     </div>
 
                     <div className="pt-4 border-t border-gray-100 dark:border-slate-800">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-4">Tactical Intelligence</h4>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-4">Client Insights</h4>
                         <div className="grid gap-4">
                             <GlassInput
                                 label="Target Destination"
@@ -701,7 +701,7 @@ export default function ClientsPage() {
 
                     <div className="pt-4 border-t border-gray-100 dark:border-slate-800">
                         <div className="grid gap-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Operational Notes</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Notes</label>
                             <textarea
                                 value={formData.notes}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
@@ -734,7 +734,7 @@ export default function ClientsPage() {
                         variant="primary"
                         className="font-bold text-xs uppercase tracking-widest"
                     >
-                        {saving ? "Transmitting..." : (editingClientId ? "Update Entity" : "Initialize Record")}
+                        {saving ? "Saving..." : (editingClientId ? "Update Client" : "Save Client")}
                     </GlassButton>
                 </div>
             </GlassModal>

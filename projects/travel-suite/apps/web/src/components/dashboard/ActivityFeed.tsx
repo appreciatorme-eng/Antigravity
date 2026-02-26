@@ -23,9 +23,9 @@ export function ActivityFeed({ activities, loading = false }: ActivityFeedProps)
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Deployment Log</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Recent Activity</h3>
                 <Link href="/trips" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-                    View Full Manifest <ChevronRight className="w-3 h-3" />
+                    View All <ChevronRight className="w-3 h-3" />
                 </Link>
             </div>
 
@@ -40,7 +40,7 @@ export function ActivityFeed({ activities, loading = false }: ActivityFeedProps)
                     ))
                 ) : (
                     <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                        <p className="text-slate-400 font-medium">No tactical activity detected.</p>
+                        <p className="text-slate-400 font-medium">No recent activity.</p>
                     </div>
                 )}
             </div>

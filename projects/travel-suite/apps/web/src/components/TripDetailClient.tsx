@@ -135,7 +135,7 @@ export default function TripDetailClient({ itinerary }: TripDetailClientProps) {
                                 <div className="space-y-2 text-center md:text-left">
                                     <div className="flex items-center justify-center md:justify-start gap-2">
                                         <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black tracking-widest uppercase border border-primary/20">
-                                            Mission Profile
+                                            Trip Overview
                                         </span>
                                     </div>
                                     <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">

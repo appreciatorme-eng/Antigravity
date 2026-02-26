@@ -9,14 +9,14 @@ export function QuickActions() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Tactical Actions</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Quick Actions</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
                 <QuickActionLink
                     href="/trips"
                     icon={Zap}
-                    label="Launch New Protocol"
+                    label="Create New Trip"
                     description="AI-powered itinerary generation"
                     accent="bg-primary/10 text-primary"
                 />
@@ -30,7 +30,7 @@ export function QuickActions() {
                 <QuickActionLink
                     href="/admin/drivers"
                     icon={Car}
-                    label="Fleet Status"
+                    label="Driver Status"
                     description="Real-time asset positioning"
                     accent="bg-amber-500/10 text-amber-500"
                 />

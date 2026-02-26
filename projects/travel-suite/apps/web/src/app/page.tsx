@@ -1,5 +1,5 @@
 /**
- * Intelligent Dashboard - Enterprise Overview
+ * Dashboard - Enterprise Overview
  */
 
 "use client";
@@ -27,7 +27,7 @@ import RevenueChart from "@/components/analytics/RevenueChart";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { InfrastructureHealth } from "@/components/dashboard/InfrastructureHealth";
+import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -93,7 +93,7 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             Strategic <span className="text-primary">Overview</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Real-time operational intelligence and fleet telemetry.</p>
+          <p className="text-slate-500 mt-2 font-medium">Your travel business at a glance.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -104,7 +104,7 @@ export default function DashboardPage() {
           <Link href="/trips">
             <GlassButton variant="primary" className="h-12 px-6 shadow-xl shadow-primary/20">
               <Plus className="w-4 h-4 mr-2" />
-              New Deployment
+              New Trip
             </GlassButton>
           </Link>
         </div>
@@ -112,19 +112,19 @@ export default function DashboardPage() {
 
       {/* Strategic Stats Matrix */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard label="Mission Load" value={stats.activeTrips} icon={Zap} trend="+12%" color="text-emerald-500" bg="bg-emerald-500/10" loading={loading} />
+        <KPICard label="Active Trips" value={stats.activeTrips} icon={Zap} trend="+12%" color="text-emerald-500" bg="bg-emerald-500/10" loading={loading} />
         <KPICard label="Strategic Partners" value={stats.totalClients} icon={Users} trend="+3" color="text-blue-500" bg="bg-blue-500/10" loading={loading} />
-        <KPICard label="Marketplace Intel" value={(stats.marketplaceViews || 0) + " / " + (stats.marketplaceInquiries || 0)} icon={Plus} trend={(stats.conversionRate || "0.0") + "% CR"} color="text-amber-500" bg="bg-amber-500/10" loading={loading} />
+        <KPICard label="Marketplace" value={(stats.marketplaceViews || 0) + " / " + (stats.marketplaceInquiries || 0)} icon={Plus} trend={(stats.conversionRate || "0.0") + "% CR"} color="text-amber-500" bg="bg-amber-500/10" loading={loading} />
         <KPICard label="Signal Queue" value={stats.pendingNotifications} icon={Bell} trend="-5%" trendUp={false} color="text-rose-500" bg="bg-rose-500/10" loading={loading} />
       </div>
 
-      {/* Main Intelligence Grid */}
+      {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <GlassCard className="lg:col-span-2" padding="xl">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">Financial Trajectory</h3>
-              <p className="text-sm text-slate-500 font-medium">Revenue and mission conversion vs target</p>
+              <p className="text-sm text-slate-500 font-medium">Revenue and booking conversion vs target</p>
             </div>
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
               <button className="px-4 py-1.5 text-xs font-bold rounded-lg bg-white dark:bg-slate-700 shadow-sm">Revenue</button>
@@ -138,7 +138,7 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           <QuickActions />
-          <InfrastructureHealth health={health} />
+          <SystemHealth health={health} />
         </div>
       </div>
 
@@ -149,18 +149,18 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Sub-System Telemetry</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">System Status</h3>
           </div>
           <GlassCard padding="lg" className="border-gray-100 divide-y divide-gray-100 dark:divide-slate-800">
-            <TelemetryItem icon={ShieldCheck} label="Identity Filter" status="Active" color="text-emerald-500" />
-            <TelemetryItem icon={MessageSquare} label="Signal Intercept" status="Operational" color="text-emerald-500" />
-            <TelemetryItem icon={Zap} label="Edge Processing" status="Healthy" color="text-emerald-500" />
-            <TelemetryItem icon={History} label="Audit Archiving" status="Syncing" color="text-blue-500" />
+            <StatusItem icon={ShieldCheck} label="Authentication" status="Active" color="text-emerald-500" />
+            <StatusItem icon={MessageSquare} label="Notifications" status="Operational" color="text-emerald-500" />
+            <StatusItem icon={Zap} label="API Services" status="Healthy" color="text-emerald-500" />
+            <StatusItem icon={History} label="Data Backup" status="Syncing" color="text-blue-500" />
           </GlassCard>
 
           <GlassCard padding="none" className="overflow-hidden group">
             <div className="p-6 bg-gradient-to-br from-primary to-emerald-600">
-              <h4 className="text-white font-black text-lg mb-2">Upgrade Protocol</h4>
+              <h4 className="text-white font-black text-lg mb-2">Upgrade Plan</h4>
               <p className="text-white/80 text-xs font-medium leading-relaxed">
                 Unlock advanced analytics, team collaboration, and automated reporting by upgrading your tier.
               </p>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
   );
 }
 
-function TelemetryItem({ icon: Icon, label, status, color }: any) {
+function StatusItem({ icon: Icon, label, status, color }: any) {
   return (
     <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
       <div className="flex items-center gap-3">

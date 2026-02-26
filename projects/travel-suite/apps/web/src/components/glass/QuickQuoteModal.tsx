@@ -52,7 +52,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
         <GlassModal isOpen={isOpen} onClose={onClose} title="Quick Quote AI Engine">
             {step === 1 ? (
                 <div className="space-y-6">
-                    <p className="text-sm text-text-muted">Instantly generate a highly accurate 30-second price estimation based on historical market telemetry and supplier margins.</p>
+                    <p className="text-sm text-text-muted">Instantly generate a highly accurate 30-second price estimation based on historical pricing data and supplier margins.</p>
 
                     <div className="space-y-4">
                         <GlassInput
@@ -73,7 +73,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
                                 onChange={(e) => setDuration(e.target.value)}
                             />
                             <GlassInput
-                                label="Entity Count (Pax)"
+                                label="Number of Travelers"
                                 type="number"
                                 min={1}
                                 icon={Users}
@@ -105,7 +105,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
                             onClick={calculateEstimate}
                             loading={loading}
                         >
-                            <Calculator className="w-4 h-4 mr-2" /> Calculate Tactical Estimate
+                            <Calculator className="w-4 h-4 mr-2" /> Calculate Quote
                         </GlassButton>
                     </div>
                 </div>
@@ -127,7 +127,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
                         </div>
                         <div>
                             <p className="font-bold">Estimated Provider Margin: ~22%</p>
-                            <p className="text-xs text-text-muted mt-1">This figure includes projected accommodation and transport yields based on active telemetry mapping.</p>
+                            <p className="text-xs text-text-muted mt-1">This figure includes projected accommodation and transport yields based on calculating estimate.</p>
                         </div>
                     </div>
 

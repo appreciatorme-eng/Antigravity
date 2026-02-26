@@ -70,7 +70,7 @@ export default function SettingsPage() {
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="border-b border-gray-100 pb-4">
                                     <h2 className="text-xl font-bold text-secondary">Organization Profile</h2>
-                                    <p className="text-sm text-text-secondary mt-1">Manage global brand identity and top-level infrastructure.</p>
+                                    <p className="text-sm text-text-secondary mt-1">Manage global brand identity and account settings.</p>
                                 </div>
 
                                 <div className="grid gap-6">
@@ -164,7 +164,7 @@ export default function SettingsPage() {
                                     {[
                                         { name: 'Amadeus Booking API', desc: 'Flight, hotel, and vehicle reservation networking.', status: 'Connected' },
                                         { name: 'Stripe Payments', desc: 'Secure financial routing and proposal checkout.', status: 'Connected' },
-                                        { name: 'Google Places & Maps', desc: 'Geospatial mapping and point of interest intel.', status: 'Disconnected' },
+                                        { name: 'Google Places & Maps', desc: 'Geospatial mapping and point of interest data.', status: 'Disconnected' },
                                         { name: 'Twilio Gateway', desc: 'Direct WhatsApp and SMS client dispatching.', status: 'Disconnected' },
                                     ].map(integration => (
                                         <div key={integration.name} className="flex items-center justify-between p-4 border border-gray-100 rounded-2xl hover:border-primary/30 transition-colors bg-gray-50/50">

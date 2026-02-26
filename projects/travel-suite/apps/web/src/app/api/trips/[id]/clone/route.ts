@@ -94,7 +94,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         return NextResponse.json({
             success: true,
             tripId: newTrip.id,
-            message: "Mission successfully cloned."
+            message: "Trip duplicated successfully."
         });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

@@ -329,12 +329,12 @@ export default function BillingPage() {
             <CreditCard className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-black">Financial Manifest</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-primary font-black">Billing</span>
             <h1 className="text-4xl font-serif text-secondary dark:text-white leading-tight">
-              Billing & Ledger
+              Billing & Invoices
             </h1>
             <p className="text-text-muted mt-1 text-sm font-medium">
-              Oversee your operational status and transaction chronologies.
+              Manage your subscription and billing history.
             </p>
           </div>
         </div>
@@ -350,7 +350,7 @@ export default function BillingPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-widest text-primary">
-                    Current Protocol
+                    Current Plan
                   </div>
                   <h2 className="text-3xl font-serif text-secondary dark:text-white uppercase tracking-tight">
                     {currentPlan.name}
@@ -387,7 +387,7 @@ export default function BillingPage() {
                     className="rounded-2xl border-rose-100 text-rose-600 hover:bg-rose-50"
                     onClick={() => setShowCancelModal(true)}
                   >
-                    Terminate Protocol
+                    Cancel Plan
                   </GlassButton>
                 )}
                 {currentPlan.id !== "enterprise" && (
@@ -396,7 +396,7 @@ export default function BillingPage() {
                     className="rounded-2xl shadow-lg shadow-primary/20"
                     onClick={() => setShowUpgradeModal(true)}
                   >
-                    Elevate Plan
+                    Upgrade Plan
                   </GlassButton>
                 )}
               </div>
@@ -406,7 +406,7 @@ export default function BillingPage() {
               <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-rose-600" />
                 <p className="text-sm text-rose-700 font-medium">
-                  Termination sequence initiated. Access expires on <span className="font-bold">{formatDate(subscription.current_period_end)}</span>.
+                  Cancellation scheduled. Access continues until <span className="font-bold">{formatDate(subscription.current_period_end)}</span>.
                 </p>
               </div>
             )}
@@ -422,12 +422,12 @@ export default function BillingPage() {
               </div>
               <div>
                 <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest block">System Status</span>
-                <span className="text-sm font-bold text-secondary">Verified Operational</span>
+                <span className="text-sm font-bold text-secondary">Active</span>
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-text-muted">Entity Slots</span>
+                <span className="text-text-muted">Client Seats</span>
                 <span className="font-bold text-secondary">
                   {currentPlan.limits.clients === -1 ? '∞' : currentPlan.limits.clients} Available
                 </span>
@@ -445,7 +445,7 @@ export default function BillingPage() {
               </div>
               <div className="text-left">
                 <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest block">Payment Method</span>
-                <span className="text-sm font-bold text-secondary truncate">Visa •••• 4242</span>
+                <span className="text-sm font-bold text-secondary truncate">Manage in settings</span>
               </div>
             </div>
             <X className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors rotate-45" />
@@ -453,11 +453,11 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Available Protocols */}
+      {/* Available Plans */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-serif text-secondary dark:text-white">
-            Available Protocols
+            Available Plans
           </h2>
           <div className="flex gap-2 items-center">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Monthly</span>
@@ -536,7 +536,7 @@ export default function BillingPage() {
                     setShowUpgradeModal(true);
                   }}
                 >
-                  {isCurrentPlan ? "Active Protocol" : "Select Tier"}
+                  {isCurrentPlan ? "Current Plan" : "Select Plan"}
                 </GlassButton>
               </GlassCard>
             );
@@ -544,11 +544,11 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Ledger Chronology */}
+      {/* Billing History */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-serif text-secondary dark:text-white">
-            Ledger Chronology
+            Billing History
           </h2>
           <div className="flex items-center gap-2">
             <GlassButton variant="ghost" size="sm" className="rounded-xl h-9">
@@ -564,8 +564,8 @@ export default function BillingPage() {
               <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-gray-100">
                 <FileText className="w-10 h-10 text-gray-200" />
               </div>
-              <h3 className="text-xl font-serif text-secondary">Ledger Vacant</h3>
-              <p className="text-text-secondary mt-2 text-sm max-w-xs mx-auto">Transactional history will materialize here upon successful system verification.</p>
+              <h3 className="text-xl font-serif text-secondary">No Invoices Yet</h3>
+              <p className="text-text-secondary mt-2 text-sm max-w-xs mx-auto">Your invoice history will appear here once you make a payment.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -594,7 +594,11 @@ export default function BillingPage() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-black text-secondary">{formatCurrency(invoice.amount, invoice.currency)}</span>
-                          <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">Incl. GST Breakdown</span>
+                          <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">
+                            {invoice.cgst > 0 || invoice.sgst > 0 || invoice.igst > 0 ? (
+                              `CGST: ₹${invoice.cgst} | SGST: ₹${invoice.sgst}${invoice.igst > 0 ? ` | IGST: ₹${invoice.igst}` : ''}`
+                            ) : 'Incl. GST'}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -622,19 +626,19 @@ export default function BillingPage() {
         </GlassCard>
       </div>
 
-      {/* Upgrade Protocol Modal */}
+      {/* Upgrade Plan Modal */}
       {showUpgradeModal && (
         <GlassModal
           isOpen={showUpgradeModal}
           onClose={() => !upgrading && setShowUpgradeModal(false)}
-          title="Elevate Protocol Tier"
+          title="Upgrade Plan"
         >
           <div className="space-y-6">
             <div className="p-4 bg-primary/[0.03] border border-primary/10 rounded-2xl">
               <p className="text-sm font-medium text-text-secondary leading-relaxed">
                 {selectedPlan
-                  ? `Initiating transition to ${plans.find((p) => p.id === selectedPlan)?.name} infrastructure. This will provide immediate access to enhanced capabilities.`
-                  : "Select a strategic tier for deployment elevation:"}
+                  ? `Upgrading to ${plans.find((p) => p.id === selectedPlan)?.name} plan. You'll get immediate access to all features.`
+                  : "Select a plan to upgrade to:"}
               </p>
             </div>
 
@@ -646,7 +650,7 @@ export default function BillingPage() {
                   .map((plan) => (
                     <div key={plan.id} className="relative">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Target Tier</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Selected Plan</span>
                         <div className="h-px flex-1 bg-gray-100" />
                       </div>
                       <h3 className="text-2xl font-serif text-secondary dark:text-white uppercase tracking-tight">
@@ -660,7 +664,7 @@ export default function BillingPage() {
                       </div>
                       {plan.savings && (
                         <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 border border-emerald-100">
-                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">{plan.savings} Efficiency Correction</span>
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">{plan.savings}</span>
                         </div>
                       )}
                     </div>
@@ -675,7 +679,7 @@ export default function BillingPage() {
                 onClick={() => setShowUpgradeModal(false)}
                 disabled={upgrading}
               >
-                Abort
+                Cancel
               </GlassButton>
               <GlassButton
                 variant="primary"
@@ -686,10 +690,10 @@ export default function BillingPage() {
                 {upgrading ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Deploying...
+                    Processing...
                   </div>
                 ) : (
-                  "Confirm Elevation"
+                  "Confirm Upgrade"
                 )}
               </GlassButton>
             </div>
@@ -697,24 +701,24 @@ export default function BillingPage() {
         </GlassModal>
       )}
 
-      {/* Cancel Protocol Modal */}
+      {/* Cancel Plan Modal */}
       {showCancelModal && (
         <GlassModal
           isOpen={showCancelModal}
           onClose={() => !cancelling && setShowCancelModal(false)}
-          title="Protocol Termination Sequence"
+          title="Cancel Subscription"
         >
           <div className="space-y-6">
             <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
               <p className="text-sm font-medium text-rose-700 leading-relaxed">
-                Are you certain you wish to initiate protocol termination? System access will remain operational until the current cycle expires.
+                Are you sure you want to cancel? You'll retain access until the end of your current billing period.
               </p>
             </div>
 
             {subscription && (
               <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-between">
                 <div>
-                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest block mb-1">Expiration Timestamp</span>
+                  <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest block mb-1">Access Until</span>
                   <span className="text-sm font-bold text-secondary">
                     {formatDate(subscription.current_period_end)}
                   </span>
@@ -730,7 +734,7 @@ export default function BillingPage() {
                 onClick={() => setShowCancelModal(false)}
                 disabled={cancelling}
               >
-                Maintain Protocol
+                Keep Plan
               </GlassButton>
               <GlassButton
                 variant="ghost"
@@ -741,7 +745,7 @@ export default function BillingPage() {
                 {cancelling ? (
                   <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                 ) : (
-                  "Confirm Terminate"
+                  "Yes, Cancel"
                 )}
               </GlassButton>
             </div>

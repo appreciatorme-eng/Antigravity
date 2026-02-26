@@ -1,8 +1,8 @@
 /**
- * Expedition Manifest - Mission Control
+ * Trip Manager
  * 
  * Unified interface for managing global client journeys, 
- * coordinating logistical deployments, and monitoring mission status.
+ * coordinating logistics, and monitoring trip status.
  */
 
 "use client";
@@ -57,12 +57,12 @@ interface Trip {
 }
 
 const STATUS_OPTIONS = [
-    { value: "all", label: "Global Manifest" },
-    { value: "draft", label: "Draft Protocol" },
-    { value: "pending", label: "Pending Activation" },
-    { value: "confirmed", label: "Confirmed Mission" },
-    { value: "completed", label: "Mission Accomplished" },
-    { value: "cancelled", label: "Aborted Sequence" },
+    { value: "all", label: "All Trips" },
+    { value: "draft", label: "Draft" },
+    { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
+    { value: "completed", label: "Completed" },
+    { value: "cancelled", label: "Cancelled" },
 ];
 
 export default function TripsPage() {
@@ -75,7 +75,7 @@ export default function TripsPage() {
     const trips: Trip[] = rawTrips || [];
 
     const formatDate = (dateString: string) => {
-        if (!dateString) return "Strategic Timing";
+        if (!dateString) return "TBD";
         return new Date(dateString).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -89,31 +89,31 @@ export default function TripsPage() {
                 return {
                     color: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
                     icon: BadgeCheck,
-                    label: "Confirmed Mission"
+                    label: "Confirmed"
                 };
             case "pending":
                 return {
                     color: "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",
                     icon: Clock,
-                    label: "Pending Activation"
+                    label: "Pending"
                 };
             case "draft":
                 return {
                     color: "bg-gray-50 text-gray-500 border-gray-100 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-800",
                     icon: DraftingCompass,
-                    label: "Draft Protocol"
+                    label: "Draft"
                 };
             case "completed":
                 return {
                     color: "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
                     icon: CheckCircle2,
-                    label: "Mission Accomplished"
+                    label: "Completed"
                 };
             case "cancelled":
                 return {
                     color: "bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800",
                     icon: AlertCircle,
-                    label: "Aborted Sequence"
+                    label: "Cancelled"
                 };
             default:
                 return {
@@ -126,7 +126,7 @@ export default function TripsPage() {
 
     const stats = [
         {
-            label: "Total Deployments",
+            label: "Total Trips",
             value: trips.length,
             icon: Globe,
             color: "text-blue-600",
@@ -134,7 +134,7 @@ export default function TripsPage() {
             trend: "+2 (24h)"
         },
         {
-            label: "Active Missions",
+            label: "Active Trips",
             value: trips.filter((t) => ["confirmed", "in_progress"].includes(t.status || "")).length,
             icon: Plane,
             color: "text-emerald-600",
@@ -161,19 +161,19 @@ export default function TripsPage() {
 
     return (
         <div className="space-y-10 pb-20">
-            {/* Mission Header */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <div className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
-                            Expedition Manifest
+                            Trip Manager
                         </div>
                     </div>
                     <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
                         Trips
                     </h1>
                     <p className="text-text-muted text-lg font-medium max-w-2xl">
-                        Comprehensive monitoring of client journeys and organizational deployments.
+                        Comprehensive monitoring of client journeys and travel bookings.
                     </p>
                 </div>
 
@@ -183,11 +183,11 @@ export default function TripsPage() {
                     className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
                 >
                     <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
-                    <span className="text-xs font-black uppercase tracking-widest">Generate New Mission</span>
+                    <span className="text-xs font-black uppercase tracking-widest">Create New Trip</span>
                 </GlassButton>
             </div>
 
-            {/* Tactical Stats Grid */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat) => (
                     <GlassCard key={stat.label} padding="lg" className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg">
@@ -217,7 +217,7 @@ export default function TripsPage() {
                         <Search className="w-5 h-5 text-text-muted mr-4" />
                         <input
                             type="text"
-                            placeholder="Interrogate manifest by destination, client identity, or reference..."
+                            placeholder="Search by destination, client, or reference..."
                             className="flex-1 bg-transparent border-none focus:ring-0 text-secondary dark:text-white placeholder:text-text-muted/50 text-sm h-12 font-medium"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -262,7 +262,7 @@ export default function TripsPage() {
                 </div>
             </div>
 
-            {/* Tactical Intelligence Manifest */}
+            {/* Trip List */}
             {loading ? (
                 <div className="grid grid-cols-1 gap-4">
                     <GlassListSkeleton items={6} />
@@ -273,16 +273,16 @@ export default function TripsPage() {
                         <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-gray-100 dark:border-slate-700 shadow-2xl shadow-gray-200/50">
                             <Plane className="w-10 h-10 text-gray-200 animate-pulse" />
                         </div>
-                        <h3 className="text-3xl font-serif text-secondary dark:text-white tracking-tight">Deployment Data Void</h3>
+                        <h3 className="text-3xl font-serif text-secondary dark:text-white tracking-tight">No Trips Yet</h3>
                         <p className="text-text-muted mt-4 max-w-sm mx-auto font-medium">
-                            The current global manifest is vacant. Initiate a mission protocol to begin telemetry tracking.
+                            No trips found. Create your first trip to get started.
                         </p>
                         <GlassButton
                             variant="primary"
                             onClick={() => setIsCreateModalOpen(true)}
                             className="mt-10 h-12 rounded-xl"
                         >
-                            Launch Initiative
+                            Get Started
                         </GlassButton>
                     </div>
                 </GlassCard>
@@ -306,7 +306,7 @@ export default function TripsPage() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-3 mb-1.5">
                                                 <h3 className="text-xl font-bold text-secondary dark:text-white truncate tracking-tight">
-                                                    {trip.itineraries?.trip_title || trip.destination || "Protocol Alpha-1"}
+                                                    {trip.itineraries?.trip_title || trip.destination || "Untitled Trip"}
                                                 </h3>
                                                 <GlassBadge variant="secondary" className="text-[8px] font-black uppercase tracking-widest h-5 px-1.5 border-gray-100 opacity-50">
                                                     #{trip.id.slice(0, 8)}
@@ -318,7 +318,7 @@ export default function TripsPage() {
                                                     <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center overflow-hidden">
                                                         <User className="h-3.5 w-3.5" />
                                                     </div>
-                                                    <span className="text-[11px] font-black uppercase tracking-widest">{trip.profiles?.full_name || "Guest Entity"}</span>
+                                                    <span className="text-[11px] font-black uppercase tracking-widest">{trip.profiles?.full_name || "Guest"}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-text-muted">
                                                     <Calendar className="h-4 w-4" />
@@ -327,7 +327,7 @@ export default function TripsPage() {
                                                 {trip.itineraries?.duration_days && (
                                                     <div className="flex items-center gap-2 text-primary">
                                                         <Clock className="h-4 w-4" />
-                                                        <span className="text-[11px] font-black uppercase tracking-widest">{trip.itineraries.duration_days} Cycle Window</span>
+                                                        <span className="text-[11px] font-black uppercase tracking-widest">{trip.itineraries.duration_days} Days</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -378,7 +378,7 @@ export default function TripsPage() {
 
                                     <div className="flex-1">
                                         <h3 className="text-xl font-bold text-secondary dark:text-white mb-2 leading-tight group-hover:text-primary transition-colors">
-                                            {trip.itineraries?.trip_title || trip.destination || "Standard Deployment"}
+                                            {trip.itineraries?.trip_title || trip.destination || "Untitled Trip"}
                                         </h3>
                                         <div className="space-y-3 mt-6">
                                             <div className="flex items-center gap-3 text-text-muted">
@@ -387,7 +387,7 @@ export default function TripsPage() {
                                             </div>
                                             <div className="flex items-center gap-3 text-text-muted">
                                                 <User className="w-4 h-4" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest truncate">{trip.profiles?.full_name || "Guest Entity"}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest truncate">{trip.profiles?.full_name || "Guest"}</span>
                                             </div>
                                         </div>
                                     </div>

@@ -1,5 +1,5 @@
 /**
- * Expedition Intelligence - Detail Overview
+ * Trip Details
  */
 
 "use client";
@@ -236,7 +236,7 @@ export default function TripDetailPage() {
 
     // Notification states
     const [notificationOpen, setNotificationOpen] = useState(false);
-    const [notificationTitle, setNotificationTitle] = useState("Expedition Update");
+    const [notificationTitle, setNotificationTitle] = useState("Trip Update");
     const [notificationBody, setNotificationBody] = useState("");
 
     const fetchData = useCallback(async () => {
@@ -248,7 +248,7 @@ export default function TripDetailPage() {
                 headers: { Authorization: `Bearer ${session?.access_token}` }
             });
 
-            if (!response.ok) throw new Error("Manifest retrieval failed");
+            if (!response.ok) throw new Error("Trip data loading failed");
 
             const payload: TripDetailApiPayload = await response.json();
             setTrip(payload.trip);
@@ -261,7 +261,7 @@ export default function TripDetailPage() {
             setLatestDriverLocation(payload.latestDriverLocation || null);
         } catch (e) {
             console.error(e);
-            toast({ title: "Strategic failure", description: "Could not retrieve mission data.", variant: "error" });
+            toast({ title: "Error", description: "Could not load trip data.", variant: "error" });
         } finally {
             setLoading(false);
         }
@@ -285,10 +285,10 @@ export default function TripDetailPage() {
 
             // Drivers and Accommodations would be saved here too...
 
-            toast({ title: "Manifest updated", description: "Telemetry and logistics synced successfully.", variant: "success" });
+            toast({ title: "Trip updated", description: "Trip details saved successfully.", variant: "success" });
             void fetchData();
         } catch (e) {
-            toast({ title: "Sync error", description: "Failed to upload mission updates.", variant: "error" });
+            toast({ title: "Sync error", description: "Failed to save trip changes.", variant: "error" });
         } finally {
             setSaving(false);
         }
@@ -296,21 +296,21 @@ export default function TripDetailPage() {
 
     const getStatusBadge = (status: string) => {
         const s = status?.toLowerCase();
-        if (s === "confirmed") return <GlassBadge variant="success">Confirmed Mission</GlassBadge>;
+        if (s === "confirmed") return <GlassBadge variant="success">Confirmed</GlassBadge>;
         if (s === "pending") return <GlassBadge variant="warning">Awaiting Activation</GlassBadge>;
         return <GlassBadge variant="secondary">{status?.toUpperCase() || "DRAFT"}</GlassBadge>;
     };
 
     if (loading) return <div className="h-screen flex items-center justify-center"><Plane className="w-12 h-12 text-primary animate-pulse" /></div>;
-    if (!trip) return <div className="p-20 text-center text-text-muted">Manifest not found in global registers.</div>;
+    if (!trip) return <div className="p-20 text-center text-text-muted">Trip not found.</div>;
 
     return (
         <div className="space-y-10 pb-20">
-            {/* Mission Protocol Header */}
+            {/* Trip Details Header */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-gray-100 dark:border-slate-800 pb-10">
                 <div className="space-y-6 flex-1">
                     <Link href="/trips" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-text-muted hover:text-primary transition-colors">
-                        <ArrowLeft className="w-4 h-4" /> Back to Manifest
+                        <ArrowLeft className="w-4 h-4" /> Back to Trips
                     </Link>
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
@@ -330,7 +330,7 @@ export default function TripDetailPage() {
                             </div>
                             <div className="flex items-center gap-2.5 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800">
                                 <Clock className="w-4 h-4 text-amber-500" />
-                                <span className="text-sm font-bold text-secondary dark:text-white">{trip.itineraries?.duration_days} Day Sequence</span>
+                                <span className="text-sm font-bold text-secondary dark:text-white">{trip.itineraries?.duration_days} Days</span>
                             </div>
                         </div>
                     </div>
@@ -343,7 +343,7 @@ export default function TripDetailPage() {
                         onClick={() => {
                             cloneTripMutation.mutate(tripId, {
                                 onSuccess: (data) => {
-                                    toast({ title: "Manifest Duplicated", description: data.message, variant: "success" });
+                                    toast({ title: "Trip Duplicated", description: data.message, variant: "success" });
                                     router.push(`/trips/${data.tripId}`);
                                 },
                                 onError: (err: any) => {
@@ -354,10 +354,10 @@ export default function TripDetailPage() {
                         disabled={cloneTripMutation.isPending}
                         loading={cloneTripMutation.isPending}
                     >
-                        <CopyPlus className="w-4 h-4 mr-2 group-hover:text-primary transition-colors" /> Clone Protocol
+                        <CopyPlus className="w-4 h-4 mr-2 group-hover:text-primary transition-colors" /> Duplicate Trip
                     </GlassButton>
                     <GlassButton variant="outline" className="h-14 px-6 rounded-2xl">
-                        <Share2 className="w-4 h-4 mr-2" /> Share Protocol
+                        <Share2 className="w-4 h-4 mr-2" /> Share Trip
                     </GlassButton>
                     <GlassButton variant="outline" className="h-14 px-6 rounded-2xl group hover:border-amber-500/50 hover:bg-amber-500/5">
                         <Zap className="w-4 h-4 mr-2 group-hover:text-amber-500 transition-colors" /> AI Optimize Route
@@ -373,14 +373,14 @@ export default function TripDetailPage() {
                         <Bell className="w-4 h-4 mr-2" /> Notify Client
                     </GlassButton>
                     <GlassButton variant="primary" onClick={saveChanges} loading={saving} className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20">
-                        <Save className="w-4 h-4 mr-2" /> Save Deployments
+                        <Save className="w-4 h-4 mr-2" /> Save Changes
                     </GlassButton>
                 </div>
             </div>
 
             {/* Strategic Layout */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-                {/* Left: Tactical Coordination */}
+                {/* Left: Trip Details */}
                 <div className="xl:col-span-8 space-y-10">
                     {/* Day Selector Matrix */}
                     <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-900 rounded-2xl overflow-x-auto w-full max-w-fit border border-gray-200 dark:border-slate-800">
@@ -410,7 +410,7 @@ export default function TripDetailPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-bold text-secondary dark:text-white tabular-nums tracking-tight">Driver Logistics</h3>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Transport Telemetry</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Transportation Details</p>
                                     </div>
                                 </div>
                                 <Shield className="w-5 h-5 text-emerald-500 opacity-50" />
@@ -478,11 +478,11 @@ export default function TripDetailPage() {
                         </GlassCard>
                     </div>
 
-                    {/* Mission Sequence (Itinerary) */}
+                    {/* Itinerary */}
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
                             <div className="flex items-center gap-3">
-                                <h3 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Mission Sequence</h3>
+                                <h3 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Itinerary</h3>
                                 <GlassBadge variant="secondary" className="bg-primary/5 text-primary">Day {activeDay} Operations</GlassBadge>
                             </div>
                             <GlassButton variant="secondary" className="h-10 px-4 text-[10px] uppercase font-black tracking-widest rounded-xl">
@@ -503,7 +503,7 @@ export default function TripDetailPage() {
                                             <div className="space-y-1">
                                                 <h4 className="text-lg font-bold text-secondary dark:text-white group-hover:text-primary transition-colors">{a.title}</h4>
                                                 <div className="flex items-center gap-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                                                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {a.location || "Tactical Location"}</div>
+                                                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {a.location || "Location TBD"}</div>
                                                     {a.coordinates && <div className="flex items-center gap-1.5 text-emerald-500"><BadgeCheck className="w-3.5 h-3.5" /> Mapped</div>}
                                                 </div>
                                             </div>
@@ -535,23 +535,23 @@ export default function TripDetailPage() {
                             />
                             <div className="absolute top-4 left-4 z-10">
                                 <GlassBadge className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-xl border-gray-200">
-                                    Geospatial Intel
+                                    Map View
                                 </GlassBadge>
                             </div>
                         </GlassCard>
 
-                        {/* Telemetry Status */}
+                        {/* Trip Status */}
                         <GlassCard padding="xl" className="border-gray-100 dark:border-slate-800">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-text-muted mb-8">System Telemetry</h3>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-text-muted mb-8">Trip Status</h3>
                             <div className="space-y-8">
-                                <TelemetryItem label="Identity Verified" status="Secured" color="text-emerald-500" icon={Shield} />
-                                <TelemetryItem label="Signal Sync" status="Periodic" color="text-blue-500" icon={Zap} />
-                                <TelemetryItem label="Driver Ping" status={latestDriverLocation ? "Active" : "Awaiting"} color={latestDriverLocation ? "text-emerald-500" : "text-amber-500"} icon={Navigation} />
-                                <TelemetryItem label="Reminder Queue" status={`${reminderStatusByDay[activeDay]?.sent || 0} Sent`} color="text-primary" icon={Bell} />
+                                <StatusItem label="Identity Verified" status="Secured" color="text-emerald-500" icon={Shield} />
+                                <StatusItem label="Sync Status" status="Periodic" color="text-blue-500" icon={Zap} />
+                                <StatusItem label="Driver Location" status={latestDriverLocation ? "Active" : "Awaiting"} color={latestDriverLocation ? "text-emerald-500" : "text-amber-500"} icon={Navigation} />
+                                <StatusItem label="Reminder Queue" status={`${reminderStatusByDay[activeDay]?.sent || 0} Sent`} color="text-primary" icon={Bell} />
                             </div>
 
                             <div className="mt-10 pt-8 border-t border-gray-100 dark:border-slate-800">
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-4 text-center">Protocol Reference</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-4 text-center">Trip Reference</h4>
                                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center">
                                     <code className="text-xs font-mono text-secondary dark:text-white">{trip.id}</code>
                                 </div>
@@ -564,7 +564,7 @@ export default function TripDetailPage() {
                                 <ArrowUpRight className="w-4 h-4 mr-2 group-hover:rotate-45 transition-transform" /> Export Global Report
                             </GlassButton>
                             <GlassButton variant="outline" className="w-full h-14 rounded-2xl group border-gray-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100">
-                                <Trash className="w-4 h-4 mr-2" /> Void Protocol
+                                <Trash className="w-4 h-4 mr-2" /> Delete Trip
                             </GlassButton>
                         </div>
                     </div>
@@ -575,19 +575,19 @@ export default function TripDetailPage() {
                 isOpen={notificationOpen}
                 onClose={() => setNotificationOpen(false)}
                 title="Dispatch Alert"
-                description="Broadcast a critical update to the mission recipient."
+                description="Send a notification to the traveler."
             >
                 <div className="space-y-6 py-4">
                     <GlassInput label="Dispatch Key" value={notificationTitle} onChange={(e) => setNotificationTitle(e.target.value)} />
-                    <GlassTextarea label="Broadcast Content" rows={4} value={notificationBody} onChange={(e) => setNotificationBody(e.target.value)} placeholder="Enter mission update details..." />
-                    <GlassButton variant="primary" className="w-full h-12" onClick={() => setNotificationOpen(false)}>Initialize Broadcast</GlassButton>
+                    <GlassTextarea label="Broadcast Content" rows={4} value={notificationBody} onChange={(e) => setNotificationBody(e.target.value)} placeholder="Enter notification details..." />
+                    <GlassButton variant="primary" className="w-full h-12" onClick={() => setNotificationOpen(false)}>Send Notification</GlassButton>
                 </div>
             </GlassModal>
         </div>
     );
 }
 
-function TelemetryItem({ label, status, color, icon: Icon }: any) {
+function StatusItem({ label, status, color, icon: Icon }: any) {
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

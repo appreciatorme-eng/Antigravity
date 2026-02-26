@@ -58,7 +58,7 @@ export default async function ClientProfilePage({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const clientInfo = (profile.client_info as any) || {};
 
-    // Compute tactical stats
+    // Compute stats
     const totalTrips = trips?.length || 0;
     const completedTrips = trips?.filter(t => t.status === 'completed').length || 0;
     const activeTrips = trips?.filter(t => t.status === 'confirmed' || t.status === 'in_progress').length || 0;
@@ -74,14 +74,14 @@ export default async function ClientProfilePage({
                     <div>
                         <div className="flex items-center gap-3 mb-1">
                             <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 font-black">
-                                Identity Profile
+                                Client Profile
                             </span>
                             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted opacity-50">
                                 #{id.slice(0, 8)}
                             </span>
                         </div>
                         <h1 className="text-4xl font-serif text-secondary dark:text-white tracking-tight leading-none mb-3">
-                            {profile.full_name || "Guest Entity"}
+                            {profile.full_name || "Guest"}
                         </h1>
                         <div className="flex flex-wrap items-center gap-4 text-sm">
                             {profile.email && (
@@ -118,12 +118,12 @@ export default async function ClientProfilePage({
                 </div>
             </div>
 
-            {/* Tactical Stats Grid */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800 group hover:shadow-lg transition-all">
                     <div className="flex items-start justify-between">
                         <div>
-                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Deployments Executed</p>
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Trips Booked</p>
                             <p className="text-4xl font-black text-secondary dark:text-white tabular-nums tracking-tight">
                                 {totalTrips}
                             </p>
@@ -137,7 +137,7 @@ export default async function ClientProfilePage({
                 <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800 group hover:shadow-lg transition-all">
                     <div className="flex items-start justify-between">
                         <div>
-                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Missions Completed</p>
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-2">Trips Completed</p>
                             <p className="text-4xl font-black text-secondary dark:text-white tabular-nums tracking-tight">
                                 {completedTrips}
                             </p>
@@ -165,7 +165,7 @@ export default async function ClientProfilePage({
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Intelligence */}
+                {/* Left Column: Details */}
                 <div className="lg:col-span-1 space-y-6">
                     <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800">
                         <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
@@ -200,7 +200,7 @@ export default async function ClientProfilePage({
                             <div className="flex flex-col gap-1 pb-4 border-b border-gray-100 dark:border-slate-800/80">
                                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Operation Style</span>
                                 <span className="text-sm font-bold text-secondary dark:text-white">
-                                    {profile.travel_style || "Standard Protocols"}
+                                    {profile.travel_style || "Standard Preferences"}
                                 </span>
                             </div>
 
@@ -254,7 +254,7 @@ export default async function ClientProfilePage({
                                     <div className="pt-2">
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">
                                             <Accessibility className="w-3.5 h-3.5 text-rose-400" />
-                                            Mobility Protocols
+                                            Transportation Preferences
                                         </div>
                                         <p className="text-sm font-medium text-secondary dark:text-white bg-white dark:bg-slate-900 p-4 rounded-xl border border-rose-100 dark:border-rose-900/50 shadow-sm leading-relaxed">
                                             {profile.mobility_needs}
@@ -266,7 +266,7 @@ export default async function ClientProfilePage({
                     )}
                 </div>
 
-                {/* Right Column: Mission Log & Notes */}
+                {/* Right Column: Trip History & Notes */}
                 <div className="lg:col-span-2 space-y-6">
                     <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800">
                         <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
@@ -281,7 +281,7 @@ export default async function ClientProfilePage({
                             </div>
                         ) : (
                             <div className="text-center py-8 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">No intelligence recorded</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">No notes recorded</p>
                             </div>
                         )}
                     </GlassCard>
@@ -290,7 +290,7 @@ export default async function ClientProfilePage({
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                Deployment Log
+                                Trip History
                             </h2>
                             <span className="text-[10px] font-black uppercase tracking-widest bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-text-muted">
                                 {trips?.length || 0} Records
@@ -317,8 +317,8 @@ export default async function ClientProfilePage({
                                                     <h3 className="text-base font-bold text-secondary dark:text-white group-hover:text-primary transition-colors">
                                                         {(() => {
                                                             const itin = (trip as any).itineraries || (trip as any).itinerary;
-                                                            if (Array.isArray(itin)) return itin[0]?.destination || trip.destination || "Standard Deployment";
-                                                            return itin?.destination || trip.destination || "Standard Deployment";
+                                                            if (Array.isArray(itin)) return itin[0]?.destination || trip.destination || "Untitled Trip";
+                                                            return itin?.destination || trip.destination || "Untitled Trip";
                                                         })()}
                                                     </h3>
                                                     <span className="text-[9px] font-black uppercase tracking-widest text-text-muted opacity-50">#{trip.id.slice(0, 8)}</span>
@@ -332,7 +332,7 @@ export default async function ClientProfilePage({
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className={cn("px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-widest", statusColor)}>
-                                                    {trip.status?.replace('_', ' ') || 'Planing Protocol'}
+                                                    {trip.status?.replace('_', ' ') || 'Planning'}
                                                 </div>
                                                 <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-slate-800 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-gray-200 dark:border-slate-700">
                                                     →
@@ -346,9 +346,9 @@ export default async function ClientProfilePage({
                                     <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100 dark:border-slate-700">
                                         <AlertCircle className="w-8 h-8 text-text-muted opacity-50" />
                                     </div>
-                                    <p className="text-sm font-bold text-secondary dark:text-white mb-2">No Deployment Records</p>
+                                    <p className="text-sm font-bold text-secondary dark:text-white mb-2">No Trip History</p>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-text-muted max-w-sm mx-auto">
-                                        This identity has not been assigned to any operations. Initiate a new mission to begin tracking.
+                                        This identity has not been assigned to any operations. Create a new trip to get started.
                                     </p>
                                 </div>
                             )}

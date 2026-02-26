@@ -44,6 +44,7 @@
   /* Fonts */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, serif;
 }
 
 @layer base {
@@ -73,6 +74,19 @@
 
   .maplibregl-popup-tip {
     @apply !hidden;
+  }
+
+  .dark {
+    --color-surface: #0f172a;
+    --color-surface-secondary: #0a1628;
+    --color-border: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-background: var(--color-surface-secondary);
+    --color-foreground: var(--color-text-primary);
+    --color-card: var(--color-surface);
+    --color-muted: #1e293b;
+    --color-muted-foreground: #94a3b8;
   }
 
   /* Accessibility: Better focus states */

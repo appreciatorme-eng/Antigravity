@@ -66,20 +66,20 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
         if (deleting) return;
 
         // Custom confirmation would be better but let's stick to confirm for now
-        if (!confirm("Confirm mission termination? Intelligence logs will be permanently erased.")) return;
+        if (!confirm("Delete this trip? All trip data will be permanently removed.")) return;
 
         setDeleting(tripId);
         const { error } = await supabase.from("itineraries").delete().eq("id", tripId);
         if (!error) {
             setItems((prev) => prev.filter((t) => t.id !== tripId));
             toast({
-                title: "Mission Erased",
-                description: "The itinerary has been successfully removed from tactical storage.",
+                title: "Trip Deleted",
+                description: "The itinerary has been successfully removed.",
             });
         } else {
             toast({
                 title: "Operation Failed",
-                description: "Failed to erase mission logs. Check your authorization levels.",
+                description: "Failed to delete trip. Please check your permissions.",
                 variant: "destructive",
             });
         }
@@ -137,7 +137,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
                                             onClick={(e) => handleDelete(e, trip.id)}
                                             disabled={deleting === trip.id}
                                             className="absolute top-4 left-4 z-20 p-2 rounded-lg bg-black/20 hover:bg-red-500/80 text-white/70 hover:text-white transition-all duration-200 opacity-0 group-hover:opacity-100 backdrop-blur-md border border-white/10"
-                                            title="Erase Mission"
+                                            title="Delete Trip"
                                         >
                                             {deleting === trip.id ? (
                                                 <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
@@ -179,7 +179,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
 
                                         <div className="mt-5 flex items-center justify-between group/btn pt-4 border-t border-slate-100 dark:border-white/5">
                                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider">
-                                                MISSION LOG #{(trip.id.substring(0, 8)).toUpperCase()}
+                                                TRIP #{(trip.id.substring(0, 8)).toUpperCase()}
                                             </span>
                                             <div className="flex items-center gap-1 text-primary font-bold text-xs group-hover/btn:gap-2 transition-all">
                                                 DEBRIEF <ArrowRight className="w-3 h-3 shadow-primary/20" />

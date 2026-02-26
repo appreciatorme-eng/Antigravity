@@ -179,15 +179,15 @@ export default function AdminDashboard() {
                     ...(recentTrips as RecentTrip[] | null || []).map((trip) => ({
                         id: trip.id,
                         type: "trip" as const,
-                        title: "Mission Deployment",
-                        description: `${trip.itineraries?.trip_title || "Untitled Operation"} to ${trip.itineraries?.destination || "Undefined Sector"}`,
+                        title: "Trip Created",
+                        description: `${trip.itineraries?.trip_title || "Untitled Trip"} to ${trip.itineraries?.destination || "Unknown Destination"}`,
                         timestamp: trip.created_at,
                         status: trip.status || "pending",
                     })),
                     ...(recentNotifications as RecentNotification[] | null || []).map((notif) => ({
                         id: notif.id,
                         type: "notification" as const,
-                        title: notif.title || "Comm Transmission",
+                        title: notif.title || "Notification",
                         description: notif.body || "",
                         timestamp: notif.sent_at || new Date().toISOString(),
                         status: notif.status || "sent",
@@ -260,19 +260,19 @@ export default function AdminDashboard() {
 
     const statCards = [
         {
-            label: "Deployed Assets",
+            label: "Active Drivers",
             value: stats.totalDrivers,
-            trend: "+12.5%",
+            trend: "",
             trendUp: true,
             icon: Car,
             color: "text-indigo-600",
             iconBg: "bg-indigo-100/50",
-            description: "Active drivers in field"
+            description: "Active drivers in the field"
         },
         {
-            label: "Entity Database",
+            label: "Client Directory",
             value: stats.totalClients,
-            trend: "+5.2%",
+            trend: "",
             trendUp: true,
             icon: Users,
             color: "text-violet-600",
@@ -280,17 +280,17 @@ export default function AdminDashboard() {
             description: "Total registered clients"
         },
         {
-            label: "Active Protocols",
+            label: "Active Trips",
             value: stats.activeTrips,
-            trend: "-2.1%",
-            trendUp: false,
+            trend: "",
+            trendUp: true,
             icon: MapPin,
             color: "text-emerald-600",
             iconBg: "bg-emerald-100/50",
-            description: "Missions currently in progress"
+            description: "Trips currently in progress"
         },
         {
-            label: "Marketplace Intel",
+            label: "Marketplace Activity",
             value: stats.marketplaceViews + " / " + stats.marketplaceInquiries,
             trend: (stats.conversionRate || "0.0") + "% CR",
             trendUp: true,
@@ -314,17 +314,17 @@ export default function AdminDashboard() {
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     </div>
                     <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
-                        Command Terminal
+                        Dashboard
                     </h1>
                     <p className="text-text-muted text-lg font-medium max-w-2xl">
-                        Global operational oversight and real-time mission telemetry.
+                        Your travel business at a glance.
                     </p>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <GlassButton variant="ghost" className="rounded-2xl gap-2 border-gray-100">
                         <Command className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase tracking-widest">K-Palette</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">Search</span>
                     </GlassButton>
                     <div className="h-12 flex items-center gap-3 px-5 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
                         <Calendar className="w-4 h-4 text-primary" />
@@ -356,12 +356,14 @@ export default function AdminDashboard() {
                                     )}>
                                         <stat.icon className={cn("w-6 h-6", stat.color)} />
                                     </div>
-                                    <div className={cn(
-                                        "px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight",
-                                        stat.trendUp ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
-                                    )}>
-                                        {stat.trend}
-                                    </div>
+                                    {stat.trend && (
+                                        <div className={cn(
+                                            "px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight",
+                                            stat.trendUp ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
+                                        )}>
+                                            {stat.trend}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1">
@@ -401,7 +403,7 @@ export default function AdminDashboard() {
                                 <TrendingUp className="w-4 h-4 text-primary" />
                                 <h2 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Financial Trajectory</h2>
                             </div>
-                            <p className="text-sm text-text-muted font-medium">Monthly revenue and mission conversion metrics.</p>
+                            <p className="text-sm text-text-muted font-medium">Monthly revenue and booking conversion metrics.</p>
                         </div>
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
@@ -410,7 +412,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full bg-secondary" />
-                                <span className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-widest">Missions</span>
+                                <span className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-widest">Trips</span>
                             </div>
                             <GlassSelect
                                 value="6m"
@@ -434,7 +436,7 @@ export default function AdminDashboard() {
                 <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-4 px-2">
                         <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">Tactical Actions</h2>
+                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">Quick Actions</h2>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
@@ -445,8 +447,8 @@ export default function AdminDashboard() {
                                         <Plus className="w-5 h-5 text-primary" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Draft New Mission</h4>
-                                        <p className="text-[10px] text-text-muted font-medium mt-0.5">Initialize a new trip protocol.</p>
+                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Create New Trip</h4>
+                                        <p className="text-[10px] text-text-muted font-medium mt-0.5">Plan a new trip itinerary.</p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
                                 </div>
@@ -460,8 +462,8 @@ export default function AdminDashboard() {
                                         <Car className="w-5 h-5 text-indigo-600" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Enlist Driver</h4>
-                                        <p className="text-[10px] text-text-muted font-medium mt-0.5">Expand your field operational capacity.</p>
+                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Add Driver</h4>
+                                        <p className="text-[10px] text-text-muted font-medium mt-0.5">Add a new driver to your team.</p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
                                 </div>
@@ -475,7 +477,7 @@ export default function AdminDashboard() {
                                         <Users className="w-5 h-5 text-violet-600" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Archive Entity</h4>
+                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Manage Clients</h4>
                                         <p className="text-[10px] text-text-muted font-medium mt-0.5">Manage existing client relationships.</p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
@@ -490,7 +492,7 @@ export default function AdminDashboard() {
                                         <Store className="w-5 h-5 text-blue-500" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Marketplace Intel</h4>
+                                        <h4 className="text-sm font-black text-secondary dark:text-white uppercase tracking-widest">Marketplace</h4>
                                         <p className="text-[10px] text-text-muted font-medium mt-0.5">Optimize your partner profile.</p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-text-muted ml-auto group-hover:translate-x-1 transition-transform" />
@@ -499,7 +501,7 @@ export default function AdminDashboard() {
                         </Link>
                     </div>
 
-                    {/* Infrastructure Health */}
+                    {/* System Health */}
                     <GlassCard padding="lg" className="bg-slate-900 border-none relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-3xl" />
 
@@ -507,7 +509,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <Server className="w-4 h-4 text-primary" />
-                                    <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Infrastructure</h3>
+                                    <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">System Health</h3>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -533,21 +535,21 @@ export default function AdminDashboard() {
                             </div>
 
                             <GlassButton variant="primary" className="w-full h-10 rounded-xl bg-white text-slate-900 border-none hover:bg-slate-100">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Execute Diagnostic</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Run Health Check</span>
                             </GlassButton>
                         </div>
                     </GlassCard>
                 </div>
             </div>
 
-            {/* Tactical Feed & Intelligence */}
+            {/* Activity Feed */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Deployment Log */}
+                {/* Recent Activity */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between px-2">
                         <div className="flex items-center gap-2">
                             <History className="w-5 h-5 text-secondary" />
-                            <h2 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Deployment Log</h2>
+                            <h2 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Recent Activity</h2>
                         </div>
                         <GlassButton variant="ghost" className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest border-gray-100">
                             View All History
@@ -603,17 +605,17 @@ export default function AdminDashboard() {
                             ))
                         ) : (
                             <div className="py-12 text-center">
-                                <p className="text-sm text-text-muted font-black uppercase tracking-widest">No recent tactical data</p>
+                                <p className="text-sm text-text-muted font-black uppercase tracking-widest">No recent activity</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Sub-System Telemetry */}
+                {/* System Status */}
                 <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-4 px-2">
                         <Activity className="w-5 h-5 text-emerald-500" />
-                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">Telemetry</h2>
+                        <h2 className="text-xl font-serif text-secondary dark:text-white tracking-tight">System Status</h2>
                     </div>
 
                     <GlassCard padding="lg" className="border-gray-100 divide-y divide-gray-100">
@@ -627,17 +629,17 @@ export default function AdminDashboard() {
                                 <GlassBadge variant="success" className="text-[8px] font-black uppercase">Online</GlassBadge>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Comm Relay</span>
+                                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">Notifications</span>
                                 <GlassBadge variant="warning" className="text-[8px] font-black uppercase">Degraded</GlassBadge>
                             </div>
                         </div>
 
                         <div className="pt-4 pb-4">
-                            <h4 className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-[0.2em] mb-4">Traffic Density</h4>
+                            <h4 className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-[0.2em] mb-4">System Load</h4>
                             <div className="space-y-3">
                                 <div className="space-y-1">
                                     <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                                        <span className="text-text-muted">Inbound Requests</span>
+                                        <span className="text-text-muted">API Requests</span>
                                         <span className="text-secondary dark:text-white">84% Capacity</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -646,7 +648,7 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                                        <span className="text-text-muted">Script Engine</span>
+                                        <span className="text-text-muted">Background Jobs</span>
                                         <span className="text-secondary dark:text-white">31% Load</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -658,7 +660,7 @@ export default function AdminDashboard() {
 
                         <div className="pt-4 text-center">
                             <p className="text-[10px] text-text-muted font-medium italic">
-                                Next full sync in 24 seconds...
+                                Auto-refresh every 60 seconds
                             </p>
                         </div>
                     </GlassCard>

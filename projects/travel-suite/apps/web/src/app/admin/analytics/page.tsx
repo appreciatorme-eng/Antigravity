@@ -331,7 +331,7 @@ export default function AdminAnalyticsPage() {
         <div className="space-y-8 pb-12">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-serif text-secondary tracking-tight">Business Intelligence</h1>
+                    <h1 className="text-4xl font-serif text-secondary tracking-tight">Business Insights</h1>
                     <p className="mt-2 text-lg text-text-secondary">Comprehensive performance analysis and market insights.</p>
                 </div>
 

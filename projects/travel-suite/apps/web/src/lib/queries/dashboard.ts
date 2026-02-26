@@ -52,8 +52,8 @@ export function useDashboardStats() {
                 ...(recentTrips.data || []).map((t: any) => ({
                     id: t.id,
                     type: "trip" as const,
-                    title: t.itineraries?.trip_title || "New Trip Protocol",
-                    description: `Deployment to ${t.itineraries?.destination || "Unknown Location"}`,
+                    title: t.itineraries?.trip_title || "New Trip",
+                    description: `Trip to ${t.itineraries?.destination || "Unknown Location"}`,
                     timestamp: t.created_at,
                     status: t.status || "draft",
                 })),

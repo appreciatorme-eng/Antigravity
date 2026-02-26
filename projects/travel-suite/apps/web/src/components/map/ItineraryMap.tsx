@@ -284,7 +284,7 @@ export default function ItineraryMap({
         return (
             <div className={cn("h-full w-full bg-gray-50 flex flex-col items-center justify-center text-gray-400 rounded-lg border border-dashed border-gray-200 p-6", className)}>
                 <MapPin className="w-8 h-8 mb-2 opacity-50" />
-                <p className="font-medium text-sm">No tactical locations found</p>
+                <p className="font-medium text-sm">No locations found</p>
                 <p className="text-xs opacity-70">Add activities with coordinates to see them on the map.</p>
             </div>
         );
@@ -316,7 +316,7 @@ export default function ItineraryMap({
                         pointerEvents: "none",
                     }}
                 >
-                    Tactical Route: {totalKm.toFixed(1)} km
+                    Route Distance: {totalKm.toFixed(1)} km
                 </div>
             )}
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type HealthStatus = "healthy" | "degraded" | "down" | "unconfigured";
 
-interface InfrastructureHealthProps {
+interface SystemHealthProps {
     health: {
         checks: {
             database: { status: HealthStatus };
@@ -18,7 +18,7 @@ interface InfrastructureHealthProps {
     } | null;
 }
 
-export function InfrastructureHealth({ health }: InfrastructureHealthProps) {
+export function SystemHealth({ health }: SystemHealthProps) {
     return (
         <GlassCard padding="lg" className="bg-slate-900 border-none relative overflow-hidden">
             <div className="relative z-10">
@@ -31,7 +31,7 @@ export function InfrastructureHealth({ health }: InfrastructureHealthProps) {
                 </div>
 
                 <div className="space-y-4">
-                    <HealthBar label="Intelligence Engine" status={health?.checks.database.status || "healthy"} />
+                    <HealthBar label="Database" status={health?.checks.database.status || "healthy"} />
                     <HealthBar label="Signal Relay (FCM)" status={health?.checks.firebase_fcm.status || "healthy"} />
                     <HealthBar label="Communication Grid" status={health?.checks.whatsapp_api.status || "healthy"} />
                 </div>
