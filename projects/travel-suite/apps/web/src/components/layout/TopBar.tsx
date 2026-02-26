@@ -67,11 +67,6 @@ export default function TopBar({ className }: TopBarProps) {
                         </span>
                     </Link>
 
-                    <button className="flex items-center gap-2 px-3 py-2 bg-gradient-premium text-white rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all outline-none font-semibold text-sm">
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline tracking-tight text-white drop-shadow-sm">New Quote</span>
-                    </button>
-
                     <div className="w-px h-6 bg-gray-200 dark:bg-slate-800 mx-1"></div>
 
                     <ThemeToggleButton />

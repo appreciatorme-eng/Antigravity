@@ -1,3 +1,5 @@
+"use client";
+
 import { MessageCircle, Mail, Filter, Search, Phone, MoreVertical, Archive, PlayCircle } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";

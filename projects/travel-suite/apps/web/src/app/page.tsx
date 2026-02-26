@@ -12,11 +12,7 @@ import {
   Users,
   Bell,
   Plus,
-  History,
   Zap,
-  MessageSquare,
-  ShieldCheck,
-  Calculator,
   ArrowUpRight,
   Activity,
   Eye,
@@ -26,7 +22,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useDashboardStats } from "@/lib/queries/dashboard";
 import RevenueChart, { type RevenueMetricMode, type RevenueChartPoint } from "@/components/analytics/RevenueChart";
-import { QuickQuoteModal } from "@/components/glass/QuickQuoteModal";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -53,13 +48,6 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "bookings", label: "Bookings" },
 ];
 
-interface StatusItemProps {
-  icon: LucideIcon;
-  label: string;
-  status: string;
-  color: string;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading: loading } = useDashboardStats();
@@ -78,7 +66,7 @@ export default function DashboardPage() {
 
   const activities = data?.activities || [];
 
-  const [quoteOpen, setQuoteOpen] = useState(false);
+
   const [range, setRange] = useState<TimeRange>("6m");
   const [metric, setMetric] = useState<RevenueMetricMode>("revenue");
   const [privacyBlur, setPrivacyBlur] = useState(false);
@@ -166,18 +154,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <GlassButton variant="outline" className="h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">New Lead</span>
-          </GlassButton>
-          <GlassButton variant="outline" className="h-12 px-6 transition-colors shadow-sm bg-white dark:bg-slate-900" onClick={() => setQuoteOpen(true)}>
-            <Calculator className="w-4 h-4 mr-2" />
-            Quick Quote
-          </GlassButton>
+          <Link href="/inbox">
+            <GlassButton variant="outline" className="h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">WhatsApp Inbox</span>
+            </GlassButton>
+          </Link>
           <Link href="/trips">
             <GlassButton variant="primary" className="h-12 px-6 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-shadow">
               <Plus className="w-4 h-4 mr-2" />
-              New Trip
+              Create Trip
             </GlassButton>
           </Link>
         </div>
@@ -334,15 +320,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">System Status</h3>
-          </div>
-          <GlassCard padding="lg" className="border-gray-100 divide-y divide-gray-100 dark:divide-slate-800">
-            <StatusItem icon={ShieldCheck} label="Authentication" status="Active" color="text-emerald-500" />
-            <StatusItem icon={MessageSquare} label="Notifications" status="Operational" color="text-emerald-500" />
-            <StatusItem icon={Zap} label="API Services" status="Healthy" color="text-emerald-500" />
-            <StatusItem icon={History} label="Data Backup" status="Syncing" color="text-blue-500" />
-          </GlassCard>
+
 
           <GlassCard padding="none" className="overflow-hidden group">
             <div className="p-6 bg-gradient-to-br from-primary to-emerald-600">
@@ -362,21 +340,6 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      <QuickQuoteModal isOpen={quoteOpen} onClose={() => setQuoteOpen(false)} />
-    </div>
-  );
-}
-
-function StatusItem({ icon: Icon, label, status, color }: StatusItemProps) {
-  return (
-    <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-      <div className="flex items-center gap-3">
-        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800">
-          <Icon className="w-4 h-4 text-slate-400" />
-        </div>
-        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
-      </div>
-      <span className={cn("text-[10px] font-black uppercase tracking-widest", color)}>{status}</span>
     </div>
   );
 }
