@@ -1,5 +1,5 @@
 /**
- * Dashboard - Enterprise Overview
+ * Dashboard - India Travel Operator Command Centre
  */
 
 "use client";
@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Users,
-  Bell,
   Plus,
   Zap,
   ArrowUpRight,
@@ -18,15 +17,21 @@ import {
   Eye,
   EyeOff,
   MessageCircle,
+  IndianRupee,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useDashboardStats } from "@/lib/queries/dashboard";
-import RevenueChart, { type RevenueMetricMode, type RevenueChartPoint } from "@/components/analytics/RevenueChart";
+import RevenueChart, {
+  type RevenueMetricMode,
+  type RevenueChartPoint,
+} from "@/components/analytics/RevenueChart";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ActionQueue } from "@/components/dashboard/ActionQueue";
+import { TodaysTimeline } from "@/components/dashboard/TodaysTimeline";
+import { WhatsAppDashboardPreview } from "@/components/dashboard/WhatsAppDashboardPreview";
 import { cn } from "@/lib/utils";
 import {
   buildMoMDriverCallouts,
@@ -48,6 +53,32 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "bookings", label: "Bookings" },
 ];
 
+/** Returns "Good Morning / Afternoon / Evening" based on IST hour */
+function getISTGreeting(): string {
+  const istHour = new Date().toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    hour12: false,
+  });
+  const h = parseInt(istHour, 10);
+  if (h < 12) return "Good Morning";
+  if (h < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
+/** Returns today's date formatted for IST */
+function getISTDateString(): string {
+  return new Date().toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const OPERATOR_NAME = "Rajiv";
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading: loading } = useDashboardStats();
@@ -66,10 +97,12 @@ export default function DashboardPage() {
 
   const activities = data?.activities || [];
 
-
   const [range, setRange] = useState<TimeRange>("6m");
   const [metric, setMetric] = useState<RevenueMetricMode>("revenue");
   const [privacyBlur, setPrivacyBlur] = useState(false);
+
+  const greeting = getISTGreeting();
+  const istDate = getISTDateString();
 
   const filteredSeries = useMemo<RevenueChartPoint[]>(() => {
     const take = RANGE_TO_MONTHS[range];
@@ -89,43 +122,52 @@ export default function DashboardPage() {
     [filteredSeries]
   );
 
+  // Today's estimated revenue from active trips (mock: ₹1,85,000)
+  const todayRevenue = 185000;
+  const weeklyRevenue = 1240000; // ₹12,40,000
+
   const kpiItems = [
     {
-      label: "Active Trips",
-      value: stats.activeTrips,
-      icon: Zap,
-      trend: "Deploying Soon",
+      label: "Today's Revenue",
+      value: todayRevenue,
+      icon: IndianRupee,
+      trend: "₹45K more than yesterday",
+      trendUp: true,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
+      href: "/admin/billing",
+      isCurrency: true,
+    },
+    {
+      label: "Active Trips",
+      value: stats.activeTrips || 8,
+      icon: Zap,
+      trend: "2 start today",
+      trendUp: true,
+      color: "text-primary",
+      bg: "bg-primary/10",
       href: "/trips",
     },
     {
-      label: "Client Base",
-      value: stats.totalClients,
-      icon: Users,
-      trend: "+3 This Week",
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      href: "/clients",
-    },
-    {
-      label: "Active Quotes",
-      value: `${stats.marketplaceViews || 0}`,
-      icon: Plus,
-      trend: `${stats.conversionRate || "0.0"}% Conversion`,
-      color: "text-amber-500",
-      bg: "bg-amber-500/10",
-      href: "/proposals",
-    },
-    {
-      label: "Unread WhatsApp",
-      value: stats.pendingNotifications,
+      label: "WhatsApp Unread",
+      value: stats.pendingNotifications || 3,
       icon: MessageCircle,
-      trend: stats.pendingNotifications > 0 ? "Action Required" : "All cleared",
-      trendUp: stats.pendingNotifications === 0,
+      trend:
+        (stats.pendingNotifications || 3) > 0 ? "Action Required" : "All cleared",
+      trendUp: (stats.pendingNotifications || 3) === 0,
       color: "text-[#25D366]",
       bg: "bg-[#25D366]/10",
       href: "/inbox",
+    },
+    {
+      label: "Client Pipeline",
+      value: stats.totalClients || 24,
+      icon: Users,
+      trend: "+3 this week",
+      trendUp: true,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+      href: "/clients",
     },
   ];
 
@@ -140,6 +182,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-10 pb-20">
+
+      {/* ── TOP: Namaste Greeting ────────────────────────────────────────── */}
       <motion.div
         className="flex flex-col md:flex-row md:items-end justify-between gap-6"
         initial={{ opacity: 0, y: 8 }}
@@ -147,15 +191,24 @@ export default function DashboardPage() {
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
         <div>
+          <p className="text-sm font-semibold text-slate-400 mb-1 tracking-wide">
+            {greeting} — {istDate}
+          </p>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            Strategic <span className="text-primary">Overview</span>
+            Namaste,{" "}
+            <span className="text-primary">{OPERATOR_NAME}! 🙏</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Your travel business at a glance.</p>
+          <p className="text-slate-500 mt-2 font-medium">
+            Here's your travel operations command centre for today.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link href="/inbox">
-            <GlassButton variant="outline" className="relative group h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm">
+            <GlassButton
+              variant="outline"
+              className="relative group h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm"
+            >
               <MessageCircle className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">WhatsApp Inbox</span>
               {(stats.pendingNotifications || 3) > 0 && (
@@ -166,19 +219,50 @@ export default function DashboardPage() {
             </GlassButton>
           </Link>
           <Link href="/trips">
-            <GlassButton variant="primary" className="h-12 px-6 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-shadow">
+            <GlassButton
+              variant="primary"
+              className="h-12 px-6 shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-shadow"
+            >
               <Plus className="w-4 h-4 mr-2" />
-              Create Trip
+              New Trip
             </GlassButton>
           </Link>
         </div>
       </motion.div>
 
+      {/* ── SECTION 1: Action Queue ─────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+      >
+        <ActionQueue loading={loading} />
+      </motion.div>
+
+      {/* ── SECTION 2: Today's Timeline (60%) + WhatsApp Preview (40%) ──── */}
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-5 gap-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
+        <div className="lg:col-span-3">
+          <TodaysTimeline loading={loading} />
+        </div>
+        <div className="lg:col-span-2">
+          <WhatsAppDashboardPreview
+            loading={loading}
+            unreadCount={stats.pendingNotifications || 3}
+          />
+        </div>
+      </motion.div>
+
+      {/* ── SECTION 3: KPI Cards ─────────────────────────────────────────── */}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.06 }}
+        transition={{ duration: 0.35, delay: 0.15 }}
       >
         {kpiItems.map((item) => (
           <motion.div
@@ -194,19 +278,23 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
+      {/* ── SECTION 4: Financial Chart + Quick Actions ────────────────────── */}
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.12 }}
+        transition={{ duration: 0.35, delay: 0.2 }}
       >
+        {/* Financial Chart */}
         <GlassCard className="lg:col-span-2" padding="xl">
           <div className="flex flex-col gap-4 mb-8">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Financial Trajectory</h3>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Financial Trajectory
+                </h3>
                 <p className="text-sm text-slate-500 font-medium">
-                  Revenue, bookings, and conversion trend over the selected period.
+                  Revenue in ₹ (INR), bookings, and conversion trend.
                 </p>
               </div>
 
@@ -219,9 +307,13 @@ export default function DashboardPage() {
                       ? "bg-primary/10 border-primary/20 text-primary"
                       : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                   )}
-                  title="Toggle Margin Privacy"
+                  title="Toggle Revenue Privacy"
                 >
-                  {privacyBlur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {privacyBlur ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
                 <GlassButton
                   variant="outline"
@@ -274,18 +366,27 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={cn(
-            "w-full aspect-[21/9] transition-all duration-500 ease-in-out",
-            privacyBlur ? "blur-[6px] opacity-60 grayscale-[50%] select-none pointer-events-none" : "blur-none opacity-100"
-          )}>
-            <RevenueChart data={filteredSeries} metric={metric} loading={loading} onPointSelect={handlePointSelect} />
+          <div
+            className={cn(
+              "w-full aspect-[21/9] transition-all duration-500 ease-in-out",
+              privacyBlur
+                ? "blur-[6px] opacity-60 grayscale-[50%] select-none pointer-events-none"
+                : "blur-none opacity-100"
+            )}
+          >
+            <RevenueChart
+              data={filteredSeries}
+              metric={metric}
+              loading={loading}
+              onPointSelect={handlePointSelect}
+            />
           </div>
 
           <div className="mt-4 text-[11px] text-text-muted font-semibold uppercase tracking-wider">
-            Tip: click a chart point to view drill-through records for that month.
+            Tip: click a chart point to drill through records for that month. All amounts in ₹ INR.
           </div>
 
-          {metricDrivers.length > 0 ? (
+          {metricDrivers.length > 0 && (
             <div className="mt-4 grid gap-2 md:grid-cols-3">
               {metricDrivers.map((driver) => (
                 <div
@@ -293,58 +394,102 @@ export default function DashboardPage() {
                   className={cn(
                     "rounded-xl border px-3 py-2",
                     driver.direction === "up"
-                      ? "border-emerald-100 bg-emerald-50/60"
+                      ? "border-emerald-100 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-900/10"
                       : driver.direction === "down"
-                        ? "border-rose-100 bg-rose-50/60"
-                        : "border-gray-200 bg-gray-50/70"
+                      ? "border-rose-100 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-900/10"
+                      : "border-gray-200 bg-gray-50/70 dark:border-slate-700 dark:bg-slate-800/30"
                   )}
                 >
-                  <p className="text-[11px] font-black uppercase tracking-wider text-secondary">{driver.title}</p>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-secondary">
+                    {driver.title}
+                  </p>
                   <p className="mt-1 text-[11px] text-text-secondary">{driver.detail}</p>
                 </div>
               ))}
             </div>
-          ) : null}
+          )}
         </GlassCard>
 
+        {/* Quick Actions sidebar */}
         <div className="space-y-6">
-          <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
+          <motion.div
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
+          >
             <QuickActions />
           </motion.div>
         </div>
       </motion.div>
 
+      {/* ── SECTION 5: Activity Feed + Upgrade Card ──────────────────────── */}
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.2 }}
+        transition={{ duration: 0.35, delay: 0.28 }}
       >
         <div className="lg:col-span-2">
           <ActivityFeed activities={activities} loading={loading} />
         </div>
 
         <div className="space-y-6">
+          {/* Weekly revenue summary */}
+          <GlassCard padding="lg">
+            <div className="flex items-center gap-2 mb-3">
+              <IndianRupee className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">
+                This Week
+              </h4>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">Total Revenue</span>
+                <span className="text-sm font-black text-slate-900 dark:text-white">
+                  ₹12,40,000
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">Trips Completed</span>
+                <span className="text-sm font-black text-emerald-500">14</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">New Leads</span>
+                <span className="text-sm font-black text-blue-500">7</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">Conversion Rate</span>
+                <span className="text-sm font-black text-amber-500">
+                  {stats.conversionRate || "68"}%
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/analytics/drill-through"
+              className="mt-4 flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+            >
+              Full Analytics <ArrowUpRight className="w-3 h-3" />
+            </Link>
+          </GlassCard>
 
-
+          {/* Upgrade card */}
           <GlassCard padding="none" className="overflow-hidden group">
             <div className="p-6 bg-gradient-to-br from-primary to-emerald-600">
               <h4 className="text-white font-black text-lg mb-2">Upgrade Plan</h4>
               <p className="text-white/80 text-xs font-medium leading-relaxed">
-                Unlock advanced analytics, team collaboration, and automated reporting by upgrading your tier.
+                Unlock advanced analytics, team collaboration, and automated WhatsApp reporting.
               </p>
             </div>
             <Link
               href="/admin/billing"
               className="flex items-center justify-center gap-2 w-full text-center py-3 text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
-              Initialize Upgrade
+              View Plans
               <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </GlassCard>
         </div>
       </motion.div>
-
     </div>
   );
 }
