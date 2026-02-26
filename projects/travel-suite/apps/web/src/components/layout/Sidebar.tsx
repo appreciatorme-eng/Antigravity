@@ -23,14 +23,21 @@ import {
     LogOut,
     User as UserIcon,
     Globe,
-    HelpCircle
+    Megaphone
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
     className?: string;
+}
+
+interface SidebarNavItem {
+    icon: typeof LayoutDashboard;
+    label: string;
+    href: string;
+    subItems?: SidebarNavItem[];
 }
 
 export default function Sidebar({ className }: SidebarProps) {
@@ -61,7 +68,12 @@ export default function Sidebar({ className }: SidebarProps) {
         window.location.href = "/";
     };
 
-    const navGroups = [
+    const quickAccessItems: SidebarNavItem[] = [
+        { icon: Store, label: "Marketplace", href: "/marketplace" },
+        { icon: CreditCard, label: "Billing", href: "/billing" },
+    ];
+
+    const navGroups: Array<{ label: string; items: SidebarNavItem[] }> = [
         {
             label: "OPERATE",
             items: [
@@ -74,10 +86,16 @@ export default function Sidebar({ className }: SidebarProps) {
         {
             label: "TOOLS",
             items: [
-                { icon: Map, label: "Planner", href: "/planner" },
+                {
+                    icon: Map,
+                    label: "Planner",
+                    href: "/planner",
+                    subItems: [
+                        { icon: Plane, label: "Add-ons Extension", href: "/add-ons" },
+                    ],
+                },
                 { icon: Plane, label: "Bookings", href: "/bookings" },
                 { icon: Calendar, label: "Calendar", href: "/calendar" },
-                { icon: Store, label: "Tour Marketplace", href: "/admin/marketplace" },
                 { icon: Truck, label: "Drivers", href: "/admin/drivers" },
             ]
         },
@@ -86,11 +104,13 @@ export default function Sidebar({ className }: SidebarProps) {
             items: [
                 { icon: BarChart3, label: "Analytics", href: "/admin/revenue" },
                 { icon: Sparkles, label: "Insights", href: "/admin/insights" },
-                { icon: CreditCard, label: "Billing", href: "/admin/billing" },
+                { icon: Megaphone, label: "Social Studio", href: "/social" },
                 { icon: Settings, label: "Settings", href: "/admin/settings" },
             ]
         }
     ];
+
+    const isActivePath = (href: string) => pathname === href || (href !== "/" && pathname?.startsWith(href));
 
     return (
         <motion.aside
@@ -122,7 +142,44 @@ export default function Sidebar({ className }: SidebarProps) {
 
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden py-6 px-3 space-y-8 custom-scrollbar">
-                {navGroups.map((group, idx) => (
+                <div className="space-y-2">
+                    {!isCollapsed && (
+                        <motion.h3
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="px-3 text-[10px] font-bold tracking-widest text-slate-500 mb-2"
+                        >
+                            QUICK ACCESS
+                        </motion.h3>
+                    )}
+                    <div className="space-y-1">
+                        {quickAccessItems.map((item) => {
+                            const isActive = isActivePath(item.href);
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
+                                        isActive
+                                            ? "bg-primary/10 text-primary"
+                                            : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                                    )}
+                                >
+                                    <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />
+                                    {!isCollapsed && <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>}
+                                    {isCollapsed && (
+                                        <div className="absolute left-14 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                                            {item.label}
+                                        </div>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {navGroups.map((group) => (
                     <div key={group.label} className="space-y-2">
                         {!isCollapsed && (
                             <motion.h3
@@ -135,35 +192,61 @@ export default function Sidebar({ className }: SidebarProps) {
                         )}
                         <div className="space-y-1">
                             {group.items.map((item) => {
-                                const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+                                const isActive =
+                                    isActivePath(item.href) ||
+                                    Boolean(item.subItems?.some((subItem) => isActivePath(subItem.href)));
                                 return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className={cn(
-                                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
-                                            isActive
-                                                ? "bg-primary/10 text-primary"
-                                                : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
-                                        )}
-                                    >
-                                        <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />
-                                        {!isCollapsed && (
-                                            <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
-                                        )}
-                                        {isActive && !isCollapsed && (
-                                            <motion.div
-                                                layoutId="active-indicator"
-                                                className="absolute left-0 w-1 h-6 bg-primary rounded-r-full"
-                                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                            />
-                                        )}
-                                        {isCollapsed && (
-                                            <div className="absolute left-14 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                                                {item.label}
+                                    <div key={item.href} className="space-y-1">
+                                        <Link
+                                            href={item.href}
+                                            className={cn(
+                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all relative group",
+                                                isActive
+                                                    ? "bg-primary/10 text-primary"
+                                                    : "hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                                            )}
+                                        >
+                                            <item.icon className={cn("w-5 h-5 shrink-0 transition-transform group-hover:scale-110", isActive && "text-primary")} />
+                                            {!isCollapsed && (
+                                                <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
+                                            )}
+                                            {isActive && !isCollapsed && (
+                                                <motion.div
+                                                    layoutId="active-indicator"
+                                                    className="absolute left-0 w-1 h-6 bg-primary rounded-r-full"
+                                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                                />
+                                            )}
+                                            {isCollapsed && (
+                                                <div className="absolute left-14 px-2 py-1 bg-slate-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                                                    {item.label}
+                                                </div>
+                                            )}
+                                        </Link>
+
+                                        {!isCollapsed && item.subItems?.length ? (
+                                            <div className="ml-8 space-y-1">
+                                                {item.subItems.map((subItem) => {
+                                                    const isSubActive = isActivePath(subItem.href);
+                                                    return (
+                                                        <Link
+                                                            key={subItem.href}
+                                                            href={subItem.href}
+                                                            className={cn(
+                                                                "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold transition-all",
+                                                                isSubActive
+                                                                    ? "bg-primary/10 text-primary"
+                                                                    : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                                                            )}
+                                                        >
+                                                            <subItem.icon className="w-3.5 h-3.5" />
+                                                            {subItem.label}
+                                                        </Link>
+                                                    );
+                                                })}
                                             </div>
-                                        )}
-                                    </Link>
+                                        ) : null}
+                                    </div>
                                 );
                             })}
                         </div>

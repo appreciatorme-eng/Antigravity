@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Zap, CreditCard, Car, ArrowUpRight } from "lucide-react";
+import { Zap, CreditCard, Car, ArrowUpRight, Megaphone, Package } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,21 @@ export function QuickActions() {
                     accent="bg-primary/10 text-primary"
                 />
                 <QuickActionLink
-                    href="/admin/billing"
+                    href="/add-ons"
+                    icon={Package}
+                    label="Planner Add-ons Extension"
+                    description="Manage upsells directly from planning workflow"
+                    accent="bg-emerald-500/10 text-emerald-500"
+                />
+                <QuickActionLink
+                    href="/social"
+                    icon={Megaphone}
+                    label="Social Studio"
+                    description="Generate and publish campaign-ready content"
+                    accent="bg-violet-500/10 text-violet-500"
+                />
+                <QuickActionLink
+                    href="/billing"
                     icon={CreditCard}
                     label="Financial Ledger"
                     description="Invoices and subscription status"

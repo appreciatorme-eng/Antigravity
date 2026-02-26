@@ -10,7 +10,10 @@ import {
     Settings,
     Plus,
     Calendar,
-    Map
+    Map,
+    CreditCard,
+    Megaphone,
+    Package
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -121,10 +124,28 @@ export default function CommandPalette() {
                                         Create New Trip
                                     </CommandItem>
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/admin/marketplace"))}
+                                        onSelect={() => runCommand(() => router.push("/marketplace"))}
                                         icon={<Calendar className="w-4 h-4" />}
                                     >
                                         Browse Marketplace
+                                    </CommandItem>
+                                    <CommandItem
+                                        onSelect={() => runCommand(() => router.push("/billing"))}
+                                        icon={<CreditCard className="w-4 h-4" />}
+                                    >
+                                        Open Billing
+                                    </CommandItem>
+                                    <CommandItem
+                                        onSelect={() => runCommand(() => router.push("/social"))}
+                                        icon={<Megaphone className="w-4 h-4" />}
+                                    >
+                                        Social Studio
+                                    </CommandItem>
+                                    <CommandItem
+                                        onSelect={() => runCommand(() => router.push("/add-ons"))}
+                                        icon={<Package className="w-4 h-4" />}
+                                    >
+                                        Planner Add-ons Extension
                                     </CommandItem>
                                 </Command.Group>
 
