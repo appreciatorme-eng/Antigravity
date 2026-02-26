@@ -17,12 +17,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setIsMounted(true);
     }, []);
 
+    // Avoid double shelling for admin routes because /admin has its own layout shell.
+    const isAdminPage = pathname?.startsWith("/admin");
     // If it's the welcome or auth page, don't show the shell
     const isPublicPage = pathname === "/welcome" || pathname === "/auth";
 
     if (!isMounted) return null;
 
-    if (isPublicPage) {
+    if (isPublicPage || isAdminPage) {
         return <>{children}</>;
     }
 

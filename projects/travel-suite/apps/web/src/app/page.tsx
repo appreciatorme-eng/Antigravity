@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -29,7 +29,6 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { SystemHealth } from "@/components/dashboard/SystemHealth";
 import { cn } from "@/lib/utils";
 import {
   buildMoMDriverCallouts,
@@ -50,14 +49,6 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "revenue", label: "Revenue" },
   { value: "bookings", label: "Bookings" },
 ];
-
-interface HealthResponse {
-  checks: {
-    database: { status: "healthy" | "degraded" | "down" | "unconfigured" };
-    firebase_fcm: { status: "healthy" | "degraded" | "down" | "unconfigured" };
-    whatsapp_api: { status: "healthy" | "degraded" | "down" | "unconfigured" };
-  };
-}
 
 interface StatusItemProps {
   icon: LucideIcon;
@@ -84,25 +75,9 @@ export default function DashboardPage() {
 
   const activities = data?.activities || [];
 
-  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [range, setRange] = useState<TimeRange>("6m");
   const [metric, setMetric] = useState<RevenueMetricMode>("revenue");
-
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const res = await fetch("/api/admin/health");
-        if (!res.ok) return;
-        const payload = (await res.json()) as HealthResponse;
-        setHealth(payload);
-      } catch {
-        // best effort only
-      }
-    };
-
-    void fetchHealth();
-  }, []);
 
   const filteredSeries = useMemo<RevenueChartPoint[]>(() => {
     const take = RANGE_TO_MONTHS[range];
@@ -180,10 +155,6 @@ export default function DashboardPage() {
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">System Live</span>
-          </div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             Strategic <span className="text-primary">Overview</span>
           </h1>
@@ -322,9 +293,6 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
             <QuickActions />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: 0.24 }}>
-            <SystemHealth health={health} />
           </motion.div>
         </div>
       </motion.div>
