@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         // Identify the referrer
         const { data: referrerProfile } = await supabase
             .from("profiles")
-            .select("id")
+            .select("id, organization_id")
             .eq("referral_code", referralCode)
             .single();
 
@@ -100,6 +100,39 @@ export async function POST(req: Request) {
 
         if (!myProfile?.organization_id) {
             return NextResponse.json({ error: "You do not have an active organization to link." }, { status: 400 });
+        }
+
+        // Prevent referring someone within the same organization
+        if (referrerProfile.organization_id === myProfile.organization_id) {
+            return NextResponse.json({ error: "You cannot apply a referral code from someone in your own team." }, { status: 400 });
+        }
+
+        // Fetch organization details for age check
+        const { data: myOrg } = await supabase
+            .from("organizations")
+            .select("created_at")
+            .eq("id", myProfile.organization_id)
+            .single();
+
+        if (myOrg?.created_at) {
+            const orgAgeDays = (new Date().getTime() - new Date(myOrg.created_at).getTime()) / (1000 * 60 * 60 * 24);
+            if (orgAgeDays > 7) {
+                 return NextResponse.json({ error: "Referral codes can only be applied within 7 days of account creation." }, { status: 403 });
+            }
+        }
+
+        // Prevent circular referrals (A refers B, then B tries to refer A)
+        if (referrerProfile.organization_id) {
+            const { data: circularCheck } = await supabase
+                .from("referrals")
+                .select("id")
+                .eq("referrer_profile_id", user.id)
+                .eq("referred_organization_id", referrerProfile.organization_id)
+                .maybeSingle();
+
+            if (circularCheck) {
+                return NextResponse.json({ error: "Circular referrals are not permitted." }, { status: 403 });
+            }
         }
 
         // Create the referral link (Fail silently if it already exists due to UNIQUE constraint)
