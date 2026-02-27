@@ -248,6 +248,52 @@ function ListingsTab() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Create Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative z-10 bg-[#0a1628] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-[#00d084]" /> Add New Listing
+                </h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-white/50 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-3 text-blue-200 text-sm">
+                  <AlertCircle className="w-5 h-5 text-blue-400 shrink-0" />
+                  <p>To add a new package to the marketplace, you need to first build and finalize an itinerary in the Planner module.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 p-6 border-t border-white/10 bg-white/5">
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="px-4 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <a 
+                  href="/planner" 
+                  className="px-4 py-2 rounded-xl bg-[#00d084] text-black font-semibold hover:bg-[#00b873] transition-colors"
+                >
+                  Go to Planner
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
