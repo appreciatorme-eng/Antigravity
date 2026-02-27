@@ -21,6 +21,33 @@ Tour operators currently spend significant money on graphic designers for social
 7. **Cron jobs** (social queue processor, token refresh) - [DONE]
 8. **Wire PortalReview.tsx** to social_reviews - [DONE]
 9. **Tier gating** in billing/tiers.ts - [DONE]
+10. **UI/UX Gap Fixes** (festival banner, brand color, publish kit, search, aspect ratio, phone mockup, post history, platform status bar, caption tone/hashtags) - [DONE - 2026-02-27]
+11. **Template Registry Expansion** (6 → 30+ templates) - [DONE - 2026-02-27]
+
+---
+
+## Gap Analysis — Identified 2026-02-27
+
+After auditing the implemented code against the tracker, the following gaps were found and fixed:
+
+### Gaps Fixed (2026-02-27)
+
+| Gap | File | Fix Applied |
+|-----|------|-------------|
+| `getUpcomingFestivals()` never called — festival banner missing | `TemplateGallery.tsx` | Festival urgency banner wired at top of gallery |
+| `color-utils.ts` never imported anywhere | `TemplateEditor.tsx`, layouts | Brand Color toggle added; org `primary_color` applied to templates |
+| No "Save Draft" button in UI (API existed) | `TemplateGallery.tsx` | Save Draft added to template card actions |
+| No post history view | `SocialStudioClient.tsx` | "Post History" tab added with `PostHistory` component |
+| No platform connection status visible | `SocialStudioClient.tsx` | `PlatformStatusBar` added below header |
+| Template cards only had Download HQ on hover | `TemplateGallery.tsx` | `PublishKitDrawer` replaces hover — Download + Save + Schedule + Publish |
+| Aspect ratios hardcoded 1080x1080 | `TemplateGallery.tsx` | 1:1 / 4:5 / Story switcher per card |
+| Template search input missing | `TemplateGallery.tsx` | Search bar added above category pills |
+| No tier lock icons on Pro/Business templates | `TemplateGallery.tsx` | Lock badge overlay on locked templates |
+| Caption tone fixed — no selector | `CaptionEngine.tsx` + `SocialStudioClient.tsx` | Tone chips: Luxury / Budget / Adventure / Family / Corporate |
+| Hashtag packs not grouped by reach | `CaptionEngine.tsx` | Three hashtag packs with copy-all buttons |
+| Template preview in abstract grid — no phone context | `TemplateGallery.tsx` | Instagram phone mockup wrapper on selected template |
+| Reviews → Templates bridge lost context | `ReviewsToInsta.tsx` | Pre-filters gallery, auto-populates review fields |
+| Template registry had only 6 entries | `template-registry.ts` | Expanded to 30+ across all categories |
 
 ---
 
@@ -44,6 +71,9 @@ Break `/apps/web/src/app/social/page.tsx` (1,072 lines) into modules:
     MediaLibrary.tsx               -- Image picker (uploads + Unsplash)
     CaptionEngine.tsx              -- AI caption generator (existing, extracted)
     PosterExtractor.tsx            -- AI poster analyzer (existing, extracted)
+    PublishKitDrawer.tsx           -- NEW: slide-over publish panel [ADDED]
+    PostHistory.tsx                -- NEW: saved posts viewer [ADDED]
+    PlatformStatusBar.tsx          -- NEW: IG/FB connection status [ADDED]
 
 /apps/web/src/lib/social/
     template-registry.ts           -- All template definitions (data-driven)
@@ -71,8 +101,9 @@ Break `/apps/web/src/app/social/page.tsx` (1,072 lines) into modules:
 - Complementary & analogous colors
 - Text contrast color (auto white/black)
 - Background gradients derived from brand color
+- **Status**: `color-utils.ts` implemented. Brand Color toggle wired in `TemplateEditor.tsx`. [DONE - 2026-02-27]
 
-### 1.3 Template Registry (95+ Templates)
+### 1.3 Template Registry (30+ Templates, target 95+)
 
 Data-driven registry instead of inline JSX. Each template definition:
 ```typescript
@@ -80,17 +111,19 @@ Data-driven registry instead of inline JSX. Each template definition:
   aspectRatio, colorScheme, tags, seasonalAvailability }
 ```
 
-**Categories & Counts:**
-| Category | Count | Examples |
-|----------|-------|---------|
-| Festival | 25 | Diwali (4), Holi (3), Christmas (3), Eid (2), Navratri (2), Ganesh Chaturthi (2), Raksha Bandhan (2), Independence Day (2), Republic Day (2), Onam, Pongal, Baisakhi |
-| Season | 12 | Summer (4), Monsoon (3), Winter (3), Spring (2) |
-| Destination | 12 | Dubai, Bali, Maldives, Kashmir, Kerala, Goa, Europe, Thailand, Singapore |
-| Package Type | 12 | Honeymoon (3), Family (3), Adventure (2), Luxury (2), Corporate (2) |
-| Promotion | 10 | Flash Sale, Early Bird, Last Minute, Group Discount, Festive Offer |
-| Review | 8 | Customer Love, Star Rating, Testimonial Grid, Before/After |
-| Informational | 6 | Services, Fleet, About Us |
-| Carousel | 10 | Trip Highlights, Multi-Destination, Day-by-Day, Photo Album |
+**Categories & Counts (current → target):**
+| Category | Current | Target | Examples |
+|----------|---------|--------|---------|
+| Festival | 4 | 25 | Diwali (4), Holi (3), Christmas (3), Eid (2), Navratri (2) |
+| Season | 4 | 12 | Summer (4), Monsoon (3), Winter (3), Spring (2) |
+| Destination | 6 | 12 | Dubai, Bali, Maldives, Kashmir, Kerala, Goa, Europe |
+| Package Type | 5 | 12 | Honeymoon (3), Family (3), Adventure (2), Luxury (2) |
+| Promotion | 4 | 10 | Flash Sale, Early Bird, Last Minute, Group Discount |
+| Review | 3 | 8 | Customer Love, Star Rating, Testimonial Grid |
+| Informational | 2 | 6 | Services, Fleet, About Us |
+| Carousel | 2 | 10 | Trip Highlights, Multi-Destination, Day-by-Day |
+
+**Status**: Expanded from 6 → 30 templates [DONE - 2026-02-27]. Remaining 65+ templates to be added incrementally.
 
 ### 1.4 Indian Festival Calendar
 
@@ -98,7 +131,7 @@ Static JSON (`/lib/social/indian-calendar.ts`) with 25+ festival entries for 202
 - Each entry: `{ id, name, nameHindi, date, surfaceBeforeDays, templateCategory, tags }`
 - `getUpcomingFestivals(daysAhead)` auto-surfaces relevant templates
 - Example: "Holi Special Templates" appear 21 days before Holi
-- Updated annually (no external API cost)
+- **Status**: Implemented. Now wired in `TemplateGallery.tsx` as urgency banner [DONE - 2026-02-27]
 
 ### 1.5 Database - New Tables
 
@@ -119,13 +152,15 @@ Static JSON (`/lib/social/indian-calendar.ts`) with 25+ festival entries for 202
 - Paths: `{org_id}/posts/`, `{org_id}/whatsapp/`, `{org_id}/uploads/`
 - Max 10MB per file, image/* MIME types
 
+**Migration file**: `supabase/migrations/20260227152017_social_studio_v2.sql` [DONE]
+
 ### 1.6 New API Routes (Phase 1)
 
-- `GET /api/social/posts` - list saved posts for org
-- `POST /api/social/posts` - create/save post (draft or ready)
-- `PATCH /api/social/posts/[id]` - update post
-- `DELETE /api/social/posts/[id]` - delete post
-- `POST /api/social/posts/[id]/render` - render template to PNG, store in Supabase Storage
+- `GET /api/social/posts` - list saved posts for org [DONE]
+- `POST /api/social/posts` - create/save post (draft or ready) [DONE]
+- `PATCH /api/social/posts/[id]` - update post [DONE]
+- `DELETE /api/social/posts/[id]` - delete post [DONE]
+- `POST /api/social/posts/[id]/render` - render template to PNG, store in Supabase Storage [DONE]
 
 ### 1.7 Rendering
 
@@ -133,6 +168,7 @@ Keep existing `html-to-image` (`toPng()`) approach - it's free, client-side, and
 - 1080x1080 (square), 1080x1350 (4:5 portrait), 1080x1920 (story)
 - Scaled preview (1/4 size) for fast UI
 - High-res export for download/publish
+- **Aspect ratio switcher** added to TemplateGallery UI [DONE - 2026-02-27]
 
 ---
 
@@ -142,11 +178,11 @@ Keep existing `html-to-image` (`toPng()`) approach - it's free, client-side, and
 
 **Problem**: Reviews in Social Studio are hardcoded mock data. Real reviews exist in `marketplace_reviews` and `PortalReview.tsx` component.
 
-**New table: `social_reviews`**
+**New table: `social_reviews`** [DONE]
 - Aggregates reviews from: client portal, marketplace, Google (manual import), manual entry
 - Fields: `reviewer_name`, `trip_name`, `destination`, `rating`, `comment`, `source`, `is_featured`
 
-**Wire up real reviews:**
+**Wire up real reviews:** [DONE]
 1. Modify `PortalReview.tsx` onSubmit to also insert into `social_reviews`
 2. Import existing `marketplace_reviews` via `/api/social/reviews/import`
 3. Replace hardcoded mock data with real database query
@@ -156,40 +192,19 @@ Keep existing `html-to-image` (`toPng()`) approach - it's free, client-side, and
 2. Populate with reviewer name, comment, trip, org branding
 3. Save as draft `social_posts` entry with `source: 'auto_review'`
 4. Notify admin: "New review poster ready for publishing!"
+- **Status**: Draft save wired. UI notification badge TODO.
 
-**AI-enhanced review formatting** (Groq ~$0.006):
-- Clean up grammar while preserving voice
-- Add emoji emphasis
-- Shorten to 2-3 sentences for visual impact
-- Generate headline from review text
+**AI-enhanced review formatting** (Groq ~$0.006) [DONE]
+
+**Review → Template bridge**: Pre-filters gallery to ReviewLayout templates + auto-populates review data [DONE - 2026-02-27]
 
 ### 2.2 AI Poster Creation (Cheapest Approach)
 
-**Primary path (~$0.007/poster):** AI generates template parameters, existing html-to-image renders the poster.
+**Primary path (~$0.007/poster):** [DONE]
 
-1. User types prompt: "Create a Diwali poster for Kashmir, 5N/6D at 35,999"
-2. **Groq LLaMA 3.1 8B** (~$0.006) generates structured JSON: `{ templateId, destination, price, offer, season, heroImageQuery }`
-3. `heroImageQuery` triggers **Unsplash/Pexels search** (free, already integrated)
-4. Template renders via existing `html-to-image` at 1080x1080
+**New API route: `POST /api/social/ai-poster`** [DONE]
 
-**New API route: `POST /api/social/ai-poster`**
-- Input: `{ prompt: string, templateId?: string }`
-- Output: `{ templateData, suggestedTemplateId, heroImageUrl }`
-
-**Premium path (Business/Enterprise only):** Stability AI SDXL (~$0.004/image) for AI-generated hero backgrounds when user wants truly custom visuals.
-
-```typescript
-// /apps/web/src/app/api/social/ai-image/route.ts
-// POST { prompt: string, style: "photographic" | "cinematic" | "illustration" }
-// Uses Stability AI REST API: https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image
-// Env: STABILITY_API_KEY
-// Prompt template: "Travel promotional background, {destination}, {style}, ultra-wide, no text, no words"
-```
-
-**Image source selection in UI:**
-- Free tier: Only shows Unsplash/Pexels tab
-- Business/Enterprise: Additional "AI Generate" tab with prompt input
-- Toggle between: Search Stock Photos | Generate with AI
+**Premium path (Business/Enterprise only):** Stability AI SDXL [PENDING - needs STABILITY_API_KEY env]
 
 | Approach | Cost | Tier | Use Case |
 |----------|------|------|----------|
@@ -197,54 +212,28 @@ Keep existing `html-to-image` (`toPng()`) approach - it's free, client-side, and
 | Groq text + Stability AI image | ~$0.010 | Business+ | Unique custom visuals |
 | Gemini caption generation | $0 (free tier) | All | Caption add-on |
 
-### 2.3 Carousel Editor
+### 2.3 Carousel Editor [DONE]
 
-Multi-slide posts (Instagram allows up to 10 images per carousel):
+Multi-slide posts (Instagram allows up to 10 images per carousel).
+`CarouselBuilder` component with drag-to-reorder, per-slide editing.
 
-```typescript
-interface CarouselSlide {
-  slideIndex: number;
-  title?: string;
-  subtitle?: string;
-  bodyText?: string;
-  heroImage?: string;
-  layout: "title" | "content" | "image" | "stats" | "cta";
-}
-```
+### 2.4 New API Routes (Phase 2) [ALL DONE]
 
-- `CarouselEditor` component: slide-by-slide editing with drag-to-reorder
-- Each slide rendered as independent 1080x1080 PNG via `html-to-image`
-- Export: multiple PNGs (ZIP download) or direct carousel publish (Phase 3)
-- 10 carousel template sets: Trip Highlights, Day-by-Day Itinerary, Multi-Destination, Photo Album, etc.
-
-### 2.4 New API Routes (Phase 2)
-
-- `GET /api/social/reviews` - list social reviews for org
-- `POST /api/social/reviews` - create manual review
-- `POST /api/social/reviews/import` - import from marketplace_reviews
-- `POST /api/social/ai-poster` - AI poster creation
+- `GET /api/social/reviews`
+- `POST /api/social/reviews`
+- `POST /api/social/reviews/import`
+- `POST /api/social/ai-poster`
 
 ---
 
 ## Phase 3: Social Media Auto-Posting + Scheduling - 2-3 weeks
 
-### 3.1 Platform Integration (All FREE - Direct Meta Graph API)
+### 3.1 Platform Integration (All FREE - Direct Meta Graph API) [API routes done, UI added]
 
-**Why direct Meta API vs Buffer/Later?**
-- Meta Graph API = FREE, no limits on scheduled posts
-- Buffer free tier = only 3 channels, 10 scheduled posts (too limiting)
-- Full control over carousel posting, no middleman
+**Instagram Graph API** - Container-based posting [API DONE]
+**Facebook Graph API** - Page posting [API DONE]
 
-**Instagram Graph API** (via Facebook Business):
-- Container-based posting: upload image URL → create container → publish
-- Carousel support: up to 10 images per post
-- Rate limit: 200 API calls/hour/user (plenty)
-
-**Facebook Graph API**:
-- Page posting: `POST /{page-id}/photos` or `POST /{page-id}/feed`
-- Free, no cost
-
-### 3.2 Meta Developer Account Setup (Pre-requisite)
+### 3.2 Meta Developer Account Setup (Pre-requisite) [PENDING - manual step]
 
 Since you don't have this yet, here's what's needed:
 
@@ -256,100 +245,93 @@ Since you don't have this yet, here's what's needed:
    - `instagram_content_publish` - publish images/carousels
    - `pages_manage_posts` - post to Facebook pages
    - `pages_read_engagement` - read engagement metrics
-5. **App Review** takes ~2-5 business days (submit with screenshots of the Social Studio UI)
-6. **Environment variables to add**: `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`
+5. **App Review** takes ~2-5 business days
+6. **Environment variables to add**:
+   ```
+   META_APP_ID=your_app_id
+   META_APP_SECRET=your_secret
+   META_REDIRECT_URI=https://yourdomain.com/api/social/oauth/callback
+   ```
 
-> We'll build the OAuth flow and publishing code immediately. The App Review can happen in parallel - we use mock/test mode until approved.
+### 3.3 OAuth Flow & Token Storage [DONE]
 
-### 3.3 OAuth Flow & Token Storage
+**New table: `social_connections`** [DONE]
+**OAuth routes**: `/api/social/oauth/facebook`, `/api/social/oauth/callback` [DONE]
+**Platform status bar** in UI showing connection state [DONE - 2026-02-27]
 
-**New table: `social_connections`**
-- `organization_id`, `platform` (instagram/facebook), `platform_page_id`
-- `access_token_encrypted` (AES-256 via Node.js crypto)
-- `token_expires_at`, `refresh_token_encrypted`
+### 3.4 Publishing & Scheduling [DONE]
 
-**Flow:**
-1. User clicks "Connect Instagram" in Social Studio settings
-2. Redirect to Facebook OAuth: `https://www.facebook.com/v20.0/dialog/oauth?scope=instagram_basic,instagram_content_publish,pages_manage_posts`
-3. Callback at `/api/social/oauth/callback` exchanges code for token
-4. Exchange for long-lived token (60 days)
-5. Store encrypted in `social_connections`
+**`POST /api/social/publish`** [DONE]
+**`POST /api/social/schedule`** [DONE]
+**`POST /api/social/process-queue`** cron [DONE]
+**`POST /api/social/refresh-tokens`** cron [DONE]
+**PublishKitDrawer UI**: Opens from template card — platform selector, schedule picker, publish CTA [DONE - 2026-02-27]
 
-**New API routes:**
-- `GET /api/social/connections` - list connected platforms
-- `POST /api/social/oauth/facebook` - initiate OAuth
-- `GET /api/social/oauth/callback` - OAuth callback handler
-- `DELETE /api/social/connections/[id]` - disconnect platform
-
-### 3.4 Publishing & Scheduling
-
-**Publishing flow:**
-1. Render poster PNG → upload to Supabase Storage → get public URL
-2. Instagram: Create media container with image URL + caption → publish
-3. Facebook: Post photo with caption to page
-
-**Scheduling** - reuse existing notification_queue architectural pattern:
-
-**New table: `social_post_queue`** (separate from notification_queue - different retry semantics)
-- `post_id`, `platform`, `connection_id`, `scheduled_for`
-- `status` (pending/processing/sent/failed), `attempts`, `error_message`
-- `platform_post_id`, `platform_post_url` (after publish)
-
-**New cron endpoint: `POST /api/social/process-queue`**
-- Runs every 5 minutes (Vercel Cron)
-- Picks posts where `scheduled_for <= now() AND status = 'pending'`
-- Publishes to connected platforms
-- Follows same pattern as existing `/api/notifications/process-queue`
-
-**Token refresh cron: `POST /api/social/refresh-tokens`**
-- Runs daily
-- Refreshes tokens expiring within 7 days
-
-### 3.5 New API Routes (Phase 3)
-
-- `POST /api/social/publish` - publish immediately to platform(s)
-- `POST /api/social/schedule` - schedule for future publishing
-- `POST /api/social/process-queue` - cron queue processor
-- `POST /api/social/refresh-tokens` - token refresh cron
+**Vercel Cron setup** (add to `vercel.json`):
+```json
+{
+  "crons": [
+    { "path": "/api/social/process-queue", "schedule": "*/5 * * * *" },
+    { "path": "/api/social/refresh-tokens",  "schedule": "0 0 * * *" }
+  ]
+}
+```
 
 ---
 
 ## Phase 4: WhatsApp Photo Integration + Analytics - 1-2 weeks
 
-### 4.1 WhatsApp Photo Capture
+### 4.1 WhatsApp Photo Capture [DONE]
 
-**Problem**: Webhook at `/api/whatsapp/webhook` only handles `message.type === "location"`. Ignores images.
+`parseWhatsAppImageMessages()` in `/lib/whatsapp.server.ts`
+Image download → Supabase Storage → `social_media_library` insert
 
-**Fix**: Add `parseWhatsAppImageMessages()` to `/lib/whatsapp.server.ts`:
-- Filter for `message.type === "image"`
-- Extract: `message.image.id`, `message.image.caption`, `message.image.mime_type`
+### 4.2 Media Library UI [DONE]
 
-**Image download from WhatsApp:**
-1. Get download URL: `GET https://graph.facebook.com/v20.0/{mediaId}` with Bearer token
-2. Download binary: `GET {url}` with Bearer token (WhatsApp stores media ~30 days)
-3. Upload to Supabase Storage: `social-media/{org_id}/whatsapp/{timestamp}-{mediaId}.jpg`
-4. Insert into `social_media_library` with `source: 'whatsapp'`
+"Media Library" tab in Social Studio — WhatsApp photos, uploads, Unsplash.
+Tab source filters: All / WhatsApp Photos / Direct Uploads
 
-### 4.2 Media Library UI
+### 4.3 Basic Analytics [DONE - mock data, real Graph API metrics pending]
 
-"Client Photos" tab in Social Studio showing:
-- WhatsApp photos grouped by sender phone/name
-- Directly uploaded photos
-- Previously used Unsplash/Pexels images
-- One-click "Use as Hero Image" or "Add to Carousel"
-- Tag/categorize photos (e.g., "Maldives trip", "Hotel shots")
-
-### 4.3 Basic Analytics
-
-- Posts created/published per week (chart)
-- Platform breakdown (Instagram vs Facebook)
-- Template popularity (which templates get used most)
-- Review-to-post conversion rate
-- Pull engagement metrics via Graph API (likes, comments, reach) for published posts
+Stat cards: Total Posts, Published, Scheduled, WhatsApp Media
+Platform breakdown bar
+Post reach trend chart
+**TODO**: Pull real engagement metrics from Meta Graph API after OAuth setup
 
 ### 4.4 Remaining Templates
 
-Fill up to 95+ total templates, polish designs, add aspect ratio variants (square, portrait, story).
+Fill up to 95+ total templates, polish designs, add aspect ratio variants.
+**Status**: 30 templates added. 65+ remaining to fill. [IN PROGRESS]
+
+---
+
+## UI/UX Improvements Applied (2026-02-27)
+
+These improvements were identified as gaps between the "liked but not loved" baseline and a production-quality tool:
+
+### Applied
+- **Festival Urgency Banner** — `getUpcomingFestivals()` wired, shows countdown + template count
+- **Brand Color Toggle** — `color-utils.ts` now used; generates 6-color palette from org `primary_color`
+- **PublishKitDrawer** — Replaces hover Download HQ; shows caption preview, platform selector, schedule picker
+- **Platform Status Bar** — Persistent IG/FB connection status strip below header
+- **Template Search** — Search input above category pills in gallery
+- **Tier Lock Badges** — Pro/Business templates show lock icon overlay with upgrade hint
+- **Aspect Ratio Switcher** — Per-template 1:1 / 4:5 / Story (9:16) toggle
+- **Save Draft** — Direct save from template card to `social_posts` table
+- **Post History Tab** — New tab with `PostHistory` component, lists/manages saved drafts
+- **Caption Tone Selector** — Tone chips passed to AI: Luxury / Budget / Adventure / Family / Corporate / Playful
+- **Hashtag Packs** — Three grouped packs (Broad / Niche / Local India) with one-click copy-all
+- **Instagram Phone Mockup** — Selected template wrapped in phone frame for feed context
+- **Review Bridge** — `ReviewsToInsta` "Design Post" pre-filters to ReviewLayout + populates data
+
+### Remaining UI/UX (Future)
+- `[ ]` Stability AI image tab for Business+ tier
+- `[ ]` Engagement metric pull from Meta Graph API (post-OAuth setup)
+- `[ ]` "Export Pack" ZIP download for multiple selected templates
+- `[ ]` Content calendar view in Analytics (dots on days posts published)
+- `[ ]` Auto-review notification badge on Reviews tab when new draft appears
+- `[ ]` Scroll-sync carousel template browser (Instagram-style swipe)
+- `[ ]` WhatsApp setup onboarding wizard
 
 ---
 
@@ -370,7 +352,40 @@ Fill up to 95+ total templates, polish designs, add aspect ratio variants (squar
 | Media library | 100MB | 1GB | 5GB | 25GB |
 | Post history | Last 10 | Unlimited | Unlimited + analytics | All |
 
-**Key insight**: Free tier hooks them with 10 beautiful auto-branded templates. They upgrade to Pro for AI + all templates. They upgrade to Business for auto-posting + scheduling.
+---
+
+## Environment Variables Checklist
+
+```bash
+# Required (free)
+NEXT_PUBLIC_UNSPLASH_ACCESS_KEY=
+
+# Required for AI features
+GROQ_API_KEY=                        # Already set (used for captions)
+GEMINI_API_KEY=                      # Already set (used for poster extraction)
+
+# Phase 3 — Meta/Instagram
+META_APP_ID=                         # After Meta Developer App creation
+META_APP_SECRET=
+META_REDIRECT_URI=https://yourdomain.com/api/social/oauth/callback
+
+# Optional — Business+ tier only
+STABILITY_API_KEY=                   # Stability AI SDXL for custom hero images
+
+# Supabase Storage
+# Bucket: social-media (create in Supabase dashboard)
+# RLS: authenticated users access own org folder only
+```
+
+## Setup Checklist
+
+- [x] Database migration applied (`20260227152017_social_studio_v2.sql`)
+- [ ] Supabase Storage bucket `social-media` created (public read, 10MB limit)
+- [ ] `NEXT_PUBLIC_UNSPLASH_ACCESS_KEY` added to `.env.local`
+- [ ] Meta Developer App created (for Phase 3 auto-posting)
+- [ ] Vercel Cron jobs configured in `vercel.json`
+- [ ] WhatsApp webhook extended for image messages
+- [ ] `STABILITY_API_KEY` added for Business+ tier
 
 ---
 
@@ -392,36 +407,24 @@ Fill up to 95+ total templates, polish designs, add aspect ratio variants (squar
 
 ---
 
-## Critical Files to Modify
+## Critical Files Modified
 
 | File | Change |
 |------|--------|
-| `/apps/web/src/app/social/page.tsx` | Decompose into server component + modules |
-| `/apps/web/src/app/api/whatsapp/webhook/route.ts` | Add image message parsing |
-| `/apps/web/src/lib/whatsapp.server.ts` | Add `parseWhatsAppImageMessages()` + `downloadWhatsAppMedia()` |
-| `/apps/web/src/app/api/notifications/process-queue/route.ts` | Reference pattern for social queue |
-| `/apps/web/src/lib/billing/tiers.ts` | Add Social Studio feature limits per tier |
-| `/apps/web/src/components/portal/PortalReview.tsx` | Wire onSubmit to `social_reviews` |
+| `apps/web/src/app/social/_components/SocialStudioClient.tsx` | Platform status bar, Post History tab, caption tone state |
+| `apps/web/src/app/social/_components/TemplateGallery.tsx` | Festival banner, search, tier badges, aspect ratio switcher, publish kit, phone mockup |
+| `apps/web/src/app/social/_components/TemplateEditor.tsx` | Brand color toggle using color-utils |
+| `apps/web/src/app/social/_components/CaptionEngine.tsx` | Tone selector, hashtag packs with copy-all |
+| `apps/web/src/app/social/_components/ReviewsToInsta.tsx` | Review bridge pre-filters gallery + populates fields |
+| `apps/web/src/lib/social/template-registry.ts` | Expanded from 6 → 30+ templates |
 
-## New Files to Create
+## New Files Created
 
-- `/apps/web/src/lib/social/template-registry.ts`
-- `/apps/web/src/lib/social/indian-calendar.ts`
-- `/apps/web/src/lib/social/color-utils.ts`
-- `/apps/web/src/lib/social/types.ts`
-- `/apps/web/src/app/social/_components/*.tsx` (8+ component files)
-- `/apps/web/src/components/social/templates/layouts/*.tsx` (8 layout files)
-- `/apps/web/src/components/social/templates/shared/*.tsx` (4 shared components)
-- `/apps/web/src/app/api/social/posts/route.ts` + `[id]/route.ts`
-- `/apps/web/src/app/api/social/ai-poster/route.ts`
-- `/apps/web/src/app/api/social/reviews/route.ts` + `import/route.ts`
-- `/apps/web/src/app/api/social/publish/route.ts`
-- `/apps/web/src/app/api/social/schedule/route.ts`
-- `/apps/web/src/app/api/social/process-queue/route.ts`
-- `/apps/web/src/app/api/social/oauth/facebook/route.ts` + `callback/route.ts`
-- `/apps/web/src/app/api/social/connections/route.ts` + `[id]/route.ts`
-- `/apps/web/src/app/api/social/refresh-tokens/route.ts`
-- `/supabase/migrations/YYYYMMDD_social_studio_v2.sql` (5 new tables)
+| File | Purpose |
+|------|---------|
+| `apps/web/src/app/social/_components/PublishKitDrawer.tsx` | Slide-over publish panel |
+| `apps/web/src/app/social/_components/PostHistory.tsx` | Saved posts viewer/manager |
+| `apps/web/src/app/social/_components/PlatformStatusBar.tsx` | IG/FB connection status strip |
 
 ## Verification Plan
 
