@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2 } from "lucide-react";
+import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2, Home } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import SaveItineraryButton from "./SaveItineraryButton";
 import ShareTripModal from "@/components/ShareTripModal";
@@ -199,7 +200,15 @@ Make it practical and specific:
     return (
         <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
             <div className="w-full max-w-full">
-                <div className="max-w-4xl mx-auto px-6 pt-10 pb-4 text-center print:hidden">
+                <div className="max-w-4xl mx-auto px-6 pt-6 pb-2 print:hidden">
+                    <Link href="/">
+                        <Button variant="ghost" className="text-gray-500 hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 font-medium py-2 px-4 rounded-full flex items-center gap-2 transition-colors">
+                            <Home className="w-4 h-4" />
+                            Back to Dashboard
+                        </Button>
+                    </Link>
+                </div>
+                <div className="max-w-4xl mx-auto px-6 pt-4 pb-4 text-center print:hidden">
                     <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
                     <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
                 </div>
