@@ -470,6 +470,84 @@ export type Database = {
           },
         ]
       }
+      geocoding_cache: {
+        Row: {
+          access_count: number
+          confidence: number | null
+          created_at: string
+          formatted_address: string
+          id: string
+          last_accessed_at: string
+          latitude: number
+          location_query: string
+          longitude: number
+          provider: string
+        }
+        Insert: {
+          access_count?: number
+          confidence?: number | null
+          created_at?: string
+          formatted_address: string
+          id?: string
+          last_accessed_at?: string
+          latitude: number
+          location_query: string
+          longitude: number
+          provider?: string
+        }
+        Update: {
+          access_count?: number
+          confidence?: number | null
+          created_at?: string
+          formatted_address?: string
+          id?: string
+          last_accessed_at?: string
+          latitude?: number
+          location_query?: string
+          longitude?: number
+          provider?: string
+        }
+        Relationships: []
+      }
+      geocoding_usage: {
+        Row: {
+          api_calls: number
+          cache_hits: number
+          created_at: string
+          id: string
+          last_api_call_at: string | null
+          limit_reached: boolean
+          limit_threshold: number
+          month_year: string
+          total_requests: number
+          updated_at: string
+        }
+        Insert: {
+          api_calls?: number
+          cache_hits?: number
+          created_at?: string
+          id?: string
+          last_api_call_at?: string | null
+          limit_reached?: boolean
+          limit_threshold?: number
+          month_year: string
+          total_requests?: number
+          updated_at?: string
+        }
+        Update: {
+          api_calls?: number
+          cache_hits?: number
+          created_at?: string
+          id?: string
+          last_api_call_at?: string | null
+          limit_reached?: boolean
+          limit_threshold?: number
+          month_year?: string
+          total_requests?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_payments: {
         Row: {
           amount: number
@@ -839,6 +917,39 @@ export type Database = {
           },
         ]
       }
+      itinerary_embeddings: {
+        Row: {
+          created_at: string | null
+          destination: string
+          duration_days: number
+          embedding: string
+          id: string
+          itinerary_data: Json
+          query_text: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          destination: string
+          duration_days: number
+          embedding: string
+          id?: string
+          itinerary_data: Json
+          query_text: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          destination?: string
+          duration_days?: number
+          embedding?: string
+          id?: string
+          itinerary_data?: Json
+          query_text?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       marketplace_inquiries: {
         Row: {
           created_at: string | null
@@ -937,6 +1048,7 @@ export type Database = {
           gallery_urls: Json | null
           id: string
           is_verified: boolean | null
+          listing_quality_score: number | null
           margin_rate: number | null
           organization_id: string
           rate_card: Json | null
@@ -944,7 +1056,10 @@ export type Database = {
           service_regions: Json | null
           specialties: Json | null
           updated_at: string | null
+          verification_level: string | null
+          verification_notes: string | null
           verification_status: string | null
+          verified_at: string | null
         }
         Insert: {
           compliance_documents?: Json | null
@@ -953,6 +1068,7 @@ export type Database = {
           gallery_urls?: Json | null
           id?: string
           is_verified?: boolean | null
+          listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id: string
           rate_card?: Json | null
@@ -960,7 +1076,10 @@ export type Database = {
           service_regions?: Json | null
           specialties?: Json | null
           updated_at?: string | null
+          verification_level?: string | null
+          verification_notes?: string | null
           verification_status?: string | null
+          verified_at?: string | null
         }
         Update: {
           compliance_documents?: Json | null
@@ -969,6 +1088,7 @@ export type Database = {
           gallery_urls?: Json | null
           id?: string
           is_verified?: boolean | null
+          listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id?: string
           rate_card?: Json | null
@@ -976,7 +1096,10 @@ export type Database = {
           service_regions?: Json | null
           specialties?: Json | null
           updated_at?: string | null
+          verification_level?: string | null
+          verification_notes?: string | null
           verification_status?: string | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -1321,8 +1444,6 @@ export type Database = {
       }
       organizations: {
         Row: {
-          ai_monthly_request_cap: number | null
-          ai_monthly_spend_cap_usd: number | null
           billing_address: Json | null
           billing_state: string | null
           created_at: string | null
@@ -1338,8 +1459,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          ai_monthly_request_cap?: number | null
-          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1355,8 +1474,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          ai_monthly_request_cap?: number | null
-          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1377,53 +1494,6 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_ai_usage: {
-        Row: {
-          ai_requests: number
-          cache_hits: number
-          created_at: string | null
-          estimated_cost_usd: number
-          fallback_count: number
-          id: string
-          month_start: string
-          organization_id: string
-          rag_hits: number
-          updated_at: string | null
-        }
-        Insert: {
-          ai_requests?: number
-          cache_hits?: number
-          created_at?: string | null
-          estimated_cost_usd?: number
-          fallback_count?: number
-          id?: string
-          month_start: string
-          organization_id: string
-          rag_hits?: number
-          updated_at?: string | null
-        }
-        Update: {
-          ai_requests?: number
-          cache_hits?: number
-          created_at?: string | null
-          estimated_cost_usd?: number
-          fallback_count?: number
-          id?: string
-          month_start?: string
-          organization_id?: string
-          rag_hits?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_ai_usage_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2250,49 +2320,61 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           client_comments: Json
+          client_preferences: Json | null
           created_at: string | null
           expires_at: string | null
           id: string
           itinerary_id: string | null
+          offline_pack_ready: boolean | null
           recipient_phone: string | null
+          self_service_status: string | null
           share_code: string
           status: string
-          template_id: string | null
+          template_id: string
           viewed_at: string | null
+          wishlist_items: Json | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
           client_comments?: Json
+          client_preferences?: Json | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
           itinerary_id?: string | null
+          offline_pack_ready?: boolean | null
           recipient_phone?: string | null
+          self_service_status?: string | null
           share_code: string
           status?: string
-          template_id?: string | null
+          template_id?: string
           viewed_at?: string | null
+          wishlist_items?: Json | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
           client_comments?: Json
+          client_preferences?: Json | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
           itinerary_id?: string | null
+          offline_pack_ready?: boolean | null
           recipient_phone?: string | null
+          self_service_status?: string | null
           share_code?: string
           status?: string
-          template_id?: string | null
+          template_id?: string
           viewed_at?: string | null
+          wishlist_items?: Json | null
         }
         Relationships: [
           {
             foreignKeyName: "shared_itineraries_itinerary_id_fkey"
             columns: ["itinerary_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "itineraries"
             referencedColumns: ["id"]
           },
@@ -2390,6 +2472,53 @@ export type Database = {
             columns: ["payment_method_id"]
             isOneToOne: false
             referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          organization_id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          organization_id: string
+          priority: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          organization_id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3254,6 +3383,7 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: number
       }
+      can_make_geocoding_api_call: { Args: never; Returns: boolean }
       can_publish_driver_location: {
         Args: { actor_user_id: string; target_trip_id: string }
         Returns: boolean
@@ -3356,6 +3486,41 @@ export type Database = {
           subscription_id: string
         }[]
       }
+      get_geocoding_usage_stats: {
+        Args: never
+        Returns: {
+          api_calls: number
+          cache_hit_rate: number
+          cache_hits: number
+          last_api_call_at: string
+          limit_reached: boolean
+          limit_threshold: number
+          month_year: string
+          remaining_calls: number
+          total_requests: number
+        }[]
+      }
+      get_or_create_geocoding_usage: {
+        Args: never
+        Returns: {
+          api_calls: number
+          cache_hits: number
+          created_at: string
+          id: string
+          last_api_call_at: string | null
+          limit_reached: boolean
+          limit_threshold: number
+          month_year: string
+          total_requests: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "geocoding_usage"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_pdf_import_stats: {
         Args: { p_organization_id?: string }
         Returns: {
@@ -3449,11 +3614,30 @@ export type Database = {
         }[]
       }
       get_user_organization_id: { Args: never; Returns: string }
+      increment_geocoding_api_call: { Args: never; Returns: boolean }
+      increment_geocoding_cache_hit: { Args: never; Returns: undefined }
       increment_template_usage: {
         Args: { p_template_id: string }
         Returns: undefined
       }
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
+      match_itineraries: {
+        Args: {
+          filter_days: number
+          filter_destination: string
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          destination: string
+          duration_days: number
+          id: string
+          itinerary_data: Json
+          query_text: string
+          similarity: number
+        }[]
+      }
       save_itinerary_to_cache: {
         Args: {
           p_budget: string
@@ -3508,116 +3692,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

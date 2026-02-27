@@ -26,6 +26,7 @@ import {
     Plane,
     Plus,
     Home,
+    LifeBuoy,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -105,6 +106,7 @@ const SECONDARY_ITEMS: NavItem[] = [
     { icon: Calendar, label: "Calendar", href: "/calendar" },
     { icon: Truck, label: "Drivers", href: "/drivers" },
     { icon: Map, label: "Add-ons", href: "/add-ons" },
+    { icon: LifeBuoy, label: "Support", href: "/support" },
 ];
 
 interface BadgeProps {

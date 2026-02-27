@@ -69,6 +69,7 @@ const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
     { emoji: "🚗", label: "Drivers", href: "/drivers" },
     { emoji: "🗺️", label: "Planner", href: "/planner" },
     { emoji: "✈️", label: "Add-ons", href: "/add-ons" },
+    { emoji: "🛟", label: "Support", href: "/support" },
     { emoji: "⚙️", label: "Settings", href: "/admin/settings" },
 ];
 
