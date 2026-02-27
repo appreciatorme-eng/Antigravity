@@ -154,6 +154,12 @@ function NavItemRow({
     return (
         <Link
             href={item.href}
+            onClick={(e) => {
+                if (item.href === "/") {
+                    e.preventDefault();
+                    window.location.href = "/";
+                }
+            }}
             className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative group",
                 isCollapsed ? "justify-center" : "",

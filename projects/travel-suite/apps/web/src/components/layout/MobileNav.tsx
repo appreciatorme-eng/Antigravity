@@ -210,6 +210,12 @@ export default function MobileNav() {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={(e) => {
+                                    if (item.href === "/") {
+                                        e.preventDefault();
+                                        window.location.href = "/";
+                                    }
+                                }}
                                 className={cn(
                                     "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 px-1 rounded-xl transition-all active:scale-95",
                                     isActive
