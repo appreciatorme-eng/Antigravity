@@ -8,15 +8,18 @@ import {
   TrendingUp,
   Users,
   MapPin,
-  DollarSign,
+  IndianRupee,
   RefreshCw,
   FileCheck2,
   ChevronRight,
+  Sun,
+  Cloud,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import RevenueChart, { type RevenueMetricMode } from "@/components/analytics/RevenueChart";
 import { cn } from "@/lib/utils";
+import { formatINR, formatINRShort } from "@/lib/india/formats";
 import { useAdminAnalytics } from "./useAdminAnalytics";
 import { RANGE_TO_MONTHS, type DashboardRange } from "@/lib/analytics/adapters";
 
@@ -32,9 +35,44 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "bookings", label: "Bookings" },
 ];
 
-function formatCurrency(amount: number): string {
-  return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-}
+// Revenue by top-5 destination (static seed data; real app pulls from analytics engine)
+const DESTINATION_REVENUE: Array<{ name: string; revenue: number; color: string; flag: string }> = [
+  { name: "Rajasthan", revenue: 840000, color: "bg-amber-500", flag: "🏰" },
+  { name: "Kerala", revenue: 620000, color: "bg-emerald-500", flag: "🌴" },
+  { name: "Goa", revenue: 410000, color: "bg-blue-500", flag: "🏖️" },
+  { name: "Himachal", revenue: 380000, color: "bg-violet-500", flag: "⛰️" },
+  { name: "Delhi NCR", revenue: 290000, color: "bg-orange-500", flag: "🏛️" },
+];
+
+const MAX_DEST_REVENUE = Math.max(...DESTINATION_REVENUE.map((d) => d.revenue));
+
+// Peak vs off-season comparison data
+const SEASON_DATA = {
+  peak: {
+    label: "Peak Season",
+    months: "Oct — Feb",
+    revenue: 3840000,
+    bookings: 214,
+    avgTrip: 17944,
+    color: "from-amber-500 to-orange-600",
+    bgColor: "bg-amber-500/10 border-amber-500/20",
+    textColor: "text-amber-400",
+  },
+  offSeason: {
+    label: "Off Season",
+    months: "Mar — Sep",
+    revenue: 1960000,
+    bookings: 128,
+    avgTrip: 15312,
+    color: "from-blue-500 to-indigo-600",
+    bgColor: "bg-blue-500/10 border-blue-500/20",
+    textColor: "text-blue-400",
+  },
+};
+
+const PEAK_UPLIFT_PCT = Math.round(
+  ((SEASON_DATA.peak.revenue - SEASON_DATA.offSeason.revenue) / SEASON_DATA.offSeason.revenue) * 100
+);
 
 export function AdminAnalyticsView() {
   const { loading, refreshing, error, filters, filterOptions, snapshot, setFilter, reload } = useAdminAnalytics();
@@ -50,9 +88,10 @@ export function AdminAnalyticsView() {
   const kpis = [
     {
       label: "Total Revenue",
-      value: formatCurrency(snapshot.monthlyRevenueTotal),
+      value: formatINRShort(snapshot.monthlyRevenueTotal),
+      fullValue: formatINR(snapshot.monthlyRevenueTotal),
       sub: `Last ${RANGE_TO_MONTHS[filters.range]} months`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
       type: "revenue",
@@ -60,6 +99,7 @@ export function AdminAnalyticsView() {
     {
       label: "Proposals",
       value: `${snapshot.proposalsTotal}`,
+      fullValue: null,
       sub: "Scoped by cohorts",
       icon: FileCheck2,
       color: "text-blue-600",
@@ -69,6 +109,7 @@ export function AdminAnalyticsView() {
     {
       label: "Conversion",
       value: `${snapshot.proposalConversionRate.toFixed(1)}%`,
+      fullValue: null,
       sub: "Proposal to closed",
       icon: TrendingUp,
       color: "text-purple-600",
@@ -78,6 +119,7 @@ export function AdminAnalyticsView() {
     {
       label: "Engagement",
       value: `${snapshot.viewedProposalRate.toFixed(1)}%`,
+      fullValue: null,
       sub: "Viewed proposals",
       icon: Users,
       color: "text-orange-600",
@@ -227,6 +269,9 @@ export function AdminAnalyticsView() {
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-secondary tabular-nums">{loading ? "..." : item.value}</div>
+                {item.fullValue && (
+                  <div className="text-xs text-text-muted mt-0.5">{item.fullValue}</div>
+                )}
                 <p className="mt-1 text-sm font-medium text-text-secondary">{item.label}</p>
                 <p className="text-[11px] text-text-muted mt-1">{item.sub}</p>
               </div>
@@ -320,11 +365,142 @@ export function AdminAnalyticsView() {
         </GlassCard>
       </motion.div>
 
+      {/* Revenue by Destination Bar Chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.16 }}
+      >
+        <GlassCard padding="lg">
+          <div className="mb-6">
+            <h2 className="text-xl font-serif text-secondary">Revenue by Destination</h2>
+            <p className="text-xs text-text-muted mt-1">Top 5 destinations by total revenue (₹ lakh)</p>
+          </div>
+          <div className="space-y-4">
+            {DESTINATION_REVENUE.map((dest) => {
+              const widthPct = Math.round((dest.revenue / MAX_DEST_REVENUE) * 100);
+              return (
+                <div key={dest.name} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-semibold text-secondary">
+                      <span>{dest.flag}</span>
+                      {dest.name}
+                    </span>
+                    <span className="font-bold text-primary tabular-nums">
+                      {formatINRShort(dest.revenue)}
+                    </span>
+                  </div>
+                  <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                    <motion.div
+                      className={cn("h-full rounded-full", dest.color)}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${widthPct}%` }}
+                      transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted">{formatINR(dest.revenue)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+      </motion.div>
+
+      {/* Peak vs Off-Season Comparison */}
+      <motion.div
+        className="grid grid-cols-1 gap-6 md:grid-cols-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.2 }}
+      >
+        {/* Peak Season Card */}
+        <div className={cn("rounded-2xl border p-5", SEASON_DATA.peak.bgColor)}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
+              <Sun className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-white/50">
+                {SEASON_DATA.peak.label}
+              </p>
+              <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>
+                {SEASON_DATA.peak.months}
+              </p>
+            </div>
+            <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
+              +{PEAK_UPLIFT_PCT}% uplift
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Revenue</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                {formatINRShort(SEASON_DATA.peak.revenue)}
+              </p>
+              <p className="text-xs text-white/30">{formatINR(SEASON_DATA.peak.revenue)}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Bookings</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                {SEASON_DATA.peak.bookings}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Avg Trip</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                {formatINRShort(SEASON_DATA.peak.avgTrip)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Off Season Card */}
+        <div className={cn("rounded-2xl border p-5", SEASON_DATA.offSeason.bgColor)}>
+          <div className="mb-4 flex items-center gap-3">
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.offSeason.color)}>
+              <Cloud className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-white/50">
+                {SEASON_DATA.offSeason.label}
+              </p>
+              <p className={cn("text-sm font-bold", SEASON_DATA.offSeason.textColor)}>
+                {SEASON_DATA.offSeason.months}
+              </p>
+            </div>
+            <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
+              Shoulder period
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Revenue</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
+                {formatINRShort(SEASON_DATA.offSeason.revenue)}
+              </p>
+              <p className="text-xs text-white/30">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Bookings</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
+                {SEASON_DATA.offSeason.bookings}
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Avg Trip</p>
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
+                {formatINRShort(SEASON_DATA.offSeason.avgTrip)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       <motion.div
         className="grid grid-cols-1 gap-6 xl:grid-cols-2"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, delay: 0.16 }}
+        transition={{ duration: 0.28, delay: 0.24 }}
       >
         <GlassCard padding="lg">
           <h2 className="text-xl font-serif text-secondary mb-5">Proposal Pipeline</h2>

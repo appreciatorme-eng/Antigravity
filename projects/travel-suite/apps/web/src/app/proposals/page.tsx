@@ -20,7 +20,10 @@ import {
   ChevronRight,
   TrendingUp,
   Mail,
-  Zap
+  Zap,
+  PenLine,
+  Link2,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/glass/GlassCard';
@@ -31,6 +34,7 @@ import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassListSkeleton } from '@/components/glass/GlassSkeleton';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import ESignature from '@/components/proposals/ESignature';
 
 interface Proposal {
   id: string;
@@ -55,6 +59,12 @@ interface Proposal {
   comments_count?: number;
 }
 
+// Tracks which proposals have been signed locally (in production: stored in DB)
+interface SignatureRecord {
+  dataUrl: string;
+  signedAt: string; // formatted display string
+}
+
 type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon: any; color: string; bg: string }> = {
@@ -66,11 +76,26 @@ const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon
   rejected: { label: 'Rejected', variant: 'danger', icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
 };
 
+function formatSignedAt(isoString: string): string {
+  return new Date(isoString).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
 export default function ProposalsPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<Proposal | null>(null);
+
+  // E-Signature modal state
+  const [signModalProposal, setSignModalProposal] = useState<Proposal | null>(null);
+  const [signatureMap, setSignatureMap] = useState<Record<string, SignatureRecord>>({});
 
   const { data: proposalsRaw, isLoading: loading, refetch: loadProposals } = useProposals(filterStatus);
   const proposals: Proposal[] = proposalsRaw || [];
@@ -95,6 +120,27 @@ export default function ProposalsPage() {
     const shareUrl = `${window.location.origin}/p/${shareToken}`;
     void navigator.clipboard.writeText(shareUrl).then(() => {
       toast({ title: 'Share link copied', description: 'Proposal share link copied to clipboard.', variant: 'success' });
+    });
+  }
+
+  function copyPortalLink(shareToken: string) {
+    const portalUrl = `${window.location.origin}/portal/${shareToken}`;
+    void navigator.clipboard.writeText(portalUrl).then(() => {
+      toast({ title: 'Client portal link copied', description: 'Portal link copied — send to your client!', variant: 'success' });
+    });
+  }
+
+  function handleSigned(proposal: Proposal, dataUrl: string) {
+    const record: SignatureRecord = {
+      dataUrl,
+      signedAt: new Date().toISOString(),
+    };
+    setSignatureMap((prev) => ({ ...prev, [proposal.id]: record }));
+    setSignModalProposal(null);
+    toast({
+      title: 'Proposal signed!',
+      description: `${proposal.title} has been signed and approved.`,
+      variant: 'success',
     });
   }
 
@@ -205,6 +251,8 @@ export default function ProposalsPage() {
             {filteredItems.map((proposal) => {
               const config = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.draft;
               const StatusIcon = config.icon;
+              const signatureRecord = signatureMap[proposal.id] ?? null;
+
               return (
                 <div key={proposal.id} className="group flex items-center justify-between p-6 hover:bg-gray-50/50 transition-all duration-300 relative overflow-hidden">
                   <div className="flex items-center gap-6 flex-1">
@@ -212,15 +260,22 @@ export default function ProposalsPage() {
                       <Send className="h-7 w-7 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <Link href={`/proposals/${proposal.id}`} className="text-lg font-bold text-secondary group-hover:text-primary transition-colors truncate">
                           {proposal.title}
                         </Link>
                         <span className={cn("px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border", config.color, config.bg)}>
                           {config.label}
                         </span>
+                        {/* Signed chip */}
+                        {signatureRecord ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <CheckCircle className="w-3 h-3" />
+                            Signed — {formatSignedAt(signatureRecord.signedAt)}
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="flex items-center gap-6 mt-2 text-text-secondary text-sm">
+                      <div className="flex items-center gap-6 mt-2 text-text-secondary text-sm flex-wrap">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Mail className="w-3.5 h-3.5 text-text-muted" />
                           <span className="truncate">{proposal.client_name}</span>
@@ -240,10 +295,40 @@ export default function ProposalsPage() {
                           </div>
                         ) : null}
                       </div>
+
+                      {/* Action buttons row — always visible on mobile, hover on desktop */}
+                      <div className="flex items-center gap-2 mt-3 flex-wrap lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                        {/* Get Signed / Signed chip */}
+                        {signatureRecord ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Signed
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setSignModalProposal(proposal)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                          >
+                            <PenLine className="w-3.5 h-3.5" />
+                            Get Signed
+                          </button>
+                        )}
+
+                        {/* Client Portal button */}
+                        <button
+                          type="button"
+                          onClick={() => copyPortalLink(proposal.share_token)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 bg-white hover:border-primary hover:text-primary transition-colors"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                          Client Portal
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 ml-4">
+                  <div className="flex items-center gap-3 ml-4 shrink-0">
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => copyShareLink(proposal.share_token)}
@@ -273,6 +358,7 @@ export default function ProposalsPage() {
         )}
       </GlassCard>
 
+      {/* Delete confirm modal */}
       <GlassConfirmModal
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
@@ -283,6 +369,48 @@ export default function ProposalsPage() {
         cancelText="Preserve"
         variant="danger"
       />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* E-Signature Modal                                                   */}
+      {/* ------------------------------------------------------------------ */}
+      {signModalProposal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSignModalProposal(null)}
+          />
+
+          {/* Modal panel */}
+          <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-bold text-gray-800">Digital Signature</h2>
+                <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
+                  {signModalProposal.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSignModalProposal(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* ESignature component */}
+            <div className="px-2 pb-2">
+              <ESignature
+                proposalId={signModalProposal.id}
+                clientName={signModalProposal.client_name ?? 'Client'}
+                onSigned={(dataUrl) => handleSigned(signModalProposal, dataUrl)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

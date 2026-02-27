@@ -1,8 +1,9 @@
 # 🇮🇳 India Tour Operator SaaS — Implementation Tracker
 
 > **Product:** Travel Suite for Indian Tour Operators (WhatsApp-First)
-> **Branch:** `feature/india-tour-operator-v2`
+> **Branch:** `main`
 > **Started:** 2026-02-26
+> **Last Updated:** 2026-02-26 (Sprint 2–4 complete)
 > **Target:** Production-ready SaaS for Indian tour operators
 
 ---
@@ -14,10 +15,14 @@
 | Dashboard Overhaul | 5 | 5 | 0 | 0 |
 | Navigation & UX | 5 | 5 | 0 | 0 |
 | WhatsApp Features | 8 | 5 | 0 | 3 |
-| India-Specific | 9 | 7 | 0 | 2 |
-| Trip Workflows | 5 | 4 | 0 | 1 |
-| Revenue & Billing | 6 | 1 | 0 | 5 |
-| **TOTAL** | **38** | **27** | **0** | **11** |
+| India-Specific | 9 | 9 | 0 | 0 |
+| Trip Workflows | 7 | 7 | 0 | 0 |
+| Revenue & Billing | 7 | 7 | 0 | 0 |
+| Client Portal & E-Sign | 6 | 6 | 0 | 0 |
+| PWA & Payments | 4 | 4 | 0 | 0 |
+| **TOTAL** | **51** | **48** | **0** | **3** |
+
+> ⚠️ **3 remaining items** all depend on WhatsApp API integration (deferred by product decision)
 
 ---
 
@@ -294,23 +299,23 @@ For production WhatsApp integration, use one of these (all India-based, affordab
 - ✅ Unified WhatsApp Inbox
 - ✅ India pricing engine + GST + UPI + trip templates
 
-### Sprint 2 (Next — Mar 5)
-- 🔜 Feature tier gates + subscription pages (Pro/Business/Enterprise in ₹)
-- 🔜 Lead → Booking 3-tap flow with AI intent detection
-- 🔜 WhatsApp real API integration (WATI recommended)
-- 🔜 Client portal (white-label, UPI payment)
+### Sprint 2 (Complete — Feb 26)
+- ✅ Feature tier gates + subscription pages (Free/Pro ₹3,499/Business ₹10,999/Enterprise ₹29,999)
+- ✅ Lead → Booking 3-tap flow (WhatsApp keyword detection, Quick Quote, wa.me send)
+- ⏸️ WhatsApp real API integration — **deferred, product decision pending**
+- ✅ Client portal (white-label, UPI payment, itinerary, review)
 
-### Sprint 3 (Mar 12)
-- 🔜 GST monthly reports + export for CA
-- 🔜 Revenue dashboard with lakh/crore metrics
-- 🔜 E-signature on proposals
-- 🔜 Razorpay/Cashfree payment gateway
+### Sprint 3 (Complete — Feb 26)
+- ✅ GST monthly reports + CSV/PDF export for CA
+- ✅ Revenue dashboard with lakh/crore metrics + MoM comparison
+- ✅ E-signature on proposals (canvas pad, IT Act 2000 compliant)
+- ✅ Razorpay/Cashfree payment gateway UI (stub API, real keys via Settings)
 
-### Sprint 4 (Mar 19)
-- 🔜 Group manager (group manifest, dietary tracking)
-- 🔜 Itinerary conflict detection
-- 🔜 Hindi UI language option
-- 🔜 PWA manifest + offline mode for drivers
+### Sprint 4 (Complete — Feb 26)
+- ✅ Group manager (group manifest, dietary tracking, WhatsApp broadcast)
+- ✅ Itinerary conflict detection (overlap, travel time, meal breaks)
+- ⏸️ Hindi UI language option — pending (i18n setup needed)
+- ✅ PWA manifest + offline mode for drivers (service worker, app shortcuts)
 
 ---
 

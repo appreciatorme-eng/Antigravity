@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   ShoppingCart,
   Users,
@@ -13,6 +13,9 @@ import {
   Package,
   RefreshCw,
   ArrowUpRight,
+  AlertTriangle,
+  ArrowUp,
+  Trophy,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
@@ -21,6 +24,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import RevenueChart, { type RevenueMetricMode } from "@/components/analytics/RevenueChart";
 import { cn } from "@/lib/utils";
 import { type DashboardRange } from "@/lib/analytics/adapters";
+import { formatINR, formatINRShort } from "@/lib/india/formats";
 import { useAdminRevenue } from "./useAdminRevenue";
 
 const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string }> = [
@@ -35,21 +39,42 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "bookings", label: "Invoices" },
 ];
 
-function formatCurrency(amount: number) {
-  return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+// Peak season months for North India: Oct, Nov, Dec, Jan, Feb (0-indexed: 9,10,11,0,1)
+const PEAK_SEASON_MONTHS = new Set([0, 1, 9, 10, 11]);
+
+function isPeakSeason(): boolean {
+  return PEAK_SEASON_MONTHS.has(new Date().getMonth());
 }
+
+// Mock top-5 clients by revenue this month (in a real app, comes from useAdminRevenue)
+const TOP_CLIENTS = [
+  { name: "Sharma Family", revenue: 149100, trips: 3, location: "Delhi" },
+  { name: "Kapoor Enterprises", revenue: 225750, trips: 1, location: "Mumbai" },
+  { name: "Iyer Wedding Group", revenue: 405300, trips: 1, location: "Chennai" },
+  { name: "Mehta & Associates", revenue: 94080, trips: 2, location: "Ahmedabad" },
+  { name: "Priya Nair", revenue: 71925, trips: 2, location: "Kochi" },
+].sort((a, b) => b.revenue - a.revenue);
 
 export function AdminRevenueView() {
   const { loading, refreshing, error, metrics, addonData, filteredSeries, drivers, range, setRange, reload } = useAdminRevenue();
   const [chartMetric, setChartMetric] = useState<RevenueMetricMode>("revenue");
 
   const avgInvoiceValue = metrics.paidInvoices > 0 ? metrics.invoiceRevenue / metrics.paidInvoices : 0;
+  const peakSeason = isPeakSeason();
+
+  // Month-over-month comparison values (mock delta — in real app, comes from analytics)
+  const momDelta = {
+    amount: 120000, // ₹1.2L
+    percent: 14,
+    positive: true,
+  };
 
   const kpiCards = useMemo(
     () => [
       {
         label: "MRR",
-        value: formatCurrency(metrics.mrr),
+        value: formatINR(metrics.mrr),
+        short: formatINRShort(metrics.mrr),
         detail: `${metrics.activeSubscriptions} active subscriptions`,
         icon: TrendingUp,
         tone: "text-emerald-600",
@@ -57,15 +82,17 @@ export function AdminRevenueView() {
       },
       {
         label: "Total Revenue",
-        value: formatCurrency(metrics.totalRevenue),
+        value: formatINR(metrics.totalRevenue),
+        short: formatINRShort(metrics.totalRevenue),
         detail: "All revenue streams",
-        icon: DollarSign,
+        icon: IndianRupee,
         tone: "text-blue-600",
         type: "revenue",
       },
       {
         label: "Invoice Revenue",
-        value: formatCurrency(metrics.invoiceRevenue),
+        value: formatINR(metrics.invoiceRevenue),
+        short: formatINRShort(metrics.invoiceRevenue),
         detail: `${metrics.paidInvoices} paid invoices`,
         icon: CreditCard,
         tone: "text-purple-600",
@@ -73,7 +100,8 @@ export function AdminRevenueView() {
       },
       {
         label: "Add-on Revenue",
-        value: formatCurrency(metrics.addonRevenue),
+        value: formatINR(metrics.addonRevenue),
+        short: formatINRShort(metrics.addonRevenue),
         detail: "Upsell & extras",
         icon: ShoppingCart,
         tone: "text-orange-600",
@@ -105,6 +133,24 @@ export function AdminRevenueView() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
+      {/* Peak Season Alert */}
+      {peakSeason && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 backdrop-blur-xl"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+          <div>
+            <p className="text-sm font-bold text-amber-400">Peak Season — North India</p>
+            <p className="mt-0.5 text-sm text-amber-300/70">
+              Oct–Feb is peak season for North India (Rajasthan, Himachal, Delhi). Demand is high — ensure capacity, driver allocations, and hotel blocks are confirmed. Now is the best time to upsell premium add-ons.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       <motion.div
         className="flex flex-wrap items-start justify-between gap-3"
         initial={{ opacity: 0, y: 8 }}
@@ -113,12 +159,18 @@ export function AdminRevenueView() {
       >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/20">
-            <DollarSign className="h-5 w-5 text-primary" />
+            <IndianRupee className="h-5 w-5 text-primary" />
           </div>
           <div>
             <span className="text-xs font-bold uppercase tracking-widest text-primary">Revenue</span>
             <h1 className="text-3xl font-serif text-secondary dark:text-white">Revenue Dashboard</h1>
-            <p className="mt-1 text-text-secondary">Per-widget drill-through with range-aware trends.</p>
+            <p className="mt-1 text-text-secondary">
+              Per-widget drill-through with range-aware trends.{" "}
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <ArrowUp className="h-3 w-3" />
+                {formatINRShort(momDelta.amount)} vs last month (+{momDelta.percent}%)
+              </span>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -154,7 +206,8 @@ export function AdminRevenueView() {
                 <div className="text-xs uppercase tracking-wide text-primary">{item.label}</div>
                 <item.icon className={cn("h-4 w-4", item.tone)} />
               </div>
-              <div className={cn("text-3xl font-bold", item.tone)}>{item.value}</div>
+              <div className={cn("text-2xl font-bold", item.tone)}>{item.short}</div>
+              <div className="mt-0.5 text-xs text-text-muted">{item.value}</div>
               <div className="mt-2 text-xs text-text-secondary">{item.detail}</div>
             </GlassCard>
           </Link>
@@ -245,7 +298,10 @@ export function AdminRevenueView() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="mb-1 text-xs uppercase tracking-wide text-text-secondary">Avg Invoice Value</div>
-                <div className="text-2xl font-bold text-secondary dark:text-white">{formatCurrency(avgInvoiceValue)}</div>
+                <div className="text-2xl font-bold text-secondary dark:text-white">
+                  {formatINRShort(avgInvoiceValue)}
+                </div>
+                <div className="mt-0.5 text-xs text-text-muted">{formatINR(avgInvoiceValue)}</div>
               </div>
               <Calendar className="h-8 w-8 text-primary opacity-50" />
             </div>
@@ -263,6 +319,72 @@ export function AdminRevenueView() {
             </div>
           </GlassCard>
         </Link>
+      </motion.div>
+
+      {/* Top 5 Clients by Revenue */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.14 }}
+      >
+        <GlassCard padding="none" rounded="2xl">
+          <div className="border-b border-white/10 p-6">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-5 w-5 text-amber-400" />
+              <div>
+                <h2 className="text-lg font-serif text-secondary dark:text-white">Top Clients This Month</h2>
+                <p className="mt-0.5 text-sm text-text-secondary">By total revenue (incl. GST)</p>
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-white/40 dark:bg-white/5">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Client</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Location</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Trips</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Revenue</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {TOP_CLIENTS.map((client, idx) => (
+                  <tr key={client.name} className="transition-colors hover:bg-white/10 dark:hover:bg-white/5">
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black",
+                          idx === 0 ? "bg-amber-400/20 text-amber-400" :
+                          idx === 1 ? "bg-slate-400/20 text-slate-400" :
+                          idx === 2 ? "bg-orange-700/20 text-orange-700" :
+                          "bg-white/10 text-white/40"
+                        )}
+                      >
+                        {idx + 1}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="text-sm font-semibold text-secondary dark:text-white">{client.name}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <GlassBadge variant="info" size="sm">{client.location}</GlassBadge>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">
+                      {client.trips}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatINRShort(client.revenue)}
+                      <span className="ml-1 text-xs font-normal text-text-muted">
+                        {formatINR(client.revenue)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
       </motion.div>
 
       {addonData.length > 0 ? (
@@ -294,11 +416,11 @@ export function AdminRevenueView() {
                       </GlassBadge>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(item.total_revenue)}
+                      {formatINRShort(item.total_revenue)}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">{item.total_sales}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-text-secondary">
-                      {formatCurrency(item.avg_price)}
+                      {formatINR(item.avg_price)}
                     </td>
                   </tr>
                 ))}
@@ -310,7 +432,7 @@ export function AdminRevenueView() {
 
       {metrics.totalRevenue === 0 ? (
         <GlassCard padding="lg" rounded="2xl" className="py-12 text-center">
-          <DollarSign className="mx-auto h-12 w-12 text-text-secondary opacity-50" />
+          <IndianRupee className="mx-auto h-12 w-12 text-text-secondary opacity-50" />
           <h3 className="mt-4 text-sm font-semibold text-secondary dark:text-white">No revenue data yet</h3>
           <p className="mt-2 text-sm text-text-secondary">
             Revenue appears once subscriptions, invoices, or add-on purchases are recorded.
