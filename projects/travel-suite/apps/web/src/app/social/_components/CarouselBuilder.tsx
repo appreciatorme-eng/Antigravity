@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { Button } from "@/components/ui/button";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { toast } from "sonner";
-import { LayoutRenderer } from "./LayoutRenderer";
+import { LayoutRenderer } from "@/components/social/templates/layouts/LayoutRenderer";
 
 interface Slide {
     id: string;

@@ -127,3 +127,30 @@ export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
         </div>
     </div>
 );
+
+interface LayoutRendererProps {
+    layout: string;
+    data: any;
+}
+
+export const LayoutRenderer = ({ layout, data }: LayoutRendererProps) => {
+    // Adapter to match Individual Layout props
+    const props = { templateData: data, preset: {} as SocialTemplate };
+
+    switch (layout) {
+        case "Elegant":
+            return <ElegantLayout {...props} />;
+        case "Split":
+            return <SplitLayout {...props} />;
+        case "Bottom":
+            return <BottomLayout {...props} />;
+        case "Center":
+            return <CenterLayout {...props} />;
+        case "Creative":
+            return <CarouselSlideLayout {...props} />;
+        case "Review":
+            return <ReviewLayout {...props} />;
+        default:
+            return <ElegantLayout {...props} />;
+    }
+};
