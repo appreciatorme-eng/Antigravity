@@ -1442,8 +1442,57 @@ export type Database = {
           },
         ]
       }
+      organization_ai_usage: {
+        Row: {
+          ai_requests: number
+          cache_hits: number
+          created_at: string
+          estimated_cost_usd: number
+          fallback_count: number
+          id: string
+          month_start: string
+          organization_id: string
+          rag_hits: number
+          updated_at: string
+        }
+        Insert: {
+          ai_requests?: number
+          cache_hits?: number
+          created_at?: string
+          estimated_cost_usd?: number
+          fallback_count?: number
+          id?: string
+          month_start: string
+          organization_id: string
+          rag_hits?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_requests?: number
+          cache_hits?: number
+          created_at?: string
+          estimated_cost_usd?: number
+          fallback_count?: number
+          id?: string
+          month_start?: string
+          organization_id?: string
+          rag_hits?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_ai_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
+          ai_monthly_request_cap: number | null
+          ai_monthly_spend_cap_usd: number | null
           billing_address: Json | null
           billing_state: string | null
           created_at: string | null
@@ -1459,6 +1508,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_monthly_request_cap?: number | null
+          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1474,6 +1525,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_monthly_request_cap?: number | null
+          ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
           billing_state?: string | null
           created_at?: string | null
@@ -1811,6 +1864,7 @@ export type Database = {
           phone_normalized: string | null
           phone_whatsapp: string | null
           preferred_destination: string | null
+          referral_code: string | null
           referral_source: string | null
           role: string | null
           source_channel: string | null
@@ -1847,6 +1901,7 @@ export type Database = {
           phone_normalized?: string | null
           phone_whatsapp?: string | null
           preferred_destination?: string | null
+          referral_code?: string | null
           referral_source?: string | null
           role?: string | null
           source_channel?: string | null
@@ -1883,6 +1938,7 @@ export type Database = {
           phone_normalized?: string | null
           phone_whatsapp?: string | null
           preferred_destination?: string | null
+          referral_code?: string | null
           referral_source?: string | null
           role?: string | null
           source_channel?: string | null
@@ -2309,6 +2365,51 @@ export type Database = {
           {
             foreignKeyName: "push_tokens_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_organization_id: string
+          referrer_profile_id: string
+          reward_granted: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_organization_id: string
+          referrer_profile_id: string
+          reward_granted?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_organization_id?: string
+          referrer_profile_id?: string
+          reward_granted?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_organization_id_fkey"
+            columns: ["referred_organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

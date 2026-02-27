@@ -70,6 +70,7 @@ const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
     { emoji: "🗺️", label: "Planner", href: "/planner" },
     { emoji: "✈️", label: "Add-ons", href: "/add-ons" },
     { emoji: "🛟", label: "Support", href: "/support" },
+    { emoji: "🎁", label: "Refer & Earn", href: "/admin/referrals" },
     { emoji: "⚙️", label: "Settings", href: "/admin/settings" },
 ];
 
