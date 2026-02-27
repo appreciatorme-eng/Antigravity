@@ -1,5 +1,36 @@
 # Progress Log
 
+## Session: 2026-02-27 (Org-Scoped Invoice Module + E2E)
+- **Status:** in progress
+- **Main Goal:** Build invoice module from scratch, scoped per organization, with dynamic operator details and E2E coverage.
+- **Backend/API:**
+  - Added new invoice service module with strict schema validation, tax + total calculations, and invoice-number generation.
+  - Replaced invoice routes with organization-scoped, admin-authenticated handlers:
+    - `GET/POST /api/invoices`
+    - `GET/PUT/DELETE /api/invoices/[id]`
+    - `POST /api/invoices/[id]/pay`
+  - Invoice metadata now includes immutable `organization_snapshot` and `client_snapshot` for per-org branding integrity.
+- **Frontend web:**
+  - Added admin invoice console: `apps/web/src/app/admin/invoices/page.tsx`
+    - create invoice (line items)
+    - list and detail view
+    - payment recording
+    - print-ready invoice output
+  - Added sidebar navigation entry to invoices (`/admin/invoices`).
+  - Extended admin settings page to persist invoice-relevant operator profile fields:
+    - GSTIN
+    - billing state
+    - billing address (line1/line2/city/state/postal/country)
+    - billing email/phone
+- **Tracking:**
+  - Created execution tracker: `docs/plans/2026-02-27-invoice-module-tracker.md`
+- **E2E:**
+  - Added `apps/web/e2e/tests/invoices-api.spec.ts` covering:
+    - unauthenticated access denial
+    - non-admin authorization denial
+    - admin create + detail fetch + cleanup flow
+  - Test run pending.
+
 ## Session: 2026-02-12 (Driver Assignment Enhancements)
 - **Status:** complete
 - **Main Goal:** Enhance admin trip assignment with conflict detection.

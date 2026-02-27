@@ -1,253 +1,237 @@
-/**
- * Invoice Detail API Routes
- *
- * Endpoints:
- * - GET /api/invoices/[id] - Get invoice details
- * - PUT /api/invoices/[id] - Update invoice
- * - DELETE /api/invoices/[id] - Delete invoice
- */
+import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import {
+  UpdateInvoiceSchema,
+  asObjectJson,
+  calculateInvoiceTotals,
+  calculateTaxBreakdown,
+  normalizeInvoiceMetadata,
+  normalizeIsoDate,
+} from "@/lib/invoices/module";
+import type { Database } from "@/lib/database.types";
+import { sanitizeText } from "@/lib/security/sanitize";
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { z } from 'zod';
-import { sanitizeText } from '@/lib/security/sanitize';
-import type { Database, Json } from '@/lib/database.types';
+type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"];
 
-const InvoiceUpdateSchema = z.object({
-  status: z.string().min(1).max(60).optional(),
-  notes: z.string().max(2000).optional().nullable(),
-  due_date: z.string().optional().nullable(),
-});
-
-function asObjectJson(value: Json | null): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
 }
 
-function normalizeDueDate(value: unknown): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  if (typeof value !== 'string') return undefined;
+function normalizeStatusAfterTotals(
+  requestedStatus: string | undefined,
+  totalAmount: number,
+  paidAmount: number
+): string {
+  if (requestedStatus) return requestedStatus;
+  if (paidAmount <= 0) return "issued";
+  if (paidAmount >= totalAmount) return "paid";
+  return "partially_paid";
+}
 
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = new Date(trimmed);
-  if (!Number.isFinite(parsed.getTime())) return undefined;
-  return parsed.toISOString();
+async function loadInvoiceForOrg(
+  adminClient: ReturnType<(typeof import("@/lib/supabase/admin"))["createAdminClient"]>,
+  id: string,
+  organizationId: string
+) {
+  const { data: invoice, error } = await adminClient
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) return { invoice: null, error };
+  return { invoice, error: null };
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return auth.response;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const { id } = await params;
+  const adminClient = auth.adminClient;
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    // Fetch invoice with payments
-    const { data: invoice, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        clients(id, name, email, phone),
-        invoice_payments(*)
-      `)
-      .eq('id', id)
-      .eq('organization_id', profile.organization_id)
-      .single();
-
-    if (error || !invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ invoice });
-  } catch (error) {
-    console.error('Error in GET /api/invoices/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
+  if (error) {
+    console.error("Failed to fetch invoice:", error);
+    return jsonError("Failed to fetch invoice", 500);
   }
+  if (!invoice) return jsonError("Invoice not found", 404);
+
+  const { data: payments, error: paymentsError } = await adminClient
+    .from("invoice_payments")
+    .select("*")
+    .eq("invoice_id", id)
+    .eq("organization_id", auth.organizationId!)
+    .order("payment_date", { ascending: false });
+
+  if (paymentsError) {
+    console.error("Failed to fetch invoice payments:", paymentsError);
+    return jsonError("Failed to fetch invoice payments", 500);
+  }
+
+  const normalized = normalizeInvoiceMetadata(invoice.metadata);
+  return NextResponse.json({
+    invoice: {
+      ...invoice,
+      amount: invoice.total_amount,
+      notes: normalized.notes,
+      line_items: normalized.line_items,
+      organization_snapshot: normalized.organization_snapshot,
+      client_snapshot: normalized.client_snapshot,
+      invoice_payments: payments || [],
+    },
+  });
 }
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return auth.response;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    // Parse request body
-    const body = await request.json().catch(() => null);
-    const parsed = InvoiceUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid invoice update payload', details: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    // Build update object
-    const updates: Database['public']['Tables']['invoices']['Update'] = {};
-    const status = sanitizeText(parsed.data.status, { maxLength: 60 });
-    if (status) updates.status = status;
-
-    const normalizedDueDate = normalizeDueDate(parsed.data.due_date);
-    if (normalizedDueDate !== undefined) {
-      updates.due_date = normalizedDueDate;
-    }
-
-    if (parsed.data.notes !== undefined) {
-      const safeNotes = sanitizeText(parsed.data.notes, {
-        maxLength: 2000,
-        preserveNewlines: true,
-      });
-      const { data: existingInvoice } = await supabase
-        .from('invoices')
-        .select('metadata')
-        .eq('id', id)
-        .eq('organization_id', profile.organization_id)
-        .maybeSingle();
-      const existingMeta = asObjectJson(existingInvoice?.metadata || null);
-      updates.metadata = {
-        ...existingMeta,
-        notes: safeNotes || null,
-      };
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'No invoice fields to update' }, { status: 400 });
-    }
-
-    // Update invoice
-    const { data: invoice, error } = await supabase
-      .from('invoices')
-      .update(updates)
-      .eq('id', id)
-      .eq('organization_id', profile.organization_id)
-      .select('*, clients(name, email)')
-      .single();
-
-    if (error) {
-      console.error('Error updating invoice:', error);
-      return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
-    }
-
-    if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ invoice });
-  } catch (error) {
-    console.error('Error in PUT /api/invoices/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const { id } = await params;
+  const adminClient = auth.adminClient;
+  const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
+  if (error) {
+    console.error("Failed to fetch invoice for update:", error);
+    return jsonError("Failed to fetch invoice", 500);
   }
+  if (!invoice) return jsonError("Invoice not found", 404);
+
+  const rawBody = await request.json().catch(() => null);
+  const parsed = UpdateInvoiceSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid invoice update payload", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const existingMeta = asObjectJson(invoice.metadata);
+  const updates: InvoiceUpdate = {};
+
+  const dueDate = normalizeIsoDate(parsed.data.due_date);
+  if (dueDate === undefined) {
+    return jsonError("Invalid due_date value", 400);
+  }
+  if (dueDate !== undefined) updates.due_date = dueDate;
+
+  const notesProvided = parsed.data.notes !== undefined;
+  const normalizedNotes = notesProvided
+    ? sanitizeText(parsed.data.notes, { maxLength: 4000, preserveNewlines: true }) || null
+    : null;
+
+  const placeOfSupplyProvided = parsed.data.place_of_supply !== undefined;
+  if (placeOfSupplyProvided) {
+    updates.place_of_supply =
+      sanitizeText(parsed.data.place_of_supply, { maxLength: 120 }) || null;
+  }
+
+  if (parsed.data.sac_code !== undefined) {
+    updates.sac_code = sanitizeText(parsed.data.sac_code, { maxLength: 24 }) || null;
+  }
+
+  let finalStatus = parsed.data.status;
+  let metadataLineItems = normalizeInvoiceMetadata(invoice.metadata).line_items;
+
+  if (parsed.data.items) {
+    const totals = calculateInvoiceTotals(parsed.data.items);
+    const taxBreakdown = calculateTaxBreakdown(
+      totals.taxTotal,
+      null,
+      (updates.place_of_supply || invoice.place_of_supply) ?? null
+    );
+
+    updates.subtotal_amount = totals.subtotal;
+    updates.tax_amount = totals.taxTotal;
+    updates.total_amount = totals.grandTotal;
+    updates.subtotal = totals.subtotal;
+    updates.cgst = taxBreakdown.cgst;
+    updates.sgst = taxBreakdown.sgst;
+    updates.igst = taxBreakdown.igst;
+    updates.balance_amount = Math.max(0, totals.grandTotal - Number(invoice.paid_amount || 0));
+
+    finalStatus = normalizeStatusAfterTotals(
+      parsed.data.status,
+      totals.grandTotal,
+      Number(invoice.paid_amount || 0)
+    );
+    metadataLineItems = totals.items;
+  }
+
+  if (finalStatus) updates.status = finalStatus;
+
+  const nextMetadata = {
+    ...existingMeta,
+    line_items: metadataLineItems,
+    notes: notesProvided ? normalizedNotes : existingMeta.notes ?? null,
+    last_updated_via: "invoice_module_v1",
+    last_updated_at: new Date().toISOString(),
+  };
+  updates.metadata = nextMetadata;
+
+  const { data: updatedInvoice, error: updateError } = await adminClient
+    .from("invoices")
+    .update(updates)
+    .eq("id", id)
+    .eq("organization_id", auth.organizationId!)
+    .select("*")
+    .single();
+
+  if (updateError || !updatedInvoice) {
+    console.error("Failed to update invoice:", updateError);
+    return jsonError("Failed to update invoice", 500);
+  }
+
+  const normalized = normalizeInvoiceMetadata(updatedInvoice.metadata);
+  return NextResponse.json({
+    invoice: {
+      ...updatedInvoice,
+      amount: updatedInvoice.total_amount,
+      notes: normalized.notes,
+      line_items: normalized.line_items,
+      organization_snapshot: normalized.organization_snapshot,
+      client_snapshot: normalized.client_snapshot,
+    },
+  });
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const supabase = await createClient();
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return auth.response;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const { id } = await params;
+  const adminClient = auth.adminClient;
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    // Check if invoice exists and belongs to organization
-    const { data: invoice } = await supabase
-      .from('invoices')
-      .select('status')
-      .eq('id', id)
-      .eq('organization_id', profile.organization_id)
-      .single();
-
-    if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    // Don't allow deletion of paid invoices
-    if (invoice.status === 'paid') {
-      return NextResponse.json(
-        { error: 'Cannot delete paid invoice' },
-        { status: 400 }
-      );
-    }
-
-    // Delete invoice
-    const { error } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', id)
-      .eq('organization_id', profile.organization_id);
-
-    if (error) {
-      console.error('Error deleting invoice:', error);
-      return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error in DELETE /api/invoices/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
+  if (error) {
+    console.error("Failed to fetch invoice for delete:", error);
+    return jsonError("Failed to fetch invoice", 500);
   }
+  if (!invoice) return jsonError("Invoice not found", 404);
+
+  if (invoice.status === "paid" || Number(invoice.paid_amount || 0) > 0) {
+    return jsonError("Cannot delete an invoice with recorded payments", 400);
+  }
+
+  const { error: deleteError } = await adminClient
+    .from("invoices")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", auth.organizationId!);
+
+  if (deleteError) {
+    console.error("Failed to delete invoice:", deleteError);
+    return jsonError("Failed to delete invoice", 500);
+  }
+
+  return NextResponse.json({ success: true });
 }

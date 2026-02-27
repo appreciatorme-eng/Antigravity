@@ -16,18 +16,16 @@ import {
     Sparkles,
     Megaphone,
     Globe,
-    ChevronLeft,
     ChevronRight,
     ChevronDown,
-    ChevronUp,
     LogOut,
     User as UserIcon,
     Map,
     Plane,
-    Plus,
     Home,
     LifeBuoy,
     Gift,
+    Receipt,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,6 +79,13 @@ const PRIMARY_ITEMS: NavItem[] = [
         icon: TrendingUp,
         label: "Revenue",
         href: "/admin/revenue",
+        badge: 0,
+        badgeColor: "#00d084",
+    },
+    {
+        icon: Receipt,
+        label: "Invoices",
+        href: "/admin/invoices",
         badge: 0,
         badgeColor: "#00d084",
     },
@@ -238,9 +243,19 @@ export default function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [isMoreOpen, setIsMoreOpen] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(
+        () =>
+            SECONDARY_ITEMS.some(
+                (item) =>
+                    pathname === item.href ||
+                    (item.href !== "/" && pathname?.startsWith(item.href))
+            )
+    );
     const [user, setUser] = useState<SupabaseUser | null>(null);
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<{
+        full_name?: string | null;
+        role?: string | null;
+    } | null>(null);
 
     useEffect(() => {
         const getUser = async () => {
@@ -259,16 +274,6 @@ export default function Sidebar({ className }: SidebarProps) {
         };
         getUser();
     }, [supabase]);
-
-    // Auto-open More section if current path is a secondary item
-    useEffect(() => {
-        const isSecondaryActive = SECONDARY_ITEMS.some(
-            (item) =>
-                pathname === item.href ||
-                (item.href !== "/" && pathname?.startsWith(item.href))
-        );
-        if (isSecondaryActive) setIsMoreOpen(true);
-    }, [pathname]);
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();

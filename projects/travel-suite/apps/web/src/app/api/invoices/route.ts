@@ -1,168 +1,205 @@
-/**
- * Invoice API Routes
- *
- * Endpoints:
- * - GET /api/invoices - List all invoices for organization
- * - POST /api/invoices - Create new invoice
- */
-
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { paymentService } from '@/lib/payments/payment-service';
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
-  getIntegrationDisabledMessage,
-  isPaymentsIntegrationEnabled,
-} from '@/lib/integrations';
+  CreateInvoiceSchema,
+  buildClientSnapshot,
+  buildOrganizationSnapshot,
+  calculateInvoiceTotals,
+  calculateTaxBreakdown,
+  getNextInvoiceNumber,
+  normalizeInvoiceMetadata,
+  normalizeIsoDate,
+} from "@/lib/invoices/module";
+import { sanitizeText } from "@/lib/security/sanitize";
+
+type ProfileLookup = {
+  id: string;
+  full_name: string | null;
+  email: string;
+  phone: string | null;
+  organization_id: string | null;
+};
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return auth.response;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const searchParams = request.nextUrl.searchParams;
+  const status = sanitizeText(searchParams.get("status"), { maxLength: 60 });
+  const clientId = sanitizeText(searchParams.get("client_id"), { maxLength: 64 });
+  const limit = Number.parseInt(searchParams.get("limit") || "50", 10);
+  const offset = Number.parseInt(searchParams.get("offset") || "0", 10);
+  const pageSize = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 100) : 50;
+  const pageOffset = Number.isFinite(offset) ? Math.max(offset, 0) : 0;
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const adminClient = auth.adminClient;
+  let query = adminClient
+    .from("invoices")
+    .select("*", { count: "exact" })
+    .eq("organization_id", auth.organizationId!)
+    .order("created_at", { ascending: false })
+    .range(pageOffset, pageOffset + pageSize - 1);
 
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
+  if (status) query = query.eq("status", status);
+  if (clientId) query = query.eq("client_id", clientId);
 
-    if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    // Parse query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const clientId = searchParams.get('client_id');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-
-    // Build query
-    let query = supabase
-      .from('invoices')
-      .select('*, clients(name, email)', { count: 'exact' })
-      .eq('organization_id', profile.organization_id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    // Apply filters
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    if (clientId) {
-      query = query.eq('client_id', clientId);
-    }
-
-    const { data: invoices, error, count } = await query;
-
-    if (error) {
-      console.error('Error fetching invoices:', error);
-      return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      invoices,
-      total: count,
-      limit,
-      offset,
-    });
-  } catch (error) {
-    console.error('Error in GET /api/invoices:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const { data: invoices, error, count } = await query;
+  if (error) {
+    console.error("Failed to list invoices:", error);
+    return jsonError("Failed to fetch invoices", 500);
   }
+
+  const normalized =
+    invoices?.map((invoice) => {
+      const metadata = normalizeInvoiceMetadata(invoice.metadata);
+      return {
+        ...invoice,
+        amount: invoice.total_amount,
+        notes: metadata.notes,
+        line_items: metadata.line_items,
+        line_items_count: metadata.line_items.length,
+        organization_snapshot: metadata.organization_snapshot,
+        client_snapshot: metadata.client_snapshot,
+      };
+    }) || [];
+
+  return NextResponse.json({
+    invoices: normalized,
+    total: count || 0,
+    limit: pageSize,
+    offset: pageOffset,
+  });
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    if (!isPaymentsIntegrationEnabled()) {
-      return NextResponse.json(
-        {
-          success: false,
-          disabled: true,
-          error: getIntegrationDisabledMessage('payments'),
-        },
-        { status: 503 }
-      );
-    }
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return auth.response;
 
-    const supabase = await createClient();
+  const adminClient = auth.adminClient;
+  const organizationId = auth.organizationId!;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
-    }
-
-    // Parse request body
-    const body = await request.json();
-    const {
-      client_id,
-      amount,
-      currency = 'INR',
-      description,
-      items = [],
-      place_of_supply,
-      due_date,
-    } = body;
-
-    // Validate required fields
-    if (!amount || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Valid amount is required' },
-        { status: 400 }
-      );
-    }
-
-    // Create invoice using payment service
-    const invoiceId = await paymentService.createInvoice({
-      organizationId: profile.organization_id,
-      clientId: client_id,
-      amount,
-      currency,
-      description,
-      items,
-      placeOfSupply: place_of_supply,
-      dueDate: due_date ? new Date(due_date) : undefined,
-    });
-
-    // Fetch created invoice with details
-    const { data: invoice } = await supabase
-      .from('invoices')
-      .select('*, clients(name, email)')
-      .eq('id', invoiceId)
-      .single();
-
-    return NextResponse.json({ invoice }, { status: 201 });
-  } catch (error) {
-    console.error('Error in POST /api/invoices:', error);
+  const rawBody = await request.json().catch(() => null);
+  const parsed = CreateInvoiceSchema.safeParse(rawBody);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create invoice' },
-      { status: 500 }
+      { error: "Invalid invoice payload", details: parsed.error.flatten() },
+      { status: 400 }
     );
   }
+
+  const { data: organization, error: organizationError } = await adminClient
+    .from("organizations")
+    .select("*")
+    .eq("id", organizationId)
+    .single();
+
+  if (organizationError || !organization) {
+    return jsonError("Organization not found", 404);
+  }
+
+  let clientProfile: ProfileLookup | null = null;
+  if (parsed.data.client_id) {
+    const { data: profile, error: profileError } = await adminClient
+      .from("profiles")
+      .select("id, full_name, email, phone, organization_id")
+      .eq("id", parsed.data.client_id)
+      .maybeSingle();
+
+    if (profileError) {
+      return jsonError("Failed to resolve client profile", 500);
+    }
+    if (!profile || profile.organization_id !== organizationId) {
+      return jsonError("Client not found in your organization", 404);
+    }
+    clientProfile = profile;
+  }
+
+  const totals = calculateInvoiceTotals(parsed.data.items);
+  const dueDate = normalizeIsoDate(parsed.data.due_date);
+  if (dueDate === undefined) {
+    return jsonError("Invalid due_date value", 400);
+  }
+
+  const placeOfSupply =
+    sanitizeText(parsed.data.place_of_supply || organization.billing_state, { maxLength: 120 }) || null;
+  const taxBreakdown = calculateTaxBreakdown(
+    totals.taxTotal,
+    organization.billing_state,
+    placeOfSupply
+  );
+  const invoiceNumber = await getNextInvoiceNumber(adminClient, organizationId);
+
+  const notes = sanitizeText(parsed.data.notes, {
+    maxLength: 4000,
+    preserveNewlines: true,
+  });
+
+  const metadata = {
+    notes: notes || null,
+    line_items: totals.items,
+    organization_snapshot: buildOrganizationSnapshot(organization),
+    client_snapshot: buildClientSnapshot(clientProfile),
+    created_via: "invoice_module_v1",
+  };
+
+  const status = parsed.data.status || "issued";
+  const nowIso = new Date().toISOString();
+
+  const { data: createdInvoice, error: insertError } = await adminClient
+    .from("invoices")
+    .insert({
+      organization_id: organizationId,
+      trip_id: parsed.data.trip_id || null,
+      client_id: parsed.data.client_id || null,
+      invoice_number: invoiceNumber,
+      currency: (parsed.data.currency || "INR").toUpperCase(),
+      subtotal_amount: totals.subtotal,
+      tax_amount: totals.taxTotal,
+      total_amount: totals.grandTotal,
+      paid_amount: 0,
+      balance_amount: totals.grandTotal,
+      status,
+      due_date: dueDate ?? null,
+      issued_at: status === "draft" ? null : nowIso,
+      gstin: organization.gstin,
+      place_of_supply: placeOfSupply,
+      sac_code: sanitizeText(parsed.data.sac_code, { maxLength: 24 }) || "998314",
+      subtotal: totals.subtotal,
+      cgst: taxBreakdown.cgst,
+      sgst: taxBreakdown.sgst,
+      igst: taxBreakdown.igst,
+      metadata,
+      created_by: auth.userId,
+    })
+    .select("*")
+    .single();
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      return jsonError("Duplicate invoice number. Please retry.", 409);
+    }
+    console.error("Failed to create invoice:", insertError);
+    return jsonError("Failed to create invoice", 500);
+  }
+
+  const normalized = normalizeInvoiceMetadata(createdInvoice.metadata);
+
+  return NextResponse.json(
+    {
+      invoice: {
+        ...createdInvoice,
+        amount: createdInvoice.total_amount,
+        notes: normalized.notes,
+        line_items: normalized.line_items,
+        organization_snapshot: normalized.organization_snapshot,
+        client_snapshot: normalized.client_snapshot,
+      },
+    },
+    { status: 201 }
+  );
 }
+

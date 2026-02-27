@@ -3,6 +3,8 @@ import path from 'node:path';
 
 const configDir = __dirname;
 const appDir = path.resolve(configDir, '..');
+const resolvedBaseUrl =
+  process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://127.0.0.1:3100';
 
 /**
  * GoBuddy Adventures - Playwright E2E Test Configuration
@@ -32,7 +34,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.BASE_URL || 'http://localhost:3100',
+    baseURL: resolvedBaseUrl,
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -98,8 +100,8 @@ export default defineConfig({
     command:
       process.env.PLAYWRIGHT_DEV_COMMAND ||
       `cd "${appDir}" && /opt/homebrew/opt/node@22/bin/npx next dev --webpack --port 3100`,
-    url: 'http://localhost:3100',
+    url: resolvedBaseUrl,
     reuseExistingServer: false,
-    timeout: 120 * 1000,
+    timeout: Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT || 120 * 1000),
   },
 });

@@ -12,7 +12,6 @@ import {
     Bell,
     Check,
     Link2,
-    Smartphone
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -35,6 +34,18 @@ interface Organization {
     primary_color: string | null;
     itinerary_template: ItineraryTemplateId | null;
     subscription_tier: string | null;
+    gstin: string | null;
+    billing_state: string | null;
+    billing_address: {
+        line1: string;
+        line2: string;
+        city: string;
+        state: string;
+        postal_code: string;
+        country: string;
+        phone: string;
+        email: string;
+    };
 }
 
 interface WorkflowRule {
@@ -68,6 +79,35 @@ const isMissingColumnError = (error: unknown, column: string): boolean => {
     );
 };
 
+const EMPTY_BILLING_ADDRESS = {
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "",
+    phone: "",
+    email: "",
+};
+
+function normalizeBillingAddress(raw: unknown): Organization["billing_address"] {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        return { ...EMPTY_BILLING_ADDRESS };
+    }
+
+    const value = raw as Record<string, unknown>;
+    return {
+        line1: typeof value.line1 === "string" ? value.line1 : "",
+        line2: typeof value.line2 === "string" ? value.line2 : "",
+        city: typeof value.city === "string" ? value.city : "",
+        state: typeof value.state === "string" ? value.state : "",
+        postal_code: typeof value.postal_code === "string" ? value.postal_code : "",
+        country: typeof value.country === "string" ? value.country : "",
+        phone: typeof value.phone === "string" ? value.phone : "",
+        email: typeof value.email === "string" ? value.email : "",
+    };
+}
+
 export default function SettingsPage() {
     const supabase = createClient();
     const { toast } = useToast();
@@ -90,9 +130,23 @@ export default function SettingsPage() {
                 .single();
 
             if (error) throw error;
+            const orgRecord = data as Record<string, unknown>;
             setOrganization({
                 ...data,
-                itinerary_template: normalizeItineraryTemplateId((data as any).itinerary_template),
+                itinerary_template: normalizeItineraryTemplateId(
+                    typeof orgRecord.itinerary_template === "string"
+                        ? orgRecord.itinerary_template
+                        : null
+                ),
+                gstin:
+                    typeof orgRecord.gstin === "string"
+                        ? orgRecord.gstin
+                        : null,
+                billing_state:
+                    typeof orgRecord.billing_state === "string"
+                        ? orgRecord.billing_state
+                        : null,
+                billing_address: normalizeBillingAddress(orgRecord.billing_address),
             });
 
             const { data: { session } } = await supabase.auth.getSession();
@@ -127,6 +181,18 @@ export default function SettingsPage() {
                 logo_url: organization.logo_url,
                 primary_color: organization.primary_color,
                 itinerary_template: organization.itinerary_template || "safari_story",
+                gstin: organization.gstin || null,
+                billing_state: organization.billing_state || null,
+                billing_address: {
+                    line1: organization.billing_address.line1 || null,
+                    line2: organization.billing_address.line2 || null,
+                    city: organization.billing_address.city || null,
+                    state: organization.billing_address.state || null,
+                    postal_code: organization.billing_address.postal_code || null,
+                    country: organization.billing_address.country || null,
+                    phone: organization.billing_address.phone || null,
+                    email: organization.billing_address.email || null,
+                },
             };
 
             let { error } = await supabase
@@ -175,6 +241,23 @@ export default function SettingsPage() {
                     ? { ...rule, notify_client: !rule.notify_client }
                     : rule
             )
+        );
+    };
+
+    const updateBillingAddressField = (
+        field: keyof Organization["billing_address"],
+        value: string
+    ) => {
+        setOrganization((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    billing_address: {
+                        ...prev.billing_address,
+                        [field]: value,
+                    },
+                }
+                : null
         );
     };
 
@@ -283,6 +366,93 @@ export default function SettingsPage() {
                                 onChange={(e) => setOrganization(prev => prev ? { ...prev, logo_url: e.target.value } : null)}
                                 placeholder="https://example.com/logo.png"
                             />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">GSTIN</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.gstin || ""}
+                                    onChange={(e) => setOrganization(prev => prev ? { ...prev, gstin: e.target.value.toUpperCase() } : null)}
+                                    placeholder="27ABCDE1234F1Z5"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">Billing State</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.billing_state || ""}
+                                    onChange={(e) => setOrganization(prev => prev ? { ...prev, billing_state: e.target.value } : null)}
+                                    placeholder="Maharashtra"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-secondary dark:text-white">Billing Address Line 1</label>
+                            <GlassInput
+                                type="text"
+                                value={organization?.billing_address.line1 || ""}
+                                onChange={(e) => updateBillingAddressField("line1", e.target.value)}
+                                placeholder="Street, Area, Building"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-secondary dark:text-white">Billing Address Line 2</label>
+                            <GlassInput
+                                type="text"
+                                value={organization?.billing_address.line2 || ""}
+                                onChange={(e) => updateBillingAddressField("line2", e.target.value)}
+                                placeholder="Landmark (optional)"
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">City</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.billing_address.city || ""}
+                                    onChange={(e) => updateBillingAddressField("city", e.target.value)}
+                                    placeholder="Mumbai"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">Postal Code</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.billing_address.postal_code || ""}
+                                    onChange={(e) => updateBillingAddressField("postal_code", e.target.value)}
+                                    placeholder="400001"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">Country</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.billing_address.country || ""}
+                                    onChange={(e) => updateBillingAddressField("country", e.target.value)}
+                                    placeholder="India"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">Billing Contact Email</label>
+                                <GlassInput
+                                    type="email"
+                                    value={organization?.billing_address.email || ""}
+                                    onChange={(e) => updateBillingAddressField("email", e.target.value)}
+                                    placeholder="billing@yourcompany.com"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-secondary dark:text-white">Billing Contact Phone</label>
+                                <GlassInput
+                                    type="text"
+                                    value={organization?.billing_address.phone || ""}
+                                    onChange={(e) => updateBillingAddressField("phone", e.target.value)}
+                                    placeholder="+91 9876543210"
+                                />
+                            </div>
                         </div>
                     </div>
                 </GlassCard>
