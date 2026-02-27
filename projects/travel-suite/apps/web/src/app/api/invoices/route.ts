@@ -10,15 +10,11 @@ import {
   normalizeInvoiceMetadata,
   normalizeIsoDate,
 } from "@/lib/invoices/module";
+import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
 
-type ProfileLookup = {
-  id: string;
-  full_name: string | null;
-  email: string;
-  phone: string | null;
-  organization_id: string | null;
-};
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"];
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -101,11 +97,11 @@ export async function POST(request: NextRequest) {
     return jsonError("Organization not found", 404);
   }
 
-  let clientProfile: ProfileLookup | null = null;
+  let clientProfile: ProfileRow | null = null;
   if (parsed.data.client_id) {
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, full_name, email, phone, organization_id")
+      .select("*")
       .eq("id", parsed.data.client_id)
       .maybeSingle();
 
@@ -138,15 +134,15 @@ export async function POST(request: NextRequest) {
     preserveNewlines: true,
   });
 
-  const metadata = {
+  const metadata: InvoiceInsert["metadata"] = {
     notes: notes || null,
-    line_items: totals.items,
-    organization_snapshot: buildOrganizationSnapshot(organization),
-    client_snapshot: buildClientSnapshot(clientProfile),
+    line_items: totals.items.map((item) => ({ ...item })),
+    organization_snapshot: buildOrganizationSnapshot(organization) as unknown as Json,
+    client_snapshot: buildClientSnapshot(clientProfile) as unknown as Json,
     created_via: "invoice_module_v1",
   };
 
-  const status = parsed.data.status || "issued";
+  const status: NonNullable<InvoiceInsert["status"]> = parsed.data.status || "issued";
   const nowIso = new Date().toISOString();
 
   const { data: createdInvoice, error: insertError } = await adminClient
@@ -202,4 +198,3 @@ export async function POST(request: NextRequest) {
     { status: 201 }
   );
 }
-

@@ -2,27 +2,27 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
   UpdateInvoiceSchema,
-  asObjectJson,
   calculateInvoiceTotals,
   calculateTaxBreakdown,
   normalizeInvoiceMetadata,
   normalizeIsoDate,
 } from "@/lib/invoices/module";
-import type { Database } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
 
 type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"];
+type InvoiceStatus = NonNullable<InvoiceUpdate["status"]>;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
 function normalizeStatusAfterTotals(
-  requestedStatus: string | undefined,
+  requestedStatus: InvoiceUpdate["status"] | undefined,
   totalAmount: number,
   paidAmount: number
-): string {
-  if (requestedStatus) return requestedStatus;
+): InvoiceStatus {
+  if (requestedStatus) return requestedStatus as InvoiceStatus;
   if (paidAmount <= 0) return "issued";
   if (paidAmount >= totalAmount) return "paid";
   return "partially_paid";
@@ -112,7 +112,7 @@ export async function PUT(
     );
   }
 
-  const existingMeta = asObjectJson(invoice.metadata);
+  const existingMeta = normalizeInvoiceMetadata(invoice.metadata);
   const updates: InvoiceUpdate = {};
 
   const dueDate = normalizeIsoDate(parsed.data.due_date);
@@ -136,7 +136,7 @@ export async function PUT(
     updates.sac_code = sanitizeText(parsed.data.sac_code, { maxLength: 24 }) || null;
   }
 
-  let finalStatus = parsed.data.status;
+  let finalStatus: InvoiceUpdate["status"] | undefined = parsed.data.status;
   let metadataLineItems = normalizeInvoiceMetadata(invoice.metadata).line_items;
 
   if (parsed.data.items) {
@@ -166,10 +166,11 @@ export async function PUT(
 
   if (finalStatus) updates.status = finalStatus;
 
-  const nextMetadata = {
-    ...existingMeta,
-    line_items: metadataLineItems,
+  const nextMetadata: Json = {
+    line_items: metadataLineItems.map((item) => ({ ...item })),
     notes: notesProvided ? normalizedNotes : existingMeta.notes ?? null,
+    organization_snapshot: existingMeta.organization_snapshot as unknown as Json,
+    client_snapshot: existingMeta.client_snapshot as unknown as Json,
     last_updated_via: "invoice_module_v1",
     last_updated_at: new Date().toISOString(),
   };
