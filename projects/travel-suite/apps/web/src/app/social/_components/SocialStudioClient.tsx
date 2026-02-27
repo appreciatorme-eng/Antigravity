@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, MessageSquare, Wand2, Star, Palette, Loader2, Sparkles, Image as ImageIcon, BarChart3 } from "lucide-react";
+import { Megaphone, MessageSquare, Wand2, Star, Palette, Loader2, Sparkles, Image as ImageIcon, BarChart3, Layers, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -13,8 +13,10 @@ import { ReviewsToInsta } from "./ReviewsToInsta";
 import { CaptionEngine } from "./CaptionEngine";
 import { MediaLibrary } from "./MediaLibrary";
 import { SocialAnalytics } from "./SocialAnalytics";
+import { MagicPrompter } from "./MagicPrompter";
+import { CarouselBuilder } from "./CarouselBuilder";
 
-type Tab = "templates" | "reviews" | "library" | "extractor" | "captions" | "analytics";
+type Tab = "templates" | "reviews" | "library" | "extractor" | "captions" | "analytics" | "prompter" | "carousel";
 
 interface Props {
     initialOrgData: {
@@ -64,19 +66,22 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         }
     };
 
-    const fetchUnsplashImages = async () => {
-        if (!unsplashQuery) return;
+    const fetchUnsplashImages = async (queryOverride?: string) => {
+        const queryToUse = queryOverride || unsplashQuery;
+        if (!queryToUse) return;
         setSearchingUnsplash(true);
         try {
-            const response = await fetch(`/api/unsplash?query=${encodeURIComponent(unsplashQuery)}`);
+            const response = await fetch(`/api/unsplash?query=${encodeURIComponent(queryToUse)}`);
             if (!response.ok) throw new Error("Failed to fetch");
             const data = await response.json();
-            setUnsplashResults(
-                data.results.map((img: { id: string; urls: { regular: string } }) => ({
-                    id: img.id,
-                    url: img.urls.regular,
-                }))
-            );
+            const results = data.results.map((img: { id: string; urls: { regular: string } }) => ({
+                id: img.id,
+                url: img.urls.regular,
+            }));
+            setUnsplashResults(results);
+            if (queryOverride && results.length > 0) {
+                setTemplateData(prev => ({ ...prev, heroImage: results[0].url }));
+            }
         } catch {
             toast.error("Failed to fetch images.");
         } finally {
@@ -106,6 +111,8 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide py-2">
             {[
                 { id: "templates", label: "Marketing Studio", icon: Palette },
+                { id: "prompter", label: "AI Prompter", icon: Zap },
+                { id: "carousel", label: "Carousel Builder", icon: Layers },
                 { id: "library", label: "Media Library", icon: ImageIcon },
                 { id: "reviews", label: "Reviews to Insta", icon: Star },
                 { id: "extractor", label: "Magic Poster Analyzer", icon: Wand2 },
@@ -162,13 +169,40 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                                 setUnsplashQuery={setUnsplashQuery}
                                 unsplashResults={unsplashResults}
                                 searchingUnsplash={searchingUnsplash}
-                                onSearchUnsplash={fetchUnsplashImages}
+                                onSearchUnsplash={() => fetchUnsplashImages()}
                                 onImageUpload={handleImageUpload}
                             />
                             <div className="lg:col-span-8">
                                 <TemplateGallery templateData={templateData} />
                             </div>
                         </div>
+                    )}
+                    {activeTab === "prompter" && (
+                        <MagicPrompter
+                            onGenerated={(data) => {
+                                setTemplateData(prev => ({
+                                    ...prev,
+                                    destination: data.destination,
+                                    price: data.price,
+                                    offer: data.offer,
+                                    season: data.season,
+                                    services: data.services || prev.services,
+                                    bulletPoints: data.bulletPoints || prev.bulletPoints
+                                }));
+                                setUnsplashQuery(data.suggestedUnsplashQuery);
+                                fetchUnsplashImages(data.suggestedUnsplashQuery);
+                                setActiveTab("templates");
+                            }}
+                        />
+                    )}
+                    {activeTab === "carousel" && (
+                        <CarouselBuilder
+                            initialData={templateData}
+                            onSave={(slides) => {
+                                toast.success(`Saved carousel with ${slides.length} slides!`);
+                                setActiveTab("templates");
+                            }}
+                        />
                     )}
                     {activeTab === "extractor" && (
                         <PosterExtractor
