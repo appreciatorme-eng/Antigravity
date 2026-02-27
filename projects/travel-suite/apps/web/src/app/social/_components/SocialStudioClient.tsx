@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Megaphone, MessageSquare, Wand2, Star, Palette, Loader2, Sparkles } from "lucide-react";
+import { Megaphone, MessageSquare, Wand2, Star, Palette, Loader2, Sparkles, Image as ImageIcon, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -11,8 +11,10 @@ import { TemplateEditor } from "./TemplateEditor";
 import { PosterExtractor } from "./PosterExtractor";
 import { ReviewsToInsta } from "./ReviewsToInsta";
 import { CaptionEngine } from "./CaptionEngine";
+import { MediaLibrary } from "./MediaLibrary";
+import { SocialAnalytics } from "./SocialAnalytics";
 
-type Tab = "templates" | "reviews" | "extractor" | "captions";
+type Tab = "templates" | "reviews" | "library" | "extractor" | "captions" | "analytics";
 
 interface Props {
     initialOrgData: {
@@ -104,9 +106,11 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide py-2">
             {[
                 { id: "templates", label: "Marketing Studio", icon: Palette },
+                { id: "library", label: "Media Library", icon: ImageIcon },
                 { id: "reviews", label: "Reviews to Insta", icon: Star },
                 { id: "extractor", label: "Magic Poster Analyzer", icon: Wand2 },
-                { id: "captions", label: "AI Captions", icon: MessageSquare }
+                { id: "captions", label: "AI Captions", icon: MessageSquare },
+                { id: "analytics", label: "Analytics", icon: BarChart3 }
             ].map((tab) => (
                 <button
                     key={tab.id}
@@ -221,6 +225,15 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                                 </div>
                             )}
                         </div>
+                    )}
+                    {activeTab === "library" && (
+                        <MediaLibrary onSelectImage={(url) => {
+                            setTemplateData(prev => ({ ...prev, heroImage: url }));
+                            setActiveTab("templates");
+                        }} />
+                    )}
+                    {activeTab === "analytics" && (
+                        <SocialAnalytics />
                     )}
                 </motion.div>
             </AnimatePresence>

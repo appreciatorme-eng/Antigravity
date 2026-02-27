@@ -293,9 +293,9 @@ export default function PortalPage() {
   function handleWhatsAppDriver() {
     const msg = encodeURIComponent(
       `Namaste ${trip.driver.name} ji! I am *${trip.clientName}*. ` +
-        `I will be travelling with you for the *${trip.tripName}* starting ${trip.startDate}. ` +
-        `My pickup is at ${trip.driver.pickupTime} from ${trip.driver.pickupLocation}. ` +
-        `Please confirm. Dhanyawad! 🙏`
+      `I will be travelling with you for the *${trip.tripName}* starting ${trip.startDate}. ` +
+      `My pickup is at ${trip.driver.pickupTime} from ${trip.driver.pickupLocation}. ` +
+      `Please confirm. Dhanyawad! 🙏`
     );
     window.open(`https://wa.me/${trip.driver.phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
   }
@@ -304,15 +304,31 @@ export default function PortalPage() {
     // Open WhatsApp with a pre-filled message containing a Google Maps live location link
     const msg = encodeURIComponent(
       `Hi ${trip.driver.name} ji! Here is my live location for pickup:\n` +
-        `https://maps.google.com/?q=my+location\n\n` +
-        `I will share my live GPS pin when I am ready. See you at ${trip.driver.pickupTime}! 🙏`
+      `https://maps.google.com/?q=my+location\n\n` +
+      `I will share my live GPS pin when I am ready. See you at ${trip.driver.pickupTime}! 🙏`
     );
     window.open(`https://wa.me/${trip.driver.phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
   }
 
-  function handleReviewSubmit(rating: number, comment: string) {
-    // In production: POST to API
-    console.log('Review submitted:', { rating, comment, tripToken: _token });
+  async function handleReviewSubmit(rating: number, comment: string) {
+    try {
+      await fetch('/api/social/reviews/public', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: _token,
+          rating,
+          comment,
+          trip_name: trip.tripName,
+          destination: trip.destination,
+          reviewer_name: trip.clientName,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to submit review to social library', e);
+    }
   }
 
   return (

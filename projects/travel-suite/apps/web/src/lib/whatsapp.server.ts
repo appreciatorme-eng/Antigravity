@@ -199,3 +199,80 @@ export function parseWhatsAppLocationMessages(payload: unknown): WhatsAppLocatio
 
     return output;
 }
+
+export interface WhatsAppImageMessage {
+    waId: string;
+    messageId: string;
+    imageId: string;
+    caption?: string;
+    mimeType?: string;
+    timestamp: string;
+}
+
+export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessage[] {
+    const body = payload as any;
+    const entries = body.entry || [];
+    const output: WhatsAppImageMessage[] = [];
+
+    for (const entry of entries) {
+        const changes = entry.changes || [];
+        for (const change of changes) {
+            const messages = change.value?.messages || [];
+            for (const message of messages) {
+                if (message.type !== "image") continue;
+
+                const image = message.image;
+                const from = typeof message.from === "string" ? message.from : "";
+                const messageId = typeof message.id === "string" ? message.id : "";
+                const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";
+
+                if (!from || !messageId || !image?.id) {
+                    continue;
+                }
+
+                output.push({
+                    waId: normalizeWaId(from),
+                    messageId,
+                    imageId: image.id,
+                    caption: image.caption,
+                    mimeType: image.mime_type,
+                    timestamp,
+                });
+            }
+        }
+    }
+
+    return output;
+}
+
+export async function downloadWhatsAppMedia(mediaId: string): Promise<Buffer | null> {
+    const token = process.env.WHATSAPP_TOKEN;
+    if (!token) return null;
+
+    try {
+        // Step 1: Get download URL
+        const urlRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!urlRes.ok) return null;
+
+        const urlData = await urlRes.json();
+        const downloadUrl = urlData.url;
+
+        if (!downloadUrl) return null;
+
+        // Step 2: Download the binary data
+        const mediaRes = await fetch(downloadUrl, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!mediaRes.ok) return null;
+
+        const arrayBuffer = await mediaRes.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+    } catch (error) {
+        console.error('Error downloading WA media:', error);
+        return null;
+    }
+}

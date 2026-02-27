@@ -1,29 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
-import { Copy, Instagram, Linkedin, Hash, ArrowRight, Sparkles, Star, ImageIcon } from "lucide-react";
+import { Copy, Instagram, Linkedin, Hash, ArrowRight, Sparkles, Star, ImageIcon, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 export const ReviewsToInsta = ({ onReviewSelected }: { onReviewSelected: (review: any) => void }) => {
     const [reviewGenerating, setReviewGenerating] = useState<string | null>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [importing, setImporting] = useState(false);
 
-    const reviews = [
-        { name: "Sarah Jenkins", trip: "Maldives Honeymoon", text: "The most incredible experience of our lives! Every detail was planned perfectly. Will definitely book again." },
-        { name: "Rahul Sharma", trip: "Dubai 4N/5D", text: "Exceptional service from the team. The desert safari was the highlight of our trip. Highly recommend!" }
-    ];
+    const fetchReviews = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/social/reviews');
+            const data = await res.json();
+            if (data.reviews) {
+                setReviews(data.reviews.map((r: any) => ({
+                    id: r.id,
+                    name: r.reviewer_name,
+                    trip: r.trip_name || r.destination || 'Custom Trip',
+                    text: r.comment,
+                    rating: r.rating
+                })));
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to load reviews");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImport = async () => {
+        try {
+            setImporting(true);
+            const res = await fetch('/api/social/reviews/import', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message || "Import complete");
+                fetchReviews();
+            } else {
+                toast.error(data.error || "Failed to import");
+            }
+        } catch (e) {
+            toast.error("Network error during import");
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReviews();
+    }, []);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-8 items-center max-w-6xl mx-auto">
             <div className="space-y-6 animate-fade-in-right">
-                <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Convert love into marketing.</h2>
+                <div className="flex justify-between items-center pr-12">
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Convert love into marketing.</h2>
+                    <Button variant="outline" size="sm" onClick={handleImport} disabled={importing} className="gap-2">
+                        {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        Import
+                    </Button>
+                </div>
                 <p className="text-lg text-slate-500 dark:text-slate-400 pr-12 leading-relaxed">
                     Turn your 5-star customer reviews into beautiful, brand-aligned social media posts with one click. Share them directly to Instagram or LinkedIn to build massive trust.
                 </p>
 
-                <div className="space-y-4 pt-4">
-                    {reviews.map((review, i) => (
+                <div className="space-y-4 pt-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                    {loading ? (
+                        <div className="flex justify-center p-8">
+                            <RefreshCw className="w-8 h-8 animate-spin text-slate-400" />
+                        </div>
+                    ) : reviews.length === 0 ? (
+                        <div className="text-center p-8 text-slate-500 border border-dashed rounded-xl">
+                            No reviews found. Import from marketplace or wait for clients to submit.
+                        </div>
+                    ) : reviews.map((review, i) => (
                         <GlassCard key={i} className="p-5 cursor-pointer hover:border-primary/50 transition-colors dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 shadow-sm" onClick={() => setReviewGenerating(review.name)}>
                             <div className="flex justify-between items-start mb-3">
                                 <div>

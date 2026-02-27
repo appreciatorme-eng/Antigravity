@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { parseWhatsAppLocationMessages } from "@/lib/whatsapp.server";
+import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
 
 const supabaseAdmin = createAdminClient();
 const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || null;
@@ -162,6 +162,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Process images asynchronously to avoid blocking the webhook response
+        // In a real production app this should be queued (e.g. Inngest / SQS)
+        processWhatsAppImages(payload, rawBody, signatureValid).catch(console.error);
+
         return NextResponse.json({
             ok: true,
             signature_verified: signatureValid || allowUnsignedWebhook,
@@ -174,5 +178,88 @@ export async function POST(request: NextRequest) {
             { error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }
         );
+    }
+}
+
+async function processWhatsAppImages(payload: unknown, rawBody: string, signatureValid: boolean) {
+    const images = parseWhatsAppImageMessages(payload);
+
+    for (const image of images) {
+        // 1. Log event
+        const { error: eventError } = await supabaseAdmin
+            .from("whatsapp_webhook_events")
+            .insert({
+                provider_message_id: image.messageId,
+                wa_id: image.waId,
+                event_type: "image",
+                payload_hash: payloadHash(rawBody),
+                processing_status: "received",
+                metadata: {
+                    image_id: image.imageId,
+                    signature_verified: signatureValid,
+                },
+            });
+
+        if (eventError?.code === "23505") continue; // duplicate
+
+        // 2. Find org by user
+        const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("id, organization_id, role")
+            .eq("phone_normalized", image.waId)
+            .maybeSingle();
+
+        if (!profile || !profile.organization_id) {
+            await supabaseAdmin.from("whatsapp_webhook_events").update({
+                processing_status: "rejected", reject_reason: "user_or_org_not_found"
+            }).eq("provider_message_id", image.messageId);
+            continue;
+        }
+
+        // 3. Download Media
+        const mediaBuffer = await downloadWhatsAppMedia(image.imageId);
+        if (!mediaBuffer) {
+            await supabaseAdmin.from("whatsapp_webhook_events").update({
+                processing_status: "rejected", reject_reason: "media_download_failed"
+            }).eq("provider_message_id", image.messageId);
+            continue;
+        }
+
+        // 4. Upload to Supabase Storage
+        const fileExt = image.mimeType?.split('/')[1] || 'jpeg';
+        const fileName = `wa_${image.imageId}_${Date.now()}.${fileExt}`;
+        const filePath = `${profile.organization_id}/${fileName}`;
+
+        const { error: uploadError } = await supabaseAdmin.storage
+            .from('social-media')
+            .upload(filePath, mediaBuffer, {
+                contentType: image.mimeType || 'image/jpeg',
+                upsert: true
+            });
+
+        if (uploadError) {
+            await supabaseAdmin.from("whatsapp_webhook_events").update({
+                processing_status: "rejected", reject_reason: `storage_error: ${uploadError.message}`
+            }).eq("provider_message_id", image.messageId);
+            continue;
+        }
+
+        // 5. Save directly to social_media_library
+        await supabaseAdmin.from('social_media_library').insert({
+            organization_id: profile.organization_id,
+            file_path: filePath,
+            mime_type: image.mimeType || 'image/jpeg',
+            source: 'whatsapp',
+            source_contact_phone: image.waId,
+            caption: image.caption || '',
+            tags: {
+                message_id: image.messageId
+            }
+        });
+
+        // 6. Mark processed
+        await supabaseAdmin.from("whatsapp_webhook_events").update({
+            processing_status: "processed", processed_at: new Date().toISOString()
+        }).eq("provider_message_id", image.messageId);
     }
 }

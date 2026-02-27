@@ -12,15 +12,15 @@ Tour operators currently spend significant money on graphic designers for social
 - **Meta Developer**: Needs setup - guidance included in Phase 3
 
 ### Build Order (All Phases, Sequential Dependencies)
-1. **Database migration** (5 new tables + storage bucket) - foundation for everything
-2. **Lib utilities** (template-registry, indian-calendar, color-utils, types) - shared code
-3. **Template layouts** (8 layout components + 4 shared components) - rendering engine
-4. **Page decomposition** (server component + 8 client components) - UI rebuild
-5. **API routes** (posts CRUD, ai-poster, reviews, publish, schedule, OAuth, queue) - backend
-6. **WhatsApp webhook extension** (image parsing + download) - media pipeline
-7. **Cron jobs** (social queue processor, token refresh) - automation
-8. **Wire PortalReview.tsx** to social_reviews - review pipeline
-9. **Tier gating** in billing/tiers.ts - monetization
+1. **Database migration** (5 new tables + storage bucket) - [DONE]
+2. **Lib utilities** (template-registry, indian-calendar, color-utils, types) - [DONE]
+3. **Template layouts** (8 layout components + 4 shared components) - [DONE]
+4. **Page decomposition** (server component + 8 client components) - [DONE]
+5. **API routes** (posts CRUD, ai-poster, reviews, publish, schedule, OAuth, queue) - [DONE]
+6. **WhatsApp webhook extension** (image parsing + download) - [DONE]
+7. **Cron jobs** (social queue processor, token refresh) - [DONE]
+8. **Wire PortalReview.tsx** to social_reviews - [DONE]
+9. **Tier gating** in billing/tiers.ts - [DONE]
 
 ---
 

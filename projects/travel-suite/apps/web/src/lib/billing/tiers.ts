@@ -22,6 +22,15 @@ export interface Tier {
     whiteLabelPortal: boolean
     razorpayIntegration: boolean
     prioritySupport: boolean
+    // Social Studio V2 limits
+    socialTemplates: 'basic' | 'all'
+    socialCarouselSlides: number | 'unlimited'
+    socialAiPostersPerMonth: number | 'unlimited'
+    socialAiCaptionsPerMonth: number | 'unlimited'
+    socialAutoPosting: 'none' | 'manual' | 'scheduled'
+    socialWhatsAppPhotos: number | 'unlimited'
+    socialMediaLibraryMB: number
+    socialPostHistory: number | 'unlimited'
   }
   features: string[] // bullet points shown on pricing card
 }
@@ -47,6 +56,14 @@ export const TIERS: Record<TierName, Tier> = {
       whiteLabelPortal: false,
       razorpayIntegration: false,
       prioritySupport: false,
+      socialTemplates: 'basic',
+      socialCarouselSlides: 0,
+      socialAiPostersPerMonth: 5,
+      socialAiCaptionsPerMonth: 10,
+      socialAutoPosting: 'none',
+      socialWhatsAppPhotos: 0,
+      socialMediaLibraryMB: 100,
+      socialPostHistory: 10,
     },
     features: [
       '5 active trips',
@@ -54,6 +71,7 @@ export const TIERS: Record<TierName, Tier> = {
       'Manual WhatsApp messaging',
       'Basic trip planner',
       'Quick Quote calculator',
+      '10 Social Media templates',
     ],
   },
   pro: {
@@ -77,14 +95,22 @@ export const TIERS: Record<TierName, Tier> = {
       whiteLabelPortal: false,
       razorpayIntegration: false,
       prioritySupport: false,
+      socialTemplates: 'all',
+      socialCarouselSlides: 5,
+      socialAiPostersPerMonth: 50,
+      socialAiCaptionsPerMonth: 'unlimited',
+      socialAutoPosting: 'manual',
+      socialWhatsAppPhotos: 50,
+      socialMediaLibraryMB: 1024,
+      socialPostHistory: 'unlimited',
     },
     features: [
+      'Everything in Starter',
       'Unlimited trips & clients',
-      'WhatsApp automations (48H/24H/2H reminders)',
-      'All 12 India trip templates',
+      'WhatsApp automations',
+      'All 100+ Social Media templates',
+      'AI Poster generator (50/mo)',
       'GST invoicing & UPI collection',
-      'Revenue analytics (₹ lakh/crore view)',
-      'Morning driver brief automation',
     ],
   },
   business: {
@@ -108,15 +134,22 @@ export const TIERS: Record<TierName, Tier> = {
       whiteLabelPortal: true,
       razorpayIntegration: true,
       prioritySupport: false,
+      socialTemplates: 'all',
+      socialCarouselSlides: 10,
+      socialAiPostersPerMonth: 200,
+      socialAiCaptionsPerMonth: 'unlimited',
+      socialAutoPosting: 'scheduled',
+      socialWhatsAppPhotos: 'unlimited',
+      socialMediaLibraryMB: 5120,
+      socialPostHistory: 'unlimited',
     },
     features: [
       'Everything in Pro',
+      'Scheduled Auto-posting (IG/FB)',
+      'WhatsApp Photo Integration',
       '5 team members',
-      'Branded client portal (clients see your logo)',
-      'Razorpay/Cashfree payment gateway',
-      'E-signature on proposals',
+      'Branded client portal',
       'AI insights & lead scoring',
-      'WhatsApp broadcast lists',
     ],
   },
   enterprise: {
@@ -140,15 +173,21 @@ export const TIERS: Record<TierName, Tier> = {
       whiteLabelPortal: true,
       razorpayIntegration: true,
       prioritySupport: true,
+      socialTemplates: 'all',
+      socialCarouselSlides: 'unlimited',
+      socialAiPostersPerMonth: 'unlimited',
+      socialAiCaptionsPerMonth: 'unlimited',
+      socialAutoPosting: 'scheduled',
+      socialWhatsAppPhotos: 'unlimited',
+      socialMediaLibraryMB: 25600,
+      socialPostHistory: 'unlimited',
     },
     features: [
       'Everything in Business',
       'Unlimited team members',
       'API access for custom integrations',
-      'Priority support (dedicated manager)',
-      'Custom WhatsApp number & templates',
-      'Multi-branch / franchise management',
-      'White-glove onboarding',
+      'Priority support',
+      'Custom Social Media templates',
     ],
   },
 }
