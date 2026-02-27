@@ -19,6 +19,10 @@ If you want semantic ranking enabled:
 ./scripts/axon.sh analyze --with-embeddings
 ```
 
+Current baseline on this repo (2026-02-27):
+- Fast mode (`--no-embeddings`): ~49s
+- Full semantic mode (`--with-embeddings`): 148.39s, 2773 embeddings
+
 ## 2) Daily Usage
 
 ```bash
@@ -61,3 +65,11 @@ Then configure your MCP client to run:
 - Pilot only: do not make Axon mandatory in CI.
 - Use output as guidance, not as an absolute source of truth.
 - Keep `.axon/` and `.venv-axon/` uncommitted.
+
+## 5) Findings From First Pilot Pass
+
+- Best current value:
+  - `impact` before refactors.
+  - `context` during review.
+  - `query` for semantic exploration of unfamiliar areas.
+- Dead-code results are high-volume and noisy; treat as review candidates only.

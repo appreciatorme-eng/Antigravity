@@ -793,3 +793,26 @@
 ### Next
 - Use Axon as non-blocking support for impact checks and code review context for 1-2 sprints.
 - Reassess signal-to-noise by `2026-03-13` and decide standardization level.
+
+## 2026-02-27 - Axon Embedding Pass Findings Update
+
+### Completed
+- Ran full Axon index with embeddings enabled:
+  - Command: `./scripts/axon.sh analyze --full --with-embeddings`
+  - Runtime: `148.39s`
+  - Embeddings generated: `2773`
+- Reconfirmed structural baseline stability after embedding pass:
+  - Files: `494`
+  - Symbols: `2279`
+  - Relationships: `6888`
+  - Clusters: `95`
+  - Flows: `180`
+  - Dead code candidates: `528`
+- Documented findings in:
+  - `docs/plans/2026-02-27-axon-pilot-tracker.md`
+  - `docs/AXON_PILOT_WORKFLOW.md`
+
+### Findings
+- Semantic query quality improved for natural-language lookups (invoice branding/billing use case).
+- Impact/context commands remain the highest-value workflow for day-to-day refactor safety.
+- Dead-code output remains high-volume and should stay manual-review only during pilot.
