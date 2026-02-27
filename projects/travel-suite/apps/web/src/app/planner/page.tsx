@@ -207,7 +207,7 @@ Make it practical and specific:
                 {!result ? (
                     <div className="max-w-4xl mx-auto px-6 pb-10">
                         <Card className="glass-card shadow-card animate-spring-up duration-700 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000" />
+                            <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000 pointer-events-none" />
                             <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-b border-emerald-100/50 dark:border-emerald-900/50 pb-6 relative z-10 transition-colors">
                                 <CardTitle className="text-2xl flex items-center gap-2 text-slate-800 dark:text-slate-100">
                                     <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl dark:bg-emerald-900/50 dark:text-emerald-400">
@@ -219,7 +219,7 @@ Make it practical and specific:
                                     Tell us where you want to go, and we&apos;ll handle the rest.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="p-6 md:p-8 space-y-8">
+                            <CardContent className="p-6 md:p-8 space-y-8 relative z-10">
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
                                         <MapPin className="w-4 h-4 text-primary" /> Where to?
