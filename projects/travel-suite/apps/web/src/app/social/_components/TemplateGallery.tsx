@@ -5,7 +5,7 @@ import { toPng } from "html-to-image";
 import { Download, Instagram, Linkedin, Lock, Search, X, Zap, Smartphone, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
-import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout } from "@/components/social/templates/layouts/LayoutRenderer";
+import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout } from "@/components/social/templates/layouts/LayoutRenderer";
 import { SocialTemplate } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
@@ -90,16 +90,23 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
     const renderLayout = (preset: SocialTemplate) => {
         const p = { templateData, preset };
         switch (preset.layout) {
-            case "ElegantLayout":      return <ElegantLayout {...p} />;
-            case "SplitLayout":        return <SplitLayout {...p} />;
-            case "BottomLayout":       return <BottomLayout {...p} />;
-            case "ReviewLayout":       return <ReviewLayout {...p} />;
-            case "CarouselSlideLayout":return <CarouselSlideLayout {...p} />;
-            default:                   return <CenterLayout {...p} />;
+            case "ElegantLayout":           return <ElegantLayout {...p} />;
+            case "SplitLayout":             return <SplitLayout {...p} />;
+            case "BottomLayout":            return <BottomLayout {...p} />;
+            case "ReviewLayout":            return <ReviewLayout {...p} />;
+            case "CarouselSlideLayout":     return <CarouselSlideLayout {...p} />;
+            case "ServiceShowcaseLayout":   return <ServiceShowcaseLayout {...p} />;
+            case "HeroServicesLayout":      return <HeroServicesLayout {...p} />;
+            case "InfoSplitLayout":         return <InfoSplitLayout {...p} />;
+            default:                        return <CenterLayout {...p} />;
         }
     };
 
     const renderBg = (preset: SocialTemplate) => {
+        // New poster layouts carry their own solid backgrounds
+        if (preset.layout === "ServiceShowcaseLayout" ||
+            preset.layout === "HeroServicesLayout" ||
+            preset.layout === "InfoSplitLayout") return "";
         if (preset.colorScheme === "dark")  return "bg-slate-900 text-white";
         if (preset.colorScheme === "light") return "bg-white text-slate-900";
         return "bg-gradient-to-br from-indigo-500 to-purple-600 text-white";

@@ -216,6 +216,22 @@ export const TemplateEditor = ({
                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg select-none">☎</div>
                         </div>
                     </div>
+
+                    <div className="space-y-1.5 pt-2">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Email Address</label>
+                        <div className="relative">
+                            <GlassInput value={templateData.email} onChange={e => setTemplateData({ ...templateData, email: e.target.value })} placeholder="info@youragency.com" className="bg-white pl-10 tracking-wide font-medium" />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg select-none">✉</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2">
+                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Website URL</label>
+                        <div className="relative">
+                            <GlassInput value={templateData.website} onChange={e => setTemplateData({ ...templateData, website: e.target.value })} placeholder="www.youragency.com" className="bg-white pl-10 tracking-wide font-medium" />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg select-none">🌐</div>
+                        </div>
+                    </div>
                 </div>
             </GlassCard>
         </div>

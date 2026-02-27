@@ -14,7 +14,10 @@ export type LayoutType =
     | "BottomLayout"
     | "ElegantLayout"
     | "ReviewLayout"
-    | "CarouselSlideLayout";
+    | "CarouselSlideLayout"
+    | "ServiceShowcaseLayout"
+    | "HeroServicesLayout"
+    | "InfoSplitLayout";
 
 export type TierLevel = "Starter" | "Pro" | "Business" | "Enterprise";
 
