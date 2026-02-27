@@ -267,12 +267,12 @@
 | Item | Priority | Status |
 |------|----------|--------|
 | Replace mock WhatsApp with Gupshup/WATI API | High | 🔜 Pending |
-| WebSocket for real-time dashboard updates | High | 🔜 Pending |
-| PWA manifest for mobile app feel | Medium | 🔜 Pending |
+| WebSocket for real-time dashboard updates | High | ✅ Done (polling hook in Sprint 5) |
+| PWA manifest for mobile app feel | Medium | ✅ Done (Sprint 4) |
 | Offline mode for trip detail (drivers in low-signal areas) | Medium | 🔜 Pending |
-| Multi-language UI (Hindi) | Medium | 🔜 Pending |
-| Multi-user / team accounts | High | 🔜 Pending |
-| Audit logs / activity history | Low | 🔜 Pending |
+| Multi-language UI (Hindi) | Medium | ✅ Done (Sprint 5) |
+| Multi-user / team accounts | High | ✅ Done (Sprint 5) |
+| Audit logs / activity history | Low | ✅ Done (Sprint 5) |
 
 ---
 
@@ -359,7 +359,6 @@ For production WhatsApp integration, use one of these (all India-based, affordab
 ### Sprint 4 (Complete — Feb 26)
 - ✅ Group manager (group manifest, dietary tracking, WhatsApp broadcast)
 - ✅ Itinerary conflict detection (overlap, travel time, meal breaks)
-- ⏸️ Hindi UI language option — pending (i18n setup needed)
 - ✅ PWA manifest + offline mode for drivers (service worker, app shortcuts)
 
 ---
