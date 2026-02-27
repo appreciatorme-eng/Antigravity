@@ -3,7 +3,9 @@ node_modules/
 __pycache__/
 *.pyc
 .venv/
+.venv-axon/
 venv/
+.axon/
 
 # Environment files
 .env

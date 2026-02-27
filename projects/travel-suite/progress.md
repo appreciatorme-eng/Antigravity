@@ -769,3 +769,27 @@
 ### Pending local install action
 - Install dependency in web app: `npm install @sentry/nextjs`
 - Current machine uses Node `v25.5.0`; if install is unstable, switch to Node `20 LTS` and reinstall.
+
+## 2026-02-27 - Axon Developer Pilot Baseline
+
+### Completed
+- Added Axon local workflow wrapper script:
+  - `scripts/axon.sh`
+- Added Axon pilot workflow doc:
+  - `docs/AXON_PILOT_WORKFLOW.md`
+- Added Axon pilot tracker:
+  - `docs/plans/2026-02-27-axon-pilot-tracker.md`
+- Added local artifact ignore rules to keep pilot tooling out of git:
+  - `.venv-axon/`
+  - `.axon/`
+- Ran initial codebase indexing baseline (`--no-embeddings`) for `projects/travel-suite`:
+  - Files: `494`
+  - Symbols: `2279`
+  - Relationships: `6888`
+  - Clusters: `95`
+  - Flows: `180`
+  - Dead code candidates: `528`
+
+### Next
+- Use Axon as non-blocking support for impact checks and code review context for 1-2 sprints.
+- Reassess signal-to-noise by `2026-03-13` and decide standardization level.
