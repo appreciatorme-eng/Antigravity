@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { MessageCircle, Briefcase, Users, TrendingUp, MoreHorizontal, X } from "lucide-react";
+import { MessageCircle, Briefcase, Users, TrendingUp, MoreHorizontal, X, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,11 @@ interface PrimaryNavItem {
 }
 
 const PRIMARY_ITEMS: PrimaryNavItem[] = [
+    {
+        icon: Home,
+        label: "Home",
+        href: "/",
+    },
     {
         icon: MessageCircle,
         label: "Inbox",

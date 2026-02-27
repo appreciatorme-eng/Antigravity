@@ -25,6 +25,7 @@ import {
     Map,
     Plane,
     Plus,
+    Home,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +49,11 @@ const MOCK_DRIVER_UNASSIGNED = 2;
 const MOCK_NEW_LEADS_TODAY = 1;
 
 const PRIMARY_ITEMS: NavItem[] = [
+    {
+        icon: Home,
+        label: "Home",
+        href: "/",
+    },
     {
         icon: MessageCircle,
         label: "Inbox",
