@@ -226,10 +226,11 @@ Make it practical and specific:
                                     </label>
                                     <Input
                                         type="text"
-                                        className="h-14 text-lg bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary pl-4"
+                                        className="h-14 text-lg bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 pl-4"
                                         placeholder="e.g. Paris, Tokyo, New York"
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
+                                        autoFocus
                                     />
                                 </div>
 
@@ -244,7 +245,7 @@ Make it practical and specific:
                                             max={14}
                                             value={days}
                                             onChange={(e) => setDays(Number(e.target.value))}
-                                            className="h-12 bg-background/80 border-input placeholder:text-muted-foreground focus-visible:ring-primary"
+                                            className="h-12 bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900"
                                         />
                                     </div>
 

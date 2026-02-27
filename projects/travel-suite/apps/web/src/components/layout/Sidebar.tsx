@@ -77,6 +77,13 @@ const PRIMARY_ITEMS: NavItem[] = [
         badgeColor: "#00d084",
     },
     {
+        icon: Plane,
+        label: "Planner",
+        href: "/planner",
+        badge: 0,
+        badgeColor: "#8b5cf6",
+    },
+    {
         icon: Settings,
         label: "Settings",
         href: "/admin/settings",
@@ -91,8 +98,7 @@ const SECONDARY_ITEMS: NavItem[] = [
     { icon: Megaphone, label: "Social Studio", href: "/social" },
     { icon: Calendar, label: "Calendar", href: "/calendar" },
     { icon: Truck, label: "Drivers", href: "/drivers" },
-    { icon: Plane, label: "Add-ons", href: "/add-ons" },
-    { icon: Map, label: "Planner", href: "/planner" },
+    { icon: Map, label: "Add-ons", href: "/add-ons" },
 ];
 
 interface BadgeProps {
