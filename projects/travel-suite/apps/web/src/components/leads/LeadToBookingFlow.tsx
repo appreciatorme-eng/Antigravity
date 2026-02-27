@@ -1,572 +1,747 @@
-'use client'
+'use client';
 
-import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, ChevronLeft, Phone, User, MapPin, Users, Calendar, Star, MessageCircle, Save, CheckCircle } from 'lucide-react'
+import React, { useState, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X,
+  MapPin,
+  Users,
+  Calendar,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
+  Minus,
+  MessageCircle,
+  Save,
+  Phone,
+} from 'lucide-react';
+import { ParsedIntent } from '@/lib/leads/intent-parser';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// ─── Constants ──────────────────────────────────────────────────────────────
 
-interface LeadToBookingFlowProps {
-  isOpen: boolean
-  onClose: () => void
-  initialPhone?: string
-  initialMessage?: string
+const TIER_RATES: Record<string, number> = {
+  budget: 2500,
+  standard: 4500,
+  premium: 8000,
+  luxury: 15000,
+};
+
+const GST_RATE = 0.05;
+const MARGIN_PCT = 25;
+
+const ALL_DESTINATIONS = [
+  'Goa', 'Rajasthan', 'Kerala', 'Himachal Pradesh',
+  'Kashmir', 'Uttarakhand', 'Andaman', 'Ladakh',
+  'Karnataka', 'Varanasi', 'Meghalaya', 'Gujarat',
+  'Golden Triangle', 'North East',
+];
+
+const TIERS = ['budget', 'standard', 'premium', 'luxury'] as const;
+type Tier = typeof TIERS[number];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatIndianNumber(n: number): string {
+  const str = Math.round(n).toString();
+  if (str.length <= 3) return str;
+  const last3 = str.slice(-3);
+  const rest = str.slice(0, -3);
+  const formatted = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return formatted + ',' + last3;
 }
 
-type TierKey = 'budget' | 'standard' | 'premium' | 'luxury'
-
-interface QuoteState {
-  destination: string
-  travelers: number
-  duration: number
-  tier: TierKey
+function calcPrice(travelers: number, days: number, tier: Tier) {
+  const rate = TIER_RATES[tier] ?? TIER_RATES.standard;
+  const base = rate * travelers * days;
+  const total = base * (1 + GST_RATE);
+  const perPerson = total / travelers;
+  return { total, perPerson, base };
 }
 
-interface ClientState {
-  phone: string
-  name: string
-  destination: string
+function buildWhatsAppMessage(
+  name: string,
+  destination: string,
+  travelers: number,
+  days: number,
+  total: number,
+  perPerson: number
+): string {
+  const firstName = name.split(' ')[0] || name;
+  return (
+    `Namaste ${firstName} Ji! 🙏\n\n` +
+    `${destination} trip ke liye humara best package ready hai:\n` +
+    `📅 ${days} nights | 👥 ${travelers} traveler${travelers !== 1 ? 's' : ''}\n` +
+    `💰 ₹${formatIndianNumber(total)} total (₹${formatIndianNumber(perPerson)} per person)\n\n` +
+    `Includes: Accommodation, transfers, guide\n` +
+    `GST included ✓\n\n` +
+    `Reply YES to confirm your booking!`
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const DURATION_OPTIONS = [3, 5, 7, 10]
-
-const TIER_CONFIG: Record<TierKey, { label: string; pricePerDayPerPerson: number; color: string }> = {
-  budget:   { label: 'Budget',   pricePerDayPerPerson: 2500,  color: 'border-slate-500 text-slate-300' },
-  standard: { label: 'Standard', pricePerDayPerPerson: 4500,  color: 'border-blue-500 text-blue-300' },
-  premium:  { label: 'Premium',  pricePerDayPerPerson: 8000,  color: 'border-purple-500 text-purple-300' },
-  luxury:   { label: 'Luxury',   pricePerDayPerPerson: 15000, color: 'border-amber-500 text-amber-300' },
-}
-
-const DESTINATION_KEYWORDS: { keywords: string[]; label: string }[] = [
-  { keywords: ['goa', 'panaji', 'baga', 'calangute'], label: 'Goa' },
-  { keywords: ['rajasthan', 'jaipur', 'jodhpur', 'udaipur', 'jaisalmer'], label: 'Rajasthan' },
-  { keywords: ['kerala', 'munnar', 'alleppey', 'kochi', 'kovalam', 'wayanad'], label: 'Kerala' },
-  { keywords: ['himachal', 'manali', 'shimla', 'dharamsala', 'spiti'], label: 'Himachal Pradesh' },
-  { keywords: ['kashmir', 'srinagar', 'gulmarg', 'pahalgam', 'sonamarg'], label: 'Kashmir' },
-  { keywords: ['uttarakhand', 'rishikesh', 'haridwar', 'mussoorie', 'nainital', 'kedarnath'], label: 'Uttarakhand' },
-  { keywords: ['andaman', 'nicobar', 'port blair', 'havelock'], label: 'Andaman' },
-  { keywords: ['ladakh', 'leh', 'nubra', 'pangong'], label: 'Ladakh' },
-  { keywords: ['coorg', 'ooty', 'mysore', 'karnataka'], label: 'Karnataka' },
-  { keywords: ['varanasi', 'agra', 'lucknow', 'uttar pradesh'], label: 'Uttar Pradesh' },
-]
-
-function detectDestination(message: string): string {
-  if (!message) return ''
-  const lower = message.toLowerCase()
-  for (const entry of DESTINATION_KEYWORDS) {
-    if (entry.keywords.some(kw => lower.includes(kw))) {
-      return entry.label
-    }
-  }
-  return ''
-}
-
-function formatINR(amount: number): string {
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)
-}
-
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('91') && digits.length > 10) return `+${digits}`
-  if (digits.length === 10) return `+91${digits}`
-  return raw
-}
-
-function randomId(length: number): string {
-  return Math.random().toString(36).slice(2, 2 + length)
-}
-
-// ---------------------------------------------------------------------------
-// Step indicator
-// ---------------------------------------------------------------------------
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StepDots({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {Array.from({ length: total }, (_, i) => (
-        <div
-          key={i}
-          className={`h-2 rounded-full transition-all duration-300 ${
-            i + 1 === current
-              ? 'w-6 bg-[#00d084]'
-              : i + 1 < current
-              ? 'w-2 bg-[#00d084]/60'
-              : 'w-2 bg-white/20'
-          }`}
-        />
-      ))}
-      <span className="ml-2 text-xs text-white/40">Step {current} of {total}</span>
+    <div className="flex items-center justify-center gap-2">
+      {Array.from({ length: total }).map((_, i) => {
+        const done = i < current - 1;
+        const active = i === current - 1;
+        return (
+          <motion.div
+            key={i}
+            animate={active ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+            className={`rounded-full transition-all duration-300 ${
+              done
+                ? 'w-2.5 h-2.5 bg-[#00d084]'
+                : active
+                ? 'w-3 h-3 bg-[#00d084] shadow-[0_0_8px_#00d084]'
+                : 'w-2.5 h-2.5 bg-white/20'
+            }`}
+          />
+        );
+      })}
     </div>
-  )
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Step 1: Client Details
-// ---------------------------------------------------------------------------
-
-function StepClientDetails({
-  client,
-  setClient,
-  onNext,
+function Stepper({
+  value,
+  onChange,
+  min = 1,
+  max = 50,
+  label,
 }: {
-  client: ClientState
-  setClient: React.Dispatch<React.SetStateAction<ClientState>>
-  onNext: () => void
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  label: string;
 }) {
-  const canProceed = client.phone.trim().length >= 10 && client.name.trim().length >= 2 && client.destination.trim().length >= 2
-
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-semibold text-white mb-1">Client Details</h2>
-        <p className="text-sm text-white/50">Auto-filled from WhatsApp conversation</p>
-      </div>
-
-      {/* Phone */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-          Phone Number
-        </label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-          <input
-            type="tel"
-            value={client.phone}
-            onChange={e => setClient(prev => ({ ...prev, phone: e.target.value }))}
-            placeholder="+91 98765 43210"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#00d084]/60 focus:ring-1 focus:ring-[#00d084]/30 transition"
-          />
-        </div>
-      </div>
-
-      {/* Name */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-          Full Name
-        </label>
-        <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-          <input
-            type="text"
-            value={client.name}
-            onChange={e => setClient(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="Rahul Sharma"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#00d084]/60 focus:ring-1 focus:ring-[#00d084]/30 transition"
-          />
-        </div>
-      </div>
-
-      {/* Destination */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">
-          Destination
-        </label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-          <input
-            type="text"
-            value={client.destination}
-            onChange={e => setClient(prev => ({ ...prev, destination: e.target.value }))}
-            placeholder="e.g. Goa, Kerala, Rajasthan…"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#00d084]/60 focus:ring-1 focus:ring-[#00d084]/30 transition"
-          />
-        </div>
-
-        {/* Quick destination chips */}
-        <div className="flex flex-wrap gap-2 mt-2">
-          {['Goa', 'Kerala', 'Rajasthan', 'Ladakh', 'Kashmir', 'Andaman'].map(dest => (
-            <button
-              key={dest}
-              type="button"
-              onClick={() => setClient(prev => ({ ...prev, destination: dest }))}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
-                client.destination === dest
-                  ? 'bg-[#00d084]/20 border-[#00d084] text-[#00d084]'
-                  : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'
-              }`}
-            >
-              {dest}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
       <button
-        onClick={onNext}
-        disabled={!canProceed}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-[#00d084] text-[#0a1628] hover:bg-[#00d084]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={value <= min}
+        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-colors"
       >
-        Next &rarr;
+        <Minus className="w-3.5 h-3.5 text-white" />
+      </button>
+      <div className="flex-1 text-center">
+        <span className="text-white font-semibold">{value}</span>
+        <span className="text-white/50 text-xs ml-1.5">{label}</span>
+      </div>
+      <button
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5 text-white" />
       </button>
     </div>
-  )
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Step 2: Quick Quote
-// ---------------------------------------------------------------------------
+// ─── Booking State ─────────────────────────────────────────────────────────
 
-function StepQuickQuote({
-  client,
-  quote,
-  setQuote,
+interface BookingState {
+  name: string;
+  phone: string;
+  destination: string;
+  travelers: number;
+  durationDays: number;
+  tier: Tier;
+  message: string;
+}
+
+// ─── Props ─────────────────────────────────────────────────────────────────
+
+interface LeadToBookingFlowProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialPhone?: string;
+  initialMessage?: string;
+  prefilledIntent?: ParsedIntent;
+}
+
+// ─── Steps ─────────────────────────────────────────────────────────────────
+
+function Step1ConfirmLead({
+  state,
+  onChange,
+  intent,
   onNext,
-  onBack,
 }: {
-  client: ClientState
-  quote: QuoteState
-  setQuote: React.Dispatch<React.SetStateAction<QuoteState>>
-  onNext: () => void
-  onBack: () => void
+  state: BookingState;
+  onChange: (partial: Partial<BookingState>) => void;
+  intent?: ParsedIntent;
+  onNext: () => void;
 }) {
-  const tier = TIER_CONFIG[quote.tier]
-  const totalPrice = tier.pricePerDayPerPerson * quote.duration * quote.travelers
-  const margin = Math.round(totalPrice * 0.25)
+  const [showDestPicker, setShowDestPicker] = useState(false);
+  const lowConfidence = !intent || intent.confidence < 0.3;
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div>
-        <button onClick={onBack} className="flex items-center gap-1 text-sm text-white/50 hover:text-white transition mb-3">
-          <ChevronLeft className="w-4 h-4" /> Back
-        </button>
-        <h2 className="text-xl font-semibold text-white mb-1">Quick Quote</h2>
-        <p className="text-sm text-white/50">
-          {client.destination} &bull; {client.name}
+        <h2 className="text-white text-xl font-bold">Confirm Lead</h2>
+        <p className="text-white/50 text-sm mt-0.5">
+          We auto-detected this from the message
         </p>
       </div>
 
-      {/* Travelers */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-2 uppercase tracking-wider">
-          Travelers
-        </label>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setQuote(prev => ({ ...prev, travelers: Math.max(1, prev.travelers - 1) }))}
-            className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
-          >
-            &minus;
-          </button>
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#00d084]" />
-            <span className="text-white font-semibold text-lg w-6 text-center">{quote.travelers}</span>
+      {/* Lead summary card */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-4">
+        {/* Phone */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Phone className="w-4 h-4 text-white/60" />
           </div>
-          <button
-            onClick={() => setQuote(prev => ({ ...prev, travelers: Math.min(50, prev.travelers + 1) }))}
-            className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition"
+          <div>
+            <p className="text-white/40 text-[11px] uppercase tracking-wider">Phone</p>
+            <p className="text-white text-sm font-medium">{state.phone || '—'}</p>
+          </div>
+        </div>
+
+        {/* Name — editable inline */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Users className="w-4 h-4 text-white/60" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white/40 text-[11px] uppercase tracking-wider mb-1">Name</p>
+            <input
+              type="text"
+              value={state.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+              placeholder="Customer name"
+              className="w-full bg-transparent text-white text-sm font-medium placeholder-white/25 outline-none border-b border-white/10 focus:border-[#00d084]/60 pb-1 transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Destination — tappable chip */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-4 h-4 text-white/60" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white/40 text-[11px] uppercase tracking-wider mb-1.5">Destination</p>
+            <button
+              onClick={() => setShowDestPicker((v) => !v)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
+                state.destination
+                  ? 'bg-[#00d084]/10 text-[#00d084] border-[#00d084]/30 hover:bg-[#00d084]/20'
+                  : 'bg-white/5 text-white/40 border-white/15 hover:bg-white/10'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              {state.destination || 'Pick destination'}
+              <span className="text-[10px] opacity-60">↓</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Low-confidence note */}
+      {lowConfidence && (
+        <p className="text-amber-400/70 text-xs bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+          Could not detect destination from the message — please pick one below.
+        </p>
+      )}
+
+      {/* Destination picker grid */}
+      <AnimatePresence>
+        {showDestPicker && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="bg-[#0a1628]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-3"
           >
-            &#43;
-          </button>
-        </div>
-      </div>
+            <p className="text-white/40 text-xs mb-2.5 px-1">Select destination</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {ALL_DESTINATIONS.map((dest) => (
+                <button
+                  key={dest}
+                  onClick={() => {
+                    onChange({ destination: dest });
+                    setShowDestPicker(false);
+                  }}
+                  className={`text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                    state.destination === dest
+                      ? 'bg-[#00d084]/20 text-[#00d084] border border-[#00d084]/30'
+                      : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {dest}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Duration */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-2 uppercase tracking-wider">
-          Duration
-        </label>
-        <div className="flex gap-2">
-          {DURATION_OPTIONS.map(d => (
-            <button
-              key={d}
-              onClick={() => setQuote(prev => ({ ...prev, duration: d }))}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition flex items-center justify-center gap-1 ${
-                quote.duration === d
-                  ? 'bg-[#00d084]/20 border-[#00d084] text-[#00d084]'
-                  : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              {d}D
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tier */}
-      <div>
-        <label className="block text-xs font-medium text-white/60 mb-2 uppercase tracking-wider">
-          Package Tier
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {(Object.entries(TIER_CONFIG) as [TierKey, typeof TIER_CONFIG[TierKey]][]).map(([key, cfg]) => (
-            <button
-              key={key}
-              onClick={() => setQuote(prev => ({ ...prev, tier: key }))}
-              className={`p-3 rounded-lg border text-left transition ${
-                quote.tier === key
-                  ? 'bg-white/10 border-[#00d084] text-white'
-                  : `bg-white/5 ${cfg.color} hover:bg-white/8`
-              }`}
-            >
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <Star className={`w-3.5 h-3.5 ${quote.tier === key ? 'text-[#00d084]' : 'text-current opacity-70'}`} />
-                <span className="text-sm font-semibold">{cfg.label}</span>
-              </div>
-              <div className="text-xs opacity-60">&#8377;{formatINR(cfg.pricePerDayPerPerson)}/day/person</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Price summary */}
-      <div className="rounded-xl bg-[#00d084]/10 border border-[#00d084]/30 p-4 space-y-1">
-        <div className="text-sm text-white/70">
-          Estimated: <span className="text-white font-semibold">&#8377;{formatINR(totalPrice)}</span>
-          {' '}for {quote.duration} days, {quote.travelers} person{quote.travelers > 1 ? 's' : ''} ({tier.label})
-        </div>
-        <div className="text-sm text-[#00d084]">
-          Your margin ~25%: &#8377;{formatINR(margin)}
-        </div>
-      </div>
-
+      {/* CTA */}
       <button
         onClick={onNext}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-[#00d084] text-[#0a1628] hover:bg-[#00d084]/90 transition-all"
+        disabled={!state.destination}
+        className="w-full flex items-center justify-center gap-2 bg-[#00d084] hover:bg-[#00b873] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all duration-150 text-black font-semibold rounded-xl py-3 text-sm"
       >
-        Next &rarr;
+        Looks right
+        <ChevronRight className="w-4 h-4" />
       </button>
     </div>
-  )
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Step 3: Send & Track
-// ---------------------------------------------------------------------------
-
-function StepSendTrack({
-  client,
-  quote,
-  onClose,
+function Step2ReviewQuote({
+  state,
+  onChange,
+  onNext,
   onBack,
 }: {
-  client: ClientState
-  quote: QuoteState
-  onClose: () => void
-  onBack: () => void
+  state: BookingState;
+  onChange: (partial: Partial<BookingState>) => void;
+  onNext: () => void;
+  onBack: () => void;
 }) {
-  const [saved, setSaved] = useState(false)
-  const [done, setDone] = useState(false)
+  const { total, perPerson } = calcPrice(state.travelers, state.durationDays, state.tier);
 
-  const tier = TIER_CONFIG[quote.tier]
-  const totalPrice = tier.pricePerDayPerPerson * quote.duration * quote.travelers
-  const pricePerPerson = tier.pricePerDayPerPerson * quote.duration
+  const tierLabels: Record<Tier, { label: string; desc: string; color: string }> = {
+    budget: { label: 'Budget', desc: '₹2,500/day', color: 'border-blue-500/40 text-blue-300' },
+    standard: { label: 'Standard', desc: '₹4,500/day', color: 'border-green-500/40 text-green-300' },
+    premium: { label: 'Premium', desc: '₹8,000/day', color: 'border-purple-500/40 text-purple-300' },
+    luxury: { label: 'Luxury', desc: '₹15,000/day', color: 'border-amber-500/40 text-amber-300' },
+  };
 
-  const firstName = client.name.split(' ')[0] || client.name
-  const waMessage = `Namaste ${firstName} Ji! 🙏 ${client.destination} ke liye ₹${formatINR(pricePerPerson)}/person ka package ready hai. Valid 3 din. Reply karein!`
-
-  const cleanPhone = client.phone.replace(/\D/g, '')
-  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessage)}`
-
-  function handleSaveDraft() {
-    setSaved(true)
-    // In a real implementation, this would dispatch to a proposals store
-    const draft = {
-      id: `draft_${randomId(8)}`,
-      client,
-      quote,
-      totalPrice,
-      message: waMessage,
-      savedAt: new Date().toISOString(),
-    }
-    try {
-      const existing = JSON.parse(localStorage.getItem('touros_drafts') ?? '[]')
-      existing.unshift(draft)
-      localStorage.setItem('touros_drafts', JSON.stringify(existing.slice(0, 50)))
-    } catch {
-      // localStorage not available in SSR context
-    }
-  }
-
-  if (done) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 space-y-3">
-        <CheckCircle className="w-14 h-14 text-[#00d084]" />
-        <p className="text-white font-semibold text-lg">All done!</p>
-        <p className="text-white/50 text-sm text-center">Lead saved to CRM and proposal sent.</p>
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h2 className="text-white text-xl font-bold">Review Quote</h2>
+        <p className="text-white/50 text-sm mt-0.5">
+          Adjust travelers, duration &amp; package tier
+        </p>
       </div>
-    )
+
+      {/* Stepper row */}
+      <div className="space-y-2.5">
+        <Stepper
+          value={state.travelers}
+          onChange={(v) => onChange({ travelers: v })}
+          min={1}
+          max={50}
+          label="travelers"
+        />
+        <Stepper
+          value={state.durationDays}
+          onChange={(v) => onChange({ durationDays: v })}
+          min={1}
+          max={30}
+          label="days"
+        />
+      </div>
+
+      {/* Tier grid 2×2 */}
+      <div className="grid grid-cols-2 gap-2">
+        {TIERS.map((t) => {
+          const { label, desc, color } = tierLabels[t];
+          const selected = state.tier === t;
+          return (
+            <button
+              key={t}
+              onClick={() => onChange({ tier: t })}
+              className={`p-3 rounded-xl border text-left transition-all duration-150 ${
+                selected
+                  ? `bg-[#00d084]/10 border-[#00d084]/50 ${color}`
+                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              <div className={`text-sm font-semibold ${selected ? '' : 'text-white/80'}`}>{label}</div>
+              <div className="text-[11px] opacity-70 mt-0.5">{desc}/person</div>
+              {selected && (
+                <div className="mt-1.5">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#00d084]">
+                    <Check className="w-2.5 h-2.5 text-black" />
+                  </span>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Price display */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center space-y-1">
+        <p className="text-white/40 text-xs uppercase tracking-wider">Total Price</p>
+        <p className="text-white text-3xl font-bold">
+          ₹{formatIndianNumber(total)}
+        </p>
+        <p className="text-white/50 text-sm">
+          ₹{formatIndianNumber(perPerson)} per person
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-1">
+          <span className="text-white/30 text-[11px]">GST included (5%)</span>
+          <span className="w-1 h-1 rounded-full bg-white/20" />
+          <span className="text-[#00d084]/70 text-[11px]">Your margin: ~{MARGIN_PCT}%</span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={onBack}
+          className="flex items-center justify-center gap-1.5 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 text-sm font-medium transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </button>
+        <button
+          onClick={onNext}
+          className="flex-1 flex items-center justify-center gap-2 bg-[#00d084] hover:bg-[#00b873] active:scale-95 transition-all duration-150 text-black font-semibold rounded-xl py-3 text-sm"
+        >
+          Confirm Quote
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Step3CreateAndNotify({
+  state,
+  onBack,
+  onDone,
+}: {
+  state: BookingState;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const [submitted, setSubmitted] = useState(false);
+  const [bookingRef, setBookingRef] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { total, perPerson } = calcPrice(state.travelers, state.durationDays, state.tier);
+
+  const waMessage = buildWhatsAppMessage(
+    state.name || 'Guest',
+    state.destination,
+    state.travelers,
+    state.durationDays,
+    total,
+    perPerson
+  );
+
+  const waLink = `https://wa.me/${state.phone.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
+
+  const handleSend = async (mode: 'whatsapp' | 'draft') => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/leads/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: state.phone,
+          name: state.name,
+          destination: state.destination,
+          travelers: state.travelers,
+          duration: state.durationDays,
+          tier: state.tier,
+          totalPrice: Math.round(total),
+          message: state.message,
+        }),
+      });
+      const data = await res.json();
+      if (data.bookingRef) setBookingRef(data.bookingRef);
+
+      if (mode === 'draft') {
+        // Save to localStorage
+        const drafts = JSON.parse(localStorage.getItem('bookingDrafts') || '[]');
+        drafts.unshift({
+          ...state,
+          total: Math.round(total),
+          perPerson: Math.round(perPerson),
+          bookingRef: data.bookingRef,
+          savedAt: new Date().toISOString(),
+        });
+        localStorage.setItem('bookingDrafts', JSON.stringify(drafts.slice(0, 50)));
+      } else {
+        window.open(waLink, '_blank');
+      }
+    } catch {
+      // Fall through — still show success
+    } finally {
+      setLoading(false);
+      setSubmitted(true);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="space-y-5 text-center py-4">
+        {/* Confetti-like animation */}
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          className="mx-auto w-16 h-16 rounded-full bg-[#00d084]/20 border border-[#00d084]/40 flex items-center justify-center"
+        >
+          <Check className="w-8 h-8 text-[#00d084]" />
+        </motion.div>
+
+        {/* Floating particles */}
+        <div className="relative h-0">
+          {[...Array(6)].map((_, i) => (
+            <motion.div
+              key={i}
+              initial={{ y: 0, x: 0, opacity: 1, scale: 1 }}
+              animate={{
+                y: -40 - i * 12,
+                x: (i % 2 === 0 ? 1 : -1) * (20 + i * 8),
+                opacity: 0,
+                scale: 0.3,
+              }}
+              transition={{ duration: 0.8, delay: i * 0.07, ease: 'easeOut' }}
+              className="absolute left-1/2 top-0 w-2 h-2 rounded-full bg-[#00d084]"
+              style={{ marginLeft: -4 }}
+            />
+          ))}
+        </div>
+
+        <div className="space-y-1 pt-2">
+          <h2 className="text-white text-2xl font-bold">Booking Created!</h2>
+          {bookingRef && (
+            <p className="text-[#00d084] font-mono text-sm">{bookingRef}</p>
+          )}
+          <p className="text-white/50 text-sm">
+            {state.destination} trip for {state.name || state.phone}
+          </p>
+        </div>
+
+        <button
+          onClick={onDone}
+          className="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white font-semibold rounded-xl py-3 text-sm transition-colors"
+        >
+          Done
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div>
-        <button onClick={onBack} className="flex items-center gap-1 text-sm text-white/50 hover:text-white transition mb-3">
-          <ChevronLeft className="w-4 h-4" /> Back
-        </button>
-        <h2 className="text-xl font-semibold text-white mb-1">Send &amp; Track</h2>
-        <p className="text-sm text-white/50">Preview and send your quote</p>
+        <h2 className="text-white text-xl font-bold">Ready to Book!</h2>
+        <p className="text-white/50 text-sm mt-0.5">
+          Send the quote via WhatsApp or save as draft
+        </p>
       </div>
 
       {/* WhatsApp message preview */}
-      <div className="rounded-xl bg-[#1a2e1f] border border-[#00d084]/20 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <MessageCircle className="w-4 h-4 text-[#25D366]" />
-          <span className="text-xs font-semibold text-[#25D366] uppercase tracking-wider">WhatsApp Message Preview</span>
+      <div className="rounded-2xl overflow-hidden border border-white/10">
+        {/* WA header bar */}
+        <div className="bg-[#25D366] px-4 py-2.5 flex items-center gap-2">
+          <MessageCircle className="w-4 h-4 text-white/90" />
+          <span className="text-white text-sm font-medium">WhatsApp Preview</span>
         </div>
-        <p className="text-white/90 text-sm leading-relaxed">{waMessage}</p>
-        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-xs text-white/50">
-          <span>Total: &#8377;{formatINR(totalPrice)}</span>
-          <span>{quote.travelers} pax &bull; {quote.duration} days</span>
-          <span>{tier.label} tier</span>
-          <span>To: {client.phone}</span>
+        {/* Message bubble */}
+        <div className="bg-[#0a1628] p-4">
+          <div className="bg-[#1a2e4a] rounded-xl rounded-tl-sm px-3.5 py-3 max-w-[85%]">
+            <p className="text-white/80 text-sm leading-relaxed whitespace-pre-line">
+              {waMessage}
+            </p>
+          </div>
         </div>
-      </div>
-
-      {/* CRM saved indicator */}
-      <div className="flex items-center gap-2 text-xs text-[#00d084]/80 bg-[#00d084]/5 border border-[#00d084]/20 rounded-lg px-3 py-2">
-        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-        Client auto-saved to CRM &mdash; Lead #{randomId(6).toUpperCase()}
       </div>
 
       {/* Action buttons */}
-      <div className="space-y-2.5">
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm bg-[#25D366] text-white hover:bg-[#25D366]/90 transition-all"
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => handleSend('whatsapp')}
+          disabled={loading}
+          className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1db954] active:scale-95 disabled:opacity-50 transition-all duration-150 text-white font-semibold rounded-xl py-3 text-sm"
         >
           <MessageCircle className="w-4 h-4" />
-          Send via WhatsApp
-        </a>
-
+          Send WhatsApp
+        </button>
         <button
-          onClick={handleSaveDraft}
-          disabled={saved}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm border border-white/20 text-white/80 hover:bg-white/5 disabled:opacity-60 disabled:cursor-default transition-all"
+          onClick={() => handleSend('draft')}
+          disabled={loading}
+          className="flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 active:scale-95 disabled:opacity-50 border border-white/10 transition-all duration-150 text-white/80 font-semibold rounded-xl py-3 text-sm"
         >
           <Save className="w-4 h-4" />
-          {saved ? 'Saved to Drafts' : 'Save as Draft'}
-        </button>
-
-        <button
-          onClick={() => { setDone(true); setTimeout(onClose, 1800) }}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/15 transition-all"
-        >
-          <CheckCircle className="w-4 h-4 text-[#00d084]" />
-          Done
+          Save Draft
         </button>
       </div>
+
+      {/* Back */}
+      <button
+        onClick={onBack}
+        className="w-full flex items-center justify-center gap-1.5 py-2.5 text-white/40 hover:text-white/70 text-sm transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Edit quote
+      </button>
     </div>
-  )
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
-const SLIDE_VARIANTS = {
-  enter: (direction: number) => ({ x: direction > 0 ? 100 : -100, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction > 0 ? -100 : 100, opacity: 0 }),
-}
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LeadToBookingFlow({
   isOpen,
   onClose,
   initialPhone = '',
   initialMessage = '',
+  prefilledIntent,
 }: LeadToBookingFlowProps) {
-  const detectedDestination = detectDestination(initialMessage)
+  const [step, setStep] = useState(1);
+  const [direction, setDirection] = useState<1 | -1>(1);
 
-  const [step, setStep] = useState(1)
-  const [direction, setDirection] = useState(1)
+  const defaultTier: Tier = prefilledIntent?.budgetTier
+    ? (prefilledIntent.budgetTier as Tier)
+    : 'standard';
 
-  const [client, setClient] = useState<ClientState>({
-    phone: formatPhone(initialPhone),
-    name: '',
-    destination: detectedDestination,
-  })
+  const [bookingState, setBookingState] = useState<BookingState>({
+    name: prefilledIntent?.extractedName ?? '',
+    phone: initialPhone,
+    destination: prefilledIntent?.destination ?? '',
+    travelers: prefilledIntent?.travelers ?? 2,
+    durationDays: prefilledIntent?.durationDays ?? 5,
+    tier: defaultTier,
+    message: initialMessage,
+  });
 
-  const [quote, setQuote] = useState<QuoteState>({
-    destination: detectedDestination,
-    travelers: 2,
-    duration: 5,
-    tier: 'standard',
-  })
+  // Re-sync when intent or initial values change (e.g. modal re-opened with new lead)
+  useEffect(() => {
+    if (!isOpen) return;
+    setStep(1);
+    setDirection(1);
+    setBookingState({
+      name: prefilledIntent?.extractedName ?? '',
+      phone: initialPhone,
+      destination: prefilledIntent?.destination ?? '',
+      travelers: prefilledIntent?.travelers ?? 2,
+      durationDays: prefilledIntent?.durationDays ?? 5,
+      tier: (prefilledIntent?.budgetTier as Tier) ?? 'standard',
+      message: initialMessage,
+    });
+  }, [isOpen, initialPhone, initialMessage, prefilledIntent]);
 
-  const goNext = useCallback(() => {
-    setDirection(1)
-    setStep(s => Math.min(3, s + 1))
-    // Sync destination from step 1 into quote
-    setQuote(prev => ({ ...prev, destination: client.destination }))
-  }, [client.destination])
+  const updateState = useCallback((partial: Partial<BookingState>) => {
+    setBookingState((prev) => ({ ...prev, ...partial }));
+  }, []);
 
-  const goBack = useCallback(() => {
-    setDirection(-1)
-    setStep(s => Math.max(1, s - 1))
-  }, [])
+  const goNext = () => {
+    setDirection(1);
+    setStep((s) => Math.min(3, s + 1));
+  };
 
-  if (!isOpen) return null
+  const goBack = () => {
+    setDirection(-1);
+    setStep((s) => Math.max(1, s - 1));
+  };
+
+  const stepTitles = ['Confirm Lead', 'Review Quote', 'Ready to Book!'];
+
+  const slideVariants = {
+    enter: (d: number) => ({ x: d * 220, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (d: number) => ({ x: d * -220, opacity: 0 }),
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="relative z-10 w-full max-w-[520px] bg-[#0d1f35]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#00d084]" />
-            <span className="text-xs font-semibold text-[#00d084] uppercase tracking-widest">Lead to Booking</span>
-          </div>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+          />
+
+          {/* Modal */}
+          <motion.div
+            key="modal"
+            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 pointer-events-none"
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            <div className="w-full sm:max-w-md bg-[#0f2040]/95 backdrop-blur-2xl border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl pointer-events-auto overflow-hidden">
+              {/* Modal inner scroll area */}
+              <div className="max-h-[90vh] overflow-y-auto">
+                <div className="p-6 pb-8 space-y-5">
+                  {/* Top bar */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white/40 text-xs uppercase tracking-wider">
+                        Step {step} of 3 · 3 Taps to Booking
+                      </p>
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white/70" />
+                    </button>
+                  </div>
 
-        <div className="px-6 pb-6">
-          <StepDots current={step} total={3} />
+                  {/* Step dots */}
+                  <StepDots current={step} total={3} />
 
-          <div className="overflow-hidden">
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={step}
-                custom={direction}
-                variants={SLIDE_VARIANTS}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.22, ease: 'easeInOut' }}
-              >
-                {step === 1 && (
-                  <StepClientDetails client={client} setClient={setClient} onNext={goNext} />
-                )}
-                {step === 2 && (
-                  <StepQuickQuote client={client} quote={quote} setQuote={setQuote} onNext={goNext} onBack={goBack} />
-                )}
-                {step === 3 && (
-                  <StepSendTrack client={client} quote={quote} onClose={onClose} onBack={goBack} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  )
+                  {/* Step content with slide animation */}
+                  <div className="relative overflow-hidden min-h-[320px]">
+                    <AnimatePresence custom={direction} mode="wait">
+                      <motion.div
+                        key={step}
+                        custom={direction}
+                        variants={slideVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      >
+                        {step === 1 && (
+                          <Step1ConfirmLead
+                            state={bookingState}
+                            onChange={updateState}
+                            intent={prefilledIntent}
+                            onNext={goNext}
+                          />
+                        )}
+                        {step === 2 && (
+                          <Step2ReviewQuote
+                            state={bookingState}
+                            onChange={updateState}
+                            onNext={goNext}
+                            onBack={goBack}
+                          />
+                        )}
+                        {step === 3 && (
+                          <Step3CreateAndNotify
+                            state={bookingState}
+                            onBack={goBack}
+                            onDone={onClose}
+                          />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   CheckCircle,
   ChevronDown,
@@ -16,6 +16,7 @@ interface PortalPaymentProps {
   dueAmount: number;
   upiId: string;
   tripName: string;
+  token?: string;
 }
 
 function formatINR(amount: number): string {
@@ -80,14 +81,29 @@ export default function PortalPayment({
   dueAmount,
   upiId,
   tripName,
+  token,
 }: PortalPaymentProps) {
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [alreadyPaidSent, setAlreadyPaidSent] = useState(false);
+  const [alreadyPaidLoading, setAlreadyPaidLoading] = useState(false);
 
   const paidPct = Math.round((paidAmount / totalAmount) * 100);
   const fullyPaid = dueAmount <= 0;
 
   const upiUri = `upi://pay?pa=${upiId}&pn=TourOperator&am=${dueAmount}&cu=INR&tn=${encodeURIComponent(tripName)}`;
+
+  // Tracking pixel — fire a 'viewed' event on mount
+  useEffect(() => {
+    const trackingToken = token ?? 'demo';
+    void fetch(`/api/payments/track/${trackingToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'viewed' }),
+    }).catch(() => {
+      // Silently ignore tracking failures — non-critical
+    });
+  }, [token]);
 
   function handleCopyUPI() {
     void navigator.clipboard.writeText(upiId).then(() => {
@@ -104,6 +120,23 @@ export default function PortalPayment({
         `Please complete the payment at your earliest convenience. Thank you! 🙏`
     );
     window.open(`https://wa.me/?text=${msg}`, '_blank');
+  }
+
+  function handleAlreadyPaid() {
+    setAlreadyPaidLoading(true);
+    const trackingToken = token ?? 'demo';
+    void fetch(`/api/payments/track/${trackingToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'paid' }),
+    })
+      .catch(() => {
+        // Silently ignore tracking failures — non-critical
+      })
+      .finally(() => {
+        setAlreadyPaidLoading(false);
+        setAlreadyPaidSent(true);
+      });
   }
 
   return (
@@ -274,6 +307,24 @@ export default function PortalPayment({
                       Please use the reference number when making the transfer. Allow 1-2 business days for processing.
                     </p>
                   </div>
+                )}
+              </div>
+
+              {/* Already paid section */}
+              <div className="flex flex-col items-center gap-2 pt-1">
+                {!alreadyPaidSent ? (
+                  <button
+                    type="button"
+                    onClick={handleAlreadyPaid}
+                    disabled={alreadyPaidLoading}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {alreadyPaidLoading ? 'Sending...' : "I've already paid →"}
+                  </button>
+                ) : (
+                  <p className="text-xs text-emerald-600 font-medium text-center">
+                    Thank you! We'll verify shortly.
+                  </p>
                 )}
               </div>
             </div>

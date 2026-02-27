@@ -22,6 +22,19 @@ interface UIState {
     };
     openModal: (type: string, data?: any) => void;
     closeModal: () => void;
+
+    language: 'en' | 'hi';
+    setLanguage: (lang: 'en' | 'hi') => void;
+}
+
+function getInitialLanguage(): 'en' | 'hi' {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('touros_language');
+        if (stored === 'en' || stored === 'hi') {
+            return stored;
+        }
+    }
+    return 'en';
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -50,4 +63,7 @@ export const useUIStore = create<UIState>((set) => ({
     closeModal: () => set({
         modalState: { isOpen: false, type: null, data: null }
     }),
+
+    language: getInitialLanguage(),
+    setLanguage: (lang) => set({ language: lang }),
 }));

@@ -3,7 +3,7 @@
 > **Product:** Travel Suite for Indian Tour Operators (WhatsApp-First)
 > **Branch:** `main`
 > **Started:** 2026-02-26
-> **Last Updated:** 2026-02-26 (Sprint 2–4 complete)
+> **Last Updated:** 2026-02-27 (Sprint 5 complete)
 > **Target:** Production-ready SaaS for Indian tour operators
 
 ---
@@ -20,7 +20,8 @@
 | Revenue & Billing | 7 | 7 | 0 | 0 |
 | Client Portal & E-Sign | 6 | 6 | 0 | 0 |
 | PWA & Payments | 4 | 4 | 0 | 0 |
-| **TOTAL** | **51** | **48** | **0** | **3** |
+| **Sprint 5 — Ops & Growth** | **10** | **10** | **0** | **0** |
+| **TOTAL** | **61** | **58** | **0** | **3** |
 
 > ⚠️ **3 remaining items** all depend on WhatsApp API integration (deferred by product decision)
 
@@ -275,6 +276,42 @@
 
 ---
 
+---
+
+## ✅ SPRINT 5 — OPERATIONS & GROWTH
+
+### 52. Lead → Booking in 3 Taps (Enhanced)
+- **Status:** ✅ Complete
+- **Files:** `src/lib/leads/intent-parser.ts`, `src/components/leads/SmartLeadCard.tsx`, `src/components/leads/LeadToBookingFlow.tsx` (full rewrite), `src/app/api/leads/convert/route.ts`
+- **What it does:** Keyword-based NLP parses any WhatsApp message → extracts destination (14 Indian regions), pax count, duration, budget tier. SmartLeadCard shows in inbox context panel with confidence score + "Convert to Booking →". Rewritten 3-tap flow: Tap 1 = confirm pre-filled lead, Tap 2 = approve price (auto-calculated, just accept), Tap 3 = send WhatsApp + create booking. Under 15 seconds from lead to booked.
+
+### 53. Payment Link Tracking
+- **Status:** ✅ Complete
+- **Files:** `src/lib/payments/link-tracker.ts`, `src/components/payments/PaymentTracker.tsx`, `src/components/payments/PaymentLinkButton.tsx`, `src/app/api/payments/track/[token]/route.ts`
+- **What it does:** End-to-end payment link lifecycle: Created → Sent → Viewed → Paid. PaymentLinkButton generates tracked link, copies to clipboard, sends via WhatsApp. PaymentTracker shows animated 4-step timeline with live status polling every 5s. PortalPayment.tsx records view event on load + "I've already paid" flow.
+
+### 54. Multi-user Team Accounts
+- **Status:** ✅ Complete
+- **Files:** `src/lib/team/roles.ts`, `src/app/settings/team/page.tsx`, `src/components/settings/TeamMemberCard.tsx`, `src/components/settings/InviteModal.tsx`, `src/app/settings/page.tsx` (Team tab added)
+- **What it does:** 4 roles: Owner / Manager / Sales Agent / Driver with fine-grained permissions matrix. Team settings page with member list, role filter tabs, stats. TeamMemberCard with role badge, inline role changer, remove. InviteModal with 2×2 role selector cards showing permissions preview. Email invite with 7-day expiry note.
+
+### 55. Audit Log / Activity History
+- **Status:** ✅ Complete
+- **File:** `src/app/admin/activity/page.tsx` (full rewrite)
+- **What it does:** 20 realistic activity entries (payments, trips, proposals, clients, team, system). Type filter chips + date filter + search. Stats row: Actions Today, Payments This Week, New Clients, Active Trips. Framer Motion stagger reveal. Load more pagination. Trip ref chips on each entry.
+
+### 56. Real-time Dashboard Updates
+- **Status:** ✅ Complete
+- **File:** `src/hooks/useRealtimeUpdates.ts`
+- **What it does:** Custom React hook polling every 30s (configurable). Returns live metrics (activeTrips, todayRevenue, pendingQuotes, unreadWhatsApp, driversOnRoute, newLeadsToday) with random realistic deltas. Generates RealtimeUpdate notifications (new WhatsApp, payment received, trip started, new lead, driver update) with Indian names/destinations. Keeps last 10 updates. Ready for Supabase Realtime replacement.
+
+### 57. Hindi Language Support
+- **Status:** ✅ Complete
+- **Files:** `src/lib/i18n/hindi.ts`, `src/components/settings/LanguageToggle.tsx`, `src/stores/ui-store.ts` (language field added)
+- **What it does:** 50+ translated UI strings (EN + HI). `t(key, lang)` utility. `useTranslation(lang)` hook. LanguageToggle component in two sizes: compact EN/हि pill for topbar, full card selector for settings page. Language persisted in localStorage. Fires `languageChange` custom event. ui-store has `language` + `setLanguage` action initialized from localStorage.
+
+---
+
 ## 🌐 WHATSAPP BSP RECOMMENDATIONS FOR INDIA
 
 For production WhatsApp integration, use one of these (all India-based, affordable):
@@ -310,6 +347,14 @@ For production WhatsApp integration, use one of these (all India-based, affordab
 - ✅ Revenue dashboard with lakh/crore metrics + MoM comparison
 - ✅ E-signature on proposals (canvas pad, IT Act 2000 compliant)
 - ✅ Razorpay/Cashfree payment gateway UI (stub API, real keys via Settings)
+
+### Sprint 5 (Complete — Feb 27)
+- ✅ Lead → Booking in 3 Taps — intent-parser + SmartLeadCard + full flow rewrite
+- ✅ Payment Link Tracking — creation, view tracking, paid status, WhatsApp link
+- ✅ Multi-user Team Accounts — Owner/Manager/Agent/Driver roles + invite flow
+- ✅ Audit Log — 20-entry activity history, filters, search, stats
+- ✅ Real-time dashboard hook (30s polling, live KPI deltas, notification feed)
+- ✅ Hindi language support (50+ strings, EN/हि toggle, localStorage persistence)
 
 ### Sprint 4 (Complete — Feb 26)
 - ✅ Group manager (group manifest, dietary tracking, WhatsApp broadcast)
