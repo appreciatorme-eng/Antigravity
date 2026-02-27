@@ -14,7 +14,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("itineraries")
-      .select("id, trip_title, destination, duration_days, created_at")
+      .select("id, trip_title, destination, duration_days, created_at, budget, client_id, client:profiles!client_id(full_name)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 

@@ -21,6 +21,8 @@ import { InteractivePricing } from "@/components/InteractivePricing";
 import { LogisticsManager } from "@/components/planner/LogisticsManager";
 import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
+import { useItineraries } from "@/lib/queries/itineraries";
+import { PastItineraryCard } from "./PastItineraryCard";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -41,6 +43,7 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function PlannerPage() {
+    const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(3);
     const [budget, setBudget] = useState("Moderate");
@@ -588,6 +591,33 @@ Make it practical and specific:
                             )}
                         </div>
                     </>
+                )}
+
+                {!result && pastItineraries && pastItineraries.length > 0 && (
+                    <div className="max-w-4xl mx-auto px-6 pb-20 mt-12 animate-in fade-in duration-700">
+                        <div className="flex items-center gap-3 mb-6">
+                            <h2 className="text-2xl font-serif text-slate-800 dark:text-slate-100">Past Itineraries</h2>
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800">
+                                {pastItineraries.length}
+                            </Badge>
+                        </div>
+                        <div className="grid gap-4">
+                            {pastItineraries.map((itinerary: any) => (
+                                <PastItineraryCard key={itinerary.id} itinerary={itinerary} />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {!result && isLoadingItineraries && (
+                    <div className="max-w-4xl mx-auto px-6 pb-20 mt-12">
+                        <div className="h-8 w-48 bg-gray-200 dark:bg-slate-800 rounded animate-pulse mb-6"></div>
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-32 w-full bg-gray-100 dark:bg-slate-800/50 rounded-xl animate-pulse"></div>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
                 {error && (
