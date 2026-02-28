@@ -212,10 +212,10 @@ Make it practical and specific:
                 </div>
 
                 {!result ? (
-                    <div className={cn("mx-auto px-6 pb-10", hasPastItineraries ? "max-w-7xl" : "max-w-4xl")}>
-                        <div className={cn(hasPastItineraries ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "")}>
+                    <div className="mx-auto px-6 pb-10 max-w-7xl">
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
                         {/* AI Generation Form */}
-                        <div className={cn(hasPastItineraries ? "lg:col-span-2" : "")}>
+                        <div className="lg:col-span-2">
                         <Card className="glass-card shadow-card animate-spring-up duration-700 relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000 pointer-events-none" />
                             <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-b border-emerald-100/50 dark:border-emerald-900/50 pb-6 relative z-10 transition-colors">
@@ -323,44 +323,61 @@ Make it practical and specific:
                         </Card>
                         </div>
 
-                        {/* Past Itineraries Panel — fills the blank space */}
-                        {hasPastItineraries && (
-                            <div className="lg:col-span-3 animate-in fade-in slide-in-from-right-4 duration-700">
-                                <div className="flex items-center justify-between mb-5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center">
-                                            <FolderOpen className="w-5 h-5 text-secondary" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-bold text-secondary dark:text-white tracking-tight">Your Itineraries</h2>
-                                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{pastItineraries.length} created</p>
-                                        </div>
+                        {/* Past Itineraries Panel — ALWAYS visible regardless of data */}
+                        <div className="lg:col-span-3">
+                            <div className="flex items-center justify-between mb-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                                        <FolderOpen className="w-5 h-5 text-secondary" />
                                     </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-secondary dark:text-white tracking-tight">Your Saved Itineraries</h2>
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
+                                            {isLoadingItineraries ? "Loading…" : hasPastItineraries ? `${pastItineraries.length} created` : "None yet"}
+                                        </p>
+                                    </div>
+                                </div>
+                                {hasPastItineraries && (
                                     <Link href="/trips" className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-widest hover:underline">
                                         View All Trips <ArrowRight className="w-3 h-3" />
                                     </Link>
-                                </div>
-                                <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
-                                    {pastItineraries.map((itinerary: any) => (
-                                        <PastItineraryCard key={itinerary.id} itinerary={itinerary} compact />
-                                    ))}
-                                </div>
+                                )}
                             </div>
-                        )}
 
-                        {!hasPastItineraries && isLoadingItineraries && (
-                            <div className="lg:col-span-3">
-                                <div className="flex items-center gap-3 mb-5">
-                                    <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
-                                    <div className="h-6 w-40 bg-gray-200 dark:bg-slate-800 rounded animate-pulse" />
-                                </div>
+                            {/* Loading skeletons */}
+                            {isLoadingItineraries && (
                                 <div className="space-y-3">
                                     {[1, 2, 3, 4].map((i) => (
                                         <div key={i} className="h-20 w-full bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
                                     ))}
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {/* Empty state — no saved itineraries yet */}
+                            {!isLoadingItineraries && !hasPastItineraries && (
+                                <div className="flex flex-col items-center justify-center py-16 px-6 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-700 text-center bg-white/40 dark:bg-slate-900/20">
+                                    <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
+                                        <FolderOpen className="w-8 h-8 text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-secondary dark:text-white mb-2">No saved itineraries yet</h3>
+                                    <p className="text-sm text-text-muted max-w-xs leading-relaxed">
+                                        Generate a trip using the form and hit <span className="font-bold text-emerald-600">Save Trip</span> — it&apos;ll appear here so you can revisit, share, and send it to clients.
+                                    </p>
+                                    <div className="mt-5 flex items-center gap-2 text-xs text-text-muted">
+                                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-800">✨ Generate → 💾 Save → 👤 Assign Client → 📤 Share</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Itinerary cards */}
+                            {!isLoadingItineraries && hasPastItineraries && (
+                                <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+                                    {pastItineraries.map((itinerary: any) => (
+                                        <PastItineraryCard key={itinerary.id} itinerary={itinerary} compact />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         </div>
                     </div>
                 ) : (

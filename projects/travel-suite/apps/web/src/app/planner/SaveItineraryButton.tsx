@@ -115,7 +115,7 @@ export default function SaveItineraryButton({
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
+                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20 font-bold text-sm animate-pulse-subtle"
             >
                 {saving ? (
                     <>
@@ -124,7 +124,7 @@ export default function SaveItineraryButton({
                     </>
                 ) : (
                     <>
-                        <Save className="w-4 h-4" /> Save Trip
+                        <Save className="w-4 h-4" /> 💾 Save Trip
                     </>
                 )}
             </button>
