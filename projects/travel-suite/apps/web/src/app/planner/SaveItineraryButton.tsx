@@ -38,13 +38,19 @@ export default function SaveItineraryButton({
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
-                // Redirect to login
                 router.push("/auth?next=/planner");
                 return;
             }
 
+            // Get user profile for organization_id
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("organization_id")
+                .eq("id", user.id)
+                .single();
+
             // Save itinerary to database
-            const { data: insertedTrip, error: insertError } = await supabase
+            const { data: insertedItinerary, error: insertError } = await supabase
                 .from("itineraries")
                 .insert({
                     user_id: user.id,
@@ -62,7 +68,26 @@ export default function SaveItineraryButton({
 
             if (insertError) throw insertError;
 
-            // Redirect immediately to the saved trip page where Client Assignment is available
+            // Also create a trip record so it shows up on the Trips page
+            const { data: insertedTrip, error: tripError } = await supabase
+                .from("trips")
+                .insert({
+                    itinerary_id: insertedItinerary.id,
+                    client_id: user.id,
+                    organization_id: profile?.organization_id ?? null,
+                    status: "draft",
+                    destination: itineraryData.destination || destination,
+                })
+                .select("id")
+                .single();
+
+            if (tripError) {
+                console.warn("Trip record creation failed (itinerary saved):", tripError.message);
+                router.push("/planner");
+                return;
+            }
+
+            // Redirect to the trip page
             router.push(`/trips/${insertedTrip.id}`);
 
         } catch (err: unknown) {

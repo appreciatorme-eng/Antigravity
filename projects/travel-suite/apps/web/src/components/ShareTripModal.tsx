@@ -70,6 +70,30 @@ export default function ShareTripModal({
 
                 if (saveErr) throw saveErr;
                 resolvedItineraryId = saved.id as string;
+
+                // Also create a trip record so shared itineraries appear on Trips page
+                if (userId) {
+                    try {
+                        const { data: profile } = await supabase
+                            .from("profiles")
+                            .select("organization_id")
+                            .eq("id", userId)
+                            .single();
+
+                        await supabase
+                            .from("trips")
+                            .insert({
+                                itinerary_id: resolvedItineraryId,
+                                client_id: userId,
+                                organization_id: profile?.organization_id ?? null,
+                                status: "pending",
+                                destination: rawItineraryData.destination,
+                            });
+                    } catch {
+                        // Non-critical: trip creation can fail gracefully
+                        console.warn("Trip record creation failed during share");
+                    }
+                }
             }
 
             // Check if a share link already exists for this itinerary

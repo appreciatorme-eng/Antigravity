@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2, Home } from "lucide-react";
+import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2, Home, FolderOpen, ArrowRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
@@ -23,6 +23,7 @@ import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
+import { cn } from "@/lib/utils";
 
 // Dynamic import for Leaflet (SSR incompatible)
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -200,16 +201,21 @@ Make it practical and specific:
         }
     };
 
+    const hasPastItineraries = pastItineraries && pastItineraries.length > 0;
+
     return (
         <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
             <div className="w-full max-w-full">
-                <div className="max-w-4xl mx-auto px-6 pt-4 pb-4 text-center print:hidden">
+                <div className={cn("mx-auto px-6 pt-4 pb-4 print:hidden", !result ? "max-w-7xl" : "max-w-4xl text-center")}>
                     <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
                     <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
                 </div>
 
                 {!result ? (
-                    <div className="max-w-4xl mx-auto px-6 pb-10">
+                    <div className={cn("mx-auto px-6 pb-10", hasPastItineraries ? "max-w-7xl" : "max-w-4xl")}>
+                        <div className={cn(hasPastItineraries ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "")}>
+                        {/* AI Generation Form */}
+                        <div className={cn(hasPastItineraries ? "lg:col-span-2" : "")}>
                         <Card className="glass-card shadow-card animate-spring-up duration-700 relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000 pointer-events-none" />
                             <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-b border-emerald-100/50 dark:border-emerald-900/50 pb-6 relative z-10 transition-colors">
@@ -315,6 +321,47 @@ Make it practical and specific:
                                 </Button>
                             </CardContent>
                         </Card>
+                        </div>
+
+                        {/* Past Itineraries Panel — fills the blank space */}
+                        {hasPastItineraries && (
+                            <div className="lg:col-span-3 animate-in fade-in slide-in-from-right-4 duration-700">
+                                <div className="flex items-center justify-between mb-5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                                            <FolderOpen className="w-5 h-5 text-secondary" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-secondary dark:text-white tracking-tight">Your Itineraries</h2>
+                                            <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">{pastItineraries.length} created</p>
+                                        </div>
+                                    </div>
+                                    <Link href="/trips" className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-widest hover:underline">
+                                        View All Trips <ArrowRight className="w-3 h-3" />
+                                    </Link>
+                                </div>
+                                <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
+                                    {pastItineraries.map((itinerary: any) => (
+                                        <PastItineraryCard key={itinerary.id} itinerary={itinerary} compact />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {!hasPastItineraries && isLoadingItineraries && (
+                            <div className="lg:col-span-3">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-slate-800 animate-pulse" />
+                                    <div className="h-6 w-40 bg-gray-200 dark:bg-slate-800 rounded animate-pulse" />
+                                </div>
+                                <div className="space-y-3">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <div key={i} className="h-20 w-full bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -583,33 +630,6 @@ Make it practical and specific:
                             )}
                         </div>
                     </>
-                )}
-
-                {!result && pastItineraries && pastItineraries.length > 0 && (
-                    <div className="max-w-4xl mx-auto px-6 pb-20 mt-12 animate-in fade-in duration-700">
-                        <div className="flex items-center gap-3 mb-6">
-                            <h2 className="text-2xl font-serif text-slate-800 dark:text-slate-100">Past Itineraries</h2>
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800">
-                                {pastItineraries.length}
-                            </Badge>
-                        </div>
-                        <div className="grid gap-4">
-                            {pastItineraries.map((itinerary: any) => (
-                                <PastItineraryCard key={itinerary.id} itinerary={itinerary} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {!result && isLoadingItineraries && (
-                    <div className="max-w-4xl mx-auto px-6 pb-20 mt-12">
-                        <div className="h-8 w-48 bg-gray-200 dark:bg-slate-800 rounded animate-pulse mb-6"></div>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-32 w-full bg-gray-100 dark:bg-slate-800/50 rounded-xl animate-pulse"></div>
-                            ))}
-                        </div>
-                    </div>
                 )}
 
                 {error && (
