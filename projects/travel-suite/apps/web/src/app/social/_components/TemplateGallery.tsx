@@ -5,7 +5,7 @@ import { toPng } from "html-to-image";
 import { Download, Instagram, Linkedin, Lock, Search, X, Zap, Smartphone, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
-import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout } from "@/components/social/templates/layouts/LayoutRenderer";
+import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout } from "@/components/social/templates/layouts/LayoutRenderer";
 import { SocialTemplate } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ const RATIO_DIMS: Record<string, { w: number; h: number; label: string }> = {
 };
 
 // TODO: pull from billing context in production
-const USER_TIER = "Starter";
+const USER_TIER = "Enterprise";
 
 interface Props {
     templateData: any;
@@ -98,15 +98,23 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             case "ServiceShowcaseLayout":   return <ServiceShowcaseLayout {...p} />;
             case "HeroServicesLayout":      return <HeroServicesLayout {...p} />;
             case "InfoSplitLayout":         return <InfoSplitLayout {...p} />;
+            case "GradientHeroLayout":      return <GradientHeroLayout {...p} />;
+            case "DiagonalSplitLayout":     return <DiagonalSplitLayout {...p} />;
+            case "MagazineCoverLayout":     return <MagazineCoverLayout {...p} />;
+            case "DuotoneLayout":           return <DuotoneLayout {...p} />;
+            case "BoldTypographyLayout":    return <BoldTypographyLayout {...p} />;
             default:                        return <CenterLayout {...p} />;
         }
     };
 
     const renderBg = (preset: SocialTemplate) => {
-        // New poster layouts carry their own solid backgrounds
-        if (preset.layout === "ServiceShowcaseLayout" ||
-            preset.layout === "HeroServicesLayout" ||
-            preset.layout === "InfoSplitLayout") return "";
+        // Layouts that carry their own solid backgrounds
+        const selfBgLayouts = [
+            "ServiceShowcaseLayout", "HeroServicesLayout", "InfoSplitLayout",
+            "GradientHeroLayout", "DiagonalSplitLayout", "MagazineCoverLayout",
+            "DuotoneLayout", "BoldTypographyLayout",
+        ];
+        if (selfBgLayouts.includes(preset.layout)) return "";
         if (preset.colorScheme === "dark")  return "bg-slate-900 text-white";
         if (preset.colorScheme === "light") return "bg-white text-slate-900";
         return "bg-gradient-to-br from-indigo-500 to-purple-600 text-white";
@@ -227,8 +235,8 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                             {/* OFFSCREEN HIGH-RES RENDER */}
                             <div
                                 id={`export-${preset.id}`}
-                                className={`absolute top-0 left-0 -z-50 overflow-hidden ${renderBg(preset)} flex flex-col relative`}
-                                style={{ width: dims.w, height: dims.h }}
+                                className={`absolute -z-50 overflow-hidden pointer-events-none ${renderBg(preset)} flex flex-col`}
+                                style={{ width: dims.w, height: dims.h, left: -9999, top: 0 }}
                             >
                                 {renderLayout(preset)}
                             </div>
@@ -236,7 +244,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                             {/* VISUAL PREVIEW (scaled CSS) */}
                             <div
                                 className="relative w-full overflow-hidden flex items-start justify-center border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50"
-                                style={{ height: previewH + 4 }}
+                                style={{ height: previewH + 4, maxHeight: previewH + 4 }}
                             >
                                 <div
                                     className={`pointer-events-none origin-top-left overflow-hidden ${renderBg(preset)} flex flex-col relative`}

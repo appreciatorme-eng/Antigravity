@@ -17,7 +17,12 @@ export type LayoutType =
     | "CarouselSlideLayout"
     | "ServiceShowcaseLayout"
     | "HeroServicesLayout"
-    | "InfoSplitLayout";
+    | "InfoSplitLayout"
+    | "GradientHeroLayout"
+    | "DiagonalSplitLayout"
+    | "MagazineCoverLayout"
+    | "DuotoneLayout"
+    | "BoldTypographyLayout";
 
 export type TierLevel = "Starter" | "Pro" | "Business" | "Enterprise";
 

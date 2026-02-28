@@ -15,6 +15,18 @@ export interface BrandPalette {
   gradientBackground: string;
 }
 
+/** Generate CSS gradient strings for poster overlay effects from a brand color. */
+export function generateOverlayGradients(primaryHex: string) {
+  const base = colord(primaryHex);
+  return {
+    bottomFade: `linear-gradient(180deg, transparent 0%, ${base.darken(0.4).alpha(0.9).toRgbString()} 100%)`,
+    diagonalBrand: `linear-gradient(135deg, ${base.alpha(0.85).toRgbString()} 0%, ${base.rotate(30).alpha(0.7).toRgbString()} 100%)`,
+    duotone: `linear-gradient(${base.alpha(0.6).toRgbString()}, ${base.rotate(180).alpha(0.6).toRgbString()})`,
+    radialVignette: `radial-gradient(ellipse at center, transparent 40%, ${base.darken(0.5).alpha(0.8).toRgbString()} 100%)`,
+    tintOverlay: `linear-gradient(180deg, ${base.alpha(0.15).toRgbString()} 0%, ${base.alpha(0.05).toRgbString()} 100%)`,
+  };
+}
+
 export function generateBrandPalette(primaryHex: string, isDark: boolean = false): BrandPalette {
   const base = colord(primaryHex);
   

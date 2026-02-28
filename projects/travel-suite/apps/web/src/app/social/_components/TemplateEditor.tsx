@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
-import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight } from "lucide-react";
+import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight, Wand2, ImageIcon, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateBrandPalette } from "@/lib/social/color-utils";
+import { generateBackgroundPrompt, type AiImageStyle } from "@/lib/social/ai-prompts";
 
 interface Props {
     templateData: any;
@@ -31,8 +32,31 @@ export const TemplateEditor = ({
     orgPrimaryColor,
 }: Props) => {
     const [brandColorEnabled, setBrandColorEnabled] = useState(false);
+    const [heroTab, setHeroTab] = useState<"stock" | "ai" | "upload">("stock");
+    const [aiStyle, setAiStyle] = useState<AiImageStyle>("cinematic");
+    const [aiImages, setAiImages] = useState<{ url: string; provider: string }[]>([]);
+    const [generatingAi, setGeneratingAi] = useState(false);
 
     const palette = orgPrimaryColor ? generateBrandPalette(orgPrimaryColor) : null;
+
+    const handleGenerateAiImages = async () => {
+        setGeneratingAi(true);
+        setAiImages([]);
+        try {
+            const prompt = generateBackgroundPrompt(templateData, aiStyle);
+            const res = await fetch("/api/social/ai-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt, width: 1080, height: 1080, provider: "pollinations", count: 4 }),
+            });
+            const data = await res.json();
+            setAiImages(data.images || []);
+        } catch {
+            setAiImages([]);
+        } finally {
+            setGeneratingAi(false);
+        }
+    };
 
     const toggleBrandColor = () => {
         if (!palette) return;
@@ -55,6 +79,25 @@ export const TemplateEditor = ({
                     </h3>
                     <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Updates all variables across templates instantly</p>
                 </div>
+
+                {/* One-Click Stunning */}
+                <button
+                    onClick={() => {
+                        setHeroTab("ai");
+                        handleGenerateAiImages();
+                    }}
+                    disabled={generatingAi}
+                    className="w-full relative overflow-hidden rounded-xl p-3 bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-700 hover:via-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl group"
+                >
+                    <div className="flex items-center justify-center gap-2 text-white font-bold text-sm">
+                        {generatingAi ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" /> Generating AI Backgrounds...</>
+                        ) : (
+                            <><Sparkles className="w-4 h-4 group-hover:animate-pulse" /> One-Click Stunning Poster</>
+                        )}
+                    </div>
+                    <p className="text-[9px] text-white/60 mt-1 text-center font-medium">Auto-generates cinematic AI backgrounds from your destination</p>
+                </button>
 
                 {/* Brand Color Toggle */}
                 {palette && (
@@ -153,38 +196,132 @@ export const TemplateEditor = ({
                             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded w-max mb-2 block">
                                 Hero / Background Photo
                             </label>
-                            <div className="flex gap-2 mb-3">
-                                <GlassInput
-                                    placeholder="Search Unsplash (e.g. Paris)..."
-                                    value={unsplashQuery}
-                                    onChange={e => setUnsplashQuery(e.target.value)}
-                                    onKeyDown={e => e.key === "Enter" && onSearchUnsplash()}
-                                    className="shadow-sm focus:border-indigo-400 bg-white"
-                                />
-                                <Button onClick={onSearchUnsplash} disabled={!unsplashQuery || searchingUnsplash} className="bg-slate-800 hover:bg-slate-900 text-white shadow-md font-semibold px-5">
-                                    {searchingUnsplash ? "..." : "Search"}
-                                </Button>
+
+                            {/* Tab Switcher */}
+                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 mb-3">
+                                {([
+                                    { id: "stock" as const, label: "Stock Photos", icon: <Camera className="w-3 h-3" /> },
+                                    { id: "ai" as const, label: "AI Generate", icon: <Wand2 className="w-3 h-3" /> },
+                                    { id: "upload" as const, label: "Upload", icon: <Upload className="w-3 h-3" /> },
+                                ]).map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setHeroTab(tab.id)}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                            heroTab === tab.id
+                                                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        }`}
+                                    >
+                                        {tab.icon} {tab.label}
+                                    </button>
+                                ))}
                             </div>
-                            {unsplashResults?.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-inner">
-                                    {unsplashResults.map(img => (
-                                        <div
-                                            key={img.id}
-                                            className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
-                                            onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
-                                        >
-                                            <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
-                                            <div className="absolute inset-0 border-2 border-transparent group-hover:border-indigo-500 rounded-lg pointer-events-none transition-colors" />
+
+                            {/* Stock Photos Tab */}
+                            {heroTab === "stock" && (
+                                <>
+                                    <div className="flex gap-2 mb-3">
+                                        <GlassInput
+                                            placeholder="Search Unsplash (e.g. Paris)..."
+                                            value={unsplashQuery}
+                                            onChange={e => setUnsplashQuery(e.target.value)}
+                                            onKeyDown={e => e.key === "Enter" && onSearchUnsplash()}
+                                            className="shadow-sm focus:border-indigo-400 bg-white"
+                                        />
+                                        <Button onClick={onSearchUnsplash} disabled={!unsplashQuery || searchingUnsplash} className="bg-slate-800 hover:bg-slate-900 text-white shadow-md font-semibold px-5">
+                                            {searchingUnsplash ? "..." : "Search"}
+                                        </Button>
+                                    </div>
+                                    {unsplashResults?.length > 0 && (
+                                        <div className="grid grid-cols-2 gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-inner">
+                                            {unsplashResults.map((img: any) => (
+                                                <div
+                                                    key={img.id}
+                                                    className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
+                                                    onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
+                                                >
+                                                    <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
+                                                    <div className="absolute inset-0 border-2 border-transparent group-hover:border-indigo-500 rounded-lg pointer-events-none transition-colors" />
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                    )}
+                                </>
+                            )}
+
+                            {/* AI Generate Tab */}
+                            {heroTab === "ai" && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] text-slate-500 font-medium">
+                                        AI generates stunning backgrounds from your destination. Powered by Pollinations AI (free).
+                                    </p>
+
+                                    {/* Style selector */}
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {(["cinematic", "vibrant", "luxury", "minimal"] as AiImageStyle[]).map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => setAiStyle(s)}
+                                                className={`px-3 py-1 rounded-full text-[10px] font-bold capitalize transition-all ${
+                                                    aiStyle === s
+                                                        ? "bg-indigo-600 text-white shadow-sm"
+                                                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <Button
+                                        onClick={handleGenerateAiImages}
+                                        disabled={generatingAi}
+                                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold shadow-lg"
+                                    >
+                                        {generatingAi ? (
+                                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Generating...</>
+                                        ) : (
+                                            <><Wand2 className="w-4 h-4 mr-2" /> Generate 4 AI Backgrounds</>
+                                        )}
+                                    </Button>
+
+                                    {aiImages.length > 0 && (
+                                        <div className="grid grid-cols-2 gap-2.5 bg-white p-2.5 rounded-xl border border-indigo-100 shadow-inner">
+                                            {aiImages.map((img, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow bg-slate-100"
+                                                    onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
+                                                >
+                                                    <img
+                                                        src={img.url}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                        alt={`AI generated ${i + 1}`}
+                                                        loading="lazy"
+                                                    />
+                                                    <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-500 rounded-lg pointer-events-none transition-colors" />
+                                                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold backdrop-blur-sm">
+                                                        AI
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                            <div className="relative border border-dashed border-slate-300 dark:border-slate-700/60 rounded-xl overflow-hidden bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 transition-colors group">
-                                <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={e => onImageUpload(e, "hero")} />
-                                <div className="py-3 text-center text-sm font-medium text-slate-500 group-hover:text-indigo-600 transition-colors flex items-center justify-center gap-2">
-                                    <Upload className="w-4 h-4" /> Or upload custom photo
+
+                            {/* Upload Tab */}
+                            {heroTab === "upload" && (
+                                <div className="relative border border-dashed border-slate-300 dark:border-slate-700/60 rounded-xl overflow-hidden bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 transition-colors group">
+                                    <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={e => onImageUpload(e, "hero")} />
+                                    <div className="py-6 text-center text-sm font-medium text-slate-500 group-hover:text-indigo-600 transition-colors flex flex-col items-center justify-center gap-2">
+                                        <ImageIcon className="w-8 h-8 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                                        <span>Click to upload custom photo</span>
+                                        <span className="text-[10px] text-slate-400">PNG, JPG up to 10MB</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
