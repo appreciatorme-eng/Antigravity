@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useClients } from "@/lib/queries/clients";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -16,16 +16,14 @@ import {
     ExternalLink,
     RefreshCcw,
     Edit2,
-    Tag,
     TrendingUp,
-    CheckCircle2,
-    MessageCircle,
     IndianRupee,
     ChevronLeft,
     ChevronRight,
     Plane,
     Sparkles,
     ArrowRight,
+    Languages,
 } from "lucide-react";
 import Link from "next/link";
 import { GlassModal } from "@/components/glass/GlassModal";
@@ -195,6 +193,13 @@ const STAGE_CONFIG: Record<LifecycleStage, {
     },
 };
 
+const LANGUAGES = [
+    "English", "हिंदी (Hindi)", "தமிழ் (Tamil)", "తెలుగు (Telugu)",
+    "ಕನ್ನಡ (Kannada)", "മലയാളം (Malayalam)", "বাংলা (Bengali)",
+    "मराठी (Marathi)", "ગુજરાતી (Gujarati)", "ਪੰਜਾਬੀ (Punjabi)",
+    "ଓଡ଼ିଆ (Odia)", "اردو (Urdu)", "অসমীয়া (Assamese)",
+];
+
 function getInitials(name: string | null) {
     if (!name) return "?";
     return name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
@@ -206,6 +211,11 @@ export default function ClientsPage() {
 
     const { data: rawClients, isLoading: loading, refetch: fetchClients } = useClients();
     const clients: Client[] = rawClients || [];
+
+    // Dual scrollbar refs (top + bottom sync)
+    const kanbanRef = useRef<HTMLDivElement>(null);
+    const topScrollRef = useRef<HTMLDivElement>(null);
+    const isSyncing = useRef(false);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
@@ -234,6 +244,7 @@ export default function ClientsPage() {
         marketingOptIn: false,
         referralSource: "",
         sourceChannel: "",
+        languagePreference: "English",
     });
 
     useEffect(() => {
@@ -304,6 +315,7 @@ export default function ClientsPage() {
             marketingOptIn: false,
             referralSource: "",
             sourceChannel: "",
+            languagePreference: "English",
         });
         setFormError(null);
         setEditingClientId(null);
@@ -330,6 +342,7 @@ export default function ClientsPage() {
             marketingOptIn: client.marketing_opt_in || false,
             referralSource: client.referral_source || "",
             sourceChannel: client.source_channel || "",
+            languagePreference: (client as any).language_preference || "English",
         });
         setModalOpen(true);
     };
@@ -550,8 +563,32 @@ export default function ClientsPage() {
                     </div>
                 </div>
 
-                {/* Kanban Board */}
-                <div className="flex gap-4 overflow-x-auto pb-6" style={{ scrollSnapType: "x mandatory" }}>
+                {/* Kanban Board — with top scrollbar */}
+                {/* Top scrollbar mirror */}
+                <div
+                    ref={topScrollRef}
+                    className="overflow-x-auto overflow-y-hidden h-4 mb-1"
+                    onScroll={(e) => {
+                        if (isSyncing.current) return;
+                        isSyncing.current = true;
+                        if (kanbanRef.current) kanbanRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                        setTimeout(() => { isSyncing.current = false; }, 50);
+                    }}
+                >
+                    {/* spacer matching kanban total width: 8 cols × 280px + 7 gaps × 16px = 2352px */}
+                    <div style={{ width: "2352px", height: "1px" }} />
+                </div>
+                <div
+                    ref={kanbanRef}
+                    className="flex gap-4 overflow-x-auto pb-4"
+                    style={{ scrollSnapType: "x mandatory" }}
+                    onScroll={(e) => {
+                        if (isSyncing.current) return;
+                        isSyncing.current = true;
+                        if (topScrollRef.current) topScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                        setTimeout(() => { isSyncing.current = false; }, 50);
+                    }}
+                >
                     {clientsByStage.map(({ stage, config, clients: stageClients }) => (
                         <div
                             key={stage}
@@ -634,10 +671,10 @@ export default function ClientsPage() {
                                                             </p>
                                                         </div>
 
-                                                        {/* Action buttons — visible on hover */}
-                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                        {/* Action buttons — always visible */}
+                                                        <div className="flex items-center gap-1 shrink-0">
                                                             <button
-                                                                onClick={(e) => { e.preventDefault(); handleEditClient(client); }}
+                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClient(client); }}
                                                                 className="p-1.5 text-text-muted hover:text-primary transition-colors bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-primary/30"
                                                                 title="Edit client"
                                                             >
@@ -645,8 +682,8 @@ export default function ClientsPage() {
                                                             </button>
                                                             <Link
                                                                 href={`/clients/${client.id}`}
-                                                                className="p-1.5 text-text-muted hover:text-primary transition-colors bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-primary/30"
-                                                                title="View profile"
+                                                                className="p-1.5 text-text-muted hover:text-blue-600 transition-colors bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-blue-300"
+                                                                title="View full profile"
                                                             >
                                                                 <ExternalLink className="w-3 h-3" />
                                                             </Link>
@@ -750,6 +787,18 @@ export default function ClientsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1">
+                                <Languages className="w-2.5 h-2.5" /> Language
+                            </label>
+                            <select
+                                value={formData.languagePreference}
+                                onChange={(e) => setFormData(prev => ({ ...prev, languagePreference: e.target.value }))}
+                                className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-secondary dark:text-white focus:border-primary/50 outline-none transition-all shadow-sm"
+                            >
+                                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                            </select>
+                        </div>
+                        <div className="grid gap-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Client Tag</label>
                             <select
                                 value={formData.clientTag}
@@ -760,20 +809,23 @@ export default function ClientsPage() {
                                 <option value="vip">⭐ VIP</option>
                                 <option value="repeat">🔄 Repeat</option>
                                 <option value="corporate">🏢 Corporate</option>
+                                <option value="family">👨‍👩‍👧 Family</option>
+                                <option value="honeymoon">💑 Honeymoon</option>
+                                <option value="high_priority">🔥 High Priority</option>
                             </select>
                         </div>
-                        <div className="grid gap-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Pipeline Stage</label>
-                            <select
-                                value={formData.lifecycleStage}
-                                onChange={(e) => setFormData(prev => ({ ...prev, lifecycleStage: e.target.value }))}
-                                className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-secondary dark:text-white focus:border-primary/50 outline-none transition-all shadow-sm"
-                            >
-                                {LIFECYCLE_STAGES.map(s => (
-                                    <option key={s} value={s}>{STAGE_CONFIG[s].emoji} {STAGE_CONFIG[s].label}</option>
-                                ))}
-                            </select>
-                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">Pipeline Stage</label>
+                        <select
+                            value={formData.lifecycleStage}
+                            onChange={(e) => setFormData(prev => ({ ...prev, lifecycleStage: e.target.value }))}
+                            className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-medium text-secondary dark:text-white focus:border-primary/50 outline-none transition-all shadow-sm"
+                        >
+                            {LIFECYCLE_STAGES.map(s => (
+                                <option key={s} value={s}>{STAGE_CONFIG[s].emoji} {STAGE_CONFIG[s].label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="pt-4 border-t border-gray-100 dark:border-slate-800">

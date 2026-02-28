@@ -419,6 +419,7 @@ export async function PATCH(req: Request) {
         const referralSource = typeof body.referralSource === "string" ? body.referralSource.trim() : undefined;
         const sourceChannel = typeof body.sourceChannel === "string" ? body.sourceChannel.trim() : undefined;
         const leadStatus = typeof body.leadStatus === "string" ? body.leadStatus.trim() : undefined;
+        const languagePreference = typeof body.languagePreference === "string" ? body.languagePreference.trim() : undefined;
 
         if (!profileId) {
             return NextResponse.json({ error: "Profile id is required" }, { status: 400 });
@@ -430,7 +431,7 @@ export async function PATCH(req: Request) {
             travelersCount !== undefined || budgetMin !== undefined || budgetMax !== undefined ||
             travelStyle !== undefined || interests !== undefined || homeAirport !== undefined ||
             notes !== undefined || marketingOptIn !== undefined || referralSource !== undefined ||
-            sourceChannel !== undefined || leadStatus !== undefined;
+            sourceChannel !== undefined || leadStatus !== undefined || languagePreference !== undefined;
 
         if (!hasUpdates) {
             return NextResponse.json({ error: "No fields to update provided" }, { status: 400 });
@@ -510,6 +511,7 @@ export async function PATCH(req: Request) {
         if (referralSource !== undefined) updates.referral_source = referralSource;
         if (sourceChannel !== undefined) updates.source_channel = sourceChannel;
         if (leadStatus !== undefined) updates.lead_status = leadStatus;
+        if (languagePreference !== undefined) updates.language_preference = languagePreference;
 
         const { error } = await supabaseAdmin
             .from("profiles")
