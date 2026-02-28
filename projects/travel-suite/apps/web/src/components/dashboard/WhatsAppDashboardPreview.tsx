@@ -230,9 +230,9 @@ export function WhatsAppDashboardPreview({
   unreadCount = 3,
 }: WhatsAppDashboardPreviewProps) {
   return (
-    <div className="space-y-4 h-full">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between px-1 shrink-0">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
             WhatsApp
@@ -252,7 +252,7 @@ export function WhatsAppDashboardPreview({
       </div>
 
       {/* Card */}
-      <GlassCard padding="none" className="overflow-hidden h-[calc(100%-2.5rem)]">
+      <GlassCard padding="none" className="overflow-hidden flex-1">
         {loading ? (
           <div className="divide-y divide-white/5">
             {Array.from({ length: 3 }).map((_, i) => (

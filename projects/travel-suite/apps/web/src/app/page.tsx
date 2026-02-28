@@ -12,7 +12,6 @@ import {
   Users,
   Plus,
   Zap,
-  ArrowUpRight,
   Activity,
   Eye,
   EyeOff,
@@ -124,7 +123,6 @@ export default function DashboardPage() {
 
   // Today's estimated revenue from active trips (mock: ₹1,85,000)
   const todayRevenue = 185000;
-  const weeklyRevenue = 1240000; // ₹12,40,000
 
   const kpiItems = [
     {
@@ -241,15 +239,15 @@ export default function DashboardPage() {
 
       {/* ── SECTION 2: Today's Timeline (60%) + WhatsApp Preview (40%) ──── */}
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-5 gap-6"
+        className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.1 }}
       >
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 flex flex-col">
           <TodaysTimeline loading={loading} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col">
           <WhatsAppDashboardPreview
             loading={loading}
             unreadCount={stats.pendingNotifications || 3}
@@ -291,10 +289,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Financial Trajectory
+                  Your Business Growth
                 </h3>
                 <p className="text-sm text-slate-500 font-medium">
-                  Revenue in ₹ (INR), bookings, and conversion trend.
+                  Track your earnings and bookings over time
                 </p>
               </div>
 
@@ -382,10 +380,6 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="mt-4 text-[11px] text-text-muted font-semibold uppercase tracking-wider">
-            Tip: click a chart point to drill through records for that month. All amounts in ₹ INR.
-          </div>
-
           {metricDrivers.length > 0 && (
             <div className="mt-4 grid gap-2 md:grid-cols-3">
               {metricDrivers.map((driver) => (
@@ -422,73 +416,13 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ── SECTION 5: Activity Feed + Upgrade Card ──────────────────────── */}
+      {/* ── SECTION 5: Activity Feed ──────────────────────── */}
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.28 }}
       >
-        <div className="lg:col-span-2">
-          <ActivityFeed activities={activities} loading={loading} />
-        </div>
-
-        <div className="space-y-6">
-          {/* Weekly revenue summary */}
-          <GlassCard padding="lg">
-            <div className="flex items-center gap-2 mb-3">
-              <IndianRupee className="w-4 h-4 text-primary" />
-              <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">
-                This Week
-              </h4>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">Total Revenue</span>
-                <span className="text-sm font-black text-slate-900 dark:text-white">
-                  ₹12,40,000
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">Trips Completed</span>
-                <span className="text-sm font-black text-emerald-500">14</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">New Leads</span>
-                <span className="text-sm font-black text-blue-500">7</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">Conversion Rate</span>
-                <span className="text-sm font-black text-amber-500">
-                  {stats.conversionRate || "68"}%
-                </span>
-              </div>
-            </div>
-            <Link
-              href="/analytics/drill-through"
-              className="mt-4 flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-            >
-              Full Analytics <ArrowUpRight className="w-3 h-3" />
-            </Link>
-          </GlassCard>
-
-          {/* Upgrade card */}
-          <GlassCard padding="none" className="overflow-hidden group">
-            <div className="p-6 bg-gradient-to-br from-primary to-emerald-600">
-              <h4 className="text-white font-black text-lg mb-2">Upgrade Plan</h4>
-              <p className="text-white/80 text-xs font-medium leading-relaxed">
-                Unlock advanced analytics, team collaboration, and automated WhatsApp reporting.
-              </p>
-            </div>
-            <Link
-              href="/admin/billing"
-              className="flex items-center justify-center gap-2 w-full text-center py-3 text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            >
-              View Plans
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </GlassCard>
-        </div>
+        <ActivityFeed activities={activities} loading={loading} />
       </motion.div>
     </div>
   );

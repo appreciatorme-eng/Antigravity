@@ -316,9 +316,9 @@ export function TodaysTimeline({ loading = false }: TodaysTimelineProps) {
   const alertCount = TODAY_EVENTS.filter((e) => e.status === "alert").length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-1">
+      <div className="flex items-center justify-between px-1 shrink-0">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
             Today's Schedule
@@ -344,7 +344,7 @@ export function TodaysTimeline({ loading = false }: TodaysTimelineProps) {
       </div>
 
       {/* Timeline Card */}
-      <GlassCard padding="none" className="overflow-hidden">
+      <GlassCard padding="none" className="overflow-hidden flex-1">
         {loading ? (
           <div className="flex gap-3 p-4 overflow-x-auto scrollbar-thin">
             {Array.from({ length: 4 }).map((_, i) => (

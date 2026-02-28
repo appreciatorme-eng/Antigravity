@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,11 @@ import {
   ShieldCheck,
   ChevronRight,
   PartyPopper,
+  User,
+  Send,
+  Loader2,
+  Check,
+  Phone,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
@@ -28,6 +33,8 @@ type ActionType =
   | "pickup_today"
   | "verification_pending";
 
+type InlineAction = "assign_driver" | "send_reminder" | "none";
+
 interface ActionItem {
   id: string;
   priority: Priority;
@@ -37,7 +44,16 @@ interface ActionItem {
   actionLabel: string;
   actionHref: string;
   timestamp?: string;
+  inlineAction?: InlineAction;
 }
+
+// Available drivers for quick assignment
+const AVAILABLE_DRIVERS = [
+  { id: "d1", name: "Raju Singh", phone: "+91 98765 43210", vehicle: "Innova Crysta", trips: 2 },
+  { id: "d2", name: "Deepak Verma", phone: "+91 98987 65432", vehicle: "Tempo Traveller", trips: 1 },
+  { id: "d3", name: "Amit Sharma", phone: "+91 97567 81234", vehicle: "Ertiga", trips: 0 },
+  { id: "d4", name: "Venkat Rao", phone: "+91 97456 23189", vehicle: "Innova", trips: 1 },
+];
 
 const INITIAL_ACTIONS: ActionItem[] = [
   {
@@ -49,6 +65,7 @@ const INITIAL_ACTIONS: ActionItem[] = [
     actionLabel: "Assign Now",
     actionHref: "/drivers",
     timestamp: "Trips depart 26 Feb",
+    inlineAction: "assign_driver",
   },
   {
     id: "2",
@@ -58,6 +75,7 @@ const INITIAL_ACTIONS: ActionItem[] = [
     actionLabel: "Send Reminder",
     actionHref: "/admin/billing",
     timestamp: "Overdue by 5 days",
+    inlineAction: "send_reminder",
   },
   {
     id: "3",
@@ -168,6 +186,11 @@ interface ActionQueueProps {
 
 export function ActionQueue({ loading = false }: ActionQueueProps) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [expandedAction, setExpandedAction] = useState<string | null>(null);
+  const [assigningDriver, setAssigningDriver] = useState<string | null>(null);
+  const [assignedDrivers, setAssignedDrivers] = useState<Record<string, string>>({});
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [reminderSent, setReminderSent] = useState<Set<string>>(new Set());
 
   const visible = INITIAL_ACTIONS.filter((a) => !dismissed.has(a.id));
   const highCount = visible.filter((a) => a.priority === "high").length;
@@ -175,6 +198,35 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
   const handleMarkDone = (id: string) => {
     setDismissed((prev) => new Set([...prev, id]));
   };
+
+  const handleInlineAction = useCallback((item: ActionItem) => {
+    if (!item.inlineAction || item.inlineAction === "none") return;
+    setExpandedAction((prev) => (prev === item.id ? null : item.id));
+  }, []);
+
+  const handleAssignDriver = useCallback((actionId: string, driverId: string, driverName: string) => {
+    setAssigningDriver(driverId);
+    // Simulate assignment
+    setTimeout(() => {
+      setAssignedDrivers((prev) => ({ ...prev, [actionId]: driverName }));
+      setAssigningDriver(null);
+      setExpandedAction(null);
+      // Auto-dismiss after short delay
+      setTimeout(() => handleMarkDone(actionId), 1500);
+    }, 800);
+  }, []);
+
+  const handleSendReminder = useCallback((actionId: string) => {
+    setSendingReminder(true);
+    // Simulate sending WhatsApp reminder
+    setTimeout(() => {
+      setSendingReminder(false);
+      setReminderSent((prev) => new Set([...prev, actionId]));
+      setExpandedAction(null);
+      // Auto-dismiss after short delay
+      setTimeout(() => handleMarkDone(actionId), 1500);
+    }, 1200);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -231,6 +283,10 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                   const config = PRIORITY_CONFIG[item.priority];
                   const PriorityIcon = config.icon;
                   const TypeIcon = TYPE_ICONS[item.type];
+                  const isExpanded = expandedAction === item.id;
+                  const isAssigned = !!assignedDrivers[item.id];
+                  const isReminderSent = reminderSent.has(item.id);
+                  const hasInlineAction = item.inlineAction && item.inlineAction !== "none";
 
                   return (
                     <motion.div
@@ -247,75 +303,217 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                     >
                       <div
                         className={cn(
-                          "flex items-start gap-3 p-4 rounded-xl border-l-4 transition-all",
+                          "rounded-xl border-l-4 transition-all overflow-hidden",
                           config.border,
                           config.bg,
                           "border border-white/5 hover:border-white/10"
                         )}
                       >
-                        {/* Type Icon */}
-                        <div
-                          className={cn(
-                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
-                            config.badge
-                          )}
-                        >
-                          <TypeIcon className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <PriorityIcon
-                              className={cn("w-3.5 h-3.5 shrink-0", config.iconColor)}
-                            />
-                            <span
-                              className={cn(
-                                "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full",
-                                config.badge
-                              )}
-                            >
-                              {PRIORITY_LABELS[item.priority]}
-                            </span>
-                            {item.timestamp && (
-                              <span className="text-[10px] text-slate-400 font-medium truncate">
-                                {item.timestamp}
-                              </span>
+                        <div className="flex items-start gap-3 p-4">
+                          {/* Type Icon */}
+                          <div
+                            className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                              config.badge
                             )}
+                          >
+                            <TypeIcon className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
                           </div>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">
-                            {item.description}
-                          </p>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <PriorityIcon
+                                className={cn("w-3.5 h-3.5 shrink-0", config.iconColor)}
+                              />
+                              <span
+                                className={cn(
+                                  "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full",
+                                  config.badge
+                                )}
+                              >
+                                {PRIORITY_LABELS[item.priority]}
+                              </span>
+                              {item.timestamp && (
+                                <span className="text-[10px] text-slate-400 font-medium truncate">
+                                  {item.timestamp}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">
+                              {item.description}
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isAssigned ? (
+                              <span className="flex items-center gap-1.5 text-[11px] font-black text-emerald-500 px-3 py-1.5">
+                                <Check className="w-3.5 h-3.5" />
+                                {assignedDrivers[item.id]} assigned
+                              </span>
+                            ) : isReminderSent ? (
+                              <span className="flex items-center gap-1.5 text-[11px] font-black text-emerald-500 px-3 py-1.5">
+                                <Check className="w-3.5 h-3.5" />
+                                Reminder sent via WhatsApp
+                              </span>
+                            ) : hasInlineAction ? (
+                              <motion.button
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => handleInlineAction(item)}
+                                className={cn(
+                                  "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
+                                  item.priority === "high"
+                                    ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
+                                    : item.priority === "medium"
+                                    ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
+                                    : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30"
+                                )}
+                              >
+                                {item.actionLabel}
+                              </motion.button>
+                            ) : (
+                              <Link href={item.actionHref}>
+                                <motion.button
+                                  whileHover={{ scale: 1.04 }}
+                                  whileTap={{ scale: 0.97 }}
+                                  className={cn(
+                                    "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
+                                    item.priority === "high"
+                                      ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
+                                      : item.priority === "medium"
+                                      ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
+                                      : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30"
+                                  )}
+                                >
+                                  {item.actionLabel}
+                                </motion.button>
+                              </Link>
+                            )}
+                            <motion.button
+                              whileHover={{ scale: 1.08 }}
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => handleMarkDone(item.id)}
+                              title="Mark as done"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </motion.button>
+                          </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Link href={item.actionHref}>
-                            <motion.button
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.97 }}
-                              className={cn(
-                                "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
-                                item.priority === "high"
-                                  ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
-                                  : item.priority === "medium"
-                                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
-                                  : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30"
-                              )}
+                        {/* Inline: Assign Driver Panel */}
+                        <AnimatePresence>
+                          {isExpanded && item.inlineAction === "assign_driver" && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25, ease: "easeOut" }}
+                              className="overflow-hidden"
                             >
-                              {item.actionLabel}
-                            </motion.button>
-                          </Link>
-                          <motion.button
-                            whileHover={{ scale: 1.08 }}
-                            whileTap={{ scale: 0.94 }}
-                            onClick={() => handleMarkDone(item.id)}
-                            title="Mark as done"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </motion.button>
-                        </div>
+                              <div className="px-4 pb-4 pt-1 border-t border-white/5">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+                                  Pick a driver to assign
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {AVAILABLE_DRIVERS.map((driver) => (
+                                    <motion.button
+                                      key={driver.id}
+                                      whileHover={{ scale: 1.01 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      disabled={assigningDriver !== null}
+                                      onClick={() => handleAssignDriver(item.id, driver.id, driver.name)}
+                                      className={cn(
+                                        "flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                                        assigningDriver === driver.id
+                                          ? "border-primary/40 bg-primary/5"
+                                          : "border-white/10 bg-white/3 hover:border-primary/30 hover:bg-primary/5"
+                                      )}
+                                    >
+                                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                        {assigningDriver === driver.id ? (
+                                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                                        ) : (
+                                          <User className="w-4 h-4 text-primary" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                                          {driver.name}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500">
+                                          {driver.vehicle} · {driver.trips === 0 ? "Free today" : `${driver.trips} trip${driver.trips > 1 ? "s" : ""} today`}
+                                        </p>
+                                      </div>
+                                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                                    </motion.button>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Inline: Send Reminder Panel */}
+                        <AnimatePresence>
+                          {isExpanded && item.inlineAction === "send_reminder" && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25, ease: "easeOut" }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-4 pb-4 pt-1 border-t border-white/5">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+                                  Send payment reminder
+                                </p>
+                                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/3 mb-3">
+                                  <div className="w-8 h-8 rounded-lg bg-[#25D366]/10 flex items-center justify-center shrink-0">
+                                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 dark:text-white">WhatsApp to Sharma Family</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                      "Namaste! Gentle reminder — ₹45,000 pending for your Rajasthan trip. Pay via UPI/bank transfer. Thank you!"
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    disabled={sendingReminder}
+                                    onClick={() => handleSendReminder(item.id)}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30 disabled:opacity-60"
+                                  >
+                                    {sendingReminder ? (
+                                      <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        Sending...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Send className="w-3.5 h-3.5" />
+                                        Send via WhatsApp
+                                      </>
+                                    )}
+                                  </motion.button>
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setExpandedAction(null)}
+                                    className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+                                  >
+                                    Cancel
+                                  </motion.button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </motion.div>
                   );

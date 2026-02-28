@@ -105,27 +105,27 @@ export function buildMoMDriverCallouts(series: MoMInputPoint[]): DriverCallout[]
 
   const callouts: DriverCallout[] = [
     {
-      title: `Revenue ${revenueDelta >= 0 ? "up" : "down"} ${Math.abs(revenueDelta).toFixed(1)}% MoM`,
+      title: `Revenue ${revenueDelta >= 0 ? "up" : "down"} ${Math.abs(revenueDelta).toFixed(1)}%`,
       detail:
         revenueDelta >= 0
-          ? "Primary driver: higher paid-invoice throughput and better close velocity."
-          : "Primary driver: fewer paid invoices converted this month.",
+          ? "More payments collected this month — great job closing deals!"
+          : "Fewer payments came in this month. Follow up on pending invoices.",
       direction: directionFromDelta(revenueDelta),
     },
     {
-      title: `Bookings ${bookingDelta >= 0 ? "up" : "down"} ${Math.abs(bookingDelta).toFixed(1)}% MoM`,
+      title: `Bookings ${bookingDelta >= 0 ? "up" : "down"} ${Math.abs(bookingDelta).toFixed(1)}%`,
       detail:
         bookingDelta >= 0
-          ? "Primary driver: stronger proposal-to-trip conversion in active cohorts."
-          : "Primary driver: slower trip confirmations from open proposals.",
+          ? "More trips confirmed! Your quotes are converting well."
+          : "Fewer trips booked. Try following up on open quotes sooner.",
       direction: directionFromDelta(bookingDelta),
     },
     {
-      title: `Conversion ${conversionDelta >= 0 ? "up" : "down"} ${Math.abs(conversionDelta).toFixed(1)}% MoM`,
+      title: `Conversion ${conversionDelta >= 0 ? "up" : "down"} ${Math.abs(conversionDelta).toFixed(1)}%`,
       detail:
         conversionDelta >= 0
-          ? "Primary driver: faster follow-up cadence on viewed proposals."
-          : "Primary driver: proposal ageing and delayed client response windows.",
+          ? "More enquiries turning into bookings — keep it up!"
+          : "Enquiries are taking longer to convert. Quick follow-ups can help.",
       direction: directionFromDelta(conversionDelta),
     },
   ];
