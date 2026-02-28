@@ -34,14 +34,16 @@ export const TemplateEditor = ({
     const [brandColorEnabled, setBrandColorEnabled] = useState(false);
     const [heroTab, setHeroTab] = useState<"stock" | "ai" | "upload">("stock");
     const [aiStyle, setAiStyle] = useState<AiImageStyle>("cinematic");
-    const [aiImages, setAiImages] = useState<{ url: string; provider: string }[]>([]);
+    const [aiImages, setAiImages] = useState<{ url: string; fullUrl: string; provider: string }[]>([]);
     const [generatingAi, setGeneratingAi] = useState(false);
+    const [aiImageStates, setAiImageStates] = useState<Record<number, "loading" | "loaded" | "error">>({});
 
     const palette = orgPrimaryColor ? generateBrandPalette(orgPrimaryColor) : null;
 
     const handleGenerateAiImages = async () => {
         setGeneratingAi(true);
         setAiImages([]);
+        setAiImageStates({});
         try {
             const prompt = generateBackgroundPrompt(templateData, aiStyle);
             const res = await fetch("/api/social/ai-image", {
@@ -50,7 +52,12 @@ export const TemplateEditor = ({
                 body: JSON.stringify({ prompt, width: 1080, height: 1080, provider: "pollinations", count: 4 }),
             });
             const data = await res.json();
-            setAiImages(data.images || []);
+            const imgs = data.images || [];
+            setAiImages(imgs);
+            // Initialize all images as loading
+            const states: Record<number, "loading" | "loaded" | "error"> = {};
+            imgs.forEach((_: unknown, i: number) => { states[i] = "loading"; });
+            setAiImageStates(states);
         } catch {
             setAiImages([]);
         } finally {
@@ -288,24 +295,61 @@ export const TemplateEditor = ({
 
                                     {aiImages.length > 0 && (
                                         <div className="grid grid-cols-2 gap-2.5 bg-white p-2.5 rounded-xl border border-indigo-100 shadow-inner">
-                                            {aiImages.map((img, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow bg-slate-100"
-                                                    onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
-                                                >
-                                                    <img
-                                                        src={img.url}
-                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                        alt={`AI generated ${i + 1}`}
-                                                        loading="lazy"
-                                                    />
-                                                    <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-500 rounded-lg pointer-events-none transition-colors" />
-                                                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold backdrop-blur-sm">
-                                                        AI
+                                            {aiImages.map((img, i) => {
+                                                const imgState = aiImageStates[i] || "loading";
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow bg-slate-100"
+                                                        onClick={() => {
+                                                            if (imgState === "loaded") {
+                                                                setTemplateData({ ...templateData, heroImage: img.fullUrl || img.url });
+                                                            }
+                                                        }}
+                                                    >
+                                                        {/* Loading shimmer */}
+                                                        {imgState === "loading" && (
+                                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 z-10">
+                                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_1.5s_infinite] -translate-x-full" style={{ animation: "shimmer 1.5s infinite" }} />
+                                                                <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                                                                <span className="text-[9px] text-slate-400 font-medium">Generating...</span>
+                                                            </div>
+                                                        )}
+                                                        {/* Error state */}
+                                                        {imgState === "error" && (
+                                                            <div
+                                                                className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-slate-50 dark:bg-slate-800 z-10 cursor-pointer"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Retry by resetting state and changing seed
+                                                                    const seed = Date.now() + i * 1000;
+                                                                    const retryUrl = img.url.replace(/seed=\d+/, `seed=${seed}`);
+                                                                    setAiImages(prev => prev.map((im, idx) => idx === i ? { ...im, url: retryUrl } : im));
+                                                                    setAiImageStates(prev => ({ ...prev, [i]: "loading" }));
+                                                                }}
+                                                            >
+                                                                <ImageIcon className="w-5 h-5 text-slate-300" />
+                                                                <span className="text-[9px] text-slate-400 font-bold">Tap to retry</span>
+                                                            </div>
+                                                        )}
+                                                        <img
+                                                            src={img.url}
+                                                            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgState !== "loaded" ? "opacity-0" : "opacity-100"}`}
+                                                            alt={`AI generated ${i + 1}`}
+                                                            onLoad={() => setAiImageStates(prev => ({ ...prev, [i]: "loaded" }))}
+                                                            onError={() => setAiImageStates(prev => ({ ...prev, [i]: "error" }))}
+                                                        />
+                                                        {imgState === "loaded" && (
+                                                            <>
+                                                                <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-500 rounded-lg pointer-events-none transition-colors" />
+                                                                <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold backdrop-blur-sm">
+                                                                    AI
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
