@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Save, Check } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Save, Check, ExternalLink, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { itinerariesKeys } from "@/lib/queries/itineraries";
+import Link from "next/link";
 import type { ItineraryResult } from "@/types/itinerary";
 
 interface SaveItineraryButtonProps {
@@ -23,10 +25,11 @@ export default function SaveItineraryButton({
     interests,
     templateId = "safari_story",
 }: SaveItineraryButtonProps) {
-    const router = useRouter();
+    const queryClient = useQueryClient();
     const supabase = createClient();
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [savedTripId, setSavedTripId] = useState<string | null>(null);
     const [error, setError] = useState("");
 
     const handleSave = async () => {
@@ -38,7 +41,7 @@ export default function SaveItineraryButton({
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
-                router.push("/auth?next=/planner");
+                window.location.href = "/auth?next=/planner";
                 return;
             }
 
@@ -83,12 +86,23 @@ export default function SaveItineraryButton({
 
             if (tripError) {
                 console.warn("Trip record creation failed (itinerary saved):", tripError.message);
-                router.push("/planner");
+                // Itinerary still saved — show success and refresh list
+                setSaved(true);
+                queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
                 return;
             }
 
-            // Redirect to the trip page
-            router.push(`/trips/${insertedTrip.id}`);
+            // Stay on page, refresh itinerary list, show success
+            setSaved(true);
+            setSavedTripId(insertedTrip.id);
+            // Invalidate the query so the saved list re-fetches and shows this new itinerary
+            queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
+
+            // Smooth scroll to the saved section
+            setTimeout(() => {
+                const el = document.getElementById("saved-itineraries-section");
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 400);
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to save";
@@ -101,12 +115,19 @@ export default function SaveItineraryButton({
 
     if (saved) {
         return (
-            <button
-                disabled
-                className="px-4 py-2 bg-green-100 text-green-700 rounded-lg flex items-center gap-2 border border-green-200"
-            >
-                <Check className="w-4 h-4" /> Saved!
-            </button>
+            <div className="flex items-center gap-2">
+                <span className="flex items-center gap-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800 font-bold text-sm">
+                    <Check className="w-4 h-4" /> Saved! ↓ Scroll down
+                </span>
+                {savedTripId && (
+                    <Link
+                        href={`/trips/${savedTripId}`}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
+                    >
+                        View Trip <ExternalLink className="w-3 h-3" />
+                    </Link>
+                )}
+            </div>
         );
     }
 
@@ -115,16 +136,16 @@ export default function SaveItineraryButton({
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20 font-bold text-sm animate-pulse-subtle"
+                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20 font-bold text-sm"
             >
                 {saving ? (
                     <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         Saving...
                     </>
                 ) : (
                     <>
-                        <Save className="w-4 h-4" /> 💾 Save Trip
+                        <Save className="w-4 h-4" /> Save Trip
                     </>
                 )}
             </button>

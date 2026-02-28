@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPin, Calendar, Wallet, Sparkles, Plane, ChevronDown, Cloud, Share2, Home, FolderOpen, ArrowRight } from "lucide-react";
+import {
+    Loader2, MapPin, Calendar, Wallet, Sparkles, Plane,
+    ChevronDown, Cloud, Share2, FolderOpen, ArrowRight,
+    Zap, BookOpen, Users, Star, BadgeCheck
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
@@ -10,10 +14,8 @@ import ShareTripModal from "@/components/ShareTripModal";
 import WeatherWidget from "@/components/WeatherWidget";
 import CurrencyConverter from "@/components/CurrencyConverter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 import ItineraryBuilder from "@/components/ItineraryBuilder";
@@ -32,21 +34,30 @@ const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
 });
 
 const BUDGET_OPTIONS = [
-    { value: "Budget-Friendly", label: "💰 Budget-Friendly" },
-    { value: "Moderate", label: "⚖️ Moderate" },
-    { value: "Luxury", label: "💎 Luxury" },
-    { value: "Ultra-High End", label: "👑 Ultra-High End" },
+    { value: "Budget-Friendly", label: "💰 Budget", desc: "Hostels, local food" },
+    { value: "Moderate", label: "⚖️ Moderate", desc: "3-star, mixed dining" },
+    { value: "Luxury", label: "💎 Luxury", desc: "5-star, fine dining" },
+    { value: "Ultra-High End", label: "👑 Ultra", desc: "Palace hotels, VIP" },
 ];
 
 const INTEREST_OPTIONS = [
-    '🎨 Art & Culture', '🍽️ Food & Dining', '🏞️ Nature',
-    '🛍️ Shopping', '🏰 History', '👨‍👩‍👧‍👦 Family'
+    '🎨 Art & Culture', '🍽️ Food & Dining', '🏞️ Nature & Scenery',
+    '🛍️ Shopping', '🏰 History & Heritage', '👨‍👩‍👧‍👦 Family-Friendly',
+    '🐯 Wildlife & Safari', '🙏 Pilgrimage & Temples', '🏖️ Beach & Islands',
+    '🏔️ Adventure & Trekking', '🧘 Yoga & Wellness', '💼 Business & MICE',
+];
+
+const HOW_IT_WORKS = [
+    { icon: "✍️", step: "1", label: "Describe the trip", desc: "Enter destination, duration & budget" },
+    { icon: "⚡", step: "2", label: "AI generates plan", desc: "Full day-by-day itinerary in ~15 sec" },
+    { icon: "✏️", step: "3", label: "Review & personalise", desc: "Edit activities, add pricing & logistics" },
+    { icon: "📤", step: "4", label: "Save & share", desc: "Assign to client, send shareable link" },
 ];
 
 export default function PlannerPage() {
     const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
-    const [days, setDays] = useState(3);
+    const [days, setDays] = useState(5);
     const [budget, setBudget] = useState("Moderate");
     const [interests, setInterests] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -58,7 +69,7 @@ export default function PlannerPage() {
     const [activeTab, setActiveTab] = useState<PlannerTab>('itinerary');
 
     const [images, setImages] = useState<Record<string, string | null>>({});
-    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])); // All days expanded by default
+    const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
     const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
 
@@ -109,12 +120,8 @@ export default function PlannerPage() {
                 const job = jobs[i++];
                 try {
                     let found: string | null = null;
-
-                    // Try each query candidate
                     for (const q of job.candidates) {
                         if (found) break;
-
-                        // Try each image source until we find an image
                         for (const source of IMAGE_SOURCES) {
                             try {
                                 const resp = await fetch(`${source.endpoint}?query=${encodeURIComponent(q)}`);
@@ -128,7 +135,6 @@ export default function PlannerPage() {
                             }
                         }
                     }
-
                     imageMap[job.key] = found;
                 } catch (err) {
                     console.error("Failed to load image for", job.key, err);
@@ -204,186 +210,225 @@ Make it practical and specific:
     const hasPastItineraries = pastItineraries && pastItineraries.length > 0;
 
     return (
-        <main className="min-h-screen bg-background text-foreground bg-gradient-to-br from-emerald-50 via-white to-sky-50 pb-20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
-            <div className="w-full max-w-full">
-                <div className={cn("mx-auto px-6 pt-4 pb-4 print:hidden", !result ? "max-w-7xl" : "max-w-4xl text-center")}>
-                    <h1 className="text-4xl md:text-5xl font-serif text-secondary mb-3 tracking-tight">GoBuddy Planner</h1>
-                    <p className="text-gray-500 dark:text-slate-300 text-lg font-light">Design your perfect trip with the power of AI</p>
-                </div>
+        <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 pb-24">
 
-                {!result ? (
-                    <div className="mx-auto px-6 pb-10 max-w-7xl">
-                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-                        {/* AI Generation Form */}
-                        <div className="lg:col-span-2">
-                        <Card className="glass-card shadow-card animate-spring-up duration-700 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-1000 pointer-events-none" />
-                            <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-b border-emerald-100/50 dark:border-emerald-900/50 pb-6 relative z-10 transition-colors">
-                                <CardTitle className="text-2xl flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl dark:bg-emerald-900/50 dark:text-emerald-400">
-                                        <Sparkles className="w-5 h-5" />
+            {/* ═══ HERO — shown only when no result ═══ */}
+            {!result && (
+                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 dark:from-emerald-950 dark:via-emerald-900 dark:to-teal-900">
+                    {/* Subtle dot grid overlay */}
+                    <div
+                        className="absolute inset-0 opacity-[0.07]"
+                        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }}
+                    />
+                    {/* Glowing orb */}
+                    <div className="absolute -top-32 -right-32 w-96 h-96 bg-teal-400/20 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-emerald-300/10 rounded-full blur-2xl" />
+
+                    <div className="relative max-w-4xl mx-auto px-6 py-14 text-center">
+                        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 text-xs font-bold text-white/90 tracking-widest uppercase mb-6">
+                            <Sparkles className="w-3.5 h-3.5" /> AI-Powered Trip Planner
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-serif text-white mb-4 leading-tight tracking-tight">
+                            Create stunning itineraries<br className="hidden md:block" /> your clients will love
+                        </h1>
+                        <p className="text-emerald-100 text-lg font-light max-w-2xl mx-auto mb-10 leading-relaxed">
+                            Type a destination, let AI draft a complete day-by-day plan, then personalise, save, and share it with your client — all in under a minute.
+                        </p>
+
+                        {/* 4-step workflow */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
+                            {HOW_IT_WORKS.map((s, i) => (
+                                <div key={s.step} className="relative flex flex-col items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-4 text-left">
+                                    <div className="text-2xl">{s.icon}</div>
+                                    <div className="w-full">
+                                        <div className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-0.5">Step {s.step}</div>
+                                        <div className="text-sm font-bold text-white leading-tight">{s.label}</div>
+                                        <div className="text-xs text-white/60 mt-0.5 leading-snug">{s.desc}</div>
                                     </div>
-                                    Start your adventure
-                                </CardTitle>
-                                <CardDescription className="text-slate-600 dark:text-slate-400">
-                                    Tell us where you want to go, and we&apos;ll handle the rest.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-6 md:p-8 space-y-8 relative z-10">
-                                <div className="space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                        <MapPin className="w-4 h-4 text-primary" /> Where to?
+                                    {i < HOW_IT_WORKS.length - 1 && (
+                                        <div className="hidden md:block absolute -right-1.5 top-1/2 -translate-y-1/2 text-white/30 text-lg">›</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="w-full max-w-full">
+
+                {/* ═══ FORM — shown only when no result ═══ */}
+                {!result && (
+                    <div className="max-w-2xl mx-auto px-6 py-10 -mt-6 relative z-10">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-emerald-500/10 border border-gray-100 dark:border-slate-800 overflow-hidden">
+
+                            {/* Card Header */}
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50/30 dark:from-emerald-950/40 dark:to-teal-900/10 border-b border-emerald-100/60 dark:border-emerald-900/40 px-8 py-6 flex items-center gap-4">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                                    <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-secondary dark:text-white tracking-tight">Generate a new trip plan</h2>
+                                    <p className="text-sm text-text-muted mt-0.5">Build a professional itinerary for your client in under a minute</p>
+                                </div>
+                            </div>
+
+                            {/* Card Body */}
+                            <div className="px-8 py-8 space-y-8">
+
+                                {/* Destination */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-secondary dark:text-white flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 text-emerald-500" />
+                                        Where is your client heading?
                                     </label>
-                                    <Input
+                                    <input
                                         type="text"
-                                        className="h-14 text-lg bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900 pl-4"
-                                        placeholder="e.g. Paris, Tokyo, New York"
+                                        className="w-full h-14 text-base bg-gray-50 dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 rounded-2xl px-5 placeholder:text-gray-400 dark:placeholder:text-slate-500 text-secondary dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900/50 transition-all"
+                                        placeholder="e.g. Rajasthan, Maldives, Dubai, Bali, Kerala..."
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && !loading && prompt && handleGenerate()}
                                         autoFocus
                                     />
+                                    <p className="text-xs text-text-muted pl-1">
+                                        Enter a country, state, city, or region. Be as specific as you like — "North Goa beaches" works too!
+                                    </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-primary" /> Duration (Days)
+                                {/* Duration + Budget */}
+                                <div className="grid grid-cols-5 gap-6">
+                                    {/* Duration */}
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-sm font-bold text-secondary dark:text-white flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-emerald-500" />
+                                            Duration
                                         </label>
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            max={14}
-                                            value={days}
-                                            onChange={(e) => setDays(Number(e.target.value))}
-                                            className="h-12 bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:focus:ring-emerald-900"
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setDays(d => Math.max(1, d - 1))}
+                                                className="w-10 h-12 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-secondary dark:text-white font-bold text-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 transition-all"
+                                            >−</button>
+                                            <div className="flex-1 h-12 bg-gray-50 dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 rounded-2xl flex items-center justify-center">
+                                                <span className="text-xl font-bold text-secondary dark:text-white">{days}</span>
+                                                <span className="text-sm text-text-muted ml-1">days</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setDays(d => Math.min(21, d + 1))}
+                                                className="w-10 h-12 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-secondary dark:text-white font-bold text-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 transition-all"
+                                            >+</button>
+                                        </div>
+                                        <p className="text-xs text-text-muted pl-1">Domestic 3–7 days · International 7–14</p>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                            <Wallet className="w-4 h-4 text-primary" /> Budget
+                                    {/* Budget */}
+                                    <div className="col-span-3 space-y-2">
+                                        <label className="text-sm font-bold text-secondary dark:text-white flex items-center gap-2">
+                                            <Wallet className="w-4 h-4 text-emerald-500" />
+                                            Client's budget style
                                         </label>
                                         <div className="grid grid-cols-2 gap-2">
                                             {BUDGET_OPTIONS.map((option) => (
                                                 <button
                                                     key={option.value}
                                                     onClick={() => setBudget(option.value)}
-                                                    className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 border ${budget === option.value
-                                                        ? 'bg-primary text-white border-primary shadow-md transform scale-[1.02]'
-                                                        : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-white/10'
-                                                        }`}
+                                                    className={cn(
+                                                        "py-2 px-3 rounded-xl text-xs font-bold transition-all border text-left",
+                                                        budget === option.value
+                                                            ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20"
+                                                            : "bg-white dark:bg-slate-900 text-secondary dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+                                                    )}
                                                 >
-                                                    {option.label}
+                                                    <div>{option.label}</div>
+                                                    <div className={cn("text-[10px] font-medium mt-0.5", budget === option.value ? "text-white/70" : "text-text-muted")}>
+                                                        {option.desc}
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 dark:text-slate-200 ml-1 flex items-center gap-2">
-                                        <Plane className="w-4 h-4 text-primary" /> Interests
+                                {/* Interests */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-secondary dark:text-white flex items-center gap-2">
+                                        <Plane className="w-4 h-4 text-emerald-500" />
+                                        What interests your client?
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-muted bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">optional</span>
                                     </label>
                                     <div className="flex flex-wrap gap-2">
                                         {INTEREST_OPTIONS.map((tag) => (
                                             <button
                                                 key={tag}
                                                 onClick={() => toggleInterest(tag)}
-                                                className={`px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 ${interests.includes(tag)
-                                                    ? 'bg-secondary text-white border-secondary shadow-sm transform scale-105'
-                                                    : 'bg-white/80 dark:bg-white/5 text-gray-600 dark:text-slate-200 border-gray-200 dark:border-white/10 hover:border-secondary hover:text-secondary hover:bg-gray-50 dark:hover:bg-white/10'
-                                                    }`}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-full border text-xs font-semibold transition-all",
+                                                    interests.includes(tag)
+                                                        ? "bg-secondary text-white border-secondary shadow-sm"
+                                                        : "bg-gray-50 dark:bg-slate-800/70 text-secondary/70 dark:text-slate-400 border-gray-200 dark:border-slate-700 hover:border-secondary/40 hover:bg-secondary/5"
+                                                )}
                                             >
                                                 {tag}
                                             </button>
                                         ))}
                                     </div>
-                                </div>
-
-                                <Separator className="my-4" />
-
-                                <Button
-                                    onClick={handleGenerate}
-                                    disabled={loading || !prompt}
-                                    className="w-full h-14 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 rounded-xl"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="animate-spin w-5 h-5 mr-2" />
-                                            Crafting your Journey...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-5 h-5 mr-2" />
-                                            Generate Dream Itinerary
-                                        </>
-                                    )}
-                                </Button>
-                            </CardContent>
-                        </Card>
-                        </div>
-
-                        {/* Past Itineraries Panel — ALWAYS visible regardless of data */}
-                        <div className="lg:col-span-3">
-                            <div className="flex items-center justify-between mb-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center">
-                                        <FolderOpen className="w-5 h-5 text-secondary" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-secondary dark:text-white tracking-tight">Your Saved Itineraries</h2>
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">
-                                            {isLoadingItineraries ? "Loading…" : hasPastItineraries ? `${pastItineraries.length} created` : "None yet"}
-                                        </p>
-                                    </div>
-                                </div>
-                                {hasPastItineraries && (
-                                    <Link href="/trips" className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-widest hover:underline">
-                                        View All Trips <ArrowRight className="w-3 h-3" />
-                                    </Link>
-                                )}
-                            </div>
-
-                            {/* Loading skeletons */}
-                            {isLoadingItineraries && (
-                                <div className="space-y-3">
-                                    {[1, 2, 3, 4].map((i) => (
-                                        <div key={i} className="h-20 w-full bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Empty state — no saved itineraries yet */}
-                            {!isLoadingItineraries && !hasPastItineraries && (
-                                <div className="flex flex-col items-center justify-center py-16 px-6 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-700 text-center bg-white/40 dark:bg-slate-900/20">
-                                    <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
-                                        <FolderOpen className="w-8 h-8 text-emerald-400" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-secondary dark:text-white mb-2">No saved itineraries yet</h3>
-                                    <p className="text-sm text-text-muted max-w-xs leading-relaxed">
-                                        Generate a trip using the form and hit <span className="font-bold text-emerald-600">Save Trip</span> — it&apos;ll appear here so you can revisit, share, and send it to clients.
+                                    <p className="text-xs text-text-muted pl-1">
+                                        Selecting interests helps the AI tailor activities, food, and experiences to your client&apos;s preferences.
                                     </p>
-                                    <div className="mt-5 flex items-center gap-2 text-xs text-text-muted">
-                                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-slate-800">✨ Generate → 💾 Save → 👤 Assign Client → 📤 Share</span>
-                                    </div>
                                 </div>
-                            )}
 
-                            {/* Itinerary cards */}
-                            {!isLoadingItineraries && hasPastItineraries && (
-                                <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1">
-                                    {pastItineraries.map((itinerary: any) => (
-                                        <PastItineraryCard key={itinerary.id} itinerary={itinerary} compact />
-                                    ))}
+                                {/* Generate Button */}
+                                <div className="pt-1 space-y-3">
+                                    <button
+                                        onClick={handleGenerate}
+                                        disabled={loading || !prompt}
+                                        className="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-base font-bold rounded-2xl shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="animate-spin w-5 h-5" />
+                                                <span>Crafting your itinerary<span className="animate-pulse">...</span></span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles className="w-5 h-5" />
+                                                Generate AI Itinerary
+                                                <ArrowRight className="w-4 h-4" />
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {loading && (
+                                        <div className="text-center">
+                                            <div className="flex items-center justify-center gap-2 text-xs text-text-muted mb-2">
+                                                <Loader2 className="w-3 h-3 animate-spin text-emerald-500" />
+                                                Building your day-by-day plan, activities, food spots, transport tips &amp; estimated costs...
+                                            </div>
+                                            <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-1.5">
+                                                <div className="bg-emerald-500 h-1.5 rounded-full animate-pulse" style={{ width: "60%" }} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!loading && (
+                                        <div className="flex items-center justify-center gap-6 text-[11px] text-text-muted">
+                                            <span className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-amber-500" />~15 seconds</span>
+                                            <span className="flex items-center gap-1.5"><BookOpen className="w-3 h-3 text-blue-500" />Day-by-day plan</span>
+                                            <span className="flex items-center gap-1.5"><BadgeCheck className="w-3 h-3 text-emerald-500" />Costs &amp; tips included</span>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
                         </div>
                     </div>
-                ) : (
+                )}
+
+                {/* ═══ RESULT — shown when itinerary is generated ═══ */}
+                {result && (
                     <>
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                            <div className="flex justify-between items-center p-4 rounded-2xl shadow-glass border sticky top-4 z-20 backdrop-blur-glass bg-white/80 border-slate-200/50 dark:bg-slate-900/60 dark:border-slate-800 print:hidden animate-fade-in-up">
+                            {/* Sticky action bar */}
+                            <div className="flex justify-between items-center p-4 rounded-2xl shadow-glass border sticky top-4 z-20 backdrop-blur-glass bg-white/80 border-slate-200/50 dark:bg-slate-900/60 dark:border-slate-800 print:hidden animate-fade-in-up mx-6">
                                 <Button
                                     variant="ghost"
                                     onClick={() => setResult(null)}
@@ -391,7 +436,7 @@ Make it practical and specific:
                                 >
                                     ← Start Over
                                 </Button>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap justify-end">
                                     <SaveItineraryButton
                                         itineraryData={result}
                                         destination={prompt}
@@ -423,7 +468,7 @@ Make it practical and specific:
                             <PlannerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
                             {activeTab === 'itinerary' && (
-                                <div className="space-y-8 animate-fade-in-up">
+                                <div className="space-y-8 animate-fade-in-up px-6">
                                     <div className="text-center space-y-4">
                                         <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
                                             {result.duration_days} Days in {result.destination}
@@ -581,7 +626,7 @@ Make it practical and specific:
                             )}
 
                             {activeTab === 'logistics' && (
-                                <div className="space-y-8 animate-fade-in-up">
+                                <div className="space-y-8 animate-fade-in-up px-6">
                                     <div className="bg-gray-50/50 dark:bg-slate-900/30 p-8 rounded-3xl border border-gray-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between mb-4">
@@ -595,7 +640,7 @@ Make it practical and specific:
                                         </div>
                                     </div>
 
-                                    <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="grid md:grid-cols-2 gap-6 px-6">
                                         <Card className="h-full">
                                             <CardHeader>
                                                 <CardTitle className="text-lg flex items-center gap-2">
@@ -620,7 +665,7 @@ Make it practical and specific:
                             )}
 
                             {activeTab === 'pricing' && (
-                                <div className="space-y-8 animate-fade-in-up">
+                                <div className="space-y-8 animate-fade-in-up px-6">
                                     <div className="bg-emerald-50/30 dark:bg-slate-900/30 p-8 rounded-3xl border border-emerald-100 dark:border-white/5 mx-auto max-w-7xl shadow-sm">
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between mb-4">
@@ -649,14 +694,16 @@ Make it practical and specific:
                     </>
                 )}
 
+                {/* Error toast */}
                 {error && (
-                    <div className="fixed bottom-6 right-6 p-4 bg-white dark:bg-slate-950/70 border border-red-200 dark:border-red-500/30 text-red-600 rounded-xl shadow-2xl animate-in slide-in-from-right duration-500 flex items-center gap-3">
+                    <div className="fixed bottom-6 right-6 p-4 bg-white dark:bg-slate-950/70 border border-red-200 dark:border-red-500/30 text-red-600 rounded-xl shadow-2xl animate-in slide-in-from-right duration-500 flex items-center gap-3 z-50">
                         <span className="text-2xl">⚠️</span>
                         {error}
-                        <button onClick={() => setError("")} className="ml-2 hover:bg-red-50 p-1 rounded-full"><span className="sr-only">Dismiss</span>×</button>
+                        <button onClick={() => setError("")} className="ml-2 hover:bg-red-50 p-1 rounded-full">×</button>
                     </div>
                 )}
 
+                {/* Share modal */}
                 {result && (
                     <ShareTripModal
                         isOpen={isShareOpen}
@@ -665,6 +712,95 @@ Make it practical and specific:
                         rawItineraryData={result}
                         initialTemplateId={selectedTemplate}
                     />
+                )}
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════
+                SAVED ITINERARIES — always at the bottom of the page
+                New itineraries appear here immediately after saving above
+            ════════════════════════════════════════════════════════════════ */}
+            <div id="saved-itineraries-section" className="max-w-7xl mx-auto px-6 mt-20">
+                {/* Section divider */}
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-slate-700 to-transparent" />
+                    <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                        <FolderOpen className="w-4 h-4 text-text-muted" />
+                        <span className="text-xs font-black uppercase tracking-widest text-text-muted">Saved Itineraries</span>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-slate-700 to-transparent" />
+                </div>
+
+                {/* Section header */}
+                <div className="flex items-start justify-between mb-6 gap-4">
+                    <div>
+                        <h2 className="text-2xl font-bold text-secondary dark:text-white tracking-tight">Your Saved Itineraries</h2>
+                        <p className="text-sm text-text-muted mt-1 max-w-xl">
+                            After generating a trip and hitting <span className="font-bold text-emerald-600">Save Trip</span>, it appears here automatically.
+                            Assign a client, set a price, and share with one click.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                        {hasPastItineraries && (
+                            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700">
+                                {pastItineraries.length} saved
+                            </span>
+                        )}
+                        {hasPastItineraries && (
+                            <Link
+                                href="/trips"
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary/5 dark:bg-secondary/10 text-secondary dark:text-white text-sm font-bold hover:bg-secondary/10 dark:hover:bg-secondary/20 border border-secondary/10 transition-colors"
+                            >
+                                View All Trips <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        )}
+                    </div>
+                </div>
+
+                {/* Loading skeletons */}
+                {isLoadingItineraries && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-40 bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                        ))}
+                    </div>
+                )}
+
+                {/* Empty state */}
+                {!isLoadingItineraries && !hasPastItineraries && (
+                    <div className="flex flex-col items-center justify-center py-16 px-8 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-700 text-center bg-white/40 dark:bg-slate-900/20">
+                        <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-5 border border-emerald-100 dark:border-emerald-900">
+                            <FolderOpen className="w-8 h-8 text-emerald-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-secondary dark:text-white mb-2">No saved itineraries yet</h3>
+                        <p className="text-sm text-text-muted max-w-sm leading-relaxed mb-5">
+                            Generate a trip using the form above and click <span className="font-bold text-emerald-600">Save Trip</span> — it will appear here so you can assign it to a client and share it instantly.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-text-muted">
+                            {["✨ Generate", "💾 Save", "👤 Assign Client", "📤 Share Link"].map((step, i, arr) => (
+                                <span key={step} className="flex items-center gap-2">
+                                    <span className="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 font-semibold">{step}</span>
+                                    {i < arr.length - 1 && <span className="text-gray-300 dark:text-slate-600">→</span>}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Itinerary grid */}
+                {!isLoadingItineraries && hasPastItineraries && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {pastItineraries.map((itinerary: any) => (
+                            <PastItineraryCard key={itinerary.id} itinerary={itinerary} />
+                        ))}
+                    </div>
+                )}
+
+                {/* Bottom tip when itineraries exist */}
+                {!isLoadingItineraries && hasPastItineraries && (
+                    <div className="mt-6 flex items-center justify-center gap-2 text-xs text-text-muted">
+                        <Star className="w-3 h-3 text-amber-400" />
+                        <span>Tip: Assign a client to an itinerary, then use the Share button to send them a live preview link — no WhatsApp forward needed!</span>
+                    </div>
                 )}
             </div>
         </main>
