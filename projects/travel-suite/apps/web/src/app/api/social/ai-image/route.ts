@@ -4,17 +4,39 @@ import { NextResponse } from "next/server";
  * POST /api/social/ai-image
  * Generates AI background images for poster templates.
  *
- * Providers (in priority order):
- *  1. Pollinations – completely free, no API key, URL-based
- *  2. Together AI  – free tier FLUX.1 schnell, needs TOGETHER_API_KEY
+ * Fetches images server-side from Pollinations to avoid client-side
+ * CORS/timeout issues, and returns base64 data URLs that display instantly.
  *
- * Body: { prompt: string, width?: number, height?: number, provider?: "pollinations" | "together", count?: number }
- * Returns: { images: { url: string; fullUrl: string; provider: string }[] }
+ * Body: { prompt: string, width?: number, height?: number, count?: number }
+ * Returns: { images: { url: string; provider: string }[] }
  */
+
+// Allow up to 60 seconds for AI image generation
+export const maxDuration = 60;
 
 function buildPollinationsUrl(prompt: string, width: number, height: number, seed: number): string {
     const encoded = encodeURIComponent(prompt);
     return `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+}
+
+async function fetchImageAsDataUrl(url: string, timeoutMs = 45000): Promise<string | null> {
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const res = await fetch(url, {
+            signal: controller.signal,
+            headers: { Accept: "image/*" },
+        });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const buffer = await res.arrayBuffer();
+        if (buffer.byteLength < 1000) return null; // Too small to be a real image
+        const contentType = res.headers.get("content-type") || "image/jpeg";
+        const base64 = Buffer.from(buffer).toString("base64");
+        return `data:${contentType};base64,${base64}`;
+    } catch {
+        return null;
+    }
 }
 
 export async function POST(req: Request) {
@@ -24,7 +46,6 @@ export async function POST(req: Request) {
             prompt,
             width = 1080,
             height = 1080,
-            provider = "pollinations",
             count = 4,
         } = body;
 
@@ -32,44 +53,23 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "prompt is required" }, { status: 400 });
         }
 
-        const images: { url: string; fullUrl: string; provider: string }[] = [];
+        // Generate unique seeds for image diversity
+        const seeds = Array.from({ length: count }, (_, i) =>
+            Date.now() + i * 7919 + Math.floor(Math.random() * 10000)
+        );
 
-        if (provider === "together" && process.env.TOGETHER_API_KEY) {
-            // Together AI – FLUX.1 schnell (free tier)
-            const togetherRes = await fetch("https://api.together.xyz/v1/images/generations", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "black-forest-labs/FLUX.1-schnell-Free",
-                    prompt,
-                    width,
-                    height,
-                    steps: 4,
-                    n: Math.min(count, 4),
-                }),
-            });
+        // Fetch all images from Pollinations in parallel (server-side)
+        const results = await Promise.allSettled(
+            seeds.map((seed) => {
+                const url = buildPollinationsUrl(prompt, width, height, seed);
+                return fetchImageAsDataUrl(url);
+            })
+        );
 
-            if (togetherRes.ok) {
-                const data = await togetherRes.json();
-                for (const img of data.data || []) {
-                    if (img.url) images.push({ url: img.url, fullUrl: img.url, provider: "together" });
-                }
-            }
-        }
-
-        // Pollinations fallback / primary
-        if (provider === "pollinations" || images.length < count) {
-            const needed = count - images.length;
-            // Preview at 512px for fast loading, full at requested size for poster
-            const previewSize = 512;
-            for (let i = 0; i < needed; i++) {
-                const seed = Date.now() + i * 1000 + Math.floor(Math.random() * 10000);
-                const url = buildPollinationsUrl(prompt, previewSize, previewSize, seed);
-                const fullUrl = buildPollinationsUrl(prompt, width, height, seed);
-                images.push({ url, fullUrl, provider: "pollinations" });
+        const images: { url: string; provider: string }[] = [];
+        for (const result of results) {
+            if (result.status === "fulfilled" && result.value) {
+                images.push({ url: result.value, provider: "pollinations" });
             }
         }
 
