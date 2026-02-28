@@ -22,11 +22,18 @@ export default function ClientProfileError({
                     <AlertTriangle className="w-8 h-8 text-rose-500" />
                 </div>
                 <h2 className="text-2xl font-serif text-secondary dark:text-white mb-3">
-                    Couldn't load this client
+                    Couldn&apos;t load this client
                 </h2>
-                <p className="text-sm text-text-muted font-medium mb-8">
-                    There was an error loading this client profile. This can happen if the client no longer exists or there's a temporary issue.
+                <p className="text-sm text-text-muted font-medium mb-4">
+                    There was an error loading this client profile. This can happen if the client no longer exists or there&apos;s a temporary issue.
                 </p>
+                <details className="text-left mb-6 bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-slate-700">
+                    <summary className="text-xs font-bold text-text-muted cursor-pointer">Show error details</summary>
+                    <pre className="text-[11px] text-rose-600 dark:text-rose-400 mt-2 whitespace-pre-wrap break-all font-mono leading-relaxed">
+                        {error.message || "Unknown error"}
+                        {error.digest && `\nDigest: ${error.digest}`}
+                    </pre>
+                </details>
                 <div className="flex items-center justify-center gap-3">
                     <button
                         onClick={() => reset()}

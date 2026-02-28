@@ -141,65 +141,98 @@ export default async function ClientProfilePage({
 
     // ✅ Use admin client (service role) to bypass RLS policies
     // This is safe because this is a server component — the key never reaches the browser
-    const supabase = createAdminClient();
+    let supabase: ReturnType<typeof createAdminClient>;
+    try {
+        supabase = createAdminClient();
+    } catch (err) {
+        // If the admin client isn't configured, fall back gracefully
+        throw new Error(`Admin client unavailable: ${err instanceof Error ? err.message : "unknown"}`);
+    }
 
     // Fetch the client's profile
-    const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .single();
+    let profile: any = null;
+    try {
+        const { data, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", id)
+            .single();
 
-    if (profileError || !profile) {
-        console.error("Client profile not found:", profileError?.message, "ID:", id);
+        if (profileError) {
+            console.error("Profile fetch error:", profileError.message, "code:", profileError.code, "id:", id);
+            throw new Error(`Profile not found: ${profileError.message}`);
+        }
+        profile = data;
+    } catch (err) {
+        console.error("Profile fetch exception:", err);
+        throw new Error(`Could not load client ${id.slice(0, 8)}: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+
+    if (!profile) {
         notFound();
     }
 
-    // Fetch trips for this client
-    const { data: trips } = await supabase
-        .from("trips")
-        .select("id, status, start_date, end_date, itinerary_id")
-        .eq("client_id", id)
-        .order("start_date", { ascending: false });
+    // Fetch trips — wrapped in try-catch so partial data still renders
+    let trips: any[] = [];
+    try {
+        const { data, error } = await supabase
+            .from("trips")
+            .select("id, status, start_date, end_date, destination, itinerary_id")
+            .eq("client_id", id)
+            .order("start_date", { ascending: false });
+        if (!error && data) trips = data;
+    } catch (err) {
+        console.error("Trips fetch failed:", err);
+    }
 
     // Fetch itineraries linked to this client's trips (for destination info)
-    const tripItineraryIds = (trips || [])
-        .map(t => (t as any).itinerary_id)
-        .filter(Boolean);
+    let itineraryMap: Record<string, any> = {};
+    try {
+        const tripItineraryIds = trips
+            .map(t => t.itinerary_id)
+            .filter(Boolean);
 
-    const { data: itineraries } = tripItineraryIds.length > 0
-        ? await supabase
-            .from("itineraries")
-            .select("id, destination, trip_title, duration_days")
-            .in("id", tripItineraryIds)
-        : { data: [] };
-
-    const itineraryMap = Object.fromEntries(
-        (itineraries || []).map(i => [i.id, i])
-    );
+        if (tripItineraryIds.length > 0) {
+            const { data } = await supabase
+                .from("itineraries")
+                .select("id, destination, trip_title, duration_days")
+                .in("id", tripItineraryIds);
+            if (data) {
+                itineraryMap = Object.fromEntries(data.map(i => [i.id, i]));
+            }
+        }
+    } catch (err) {
+        console.error("Itineraries fetch failed:", err);
+    }
 
     // Fetch proposals (enquiry history)
-    const { data: proposals } = await supabase
-        .from("proposals")
-        .select("id, title, status, total_price, created_at, viewed_at, approved_at, expires_at")
-        .eq("client_id", id)
-        .order("created_at", { ascending: false })
-        .limit(15);
+    let proposals: any[] = [];
+    try {
+        const { data, error } = await supabase
+            .from("proposals")
+            .select("id, title, status, total_price, created_at, viewed_at, approved_at, expires_at")
+            .eq("client_id", id)
+            .order("created_at", { ascending: false })
+            .limit(15);
+        if (!error && data) proposals = data;
+    } catch (err) {
+        console.error("Proposals fetch failed:", err);
+    }
 
     // ─── Derived stats ───────────────────────────────────────────────────────
-    const totalTrips = trips?.length ?? 0;
-    const completedTrips = trips?.filter(t => t.status === "completed").length ?? 0;
-    const activeTrips = trips?.filter(t => ["confirmed", "in_progress"].includes(t.status ?? "")).length ?? 0;
+    const totalTrips = trips.length;
+    const completedTrips = trips.filter(t => t.status === "completed").length;
+    const activeTrips = trips.filter(t => ["confirmed", "in_progress"].includes(t.status ?? "")).length;
 
-    const totalProposals = proposals?.length ?? 0;
-    const wonProposals = proposals?.filter(p => p.status === "approved").length ?? 0;
-    const rejectedProposals = proposals?.filter(p => p.status === "rejected").length ?? 0;
-    const openProposals = proposals?.filter(p => ["sent", "viewed", "commented"].includes(p.status ?? "")).length ?? 0;
+    const totalProposals = proposals.length;
+    const wonProposals = proposals.filter(p => p.status === "approved").length;
+    const rejectedProposals = proposals.filter(p => p.status === "rejected").length;
+    const openProposals = proposals.filter(p => ["sent", "viewed", "commented"].includes(p.status ?? "")).length;
     const winRate = totalProposals > 0 ? Math.round((wonProposals / totalProposals) * 100) : 0;
 
     const totalRevenue = proposals
-        ?.filter(p => p.status === "approved")
-        .reduce((sum, p) => sum + (p.total_price ?? 0), 0) ?? 0;
+        .filter(p => p.status === "approved")
+        .reduce((sum, p) => sum + (p.total_price ?? 0), 0);
 
     const memberSinceDays = getDaysSince(profile.created_at);
     const language = (profile as any).language_preference ?? "English";
@@ -210,15 +243,15 @@ export default async function ClientProfilePage({
         (profile.interests && (profile.interests as string[]).length > 0) || profile.home_airport;
 
     // Most recent open proposal = "active enquiry"
-    const activeProposal = proposals?.find(p =>
+    const activeProposal = proposals.find(p =>
         ["sent", "viewed", "commented"].includes(p.status ?? "")
     );
 
     // Last contact = most recent proposal creation
-    const lastContactDate = proposals?.[0]?.created_at ?? profile.created_at;
+    const lastContactDate = proposals[0]?.created_at ?? profile.created_at;
 
     // Urgency signal for open quotes
-    const urgentProposal = proposals?.find(p => {
+    const urgentProposal = proposals.find(p => {
         if (!["sent", "viewed"].includes(p.status ?? "")) return false;
         if (!p.created_at) return false;
         return getDaysSince(p.created_at) >= 3; // No reply in 3+ days
