@@ -158,7 +158,7 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
           {invoice.line_items.map((item, index) => (
             <View
               key={`${invoice.invoice_number}-line-${index}`}
-              style={[styles.tableRow, index % 2 === 1 ? styles.striped : null]}
+              style={index % 2 === 1 ? [styles.tableRow, styles.striped] : styles.tableRow}
             >
               <Text style={[styles.cell, styles.colDescription]}>{item.description}</Text>
               <Text style={[styles.cell, styles.colQty]}>{item.quantity}</Text>
