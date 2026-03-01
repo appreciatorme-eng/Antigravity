@@ -169,10 +169,11 @@ export async function POST(request: NextRequest) {
     if (existingSubscription) {
       return NextResponse.json(
         {
-          error: 'An active subscription already exists for this organization',
+          error: 'A subscription already exists for this organization',
           code: 'payments_subscription_exists',
           subscription_id: existingSubscription.id,
           plan_id: existingSubscription.plan_id,
+          status: existingSubscription.status,
         },
         { status: 409 }
       );

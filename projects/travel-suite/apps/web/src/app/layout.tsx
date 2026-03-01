@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   title: "GoBuddy Adventures | Premium Tour Operator Suite",
   description: "Enterprise-grade AI-Powered Travel Planning and Operations Management",
   manifest: "/manifest.json",
-  themeColor: "#00d084",
   icons: {
     icon: [
       { url: "/icons/icon-192.svg", type: "image/svg+xml" },
@@ -34,6 +33,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "TourOS",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#00d084",
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
+import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Json } from '@/lib/database.types';
 
 const supabaseAdmin = createAdminClient();
@@ -33,6 +34,14 @@ const ShareActionSchema = z.object({
 });
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+const SHARE_READ_RATE_LIMIT_MAX = Number(process.env.PUBLIC_SHARE_READ_RATE_LIMIT_MAX || "60");
+const SHARE_READ_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_SHARE_READ_RATE_LIMIT_WINDOW_MS || 15 * 60_000
+);
+const SHARE_WRITE_RATE_LIMIT_MAX = Number(process.env.PUBLIC_SHARE_WRITE_RATE_LIMIT_MAX || "20");
+const SHARE_WRITE_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_SHARE_WRITE_RATE_LIMIT_WINDOW_MS || 15 * 60_000
+);
 
 type ShareComment = {
   id: string;
@@ -69,6 +78,24 @@ function sanitizeShareToken(value: unknown): string | null {
   if (!token) return null;
   if (!SHARE_TOKEN_REGEX.test(token)) return null;
   return token;
+}
+
+function getRequestIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  return realIp || "unknown";
+}
+
+function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) {
+  response.headers.set("x-ratelimit-limit", String(limiter.limit));
+  response.headers.set("x-ratelimit-remaining", String(limiter.remaining));
+  response.headers.set("x-ratelimit-reset", String(limiter.reset));
+  return response;
 }
 
 function isExpired(expiresAt: string | null): boolean {
@@ -146,7 +173,7 @@ function sanitizePreferences(input: z.infer<typeof ShareActionSchema>['preferenc
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
@@ -154,6 +181,22 @@ export async function GET(
     const token = sanitizeShareToken(rawToken);
     if (!token) {
       return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+    }
+
+    const limiter = await enforceRateLimit({
+      identifier: `read:${getRequestIp(request)}:${token}`,
+      limit: SHARE_READ_RATE_LIMIT_MAX,
+      windowMs: SHARE_READ_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:share:read",
+    });
+    if (!limiter.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
+      const response = NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      return withRateLimitHeaders(response, limiter);
     }
 
     const { data: shareData, error: shareError } = await supabaseAdmin
@@ -207,6 +250,22 @@ export async function POST(
     const token = sanitizeShareToken(rawToken);
     if (!token) {
       return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+    }
+
+    const limiter = await enforceRateLimit({
+      identifier: `write:${getRequestIp(request)}:${token}`,
+      limit: SHARE_WRITE_RATE_LIMIT_MAX,
+      windowMs: SHARE_WRITE_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:share:write",
+    });
+    if (!limiter.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
+      const response = NextResponse.json(
+        { error: "Too many actions. Please try again later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      return withRateLimitHeaders(response, limiter);
     }
 
     const body = await request.json().catch(() => ({}));

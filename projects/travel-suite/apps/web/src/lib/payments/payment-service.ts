@@ -67,6 +67,8 @@ type PaymentSupabaseClient =
   | Awaited<ReturnType<typeof createClient>>
   | ReturnType<typeof createAdminClient>;
 
+const OPEN_SUBSCRIPTION_STATUSES = ["active", "trialing", "incomplete", "past_due", "paused"] as const;
+
 function severityForCode(code: PaymentErrorCode): 'low' | 'medium' | 'high' | 'critical' {
   if (code === 'payments_config_error') return 'critical';
   if (code === 'payments_webhook_signature_invalid') return 'high';
@@ -295,7 +297,7 @@ export class PaymentService {
           plan_id: options.planId,
           razorpay_subscription_id: razorpaySubscription.id,
           razorpay_plan_id: `plan_${options.planId}`,
-          status: 'active',
+          status: 'incomplete',
           billing_cycle: options.billingCycle,
           amount: options.amount,
           gst_amount: gst.totalGst,
@@ -328,7 +330,7 @@ export class PaymentService {
           eventType: 'subscription.created',
           externalId: razorpaySubscription.id,
           amount: totalAmount,
-          status: 'active',
+          status: 'incomplete',
           metadata: { razorpaySubscription },
         },
         context
@@ -818,6 +820,35 @@ export class PaymentService {
         });
       }
 
+      const periodLengthDays = subscription.billing_cycle === 'annual' ? 365 : 30;
+      const currentPeriodStart = new Date();
+      const currentPeriodEnd = new Date(
+        currentPeriodStart.getTime() + periodLengthDays * 24 * 60 * 60 * 1000
+      );
+
+      const { error: subscriptionUpdateError } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          failed_payment_count: 0,
+          current_period_start: currentPeriodStart.toISOString(),
+          current_period_end: currentPeriodEnd.toISOString(),
+          next_billing_date: currentPeriodEnd.toISOString(),
+          razorpay_payment_id: paymentId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscription.id);
+
+      if (subscriptionUpdateError) {
+        throw new PaymentServiceError({
+          code: 'payments_db_error',
+          operation: 'handle_subscription_charged',
+          message: subscriptionUpdateError.message,
+          tags: { context, subscription_id: subscription.id, severity: 'high' },
+          cause: subscriptionUpdateError,
+        });
+      }
+
       // Create invoice for this billing cycle
       await this.createInvoice(
         {
@@ -1129,12 +1160,11 @@ export class PaymentService {
         .from('subscriptions')
         .select('*')
         .eq('organization_id', organizationId)
-        .eq('status', 'active')
+        .in('status', OPEN_SUBSCRIPTION_STATUSES as unknown as string[])
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(5);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw new PaymentServiceError({
           code: 'payments_db_error',
           operation: 'get_current_subscription',
@@ -1144,7 +1174,9 @@ export class PaymentService {
         });
       }
 
-      return subscription;
+      const rows = Array.isArray(subscription) ? subscription : [];
+      const prioritized = rows.find((row) => row.status === 'active') || rows[0] || null;
+      return prioritized;
     } catch (error) {
       this.wrapPaymentError(error, {
         code: 'payments_db_error',

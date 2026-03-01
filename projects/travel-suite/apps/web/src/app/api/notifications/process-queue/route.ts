@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
-import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
+import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -21,7 +20,6 @@ import {
 } from "@/lib/observability/logger";
 import type { Json } from "@/lib/database.types";
 
-const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createAdminClient();
 
@@ -42,6 +40,11 @@ interface QueueItem {
 const DEFAULT_MAX_ATTEMPTS = Number(process.env.NOTIFICATION_QUEUE_MAX_ATTEMPTS || "5");
 const BASE_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_BASE_MINUTES || "5");
 const MAX_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_MAX_MINUTES || "60");
+
+function parseMsEnv(value: string | undefined, fallbackMs: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs;
+}
 
 function toRecord(value: unknown): Record<string, unknown> {
     if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -187,27 +190,6 @@ function isServiceRoleBearer(authHeader: string | null): boolean {
     return token === supabaseServiceKey;
 }
 
-function isSignedCronRequest(request: Request): boolean {
-    if (!signingSecret) return false;
-
-    const ts = request.headers.get("x-cron-ts") || "";
-    const signature = request.headers.get("x-cron-signature") || "";
-    const tsMs = Number(ts);
-    if (!ts || !signature || !Number.isFinite(tsMs)) return false;
-
-    const now = Date.now();
-    if (Math.abs(now - tsMs) > 5 * 60_000) return false;
-
-    const { pathname } = new URL(request.url);
-    const payload = `${ts}:${request.method}:${pathname}`;
-    const expected = createHmac("sha256", signingSecret).update(payload).digest("hex");
-
-    const sigBuf = Buffer.from(signature, "utf8");
-    const expectedBuf = Buffer.from(expected, "utf8");
-    if (sigBuf.length !== expectedBuf.length) return false;
-    return timingSafeEqual(sigBuf, expectedBuf);
-}
-
 async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
     const tripId = item.trip_id;
     if (!tripId) return null;
@@ -260,25 +242,29 @@ export async function POST(request: NextRequest) {
     const requestContext = getRequestContext(request, requestId);
 
     try {
-        const headerSecret = request.headers.get("x-notification-cron-secret") || "";
         const authHeader = request.headers.get("authorization");
+        const cronAuth = await authorizeCronRequest(request, {
+            secretHeaderName: "x-notification-cron-secret",
+            idempotencyHeaderName: "x-cron-idempotency-key",
+            replayWindowMs: parseMsEnv(process.env.NOTIFICATION_CRON_REPLAY_WINDOW_MS, 10 * 60_000),
+            maxClockSkewMs: parseMsEnv(process.env.NOTIFICATION_CRON_MAX_CLOCK_SKEW_MS, 5 * 60_000),
+        });
 
-        const secretAuthorized = isCronSecretHeader(headerSecret);
-        const bearerCronAuthorized = isCronSecretBearer(authHeader);
-        const signedAuthorized = isSignedCronRequest(request);
         const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
         const adminAuthorized = await isAdminBearerToken(authHeader);
         const adminUserId = adminAuthorized ? await getAdminUserId(authHeader) : null;
 
         if (
-            !secretAuthorized &&
-            !bearerCronAuthorized &&
-            !signedAuthorized &&
+            !cronAuth.authorized &&
             !serviceRoleAuthorized &&
             !adminAuthorized
         ) {
-            logEvent("warn", "Notification queue run unauthorized", requestContext);
-            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+            logEvent("warn", "Notification queue run unauthorized", {
+                ...requestContext,
+                reason: cronAuth.reason,
+                status: cronAuth.status,
+            });
+            return withRequestId({ error: cronAuth.reason }, requestId, { status: cronAuth.status });
         }
 
         const { data: dueRows, error: dueError } = await supabaseAdmin
@@ -559,5 +545,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    return POST(request);
+    const requestId = getRequestId(request);
+    const response = withRequestId(
+        { error: "Method Not Allowed. Use POST for queue processing." },
+        requestId,
+        { status: 405 }
+    );
+    response.headers.set("allow", "POST");
+    return response;
 }

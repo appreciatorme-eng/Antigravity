@@ -1,6 +1,99 @@
-# Travel Suite Web Remediation Tracker (Round 10)
+# Travel Suite Web Remediation Tracker (Round 11)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 11 Active Plan (Completed)
+
+This round closes the highest ROI residual findings from the post-Round-10 review on `main` (`0e8c93e`), focused on payment integrity, cron replay safety, public token abuse controls, and legacy endpoint guardrails.
+
+### WS-Q: Monetization Integrity and Billing Safety (P0)
+
+#### AGW11-MON-001: Fail closed on subscription activation until first successful charge
+
+- Status: `[x]`
+- Priority: `P0`
+- Primary files:
+  - `src/lib/payments/payment-service.ts`
+  - `src/app/api/subscriptions/route.ts`
+- Actions:
+  - Create subscriptions in `incomplete` state by default.
+  - Activate subscription only when webhook `subscription.charged` succeeds.
+  - Treat non-cancelled open states as existing subscriptions to block duplicate creates.
+- Definition of Done:
+  - No new subscription is marked `active` before successful charge.
+  - Duplicate checkout/subscription creation races are blocked.
+  - Billing UI/API still resolves current open subscription state consistently.
+
+#### AGW11-MON-002: Harden payment order creation integrity checks
+
+- Status: `[x]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/payments/create-order/route.ts`
+- Actions:
+  - Enforce valid JSON payload and numeric amount coercion.
+  - Prevent ambiguous order intent (`invoice_id` + `subscription_id` together).
+  - Validate referenced invoice/subscription ownership inside caller org.
+  - Block underpayment for invoice-linked orders unless explicitly flagged.
+- Definition of Done:
+  - Payment orders cannot reference foreign-tenant billing entities.
+  - Invalid/ambiguous requests fail with deterministic 4xx responses.
+
+### WS-R: Queue and Public Surface Hardening (P0)
+
+#### AGW11-SEC-001: Move notification queue auth to shared replay-safe cron guard
+
+- Status: `[x]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/notifications/process-queue/route.ts`
+- Actions:
+  - Replace ad-hoc signature checks with shared `authorizeCronRequest`.
+  - Enforce replay-window/idempotency semantics consistently.
+  - Keep explicit service-role/admin fallback paths for controlled manual runs.
+  - Make queue `GET` non-mutating (`405`) to remove destructive GET behavior.
+- Definition of Done:
+  - Queue processing accepts only approved auth modes with shared replay controls.
+  - `GET` no longer triggers queue side-effects.
+
+#### AGW11-SEC-002: Add abuse throttling for public token action endpoints
+
+- Status: `[x]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/proposals/public/[token]/route.ts`
+  - `src/app/api/share/[token]/route.ts`
+- Actions:
+  - Add IP+token scoped rate limits for write actions.
+  - Add read throttling for share-token reads to reduce brute-force pressure.
+  - Return retry-aware `429` responses with rate-limit headers.
+- Definition of Done:
+  - Public token endpoints have bounded abuse surface for reads/writes.
+  - Legitimate flows remain functional under normal traffic.
+
+### WS-S: Cost Guardrail Closure and Reliability Polish (P1)
+
+#### AGW11-COST-001: Guard legacy Wikimedia image endpoint behind authenticated cost controls
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/images/route.ts`
+- Actions:
+  - Apply the same cost-endpoint auth/rate-limit envelope as other image routes.
+- Definition of Done:
+  - Legacy image route is no longer an unauthenticated bypass path.
+
+#### AGW11-REL-001: Remove Next.js metadata warning path for theme color
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/layout.tsx`
+- Actions:
+  - Move `themeColor` from metadata export to dedicated viewport export.
+- Definition of Done:
+  - Dev/test logs no longer emit unsupported `metadata.themeColor` warning.
 
 ## Round 10 Active Plan (Completed)
 
@@ -1022,3 +1115,5 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Completed Round 10 WS-M through WS-P by migrating remaining admin routes to shared guards, tightening WhatsApp production signature enforcement, fixing org-scoped health telemetry, adding missing throttles, and standardizing control-plane logging.
 - 2026-03-01: Closed AGW10 quality/test targets with lint warning burn-down from 475 to 347 (target <=350), new non-e2e security helper tests (`test:unit`), and expanded authz/tenant contract coverage for referrals, contacts promote, and WhatsApp health scope.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 347, `test:unit` pass, `test:e2e` targeted authz/tenant/public/webhook suite pass with expected fixture-gated skips).
+- 2026-03-01: Added and completed Round 11 action set for monetization integrity, replay-safe queue auth, public token abuse throttling, legacy image endpoint cost guardrails, and metadata warning cleanup.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:unit` pass, targeted `test:e2e` authz/tenant/public suite pass with expected env-gated skips).

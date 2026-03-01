@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 const supabaseAdmin = createAdminClient();
 
 type ProposalSummary = {
@@ -89,6 +90,29 @@ type PublicAddOn = {
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
 const IDENTIFIER_REGEX = /^[A-Za-z0-9_-]{6,120}$/;
+const PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX = Number(
+  process.env.PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX || "20"
+);
+const PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_WINDOW_MS || 15 * 60_000
+);
+
+function getRequestIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  return realIp || "unknown";
+}
+
+function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) {
+  response.headers.set("x-ratelimit-limit", String(limiter.limit));
+  response.headers.set("x-ratelimit-remaining", String(limiter.remaining));
+  response.headers.set("x-ratelimit-reset", String(limiter.reset));
+  return response;
+}
 
 function sanitizeShareToken(value: unknown): string | null {
   const token = sanitizeText(value, { maxLength: 200 });
@@ -399,6 +423,23 @@ export async function POST(
     const token = sanitizeShareToken(rawToken);
     if (!token) {
       return NextResponse.json({ error: 'Invalid proposal token' }, { status: 400 });
+    }
+
+    const limiter = await enforceRateLimit({
+      identifier: `${getRequestIp(request)}:${token}`,
+      limit: PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX,
+      windowMs: PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:proposal:actions",
+    });
+
+    if (!limiter.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
+      const response = NextResponse.json(
+        { error: "Too many actions. Please try again later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      return withRateLimitHeaders(response, limiter);
     }
 
     const loaded = await loadProposalByToken(token);
