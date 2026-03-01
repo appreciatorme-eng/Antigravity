@@ -1,6 +1,14 @@
-# Travel Suite Web Remediation Tracker (Round 2)
+# Travel Suite Web Remediation Tracker (Round 3)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 3 Completion Summary
+
+- `[x]` AGW3-OBS-002: Added cached admin cost overview reads with stale-fallback behavior.
+- `[x]` AGW3-SEC-001: Added throttled and sampled admin auth-failure telemetry.
+- `[x]` AGW3-OPS-001: Added alert acknowledgment API and UI workflow.
+- `[x]` AGW3-OPS-002: Upgraded runbook metadata model (id/version/owner/SLA/url) in alert payloads.
+- `[x]` AGW3-QUAL-001: Removed targeted lint debt in `add-ons` (hook dependencies and unsafe `any` cast).
 
 ## Operating Rules
 
@@ -250,6 +258,84 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - Score impact target:
   - UX `+0.4`, Monetization `+0.3`
 
+## WS-G: Round 3 Reliability and Operability Hardening (P1)
+
+### AGW3-OBS-002: Cache admin cost overview with stale fallback
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/cost/overview/route.ts`
+- Actions:
+  - Add scoped cache keys for cost overview responses.
+  - Serve stale cache snapshot if live data providers fail.
+  - Return cache metadata (`hit/miss/stale_fallback`) to UI.
+- Definition of Done:
+  - Repeated reads avoid redundant heavy aggregation queries.
+  - Live-query outages degrade to stale snapshot instead of hard failure.
+  - Cache status is visible in admin UI.
+- Score impact target:
+  - Performance `+0.3`, Reliability `+0.3`, Operability `+0.2`
+
+### AGW3-SEC-001: Throttle and sample admin auth-failure telemetry
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/lib/auth/admin.ts`
+- Actions:
+  - Apply rate limiting to auth-failure telemetry inserts.
+  - Sample anonymous auth-failure noise while preserving signal.
+- Definition of Done:
+  - Burst auth-failure events do not flood telemetry tables.
+  - Security signal remains available for alerting.
+- Score impact target:
+  - Security `+0.2`, Operability `+0.2`
+
+### AGW3-OPS-001: Add alert acknowledgment workflow
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/cost/alerts/ack/route.ts`
+  - `src/app/admin/cost/page.tsx`
+  - `src/app/api/admin/cost/overview/route.ts`
+- Actions:
+  - Add authenticated alert acknowledgment endpoint.
+  - Surface acknowledgment controls and status in cost UI.
+  - Hydrate acknowledged state in alert payload.
+- Definition of Done:
+  - Admins can acknowledge active alerts with audit trail.
+  - UI reflects acknowledged state and timestamp.
+- Score impact target:
+  - Operability `+0.4`, UX `+0.2`
+
+### AGW3-OPS-002: Formalize runbook metadata contract
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/cost/overview/route.ts`
+  - `src/app/admin/cost/page.tsx`
+- Actions:
+  - Replace string runbook links with structured metadata (`id/version/owner/SLA/url`).
+  - Render metadata context in alert cards.
+- Definition of Done:
+  - Alert payload contract carries operational metadata.
+  - UI shows runbook version and response SLA.
+- Score impact target:
+  - Operability `+0.3`, Maintainability `+0.2`
+
+### AGW3-QUAL-001: Targeted lint debt reduction in add-ons workflow
+- Status: `[x]`
+- Priority: `P2`
+- Primary files:
+  - `src/app/add-ons/page.tsx`
+- Actions:
+  - Convert filtering and data loading logic to stable callbacks.
+  - Remove unsafe `any` cast for badge variants.
+- Definition of Done:
+  - No hook dependency warning in add-ons page.
+  - No unsafe `any` cast in add-ons badge rendering.
+- Score impact target:
+  - Maintainability `+0.2`, Reliability `+0.1`
+
 ## Strict Execution Order
 
 1. `AGW2-SEC-001`
@@ -267,6 +353,11 @@ This tracker is based on the latest full review of `main` and is focused on clos
 13. `AGW2-OBS-001`
 14. `AGW2-MON-001`
 15. `AGW2-UX-001`
+16. `AGW3-OBS-002`
+17. `AGW3-SEC-001`
+18. `AGW3-OPS-001`
+19. `AGW3-OPS-002`
+20. `AGW3-QUAL-001`
 
 ## Sprint Breakdown
 
@@ -291,6 +382,13 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW2-MON-001
 - `[x]` AGW2-UX-001
 
+### Sprint 4 (Round 3 Hardening)
+- `[x]` AGW3-OBS-002
+- `[x]` AGW3-SEC-001
+- `[x]` AGW3-OPS-001
+- `[x]` AGW3-OPS-002
+- `[x]` AGW3-QUAL-001
+
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
@@ -299,3 +397,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed WS-F monetization and UX items by introducing margin-safe prepaid credit-pack catalog, premium automation gating in subscription limits and billing UI, Daily Ops board metrics, and outcome-linked upgrade prompts.
 - 2026-03-01: Added anomaly alerting and tenant weekly margin reporting in cost overview, including cost-spike/cap-hit/auth-failure signals with runbook references.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e -- --list` pass).
+- 2026-03-01: Completed Round 3 hardening by adding cached/stale cost overview reads, auth-failure telemetry throttling + sampling, alert acknowledgment workflow, structured runbook metadata, and targeted add-ons lint cleanup.

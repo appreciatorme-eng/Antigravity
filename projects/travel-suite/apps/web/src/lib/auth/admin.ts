@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 type RequestLike = Request & {
   headers: {
@@ -37,6 +38,10 @@ type RequireAdminOptions = {
   requireOrganization?: boolean;
 };
 
+const ANON_AUTH_FAILURE_SAMPLE_RATE = 0.2;
+const AUTH_FAILURE_TELEMETRY_LIMIT = 15;
+const AUTH_FAILURE_TELEMETRY_WINDOW_MS = 5 * 60 * 1000;
+
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
@@ -64,6 +69,32 @@ function parseRole(input: string | null): AdminRole | null {
   return null;
 }
 
+function sanitizeKv(value: string): string {
+  return value.replace(/\|/g, "/").replace(/\s+/g, " ").trim();
+}
+
+function getClientIp(request: RequestLike): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const [first] = forwarded.split(",");
+    if (first?.trim()) return first.trim();
+  }
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp?.trim()) return realIp.trim();
+
+  return "unknown";
+}
+
+function shouldRecordAuthFailure(params: {
+  userId?: string | null;
+  reason: string;
+}): boolean {
+  if (params.userId) return true;
+  if (params.reason !== "missing_or_invalid_auth") return true;
+  return Math.random() < ANON_AUTH_FAILURE_SAMPLE_RATE;
+}
+
 async function recordAdminAuthFailure(params: {
   adminClient: ReturnType<typeof createAdminClient>;
   request: RequestLike;
@@ -72,14 +103,39 @@ async function recordAdminAuthFailure(params: {
   organizationId?: string | null;
 }) {
   try {
+    if (
+      !shouldRecordAuthFailure({ userId: params.userId, reason: params.reason })
+    ) {
+      return;
+    }
+
     const route = routePathFromRequest(params.request);
     const method = (params.request.method || "GET").toUpperCase();
+    const clientIp = getClientIp(params.request);
+    const telemetryFingerprint = [
+      params.userId ? `user:${params.userId}` : `ip:${clientIp}`,
+      params.reason,
+      method,
+      route,
+      params.organizationId || "unknown",
+    ].join("|");
+
+    const telemetryLimit = await enforceRateLimit({
+      identifier: telemetryFingerprint,
+      limit: AUTH_FAILURE_TELEMETRY_LIMIT,
+      windowMs: AUTH_FAILURE_TELEMETRY_WINDOW_MS,
+      prefix: "admin_auth_failure_telemetry",
+    });
+    if (!telemetryLimit.success) {
+      return;
+    }
+
     const nowIso = new Date().toISOString();
     const body = [
-      `reason=${params.reason}`,
-      `route=${route}`,
-      `method=${method}`,
-      `organization_id=${params.organizationId || "unknown"}`,
+      `reason=${sanitizeKv(params.reason)}`,
+      `route=${sanitizeKv(route)}`,
+      `method=${sanitizeKv(method)}`,
+      `organization_id=${sanitizeKv(params.organizationId || "unknown")}`,
     ].join("|");
 
     await params.adminClient.from("notification_logs").insert({
@@ -98,7 +154,7 @@ async function recordAdminAuthFailure(params: {
 
 async function getUserIdFromRequest(
   request: RequestLike,
-  adminClient: ReturnType<typeof createAdminClient>
+  adminClient: ReturnType<typeof createAdminClient>,
 ) {
   const token = normalizeBearerToken(request.headers.get("authorization"));
 
@@ -125,7 +181,7 @@ async function getUserIdFromRequest(
 
 export async function requireAdmin(
   request: RequestLike,
-  options: RequireAdminOptions = {}
+  options: RequireAdminOptions = {},
 ): Promise<RequireAdminResult> {
   const requireOrganization = options.requireOrganization !== false;
   const adminClient = createAdminClient();
@@ -176,7 +232,11 @@ export async function requireAdmin(
     };
   }
 
-  if (requireOrganization && !profile.organization_id && parsedRole !== "super_admin") {
+  if (
+    requireOrganization &&
+    !profile.organization_id &&
+    parsedRole !== "super_admin"
+  ) {
     void recordAdminAuthFailure({
       adminClient,
       request,
