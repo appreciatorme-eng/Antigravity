@@ -2,6 +2,15 @@
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
 
+## Round 9 Completion Summary
+
+- `[x]` AGW9-SEC-001: Hardened `/api/trips` and `/api/trips/[id]` with explicit role-aware scoping and fail-closed tenant behavior.
+- `[x]` AGW9-SEC-002: Standardized admin guard + org ownership checks across PDF import admin APIs and WhatsApp admin utilities.
+- `[x]` AGW9-COST-001: Added endpoint throttles for admin PDF import and WhatsApp admin operations.
+- `[x]` AGW9-MON-001: Tightened subscription plan/billing-cycle validation and blocked duplicate active subscription creation.
+- `[x]` AGW9-REL-001: Disabled mock social publishing/extraction success paths in production unless explicitly enabled.
+- `[x]` AGW9-TEST-001: Expanded admin/public authz contracts for newly hardened PDF import and WhatsApp endpoints.
+
 ## Round 8 Completion Summary
 
 - `[x]` AGW8-SEC-001: Standardized shared admin auth and explicit org scoping for clients/trips admin APIs.
@@ -802,3 +811,5 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed Round 6 by standardizing admin auth on AI-heavy endpoints, adding per-admin throttles to costly generation routes, and extending public/non-admin endpoint authz contracts.
 - 2026-03-01: Completed Round 7 by hardening delivery/workflow control-plane auth + tenant scoping with shared admin guard, adding rate limits for listing/retry/rules/events paths, and extending delivery/workflow authz contracts.
 - 2026-03-01: Completed Round 8 by standardizing shared admin guard usage on clients/trips APIs, closing trip-details tenant leakage paths, restricting security diagnostics to super-admin access, adding endpoint throttles, and extending authz contracts.
+- 2026-03-01: Completed Round 9 by hardening client trip APIs, refactoring PDF import + WhatsApp admin endpoints to shared admin auth and strict org ownership checks, adding additional throttles, tightening subscription validation, disabling risky production mock-success paths, and extending authz endpoint contracts.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e e2e/tests/admin-api-authz.spec.ts` pass with expected fixture-gated skips).

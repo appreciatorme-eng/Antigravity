@@ -11,6 +11,14 @@ function sanitizeSearchTerm(input: string): string {
     return safe.replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
+    const normalized = (role || "").trim().toLowerCase();
+    if (normalized === "admin" || normalized === "super_admin") {
+        return normalized;
+    }
+    return null;
+}
+
 interface TripListRow {
     id: string;
     status: string | null;
@@ -57,13 +65,16 @@ export async function GET(req: NextRequest) {
             .from("profiles")
             .select("role, organization_id")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
 
-        if (!profile || !profile.organization_id) {
-            // If the user has no organization, they might be a client looking at their own trips
-            // In that case, we filter by user_id
-            const { searchParams } = new URL(req.url);
-            const status = searchParams.get("status") || "all";
+        const role = parseRole(profile?.role);
+        const isStaff = role === "admin" || role === "super_admin";
+        const { searchParams } = new URL(req.url);
+        const status = searchParams.get("status") || "all";
+        const search = sanitizeSearchTerm(searchParams.get("search") || "");
+
+        if (!isStaff) {
+            // Client/driver users can only view their own trips.
 
             let query = supabaseAdmin
                 .from("trips")
@@ -86,6 +97,9 @@ export async function GET(req: NextRequest) {
             if (status !== "all") {
                 query = query.eq("status", status);
             }
+            if (search) {
+                query = query.or(`itineraries.trip_title.ilike.%${search}%,itineraries.destination.ilike.%${search}%`);
+            }
 
             const { data, error } = await query.order("created_at", { ascending: false });
 
@@ -94,10 +108,19 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ trips: data || [] });
         }
 
-        // Staff/Admin access - show organization trips
-        const { searchParams } = new URL(req.url);
-        const status = searchParams.get("status") || "all";
-        const search = sanitizeSearchTerm(searchParams.get("search") || "");
+        // Staff/Admin access - show organization-scoped trips only.
+        const requestedOrganizationId = sanitizeText(searchParams.get("organization_id"), { maxLength: 80 });
+        const scopedOrganizationId =
+            role === "super_admin" && requestedOrganizationId
+                ? requestedOrganizationId
+                : profile?.organization_id || null;
+
+        if (!scopedOrganizationId) {
+            return NextResponse.json(
+                { error: "Admin organization not configured. Super admins must provide organization_id." },
+                { status: 400 }
+            );
+        }
 
         let query = supabaseAdmin
             .from("trips")
@@ -119,7 +142,7 @@ export async function GET(req: NextRequest) {
                     destination
                 )
             `)
-            .eq("organization_id", profile.organization_id);
+            .eq("organization_id", scopedOrganizationId);
 
         if (status !== "all") {
             query = query.eq("status", status);

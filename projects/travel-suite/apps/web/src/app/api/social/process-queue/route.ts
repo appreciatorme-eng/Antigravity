@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+function isMockSocialPublishingEnabled(): boolean {
+    const explicit = process.env.SOCIAL_PUBLISH_MOCK_ENABLED?.trim().toLowerCase();
+    if (explicit === "true") return true;
+    if (explicit === "false") return false;
+    return process.env.NODE_ENV !== "production";
+}
+
 function parseMsEnv(value: string | undefined, fallbackMs: number): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs;
@@ -38,6 +45,7 @@ export async function POST(req: Request) {
 
         const supabaseAdmin = createAdminClient();
         const maxAttempts = parsePositiveInt(process.env.SOCIAL_QUEUE_MAX_ATTEMPTS, 3);
+        const mockPublishingEnabled = isMockSocialPublishingEnabled();
 
         const { data: pendingItems, error: fetchError } = await supabaseAdmin
             .from("social_post_queue")
@@ -97,6 +105,10 @@ export async function POST(req: Request) {
                 const pageId = item.social_connections.platform_page_id;
 
                 console.log(`[Cron] Processing social publish to ${platform} for page ${pageId}`);
+
+                if (!mockPublishingEnabled) {
+                    throw new Error("Social publishing provider is not configured");
+                }
 
                 const platformPostId = `cron_${platform}_${Date.now()}`;
                 const platformPostUrl = `https://${platform}.com/p/${platformPostId}`;

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+function isMockSocialPublishingEnabled(): boolean {
+    const explicit = process.env.SOCIAL_PUBLISH_MOCK_ENABLED?.trim().toLowerCase();
+    if (explicit === "true") return true;
+    if (explicit === "false") return false;
+    return process.env.NODE_ENV !== "production";
+}
+
 export async function POST(req: Request) {
     try {
         const supabase = await createClient();
@@ -8,6 +15,16 @@ export async function POST(req: Request) {
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        if (!isMockSocialPublishingEnabled()) {
+            return NextResponse.json(
+                {
+                    error:
+                        'Social publishing provider is not configured. Set SOCIAL_PUBLISH_MOCK_ENABLED=true only for test/dev environments.',
+                },
+                { status: 503 }
+            );
         }
 
         const body = await req.json();
@@ -54,8 +71,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No social connections found for requested platforms' }, { status: 400 });
         }
 
-        // Logic to simulate publishing to platforms via Meta Graph API
-        // For actual Meta API, we would construct requests to graph.facebook.com here
+        // Mock publishing path for local/testing environments only.
         const publishResults: any[] = [];
 
         for (const conn of connections) {

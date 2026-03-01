@@ -25,7 +25,8 @@ async function getAdminProfile(req: Request) {
     .eq('id', authData.user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== 'admin') return null;
+  const role = (profile?.role || "").toLowerCase();
+  if (!profile || (role !== "admin" && role !== "super_admin")) return null;
   return profile;
 }
 

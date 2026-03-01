@@ -1,265 +1,401 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { processPDFImport, publishPDFImport } from '@/lib/pdf-extractor';
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
+import { processPDFImport, publishPDFImport } from "@/lib/pdf-extractor";
+
+const PDF_IMPORTS_DETAIL_RATE_LIMIT_MAX = 120;
+const PDF_IMPORTS_DETAIL_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const PDF_IMPORTS_WRITE_RATE_LIMIT_MAX = 60;
+const PDF_IMPORTS_WRITE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+
+type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
+
+type PdfImportRow = {
+  id: string;
+  organization_id: string | null;
+  file_url?: string | null;
+  [key: string]: unknown;
+};
+
+function hasOrgAccess(admin: AdminContext, organizationId: string | null): boolean {
+  if (!organizationId) return false;
+  if (admin.isSuperAdmin) return true;
+  return Boolean(admin.organizationId && admin.organizationId === organizationId);
+}
+
+async function loadPdfImportForAccess(
+  admin: AdminContext,
+  id: string,
+): Promise<{ row: PdfImportRow } | { response: NextResponse }> {
+  const { data: row, error } = await admin.adminClient
+    .from("pdf_imports")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      ),
+    };
+  }
+
+  if (!row) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: "PDF import not found" },
+        { status: 404 },
+      ),
+    };
+  }
+
+  const castedRow = row as unknown as PdfImportRow;
+  if (!hasOrgAccess(admin, castedRow.organization_id || null)) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: "PDF import not found" },
+        { status: 404 },
+      ),
+    };
+  }
+
+  return { row: castedRow };
+}
+
+function parseImportId(params: { id: string }): string | null {
+  const id = sanitizeText(params.id, { maxLength: 80 });
+  return id || null;
+}
 
 /**
- * Get single PDF import details
- *
- * @example
  * GET /api/admin/pdf-imports/{id}
  */
 export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-    try {
-        const supabase = await createClient();
-
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-            return NextResponse.json({
-                success: false,
-                error: 'Unauthorized'
-            }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (fetchError || !pdfImport) {
-            return NextResponse.json({
-                success: false,
-                error: 'PDF import not found'
-            }, { status: 404 });
-        }
-
-        return NextResponse.json({
-            success: true,
-            pdf_import: pdfImport
-        });
-
-    } catch (error) {
-        console.error('Failed to get PDF import:', error);
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+  try {
+    const admin = await requireAdmin(req, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: admin.response.status || 401 },
+      );
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: PDF_IMPORTS_DETAIL_RATE_LIMIT_MAX,
+      windowMs: PDF_IMPORTS_DETAIL_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:pdf-imports:detail",
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many PDF import detail requests. Please retry later." },
+        { status: 429 },
+      );
+    }
+
+    const parsedId = parseImportId(await params);
+    if (!parsedId) {
+      return NextResponse.json(
+        { success: false, error: "Invalid PDF import id" },
+        { status: 400 },
+      );
+    }
+
+    const loaded = await loadPdfImportForAccess(admin, parsedId);
+    if ("response" in loaded) return loaded.response;
+
+    return NextResponse.json({
+      success: true,
+      pdf_import: loaded.row,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 /**
- * Update PDF import (approve, reject, trigger re-extraction)
- *
- * @example
  * PATCH /api/admin/pdf-imports/{id}
- * Body: { action: "approve" | "reject" | "re-extract", notes?: string }
+ * Body: { action: "approve" | "reject" | "re-extract" | "publish", notes?: string, organization_id?: string }
  */
 export async function PATCH(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-    try {
-        const supabase = await createClient();
-
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-            return NextResponse.json({
-                success: false,
-                error: 'Unauthorized'
-            }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        const body = await req.json();
-        const { action, notes, organizationId } = body;
-
-        if (!action) {
-            return NextResponse.json({
-                success: false,
-                error: 'Action required (approve, reject, re-extract)'
-            }, { status: 400 });
-        }
-
-        // Get PDF import
-        const { data: pdfImport, error: fetchError } = await supabase
-            .from('pdf_imports')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (fetchError || !pdfImport) {
-            return NextResponse.json({
-                success: false,
-                error: 'PDF import not found'
-            }, { status: 404 });
-        }
-
-        switch (action) {
-            case 'approve':
-                // Approve for publishing
-                const { error: approveError } = await supabase
-                    .from('pdf_imports')
-                    .update({
-                        status: 'approved',
-                        reviewed_by: user.id,
-                        reviewed_at: new Date().toISOString(),
-                        review_notes: notes
-                    })
-                    .eq('id', id);
-
-                if (approveError) throw approveError;
-
-                console.log(`✅ PDF import approved: ${id}`);
-
-                return NextResponse.json({
-                    success: true,
-                    message: 'PDF import approved. Ready to publish.',
-                    pdf_import: pdfImport
-                });
-
-            case 'reject':
-                // Reject extraction
-                const { error: rejectError } = await supabase
-                    .from('pdf_imports')
-                    .update({
-                        status: 'rejected',
-                        reviewed_by: user.id,
-                        reviewed_at: new Date().toISOString(),
-                        review_notes: notes
-                    })
-                    .eq('id', id);
-
-                if (rejectError) throw rejectError;
-
-                console.log(`❌ PDF import rejected: ${id}`);
-
-                return NextResponse.json({
-                    success: true,
-                    message: 'PDF import rejected.',
-                    pdf_import: pdfImport
-                });
-
-            case 're-extract':
-                // Trigger re-extraction
-                console.log(`🔄 Re-extracting PDF: ${id}`);
-
-                const result = await processPDFImport(id);
-
-                return NextResponse.json({
-                    success: result.success,
-                    message: result.success
-                        ? `Re-extraction complete (confidence: ${result.confidence.toFixed(2)})`
-                        : 'Re-extraction failed',
-                    extraction_result: result
-                });
-
-            case 'publish':
-                // Publish to tour_templates
-                if (!organizationId) {
-                    return NextResponse.json({
-                        success: false,
-                        error: 'Organization ID required for publishing'
-                    }, { status: 400 });
-                }
-
-                console.log(`📤 Publishing PDF import to templates: ${id}`);
-
-                const template = await publishPDFImport(id, organizationId);
-
-                return NextResponse.json({
-                    success: true,
-                    message: 'Template published successfully!',
-                    template_id: template.id
-                });
-
-            default:
-                return NextResponse.json({
-                    success: false,
-                    error: `Unknown action: ${action}`
-                }, { status: 400 });
-        }
-
-    } catch (error) {
-        console.error('Failed to update PDF import:', error);
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+  try {
+    const admin = await requireAdmin(req, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: admin.response.status || 401 },
+      );
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: PDF_IMPORTS_WRITE_RATE_LIMIT_MAX,
+      windowMs: PDF_IMPORTS_WRITE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:pdf-imports:write",
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many PDF import mutation requests. Please retry later." },
+        { status: 429 },
+      );
+    }
+
+    const parsedId = parseImportId(await params);
+    if (!parsedId) {
+      return NextResponse.json(
+        { success: false, error: "Invalid PDF import id" },
+        { status: 400 },
+      );
+    }
+
+    const body = (await req.json().catch(() => ({}))) as {
+      action?: string;
+      notes?: string;
+      organization_id?: string;
+      organizationId?: string;
+    };
+    const action = sanitizeText(body.action, { maxLength: 40 });
+    const notes = sanitizeText(body.notes, {
+      maxLength: 2000,
+      preserveNewlines: true,
+    }) || null;
+    const requestedPublishOrgId = sanitizeText(
+      body.organization_id || body.organizationId,
+      { maxLength: 80 },
+    );
+
+    if (!action) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Action required (approve, reject, re-extract, publish)",
+        },
+        { status: 400 },
+      );
+    }
+
+    const loaded = await loadPdfImportForAccess(admin, parsedId);
+    if ("response" in loaded) return loaded.response;
+    const pdfImport = loaded.row;
+    const pdfImportOrgId = pdfImport.organization_id;
+
+    if (!pdfImportOrgId) {
+      return NextResponse.json(
+        { success: false, error: "PDF import organization is not configured" },
+        { status: 400 },
+      );
+    }
+
+    switch (action) {
+      case "approve": {
+        const { error } = await admin.adminClient
+          .from("pdf_imports")
+          .update({
+            status: "approved",
+            reviewed_by: admin.userId,
+            reviewed_at: new Date().toISOString(),
+            review_notes: notes,
+          })
+          .eq("id", parsedId)
+          .eq("organization_id", pdfImportOrgId);
+
+        if (error) {
+          return NextResponse.json(
+            { success: false, error: error.message },
+            { status: 500 },
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: "PDF import approved. Ready to publish.",
+        });
+      }
+
+      case "reject": {
+        const { error } = await admin.adminClient
+          .from("pdf_imports")
+          .update({
+            status: "rejected",
+            reviewed_by: admin.userId,
+            reviewed_at: new Date().toISOString(),
+            review_notes: notes,
+          })
+          .eq("id", parsedId)
+          .eq("organization_id", pdfImportOrgId);
+
+        if (error) {
+          return NextResponse.json(
+            { success: false, error: error.message },
+            { status: 500 },
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: "PDF import rejected.",
+        });
+      }
+
+      case "re-extract": {
+        const result = await processPDFImport(parsedId);
+        return NextResponse.json({
+          success: result.success,
+          message: result.success
+            ? `Re-extraction complete (confidence: ${result.confidence.toFixed(2)})`
+            : "Re-extraction failed",
+          extraction_result: result,
+        });
+      }
+
+      case "publish": {
+        const publishOrgId = admin.isSuperAdmin
+          ? requestedPublishOrgId || pdfImportOrgId || null
+          : admin.organizationId || null;
+
+        if (!publishOrgId) {
+          return NextResponse.json(
+            { success: false, error: "Organization ID required for publishing" },
+            { status: 400 },
+          );
+        }
+
+        if (!admin.isSuperAdmin && publishOrgId !== pdfImportOrgId) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Cannot publish PDF import for another organization",
+            },
+            { status: 403 },
+          );
+        }
+
+        const template = await publishPDFImport(parsedId, publishOrgId);
+        return NextResponse.json({
+          success: true,
+          message: "Template published successfully!",
+          template_id: template.id,
+        });
+      }
+
+      default:
+        return NextResponse.json(
+          { success: false, error: `Unknown action: ${action}` },
+          { status: 400 },
+        );
+    }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 /**
- * Delete PDF import
- *
- * @example
  * DELETE /api/admin/pdf-imports/{id}
  */
 export async function DELETE(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-    try {
-        const supabase = await createClient();
-
-        // Get authenticated user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-            return NextResponse.json({
-                success: false,
-                error: 'Unauthorized'
-            }, { status: 401 });
-        }
-
-        const { id } = await params;
-
-        // Get PDF import for file cleanup
-        const { data: pdfImport } = await supabase
-            .from('pdf_imports')
-            .select('file_url')
-            .eq('id', id)
-            .single();
-
-        // Delete from database
-        const { error: deleteError } = await supabase
-            .from('pdf_imports')
-            .delete()
-            .eq('id', id);
-
-        if (deleteError) throw deleteError;
-
-        // Clean up storage file (best effort)
-        if (pdfImport?.file_url) {
-            const fileName = (pdfImport.file_url as string).split('/').pop();
-            if (fileName) {
-                await supabase.storage
-                    .from('pdf-imports')
-                    .remove([fileName]);
-            }
-        }
-
-        console.log(`🗑️  PDF import deleted: ${id}`);
-
-        return NextResponse.json({
-            success: true,
-            message: 'PDF import deleted successfully'
-        });
-
-    } catch (error) {
-        console.error('Failed to delete PDF import:', error);
-        return NextResponse.json({
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+  try {
+    const admin = await requireAdmin(req, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: admin.response.status || 401 },
+      );
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: PDF_IMPORTS_WRITE_RATE_LIMIT_MAX,
+      windowMs: PDF_IMPORTS_WRITE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:pdf-imports:write",
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: "Too many PDF import mutation requests. Please retry later." },
+        { status: 429 },
+      );
+    }
+
+    const parsedId = parseImportId(await params);
+    if (!parsedId) {
+      return NextResponse.json(
+        { success: false, error: "Invalid PDF import id" },
+        { status: 400 },
+      );
+    }
+
+    const loaded = await loadPdfImportForAccess(admin, parsedId);
+    if ("response" in loaded) return loaded.response;
+    const pdfImport = loaded.row;
+    const pdfImportOrgId = pdfImport.organization_id;
+
+    if (!pdfImportOrgId) {
+      return NextResponse.json(
+        { success: false, error: "PDF import organization is not configured" },
+        { status: 400 },
+      );
+    }
+
+    const { error: deleteError } = await admin.adminClient
+      .from("pdf_imports")
+      .delete()
+      .eq("id", parsedId)
+      .eq("organization_id", pdfImportOrgId);
+
+    if (deleteError) {
+      return NextResponse.json(
+        { success: false, error: deleteError.message },
+        { status: 500 },
+      );
+    }
+
+    const fileUrl = typeof pdfImport.file_url === "string" ? pdfImport.file_url : null;
+    if (fileUrl) {
+      try {
+        const parsedUrl = new URL(fileUrl);
+        const fileName = parsedUrl.pathname.split("/").pop();
+        if (fileName) {
+          await admin.adminClient.storage.from("pdf-imports").remove([fileName]);
+        }
+      } catch {
+        // Best-effort storage cleanup.
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "PDF import deleted successfully",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }

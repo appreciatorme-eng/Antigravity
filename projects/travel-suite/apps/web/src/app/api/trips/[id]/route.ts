@@ -38,7 +38,15 @@ interface ReminderDayStatus {
     lastScheduledFor: string | null;
 }
 
-async function requireStaff(req: Request) {
+function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
+    const normalized = (role || "").trim().toLowerCase();
+    if (normalized === "admin" || normalized === "super_admin") {
+        return normalized;
+    }
+    return null;
+}
+
+async function requireTripReader(req: Request) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -63,21 +71,23 @@ async function requireStaff(req: Request) {
         .from("profiles")
         .select("role, organization_id")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
-    if (!profile || !profile.organization_id) {
-        // If they are a client, they might be allowed to VIEW their own trip but not manage it
-        // For the unified detail page (which includes editing), we require an organization_id
-        return { error: NextResponse.json({ error: "Forbidden - Staff Access Required" }, { status: 403 }), userId };
-    }
+    const role = parseRole(profile?.role);
+    const isStaff = role === "admin" || role === "super_admin";
 
-    return { userId, organizationId: profile.organization_id, role: profile.role };
+    return {
+        userId,
+        organizationId: profile?.organization_id || null,
+        role,
+        isStaff,
+    };
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     try {
-        const staff = await requireStaff(req);
-        if ("error" in staff) return staff.error;
+        const auth = await requireTripReader(req);
+        if ("error" in auth) return auth.error;
 
         const { id: tripId } = await params;
 
@@ -90,7 +100,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
         }
 
-        const { data: tripData, error: tripError } = await supabaseAdmin
+        let tripQuery = supabaseAdmin
             .from("trips")
             .select(`
                 id,
@@ -98,6 +108,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 start_date,
                 end_date,
                 organization_id,
+                client_id,
                 profiles:client_id (
                     id,
                     full_name,
@@ -112,9 +123,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                     raw_data
                 )
             `)
-            .eq("id", tripId)
-            .eq("organization_id", staff.organizationId)
-            .single();
+            .eq("id", tripId);
+
+        if (auth.isStaff) {
+            if (auth.role !== "super_admin") {
+                if (!auth.organizationId) {
+                    return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+                }
+                tripQuery = tripQuery.eq("organization_id", auth.organizationId);
+            }
+        } else {
+            tripQuery = tripQuery.eq("client_id", auth.userId);
+        }
+
+        const { data: tripData, error: tripError } = await tripQuery.single();
 
         if (tripError || !tripData) {
             return NextResponse.json({ error: tripError?.message || "Trip not found" }, { status: 404 });
@@ -137,10 +159,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 : null,
         };
 
+        if (!auth.isStaff) {
+            return NextResponse.json({
+                trip: mappedTrip,
+            });
+        }
+
+        if (!tripData.organization_id) {
+            return NextResponse.json({ error: "Trip organization is not configured" }, { status: 400 });
+        }
+
         const { data: driversData } = await supabaseAdmin
             .from("external_drivers")
             .select("*")
             .eq("is_active", true)
+            .eq("organization_id", tripData.organization_id)
             .order("full_name");
 
         const { data: assignmentsData } = await supabaseAdmin
@@ -239,6 +272,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 .from("trips")
                 .select("id, start_date, itineraries(duration_days)")
                 .neq("id", tripId)
+                .eq("organization_id", tripData.organization_id)
                 .or(`start_date.lte.${tripEndDate.toISOString().split('T')[0]},end_date.gte.${tripStartDate.toISOString().split('T')[0]}`);
 
             if (overlappingTrips && overlappingTrips.length > 0) {

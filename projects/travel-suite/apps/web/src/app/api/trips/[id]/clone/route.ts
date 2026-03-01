@@ -24,20 +24,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
             .from("profiles")
             .select("organization_id, role")
             .eq("id", user.id)
-            .single();
+            .maybeSingle();
 
-        if (!profile || !profile.organization_id || profile.role !== "admin") {
-            // Note: Currently restricting clones to admins/staff of the org
+        const role = (profile?.role || "").toLowerCase();
+        const isStaff = role === "admin" || role === "super_admin";
+
+        if (!profile || !isStaff) {
             return NextResponse.json({ error: "Forbidden - Administrator Access Required" }, { status: 403 });
         }
-
         // Fetch original trip
-        const { data: originalTrip, error: tripError } = await supabaseAdmin
+        let tripQuery = supabaseAdmin
             .from("trips")
             .select("*")
-            .eq("id", tripId)
-            .eq("organization_id", profile.organization_id)
-            .single();
+            .eq("id", tripId);
+
+        if (role !== "super_admin") {
+            const adminOrganizationId =
+                typeof profile.organization_id === "string" ? profile.organization_id : null;
+            if (!adminOrganizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            tripQuery = tripQuery.eq("organization_id", adminOrganizationId);
+        }
+
+        const { data: originalTrip, error: tripError } = await tripQuery.single();
 
         if (tripError || !originalTrip) {
             return NextResponse.json({ error: "Trip not found or access denied." }, { status: 404 });

@@ -12,6 +12,12 @@ function normalizePhone(phone?: string | null): string | null {
   return sanitizePhone(phone);
 }
 
+function sanitizeSearchTerm(input: string): string {
+  const safe = sanitizeText(input, { maxLength: 80 });
+  if (!safe) return "";
+  return safe.replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 async function getAdminProfile(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -25,7 +31,8 @@ async function getAdminProfile(req: NextRequest) {
     .eq('id', authData.user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== 'admin') return null;
+  const role = (profile?.role || "").toLowerCase();
+  if (!profile || (role !== "admin" && role !== "super_admin")) return null;
   return profile;
 }
 
@@ -40,7 +47,7 @@ export async function GET(req: NextRequest) {
     if (!adminProfile.organization_id) return withRequestId({ error: 'Admin organization not configured' }, requestId, { status: 400 });
 
     const { searchParams } = new URL(req.url);
-    const search = sanitizeText(searchParams.get('search') || '', { maxLength: 80 }).toLowerCase();
+    const search = sanitizeSearchTerm(searchParams.get('search') || '').toLowerCase();
 
     let query = supabaseAdmin
       .from('crm_contacts')

@@ -17,10 +17,27 @@ import {
 } from '@/lib/integrations';
 import { sanitizeEmail, sanitizeText } from '@/lib/security/sanitize';
 
-const PlanRequestSchema = z.object({
-  plan_id: z.enum(['pro_monthly', 'pro_annual', 'enterprise']),
-  billing_cycle: z.enum(['monthly', 'annual']).default('monthly'),
-});
+const PlanRequestSchema = z
+  .object({
+    plan_id: z.enum(['pro_monthly', 'pro_annual', 'enterprise']),
+    billing_cycle: z.enum(['monthly', 'annual']).default('monthly'),
+  })
+  .superRefine((value, ctx) => {
+    const expectedCycleByPlan: Record<'pro_monthly' | 'pro_annual' | 'enterprise', 'monthly' | 'annual'> = {
+      pro_monthly: 'monthly',
+      pro_annual: 'annual',
+      enterprise: 'monthly',
+    };
+
+    const expected = expectedCycleByPlan[value.plan_id];
+    if (value.billing_cycle !== expected) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `billing_cycle must be "${expected}" for plan_id "${value.plan_id}"`,
+        path: ['billing_cycle'],
+      });
+    }
+  });
 
 const DEFAULT_PLAN_AMOUNTS: Record<'pro_monthly' | 'pro_annual' | 'enterprise', number> = {
   pro_monthly: 4999,
@@ -146,6 +163,19 @@ export async function POST(request: NextRequest) {
 
     if (!profile?.organization_id) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    const existingSubscription = await paymentService.getCurrentSubscription(profile.organization_id);
+    if (existingSubscription) {
+      return NextResponse.json(
+        {
+          error: 'An active subscription already exists for this organization',
+          code: 'payments_subscription_exists',
+          subscription_id: existingSubscription.id,
+          plan_id: existingSubscription.plan_id,
+        },
+        { status: 409 }
+      );
     }
 
     const org = (profile as { organizations?: { name?: string | null; billing_email?: string | null; billing_state?: string | null } | null }).organizations;

@@ -4,6 +4,13 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export const maxDuration = 60;
 
+function isMockSocialExtractionEnabled(): boolean {
+  const explicit = process.env.SOCIAL_EXTRACT_MOCK_ENABLED?.trim().toLowerCase();
+  if (explicit === "true") return true;
+  if (explicit === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 const extractionSchema = {
   type: SchemaType.OBJECT,
   properties: {
@@ -35,7 +42,16 @@ export async function POST(req: NextRequest) {
     const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!geminiApiKey) {
-      console.warn('⚠️ No AI keys configured. Returning mock extraction.');
+      if (!isMockSocialExtractionEnabled()) {
+        return NextResponse.json(
+          {
+            error:
+              "AI extraction provider is not configured. Set SOCIAL_EXTRACT_MOCK_ENABLED=true only for test/dev.",
+          },
+          { status: 503 }
+        );
+      }
+
       return NextResponse.json({
         destination: "Dubai Desert Safari & City",
         price: "$499",

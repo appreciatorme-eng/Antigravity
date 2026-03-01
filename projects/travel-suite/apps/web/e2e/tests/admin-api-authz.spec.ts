@@ -32,6 +32,23 @@ test.describe('Admin API Auth - Unauthenticated', () => {
     expect(res.status()).toBe(401);
   });
 
+  test('blocks admin pdf imports endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/pdf-imports');
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks admin WhatsApp health endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/whatsapp/health');
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks admin WhatsApp normalize-driver-phones endpoint', async ({ request }) => {
+    const res = await request.post('/api/admin/whatsapp/normalize-driver-phones', {
+      data: {},
+    });
+    expect(res.status()).toBe(401);
+  });
+
   test('blocks workflow rules endpoint', async ({ request }) => {
     const res = await request.get('/api/admin/workflow/rules');
     expect(res.status()).toBe(401);
@@ -78,6 +95,23 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
       data: {},
     });
     expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin access to admin pdf imports endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/pdf-imports');
+    expect([401, 403]).toContain(res.status());
+  });
+
+  authTest('forbids non-admin access to admin WhatsApp health endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/whatsapp/health');
+    expect([401, 403]).toContain(res.status());
+  });
+
+  authTest('forbids non-admin access to admin WhatsApp normalize-driver-phones endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/whatsapp/normalize-driver-phones', {
+      data: {},
+    });
+    expect([401, 403]).toContain(res.status());
   });
 
   authTest('forbids non-admin access to tour template extract endpoint', async ({ clientPage }) => {
