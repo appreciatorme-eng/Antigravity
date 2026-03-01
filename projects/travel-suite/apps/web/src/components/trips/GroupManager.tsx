@@ -7,7 +7,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Phone,
   MessageCircle,
   Printer,
   FileDown,
@@ -244,15 +243,6 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
     }
   }, [travelers, storageKey])
 
-  // Pre-populate selectedForWA with all travelers who have whatsapp
-  useEffect(() => {
-    if (showWhatsAppModal) {
-      setSelectedForWA(
-        new Set(travelers.filter((t) => t.whatsapp).map((t) => t.id))
-      )
-    }
-  }, [showWhatsAppModal, travelers])
-
   // ---------------------------------------------------------------------------
   // Form handlers
   // ---------------------------------------------------------------------------
@@ -345,6 +335,11 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
       }, i * 600)
     })
     setShowWhatsAppModal(false)
+  }
+
+  function handleOpenWhatsAppModal() {
+    setSelectedForWA(new Set(travelers.filter((t) => t.whatsapp).map((t) => t.id)))
+    setShowWhatsAppModal(true)
   }
 
   function handlePrint() {
@@ -525,7 +520,7 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
           <AnimatePresence>
             {travelers.length === 0 ? (
               <div className="px-6 py-10 text-center text-sm text-slate-500">
-                No travelers added yet. Click "Add Traveler" to get started.
+                No travelers added yet. Click &quot;Add Traveler&quot; to get started.
               </div>
             ) : (
               travelers.map((traveler) => (
@@ -632,7 +627,7 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
         {/* WhatsApp All */}
         <button
           type="button"
-          onClick={() => setShowWhatsAppModal(true)}
+          onClick={handleOpenWhatsAppModal}
           className={cn(
             'flex items-center gap-4 p-5 rounded-2xl text-left transition-all',
             'bg-[#0a1628]/70 border border-slate-700/50 hover:border-green-500/30 hover:bg-green-500/5',

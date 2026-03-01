@@ -84,13 +84,14 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         if (!queryToUse) return;
         setSearchingUnsplash(true);
         try {
-            const response = await fetch(`/api/unsplash?query=${encodeURIComponent(queryToUse)}`);
+            const response = await fetch(`/api/images/unsplash?query=${encodeURIComponent(queryToUse)}&per_page=8`);
             if (!response.ok) throw new Error("Failed to fetch");
             const data = await response.json();
-            const results = data.results.map((img: { id: string; urls: { regular: string } }) => ({
-                id: img.id,
-                url: img.urls.regular,
-            }));
+            const results = Array.isArray(data.results)
+                ? data.results
+                : data.url
+                    ? [{ id: `single-${Date.now()}`, url: data.url }]
+                    : [];
             setUnsplashResults(results);
             if (queryOverride && results.length > 0) {
                 setTemplateData(prev => ({ ...prev, heroImage: results[0].url }));

@@ -47,8 +47,7 @@ export async function POST(req: Request) {
                    *
                 ),
                 social_connections!inner (
-                    platform_page_id,
-                    access_token_encrypted
+                    platform_page_id
                 )
             `)
             .eq("status", "pending")

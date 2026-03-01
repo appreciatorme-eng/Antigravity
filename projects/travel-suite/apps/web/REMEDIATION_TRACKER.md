@@ -35,7 +35,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-A: Tenant Isolation and Admin Safety (P0)
 
 ### AGW2-SEC-001: Enforce org-scoped reads for admin cost overview
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/cost/overview/route.ts`
@@ -50,7 +50,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.4`, Observability `+0.2`
 
 ### AGW2-SEC-002: Restrict emergency cap mutation to super-admin only
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/cost/overview/route.ts`
@@ -64,7 +64,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.3`, Operability `+0.2`
 
 ### AGW2-SEC-003: Add org scoping for command center queue data
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/operations/command-center/route.ts`
@@ -80,7 +80,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-B: OAuth Integrity and Secret Protection (P0)
 
 ### AGW2-SEC-004: Harden OAuth state with signature and replay protection
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/social/oauth/facebook/route.ts`
@@ -95,7 +95,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.6`, Reliability `+0.2`
 
 ### AGW2-SEC-005: Encrypt provider access tokens at rest
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/social/oauth/callback/route.ts`
@@ -113,7 +113,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-C: Cost Guard and Abuse Closure (P0)
 
 ### AGW2-COST-001: Decommission public `/api/unsplash` bypass path
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/unsplash/route.ts`
@@ -128,7 +128,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Cost `+0.5`, Security `+0.3`
 
 ### AGW2-COST-002: Make spend-cap checks atomic under concurrency
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/lib/security/cost-endpoint-guard.ts`
@@ -142,7 +142,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Reliability `+0.4`, Cost `+0.4`
 
 ### AGW2-COST-003: Remove non-distributed in-memory spend fallback in production
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/lib/cost/spend-guardrails.ts`
@@ -158,7 +158,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-D: HTTP Method and Control Plane Hardening (P1)
 
 ### AGW2-SEC-006: Convert destructive cache clear from GET to POST/DELETE
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/app/api/admin/clear-cache/route.ts`
@@ -174,7 +174,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-E: Quality, Tests, and Operability (P1)
 
 ### AGW2-QUAL-001: Reduce high-risk lint warning hotspots
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/hooks/useRealtimeProposal.ts`
@@ -190,7 +190,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Maintainability `+0.4`, Reliability `+0.2`
 
 ### AGW2-TEST-001: Add tenant-isolation and authz negative API tests
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Actions:
   - Add unauthorized/cross-tenant access scenarios for admin and ops APIs.
@@ -201,7 +201,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.3`, Testability `+0.3`
 
 ### AGW2-TEST-002: Add cap-race and quota-bypass tests
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Actions:
   - Add concurrent request tests for cap boundaries.
@@ -213,7 +213,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Reliability `+0.3`, Cost `+0.3`, Testability `+0.2`
 
 ### AGW2-OBS-001: Add cost and abuse anomaly alerts
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Actions:
   - Emit alerts for sudden cost spikes, repeated auth failures, and cap hit rate anomalies.
@@ -227,7 +227,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-F: Monetization and Tour-Operator Conversion (P2)
 
 ### AGW2-MON-001: Add credit-pack overage and margin-safe packaging
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P2`
 - Actions:
   - Introduce prepaid overage packs for AI/media usage.
@@ -239,7 +239,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Monetization `+0.5`, Cost `+0.2`
 
 ### AGW2-UX-001: Strengthen daily operator workflow conversion loops
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P2`
 - Actions:
   - Add actionable Daily Ops board metrics (at-risk departures, pending payments, expiring quotes).
@@ -271,27 +271,31 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## Sprint Breakdown
 
 ### Sprint 1 (P0 Security and Cost Closure)
-- `[ ]` AGW2-SEC-001
-- `[ ]` AGW2-SEC-002
-- `[ ]` AGW2-SEC-003
-- `[ ]` AGW2-SEC-004
-- `[ ]` AGW2-SEC-005
-- `[ ]` AGW2-COST-001
-- `[ ]` AGW2-COST-002
-- `[ ]` AGW2-COST-003
+- `[x]` AGW2-SEC-001
+- `[x]` AGW2-SEC-002
+- `[x]` AGW2-SEC-003
+- `[x]` AGW2-SEC-004
+- `[x]` AGW2-SEC-005
+- `[x]` AGW2-COST-001
+- `[x]` AGW2-COST-002
+- `[x]` AGW2-COST-003
 
 ### Sprint 2 (Control Plane and Test Hardening)
-- `[ ]` AGW2-SEC-006
-- `[ ]` AGW2-TEST-001
-- `[ ]` AGW2-TEST-002
-- `[ ]` AGW2-QUAL-001
-- `[ ]` AGW2-OBS-001
+- `[x]` AGW2-SEC-006
+- `[x]` AGW2-TEST-001
+- `[x]` AGW2-TEST-002
+- `[x]` AGW2-QUAL-001
+- `[x]` AGW2-OBS-001
 
 ### Sprint 3 (Monetization and Conversion Lift)
-- `[ ]` AGW2-MON-001
-- `[ ]` AGW2-UX-001
+- `[x]` AGW2-MON-001
+- `[x]` AGW2-UX-001
 
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
 - 2026-03-01: No code changes in this commit; tracker-only planning update.
+- 2026-03-01: Completed WS-A through WS-E remediation items including tenant isolation, OAuth/token hardening, cost guardrail closure, control-plane method/CSRF hardening, lint hotspot reduction, and expanded authz/cost contract tests.
+- 2026-03-01: Completed WS-F monetization and UX items by introducing margin-safe prepaid credit-pack catalog, premium automation gating in subscription limits and billing UI, Daily Ops board metrics, and outcome-linked upgrade prompts.
+- 2026-03-01: Added anomaly alerting and tenant weekly margin reporting in cost overview, including cost-spike/cap-hit/auth-failure signals with runbook references.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e -- --list` pass).

@@ -5,8 +5,15 @@ const PLAYWRIGHT_CRON_SECRET = process.env.PLAYWRIGHT_TEST_CRON_SECRET || "playw
 
 test.describe("Public API contracts", () => {
   test("admin cache clear endpoint requires authentication", async ({ request }) => {
-    const response = await request.get("/api/admin/clear-cache");
+    const response = await request.post("/api/admin/clear-cache", {
+      data: { all: true },
+    });
     expect(response.status()).toBe(401);
+  });
+
+  test("admin cache clear GET endpoint is non-mutating", async ({ request }) => {
+    const response = await request.get("/api/admin/clear-cache");
+    expect(response.status()).toBe(405);
   });
 
   test("location share GET endpoint requires authentication", async ({ request }) => {
@@ -203,5 +210,10 @@ test.describe("Public API contracts", () => {
       data: { prompt: "sunset over mountains" },
     });
     expect(response.status()).toBe(401);
+  });
+
+  test("legacy unsplash route is decommissioned", async ({ request }) => {
+    const response = await request.get("/api/unsplash?query=beach");
+    expect(response.status()).toBe(410);
   });
 });

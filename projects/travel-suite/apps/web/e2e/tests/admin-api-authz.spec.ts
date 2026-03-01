@@ -30,7 +30,9 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
   });
 
   authTest('forbids non-admin access to admin clear cache endpoint', async ({ clientPage }) => {
-    const res = await clientPage.request.get('/api/admin/clear-cache');
+    const res = await clientPage.request.post('/api/admin/clear-cache', {
+      data: { all: true },
+    });
     expect(res.status()).toBe(403);
   });
 

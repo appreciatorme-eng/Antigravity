@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { getPlanById } from "./plans";
+import type { CreditPackOffer, PremiumAutomationGate } from "@/lib/billing/credit-packs";
 
 export interface Subscription {
   id: string;
@@ -46,6 +47,11 @@ interface BillingUsage {
   aiUtilizationPct: number;
 }
 
+interface LimitsResponse {
+  credit_packs?: CreditPackOffer[];
+  premium_automation_gate?: PremiumAutomationGate;
+}
+
 const EMPTY_USAGE: BillingUsage = {
   clientsUsed: 0,
   proposalsUsed: 0,
@@ -65,6 +71,8 @@ export function useBillingData() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [usage, setUsage] = useState<BillingUsage>(EMPTY_USAGE);
+  const [creditPacks, setCreditPacks] = useState<CreditPackOffer[]>([]);
+  const [premiumAutomationGate, setPremiumAutomationGate] = useState<PremiumAutomationGate | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -75,7 +83,11 @@ export function useBillingData() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [subRes, invRes] = await Promise.all([fetch("/api/subscriptions"), fetch("/api/invoices?limit=10")]);
+      const [subRes, invRes, limitsRes] = await Promise.all([
+        fetch("/api/subscriptions"),
+        fetch("/api/invoices?limit=10"),
+        fetch("/api/subscriptions/limits"),
+      ]);
 
       if (subRes.ok) {
         const subData = await subRes.json();
@@ -85,6 +97,12 @@ export function useBillingData() {
       if (invRes.ok) {
         const invData = await invRes.json();
         setInvoices((invData?.invoices || []) as Invoice[]);
+      }
+
+      if (limitsRes.ok) {
+        const limitsData = (await limitsRes.json()) as LimitsResponse;
+        setCreditPacks(limitsData.credit_packs || []);
+        setPremiumAutomationGate(limitsData.premium_automation_gate || null);
       }
 
       const {
@@ -247,6 +265,8 @@ export function useBillingData() {
     subscription,
     invoices,
     usage,
+    creditPacks,
+    premiumAutomationGate,
     usageHealth,
     currentPlan,
     loading,

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   Plus,
@@ -63,7 +64,69 @@ const getCategoryColor = (category: string) => {
   return colors[category as keyof typeof colors] || 'default';
 };
 
+const PACKAGE_TEMPLATES: Record<
+  string,
+  {
+    name: string;
+    description: string;
+    price: string;
+    category: string;
+    duration: string;
+  }
+> = {
+  ai_credits: {
+    name: 'AI Credits Pack',
+    description: 'Prepaid AI generation capacity for peak proposal workflows.',
+    price: '2999',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  whatsapp_volume: {
+    name: 'WhatsApp Volume Pack',
+    description: 'Higher reminder volume for collections and quote follow-up automation.',
+    price: '1999',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  premium_templates: {
+    name: 'Premium Templates Pack',
+    description: 'High-conversion proposal templates designed for upsell moments.',
+    price: '1499',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  ai_credits_starter: {
+    name: 'AI Starter Credits',
+    description: '1,000 prepaid AI requests for controlled overage spending.',
+    price: '2999',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  ai_credits_growth: {
+    name: 'AI Growth Credits',
+    description: '5,000 prepaid AI requests for high-volume teams.',
+    price: '11999',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  media_credits_growth: {
+    name: 'Media Search Credits',
+    description: 'Prepaid credits for stock discovery and media lookup operations.',
+    price: '2499',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+  automation_recovery: {
+    name: 'Collections Automation Pack',
+    description: 'Outcome-focused automation actions for payment and quote recovery.',
+    price: '4999',
+    category: 'Upgrades',
+    duration: 'Monthly',
+  },
+};
+
 export default function AddOnsPage() {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [addOns, setAddOns] = useState<AddOn[]>([]);
@@ -101,6 +164,7 @@ export default function AddOnsPage() {
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const autoTemplateLoaded = useRef(false);
 
   useEffect(() => {
     loadData();
@@ -109,6 +173,29 @@ export default function AddOnsPage() {
   useEffect(() => {
     filterAddOns();
   }, [addOns, selectedCategory, searchQuery]);
+
+  useEffect(() => {
+    if (autoTemplateLoaded.current) return;
+    const packageKey = searchParams.get('package');
+    if (!packageKey) return;
+
+    const template = PACKAGE_TEMPLATES[packageKey];
+    if (!template) return;
+
+    setEditingAddOn(null);
+    setFormData({
+      name: template.name,
+      description: template.description,
+      price: template.price,
+      category: template.category,
+      image_url: '',
+      duration: template.duration,
+    });
+    setIsCustomCategory(false);
+    setFormErrors({});
+    setModalOpen(true);
+    autoTemplateLoaded.current = true;
+  }, [searchParams]);
 
   async function loadData() {
     setLoading(true);

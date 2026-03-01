@@ -10,7 +10,7 @@
  * Integrated with browser push notifications
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
@@ -22,13 +22,20 @@ import {
   showNotification,
 } from '@/lib/notifications/browser-push';
 
+type RealtimePayload = {
+  old?: Record<string, unknown>;
+  new?: Record<string, unknown>;
+};
+
+type RealtimeSubscriptionStatus = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
+
 interface UseRealtimeProposalOptions {
   proposalId: string;
   proposalTitle?: string;
   clientName?: string;
-  onProposalUpdate?: (payload: any) => void;
-  onActivityUpdate?: (payload: any) => void;
-  onCommentAdded?: (payload: any) => void;
+  onProposalUpdate?: (payload: RealtimePayload) => void;
+  onActivityUpdate?: (payload: RealtimePayload) => void;
+  onCommentAdded?: (payload: RealtimePayload) => void;
   enabled?: boolean;
   enableNotifications?: boolean;
 }
@@ -62,16 +69,15 @@ export function useRealtimeProposal({
   enableNotifications = true,
 }: UseRealtimeProposalOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     if (!enabled || !proposalId) return;
 
     const supabase = createClient();
 
-    // Create unique channel name
     const channelName = `proposal:${proposalId}`;
 
-    // Subscribe to proposal changes
     const channel = supabase
       .channel(channelName)
       .on(
@@ -82,26 +88,19 @@ export function useRealtimeProposal({
           table: 'proposals',
           filter: `id=eq.${proposalId}`,
         },
-        (payload) => {
+        (payload: RealtimePayload) => {
           console.log('[Realtime] Proposal updated:', payload);
 
-          // Show notification for status changes
           if (enableNotifications && payload.new) {
-            const oldStatus = payload.old?.status;
-            const newStatus = payload.new.status;
+            const oldStatus = typeof payload.old?.status === 'string' ? payload.old.status : null;
+            const newStatus = typeof payload.new.status === 'string' ? payload.new.status : null;
 
-            // Client viewed proposal
-            if (oldStatus !== 'viewed' && newStatus === 'viewed') {
-              if (shouldShowNotification('view')) {
-                notifyProposalView(proposalTitle, clientName, proposalId);
-              }
+            if (oldStatus !== 'viewed' && newStatus === 'viewed' && shouldShowNotification('view')) {
+              notifyProposalView(proposalTitle, clientName, proposalId);
             }
 
-            // Client approved proposal
-            if (newStatus === 'approved' && oldStatus !== 'approved') {
-              if (shouldShowNotification('approval')) {
-                notifyProposalApproval(proposalTitle, clientName, proposalId);
-              }
+            if (newStatus === 'approved' && oldStatus !== 'approved' && shouldShowNotification('approval')) {
+              notifyProposalApproval(proposalTitle, clientName, proposalId);
             }
           }
 
@@ -115,13 +114,12 @@ export function useRealtimeProposal({
           schema: 'public',
           table: 'proposal_activities',
         },
-        (payload) => {
+        (payload: RealtimePayload) => {
           console.log('[Realtime] Activity updated:', payload);
 
-          // Show notification for client activity toggles
           if (enableNotifications && payload.new) {
-            const oldSelected = payload.old?.is_selected;
-            const newSelected = payload.new.is_selected;
+            const oldSelected = Boolean(payload.old?.is_selected);
+            const newSelected = Boolean(payload.new.is_selected);
 
             if (oldSelected !== newSelected && shouldShowNotification('update')) {
               const notification = createEventNotification('update', {
@@ -144,13 +142,16 @@ export function useRealtimeProposal({
           table: 'proposal_comments',
           filter: `proposal_id=eq.${proposalId}`,
         },
-        (payload) => {
+        (payload: RealtimePayload) => {
           console.log('[Realtime] Comment added:', payload);
 
-          // Show notification for new comments
           if (enableNotifications && payload.new) {
-            const authorName = payload.new.author_name || clientName;
-            const commentText = payload.new.comment || '';
+            const authorName =
+              typeof payload.new.author_name === 'string' && payload.new.author_name.trim().length > 0
+                ? payload.new.author_name
+                : clientName;
+            const commentText =
+              typeof payload.new.comment === 'string' ? payload.new.comment : '';
 
             if (shouldShowNotification('comment')) {
               notifyProposalComment(proposalTitle, authorName, proposalId, commentText);
@@ -160,15 +161,17 @@ export function useRealtimeProposal({
           onCommentAdded?.(payload);
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: RealtimeSubscriptionStatus) => {
         console.log('[Realtime] Subscription status:', status);
+        setIsSubscribed(status === 'SUBSCRIBED');
       });
 
     channelRef.current = channel;
 
-    // Cleanup on unmount
     return () => {
       console.log('[Realtime] Unsubscribing from:', channelName);
+      setIsSubscribed(false);
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [
@@ -183,7 +186,7 @@ export function useRealtimeProposal({
   ]);
 
   return {
-    isSubscribed: channelRef.current !== null,
+    isSubscribed,
   };
 }
 
@@ -204,10 +207,11 @@ export function useRealtimeProposals({
   enabled = true,
 }: {
   organizationId?: string;
-  onProposalUpdate?: (payload: any) => void;
+  onProposalUpdate?: (payload: RealtimePayload) => void;
   enabled?: boolean;
 }) {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     if (!enabled || !organizationId) return;
@@ -220,29 +224,32 @@ export function useRealtimeProposals({
       .on(
         'postgres_changes',
         {
-          event: '*', // All events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'proposals',
           filter: `organization_id=eq.${organizationId}`,
         },
-        (payload) => {
+        (payload: RealtimePayload) => {
           console.log('[Realtime] Proposals changed:', payload);
           onProposalUpdate?.(payload);
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: RealtimeSubscriptionStatus) => {
         console.log('[Realtime] Proposals subscription status:', status);
+        setIsSubscribed(status === 'SUBSCRIBED');
       });
 
     channelRef.current = channel;
 
     return () => {
       console.log('[Realtime] Unsubscribing from:', channelName);
+      setIsSubscribed(false);
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [organizationId, enabled, onProposalUpdate]);
 
   return {
-    isSubscribed: channelRef.current !== null,
+    isSubscribed,
   };
 }

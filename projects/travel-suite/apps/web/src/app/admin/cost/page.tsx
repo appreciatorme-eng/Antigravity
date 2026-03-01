@@ -36,12 +36,40 @@ type OrganizationAggregate = {
   ai_monthly_estimated_cost_usd: number;
 };
 
+type CostAlert = {
+  id: string;
+  severity: "high" | "medium";
+  category: "cost_spike" | "auth_failures" | "cap_hit_rate";
+  organization_id: string;
+  organization_name: string;
+  title: string;
+  description: string;
+  metric_value: string;
+  owner: string;
+  runbook: string;
+  detected_at: string;
+};
+
+type WeeklyMarginRow = {
+  organization_id: string;
+  organization_name: string;
+  tier: string;
+  revenue_inr: number;
+  variable_cost_usd: number;
+  variable_cost_inr: number;
+  gross_margin_pct: number;
+  cap_denial_rate_pct: number;
+  recommendation: string;
+};
+
 type CostOverviewPayload = {
   period: {
     days: number;
     since: string;
   };
   emergency_caps_usd: Record<CostCategory, number>;
+  alerts: CostAlert[];
+  weekly_margin_report: WeeklyMarginRow[];
   organizations: OrganizationAggregate[];
 };
 
@@ -59,6 +87,10 @@ const CATEGORY_COLOR: Record<CostCategory, string> = {
 
 function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
+}
+
+function formatInr(value: number): string {
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
 }
 
 export default function AdminCostOverviewPage() {
@@ -262,6 +294,8 @@ export default function AdminCostOverviewPage() {
   }
 
   const organizations = payload?.organizations || [];
+  const alerts = payload?.alerts || [];
+  const weeklyMargin = payload?.weekly_margin_report || [];
 
   return (
     <div className="space-y-8 pb-16">
@@ -314,6 +348,46 @@ export default function AdminCostOverviewPage() {
           <span>{error}</span>
         </div>
       ) : null}
+
+      <GlassCard padding="lg" className={alerts.length > 0 ? "border-rose-200/70 bg-rose-50/40" : "border-emerald-200/70 bg-emerald-50/30"}>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Anomaly Alerts</p>
+            <h2 className="text-lg font-serif text-secondary dark:text-white mt-1">Cost and abuse signals with runbooks</h2>
+          </div>
+          <span className={`text-xs font-black px-2 py-1 rounded-lg border ${alerts.length > 0 ? "text-rose-700 bg-rose-50 border-rose-200" : "text-emerald-700 bg-emerald-50 border-emerald-200"}`}>
+            {alerts.length > 0 ? `${alerts.length} active` : "No active alerts"}
+          </span>
+        </div>
+
+        {alerts.length === 0 ? (
+          <p className="text-sm text-text-muted">No cost spikes, cap-hit anomalies, or repeated admin auth failures in the current window.</p>
+        ) : (
+          <div className="space-y-2">
+            {alerts.slice(0, 12).map((alert) => (
+              <div key={alert.id} className="rounded-xl border border-rose-100 bg-white p-3">
+                <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-secondary">{alert.title}</p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {alert.organization_name} · {alert.description}
+                    </p>
+                    <p className="text-[11px] text-text-muted mt-1">
+                      {alert.metric_value} · Owner: {alert.owner}
+                    </p>
+                  </div>
+                  <span className={`text-[11px] font-bold px-2 py-1 rounded-lg border ${alert.severity === "high" ? "text-rose-700 bg-rose-50 border-rose-200" : "text-amber-700 bg-amber-50 border-amber-200"}`}>
+                    {alert.severity}
+                  </span>
+                </div>
+                <a href={alert.runbook} className="mt-2 inline-flex text-[11px] font-bold text-primary hover:underline">
+                  Open runbook
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <GlassCard padding="md" className="border-primary/20">
@@ -377,6 +451,64 @@ export default function AdminCostOverviewPage() {
             </div>
           ))}
         </div>
+      </GlassCard>
+
+      <GlassCard padding="lg">
+        <div className="flex items-center gap-2 mb-4">
+          <Wallet className="w-4 h-4 text-primary" />
+          <h2 className="text-lg font-serif text-secondary dark:text-white">Weekly Margin Report (Per Tenant)</h2>
+        </div>
+
+        {weeklyMargin.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-8 text-center">
+            <p className="text-sm text-text-muted">Weekly tenant margin appears once paid invoices or metered provider spend are recorded.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Organization</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Revenue (7d)</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Variable COGS</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Gross Margin</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Cap Denial Rate</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.16em] text-text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {weeklyMargin.map((row) => (
+                  <tr key={row.organization_id}>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold text-secondary">{row.organization_name}</p>
+                      <p className="text-[11px] text-text-muted">Tier: {row.tier}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-secondary">{formatInr(row.revenue_inr)}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-semibold text-secondary">{formatInr(row.variable_cost_inr)}</p>
+                      <p className="text-[11px] text-text-muted">{formatUsd(row.variable_cost_usd)}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex px-2 py-1 rounded-lg border text-[11px] font-bold ${
+                          row.gross_margin_pct < 45
+                            ? "text-rose-700 bg-rose-50 border-rose-200"
+                            : row.gross_margin_pct < 60
+                            ? "text-amber-700 bg-amber-50 border-amber-200"
+                            : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                        }`}
+                      >
+                        {row.gross_margin_pct.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-text-muted">{row.cap_denial_rate_pct.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-xs text-text-muted">{row.recommendation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </GlassCard>
 
       <GlassCard padding="lg">

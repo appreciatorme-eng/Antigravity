@@ -1,35 +1,51 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { consumeSocialOAuthState } from '@/lib/security/social-oauth-state';
+import { encryptSocialToken } from '@/lib/security/social-token-crypto';
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET;
 const META_REDIRECT_URI = process.env.META_REDIRECT_URI || 'http://localhost:3000/api/social/oauth/callback';
 
+type FacebookPage = {
+    id?: string;
+    access_token?: string;
+};
+
+function redirectWithError(req: Request, errorCode: string) {
+    return NextResponse.redirect(new URL(`/social?error=${encodeURIComponent(errorCode)}`, req.url));
+}
+
+function redirectWithSuccess(req: Request) {
+    return NextResponse.redirect(new URL('/social?success=oauth_complete', req.url));
+}
+
 export async function GET(req: Request) {
     try {
+        if (!META_APP_ID || !META_APP_SECRET) {
+            return redirectWithError(req, 'oauth_not_configured');
+        }
+
         const url = new URL(req.url);
         const code = url.searchParams.get('code');
-        const stateStr = url.searchParams.get('state');
+        const stateToken = url.searchParams.get('state');
 
         if (!code) {
-            return NextResponse.redirect(new URL('/social?error=no_code_provided', req.url));
+            return redirectWithError(req, 'no_code_provided');
         }
 
-        // Verify state
-        if (!stateStr) {
-            return NextResponse.redirect(new URL('/social?error=invalid_state', req.url));
+        if (!stateToken) {
+            return redirectWithError(req, 'invalid_state');
         }
 
-        const stateInfo = JSON.parse(Buffer.from(stateStr, 'base64').toString('utf8'));
-        const userId = stateInfo.userId;
-
-        if (!userId) {
-            return NextResponse.redirect(new URL('/social?error=invalid_state_user', req.url));
+        const state = await consumeSocialOAuthState(stateToken);
+        if (!state.ok) {
+            return redirectWithError(req, state.reason);
         }
 
+        const userId = state.userId;
         const supabaseAdmin = createAdminClient();
 
-        // 1. Get organization ID
         const { data: profile } = await supabaseAdmin
             .from('profiles')
             .select('organization_id')
@@ -37,82 +53,102 @@ export async function GET(req: Request) {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.redirect(new URL('/social?error=no_organization', req.url));
+            return redirectWithError(req, 'no_organization');
         }
 
-        // 2. Exchange code for short-lived access token
         const tokenRes = await fetch(
-            `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&client_secret=${META_APP_SECRET}&code=${code}`
+            `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(
+                META_REDIRECT_URI
+            )}&client_secret=${META_APP_SECRET}&code=${code}`
         );
 
         if (!tokenRes.ok) {
             const errBody = await tokenRes.text();
             console.error('FB token error:', errBody);
-            return NextResponse.redirect(new URL('/social?error=oauth_failed', req.url));
+            return redirectWithError(req, 'oauth_failed');
         }
 
-        const tokenData = await tokenRes.json();
+        const tokenData = (await tokenRes.json()) as { access_token?: string };
         const shortLivedToken = tokenData.access_token;
+        if (!shortLivedToken) {
+            return redirectWithError(req, 'oauth_token_missing');
+        }
 
-        // 3. Exchange short-lived token for long-lived token (60 days)
         const longTokenRes = await fetch(
             `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&fb_exchange_token=${shortLivedToken}`
         );
 
-        const longTokenData = await longTokenRes.json();
+        const longTokenData = (await longTokenRes.json()) as { access_token?: string };
         const longLivedToken = longTokenData.access_token || shortLivedToken;
 
-        // Ensure token expires eventually (60 days approx based on long lived token)
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 60);
 
-        // 4. Fetch user's pages
         const pagesRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${longLivedToken}`);
-        const pagesData = await pagesRes.json();
+        if (!pagesRes.ok) {
+            console.error('Failed to fetch Facebook pages:', await pagesRes.text());
+            return redirectWithError(req, 'oauth_pages_fetch_failed');
+        }
 
-        // For simplicity we create social_connections for Facebook pages.
-        // If Instagram Professional account is linked, we would also query the IG account ID
-        // e.g. /v20.0/{page-id}?fields=instagram_business_account&access_token={page_token}
+        const pagesData = (await pagesRes.json()) as { data?: FacebookPage[] };
+        const pages = Array.isArray(pagesData.data) ? pagesData.data : [];
 
-        for (const page of (pagesData.data || [])) {
-            // Upsert Facebook connection
-            await supabaseAdmin.from('social_connections').upsert({
-                organization_id: profile.organization_id,
-                platform: 'facebook',
-                platform_page_id: page.id,
-                access_token_encrypted: page.access_token, // Ideally encrypted!
-                token_expires_at: expiresAt.toISOString(),
-                updated_at: new Date().toISOString()
-            }, {
-                onConflict: 'organization_id,platform,platform_page_id'
-            });
+        for (const page of pages) {
+            if (!page.id || !page.access_token) {
+                continue;
+            }
 
-            // Try resolving Instagram from Facebook Page
-            const fbPageIgRes = await fetch(`https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`);
-            const fbPageIgData = await fbPageIgRes.json();
+            const encryptedPageToken = encryptSocialToken(page.access_token);
 
-            if (fbPageIgData && fbPageIgData.instagram_business_account) {
-                const igId = fbPageIgData.instagram_business_account.id;
+            await supabaseAdmin.from('social_connections').upsert(
+                {
+                    organization_id: profile.organization_id,
+                    platform: 'facebook',
+                    platform_page_id: page.id,
+                    access_token_encrypted: encryptedPageToken,
+                    token_expires_at: expiresAt.toISOString(),
+                    updated_at: new Date().toISOString(),
+                },
+                {
+                    onConflict: 'organization_id,platform,platform_page_id',
+                }
+            );
 
-                // Upsert Instagram connection
-                await supabaseAdmin.from('social_connections').upsert({
+            const fbPageIgRes = await fetch(
+                `https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+            );
+
+            if (!fbPageIgRes.ok) {
+                continue;
+            }
+
+            const fbPageIgData = (await fbPageIgRes.json()) as {
+                instagram_business_account?: { id?: string };
+            };
+
+            const igId = fbPageIgData.instagram_business_account?.id;
+            if (!igId) {
+                continue;
+            }
+
+            await supabaseAdmin.from('social_connections').upsert(
+                {
                     organization_id: profile.organization_id,
                     platform: 'instagram',
                     platform_page_id: igId,
-                    access_token_encrypted: page.access_token, // Uses FB page access token
+                    access_token_encrypted: encryptedPageToken,
                     token_expires_at: expiresAt.toISOString(),
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'organization_id,platform,platform_page_id'
-                });
-            }
+                    updated_at: new Date().toISOString(),
+                },
+                {
+                    onConflict: 'organization_id,platform,platform_page_id',
+                }
+            );
         }
 
-        // Successfully authenticated!
-        return NextResponse.redirect(new URL('/social?success=oauth_complete', req.url));
-
-    } catch (error: any) {
+        return redirectWithSuccess(req);
+    } catch (error: unknown) {
         console.error('Callback error:', error);
-        return NextResponse.redirect(new URL('/social?error=server_error', req.url));
+        return redirectWithError(req, 'server_error');
     }
 }

@@ -28,15 +28,12 @@ import {
     Globe,
     Plane,
     TrendingUp,
-    MoreHorizontal,
     LayoutGrid,
     List as ListIcon
 } from "lucide-react";
 import CreateTripModal from "@/components/CreateTripModal";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassSelect } from "@/components/glass/GlassInput";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassListSkeleton } from "@/components/glass/GlassSkeleton";
 import { cn } from "@/lib/utils";
@@ -100,7 +97,11 @@ export default function AdminTripsPage() {
     }, [supabase, statusFilter, searchQuery]);
 
     useEffect(() => {
-        void fetchTrips();
+        const timer = setTimeout(() => {
+            void fetchTrips();
+        }, 0);
+
+        return () => clearTimeout(timer);
     }, [fetchTrips]);
 
     const formatDate = (dateString: string) => {

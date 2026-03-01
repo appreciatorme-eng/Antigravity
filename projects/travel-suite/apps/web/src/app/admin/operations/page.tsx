@@ -14,6 +14,7 @@ import {
   BellRing,
   ArrowUpRight,
   Route,
+  TrendingUp,
   Clock3,
   Receipt,
   FileText,
@@ -74,6 +75,28 @@ type CommandCenterPayload = {
     urgent_quotes: number;
     overdue_follow_ups: number;
   };
+  daily_ops_board: {
+    at_risk_departures: number;
+    pending_payments: number;
+    expiring_quotes_24h: number;
+    overdue_follow_ups: number;
+  };
+  outcome_events: Array<{
+    key: "time_saved_hours" | "recovered_revenue_inr" | "response_sla_pct";
+    label: string;
+    value: number;
+    unit: "hours" | "inr" | "percent";
+    window: string;
+  }>;
+  upgrade_prompts: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    trigger: string;
+    cta_label: string;
+    cta_path: string;
+    priority: number;
+  }>;
   departures: DepartureItem[];
   pending_payments: PendingPaymentItem[];
   expiring_quotes: ExpiringQuoteItem[];
@@ -100,6 +123,12 @@ function formatDate(value: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatOutcomeValue(value: number, unit: "hours" | "inr" | "percent"): string {
+  if (unit === "inr") return `₹${Math.round(value).toLocaleString("en-IN")}`;
+  if (unit === "percent") return `${value.toFixed(1)}%`;
+  return `${value.toFixed(1)}h`;
 }
 
 export default function AdminOperationsPage() {
@@ -261,6 +290,31 @@ export default function AdminOperationsPage() {
         </GlassCard>
       </div>
 
+      <GlassCard padding="lg">
+        <div className="flex items-center gap-2 mb-4">
+          <Route className="w-4 h-4 text-primary" />
+          <h2 className="text-lg font-serif text-secondary dark:text-white">Daily Ops Board</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">At-risk departures</p>
+            <p className="text-2xl font-black text-secondary mt-1">{data.daily_ops_board.at_risk_departures}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Pending payments</p>
+            <p className="text-2xl font-black text-secondary mt-1">{data.daily_ops_board.pending_payments}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Quotes expiring in 24h</p>
+            <p className="text-2xl font-black text-secondary mt-1">{data.daily_ops_board.expiring_quotes_24h}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Overdue follow-ups</p>
+            <p className="text-2xl font-black text-secondary mt-1">{data.daily_ops_board.overdue_follow_ups}</p>
+          </div>
+        </div>
+      </GlassCard>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 md:grid-cols-3 gap-2">
         {TABS.map((tab) => (
           <button
@@ -280,6 +334,44 @@ export default function AdminOperationsPage() {
 
       {activeTab === "command" ? (
         <div className="space-y-4">
+          <GlassCard padding="lg">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet className="w-4 h-4 text-primary" />
+              <h2 className="text-lg font-serif text-secondary dark:text-white">Outcome Events</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {data.outcome_events.map((event) => (
+                <div key={event.key} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-text-muted font-black">{event.label}</p>
+                  <p className="text-2xl font-black text-secondary mt-1">{formatOutcomeValue(event.value, event.unit)}</p>
+                  <p className="text-xs text-text-muted mt-1">{event.window}</p>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+
+          {data.upgrade_prompts.length > 0 ? (
+            <GlassCard padding="lg" className="border-indigo-200/70 bg-indigo-50/40">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <h2 className="text-lg font-serif text-secondary dark:text-white">Upgrade Triggers (Outcome-Linked)</h2>
+              </div>
+              <div className="space-y-2">
+                {data.upgrade_prompts.map((prompt) => (
+                  <div key={prompt.id} className="rounded-xl border border-indigo-100 bg-white p-3">
+                    <p className="text-sm font-semibold text-secondary">{prompt.title}</p>
+                    <p className="text-xs text-text-muted mt-1">{prompt.detail}</p>
+                    <p className="text-[11px] text-text-muted mt-1">Trigger: {prompt.trigger}</p>
+                    <Link href={prompt.cta_path} className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 hover:text-indigo-900">
+                      {prompt.cta_label}
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          ) : null}
+
           <GlassCard padding="lg">
             <div className="flex items-center gap-2 mb-4">
               <BellRing className="w-4 h-4 text-primary" />

@@ -41,6 +41,14 @@ function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
 
+function routePathFromRequest(request: RequestLike): string {
+  try {
+    return new URL(request.url).pathname || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 function normalizeBearerToken(authorization: string | null): string | null {
   if (!authorization) return null;
   const [scheme, token] = authorization.split(" ");
@@ -54,6 +62,38 @@ function parseRole(input: string | null): AdminRole | null {
   if (role === "admin") return "admin";
   if (role === "super_admin") return "super_admin";
   return null;
+}
+
+async function recordAdminAuthFailure(params: {
+  adminClient: ReturnType<typeof createAdminClient>;
+  request: RequestLike;
+  reason: string;
+  userId?: string | null;
+  organizationId?: string | null;
+}) {
+  try {
+    const route = routePathFromRequest(params.request);
+    const method = (params.request.method || "GET").toUpperCase();
+    const nowIso = new Date().toISOString();
+    const body = [
+      `reason=${params.reason}`,
+      `route=${route}`,
+      `method=${method}`,
+      `organization_id=${params.organizationId || "unknown"}`,
+    ].join("|");
+
+    await params.adminClient.from("notification_logs").insert({
+      notification_type: "admin_auth_failure",
+      recipient_id: params.userId || null,
+      recipient_type: "admin",
+      title: "Admin access denied",
+      body,
+      status: "failed",
+      sent_at: nowIso,
+    });
+  } catch {
+    // Auth-failure telemetry is best-effort.
+  }
 }
 
 async function getUserIdFromRequest(
@@ -91,6 +131,11 @@ export async function requireAdmin(
   const adminClient = createAdminClient();
   const userId = await getUserIdFromRequest(request, adminClient);
   if (!userId) {
+    void recordAdminAuthFailure({
+      adminClient,
+      request,
+      reason: "missing_or_invalid_auth",
+    });
     return {
       ok: false,
       response: jsonError("Unauthorized", 401),
@@ -104,6 +149,12 @@ export async function requireAdmin(
     .maybeSingle();
 
   if (profileError || !profile) {
+    void recordAdminAuthFailure({
+      adminClient,
+      request,
+      userId,
+      reason: "profile_missing_or_unreadable",
+    });
     return {
       ok: false,
       response: jsonError("Forbidden", 403),
@@ -112,6 +163,13 @@ export async function requireAdmin(
 
   const parsedRole = parseRole(profile.role);
   if (!parsedRole) {
+    void recordAdminAuthFailure({
+      adminClient,
+      request,
+      userId,
+      organizationId: profile.organization_id,
+      reason: "role_not_admin",
+    });
     return {
       ok: false,
       response: jsonError("Forbidden", 403),
@@ -119,6 +177,12 @@ export async function requireAdmin(
   }
 
   if (requireOrganization && !profile.organization_id && parsedRole !== "super_admin") {
+    void recordAdminAuthFailure({
+      adminClient,
+      request,
+      userId,
+      reason: "organization_not_configured",
+    });
     return {
       ok: false,
       response: jsonError("Admin organization not configured", 400),

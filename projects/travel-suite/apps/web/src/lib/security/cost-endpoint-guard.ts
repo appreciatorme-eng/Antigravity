@@ -8,7 +8,7 @@ import {
   getEmergencyDailySpendCapUsd,
   getEstimatedRequestCostUsd,
   getPlanDailySpendCapUsd,
-  recordDailySpendUsd,
+  reserveDailySpendUsd,
   type CostCategory,
 } from "@/lib/cost/spend-guardrails";
 
@@ -128,6 +128,10 @@ function unauthorizedResponse(message: string, status = 401): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
 
+function getUpgradePlan(tier: SubscriptionTier): string | null {
+  return tier === "free" ? "pro_monthly" : tier === "pro" ? "enterprise" : null;
+}
+
 export async function guardCostEndpoint(
   request: NextRequest,
   category: CostEndpointCategory
@@ -173,9 +177,40 @@ export async function guardCostEndpoint(
   });
 
   const estimatedCostUsd = getEstimatedRequestCostUsd(category);
-  const currentDailySpendUsd = await getCurrentDailySpendUsd(organizationId, category);
-  const planDailyCapUsd = getPlanDailySpendCapUsd(category, tier);
-  const emergencyDailyCapUsd = await getEmergencyDailySpendCapUsd(category);
+
+  let currentDailySpendUsd = 0;
+  let planDailyCapUsd = 0;
+  let emergencyDailyCapUsd = 0;
+
+  try {
+    [currentDailySpendUsd, emergencyDailyCapUsd] = await Promise.all([
+      getCurrentDailySpendUsd(organizationId, category),
+      getEmergencyDailySpendCapUsd(category),
+    ]);
+    planDailyCapUsd = getPlanDailySpendCapUsd(category, tier);
+  } catch (error: unknown) {
+    const response = NextResponse.json(
+      {
+        error: "Cost guardrails are unavailable",
+        reason: error instanceof Error ? error.message : "spend_metering_backend_unavailable",
+      },
+      { status: 503 }
+    );
+
+    return {
+      ok: false,
+      response: withRateLimitHeaders(
+        response,
+        { burst: burstLimit, daily: dailyLimit },
+        {
+          estimatedCostUsd,
+          currentDailySpendUsd,
+          planDailyCapUsd,
+          emergencyDailyCapUsd,
+        }
+      ),
+    };
+  }
 
   if (!burstLimit.success || !dailyLimit.success) {
     const retryAfterSeconds = Math.max(
@@ -204,11 +239,12 @@ export async function guardCostEndpoint(
         reason,
         tier,
         category,
-        upgrade_plan: tier === "free" ? "pro_monthly" : tier === "pro" ? "enterprise" : null,
+        upgrade_plan: getUpgradePlan(tier),
       },
       { status: 429 }
     );
     response.headers.set("retry-after", String(retryAfterSeconds));
+
     return {
       ok: false,
       response: withRateLimitHeaders(
@@ -224,39 +260,94 @@ export async function guardCostEndpoint(
     };
   }
 
-  const projectedSpendUsd = currentDailySpendUsd + estimatedCostUsd;
-  let spendReason: string | null = null;
+  try {
+    const reservation = await reserveDailySpendUsd(organizationId, category, estimatedCostUsd, {
+      planCapUsd: planDailyCapUsd,
+      emergencyCapUsd: emergencyDailyCapUsd,
+    });
 
-  if (projectedSpendUsd > emergencyDailyCapUsd) {
-    spendReason = "emergency spend cap exceeded";
-  } else if (projectedSpendUsd > planDailyCapUsd) {
-    spendReason = "plan spend cap exceeded";
-  }
+    if (!reservation.allowed) {
+      const reason =
+        reservation.denialReason === "emergency_cap_exceeded"
+          ? "emergency spend cap exceeded"
+          : "plan spend cap exceeded";
 
-  if (spendReason) {
+      await persistMeteringEvent({
+        userId: user.id,
+        organizationId,
+        category,
+        tier,
+        status: "denied",
+        reason,
+        remainingDaily: dailyLimit.remaining,
+        estimatedCostUsd,
+        currentDailySpendUsd: reservation.currentSpendUsd,
+        planDailyCapUsd,
+        emergencyDailyCapUsd,
+      });
+
+      const response = NextResponse.json(
+        {
+          error: "Daily spend cap exceeded",
+          reason,
+          tier,
+          category,
+          upgrade_plan: getUpgradePlan(tier),
+        },
+        { status: 429 }
+      );
+
+      return {
+        ok: false,
+        response: withRateLimitHeaders(
+          response,
+          { burst: burstLimit, daily: dailyLimit },
+          {
+            estimatedCostUsd,
+            currentDailySpendUsd: reservation.currentSpendUsd,
+            planDailyCapUsd,
+            emergencyDailyCapUsd,
+          }
+        ),
+      };
+    }
+
     await persistMeteringEvent({
       userId: user.id,
       organizationId,
       category,
       tier,
-      status: "denied",
-      reason: spendReason,
+      status: "allowed",
+      reason: "within limits",
       remainingDaily: dailyLimit.remaining,
       estimatedCostUsd,
-      currentDailySpendUsd,
+      currentDailySpendUsd: reservation.nextSpendUsd,
       planDailyCapUsd,
       emergencyDailyCapUsd,
     });
 
-    const response = NextResponse.json(
-      {
-        error: "Daily spend cap exceeded",
-        reason: spendReason,
+    return {
+      ok: true,
+      context: {
+        userId: user.id,
+        organizationId,
         tier,
         category,
-        upgrade_plan: tier === "free" ? "pro_monthly" : tier === "pro" ? "enterprise" : null,
+        burstLimit,
+        dailyLimit,
+        estimatedCostUsd,
+        currentDailySpendUsd: reservation.nextSpendUsd,
+        planDailyCapUsd,
+        emergencyDailyCapUsd,
       },
-      { status: 429 }
+    };
+  } catch (error: unknown) {
+    const response = NextResponse.json(
+      {
+        error: "Cost guardrails are unavailable",
+        reason: error instanceof Error ? error.message : "spend_reservation_failed",
+      },
+      { status: 503 }
     );
 
     return {
@@ -273,38 +364,6 @@ export async function guardCostEndpoint(
       ),
     };
   }
-
-  const nextDailySpendUsd = await recordDailySpendUsd(organizationId, category, estimatedCostUsd);
-
-  await persistMeteringEvent({
-    userId: user.id,
-    organizationId,
-    category,
-    tier,
-    status: "allowed",
-    reason: "within limits",
-    remainingDaily: dailyLimit.remaining,
-    estimatedCostUsd,
-    currentDailySpendUsd: nextDailySpendUsd,
-    planDailyCapUsd,
-    emergencyDailyCapUsd,
-  });
-
-  return {
-    ok: true,
-    context: {
-      userId: user.id,
-      organizationId,
-      tier,
-      category,
-      burstLimit,
-      dailyLimit,
-      estimatedCostUsd,
-      currentDailySpendUsd: nextDailySpendUsd,
-      planDailyCapUsd,
-      emergencyDailyCapUsd,
-    },
-  };
 }
 
 export function withCostGuardHeaders(

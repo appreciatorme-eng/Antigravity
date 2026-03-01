@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllFeatureLimitStatuses } from "@/lib/subscriptions/limits";
+import { getAllFeatureLimitStatuses, resolveOrganizationPlan } from "@/lib/subscriptions/limits";
+import { resolveCreditPackOffers } from "@/lib/billing/credit-packs";
 
 export async function GET() {
   try {
@@ -30,8 +31,17 @@ export async function GET() {
     );
     const dataClient = canUseAdminClient ? createAdminClient() : supabase;
 
+    const { planId, tier } = await resolveOrganizationPlan(dataClient, profile.organization_id);
     const limits = await getAllFeatureLimitStatuses(dataClient, profile.organization_id);
-    return NextResponse.json({ limits });
+    const creditPackCatalog = resolveCreditPackOffers(planId);
+
+    return NextResponse.json({
+      plan_id: planId,
+      tier,
+      limits,
+      credit_packs: creditPackCatalog.offers,
+      premium_automation_gate: creditPackCatalog.premium_automation_gate,
+    });
   } catch (error) {
     console.error("Error in GET /api/subscriptions/limits:", error);
     return NextResponse.json(
