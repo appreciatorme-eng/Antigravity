@@ -1,40 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
-const supabaseAdmin = createAdminClient();
+const SECURITY_DIAGNOSTICS_RATE_LIMIT_MAX = 30;
+const SECURITY_DIAGNOSTICS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
-async function getAdminUserId(req: NextRequest): Promise<string | null> {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
-
-  if (token) {
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (!authError && authData?.user) return authData.user.id;
-  }
-
-  const serverClient = await createServerClient();
-  const {
-    data: { user },
-  } = await serverClient.auth.getUser();
-  return user?.id || null;
+function attachRateLimitHeaders(
+  response: NextResponse,
+  rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
+): NextResponse {
+  const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+  response.headers.set("retry-after", String(retryAfterSeconds));
+  response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+  response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+  response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+  return response;
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const adminUserId = await getAdminUserId(req);
-    if (!adminUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const admin = await requireAdmin(req, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
     }
 
-    const { data: adminProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("role, organization_id")
-      .eq("id", adminUserId)
-      .single();
-
-    if (!adminProfile || adminProfile.role !== "admin") {
+    if (!admin.isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: SECURITY_DIAGNOSTICS_RATE_LIMIT_MAX,
+      windowMs: SECURITY_DIAGNOSTICS_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:security:diagnostics",
+    });
+    if (!rateLimit.success) {
+      const response = NextResponse.json(
+        { error: "Too many security diagnostics requests. Please retry later." },
+        { status: 429 }
+      );
+      return attachRateLimitHeaders(response, rateLimit);
     }
 
     const now = Date.now();
@@ -48,25 +53,25 @@ export async function GET(req: NextRequest) {
       { data: topTokens = [] },
       { data: rlsDiagnostics, error: rlsError },
     ] = await Promise.all([
-      supabaseAdmin
+      admin.adminClient
         .from("trip_location_share_access_logs")
         .select("*", { count: "exact", head: true })
         .gte("created_at", fiveMinAgoIso),
-      supabaseAdmin
+      admin.adminClient
         .from("trip_location_share_access_logs")
         .select("*", { count: "exact", head: true })
         .gte("created_at", oneHourAgoIso),
-      supabaseAdmin
+      admin.adminClient
         .from("trip_location_share_access_logs")
         .select("ip_hash")
         .gte("created_at", oneHourAgoIso)
         .limit(5000),
-      supabaseAdmin
+      admin.adminClient
         .from("trip_location_share_access_logs")
         .select("share_token_hash")
         .gte("created_at", oneHourAgoIso)
         .limit(5000),
-      supabaseAdmin.rpc("get_rls_diagnostics"),
+      admin.adminClient.rpc("get_rls_diagnostics"),
     ]);
 
     if (rlsError) {

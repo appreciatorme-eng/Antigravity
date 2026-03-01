@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const supabaseAdmin = createAdminClient();
+const CLIENTS_READ_RATE_LIMIT_MAX = 120;
+const CLIENTS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const CLIENTS_WRITE_RATE_LIMIT_MAX = 60;
+const CLIENTS_WRITE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 const lifecycleTemplateByStage: Record<string, string> = {
     lead: "lifecycle_lead",
@@ -34,43 +40,106 @@ function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof get
     );
 }
 
-async function getAdminUserId(req: Request) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
+type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 
-    if (token) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (!authError && authData?.user) {
-            return authData.user.id;
+function attachRateLimitHeaders(
+    response: NextResponse,
+    rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
+): NextResponse {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    response.headers.set("retry-after", String(retryAfterSeconds));
+    response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+    response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+    return response;
+}
+
+function resolveScopedOrgFromQuery(
+    admin: AdminContext,
+    req: Request
+): { organizationId: string } | { error: NextResponse } {
+    const { searchParams } = new URL(req.url);
+    const requestedOrganizationId = sanitizeText(searchParams.get("organization_id"), { maxLength: 80 });
+
+    if (admin.isSuperAdmin) {
+        if (!requestedOrganizationId) {
+            return {
+                error: NextResponse.json(
+                    { error: "organization_id query param is required for super admin" },
+                    { status: 400 }
+                ),
+            };
         }
+        return { organizationId: requestedOrganizationId };
     }
 
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    return user?.id || null;
+    if (!admin.organizationId) {
+        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
+    }
+    if (requestedOrganizationId && requestedOrganizationId !== admin.organizationId) {
+        return { error: NextResponse.json({ error: "Cannot access another organization scope" }, { status: 403 }) };
+    }
+
+    return { organizationId: admin.organizationId };
+}
+
+function resolveScopedOrgFromBody(
+    admin: AdminContext,
+    body: unknown
+): { organizationId: string } | { error: NextResponse } {
+    const requestedOrganizationId = sanitizeText((body as { organization_id?: unknown }).organization_id, {
+        maxLength: 80,
+    });
+
+    if (admin.isSuperAdmin) {
+        if (!requestedOrganizationId) {
+            return {
+                error: NextResponse.json(
+                    { error: "organization_id is required for super admin writes" },
+                    { status: 400 }
+                ),
+            };
+        }
+        return { organizationId: requestedOrganizationId };
+    }
+
+    if (!admin.organizationId) {
+        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
+    }
+    if (requestedOrganizationId && requestedOrganizationId !== admin.organizationId) {
+        return { error: NextResponse.json({ error: "Cannot mutate another organization scope" }, { status: 403 }) };
+    }
+
+    return { organizationId: admin.organizationId };
 }
 
 export async function POST(req: Request) {
     try {
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role, organization_id")
-            .eq("id", adminUserId)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        if (!adminProfile.organization_id) {
-            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: CLIENTS_WRITE_RATE_LIMIT_MAX,
+            windowMs: CLIENTS_WRITE_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:clients:write",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin client mutation requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
         }
 
         const body = await req.json();
+        const scopedOrg = resolveScopedOrgFromBody(admin, body);
+        if ("error" in scopedOrg) {
+            return scopedOrg.error;
+        }
+
         const email = String(body.email || "").trim().toLowerCase();
         const fullName = String(body.full_name || "").trim();
         const phone = String(body.phone || "").trim();
@@ -121,7 +190,7 @@ export async function POST(req: Request) {
         if (!existingProfile?.id) {
             const clientLimitStatus = await getFeatureLimitStatus(
                 supabaseAdmin,
-                adminProfile.organization_id,
+                scopedOrg.organizationId,
                 "clients"
             );
             if (!clientLimitStatus.allowed) {
@@ -135,7 +204,7 @@ export async function POST(req: Request) {
             phone: phone || null,
             phone_normalized: normalizedPhone || null,
             role: "client",
-            organization_id: adminProfile.organization_id ?? null,
+            organization_id: scopedOrg.organizationId,
             preferred_destination: preferredDestination || null,
             travelers_count: travelersCount,
             budget_min: budgetMin,
@@ -161,7 +230,7 @@ export async function POST(req: Request) {
                 .maybeSingle();
             if (
                 existingOrgProfile?.organization_id &&
-                existingOrgProfile.organization_id !== adminProfile.organization_id
+                existingOrgProfile.organization_id !== scopedOrg.organizationId
             ) {
                 return NextResponse.json({ error: "User belongs to a different organization" }, { status: 403 });
             }
@@ -181,7 +250,7 @@ export async function POST(req: Request) {
                 .upsert(
                     {
                         id: existingProfile.id,
-                        organization_id: adminProfile.organization_id,
+                        organization_id: scopedOrg.organizationId,
                         user_id: existingProfile.id,
                     },
                     { onConflict: "id" }
@@ -227,7 +296,7 @@ export async function POST(req: Request) {
             .upsert(
                 {
                     id: newUser.user.id,
-                    organization_id: adminProfile.organization_id,
+                    organization_id: scopedOrg.organizationId,
                     user_id: newUser.user.id,
                 },
                 { onConflict: "id" }
@@ -245,29 +314,35 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
     try {
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role, organization_id")
-            .eq("id", adminUserId)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        const scopedOrg = resolveScopedOrgFromQuery(admin, req);
+        if ("error" in scopedOrg) {
+            return scopedOrg.error;
         }
-        if (!adminProfile.organization_id) {
-            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: CLIENTS_READ_RATE_LIMIT_MAX,
+            windowMs: CLIENTS_READ_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:clients:read",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin client read requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
         }
 
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from("profiles")
             .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, phase_notifications_enabled, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
-            .eq("organization_id", adminProfile.organization_id)
+            .eq("organization_id", scopedOrg.organizationId)
             .order("created_at", { ascending: false });
 
         if (profilesError) {
@@ -288,7 +363,7 @@ export async function GET(req: Request) {
             })
         );
 
-        return NextResponse.json({ clients: clientsWithTrips });
+        return NextResponse.json({ clients: clientsWithTrips, scoped_organization_id: scopedOrg.organizationId });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
@@ -303,22 +378,23 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ error: "Missing client id" }, { status: 400 });
         }
 
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role, organization_id")
-            .eq("id", adminUserId)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        if (!adminProfile.organization_id) {
-            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: CLIENTS_WRITE_RATE_LIMIT_MAX,
+            windowMs: CLIENTS_WRITE_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:clients:write",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin client mutation requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
         }
 
         const { data: targetProfile } = await supabaseAdmin
@@ -326,8 +402,16 @@ export async function DELETE(req: Request) {
             .select("organization_id")
             .eq("id", clientId)
             .maybeSingle();
-        if (!targetProfile || targetProfile.organization_id !== adminProfile.organization_id) {
+        if (!targetProfile) {
             return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+        }
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            if (targetProfile.organization_id !== admin.organizationId) {
+                return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+            }
         }
 
         const { data: profileSnapshot } = await supabaseAdmin
@@ -371,22 +455,23 @@ export async function DELETE(req: Request) {
 
 export async function PATCH(req: Request) {
     try {
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role, organization_id")
-            .eq("id", adminUserId)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        if (!adminProfile.organization_id) {
-            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: CLIENTS_WRITE_RATE_LIMIT_MAX,
+            windowMs: CLIENTS_WRITE_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:clients:write",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin client mutation requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
         }
 
         const body = await req.json();
@@ -477,8 +562,13 @@ export async function PATCH(req: Request) {
         if (!existingProfile) {
             return NextResponse.json({ error: "Profile not found" }, { status: 404 });
         }
-        if (existingProfile.organization_id !== adminProfile.organization_id) {
-            return NextResponse.json({ error: "Profile not found in your organization" }, { status: 404 });
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            if (existingProfile.organization_id !== admin.organizationId) {
+                return NextResponse.json({ error: "Profile not found in your organization" }, { status: 404 });
+            }
         }
 
         const updates: Record<string, string | number | boolean | string[] | null> = {};
@@ -526,13 +616,13 @@ export async function PATCH(req: Request) {
             !!lifecycleStage &&
             existingProfile.lifecycle_stage !== lifecycleStage;
 
-        if (lifecycleChanged) {
+        if (lifecycleChanged && existingProfile.organization_id) {
             await supabaseAdmin.from("workflow_stage_events").insert({
-                organization_id: adminProfile.organization_id,
+                organization_id: existingProfile.organization_id,
                 profile_id: existingProfile.id,
                 from_stage: existingProfile.lifecycle_stage || "lead",
                 to_stage: lifecycleStage,
-                changed_by: adminUserId,
+                changed_by: admin.userId,
             });
         }
 
@@ -540,11 +630,11 @@ export async function PATCH(req: Request) {
             lifecycleChanged
         ) {
             let notifyClient = true;
-            if (adminProfile.organization_id) {
+            if (existingProfile.organization_id) {
                 const { data: stageRule } = await supabaseAdmin
                     .from("workflow_notification_rules")
                     .select("notify_client")
-                    .eq("organization_id", adminProfile.organization_id)
+                    .eq("organization_id", existingProfile.organization_id)
                     .eq("lifecycle_stage", lifecycleStage)
                     .maybeSingle();
                 notifyClient = stageRule?.notify_client ?? true;

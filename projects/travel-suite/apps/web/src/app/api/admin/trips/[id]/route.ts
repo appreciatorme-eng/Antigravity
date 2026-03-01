@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
-const supabaseAdmin = createAdminClient();
+const TRIP_DETAILS_RATE_LIMIT_MAX = 120;
+const TRIP_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 interface AssignmentRow {
     id: string;
@@ -38,51 +39,38 @@ interface ReminderDayStatus {
     lastScheduledFor: string | null;
 }
 
-async function requireAdmin(req: Request) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
-
-    if (token) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (!authError && authData?.user) {
-            const { data: adminProfile } = await supabaseAdmin
-                .from("profiles")
-                .select("role, organization_id")
-                .eq("id", authData.user.id)
-                .single();
-
-            if (adminProfile?.role === "admin" && adminProfile.organization_id) {
-                return { userId: authData.user.id, organizationId: adminProfile.organization_id };
-            }
-        }
-    }
-
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    if (!user) {
-        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-    }
-
-    const { data: adminProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, organization_id")
-        .eq("id", user.id)
-        .single();
-
-    if (!adminProfile || adminProfile.role !== "admin") {
-        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
-    if (!adminProfile.organization_id) {
-        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
-    }
-
-    return { userId: user.id, organizationId: adminProfile.organization_id };
+function attachRateLimitHeaders(
+    response: NextResponse,
+    rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
+): NextResponse {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    response.headers.set("retry-after", String(retryAfterSeconds));
+    response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+    response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+    return response;
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: TRIP_DETAILS_RATE_LIMIT_MAX,
+            windowMs: TRIP_DETAILS_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:trips:details",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin trip detail requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
+        }
 
         const { pathname } = new URL(req.url);
         const pathId = pathname.split("/").pop();
@@ -98,7 +86,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
         }
 
-        const { data: tripData, error: tripError } = await supabaseAdmin
+        let tripQuery = admin.adminClient
             .from("trips")
             .select(`
                 id,
@@ -120,12 +108,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                     raw_data
                 )
             `)
-            .eq("id", tripId)
-            .eq("organization_id", admin.organizationId)
-            .single();
+            .eq("id", tripId);
+
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            tripQuery = tripQuery.eq("organization_id", admin.organizationId);
+        }
+
+        const { data: tripData, error: tripError } = await tripQuery.single();
 
         if (tripError || !tripData) {
             return NextResponse.json({ error: tripError?.message || "Trip not found" }, { status: 404 });
+        }
+        if (!tripData.organization_id) {
+            return NextResponse.json({ error: "Trip organization is not configured" }, { status: 400 });
         }
 
         const itinerary = Array.isArray(tripData.itineraries)
@@ -145,13 +143,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 : null,
         };
 
-        const { data: driversData } = await supabaseAdmin
+        const { data: driversData } = await admin.adminClient
             .from("external_drivers")
             .select("*")
             .eq("is_active", true)
+            .eq("organization_id", tripData.organization_id)
             .order("full_name");
 
-        const { data: assignmentsData } = await supabaseAdmin
+        const { data: assignmentsData } = await admin.adminClient
             .from("trip_driver_assignments")
             .select("*")
             .eq("trip_id", tripId);
@@ -168,7 +167,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             };
         });
 
-        const { data: accommodationsData } = await supabaseAdmin
+        const { data: accommodationsData } = await admin.adminClient
             .from("trip_accommodations")
             .select("*")
             .eq("trip_id", tripId);
@@ -185,7 +184,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             };
         });
 
-        const { data: reminderRows } = await supabaseAdmin
+        const { data: reminderRows } = await admin.adminClient
             .from("notification_queue")
             .select("id,status,scheduled_for,payload,recipient_type")
             .eq("trip_id", tripId)
@@ -221,7 +220,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             }
         });
 
-        const { data: latestLocation } = await supabaseAdmin
+        const { data: latestLocation } = await admin.adminClient
             .from("driver_locations")
             .select("latitude,longitude,recorded_at,speed,heading,accuracy")
             .eq("trip_id", tripId)
@@ -245,17 +244,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             }
 
             // Fetch other trips that overlap with this trip's date range
-            const { data: overlappingTrips } = await supabaseAdmin
+            const { data: overlappingTrips } = await admin.adminClient
                 .from("trips")
                 .select("id, start_date, itineraries(duration_days)") // duration needed to check exact overlap
                 .neq("id", tripId)
+                .eq("organization_id", tripData.organization_id)
                 .or(`start_date.lte.${tripEndDate.toISOString().split('T')[0]},end_date.gte.${tripStartDate.toISOString().split('T')[0]}`);
 
             if (overlappingTrips && overlappingTrips.length > 0) {
                 const tripIds = overlappingTrips.map(t => t.id);
 
                 // Fetch assignments for those overlapping trips
-                const { data: remoteAssignments } = await supabaseAdmin
+                const { data: remoteAssignments } = await admin.adminClient
                     .from("trip_driver_assignments")
                     .select("trip_id, day_number, external_driver_id")
                     .in("trip_id", tripIds)

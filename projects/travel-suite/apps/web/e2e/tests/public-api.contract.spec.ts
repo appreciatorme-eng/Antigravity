@@ -45,6 +45,16 @@ test.describe("Public API contracts", () => {
     expect(response.status()).toBe(401);
   });
 
+  test("admin trip details endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/trips/00000000-0000-0000-0000-000000000001");
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin security diagnostics endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/security/diagnostics");
+    expect(response.status()).toBe(401);
+  });
+
   test("workflow rules endpoint requires authentication", async ({ request }) => {
     const response = await request.get("/api/admin/workflow/rules");
     expect(response.status()).toBe(401);

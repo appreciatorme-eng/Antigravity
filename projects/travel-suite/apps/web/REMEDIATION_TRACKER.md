@@ -1,6 +1,13 @@
-# Travel Suite Web Remediation Tracker (Round 7)
+# Travel Suite Web Remediation Tracker (Round 8)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 8 Completion Summary
+
+- `[x]` AGW8-SEC-001: Standardized shared admin auth and explicit org scoping for clients/trips admin APIs.
+- `[x]` AGW8-SEC-002: Closed cross-tenant data leakage risk in trip details and restricted security diagnostics to super-admin only.
+- `[x]` AGW8-COST-001: Added per-admin throttles to clients/trips/security diagnostics endpoints.
+- `[x]` AGW8-TEST-001: Expanded public and non-admin authz contracts for trip details and security diagnostics endpoints.
 
 ## Round 7 Completion Summary
 
@@ -608,6 +615,74 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - Score impact target:
   - Security `+0.2`, Testability `+0.2`
 
+## WS-L: Round 8 Client/Trip Admin and Security Diagnostics Hardening (P1)
+
+### AGW8-SEC-001: Standardize auth and org scope for clients/trips admin APIs
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/clients/route.ts`
+  - `src/app/api/admin/trips/route.ts`
+  - `src/app/api/admin/trips/[id]/route.ts`
+- Actions:
+  - Replace bespoke token/profile checks with shared `requireAdmin` guard.
+  - Enforce explicit org scoping for super-admin trip/client listing and fail-closed org mismatch checks for org admins.
+- Definition of Done:
+  - Clients/trips endpoints consistently reject unauthenticated and non-admin callers.
+  - Super-admin and org-admin scoping behavior is explicit and deterministic.
+- Score impact target:
+  - Security `+0.4`, Maintainability `+0.2`
+
+### AGW8-SEC-002: Close trip-details tenant leaks and restrict security diagnostics access
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/trips/[id]/route.ts`
+  - `src/app/api/admin/security/diagnostics/route.ts`
+- Actions:
+  - Scope trip details dependent queries (drivers/overlap checks) to the trip organization.
+  - Restrict security diagnostics endpoint to super-admin only.
+- Definition of Done:
+  - Trip details endpoint no longer queries cross-tenant driver/overlap data.
+  - Security diagnostics cannot be accessed by org-admin or non-admin callers.
+- Score impact target:
+  - Security `+0.4`, Reliability `+0.2`
+
+### AGW8-COST-001: Add throttles for clients/trips/security diagnostics admin traffic
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/clients/route.ts`
+  - `src/app/api/admin/trips/route.ts`
+  - `src/app/api/admin/trips/[id]/route.ts`
+  - `src/app/api/admin/security/diagnostics/route.ts`
+- Actions:
+  - Add per-admin read/write rate limits with deterministic `429` handling.
+  - Return standard retry/rate-limit headers for client backoff behavior.
+- Definition of Done:
+  - Burst traffic to the targeted endpoints is bounded.
+  - Clients receive retry metadata on throttled requests.
+- Score impact target:
+  - Cost `+0.2`, Reliability `+0.2`, Operability `+0.2`
+
+### AGW8-TEST-001: Expand contracts for trip-details and diagnostics authz coverage
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+  - `e2e/tests/admin-api-authz.spec.ts`
+- Actions:
+  - Add unauthenticated contracts for admin trip-details and security diagnostics endpoints.
+  - Add non-admin forbidden contracts for the same endpoints and client mutation path.
+- Definition of Done:
+  - Public and non-admin suites fail on accidental endpoint exposure regressions.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.2`
+
 ## Strict Execution Order
 
 1. `AGW2-SEC-001`
@@ -643,6 +718,9 @@ This tracker is based on the latest full review of `main` and is focused on clos
 31. `AGW7-SEC-001`
 32. `AGW7-COST-001`
 33. `AGW7-TEST-001`
+34. `AGW8-SEC-001`
+35. `AGW8-COST-001`
+36. `AGW8-TEST-001`
 
 ## Sprint Breakdown
 
@@ -703,6 +781,13 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW7-COST-001
 - `[x]` AGW7-TEST-001
 
+### Sprint 9 (Round 8 Clients/Trips and Diagnostics Hardening)
+
+- `[x]` AGW8-SEC-001
+- `[x]` AGW8-SEC-002
+- `[x]` AGW8-COST-001
+- `[x]` AGW8-TEST-001
+
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
@@ -716,3 +801,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed Round 5 marketplace admin hardening with shared admin auth guard adoption, strict org-scoped verification controls, scoped verification caching + mutation invalidation + throttling, and added endpoint authz contracts.
 - 2026-03-01: Completed Round 6 by standardizing admin auth on AI-heavy endpoints, adding per-admin throttles to costly generation routes, and extending public/non-admin endpoint authz contracts.
 - 2026-03-01: Completed Round 7 by hardening delivery/workflow control-plane auth + tenant scoping with shared admin guard, adding rate limits for listing/retry/rules/events paths, and extending delivery/workflow authz contracts.
+- 2026-03-01: Completed Round 8 by standardizing shared admin guard usage on clients/trips APIs, closing trip-details tenant leakage paths, restricting security diagnostics to super-admin access, adding endpoint throttles, and extending authz contracts.

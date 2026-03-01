@@ -12,6 +12,16 @@ test.describe('Admin API Auth - Unauthenticated', () => {
     expect(res.status()).toBe(401);
   });
 
+  test('blocks admin trip details endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/trips/00000000-0000-0000-0000-000000000001');
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks admin security diagnostics endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/security/diagnostics');
+    expect(res.status()).toBe(401);
+  });
+
   test('blocks admin workflow events endpoint', async ({ request }) => {
     const res = await request.get('/api/admin/workflow/events?limit=10');
     expect(res.status()).toBe(401);
@@ -132,5 +142,25 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
     });
 
     expect([401, 403]).toContain(res.status());
+  });
+
+  authTest('forbids non-admin trip details access', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/trips/00000000-0000-0000-0000-000000000001');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin security diagnostics access', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/security/diagnostics');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin client mutation', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/clients', {
+      data: {
+        email: 'unauthorized@example.com',
+        full_name: 'Unauthorized User',
+      },
+    });
+    expect(res.status()).toBe(403);
   });
 });

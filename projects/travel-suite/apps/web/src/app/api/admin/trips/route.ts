@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 
-const supabaseAdmin = createAdminClient();
+const TRIPS_READ_RATE_LIMIT_MAX = 120;
+const TRIPS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const TRIPS_WRITE_RATE_LIMIT_MAX = 60;
+const TRIPS_WRITE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 function sanitizeSearchTerm(input: string): string {
     const safe = sanitizeText(input, { maxLength: 80 });
@@ -64,54 +67,81 @@ function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof get
     );
 }
 
-async function getAdminUserId(req: NextRequest) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
+type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 
-    if (token) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (!authError && authData?.user) {
-            return authData.user.id;
-        }
-    }
-
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    return user?.id || null;
+function attachRateLimitHeaders(
+    response: NextResponse,
+    rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
+): NextResponse {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    response.headers.set("retry-after", String(retryAfterSeconds));
+    response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+    response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+    return response;
 }
 
-async function requireAdmin(req: NextRequest) {
-    const adminUserId = await getAdminUserId(req);
-    if (!adminUserId) {
-        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+function resolveScopedOrgForRead(
+    admin: AdminContext,
+    req: NextRequest
+): { organizationId: string } | { error: NextResponse } {
+    const { searchParams } = new URL(req.url);
+    const requestedOrganizationId = sanitizeText(searchParams.get("organization_id"), { maxLength: 80 });
+
+    if (admin.isSuperAdmin) {
+        if (!requestedOrganizationId) {
+            return {
+                error: NextResponse.json(
+                    { error: "organization_id query param is required for super admin" },
+                    { status: 400 }
+                ),
+            };
+        }
+        return { organizationId: requestedOrganizationId };
     }
 
-    const { data: adminProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, organization_id")
-        .eq("id", adminUserId)
-        .single();
-
-    if (!adminProfile || adminProfile.role !== "admin") {
-        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
-    if (!adminProfile.organization_id) {
+    if (!admin.organizationId) {
         return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
     }
 
-    return { userId: adminUserId, organizationId: adminProfile.organization_id };
+    if (requestedOrganizationId && requestedOrganizationId !== admin.organizationId) {
+        return { error: NextResponse.json({ error: "Cannot access another organization scope" }, { status: 403 }) };
+    }
+
+    return { organizationId: admin.organizationId };
 }
 
 export async function GET(req: NextRequest) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+
+        const scopedOrg = resolveScopedOrgForRead(admin, req);
+        if ("error" in scopedOrg) {
+            return scopedOrg.error;
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: TRIPS_READ_RATE_LIMIT_MAX,
+            windowMs: TRIPS_READ_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:trips:list",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin trip list requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
+        }
 
         const { searchParams } = new URL(req.url);
         const status = searchParams.get("status") || "all";
         const search = sanitizeSearchTerm(searchParams.get("search") || "");
 
-        let query = supabaseAdmin
+        let query = admin.adminClient
             .from("trips")
             .select(`
                 id,
@@ -131,7 +161,7 @@ export async function GET(req: NextRequest) {
                     destination
                 )
             `)
-            .eq("organization_id", admin.organizationId);
+            .eq("organization_id", scopedOrg.organizationId);
 
         if (status !== "all") {
             query = query.eq("status", status);
@@ -181,8 +211,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: TRIPS_WRITE_RATE_LIMIT_MAX,
+            windowMs: TRIPS_WRITE_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:trips:write",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many admin trip mutation requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
+        }
 
         const body = await req.json();
         const clientId = String(body.clientId || "");
@@ -194,18 +240,31 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        const { data: clientProfile } = await supabaseAdmin
+        const { data: clientProfile } = await admin.adminClient
             .from("profiles")
             .select("organization_id")
             .eq("id", clientId)
             .maybeSingle();
-        if (!clientProfile || clientProfile.organization_id !== admin.organizationId) {
+
+        if (!clientProfile) {
             return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+        }
+        if (!clientProfile.organization_id) {
+            return NextResponse.json({ error: "Client organization is not configured" }, { status: 400 });
+        }
+
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            if (clientProfile.organization_id !== admin.organizationId) {
+                return NextResponse.json({ error: "Client not found in your organization" }, { status: 404 });
+            }
         }
 
         const tripLimitStatus = await getFeatureLimitStatus(
-            supabaseAdmin,
-            admin.organizationId,
+            admin.adminClient,
+            clientProfile.organization_id,
             "trips"
         );
         if (!tripLimitStatus.allowed) {
@@ -221,7 +280,7 @@ export async function POST(req: NextRequest) {
             raw_data: itinerary.raw_data || { days: [] },
         };
 
-        const { data: itineraryData, error: itineraryError } = await supabaseAdmin
+        const { data: itineraryData, error: itineraryError } = await admin.adminClient
             .from("itineraries")
             .insert(itineraryPayload)
             .select()
@@ -231,11 +290,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: itineraryError?.message || "Failed to create itinerary" }, { status: 400 });
         }
 
-        const { error: tripError, data: tripData } = await supabaseAdmin
+        const { error: tripError, data: tripData } = await admin.adminClient
             .from("trips")
             .insert({
                 client_id: clientId,
-                organization_id: admin.organizationId,
+                organization_id: clientProfile.organization_id,
                 start_date: startDate,
                 end_date: endDate,
                 status: "pending",
