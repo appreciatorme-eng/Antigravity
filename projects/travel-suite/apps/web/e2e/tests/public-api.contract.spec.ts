@@ -144,4 +144,14 @@ test.describe("Public API contracts", () => {
 
     expect(response.status()).toBe(400);
   });
+
+  test("admin generate embeddings endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/generate-embeddings");
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin geocoding usage endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/geocoding/usage");
+    expect(response.status()).toBe(401);
+  });
 });
