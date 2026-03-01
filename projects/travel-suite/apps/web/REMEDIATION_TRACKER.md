@@ -179,7 +179,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Monetization `+1.3`, Architecture `+0.4`
 
 ### AGW-MON-002: Build plan-limit enforcement consistency tests
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Actions:
@@ -356,6 +356,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-REL-002 completed. Payment service methods now support explicit admin execution context for webhook/server flows, with structured payment error taxonomy, monitoring tags, and consistent HTTP error mapping across payment APIs.
 - 2026-03-01: AGW-PERF-001 completed. Replaced permissive Next.js image wildcard remote patterns with explicit trusted host allowlist, optional env-extendable hosts, and hardened optimization cache/CSP settings.
 - 2026-03-01: AGW-QUAL-002 completed. Playwright config now uses portable dev command, auth setup/fixtures support credential-aware skipping with explicit env contract, and full suite listing is runnable without machine-specific assumptions.
+- 2026-03-01: AGW-MON-002 completed. Added monetization contract tests covering plan catalog/UI consistency, upgrade path determinism, trial expiry, cancellation transitions, and scheduled downgrade activation.
 
 ## Current Sprint Board (Suggested)
 
@@ -376,7 +377,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ### Sprint C (Scale, QA, Conversion)
 - `[x]` AGW-PERF-001
 - `[x]` AGW-QUAL-002
-- `[ ]` AGW-MON-002
+- `[x]` AGW-MON-002
 - `[ ]` AGW-QUAL-001
 - `[ ]` AGW-COST-003
 - `[ ]` AGW-UX-001

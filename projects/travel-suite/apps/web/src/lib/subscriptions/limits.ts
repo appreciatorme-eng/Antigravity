@@ -16,6 +16,28 @@ export type LimitedFeature =
   | "templates"
   | "team_members";
 
+export type SubscriptionLifecycleStatus =
+  | "active"
+  | "trialing"
+  | "cancelled"
+  | "canceled"
+  | "past_due"
+  | "paused"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "unknown";
+
+export interface LifecyclePlanResolutionInput {
+  activePlanId: string | null | undefined;
+  status?: string | null;
+  trialEnd?: string | null;
+  cancelAtPeriodEnd?: boolean | null;
+  currentPeriodEnd?: string | null;
+  downgradePlanId?: string | null;
+  now?: Date;
+}
+
 type CounterWindow = "all_time" | "monthly";
 
 interface FeatureLimitConfig {
@@ -62,6 +84,71 @@ function normalizePlanId(raw: string | null | undefined): SubscriptionPlanId {
   return normalizeCanonicalPlanId(raw);
 }
 
+function normalizeLifecycleStatus(raw: string | null | undefined): SubscriptionLifecycleStatus {
+  if (!raw) return "unknown";
+  const normalized = raw.toLowerCase();
+  if (
+    normalized === "active" ||
+    normalized === "trialing" ||
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "past_due" ||
+    normalized === "paused" ||
+    normalized === "incomplete" ||
+    normalized === "incomplete_expired" ||
+    normalized === "unpaid"
+  ) {
+    return normalized;
+  }
+  return "unknown";
+}
+
+function isDatePast(value: string | null | undefined, now: Date): boolean {
+  if (!value) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.getTime() <= now.getTime();
+}
+
+export function getUpgradePlanForPlanId(
+  planId: SubscriptionPlanId
+): "pro_monthly" | "enterprise" | null {
+  if (planId === "free") return "pro_monthly";
+  if (planId === "pro_monthly" || planId === "pro_annual") return "enterprise";
+  return null;
+}
+
+/**
+ * Resolve effective plan based on subscription lifecycle state.
+ * This allows consistent gating during trial expiry, cancellation and scheduled downgrades.
+ */
+export function resolvePlanIdForLifecycle(input: LifecyclePlanResolutionInput): SubscriptionPlanId {
+  const now = input.now || new Date();
+  const status = normalizeLifecycleStatus(input.status);
+  const activePlanId = normalizePlanId(input.activePlanId);
+  const downgradePlanId = input.downgradePlanId ? normalizePlanId(input.downgradePlanId) : null;
+
+  if (status === "cancelled" || status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
+    return "free";
+  }
+
+  if (status === "trialing" && isDatePast(input.trialEnd, now)) {
+    return "free";
+  }
+
+  const periodEnded = isDatePast(input.currentPeriodEnd, now);
+
+  if (input.cancelAtPeriodEnd && periodEnded) {
+    return downgradePlanId || "free";
+  }
+
+  if (downgradePlanId && periodEnded) {
+    return downgradePlanId;
+  }
+
+  return activePlanId;
+}
+
 function getLimitForFeature(planId: SubscriptionPlanId, feature: LimitedFeature): number | null {
   const plan = PLAN_CATALOG[planId];
 
@@ -98,17 +185,24 @@ export async function resolveOrganizationPlan(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const activeSubscriptionQuery = (supabase as any)
     .from("subscriptions")
-    .select("plan_id, status, created_at")
+    .select("plan_id, status, created_at, trial_end, cancel_at_period_end, current_period_end")
     .eq("organization_id", organizationId)
-    .in("status", ["active", "trialing"])
+    .in("status", ["active", "trialing", "cancelled", "canceled", "past_due", "paused", "incomplete", "incomplete_expired", "unpaid"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const { data: activeSubscription } = await activeSubscriptionQuery;
-  const planId = normalizePlanId(activeSubscription?.plan_id);
-  if (planId !== "free") {
-    return { tier: normalizeTier(planId), planId };
+  const lifecyclePlanId = resolvePlanIdForLifecycle({
+    activePlanId: activeSubscription?.plan_id,
+    status: activeSubscription?.status,
+    trialEnd: activeSubscription?.trial_end,
+    cancelAtPeriodEnd: activeSubscription?.cancel_at_period_end,
+    currentPeriodEnd: activeSubscription?.current_period_end,
+  });
+
+  if (lifecyclePlanId !== "free") {
+    return { tier: normalizeTier(lifecyclePlanId), planId: lifecyclePlanId };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,12 +275,6 @@ async function getFeatureUsage(
   return { used: count || 0, resetAt: null };
 }
 
-function getUpgradePlan(planId: SubscriptionPlanId): "pro_monthly" | "enterprise" | null {
-  if (planId === "free") return "pro_monthly";
-  if (planId === "pro_monthly" || planId === "pro_annual") return "enterprise";
-  return null;
-}
-
 export async function getFeatureLimitStatus(
   supabase: SupabaseClient,
   organizationId: string,
@@ -209,7 +297,7 @@ export async function getFeatureLimitStatus(
     window: config.window,
     label: config.label,
     resetAt: config.window === "monthly" ? usage.resetAt : null,
-    upgradePlan: getUpgradePlan(planId),
+    upgradePlan: getUpgradePlanForPlanId(planId),
   };
 }
 
