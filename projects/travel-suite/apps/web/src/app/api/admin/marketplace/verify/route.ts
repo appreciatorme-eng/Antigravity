@@ -1,9 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { NextRequest } from "next/server";
+import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
+import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
-import { jsonWithRequestId as withRequestId, setRequestIdHeader } from "@/lib/api/response";
+import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import {
+    MARKETPLACE_VERIFY_CACHE_TTL_SECONDS,
+    buildMarketplacePendingCacheKey,
+    invalidateMarketplaceVerifyCache,
+} from "@/lib/marketplace-verify-cache";
 import {
     getRequestContext,
     getRequestId,
@@ -11,7 +17,13 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 
-const supabaseAdmin = createAdminClient();
+const MARKETPLACE_VERIFY_LIST_RATE_LIMIT_MAX = 120;
+const MARKETPLACE_VERIFY_LIST_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const MARKETPLACE_VERIFY_MUTATION_RATE_LIMIT_MAX = 40;
+const MARKETPLACE_VERIFY_MUTATION_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+
+type AdminContext = Extract<RequireAdminResult, { ok: true }>;
+type AdminClient = AdminContext["adminClient"];
 
 type OrganizationOwnerJoin = {
     name: string | null;
@@ -30,6 +42,7 @@ function toNotificationStatusLabel(status: NotificationDeliveryStatus): "sent" |
 }
 
 async function trackVerificationNotification(
+    adminClient: AdminClient,
     orgId: string,
     status: "verified" | "rejected",
     recipientId: string | null,
@@ -38,7 +51,7 @@ async function trackVerificationNotification(
 ) {
     const nowIso = new Date().toISOString();
     try {
-        await supabaseAdmin.from("notification_logs").insert({
+        await adminClient.from("notification_logs").insert({
             recipient_id: recipientId,
             recipient_type: "organization_owner",
             notification_type: "marketplace_verification_email",
@@ -62,36 +75,22 @@ async function trackVerificationNotification(
     });
 }
 
-async function requireAdminUser() {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+function authErrorMessageForStatus(status: number): string {
+    if (status === 403) return "Forbidden";
+    if (status === 400) return "Admin organization not configured";
+    return "Unauthorized";
+}
 
-    if (!user) {
-        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-    }
-
-    const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, organization_id")
-        .eq("id", user.id)
-        .single();
-
-    if (!profile || profile.role !== "admin") {
-        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
-
-    if (!profile.organization_id) {
-        return {
-            error: NextResponse.json(
-                { error: "Admin organization not configured" },
-                { status: 400 }
-            ),
-        };
-    }
-
-    return { user, profile };
+function attachRateLimitHeaders(
+    response: Response,
+    rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>,
+): Response {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    response.headers.set("retry-after", String(retryAfterSeconds));
+    response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+    response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+    return response;
 }
 
 export async function GET(request: NextRequest) {
@@ -99,38 +98,85 @@ export async function GET(request: NextRequest) {
     const requestId = getRequestId(request);
     const requestContext = getRequestContext(request, requestId);
     try {
-        const auth = await requireAdminUser();
-        if ("error" in auth) {
-            const errorResponse =
-                auth.error ||
-                NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            return setRequestIdHeader(errorResponse, requestId);
+        const admin = await requireAdmin(request, { requireOrganization: false });
+        if (!admin.ok) {
+            return withRequestId(
+                { error: authErrorMessageForStatus(admin.response.status || 401) },
+                requestId,
+                { status: admin.response.status || 401 },
+            );
         }
 
-        const { data, error } = await supabaseAdmin
+        if (!admin.isSuperAdmin && !admin.organizationId) {
+            return withRequestId(
+                { error: "Admin organization not configured" },
+                requestId,
+                { status: 400 },
+            );
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: `list:${admin.userId}`,
+            limit: MARKETPLACE_VERIFY_LIST_RATE_LIMIT_MAX,
+            windowMs: MARKETPLACE_VERIFY_LIST_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:marketplace:verify",
+        });
+        if (!rateLimit.success) {
+            const response = withRequestId(
+                { error: "Too many marketplace verification requests. Please retry later." },
+                requestId,
+                { status: 429 },
+            );
+            return attachRateLimitHeaders(response, rateLimit);
+        }
+
+        const scopedOrganizationId = admin.isSuperAdmin ? null : admin.organizationId;
+        const cacheKey = buildMarketplacePendingCacheKey(scopedOrganizationId);
+        const cachedPending = await getCachedJson<Record<string, unknown>[]>(cacheKey);
+        if (Array.isArray(cachedPending)) {
+            const response = withRequestId(cachedPending, requestId);
+            response.headers.set("x-cache-status", "hit");
+            return response;
+        }
+
+        let query = admin.adminClient
             .from("marketplace_profiles")
             .select(`
                 *,
                 organization:organizations(name, logo_url)
             `)
             .eq("verification_status", "pending");
+        if (scopedOrganizationId) {
+            query = query.eq("organization_id", scopedOrganizationId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         const pendingCount = Array.isArray(data) ? data.length : 0;
+        if (Array.isArray(data)) {
+            await setCachedJson(cacheKey, data, MARKETPLACE_VERIFY_CACHE_TTL_SECONDS);
+        }
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace pending verifications fetched", {
             ...requestContext,
-            user_id: auth.user.id,
+            user_id: admin.userId,
+            role: admin.role,
+            scoped_organization_id: scopedOrganizationId,
             pending_count: pendingCount,
             durationMs,
         });
         void captureOperationalMetric("api.admin.marketplace.verify.list", {
             request_id: requestId,
-            user_id: auth.user.id,
+            user_id: admin.userId,
+            role: admin.role,
+            scoped_organization_id: scopedOrganizationId,
             pending_count: pendingCount,
             duration_ms: durationMs,
         });
-        return withRequestId(data || [], requestId);
+        const response = withRequestId(data || [], requestId);
+        response.headers.set("x-cache-status", "miss");
+        return response;
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
         logError("Marketplace pending verifications fetch failed", error, requestContext);
@@ -147,12 +193,36 @@ export async function POST(request: NextRequest) {
     const requestId = getRequestId(request);
     const requestContext = getRequestContext(request, requestId);
     try {
-        const auth = await requireAdminUser();
-        if ("error" in auth) {
-            const errorResponse =
-                auth.error ||
-                NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            return setRequestIdHeader(errorResponse, requestId);
+        const admin = await requireAdmin(request, { requireOrganization: false });
+        if (!admin.ok) {
+            return withRequestId(
+                { error: authErrorMessageForStatus(admin.response.status || 401) },
+                requestId,
+                { status: admin.response.status || 401 },
+            );
+        }
+
+        if (!admin.isSuperAdmin && !admin.organizationId) {
+            return withRequestId(
+                { error: "Admin organization not configured" },
+                requestId,
+                { status: 400 },
+            );
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: `mutate:${admin.userId}`,
+            limit: MARKETPLACE_VERIFY_MUTATION_RATE_LIMIT_MAX,
+            windowMs: MARKETPLACE_VERIFY_MUTATION_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:marketplace:verify",
+        });
+        if (!rateLimit.success) {
+            const response = withRequestId(
+                { error: "Too many marketplace verification mutations. Please retry later." },
+                requestId,
+                { status: 429 },
+            );
+            return attachRateLimitHeaders(response, rateLimit);
         }
 
         const body = await request.json().catch(() => ({}));
@@ -169,6 +239,14 @@ export async function POST(request: NextRequest) {
             return withRequestId({ error: "Invalid request payload" }, requestId, { status: 400 });
         }
 
+        if (!admin.isSuperAdmin && admin.organizationId !== orgId) {
+            return withRequestId(
+                { error: "Cannot verify organization outside your scope" },
+                requestId,
+                { status: 403 },
+            );
+        }
+
         const verificationPayload = {
             verification_status: status,
             is_verified: status === "verified",
@@ -180,7 +258,7 @@ export async function POST(request: NextRequest) {
         let data: Record<string, unknown> | null = null;
         let error: { message: string } | null = null;
 
-        const primaryUpdate = await supabaseAdmin
+        const primaryUpdate = await admin.adminClient
             .from("marketplace_profiles")
             .update(verificationPayload as never)
             .eq("organization_id", orgId)
@@ -190,7 +268,7 @@ export async function POST(request: NextRequest) {
         error = primaryUpdate.error ? { message: primaryUpdate.error.message } : null;
 
         if (error?.message?.includes("column")) {
-            const legacyUpdate = await supabaseAdmin
+            const legacyUpdate = await admin.adminClient
                 .from("marketplace_profiles")
                 .update({
                     verification_status: status,
@@ -206,7 +284,7 @@ export async function POST(request: NextRequest) {
 
         if (error) throw error;
 
-        const { data: orgInfo } = await supabaseAdmin
+        const { data: orgInfo } = await admin.adminClient
             .from("organizations")
             .select("name, profiles!owner_id(id, email)")
             .eq("id", orgId)
@@ -241,6 +319,7 @@ export async function POST(request: NextRequest) {
         }
 
         await trackVerificationNotification(
+            admin.adminClient,
             orgId,
             status as "verified" | "rejected",
             receiverId,
@@ -251,7 +330,8 @@ export async function POST(request: NextRequest) {
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace verification status updated", {
             ...requestContext,
-            user_id: auth.user.id,
+            user_id: admin.userId,
+            role: admin.role,
             organization_id: orgId,
             verification_status: status,
             verification_level: verificationLevel,
@@ -262,7 +342,8 @@ export async function POST(request: NextRequest) {
         });
         void captureOperationalMetric("api.admin.marketplace.verify.update", {
             request_id: requestId,
-            user_id: auth.user.id,
+            user_id: admin.userId,
+            role: admin.role,
             organization_id: orgId,
             verification_status: status,
             verification_level: verificationLevel,
@@ -272,10 +353,13 @@ export async function POST(request: NextRequest) {
             duration_ms: durationMs,
         });
 
-        return withRequestId({
+        const invalidated = await invalidateMarketplaceVerifyCache().catch(() => 0);
+        const response = withRequestId({
             ...data,
             notification,
         }, requestId);
+        response.headers.set("x-cache-invalidated", String(invalidated));
+        return response;
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";
         logError("Marketplace verification update failed", error, requestContext);

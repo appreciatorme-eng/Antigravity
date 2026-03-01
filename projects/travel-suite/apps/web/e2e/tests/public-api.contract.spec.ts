@@ -16,6 +16,23 @@ test.describe("Public API contracts", () => {
     expect(response.status()).toBe(405);
   });
 
+  test("marketplace verification list endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/marketplace/verify");
+    expect(response.status()).toBe(401);
+    expect(response.headers()["x-request-id"]).toBeTruthy();
+  });
+
+  test("marketplace verification mutation endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/marketplace/verify", {
+      data: {
+        orgId: "00000000-0000-0000-0000-000000000001",
+        status: "verified",
+      },
+    });
+    expect(response.status()).toBe(401);
+    expect(response.headers()["x-request-id"]).toBeTruthy();
+  });
+
   test("location share GET endpoint requires authentication", async ({ request }) => {
     const response = await request.get(
       "/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1"

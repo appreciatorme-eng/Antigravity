@@ -1,6 +1,12 @@
-# Travel Suite Web Remediation Tracker (Round 4)
+# Travel Suite Web Remediation Tracker (Round 5)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 5 Completion Summary
+
+- `[x]` AGW5-SEC-001: Enforced strict org-scoped access for marketplace verification list/mutation APIs.
+- `[x]` AGW5-PERF-001: Added scoped marketplace verification cache with mutation-time invalidation and endpoint rate limiting.
+- `[x]` AGW5-TEST-001: Added public/non-admin contract coverage for marketplace verification authz behavior.
 
 ## Round 4 Completion Summary
 
@@ -433,6 +439,57 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - Score impact target:
   - Maintainability `+0.1`
 
+## WS-I: Round 5 Marketplace Admin Hardening (P1)
+
+### AGW5-SEC-001: Enforce org-scoped access for marketplace verification APIs
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/marketplace/verify/route.ts`
+- Actions:
+  - Replace custom auth checks with shared `requireAdmin` guard.
+  - Scope non-super-admin reads/mutations to caller organization.
+- Definition of Done:
+  - Non-super-admin cannot verify or list other organizations.
+  - Super-admin retains global review capability.
+- Score impact target:
+  - Security `+0.4`, Reliability `+0.2`
+
+### AGW5-PERF-001: Add scoped cache and rate limiting for marketplace verification
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/marketplace/verify/route.ts`
+  - `src/lib/marketplace-verify-cache.ts`
+- Actions:
+  - Cache pending-verification list responses by scope.
+  - Invalidate cache on verification mutation.
+  - Add list/mutation endpoint rate limiting and response headers.
+- Definition of Done:
+  - Repeated reads avoid redundant query load in admin review workflow.
+  - Cache is invalidated immediately after status updates.
+  - Abuse bursts are throttled with deterministic `429` handling.
+- Score impact target:
+  - Performance `+0.3`, Cost `+0.2`, Operability `+0.2`
+
+### AGW5-TEST-001: Expand verification endpoint authz contract coverage
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+  - `e2e/tests/admin-api-authz.spec.ts`
+- Actions:
+  - Add unauthenticated contracts for marketplace verification GET/POST endpoints.
+  - Add non-admin forbidden contracts for marketplace verification GET/POST endpoints.
+- Definition of Done:
+  - Public contract suite blocks unauthenticated marketplace verification access.
+  - Admin authz suite blocks non-admin marketplace verification access.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.2`
+
 ## Strict Execution Order
 
 1. `AGW2-SEC-001`
@@ -459,6 +516,9 @@ This tracker is based on the latest full review of `main` and is focused on clos
 22. `AGW4-DATA-001`
 23. `AGW4-TEST-001`
 24. `AGW4-QUAL-002`
+25. `AGW5-SEC-001`
+26. `AGW5-PERF-001`
+27. `AGW5-TEST-001`
 
 ## Sprint Breakdown
 
@@ -501,6 +561,12 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW4-TEST-001
 - `[x]` AGW4-QUAL-002
 
+### Sprint 6 (Round 5 Marketplace Admin Hardening)
+
+- `[x]` AGW5-SEC-001
+- `[x]` AGW5-PERF-001
+- `[x]` AGW5-TEST-001
+
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
@@ -511,3 +577,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e -- --list` pass).
 - 2026-03-01: Completed Round 3 hardening by adding cached/stale cost overview reads, auth-failure telemetry throttling + sampling, alert acknowledgment workflow, structured runbook metadata, and targeted add-ons lint cleanup.
 - 2026-03-01: Completed Round 4 continuation by adding mutation-triggered cost-overview cache invalidation, dedicated acknowledgment tables + history migration, stale-fallback/authz contract tests, and additional lint hotspot cleanup.
+- 2026-03-01: Completed Round 5 marketplace admin hardening with shared admin auth guard adoption, strict org-scoped verification controls, scoped verification caching + mutation invalidation + throttling, and added endpoint authz contracts.

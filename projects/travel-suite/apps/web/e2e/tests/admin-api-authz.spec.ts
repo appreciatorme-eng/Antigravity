@@ -36,6 +36,21 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
     expect(res.status()).toBe(403);
   });
 
+  authTest('forbids non-admin access to marketplace verification list endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/marketplace/verify');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin access to marketplace verification mutation endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/marketplace/verify', {
+      data: {
+        orgId: '00000000-0000-0000-0000-000000000001',
+        status: 'verified',
+      },
+    });
+    expect(res.status()).toBe(403);
+  });
+
   authTest('forbids non-admin location share access', async ({ clientPage }) => {
     const res = await clientPage.request.get(
       '/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1'
