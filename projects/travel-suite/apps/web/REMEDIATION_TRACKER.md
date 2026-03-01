@@ -53,7 +53,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Security `+0.8`, Reliability `+0.2`
 
 ### AGW-SEC-002: Fix tenant validation on public review ingestion
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -345,12 +345,13 @@ This tracker converts the deep review into executable work. It is designed for s
 
 - 2026-03-01: Tracker created from deep review findings. No remediation code changes in this commit.
 - 2026-03-01: AGW-SEC-001 completed. Hardened cron auth for social queue/token refresh with shared verification, signature support, replay protection, and public contract tests.
+- 2026-03-01: AGW-SEC-002 completed. Public review ingestion now requires validated token binding, removes organization fallback writes, adds strict schema validation, and applies abuse throttling.
 
 ## Current Sprint Board (Suggested)
 
 ### Sprint A (Security Lockdown)
 - `[x]` AGW-SEC-001
-- `[ ]` AGW-SEC-002
+- `[x]` AGW-SEC-002
 - `[ ]` AGW-SEC-003
 - `[ ]` AGW-SEC-004
 - `[ ]` AGW-COST-001

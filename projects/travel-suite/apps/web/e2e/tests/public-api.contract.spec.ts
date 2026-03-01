@@ -119,4 +119,29 @@ test.describe("Public API contracts", () => {
 
     expect(response.status()).not.toBe(401);
   });
+
+  test("public social review endpoint requires a valid token payload", async ({ request }) => {
+    const response = await request.post("/api/social/reviews/public", {
+      data: {
+        rating: 5,
+        comment: "Amazing trip",
+        reviewer_name: "Test User",
+      },
+    });
+
+    expect(response.status()).toBe(400);
+  });
+
+  test("public social review endpoint rejects malformed token", async ({ request }) => {
+    const response = await request.post("/api/social/reviews/public", {
+      data: {
+        token: "bad token!",
+        rating: 5,
+        comment: "Great itinerary",
+        reviewer_name: "Token Tester",
+      },
+    });
+
+    expect(response.status()).toBe(400);
+  });
 });
