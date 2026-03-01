@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Pencil,
-  Copy,
   Trash2,
   MapPin,
   Calendar,
@@ -82,11 +81,7 @@ export default function ViewTemplatePage() {
     Record<string, TemplateAccommodation>
   >({});
 
-  useEffect(() => {
-    loadTemplate();
-  }, [templateId]);
-
-  async function loadTemplate() {
+  const loadTemplate = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
@@ -172,7 +167,11 @@ export default function ViewTemplatePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [templateId]);
+
+  useEffect(() => {
+    loadTemplate();
+  }, [loadTemplate]);
 
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this template? This cannot be undone.')) {

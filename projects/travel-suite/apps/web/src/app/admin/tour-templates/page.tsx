@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Plus,
@@ -14,7 +14,6 @@ import {
   Trash2,
   Star,
   MapPin,
-  Users,
   Upload,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -54,11 +53,7 @@ export default function TourTemplatesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'archived'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<TourTemplate | null>(null);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  async function loadTemplates() {
+  const loadTemplates = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
@@ -136,7 +131,11 @@ export default function TourTemplatesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filterStatus]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   async function handleDeleteTemplate() {
     if (!deleteConfirm) return;
@@ -172,7 +171,7 @@ export default function TourTemplatesPage() {
       const supabase = createClient();
 
       // Use the clone_template_deep RPC function
-      const { data: newTemplateId, error } = await supabase.rpc('clone_template_deep', {
+      const { error } = await supabase.rpc('clone_template_deep', {
         p_template_id: template.id,
         p_new_name: `${template.name} (Copy)`,
       });

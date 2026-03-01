@@ -1,6 +1,43 @@
-# Travel Suite Web Remediation Tracker (Round 13)
+# Travel Suite Web Remediation Tracker (Round 14)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 14 Active Plan (Completed)
+
+This round burns down high-signal lint debt by resolving hook-dependency correctness and unused/unsafe patterns in admin tour-template and social media surfaces.
+
+### WS-X: Admin Tour Template Lint and Effect Safety (P1)
+
+#### AGW14-QUAL-001: Remove hook-dependency and dead-code lint warnings in admin tour template pages
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/admin/tour-templates/page.tsx`
+  - `src/app/admin/tour-templates/[id]/page.tsx`
+- Actions:
+  - Convert data loader functions to `useCallback` and bind effects to stable callback dependencies.
+  - Remove unused icon imports and dead variables from create-template flow.
+- Definition of Done:
+  - Targeted admin pages no longer emit stale dependency warnings.
+  - Lint warning count drops without changing user behavior.
+
+### WS-Y: Social Media Surface Lint and Typing Hardening (P1)
+
+#### AGW14-QUAL-002: Resolve social media library/analytics lint hotspots and tighten local typing
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/social/_components/MediaLibrary.tsx`
+  - `src/app/social/_components/SocialAnalytics.tsx`
+- Actions:
+  - Stabilize media fetch logic with `useCallback` and effect dependency alignment.
+  - Remove unused imports/catch vars and unsafe `any` casts in tab switching logic.
+  - Refactor analytics component to typed stat models and stable callback/memo patterns.
+- Definition of Done:
+  - Targeted social components stop triggering high-signal lint warnings.
+  - Typecheck remains clean and social analytics/library UX remains intact.
 
 ## Round 13 Active Plan (Completed)
 
@@ -1225,3 +1262,5 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 344, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
 - 2026-03-01: Completed Round 13 by stabilizing public token throttle contracts for local runtime variance, removing render-time time impurity warnings in planner/social/proposal surfaces, and replacing language toggle effect hydration with lazy initialization.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 339, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
+- 2026-03-01: Completed Round 14 by resolving admin tour-template and social media hook-dependency/dead-code lint hotspots, and tightening local typing in social analytics/library components.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 325, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).

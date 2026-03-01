@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Image as ImageIcon, Phone, Upload, Search, Trash2, CheckCircle2, User, Calendar } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Image as ImageIcon, Phone, Upload, Trash2, CheckCircle2, User, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -20,20 +20,18 @@ interface Props {
     onSelectImage: (url: string) => void;
 }
 
+type MediaTab = "all" | "whatsapp" | "uploads";
+
 export const MediaLibrary = ({ onSelectImage }: Props) => {
-    const supabase = createClient();
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"all" | "whatsapp" | "uploads">("all");
+    const [activeTab, setActiveTab] = useState<MediaTab>("all");
     const [uploading, setUploading] = useState(false);
 
-    useEffect(() => {
-        fetchMedia();
-    }, []);
-
-    const fetchMedia = async () => {
+    const fetchMedia = useCallback(async () => {
         setLoading(true);
         try {
+            const supabase = createClient();
             const { data, error } = await supabase
                 .from("social_media_library")
                 .select("*")
@@ -55,7 +53,11 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchMedia();
+    }, [fetchMedia]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -63,6 +65,7 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
 
         setUploading(true);
         try {
+            const supabase = createClient();
             const { data: userData } = await supabase.auth.getUser();
             if (!userData.user) throw new Error("Not authenticated");
 
@@ -107,6 +110,7 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
 
     const deleteMedia = async (id: string, filePath: string) => {
         try {
+            const supabase = createClient();
             const { error: storageError } = await supabase.storage
                 .from("social-media")
                 .remove([filePath]);
@@ -122,7 +126,7 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
 
             setMediaItems(prev => prev.filter(item => item.id !== id));
             toast.success("Image deleted");
-        } catch (error) {
+        } catch {
             toast.error("Failed to delete image");
         }
     };
@@ -133,6 +137,11 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
         if (activeTab === "uploads") return item.source === "upload";
         return true;
     });
+    const tabs: Array<{ id: MediaTab; label: string }> = [
+        { id: "all", label: "All Assets" },
+        { id: "whatsapp", label: "WhatsApp Photos" },
+        { id: "uploads", label: "Direct Uploads" },
+    ];
 
     return (
         <div className="space-y-6">
@@ -164,14 +173,10 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
             </div>
 
             <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl w-fit">
-                {[
-                    { id: "all", label: "All Assets" },
-                    { id: "whatsapp", label: "WhatsApp Photos" },
-                    { id: "uploads", label: "Direct Uploads" }
-                ].map((tab) => (
+                {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id)}
                         className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
                             ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
                             : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
