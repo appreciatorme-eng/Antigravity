@@ -2,31 +2,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test as base, expect, Browser, Page } from '@playwright/test';
 
-function requiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value || value.trim().length === 0) {
-    throw new Error(`Missing required E2E credential env var: ${name}`);
-  }
-  return value;
-}
+type UserType = 'client' | 'admin' | 'driver';
 
-// Test user credentials (must be provided via environment variables)
-const TEST_USERS = {
-  client: {
-    email: requiredEnv('TEST_CLIENT_EMAIL'),
-    password: requiredEnv('TEST_CLIENT_PASSWORD'),
-  },
-  admin: {
-    email: requiredEnv('TEST_ADMIN_EMAIL'),
-    password: requiredEnv('TEST_ADMIN_PASSWORD'),
-  },
-  driver: {
-    email: requiredEnv('TEST_DRIVER_EMAIL'),
-    password: requiredEnv('TEST_DRIVER_PASSWORD'),
-  },
+type Credential = {
+  email: string;
+  password: string;
 };
 
-type UserType = 'client' | 'admin' | 'driver';
+function readCredential(prefix: string): Credential | null {
+  const email = process.env[`${prefix}_EMAIL`]?.trim();
+  const password = process.env[`${prefix}_PASSWORD`]?.trim();
+
+  if (!email || !password) {
+    return null;
+  }
+
+  return { email, password };
+}
+
+const TEST_USERS: Record<UserType, Credential | null> = {
+  client: readCredential('TEST_CLIENT'),
+  admin: readCredential('TEST_ADMIN'),
+  driver: readCredential('TEST_DRIVER'),
+};
 
 const AUTH_STATE_DIR = path.resolve(__dirname, '..', '.auth');
 const AUTH_STATE_PATHS: Record<UserType, string> = {
@@ -35,6 +33,15 @@ const AUTH_STATE_PATHS: Record<UserType, string> = {
   driver: path.join(AUTH_STATE_DIR, 'driver.json'),
 };
 
+function getMissingCredentialMessage(userType: UserType): string {
+  const key = userType.toUpperCase();
+  return `Missing ${key} E2E credentials. Set TEST_${key}_EMAIL and TEST_${key}_PASSWORD or pre-generate ${AUTH_STATE_PATHS[userType]}.`;
+}
+
+function hasUsableAuthConfig(userType: UserType): boolean {
+  return fs.existsSync(AUTH_STATE_PATHS[userType]) || Boolean(TEST_USERS[userType]);
+}
+
 // Extend base test with authentication fixtures
 export const test = base.extend<{
   authenticatedPage: Page;
@@ -42,7 +49,12 @@ export const test = base.extend<{
   clientPage: Page;
 }>({
   // Generic authenticated page (client role)
-  authenticatedPage: async ({ browser }, runFixture) => {
+  authenticatedPage: async ({ browser }, runFixture, testInfo) => {
+    if (!hasUsableAuthConfig('client')) {
+      testInfo.skip(true, getMissingCredentialMessage('client'));
+      return;
+    }
+
     const page = await createAuthenticatedPage(browser, 'client');
     try {
       await runFixture(page);
@@ -52,7 +64,12 @@ export const test = base.extend<{
   },
 
   // Admin authenticated page
-  adminPage: async ({ browser }, runFixture) => {
+  adminPage: async ({ browser }, runFixture, testInfo) => {
+    if (!hasUsableAuthConfig('admin')) {
+      testInfo.skip(true, getMissingCredentialMessage('admin'));
+      return;
+    }
+
     const page = await createAuthenticatedPage(browser, 'admin');
     try {
       await runFixture(page);
@@ -62,7 +79,12 @@ export const test = base.extend<{
   },
 
   // Client authenticated page
-  clientPage: async ({ browser }, runFixture) => {
+  clientPage: async ({ browser }, runFixture, testInfo) => {
+    if (!hasUsableAuthConfig('client')) {
+      testInfo.skip(true, getMissingCredentialMessage('client'));
+      return;
+    }
+
     const page = await createAuthenticatedPage(browser, 'client');
     try {
       await runFixture(page);
@@ -92,13 +114,16 @@ async function createAuthenticatedPage(browser: Browser, userType: UserType): Pr
  */
 async function loginAs(page: Page, userType: UserType) {
   const user = TEST_USERS[userType];
+  if (!user) {
+    throw new Error(getMissingCredentialMessage(userType));
+  }
 
   // Use API login for stable cookie/session setup across SSR/client routes.
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
-      const baseURL = process.env.BASE_URL || 'http://127.0.0.1:3100';
+      const baseURL = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://127.0.0.1:3100';
       const response = await page.request.post(`${baseURL}/api/auth/password-login`, {
         data: {
           email: user.email,

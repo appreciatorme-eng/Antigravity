@@ -36,6 +36,23 @@ Local dev server (full browser matrix):
 npm run test:e2e
 ```
 
+Authenticated E2E roles are configured via environment variables:
+
+```bash
+TEST_CLIENT_EMAIL=...
+TEST_CLIENT_PASSWORD=...
+TEST_ADMIN_EMAIL=...
+TEST_ADMIN_PASSWORD=...
+TEST_DRIVER_EMAIL=...
+TEST_DRIVER_PASSWORD=...
+```
+
+If these credentials are not provided, role-specific authenticated tests are skipped unless prebuilt auth state files exist under `e2e/.auth/*.json`.
+
+Optional Playwright runtime overrides:
+- `PLAYWRIGHT_DEV_COMMAND` to override how the local dev server is launched.
+- `PLAYWRIGHT_BASE_URL` / `BASE_URL` to point tests at an existing environment.
+
 Production integration run (Chromium only, hits `BASE_URL` and does not start a local server):
 
 ```bash

@@ -99,9 +99,9 @@ export default defineConfig({
   webServer: {
     command:
       process.env.PLAYWRIGHT_DEV_COMMAND ||
-      `cd "${appDir}" && /opt/homebrew/opt/node@22/bin/npx next dev --webpack --port 3100`,
+      `cd "${appDir}" && npx next dev --webpack --port 3100`,
     url: resolvedBaseUrl,
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT || 120 * 1000),
   },
 });

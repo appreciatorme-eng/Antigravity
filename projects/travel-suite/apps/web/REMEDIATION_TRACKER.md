@@ -238,7 +238,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Reliability `+0.9`, Operability `+0.5`
 
 ### AGW-PERF-001: Restrict image remote patterns and optimize loading paths
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Primary file:
@@ -267,7 +267,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Maintainability `+1.2`, Testability `+0.4`
 
 ### AGW-QUAL-002: Make E2E pipeline runnable in CI and local dev
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Primary files:
@@ -354,6 +354,8 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-COST-002 completed. Removed insecure key fallbacks, centralized Supabase runtime env handling with production fail-fast behavior, and enforced service-role-only cache writes.
 - 2026-03-01: AGW-REL-001 completed. Social publish queue now uses atomic pending->processing claims, idempotent already-sent handling, exponential backoff retries, configurable max attempts, and terminal failed state behavior.
 - 2026-03-01: AGW-REL-002 completed. Payment service methods now support explicit admin execution context for webhook/server flows, with structured payment error taxonomy, monitoring tags, and consistent HTTP error mapping across payment APIs.
+- 2026-03-01: AGW-PERF-001 completed. Replaced permissive Next.js image wildcard remote patterns with explicit trusted host allowlist, optional env-extendable hosts, and hardened optimization cache/CSP settings.
+- 2026-03-01: AGW-QUAL-002 completed. Playwright config now uses portable dev command, auth setup/fixtures support credential-aware skipping with explicit env contract, and full suite listing is runnable without machine-specific assumptions.
 
 ## Current Sprint Board (Suggested)
 
@@ -372,8 +374,8 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-REL-002
 
 ### Sprint C (Scale, QA, Conversion)
-- `[ ]` AGW-PERF-001
-- `[ ]` AGW-QUAL-002
+- `[x]` AGW-PERF-001
+- `[x]` AGW-QUAL-002
 - `[ ]` AGW-MON-002
 - `[ ]` AGW-QUAL-001
 - `[ ]` AGW-COST-003
