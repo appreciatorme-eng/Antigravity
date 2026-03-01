@@ -2,7 +2,17 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Building2, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
+import {
+  Loader2,
+  Building2,
+  CheckCircle2,
+  ArrowLeft,
+  ArrowRight,
+  RefreshCw,
+  ExternalLink,
+  Copy,
+  Clock3,
+} from 'lucide-react';
 import {
   ITINERARY_TEMPLATE_OPTIONS,
   type ItineraryTemplateId,
@@ -41,6 +51,27 @@ interface OnboardingPayload {
   } | null;
 }
 
+interface FirstValueMilestone {
+  id: 'setup' | 'itinerary' | 'share';
+  title: string;
+  description: string;
+  completed: boolean;
+  target_minute: number;
+}
+
+interface FirstValuePayload {
+  completion_pct: number;
+  completed_milestones: number;
+  total_milestones: number;
+  setup_complete: boolean;
+  itinerary_count: number;
+  shared_itinerary_count: number;
+  first_itinerary_created_at: string | null;
+  first_shared_at: string | null;
+  latest_share_url: string | null;
+  milestones: FirstValueMilestone[];
+}
+
 const WIZARD_STEPS = [
   {
     id: 1,
@@ -60,11 +91,30 @@ const WIZARD_STEPS = [
   {
     id: 4,
     title: 'Review & Launch',
-    description: 'Confirm details and activate your admin workspace.',
+    description: 'Confirm details and save your workspace setup.',
+  },
+  {
+    id: 5,
+    title: 'First-Value Sprint',
+    description: 'Create and share your first itinerary inside 10 minutes.',
   },
 ] as const;
 
 const TOTAL_WIZARD_STEPS = WIZARD_STEPS.length;
+const REVIEW_STEP = 4;
+const FIRST_VALUE_STEP = 5;
+
+function formatDateTime(input: string | null): string {
+  if (!input) return 'Not completed';
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return 'Not completed';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 function OnboardingPageContent() {
   const router = useRouter();
@@ -99,6 +149,11 @@ function OnboardingPageContent() {
     SPECIALTY_OPTIONS
   );
 
+  const [firstValue, setFirstValue] = useState<FirstValuePayload | null>(null);
+  const [firstValueLoading, setFirstValueLoading] = useState(false);
+  const [firstValueRefreshing, setFirstValueRefreshing] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
   const serviceRegionOptions = useMemo(
     () => mergeMarketplaceOptions(marketplaceRegionCatalog, serviceRegions),
     [marketplaceRegionCatalog, serviceRegions]
@@ -119,10 +174,34 @@ function OnboardingPageContent() {
     [itineraryTemplate]
   );
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     void loadOnboardingData();
     void loadMarketplaceOptions();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (currentStep !== FIRST_VALUE_STEP) return undefined;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      if (!cancelled) {
+        await loadFirstValueProgress(false);
+      }
+    };
+
+    void poll();
+    const intervalId = setInterval(() => {
+      void poll();
+    }, 15_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [currentStep]);
 
   async function loadMarketplaceOptions() {
     const payload = await fetchMarketplaceOptionCatalog();
@@ -182,11 +261,48 @@ function OnboardingPageContent() {
     }
   }
 
+  async function loadFirstValueProgress(showSpinner = true) {
+    if (showSpinner) {
+      setFirstValueLoading(true);
+    } else {
+      setFirstValueRefreshing(true);
+    }
+
+    try {
+      const response = await fetch('/api/onboarding/first-value', { cache: 'no-store' });
+      const payload = (await response.json()) as FirstValuePayload | { error?: string };
+
+      if (!response.ok) {
+        throw new Error('error' in payload ? payload.error || 'Failed to load milestones' : 'Failed to load milestones');
+      }
+
+      setFirstValue(payload as FirstValuePayload);
+      if (showSpinner) {
+        setError(null);
+      }
+    } catch (err) {
+      if (showSpinner) {
+        setError(err instanceof Error ? err.message : 'Failed to load first-value milestones');
+      }
+    } finally {
+      if (showSpinner) {
+        setFirstValueLoading(false);
+      } else {
+        setFirstValueRefreshing(false);
+      }
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
-    if (currentStep < TOTAL_WIZARD_STEPS) {
+    if (currentStep < REVIEW_STEP) {
       handleNextStep();
+      return;
+    }
+
+    if (currentStep === FIRST_VALUE_STEP) {
+      router.replace(nextPath);
       return;
     }
 
@@ -225,8 +341,9 @@ function OnboardingPageContent() {
         throw new Error(payload.error || 'Failed to save onboarding details');
       }
 
-      setSuccess('Profile setup complete. Redirecting...');
-      router.replace(nextPath);
+      setSuccess('Workspace setup saved. Complete the first-value sprint below.');
+      setCurrentStep(FIRST_VALUE_STEP);
+      await loadFirstValueProgress(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save onboarding details');
     } finally {
@@ -249,12 +366,23 @@ function OnboardingPageContent() {
     }
 
     setError(null);
-    setCurrentStep((previous) => Math.min(TOTAL_WIZARD_STEPS, previous + 1));
+    setCurrentStep((previous) => Math.min(REVIEW_STEP, previous + 1));
   }
 
   function handlePreviousStep() {
     setError(null);
     setCurrentStep((previous) => Math.max(1, previous - 1));
+  }
+
+  async function handleCopyShareLink() {
+    if (!firstValue?.latest_share_url) return;
+    try {
+      await navigator.clipboard.writeText(firstValue.latest_share_url);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 1600);
+    } catch {
+      setError('Unable to copy share link. Please copy it manually from the milestone card.');
+    }
   }
 
   if (loading) {
@@ -277,9 +405,9 @@ function OnboardingPageContent() {
               <Building2 className="w-5 h-5 text-[#9c7c46]" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-[#1b140a]">Set Up Your Operator Profile</h1>
+              <h1 className="text-2xl font-semibold text-[#1b140a]">Set Up Your Operator Workspace</h1>
               <p className="text-sm text-[#6f5b3e] mt-1">
-                This setup creates your tour operator account, enables the admin workspace, and prepares your marketplace profile.
+                Finish setup, generate your first itinerary, and share it with a client in the first 10 minutes.
               </p>
             </div>
           </div>
@@ -314,7 +442,7 @@ function OnboardingPageContent() {
                 style={{ width: `${stepProgress}%` }}
               />
             </div>
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2">
               {WIZARD_STEPS.map((step) => (
                 <div
                   key={step.id}
@@ -497,18 +625,154 @@ function OnboardingPageContent() {
             </div>
           ) : null}
 
+          {currentStep === FIRST_VALUE_STEP ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-[#9c7c46] font-semibold">10-minute first value</p>
+                    <h3 className="text-lg font-semibold text-[#1b140a] mt-1">Reach first client share quickly</h3>
+                    <p className="text-sm text-[#6f5b3e] mt-1">
+                      Complete all milestones to validate activation: setup, itinerary creation, and first share.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-[#6f5b3e]">Progress</p>
+                    <p className="text-2xl font-semibold text-[#1b140a]">{firstValue?.completion_pct ?? 0}%</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 w-full rounded-full bg-[#f1e6d5] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#9c7c46] to-[#c89d54] transition-all duration-300"
+                    style={{ width: `${firstValue?.completion_pct ?? 0}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="rounded-lg bg-white border border-[#eadfcd] px-3 py-2">
+                    <p className="text-[#6f5b3e]">Itineraries created</p>
+                    <p className="text-[#1b140a] font-semibold mt-1">{firstValue?.itinerary_count ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-[#eadfcd] px-3 py-2">
+                    <p className="text-[#6f5b3e]">Shared itineraries</p>
+                    <p className="text-[#1b140a] font-semibold mt-1">{firstValue?.shared_itinerary_count ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg bg-white border border-[#eadfcd] px-3 py-2">
+                    <p className="text-[#6f5b3e]">Milestones complete</p>
+                    <p className="text-[#1b140a] font-semibold mt-1">
+                      {firstValue?.completed_milestones ?? 0}/{firstValue?.total_milestones ?? 3}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {(firstValue?.milestones || []).map((milestone) => (
+                  <div
+                    key={milestone.id}
+                    className={`rounded-xl border p-4 ${
+                      milestone.completed
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-[#eadfcd] bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`h-7 w-7 rounded-full flex items-center justify-center border ${
+                          milestone.completed
+                            ? 'bg-green-100 border-green-200 text-green-700'
+                            : 'bg-[#fcf8f1] border-[#eadfcd] text-[#9c7c46]'
+                        }`}
+                      >
+                        {milestone.completed ? <CheckCircle2 className="w-4 h-4" /> : <Clock3 className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#1b140a]">{milestone.title}</p>
+                          <span className="text-[11px] text-[#6f5b3e]">Target: {milestone.target_minute} min</span>
+                        </div>
+                        <p className="text-sm text-[#6f5b3e] mt-1">{milestone.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <a
+                  href="/planner"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6]"
+                >
+                  Open Planner
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <a
+                  href="/trips"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6]"
+                >
+                  Open Trips
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadFirstValueProgress(false)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6]"
+                  disabled={firstValueRefreshing || firstValueLoading}
+                >
+                  {firstValueRefreshing || firstValueLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  Refresh milestones
+                </button>
+
+                {firstValue?.latest_share_url ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyShareLink()}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6]"
+                  >
+                    {shareLinkCopied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {shareLinkCopied ? 'Copied share link' : 'Copy latest share link'}
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border border-[#eadfcd] p-4 text-sm text-[#6f5b3e]">
+                <p>
+                  <span className="font-medium text-[#1b140a]">First itinerary:</span>{' '}
+                  {formatDateTime(firstValue?.first_itinerary_created_at || null)}
+                </p>
+                <p className="mt-1">
+                  <span className="font-medium text-[#1b140a]">First share:</span>{' '}
+                  {formatDateTime(firstValue?.first_shared_at || null)}
+                </p>
+                {firstValueLoading ? (
+                  <p className="mt-2 text-xs text-[#9c7c46]">Checking latest milestone activity...</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <div className="pt-2 flex items-center justify-between">
             <button
               type="button"
               onClick={handlePreviousStep}
-              disabled={currentStep === 1 || saving}
+              disabled={currentStep === 1 || saving || currentStep === FIRST_VALUE_STEP}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
 
-            {currentStep < TOTAL_WIZARD_STEPS ? (
+            {currentStep < REVIEW_STEP ? (
               <button
                 type="button"
                 onClick={handleNextStep}
@@ -521,11 +785,15 @@ function OnboardingPageContent() {
             ) : (
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || firstValueLoading}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#9c7c46] text-white hover:bg-[#8a6d3e] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {saving ? 'Saving...' : 'Complete Setup'}
+                {saving || firstValueLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {currentStep === REVIEW_STEP
+                  ? saving
+                    ? 'Saving...'
+                    : 'Save & Continue'
+                  : 'Enter Admin Workspace'}
               </button>
             )}
           </div>

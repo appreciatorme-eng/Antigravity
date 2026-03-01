@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -13,6 +14,8 @@ import {
   TrendingUp,
   Clock3,
   Target,
+  ArrowUpRight,
+  Gift,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -20,6 +23,11 @@ import { GlassModal } from "@/components/glass/GlassModal";
 import { cn } from "@/lib/utils";
 import { BILLING_PLANS, getPlanById } from "./plans";
 import { useBillingData } from "./useBillingData";
+import {
+  OUTCOME_PACKAGES,
+  buildOutcomeUpgradePrompts,
+  getPromptPackages,
+} from "@/lib/billing/outcome-upgrade";
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("en-IN", {
@@ -66,6 +74,28 @@ export function BillingView() {
   const recoveredRevenue = paidInvoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
   const estimatedHoursSaved = Math.round(Math.max(1, usage.proposalsUsed) * 0.7);
   const suggestedPlan = BILLING_PLANS.find((plan) => plan.id === "pro_monthly") || BILLING_PLANS[1];
+  const unpaidInvoices = invoices.filter((invoice) => invoice.status !== "paid");
+  const pendingFollowUps = invoices.filter((invoice) => invoice.status === "pending").length;
+
+  const upgradePrompts = buildOutcomeUpgradePrompts({
+    currentPlanId: currentPlan.id,
+    usageHealth: {
+      clientsPct: usageHealth.clientsPct,
+      proposalsPct: usageHealth.proposalsPct,
+      aiPct: usageHealth.aiPct,
+    },
+    usage: {
+      clientsUsed: usage.clientsUsed,
+      proposalsUsed: usage.proposalsUsed,
+      aiRequestsUsed: usage.aiRequestsUsed,
+    },
+    recoveredRevenueInr: recoveredRevenue,
+    unpaidInvoiceCount: unpaidInvoices.length,
+    pendingFollowUps,
+  });
+
+  const directPackages = getPromptPackages(upgradePrompts);
+  const recommendedPackages = directPackages.length > 0 ? directPackages : Object.values(OUTCOME_PACKAGES);
 
   return (
     <motion.div
@@ -273,7 +303,107 @@ export function BillingView() {
       </motion.div>
 
       <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.1 }}
+      >
+        <GlassCard padding="lg" className="border-indigo-200/60 bg-indigo-50/40">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-700">Upgrade Moments</p>
+              <h3 className="text-lg font-serif text-secondary mt-1">Prompts triggered by measurable usage signals</h3>
+            </div>
+            <Target className="w-5 h-5 text-indigo-600" />
+          </div>
+
+          {upgradePrompts.length === 0 ? (
+            <div className="rounded-xl border border-indigo-100 bg-white px-4 py-4">
+              <p className="text-sm font-semibold text-secondary">No hard upgrade trigger right now.</p>
+              <p className="text-xs text-text-muted mt-1">
+                Prompts appear automatically when usage, collections, or ROI thresholds are crossed.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upgradePrompts.map((prompt) => (
+                <div key={prompt.id} className="rounded-xl border border-indigo-100 bg-white p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-secondary">{prompt.title}</p>
+                      <p className="text-xs text-text-muted mt-1">{prompt.detail}</p>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-indigo-700">
+                      {prompt.trigger_metric_value}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-text-muted mt-2">
+                    {prompt.trigger_metric_label} · {prompt.threshold_label}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {prompt.recommended_plan_id ? (
+                      <GlassButton
+                        className="h-8 rounded-lg text-[11px] uppercase tracking-[0.12em]"
+                        onClick={() => {
+                          setSelectedPlan(prompt.recommended_plan_id);
+                          setShowUpgradeModal(true);
+                        }}
+                      >
+                        {prompt.cta_label}
+                      </GlassButton>
+                    ) : null}
+                    {prompt.recommended_package_key ? (
+                      <Link
+                        href={`/add-ons?package=${prompt.recommended_package_key}`}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 hover:text-indigo-900"
+                      >
+                        View add-on pack
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassCard>
+
+        <GlassCard padding="lg" className="border-amber-200/60 bg-amber-50/40">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Add-on Packaging</p>
+              <h3 className="text-lg font-serif text-secondary mt-1">Outcome bundles to monetize value moments</h3>
+            </div>
+            <Gift className="w-5 h-5 text-amber-600" />
+          </div>
+
+          <div className="space-y-3">
+            {recommendedPackages.map((pkg) => (
+              <div key={pkg.key} className="rounded-xl border border-amber-100 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-secondary">{pkg.name}</p>
+                    <p className="text-xs text-text-muted mt-1">{pkg.description}</p>
+                  </div>
+                  <span className="text-[11px] font-black text-amber-700">{pkg.price_label}</span>
+                </div>
+                <p className="text-[11px] text-text-muted mt-2">Expected impact: {pkg.expected_impact}</p>
+                <Link
+                  href={`/add-ons?package=${pkg.key}`}
+                  className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 hover:text-amber-900"
+                >
+                  Configure package
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      </motion.div>
+
+      <motion.div
         className="space-y-6"
+
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.12 }}

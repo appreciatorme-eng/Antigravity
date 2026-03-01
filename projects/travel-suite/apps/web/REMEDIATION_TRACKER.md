@@ -146,7 +146,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Security `+0.5`, Reliability `+0.4`
 
 ### AGW-COST-003: Add spend observability and hard usage caps
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Actions:
@@ -285,7 +285,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ## WS6: Tour-Operator UX and Conversion (P1/P2)
 
 ### AGW-UX-001: Build 10-minute “first value” onboarding flow
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Actions:
@@ -297,7 +297,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - UX `+1.2`, Monetization `+0.4`
 
 ### AGW-UX-002: Operator daily command center
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Actions:
@@ -309,7 +309,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - UX `+1.0`, Retention proxy `+0.6`
 
 ### AGW-UX-003: Outcome-based upgrade prompts and add-on packaging
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P2`
 - Owner: `Unassigned`
 - Actions:
@@ -358,6 +358,10 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-QUAL-002 completed. Playwright config now uses portable dev command, auth setup/fixtures support credential-aware skipping with explicit env contract, and full suite listing is runnable without machine-specific assumptions.
 - 2026-03-01: AGW-MON-002 completed. Added monetization contract tests covering plan catalog/UI consistency, upgrade path determinism, trial expiry, cancellation transitions, and scheduled downgrade activation.
 - 2026-03-01: AGW-QUAL-001 completed. Established phased lint release threshold with zero lint errors and max warning budget (<=550), including scoped legacy-rule downgrades and script ignores to unblock CI while debt remains visible.
+- 2026-03-01: AGW-COST-003 completed. Added spend-based hard-stop guardrails with per-category plan/emergency caps, Redis/local spend telemetry tracking, admin cost overview APIs, and a live margin monitoring dashboard with runtime emergency-cap controls.
+- 2026-03-01: AGW-UX-001 completed. Extended onboarding into a 5-step first-value sprint with live milestone tracking (setup -> first itinerary -> first share), progress polling, and guided actions to hit first shared itinerary faster.
+- 2026-03-01: AGW-UX-002 completed. Added an operator daily command center API and UI with three focused screens (command board, departures, revenue tasks) covering departures, pending payments, expiring quotes, and follow-up workload.
+- 2026-03-01: AGW-UX-003 completed. Implemented outcome-triggered upgrade prompts and packaged add-on recommendations in billing, driven by measurable usage/collections/ROI thresholds instead of generic paywalls.
 
 ## Current Sprint Board (Suggested)
 
@@ -380,7 +384,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-QUAL-002
 - `[x]` AGW-MON-002
 - `[x]` AGW-QUAL-001
-- `[ ]` AGW-COST-003
-- `[ ]` AGW-UX-001
-- `[ ]` AGW-UX-002
-- `[ ]` AGW-UX-003
+- `[x]` AGW-COST-003
+- `[x]` AGW-UX-001
+- `[x]` AGW-UX-002
+- `[x]` AGW-UX-003
