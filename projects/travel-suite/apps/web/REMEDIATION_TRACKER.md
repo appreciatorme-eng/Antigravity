@@ -1,6 +1,12 @@
-# Travel Suite Web Remediation Tracker (Round 5)
+# Travel Suite Web Remediation Tracker (Round 6)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 6 Completion Summary
+
+- `[x]` AGW6-SEC-001: Replaced custom admin auth in AI-heavy admin endpoints with shared `requireAdmin`.
+- `[x]` AGW6-COST-001: Added abuse throttles on social generation, template extraction, and trip cloning routes.
+- `[x]` AGW6-TEST-001: Expanded public/non-admin authz contracts for newly hardened admin endpoints.
 
 ## Round 5 Completion Summary
 
@@ -490,6 +496,58 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - Score impact target:
   - Security `+0.2`, Testability `+0.2`
 
+## WS-J: Round 6 AI Admin Endpoint Hardening (P1)
+
+### AGW6-SEC-001: Standardize admin auth on AI-heavy admin routes
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/social/generate/route.ts`
+  - `src/app/api/admin/tour-templates/extract/route.ts`
+  - `src/app/api/admin/trips/[id]/clone/route.ts`
+- Actions:
+  - Replace bespoke admin gate code with shared `requireAdmin`.
+  - Preserve org-scope enforcement and super-admin behavior consistency.
+- Definition of Done:
+  - Endpoint authn/authz semantics are aligned with shared admin guard.
+  - Non-admin and unauthenticated callers are rejected consistently.
+- Score impact target:
+  - Security `+0.3`, Maintainability `+0.2`
+
+### AGW6-COST-001: Add rate limiting to expensive admin generation flows
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/social/generate/route.ts`
+  - `src/app/api/admin/tour-templates/extract/route.ts`
+  - `src/app/api/admin/trips/[id]/clone/route.ts`
+- Actions:
+  - Add per-admin throttles with deterministic `429` responses.
+  - Return standard rate-limit headers for client backoff behavior.
+- Definition of Done:
+  - Burst traffic to costly generation routes is bounded.
+  - Responses expose retry metadata for controlled retries.
+- Score impact target:
+  - Cost `+0.3`, Reliability `+0.2`, Operability `+0.2`
+
+### AGW6-TEST-001: Add endpoint authz contracts for new hardening scope
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+  - `e2e/tests/admin-api-authz.spec.ts`
+- Actions:
+  - Add unauthenticated endpoint contracts for social generate/template extract/trip clone.
+  - Add non-admin forbidden contracts for the same endpoints.
+- Definition of Done:
+  - Public suite fails on any accidental exposure of these endpoints.
+  - Admin authz suite fails on non-admin access regressions.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.2`
+
 ## Strict Execution Order
 
 1. `AGW2-SEC-001`
@@ -519,6 +577,9 @@ This tracker is based on the latest full review of `main` and is focused on clos
 25. `AGW5-SEC-001`
 26. `AGW5-PERF-001`
 27. `AGW5-TEST-001`
+28. `AGW6-SEC-001`
+29. `AGW6-COST-001`
+30. `AGW6-TEST-001`
 
 ## Sprint Breakdown
 
@@ -567,6 +628,12 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW5-PERF-001
 - `[x]` AGW5-TEST-001
 
+### Sprint 7 (Round 6 AI Admin Endpoint Hardening)
+
+- `[x]` AGW6-SEC-001
+- `[x]` AGW6-COST-001
+- `[x]` AGW6-TEST-001
+
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
@@ -578,3 +645,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed Round 3 hardening by adding cached/stale cost overview reads, auth-failure telemetry throttling + sampling, alert acknowledgment workflow, structured runbook metadata, and targeted add-ons lint cleanup.
 - 2026-03-01: Completed Round 4 continuation by adding mutation-triggered cost-overview cache invalidation, dedicated acknowledgment tables + history migration, stale-fallback/authz contract tests, and additional lint hotspot cleanup.
 - 2026-03-01: Completed Round 5 marketplace admin hardening with shared admin auth guard adoption, strict org-scoped verification controls, scoped verification caching + mutation invalidation + throttling, and added endpoint authz contracts.
+- 2026-03-01: Completed Round 6 by standardizing admin auth on AI-heavy endpoints, adding per-admin throttles to costly generation routes, and extending public/non-admin endpoint authz contracts.

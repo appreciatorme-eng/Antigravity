@@ -1,44 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/admin';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { extractTourFromPDF } from '@/lib/import/pdf-extractor';
 import { extractTourFromURL, getTourPreviewFromURL } from '@/lib/import/url-scraper';
 
 export const runtime = 'nodejs';
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    return { ok: false as const, status: 401, error: userError.message };
-  }
-  if (!user) {
-    return { ok: false as const, status: 401, error: 'Not authenticated' };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    return { ok: false as const, status: 500, error: profileError.message };
-  }
-  if (!profile || profile.role !== 'admin') {
-    return { ok: false as const, status: 403, error: 'Admin access required' };
-  }
-
-  return { ok: true as const, user };
-}
+const TOUR_TEMPLATE_EXTRACT_RATE_LIMIT_MAX = 20;
+const TOUR_TEMPLATE_EXTRACT_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if (!auth.ok) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  const admin = await requireAdmin(req, { requireOrganization: false });
+  if (!admin.ok) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized' },
+      { status: admin.response.status || 401 }
+    );
+  }
+
+  const rateLimit = await enforceRateLimit({
+    identifier: admin.userId,
+    limit: TOUR_TEMPLATE_EXTRACT_RATE_LIMIT_MAX,
+    windowMs: TOUR_TEMPLATE_EXTRACT_RATE_LIMIT_WINDOW_MS,
+    prefix: 'api:admin:tour-templates:extract',
+  });
+  if (!rateLimit.success) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    const response = NextResponse.json(
+      { success: false, error: 'Too many extraction requests. Please retry later.' },
+      { status: 429 }
+    );
+    response.headers.set('retry-after', String(retryAfterSeconds));
+    response.headers.set('x-ratelimit-limit', String(rateLimit.limit));
+    response.headers.set('x-ratelimit-remaining', String(rateLimit.remaining));
+    response.headers.set('x-ratelimit-reset', String(rateLimit.reset));
+    return response;
   }
 
   const contentType = req.headers.get('content-type') || '';

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import Groq from "groq-sdk";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 
-const supabaseAdmin = createAdminClient();
+const TRIP_CLONE_RATE_LIMIT_MAX = 20;
+const TRIP_CLONE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 const CloneSchema = z.object({
   title: z.string().max(160).optional(),
@@ -216,38 +217,37 @@ Context:
   }
 }
 
-async function requireAdmin() {
-  const serverClient = await createServerClient();
-  const {
-    data: { user },
-  } = await serverClient.auth.getUser();
-  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("role, organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.role !== "admin") {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  if (!profile.organization_id) {
-    return {
-      error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }),
-    };
-  }
-
-  return { userId: user.id, organizationId: profile.organization_id };
-}
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const admin = await requireAdmin();
-    if ("error" in admin) return admin.error;
+    const admin = await requireAdmin(request, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+    }
+    if (!admin.isSuperAdmin && !admin.organizationId) {
+      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: TRIP_CLONE_RATE_LIMIT_MAX,
+      windowMs: TRIP_CLONE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:trips:clone",
+    });
+    if (!rateLimit.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      const response = NextResponse.json(
+        { error: "Too many trip clone requests. Please retry later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+      response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+      response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+      return response;
+    }
 
     const { id } = await params;
     const tripId = sanitizeText(id, { maxLength: 64 });
@@ -259,9 +259,12 @@ export async function POST(
       return NextResponse.json({ error: "Invalid clone options", details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { data: tripRow, error: tripError } = await supabaseAdmin
-      .from("trips")
-      .select(`
+    const scopedOrganizationId = admin.isSuperAdmin ? null : admin.organizationId;
+    if (!admin.isSuperAdmin && !scopedOrganizationId) {
+      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+    }
+
+    let tripQuery = admin.adminClient.from("trips").select(`
         id,
         organization_id,
         client_id,
@@ -277,12 +280,19 @@ export async function POST(
           raw_data
         )
       `)
-      .eq("id", tripId)
-      .eq("organization_id", admin.organizationId)
-      .single();
+      .eq("id", tripId);
+
+    if (scopedOrganizationId) {
+      tripQuery = tripQuery.eq("organization_id", scopedOrganizationId);
+    }
+
+    const { data: tripRow, error: tripError } = await tripQuery.single();
 
     if (tripError || !tripRow) {
       return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+    }
+    if (!tripRow.organization_id) {
+      return NextResponse.json({ error: "Trip organization is missing" }, { status: 400 });
     }
 
     const itineraryRow = Array.isArray(tripRow.itineraries) ? tripRow.itineraries[0] : tripRow.itineraries;
@@ -340,7 +350,7 @@ export async function POST(
       },
     };
 
-    const { data: newItinerary, error: itineraryInsertError } = await supabaseAdmin
+    const { data: newItinerary, error: itineraryInsertError } = await admin.adminClient
       .from("itineraries")
       .insert(itineraryInsert)
       .select("id")
@@ -353,11 +363,11 @@ export async function POST(
       );
     }
 
-    const { data: newTrip, error: tripInsertError } = await supabaseAdmin
+    const { data: newTrip, error: tripInsertError } = await admin.adminClient
       .from("trips")
       .insert({
         client_id: tripRow.client_id,
-        organization_id: admin.organizationId,
+        organization_id: tripRow.organization_id,
         start_date: preferredStartDate,
         end_date: preferredEndDate,
         status: "draft",

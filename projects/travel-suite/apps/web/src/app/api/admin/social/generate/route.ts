@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import Groq from "groq-sdk";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 
-const supabaseAdmin = createAdminClient();
+const SOCIAL_GENERATE_RATE_LIMIT_MAX = 30;
+const SOCIAL_GENERATE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 const PlatformSchema = z.enum(["instagram", "facebook", "whatsapp"]);
 const ToneSchema = z.enum(["premium", "friendly", "adventure", "family", "luxury"]);
@@ -227,35 +228,34 @@ Use concise, conversion-oriented copy.`;
   }
 }
 
-async function requireAdmin() {
-  const serverClient = await createServerClient();
-  const {
-    data: { user },
-  } = await serverClient.auth.getUser();
-  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("role, organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || profile.role !== "admin") {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  if (!profile.organization_id) {
-    return {
-      error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }),
-    };
-  }
-
-  return { userId: user.id, organizationId: profile.organization_id };
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireAdmin();
-    if ("error" in admin) return admin.error;
+    const admin = await requireAdmin(request, { requireOrganization: false });
+    if (!admin.ok) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+    }
+    if (!admin.isSuperAdmin && !admin.organizationId) {
+      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: SOCIAL_GENERATE_RATE_LIMIT_MAX,
+      windowMs: SOCIAL_GENERATE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:social:generate",
+    });
+    if (!rateLimit.success) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+      const response = NextResponse.json(
+        { error: "Too many social generation requests. Please retry later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+      response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+      response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+      return response;
+    }
 
     const body = await request.json().catch(() => null);
     const parsed = RequestSchema.safeParse(body);
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
     const audience = sanitizeText(parsed.data.audience, { maxLength: 120 });
     const callToAction = sanitizeText(parsed.data.callToAction, { maxLength: 160 });
 
-    const { data: itineraryRow, error: itineraryError } = await supabaseAdmin
+    const { data: itineraryRow, error: itineraryError } = await admin.adminClient
       .from("itineraries")
       .select(`
         id,
@@ -293,7 +293,11 @@ export async function POST(request: NextRequest) {
         : [];
     const itineraryOrgId = sanitizeText(linkedProfiles[0]?.organization_id, { maxLength: 80 });
 
-    if (!itineraryOrgId || itineraryOrgId !== admin.organizationId) {
+    if (!itineraryOrgId) {
+      return NextResponse.json({ error: "Itinerary organization is missing" }, { status: 400 });
+    }
+
+    if (!admin.isSuperAdmin && itineraryOrgId !== admin.organizationId) {
       return NextResponse.json({ error: "Itinerary is outside your organization" }, { status: 403 });
     }
 

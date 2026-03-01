@@ -179,6 +179,27 @@ test.describe("Public API contracts", () => {
     expect(response.status()).toBe(401);
   });
 
+  test("admin social generate endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/social/generate", {
+      data: {},
+    });
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin tour template extract endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/tour-templates/extract", {
+      data: { method: "preview", url: "https://example.com" },
+    });
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin trip clone endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/trips/00000000-0000-0000-0000-000000000001/clone", {
+      data: {},
+    });
+    expect(response.status()).toBe(401);
+  });
+
   test("test-geocoding endpoint requires diagnostics token", async ({ request }) => {
     const response = await request.get("/api/test-geocoding?location=Tokyo");
     expect(response.status()).toBe(401);
