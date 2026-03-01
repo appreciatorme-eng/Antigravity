@@ -13,7 +13,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
-import { createClient } from '@/lib/supabase/server';
+import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
@@ -110,8 +112,15 @@ function getInvoiceEntity(payload: RazorpayWebhookPayload): RazorpayInvoiceEntit
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request);
+  const requestContext = getRequestContext(request, requestId);
+
   try {
     if (!isPaymentsIntegrationEnabled()) {
+      logEvent('info', 'Payments webhook skipped because integration is disabled', {
+        ...requestContext,
+        payment_operation: 'webhook_ingest',
+      });
       return NextResponse.json(
         {
           received: false,
@@ -125,8 +134,13 @@ export async function POST(request: NextRequest) {
     // Get webhook signature from headers
     const signature = request.headers.get('x-razorpay-signature');
     if (!signature) {
+      logEvent('warn', 'Payments webhook missing signature', {
+        ...requestContext,
+        payment_operation: 'verify_webhook_signature',
+        payment_alert_severity: 'high',
+      });
       return NextResponse.json(
-        { error: 'Missing webhook signature' },
+        { error: 'Missing webhook signature', code: 'payments_webhook_signature_invalid' },
         { status: 400 }
       );
     }
@@ -137,9 +151,13 @@ export async function POST(request: NextRequest) {
     // Verify webhook signature
     const isValid = paymentService.verifyWebhookSignature(body, signature);
     if (!isValid) {
-      console.error('Invalid webhook signature');
+      logEvent('warn', 'Payments webhook signature validation failed', {
+        ...requestContext,
+        payment_operation: 'verify_webhook_signature',
+        payment_alert_severity: 'high',
+      });
       return NextResponse.json(
-        { error: 'Invalid signature' },
+        { error: 'Invalid signature', code: 'payments_webhook_signature_invalid' },
         { status: 401 }
       );
     }
@@ -159,7 +177,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing event type' }, { status: 400 });
     }
 
-    console.log(`[Razorpay Webhook] Received event: ${eventType}`);
+    logEvent('info', 'Razorpay webhook received', {
+      ...requestContext,
+      payment_event_type: eventType,
+      payment_operation: 'webhook_ingest',
+    });
 
     // Handle different event types
     switch (eventType) {
@@ -188,12 +210,35 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log(`[Razorpay Webhook] Unhandled event type: ${eventType}`);
+        logEvent('info', 'Razorpay webhook event ignored', {
+          ...requestContext,
+          payment_event_type: eventType,
+          payment_operation: 'webhook_ignore',
+        });
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error in POST /api/payments/webhook:', error);
+    if (error instanceof PaymentServiceError) {
+      logError('Payments webhook failed with payment service error', error, {
+        ...requestContext,
+        payment_error_code: error.code,
+        payment_operation: error.operation,
+        payment_alert_severity: error.tags.severity || 'high',
+      });
+
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: paymentErrorHttpStatus(error) }
+      );
+    }
+
+    logError('Payments webhook failed unexpectedly', error, {
+      ...requestContext,
+      payment_operation: 'webhook_ingest',
+      payment_alert_severity: 'critical',
+    });
+
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -214,13 +259,16 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
 
   if (invoiceId) {
     // Record payment against invoice
-    await paymentService.recordPayment({
-      invoiceId,
-      amount: payment.amount / 100, // Convert paise to rupees
-      paymentMethod: normalizePaymentMethod(payment.method),
-      razorpayPaymentId: payment.id,
-      razorpayOrderId: payment.order_id,
-    });
+    await paymentService.recordPayment(
+      {
+        invoiceId,
+        amount: payment.amount / 100, // Convert paise to rupees
+        paymentMethod: normalizePaymentMethod(payment.method),
+        razorpayPaymentId: payment.id,
+        razorpayOrderId: payment.order_id,
+      },
+      { context: 'admin' }
+    );
   }
 }
 
@@ -236,7 +284,7 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
   let organizationId = payment.notes?.organization_id || null;
   const subscriptionId = payment.notes?.subscription_id;
   if (!organizationId && subscriptionId) {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('organization_id')
@@ -255,7 +303,8 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
     subscriptionId || null,
     payment.id,
     payment.error_code || 'unknown',
-    payment.error_description || 'Payment failed'
+    payment.error_description || 'Payment failed',
+    { context: 'admin' }
   );
 }
 
@@ -272,7 +321,8 @@ async function handleSubscriptionCharged(payload: RazorpayWebhookPayload) {
   await paymentService.handleSubscriptionCharged(
     subscription.id,
     payment.id,
-    payment.amount / 100 // Convert paise to rupees
+    payment.amount / 100, // Convert paise to rupees
+    { context: 'admin' }
   );
 }
 
@@ -285,7 +335,7 @@ async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload) {
 
   console.log('[Webhook] Subscription cancelled:', subscription.id);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Update subscription status
   await supabase
@@ -306,7 +356,7 @@ async function handleSubscriptionPaused(payload: RazorpayWebhookPayload) {
 
   console.log('[Webhook] Subscription paused:', subscription.id);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Update subscription status
   await supabase
@@ -324,7 +374,7 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload) {
 
   console.log('[Webhook] Invoice paid:', invoice.id);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Update invoice status
   await supabase

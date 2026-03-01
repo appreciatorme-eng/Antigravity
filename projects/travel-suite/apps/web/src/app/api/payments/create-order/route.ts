@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
+import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
@@ -82,6 +83,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ order });
   } catch (error) {
     console.error('Error in POST /api/payments/create-order:', error);
+
+    if (error instanceof PaymentServiceError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: paymentErrorHttpStatus(error) }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create order' },
       { status: 500 }

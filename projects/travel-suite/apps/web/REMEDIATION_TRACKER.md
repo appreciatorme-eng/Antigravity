@@ -223,7 +223,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Reliability `+1.0`, Cost `+0.3`
 
 ### AGW-REL-002: Strengthen payment service auth context and error handling
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Primary file:
@@ -353,6 +353,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-MON-003 completed. Mock payment, lead conversion, and WhatsApp utility endpoints are now explicitly disabled in production and gated by environment flags elsewhere.
 - 2026-03-01: AGW-COST-002 completed. Removed insecure key fallbacks, centralized Supabase runtime env handling with production fail-fast behavior, and enforced service-role-only cache writes.
 - 2026-03-01: AGW-REL-001 completed. Social publish queue now uses atomic pending->processing claims, idempotent already-sent handling, exponential backoff retries, configurable max attempts, and terminal failed state behavior.
+- 2026-03-01: AGW-REL-002 completed. Payment service methods now support explicit admin execution context for webhook/server flows, with structured payment error taxonomy, monitoring tags, and consistent HTTP error mapping across payment APIs.
 
 ## Current Sprint Board (Suggested)
 
@@ -368,7 +369,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-MON-003
 - `[x]` AGW-COST-002
 - `[x]` AGW-REL-001
-- `[ ]` AGW-REL-002
+- `[x]` AGW-REL-002
 
 ### Sprint C (Scale, QA, Conversion)
 - `[ ]` AGW-PERF-001
