@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 import React from 'react';
 import { Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { Activity, Day, ItineraryResult } from '@/types/itinerary';

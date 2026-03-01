@@ -1,26 +1,47 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight, Wand2, ImageIcon, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generateBrandPalette } from "@/lib/social/color-utils";
+import { generateBrandPalette, type BrandPalette } from "@/lib/social/color-utils";
 import { generateBackgroundPrompt, type AiImageStyle } from "@/lib/social/ai-prompts";
 
-interface Props {
-    templateData: any;
-    setTemplateData: (data: any) => void;
+interface TemplateDataBase {
+    companyName: string;
+    destination: string;
+    price: string;
+    offer: string;
+    season: string;
+    contactNumber: string;
+    email: string;
+    website: string;
+    logoUrl?: string;
+    logoWidth: number;
+    heroImage?: string;
+    brandPalette?: BrandPalette;
+}
+
+interface UnsplashImage {
+    id: string;
+    url: string;
+}
+
+interface Props<TTemplateData extends TemplateDataBase> {
+    templateData: TTemplateData;
+    setTemplateData: Dispatch<SetStateAction<TTemplateData>>;
     unsplashQuery: string;
     setUnsplashQuery: (q: string) => void;
-    unsplashResults: any[];
+    unsplashResults: UnsplashImage[];
     searchingUnsplash: boolean;
     onSearchUnsplash: () => void;
-    onImageUpload: (e: any, type: string) => void;
+    onImageUpload: (e: ChangeEvent<HTMLInputElement>, type: string) => void;
     orgPrimaryColor?: string | null;
 }
 
-export const TemplateEditor = ({
+export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
     templateData,
     setTemplateData,
     unsplashQuery,
@@ -30,7 +51,7 @@ export const TemplateEditor = ({
     onSearchUnsplash,
     onImageUpload,
     orgPrimaryColor,
-}: Props) => {
+}: Props<TTemplateData>) => {
     const [brandColorEnabled, setBrandColorEnabled] = useState(false);
     const [heroTab, setHeroTab] = useState<"stock" | "ai" | "upload">("stock");
     const [aiStyle, setAiStyle] = useState<AiImageStyle>("cinematic");
@@ -72,8 +93,9 @@ export const TemplateEditor = ({
         if (next) {
             setTemplateData({ ...templateData, brandPalette: palette });
         } else {
-            const { brandPalette, ...rest } = templateData;
-            setTemplateData(rest);
+            const nextTemplateData = { ...templateData };
+            delete nextTemplateData.brandPalette;
+            setTemplateData(nextTemplateData);
         }
     };
 
@@ -242,7 +264,7 @@ export const TemplateEditor = ({
                                     </div>
                                     {unsplashResults?.length > 0 && (
                                         <div className="grid grid-cols-2 gap-2.5 mb-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-inner">
-                                            {unsplashResults.map((img: any) => (
+                                            {unsplashResults.map((img) => (
                                                 <div
                                                     key={img.id}
                                                     className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"

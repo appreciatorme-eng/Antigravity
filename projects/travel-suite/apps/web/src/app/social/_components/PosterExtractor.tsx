@@ -1,12 +1,22 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
-import { Copy, Upload, Wand2, ImageIcon, Sparkles, Image as ImageLucide } from "lucide-react";
+import { Wand2, Sparkles, Image as ImageLucide } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+interface ExtractedPosterData {
+    destination: string;
+    price: string;
+    offer: string;
+    season: string;
+    contactNumber?: string;
+    companyName?: string;
+}
+
 interface Props {
-    onExtracted: (data: any) => void;
+    onExtracted: (data: ExtractedPosterData) => void;
     extracting: boolean;
 }
 
@@ -22,7 +32,7 @@ export const PosterExtractor = ({ onExtracted, extracting }: Props) => {
             });
 
             if (!resp.ok) throw new Error("AI Extraction failed");
-            const data = await resp.json();
+            const data = await resp.json() as ExtractedPosterData;
             onExtracted(data);
         } catch (e) {
             console.error(e);

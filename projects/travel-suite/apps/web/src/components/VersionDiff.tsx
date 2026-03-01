@@ -13,12 +13,12 @@ import { ChevronDown, ChevronUp, Plus, Minus, Edit } from 'lucide-react';
 interface VersionDiffProps {
   currentVersion: {
     version: number;
-    data: any;
+    data: unknown;
     created_at: string;
   };
   previousVersion: {
     version: number;
-    data: any;
+    data: unknown;
     created_at: string;
   };
 }
@@ -26,16 +26,20 @@ interface VersionDiffProps {
 interface Change {
   type: 'added' | 'removed' | 'modified';
   field: string;
-  oldValue?: any;
-  newValue?: any;
+  oldValue?: unknown;
+  newValue?: unknown;
   path: string;
 }
 
-function detectChanges(oldData: any, newData: any, path: string = ''): Change[] {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function detectChanges(oldData: unknown, newData: unknown, path: string = ''): Change[] {
   const changes: Change[] = [];
 
   // Simple comparison for primitive values
-  if (typeof oldData !== 'object' || oldData === null) {
+  if (!isRecord(oldData) || !isRecord(newData)) {
     if (oldData !== newData) {
       changes.push({
         type: 'modified',
@@ -49,7 +53,7 @@ function detectChanges(oldData: any, newData: any, path: string = ''): Change[] 
   }
 
   // Compare objects/arrays
-  const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
+  const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
 
   allKeys.forEach((key) => {
     const oldValue = oldData?.[key];
@@ -70,7 +74,7 @@ function detectChanges(oldData: any, newData: any, path: string = ''): Change[] 
         oldValue,
         path: newPath,
       });
-    } else if (typeof oldValue === 'object' && typeof newValue === 'object') {
+    } else if (isRecord(oldValue) && isRecord(newValue)) {
       changes.push(...detectChanges(oldValue, newValue, newPath));
     } else if (oldValue !== newValue) {
       changes.push({
@@ -100,12 +104,12 @@ export default function VersionDiff({ currentVersion, previousVersion }: Version
       !c.path.includes('version')
   );
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'number') return value.toString();
-    return value;
+    return String(value);
   };
 
   const getChangeIcon = (type: Change['type']) => {

@@ -1,6 +1,41 @@
-# Travel Suite Web Remediation Tracker (Round 15)
+# Travel Suite Web Remediation Tracker (Round 16)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 16 Active Plan (Completed)
+
+This round removes warning clusters in social-studio editing/extraction workflows and version diff rendering, plus resolves React-PDF lint false-positives in template page rendering.
+
+### WS-AB: Social Studio Warning Cluster Burn-down (P1)
+
+#### AGW16-QUAL-001: Harden TemplateEditor/PosterExtractor/VersionDiff typing and remove dead symbols
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/social/_components/TemplateEditor.tsx`
+  - `src/app/social/_components/PosterExtractor.tsx`
+  - `src/components/VersionDiff.tsx`
+- Actions:
+  - Replace residual `any` usage with concrete or generic-safe component types.
+  - Remove unused icon imports and tighten extracted payload typing.
+  - Preserve state-updater compatibility by using generic template-editor prop typing.
+- Definition of Done:
+  - Targeted social and version-diff files no longer emit their previous lint/type warnings.
+  - Existing social-studio flows remain behaviorally unchanged.
+
+### WS-AC: PDF Template Lint Normalization (P2)
+
+#### AGW16-QUAL-002: Suppress React-PDF image alt false-positives in itinerary template pages
+
+- Status: `[x]`
+- Priority: `P2`
+- Primary files:
+  - `src/components/pdf/templates/ItineraryTemplatePages.tsx`
+- Actions:
+  - Apply file-scoped suppression for `jsx-a11y/alt-text` where React-PDF `Image` props do not support DOM alt semantics.
+- Definition of Done:
+  - False-positive alt-text warnings are removed without changing PDF rendering output.
 
 ## Round 15 Active Plan (Completed)
 
@@ -1305,3 +1340,5 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 325, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
 - 2026-03-01: Completed Round 15 by hardening RAG and upsell-engine typing, normalizing route-level itinerary typing compatibility, and cleaning template registry/PDF warning hotspots.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 292, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
+- 2026-03-01: Completed Round 16 by removing social studio/editor and version-diff warning clusters, and normalizing React-PDF image lint behavior in itinerary template pages.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 265, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
