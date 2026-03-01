@@ -31,8 +31,6 @@ interface GSTRow {
   status: InvoiceStatus;
 }
 
-const GST_RATE = 0.05; // 5% on packaged tours SAC 998552
-
 const MOCK_DATA: GSTRow[] = [
   {
     invoiceNo: "INV-2026-001",

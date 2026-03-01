@@ -25,8 +25,6 @@ export default function AdminLayout({
 
     const [loading, setLoading] = useState(true);
     const [authorized, setAuthorized] = useState(false);
-    const [collapsed, setCollapsed] = useState(false);
-
     useEffect(() => {
         const supabase = createClient();
 

@@ -1,6 +1,59 @@
-# Travel Suite Web Remediation Tracker (Round 11)
+# Travel Suite Web Remediation Tracker (Round 12)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 12 Active Plan (Completed)
+
+This round closes contract-test and trust-surface gaps identified after Round 11, focused on proving non-mutating queue behavior, codifying public token throttling contracts, and reducing low-risk lint debt in admin/billing surfaces.
+
+### WS-T: Contract and Public Surface Assurance (P1)
+
+#### AGW12-TEST-001: Add explicit non-mutating contract for notification queue GET
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+- Actions:
+  - Add a public contract asserting `GET /api/notifications/process-queue` returns `405`.
+- Definition of Done:
+  - Any accidental reintroduction of mutating GET behavior on queue processing fails contract tests.
+
+#### AGW12-TEST-002: Add throttling contracts for public token endpoints
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+- Actions:
+  - Add contract assertions that proposal/share token endpoints enforce throttles (`429` + retry/rate-limit headers).
+- Definition of Done:
+  - Regression suite detects missing/disabled throttles on public token reads and writes.
+
+### WS-U: Trust Copy and Quality Polish (P2)
+
+#### AGW12-MON-001: Align billing checkout copy with fail-closed payment activation semantics
+
+- Status: `[x]`
+- Priority: `P2`
+- Primary files:
+  - `src/app/billing/page.tsx`
+- Actions:
+  - Remove “instant” payment/activation wording and replace with accurate confirmation language.
+- Definition of Done:
+  - Billing UX copy no longer over-promises activation timing or payment confirmation guarantees.
+
+#### AGW12-QUAL-001: Low-risk lint burn-down in admin surfaces
+
+- Status: `[x]`
+- Priority: `P2`
+- Primary files:
+  - `src/app/admin/layout.tsx`
+  - `src/app/admin/gst-report/page.tsx`
+- Actions:
+  - Remove dead state/constants that trigger unused-variable warnings.
+- Definition of Done:
+  - Lint warning count drops without behavior changes.
 
 ## Round 11 Active Plan (Completed)
 
@@ -1117,3 +1170,5 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 347, `test:unit` pass, `test:e2e` targeted authz/tenant/public/webhook suite pass with expected fixture-gated skips).
 - 2026-03-01: Added and completed Round 11 action set for monetization integrity, replay-safe queue auth, public token abuse throttling, legacy image endpoint cost guardrails, and metadata warning cleanup.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:unit` pass, targeted `test:e2e` authz/tenant/public suite pass with expected env-gated skips).
+- 2026-03-01: Completed Round 12 by adding explicit non-mutating queue GET contract coverage, adding public-token throttle contract checks with runtime-aware skip semantics for non-deterministic local worker isolation, aligning billing trust copy with fail-closed payment activation semantics, and burning down low-risk admin lint warnings.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 344, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).

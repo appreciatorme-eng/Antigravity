@@ -19,7 +19,7 @@ const TIER_ORDER: TierName[] = ["free", "pro", "business", "enterprise"];
 const FAQ_ITEMS = [
   {
     q: "Can I pay via UPI?",
-    a: "Yes! We accept all major UPI apps — PhonePe, Google Pay, and Paytm. Simply choose UPI at checkout and scan or enter your UPI ID. Payments reflect instantly.",
+    a: "Yes! We accept all major UPI apps — PhonePe, Google Pay, and Paytm. Choose UPI at checkout and scan or enter your UPI ID. Payment confirmation usually appears within a few minutes after a successful charge.",
   },
   {
     q: "Is GST included in the listed price?",

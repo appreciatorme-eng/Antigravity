@@ -31,7 +31,7 @@ export default defineConfig({
   webServer: {
     command:
       process.env.PLAYWRIGHT_DEV_COMMAND ||
-      `cd "${appDir}" && CRON_SECRET="${testCronSecret}" /opt/homebrew/opt/node@22/bin/npx next dev --webpack --port 3100`,
+      `cd "${appDir}" && CRON_SECRET="${testCronSecret}" PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX="5" PUBLIC_SHARE_WRITE_RATE_LIMIT_MAX="5" PUBLIC_SHARE_READ_RATE_LIMIT_MAX="5" /opt/homebrew/opt/node@22/bin/npx next dev --webpack --port 3100`,
     url: publicBaseUrl,
     reuseExistingServer: false,
     timeout: 120 * 1000,

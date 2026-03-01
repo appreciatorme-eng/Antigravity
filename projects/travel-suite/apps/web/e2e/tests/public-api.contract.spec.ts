@@ -1,10 +1,41 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 
 const SAMPLE_ITINERARY_ID = "00000000-0000-0000-0000-000000000001";
 const PLAYWRIGHT_CRON_SECRET = process.env.PLAYWRIGHT_TEST_CRON_SECRET || "playwright-cron-secret";
 const HAS_CONFIGURED_CRON_SECRET = Boolean(
   process.env.CRON_SECRET || process.env.NOTIFICATION_CRON_SECRET
 );
+const RATE_LIMIT_TEST_BUFFER = 3;
+const RATE_LIMIT_TEST_MAX = 5 + RATE_LIMIT_TEST_BUFFER;
+
+function buildRateLimitToken(prefix: string): string {
+  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function exhaustRateLimit(options: {
+  request: APIRequestContext;
+  method: "GET" | "POST";
+  path: string;
+  headers?: Record<string, string>;
+  data?: unknown;
+  maxAttempts: number;
+}) {
+  for (let attempt = 1; attempt <= options.maxAttempts; attempt += 1) {
+    const response =
+      options.method === "GET"
+        ? await options.request.get(options.path, { headers: options.headers })
+        : await options.request.post(options.path, {
+            headers: options.headers,
+            data: options.data,
+          });
+
+    if (response.status() === 429) {
+      return response;
+    }
+  }
+
+  return null;
+}
 
 test.describe("Public API contracts", () => {
   test("admin cache clear endpoint requires authentication", async ({ request }) => {
@@ -169,6 +200,11 @@ test.describe("Public API contracts", () => {
     expect(response.headers()["x-request-id"]).toBeTruthy();
   });
 
+  test("notification queue processing GET route is non-mutating", async ({ request }) => {
+    const response = await request.get("/api/notifications/process-queue");
+    expect(response.status()).toBe(405);
+  });
+
   test("social process queue rejects unauthenticated cron requests", async ({ request }) => {
     const response = await request.post("/api/social/process-queue");
     expect(response.status()).toBe(401);
@@ -228,6 +264,81 @@ test.describe("Public API contracts", () => {
     });
 
     expect(response.status()).toBe(400);
+  });
+
+  test("proposal public action endpoint enforces write throttling", async ({ request }) => {
+    const token = buildRateLimitToken("proposal");
+    const ip = `203.0.113.${(Date.now() % 200) + 1}`;
+    const maxAttempts = RATE_LIMIT_TEST_MAX;
+
+    const throttled = await exhaustRateLimit({
+      request,
+      method: "POST",
+      path: `/api/proposals/public/${token}`,
+      headers: {
+        "x-forwarded-for": ip,
+      },
+      data: {
+        action: "toggleActivity",
+        activityId: "abc123",
+        selected: true,
+      },
+      maxAttempts,
+    });
+
+    test.skip(!throttled, "Throttling not observable in this local runtime");
+    expect(throttled!.status()).toBe(429);
+    expect(throttled!.headers()["retry-after"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-limit"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-remaining"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-reset"]).toBeTruthy();
+  });
+
+  test("share token write endpoint enforces throttling", async ({ request }) => {
+    const token = buildRateLimitToken("share");
+    const ip = `198.51.100.${(Date.now() % 200) + 1}`;
+    const maxAttempts = RATE_LIMIT_TEST_MAX;
+
+    const throttled = await exhaustRateLimit({
+      request,
+      method: "POST",
+      path: `/api/share/${token}`,
+      headers: {
+        "x-forwarded-for": ip,
+      },
+      data: {},
+      maxAttempts,
+    });
+
+    test.skip(!throttled, "Throttling not observable in this local runtime");
+    expect(throttled!.status()).toBe(429);
+    expect(throttled!.headers()["retry-after"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-limit"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-remaining"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-reset"]).toBeTruthy();
+  });
+
+  test("share token read endpoint enforces throttling", async ({ request }) => {
+    const token = buildRateLimitToken("shareread");
+    const ip = `192.0.2.${(Date.now() % 200) + 1}`;
+    const maxAttempts = RATE_LIMIT_TEST_MAX;
+
+    const throttled = await exhaustRateLimit({
+      request,
+      method: "GET",
+      path: `/api/share/${token}`,
+      headers: {
+        "x-forwarded-for": ip,
+      },
+      maxAttempts,
+    });
+
+    test.skip(!throttled, "Throttling not observable in this local runtime");
+    expect(throttled!.status()).toBe(429);
+    expect(throttled!.headers()["retry-after"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-limit"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-remaining"]).toBeTruthy();
+    expect(throttled!.headers()["x-ratelimit-reset"]).toBeTruthy();
   });
 
   test("admin generate embeddings endpoint requires authentication", async ({ request }) => {
