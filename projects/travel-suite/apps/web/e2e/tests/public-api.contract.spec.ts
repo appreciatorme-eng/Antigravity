@@ -167,4 +167,41 @@ test.describe("Public API contracts", () => {
     expect(json).toHaveProperty("status");
     expect(json).not.toHaveProperty("checks");
   });
+
+  test("flight search endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/bookings/flights/search?origin=MAA&destination=DXB&date=2026-04-01");
+    expect(response.status()).toBe(401);
+  });
+
+  test("hotel search endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/bookings/hotels/search?location=Tokyo");
+    expect(response.status()).toBe(401);
+  });
+
+  test("location suggestions endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/bookings/locations/search?q=Delhi");
+    expect(response.status()).toBe(401);
+  });
+
+  test("unsplash image endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/images/unsplash?query=mountains");
+    expect(response.status()).toBe(401);
+  });
+
+  test("pexels image endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/images/pexels?query=beach");
+    expect(response.status()).toBe(401);
+  });
+
+  test("pixabay image endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/images/pixabay?query=city");
+    expect(response.status()).toBe(401);
+  });
+
+  test("social ai-image endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/social/ai-image", {
+      data: { prompt: "sunset over mountains" },
+    });
+    expect(response.status()).toBe(401);
+  });
 });

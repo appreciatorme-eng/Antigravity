@@ -106,7 +106,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ## WS2: Cost Controls and Abuse Prevention (P0)
 
 ### AGW-COST-001: Enforce auth + rate limiting for provider-cost endpoints
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -348,6 +348,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-SEC-002 completed. Public review ingestion now requires validated token binding, removes organization fallback writes, adds strict schema validation, and applies abuse throttling.
 - 2026-03-01: AGW-SEC-003 completed. Protected admin embeddings/geocoding endpoints with requireAdmin and added admin audit log entries for endpoint activity.
 - 2026-03-01: AGW-SEC-004 completed. Added diagnostics token enforcement for geocoding test route, redacted public health output, and disabled test-db page in production.
+- 2026-03-01: AGW-COST-001 completed. Added shared auth/tier/burst/daily guardrails across Amadeus, image provider, and social AI image routes with persisted metering audit entries.
 
 ## Current Sprint Board (Suggested)
 
@@ -356,7 +357,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-SEC-002
 - `[x]` AGW-SEC-003
 - `[x]` AGW-SEC-004
-- `[ ]` AGW-COST-001
+- `[x]` AGW-COST-001
 
 ### Sprint B (Monetization + Reliability Core)
 - `[ ]` AGW-MON-001

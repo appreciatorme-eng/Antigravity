@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAmadeusToken, resolveAmadeusBaseUrl, searchAmadeusLocations } from '@/lib/external/amadeus';
-import { guessIataCode, normalizeIataCode } from '@/lib/airport';
-import { fetchWithRetry } from '@/lib/network/retry';
+import { NextRequest, NextResponse } from "next/server";
+import { getAmadeusToken, resolveAmadeusBaseUrl, searchAmadeusLocations } from "@/lib/external/amadeus";
+import { guessIataCode, normalizeIataCode } from "@/lib/airport";
+import { fetchWithRetry } from "@/lib/network/retry";
+import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
 
 type HotelResult = {
   hotelId: string;
@@ -26,10 +27,10 @@ async function resolveCityCode(cityCodeRaw: string | null, locationRaw: string |
   const guessed = normalizeIataCode(guessIataCode(locationRaw));
   if (guessed) return guessed;
 
-  const location = locationRaw?.trim() || '';
+  const location = locationRaw?.trim() || "";
   if (location.length < 2) return null;
 
-  const suggestions = await searchAmadeusLocations(location, 'CITY', 5);
+  const suggestions = await searchAmadeusLocations(location, "CITY", 5);
   const first = suggestions.find((item) => normalizeIataCode(item.iataCode));
   return normalizeIataCode(first?.iataCode);
 }
@@ -40,16 +41,22 @@ function parseNumber(value: unknown): number | null {
 }
 
 export async function GET(req: NextRequest) {
+  const guard = await guardCostEndpoint(req, "amadeus");
+  if (!guard.ok) return guard.response;
+
   try {
     const { searchParams } = new URL(req.url);
-    const cityCode = await resolveCityCode(searchParams.get('cityCode'), searchParams.get('location'));
-    const radiusRaw = Number.parseInt(searchParams.get('radius') || '20', 10);
+    const cityCode = await resolveCityCode(searchParams.get("cityCode"), searchParams.get("location"));
+    const radiusRaw = Number.parseInt(searchParams.get("radius") || "20", 10);
     const radius = Number.isFinite(radiusRaw) && radiusRaw > 0 && radiusRaw <= 100 ? radiusRaw : 20;
-    const checkInDate = searchParams.get('checkInDate')?.trim() || '';
-    const checkOutDate = searchParams.get('checkOutDate')?.trim() || '';
+    const checkInDate = searchParams.get("checkInDate")?.trim() || "";
+    const checkOutDate = searchParams.get("checkOutDate")?.trim() || "";
 
     if (!cityCode) {
-      return NextResponse.json({ error: 'Missing or invalid location. Try city name or IATA code.' }, { status: 400 });
+      return withCostGuardHeaders(
+        NextResponse.json({ error: "Missing or invalid location. Try city name or IATA code." }, { status: 400 }),
+        guard.context
+      );
     }
 
     const token = await getAmadeusToken();
@@ -63,7 +70,7 @@ export async function GET(req: NextRequest) {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        cache: 'no-store',
+        cache: "no-store",
       },
       {
         retries: 2,
@@ -74,7 +81,7 @@ export async function GET(req: NextRequest) {
 
     if (!listResponse.ok) {
       const error = await listResponse.json().catch(() => ({}));
-      return NextResponse.json(error, { status: listResponse.status });
+      return withCostGuardHeaders(NextResponse.json(error, { status: listResponse.status }), guard.context);
     }
 
     const listPayload = await listResponse.json();
@@ -82,18 +89,18 @@ export async function GET(req: NextRequest) {
 
     const hotelIds = hotels
       .slice(0, 20)
-      .map((hotel) => String(hotel?.hotelId || '').trim())
+      .map((hotel) => String(hotel?.hotelId || "").trim())
       .filter(Boolean);
 
     const offersByHotelId: Record<string, { price: number | null; currency: string | null }> = {};
 
     if (hotelIds.length > 0 && checkInDate && checkOutDate) {
-      const offersUrl = `${amadeusBaseUrl}/v3/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIds.join(','))}&checkInDate=${encodeURIComponent(checkInDate)}&checkOutDate=${encodeURIComponent(checkOutDate)}&adults=1&roomQuantity=1&bestRateOnly=true`;
+      const offersUrl = `${amadeusBaseUrl}/v3/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIds.join(","))}&checkInDate=${encodeURIComponent(checkInDate)}&checkOutDate=${encodeURIComponent(checkOutDate)}&adults=1&roomQuantity=1&bestRateOnly=true`;
       const offersResponse = await fetchWithRetry(
         offersUrl,
         {
           headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store',
+          cache: "no-store",
         },
         {
           retries: 2,
@@ -106,10 +113,10 @@ export async function GET(req: NextRequest) {
         const offersPayload = await offersResponse.json().catch(() => ({}));
         for (const offerItem of offersPayload?.data || []) {
           const hotel = offerItem?.hotel;
-          const hotelId = String(hotel?.hotelId || '').trim();
+          const hotelId = String(hotel?.hotelId || "").trim();
           const firstOffer = offerItem?.offers?.[0];
           const total = parseNumber(firstOffer?.price?.total);
-          const currency = typeof firstOffer?.price?.currency === 'string' ? firstOffer.price.currency : null;
+          const currency = typeof firstOffer?.price?.currency === "string" ? firstOffer.price.currency : null;
           if (hotelId) {
             offersByHotelId[hotelId] = { price: total, currency };
           }
@@ -122,21 +129,21 @@ export async function GET(req: NextRequest) {
       const address = hotel.address as
         | { cityName?: unknown; lines?: unknown }
         | undefined;
-      const hotelId = String(hotel?.hotelId || '');
+      const hotelId = String(hotel?.hotelId || "");
       const pricing = offersByHotelId[hotelId] || { price: null, currency: null };
 
       return {
         hotelId,
-        name: String(hotel?.name || 'Hotel'),
+        name: String(hotel?.name || "Hotel"),
         iataCode: cityCode,
         nightlyPrice: pricing.price,
         currency: pricing.currency,
         distance: {
           value: parseNumber(distance?.value) ?? undefined,
-          unit: typeof distance?.unit === 'string' ? distance.unit : undefined,
+          unit: typeof distance?.unit === "string" ? distance.unit : undefined,
         },
         address: {
-          cityName: typeof address?.cityName === 'string' ? address.cityName : undefined,
+          cityName: typeof address?.cityName === "string" ? address.cityName : undefined,
           lines: Array.isArray(address?.lines)
             ? (address.lines as unknown[]).filter(Boolean).map(String)
             : undefined,
@@ -144,21 +151,27 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      data,
-      query: {
-        cityCode,
-        radius,
-        checkInDate: checkInDate || null,
-        checkOutDate: checkOutDate || null,
-      },
-    });
+    return withCostGuardHeaders(
+      NextResponse.json({
+        data,
+        query: {
+          cityCode,
+          radius,
+          checkInDate: checkInDate || null,
+          checkOutDate: checkOutDate || null,
+        },
+      }),
+      guard.context
+    );
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Hotel search failed',
-      },
-      { status: 500 }
+    return withCostGuardHeaders(
+      NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : "Hotel search failed",
+        },
+        { status: 500 }
+      ),
+      guard.context
     );
   }
 }
