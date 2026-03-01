@@ -33,6 +33,30 @@ test.describe("Public API contracts", () => {
     expect(response.headers()["x-request-id"]).toBeTruthy();
   });
 
+  test("admin delivery listing endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/notifications/delivery?limit=5");
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin delivery retry endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/notifications/delivery/retry", {
+      data: { queue_id: "00000000-0000-0000-0000-000000000000" },
+    });
+    expect(response.status()).toBe(401);
+  });
+
+  test("workflow rules endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/workflow/rules");
+    expect(response.status()).toBe(401);
+  });
+
+  test("workflow rules mutation endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/workflow/rules", {
+      data: { lifecycle_stage: "lead", notify_client: true },
+    });
+    expect(response.status()).toBe(401);
+  });
+
   test("location share GET endpoint requires authentication", async ({ request }) => {
     const response = await request.get(
       "/api/location/share?tripId=00000000-0000-0000-0000-000000000001&dayNumber=1"

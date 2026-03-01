@@ -1,6 +1,12 @@
-# Travel Suite Web Remediation Tracker (Round 6)
+# Travel Suite Web Remediation Tracker (Round 7)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 7 Completion Summary
+
+- `[x]` AGW7-SEC-001: Standardized admin auth and org-scope enforcement for notification delivery and workflow control-plane APIs.
+- `[x]` AGW7-COST-001: Added per-admin rate limits to delivery listing/retry and workflow events/rules endpoints.
+- `[x]` AGW7-TEST-001: Expanded public and non-admin authz contracts for delivery/workflow control-plane endpoints.
 
 ## Round 6 Completion Summary
 
@@ -548,6 +554,60 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - Score impact target:
   - Security `+0.2`, Testability `+0.2`
 
+## WS-K: Round 7 Delivery and Workflow Control Plane Hardening (P1)
+
+### AGW7-SEC-001: Standardize auth and tenant scope in delivery/workflow admin APIs
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/notifications/delivery/route.ts`
+  - `src/app/api/admin/notifications/delivery/retry/route.ts`
+  - `src/app/api/admin/workflow/events/route.ts`
+  - `src/app/api/admin/workflow/rules/route.ts`
+- Actions:
+  - Replace custom token/profile checks with shared `requireAdmin`.
+  - Enforce explicit org scope behavior for super-admin and non-super-admin paths.
+- Definition of Done:
+  - Control-plane endpoints consistently reject unauthenticated/non-admin callers.
+  - Cross-tenant access attempts fail closed with explicit errors.
+- Score impact target:
+  - Security `+0.4`, Maintainability `+0.2`
+
+### AGW7-COST-001: Add throttles to delivery/workflow control-plane endpoints
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/notifications/delivery/route.ts`
+  - `src/app/api/admin/notifications/delivery/retry/route.ts`
+  - `src/app/api/admin/workflow/events/route.ts`
+  - `src/app/api/admin/workflow/rules/route.ts`
+- Actions:
+  - Add per-admin read/write rate limits with deterministic `429` responses.
+  - Return standard retry/rate-limit headers for client backoff control.
+- Definition of Done:
+  - Delivery/workflow endpoints are protected against burst abuse.
+  - Client-visible retry metadata is present on throttled responses.
+- Score impact target:
+  - Cost `+0.2`, Reliability `+0.2`, Operability `+0.2`
+
+### AGW7-TEST-001: Expand contracts for delivery/workflow authz coverage
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/public-api.contract.spec.ts`
+  - `e2e/tests/admin-api-authz.spec.ts`
+- Actions:
+  - Add unauthenticated contracts for workflow-rules and delivery admin endpoints.
+  - Add non-admin forbidden contracts for workflow-rules endpoints.
+- Definition of Done:
+  - Public contract suite catches accidental exposure regressions.
+  - Non-admin contract suite catches control-plane authz regressions.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.2`
+
 ## Strict Execution Order
 
 1. `AGW2-SEC-001`
@@ -580,6 +640,9 @@ This tracker is based on the latest full review of `main` and is focused on clos
 28. `AGW6-SEC-001`
 29. `AGW6-COST-001`
 30. `AGW6-TEST-001`
+31. `AGW7-SEC-001`
+32. `AGW7-COST-001`
+33. `AGW7-TEST-001`
 
 ## Sprint Breakdown
 
@@ -634,6 +697,12 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW6-COST-001
 - `[x]` AGW6-TEST-001
 
+### Sprint 8 (Round 7 Delivery and Workflow Control Plane Hardening)
+
+- `[x]` AGW7-SEC-001
+- `[x]` AGW7-COST-001
+- `[x]` AGW7-TEST-001
+
 ## Progress Log
 
 - 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
@@ -646,3 +715,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed Round 4 continuation by adding mutation-triggered cost-overview cache invalidation, dedicated acknowledgment tables + history migration, stale-fallback/authz contract tests, and additional lint hotspot cleanup.
 - 2026-03-01: Completed Round 5 marketplace admin hardening with shared admin auth guard adoption, strict org-scoped verification controls, scoped verification caching + mutation invalidation + throttling, and added endpoint authz contracts.
 - 2026-03-01: Completed Round 6 by standardizing admin auth on AI-heavy endpoints, adding per-admin throttles to costly generation routes, and extending public/non-admin endpoint authz contracts.
+- 2026-03-01: Completed Round 7 by hardening delivery/workflow control-plane auth + tenant scoping with shared admin guard, adding rate limits for listing/retry/rules/events paths, and extending delivery/workflow authz contracts.

@@ -1,28 +1,13 @@
 import { NextRequest } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 
-const supabaseAdmin = createAdminClient();
-
-async function getAdminUserId(req: NextRequest): Promise<string | null> {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) return null;
-
-    const token = authHeader.substring(7);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData?.user) return null;
-
-    const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-
-    return profile?.role === "admin" ? authData.user.id : null;
-}
+const WORKFLOW_EVENTS_RATE_LIMIT_MAX = 120;
+const WORKFLOW_EVENTS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
     const startedAt = Date.now();
@@ -30,27 +15,52 @@ export async function GET(req: NextRequest) {
     const requestContext = getRequestContext(req, requestId);
 
     try {
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return withRequestId({ error: "Unauthorized" }, requestId, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", adminUserId)
-            .maybeSingle();
-        if (!adminProfile?.organization_id) {
-            return withRequestId({ error: "Admin organization not configured" }, requestId, { status: 400 });
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: WORKFLOW_EVENTS_RATE_LIMIT_MAX,
+            windowMs: WORKFLOW_EVENTS_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:workflow:events",
+        });
+        if (!rateLimit.success) {
+            const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+            const response = withRequestId(
+                { error: "Too many workflow event requests. Please retry later." },
+                requestId,
+                { status: 429 }
+            );
+            response.headers.set("retry-after", String(retryAfterSeconds));
+            response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+            response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+            response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+            return response;
         }
 
         const { searchParams } = new URL(req.url);
-        const limit = Math.min(Number(searchParams.get("limit") || 30), 100);
+        const requestedOrganizationId = (searchParams.get("organization_id") || "").trim();
+        const scopedOrganizationId = admin.isSuperAdmin ? requestedOrganizationId : admin.organizationId;
+        if (!scopedOrganizationId) {
+            return withRequestId(
+                { error: admin.isSuperAdmin ? "organization_id query param is required for super admin" : "Admin organization not configured" },
+                requestId,
+                { status: 400 }
+            );
+        }
+        if (!admin.isSuperAdmin && requestedOrganizationId && requestedOrganizationId !== admin.organizationId) {
+            return withRequestId({ error: "Cannot access another organization scope" }, requestId, { status: 403 });
+        }
 
-        const { data, error } = await supabaseAdmin
+        const limitRaw = Number(searchParams.get("limit") || 30);
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 30;
+
+        const { data, error } = await admin.adminClient
             .from("workflow_stage_events")
             .select("id,profile_id,from_stage,to_stage,changed_by,created_at,organization_id")
-            .eq("organization_id", adminProfile.organization_id)
+            .eq("organization_id", scopedOrganizationId)
             .order("created_at", { ascending: false })
             .limit(limit);
 
@@ -70,7 +80,7 @@ export async function GET(req: NextRequest) {
 
         let profileMap = new Map<string, { full_name: string | null; email: string | null }>();
         if (profileIds.length > 0) {
-            const { data: profiles } = await supabaseAdmin
+            const { data: profiles } = await admin.adminClient
                 .from("profiles")
                 .select("id,full_name,email")
                 .in("id", profileIds);

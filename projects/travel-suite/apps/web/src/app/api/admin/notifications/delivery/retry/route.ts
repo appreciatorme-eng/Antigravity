@@ -1,27 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
 
-const supabaseAdmin = createAdminClient();
+const DELIVERY_RETRY_RATE_LIMIT_MAX = 40;
+const DELIVERY_RETRY_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function getAdminUserId(req: NextRequest): Promise<string | null> {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
-
-    if (token) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (!authError && authData?.user) return authData.user.id;
-    }
-
-    const serverClient = await createServerClient();
-    const {
-        data: { user },
-    } = await serverClient.auth.getUser();
-    return user?.id || null;
+function attachRateLimitHeaders(
+    response: NextResponse,
+    rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
+): NextResponse {
+    const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    response.headers.set("retry-after", String(retryAfterSeconds));
+    response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
+    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
+    response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
+    return response;
 }
 
-async function resolveQueueOrg(queueId: string): Promise<string | null> {
-    const { data: queueRow } = await supabaseAdmin
+async function resolveQueueOrg(
+    adminClient: Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>["adminClient"],
+    queueId: string
+): Promise<string | null> {
+    const { data: queueRow } = await adminClient
         .from("notification_queue")
         .select("trip_id,user_id")
         .eq("id", queueId)
@@ -30,7 +32,7 @@ async function resolveQueueOrg(queueId: string): Promise<string | null> {
     if (!queueRow) return null;
 
     if (queueRow.trip_id) {
-        const { data: trip } = await supabaseAdmin
+        const { data: trip } = await adminClient
             .from("trips")
             .select("organization_id")
             .eq("id", queueRow.trip_id)
@@ -39,7 +41,7 @@ async function resolveQueueOrg(queueId: string): Promise<string | null> {
     }
 
     if (queueRow.user_id) {
-        const { data: profile } = await supabaseAdmin
+        const { data: profile } = await adminClient
             .from("profiles")
             .select("organization_id")
             .eq("id", queueRow.user_id)
@@ -52,37 +54,47 @@ async function resolveQueueOrg(queueId: string): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
     try {
-        const adminUserId = await getAdminUserId(req);
-        if (!adminUserId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
 
-        const { data: adminProfile } = await supabaseAdmin
-            .from("profiles")
-            .select("role,organization_id")
-            .eq("id", adminUserId)
-            .single();
-
-        if (!adminProfile || adminProfile.role !== "admin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        if (!adminProfile.organization_id) {
+        if (!admin.isSuperAdmin && !admin.organizationId) {
             return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
         }
 
+        const rateLimit = await enforceRateLimit({
+            identifier: admin.userId,
+            limit: DELIVERY_RETRY_RATE_LIMIT_MAX,
+            windowMs: DELIVERY_RETRY_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:admin:notifications:delivery:retry",
+        });
+        if (!rateLimit.success) {
+            const response = NextResponse.json(
+                { error: "Too many retry requests. Please retry later." },
+                { status: 429 }
+            );
+            return attachRateLimitHeaders(response, rateLimit);
+        }
+
         const body = await req.json();
-        const queueId = String(body.queue_id || "").trim();
+        const queueId = sanitizeText((body as { queue_id?: unknown }).queue_id, { maxLength: 64 });
         if (!queueId) {
             return NextResponse.json({ error: "queue_id is required" }, { status: 400 });
         }
+        if (!UUID_PATTERN.test(queueId)) {
+            return NextResponse.json({ error: "queue_id must be a UUID" }, { status: 400 });
+        }
 
-        const queueOrg = await resolveQueueOrg(queueId);
-        if (!queueOrg || queueOrg !== adminProfile.organization_id) {
+        const queueOrg = await resolveQueueOrg(admin.adminClient, queueId);
+        if (!queueOrg) {
+            return NextResponse.json({ error: "Queue item not found in your organization" }, { status: 404 });
+        }
+        if (!admin.isSuperAdmin && queueOrg !== admin.organizationId) {
             return NextResponse.json({ error: "Queue item not found in your organization" }, { status: 404 });
         }
 
-        const { data: updatedRows, error } = await supabaseAdmin
+        const { data: updatedRows, error } = await admin.adminClient
             .from("notification_queue")
             .update({
                 status: "pending",

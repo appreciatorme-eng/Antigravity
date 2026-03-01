@@ -21,6 +21,18 @@ test.describe('Admin API Auth - Unauthenticated', () => {
     const res = await request.get('/api/admin/contacts');
     expect(res.status()).toBe(401);
   });
+
+  test('blocks workflow rules endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/workflow/rules');
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks workflow rules mutation endpoint', async ({ request }) => {
+    const res = await request.post('/api/admin/workflow/rules', {
+      data: { lifecycle_stage: 'lead', notify_client: true },
+    });
+    expect(res.status()).toBe(401);
+  });
 });
 
 authTest.describe('Admin API AuthZ - Non-admin users', () => {
@@ -71,6 +83,18 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
   authTest('forbids non-admin access to trip clone endpoint', async ({ clientPage }) => {
     const res = await clientPage.request.post('/api/admin/trips/00000000-0000-0000-0000-000000000001/clone', {
       data: {},
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin access to workflow rules endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/workflow/rules');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin mutation of workflow rules endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/workflow/rules', {
+      data: { lifecycle_stage: 'lead', notify_client: true },
     });
     expect(res.status()).toBe(403);
   });
