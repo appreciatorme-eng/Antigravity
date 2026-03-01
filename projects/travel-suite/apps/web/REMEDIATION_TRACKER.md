@@ -1,6 +1,211 @@
-# Travel Suite Web Remediation Tracker (Round 8)
+# Travel Suite Web Remediation Tracker (Round 10)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 10 Active Plan (Open)
+
+This round addresses the remaining gaps from the latest whole-code review on `main` (`6c30bb2`), with emphasis on admin-auth consistency, webhook hardening, lint debt reduction, and contract-test coverage.
+
+### WS-M: Admin Auth and Tenant Boundary Consistency (P0)
+
+#### AGW10-SEC-001: Migrate contacts admin APIs to shared `requireAdmin` guard
+
+- Status: `[ ]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/admin/contacts/route.ts`
+  - `src/app/api/admin/contacts/[id]/promote/route.ts`
+- Actions:
+  - Replace bespoke bearer/profile parsing with `requireAdmin`.
+  - Preserve role semantics (`admin` + `super_admin`) and explicit org-scope checks.
+  - Add deterministic authz responses for unauthorized vs forbidden paths.
+- Definition of Done:
+  - Contacts endpoints use the same auth model as the rest of admin API.
+  - Non-admin and cross-tenant access paths fail closed.
+  - Contract tests cover unauthenticated and non-admin callers.
+- Score impact target:
+  - Security `+0.3`, Maintainability `+0.2`, Testability `+0.1`
+
+#### AGW10-SEC-002: Harden referrals admin API with shared guard and abuse controls
+
+- Status: `[ ]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/admin/referrals/route.ts`
+- Actions:
+  - Standardize auth and role checks through `requireAdmin`.
+  - Enforce org scope in referral reads/mutations where applicable.
+  - Sanitize inbound payloads and remove unsafe casts.
+- Definition of Done:
+  - No custom auth drift remains in referrals admin route.
+  - Referral operations are tenant-safe and input-safe.
+  - Non-admin and foreign-org attempts are blocked.
+- Score impact target:
+  - Security `+0.3`, Reliability `+0.2`, Maintainability `+0.1`
+
+### WS-N: Webhook and Runtime Safety Closure (P0)
+
+#### AGW10-SEC-003: Enforce strict WhatsApp webhook signature mode in production
+
+- Status: `[ ]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/whatsapp/webhook/route.ts`
+  - `.env.example`
+- Actions:
+  - Force fail-closed signature verification in production.
+  - Restrict unsigned webhook override to non-production only.
+  - Emit structured rejection telemetry for invalid/missing signature paths.
+- Definition of Done:
+  - Production cannot process unsigned WhatsApp webhooks.
+  - Invalid signatures are traceable with actionable metadata.
+  - Existing webhook security contracts remain green.
+- Score impact target:
+  - Security `+0.4`, Operability `+0.2`
+
+#### AGW10-REL-001: Fully org-scope WhatsApp health telemetry queries
+
+- Status: `[ ]`
+- Priority: `P0`
+- Primary files:
+  - `src/app/api/admin/whatsapp/health/route.ts`
+- Actions:
+  - Scope location/ping aggregates to organization-linked drivers/trips.
+  - Remove global counters for non-super-admin health views.
+  - Add explicit metadata on scope mode in response payload.
+- Definition of Done:
+  - Org admins can only see org-owned health telemetry.
+  - Super-admin views are explicit about global vs org scope.
+  - Tenant-isolation contracts include health telemetry assertions.
+- Score impact target:
+  - Security `+0.2`, Reliability `+0.2`, Observability `+0.2`
+
+### WS-O: Cost, Abuse, and Operability Controls (P1)
+
+#### AGW10-COST-001: Add throttles for remaining high-impact admin routes
+
+- Status: `[ ]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/admin/contacts/route.ts`
+  - `src/app/api/admin/contacts/[id]/promote/route.ts`
+  - `src/app/api/admin/referrals/route.ts`
+  - `src/app/api/admin/clear-cache/route.ts`
+- Actions:
+  - Add per-admin list/write/promote rate limits.
+  - Return deterministic `429` payloads and retry metadata.
+- Definition of Done:
+  - All identified remaining admin mutation/list routes are throttle-protected.
+  - Abuse bursts are bounded without breaking normal workflows.
+- Score impact target:
+  - Cost `+0.2`, Reliability `+0.2`, Operability `+0.2`
+
+#### AGW10-OPS-001: Replace ad-hoc console logging with structured observability
+
+- Status: `[ ]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/api/payments/webhook/route.ts`
+  - `src/app/api/whatsapp/webhook/route.ts`
+  - `src/app/api/admin/clear-cache/route.ts`
+- Actions:
+  - Replace `console.log`/`console.error` hot paths with structured logger helpers.
+  - Include route/request identifiers and operation labels.
+  - Reduce noisy logs while preserving actionable failure context.
+- Definition of Done:
+  - Critical control-plane routes log through shared observability utilities.
+  - Error paths carry consistent request and route context.
+- Score impact target:
+  - Operability `+0.3`, Maintainability `+0.1`
+
+### WS-P: Quality and Test Coverage Lift (P1)
+
+#### AGW10-QUAL-001: Lint debt burn-down phase 1 (475 -> <=350 warnings)
+
+- Status: `[ ]`
+- Priority: `P1`
+- Primary files:
+  - `src/app/calendar/page.tsx`
+  - `src/components/settings/LanguageToggle.tsx`
+  - `src/components/proposals/ESignature.tsx`
+  - `src/components/social/templates/layouts/LayoutRenderer.tsx`
+  - `src/app/api/social/**`
+- Actions:
+  - Fix hook purity/set-state-in-effect warnings in critical UI routes.
+  - Remove high-frequency unused vars and obvious `any` hotspots.
+  - Convert top `no-img-element` hotspots to optimized image handling where safe.
+- Definition of Done:
+  - Lint warning count drops to <=350 without relaxing rules.
+  - No behavior regressions in planner/admin/social core flows.
+- Score impact target:
+  - Maintainability `+0.5`, Reliability `+0.2`, Performance `+0.2`
+
+#### AGW10-TEST-001: Expand authz and tenant-isolation contracts for open risk routes
+
+- Status: `[ ]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/admin-api-authz.spec.ts`
+  - `e2e/tests/admin-tenant-isolation.contract.spec.ts`
+  - `e2e/tests/public-api.contract.spec.ts`
+- Actions:
+  - Add unauthenticated/non-admin contracts for contacts/referrals admin endpoints.
+  - Add tenant-isolation checks for org-scoped WhatsApp health metrics.
+  - Keep public contracts for debug/diagnostics routes strict.
+- Definition of Done:
+  - Regression suite fails on accidental exposure or tenant-leak regressions.
+  - New contracts run in CI listing and pass on hardened implementation.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.3`, Reliability `+0.1`
+
+#### AGW10-TEST-002: Add targeted unit tests for security helpers
+
+- Status: `[ ]`
+- Priority: `P1`
+- Primary files:
+  - `src/lib/auth/admin.ts`
+  - `src/app/api/whatsapp/webhook/route.ts`
+  - `src/app/api/admin/clear-cache/route.ts`
+- Actions:
+  - Add focused helper-level tests for role parsing, auth-failure sampling/rate-limit behavior, and signature validation fail-closed behavior.
+  - Add CSRF guard edge-case tests for bearer/session pathways.
+- Definition of Done:
+  - Core auth/security helper logic is covered by deterministic tests.
+  - High-risk guard behavior is locked by non-e2e tests.
+- Score impact target:
+  - Security `+0.2`, Testability `+0.3`, Operability `+0.1`
+
+## Round 10 Strict Execution Order
+
+1. `AGW10-SEC-001`
+2. `AGW10-SEC-002`
+3. `AGW10-SEC-003`
+4. `AGW10-REL-001`
+5. `AGW10-COST-001`
+6. `AGW10-OPS-001`
+7. `AGW10-QUAL-001`
+8. `AGW10-TEST-001`
+9. `AGW10-TEST-002`
+
+## Round 10 Sprint Breakdown
+
+### Sprint 10 (P0 Security and Boundary Closure)
+
+- `[ ]` AGW10-SEC-001
+- `[ ]` AGW10-SEC-002
+- `[ ]` AGW10-SEC-003
+- `[ ]` AGW10-REL-001
+
+### Sprint 11 (Cost/Operability + Quality Lift)
+
+- `[ ]` AGW10-COST-001
+- `[ ]` AGW10-OPS-001
+- `[ ]` AGW10-QUAL-001
+
+### Sprint 12 (Coverage Lock-in)
+
+- `[ ]` AGW10-TEST-001
+- `[ ]` AGW10-TEST-002
 
 ## Round 9 Completion Summary
 
@@ -61,23 +266,23 @@ This tracker is based on the latest full review of `main` and is focused on clos
 
 ## Current Baseline Scores (/10)
 
-- Architecture & Codebase Structure: `7.8`
-- Security & Data Protection: `6.6`
-- Reliability & Fault Tolerance: `7.4`
+- Architecture & Codebase Structure: `8.1`
+- Security & Data Protection: `7.5`
+- Reliability & Fault Tolerance: `7.9`
 - Performance & Scalability: `7.6`
 - Testability & QA Readiness: `8.2`
-- Maintainability & Type Safety: `7.3`
-- UX/UI for Tour-Operator Workflows: `8.0`
-- Monetization Readiness: `7.8`
-- Cost Efficiency (COGS Control): `7.0`
-- Observability & Operability: `7.2`
-- Weighted overall SaaS readiness: `7.5`
+- Maintainability & Type Safety: `7.2`
+- UX/UI for Tour-Operator Workflows: `8.3`
+- Monetization Readiness: `8.2`
+- Cost Efficiency (COGS Control): `7.6`
+- Observability & Operability: `7.7`
+- Weighted overall SaaS readiness: `7.9`
 
 ## Target Scores
 
-- 30-day target weighted score: `8.0`
-- 60-day target weighted score: `8.4`
-- 90-day target weighted score: `8.8`
+- 30-day target weighted score: `8.3`
+- 60-day target weighted score: `8.6`
+- 90-day target weighted score: `8.9`
 
 ## Workstreams and Action Items
 
@@ -813,3 +1018,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Completed Round 8 by standardizing shared admin guard usage on clients/trips APIs, closing trip-details tenant leakage paths, restricting security diagnostics to super-admin access, adding endpoint throttles, and extending authz contracts.
 - 2026-03-01: Completed Round 9 by hardening client trip APIs, refactoring PDF import + WhatsApp admin endpoints to shared admin auth and strict org ownership checks, adding additional throttles, tightening subscription validation, disabling risky production mock-success paths, and extending authz endpoint contracts.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e e2e/tests/admin-api-authz.spec.ts` pass with expected fixture-gated skips).
+- 2026-03-01: Added Round 10 actionable execution board from whole-code review findings, including strict order, sprint mapping, and updated baseline/target scorecard (tracker-only commit).
