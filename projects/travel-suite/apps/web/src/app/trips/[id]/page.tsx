@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -17,9 +17,7 @@ import {
     Car,
     Hotel,
     Clock,
-    Phone,
     MessageCircle,
-    Link2,
     Save,
     Bell,
     Plus,
@@ -28,14 +26,9 @@ import {
     DollarSign,
     Trash,
     CopyPlus,
-    CheckCircle2,
-    DraftingCompass,
-    AlertCircle,
     BadgeCheck,
     Globe,
     Plane,
-    TrendingUp,
-    LayoutDashboard,
     Share2,
     ArrowUpRight,
     Search,
@@ -43,7 +36,6 @@ import {
     Shield
 } from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
-import { getDriverWhatsAppLink, formatDriverAssignmentMessage, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
@@ -101,15 +93,6 @@ interface Day {
     day_number: number;
     theme: string;
     activities: Activity[];
-}
-
-interface HotelSuggestion {
-    name: string;
-    address: string;
-    phone?: string;
-    lat: number;
-    lng: number;
-    distanceKm: number;
 }
 
 interface Trip {
@@ -236,10 +219,7 @@ export default function TripDetailPage() {
     const [activeDay, setActiveDay] = useState(1);
     const [itineraryDays, setItineraryDays] = useState<Day[]>([]);
     const [reminderStatusByDay, setReminderStatusByDay] = useState<Record<number, ReminderDayStatus>>({});
-    const [busyDriversByDay, setBusyDriversByDay] = useState<Record<number, string[]>>({});
     const [latestDriverLocation, setLatestDriverLocation] = useState<DriverLocationSnapshot | null>(null);
-    const [liveLocationUrl, setLiveLocationUrl] = useState("");
-    const [creatingLiveLink, setCreatingLiveLink] = useState(false);
 
     // Tab state
     const [activeTab, setActiveTab] = useState<ActiveTab>('itinerary');
@@ -267,7 +247,6 @@ export default function TripDetailPage() {
             setAssignments(payload.assignments || {});
             setAccommodations(payload.accommodations || {});
             setReminderStatusByDay(payload.reminderStatusByDay || {});
-            setBusyDriversByDay(payload.busyDriversByDay || {});
             setLatestDriverLocation(payload.latestDriverLocation || null);
         } catch (e) {
             console.error(e);
@@ -284,12 +263,10 @@ export default function TripDetailPage() {
         try {
             // Bulk save logic simplified for the redesign component - usually calls specialized endpoints or Supabase directly
             // In a real app, we'd have a unified save endpoint or use TanStack Query
-            const { data: { session } } = await supabase.auth.getSession();
-
             // Update Itinerary
             if (trip?.itineraries?.id) {
                 await supabase.from("itineraries").update({
-                    raw_data: { days: itineraryDays } as any
+                    raw_data: { days: itineraryDays } as unknown as Json
                 }).eq("id", trip.itineraries.id);
             }
 
@@ -297,7 +274,7 @@ export default function TripDetailPage() {
 
             toast({ title: "Trip updated", description: "Trip details saved successfully.", variant: "success" });
             void fetchData();
-        } catch (e) {
+        } catch {
             toast({ title: "Sync error", description: "Failed to save trip changes.", variant: "error" });
         } finally {
             setSaving(false);
@@ -376,8 +353,12 @@ export default function TripDetailPage() {
                                     toast({ title: "Trip Duplicated", description: data.message, variant: "success" });
                                     router.push(`/trips/${data.tripId}`);
                                 },
-                                onError: (err: any) => {
-                                    toast({ title: "Duplication Failed", description: err.message, variant: "error" });
+                                onError: (error: unknown) => {
+                                    toast({
+                                        title: "Duplication Failed",
+                                        description: error instanceof Error ? error.message : "Unable to duplicate trip",
+                                        variant: "error",
+                                    });
                                 }
                             });
                         }}
@@ -667,7 +648,14 @@ export default function TripDetailPage() {
     );
 }
 
-function StatusItem({ label, status, color, icon: Icon }: any) {
+type StatusItemProps = {
+    label: string;
+    status: string;
+    color: string;
+    icon: ComponentType<{ className?: string }>;
+};
+
+function StatusItem({ label, status, color, icon: Icon }: StatusItemProps) {
     return (
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

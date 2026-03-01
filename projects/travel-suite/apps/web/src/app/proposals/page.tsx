@@ -16,7 +16,6 @@ import {
   XCircle,
   Calendar,
   DollarSign,
-  ExternalLink,
   ChevronRight,
   TrendingUp,
   Mail,
@@ -24,13 +23,12 @@ import {
   PenLine,
   Link2,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
-import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassConfirmModal } from '@/components/glass/GlassModal';
-import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassListSkeleton } from '@/components/glass/GlassSkeleton';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
@@ -67,7 +65,7 @@ interface SignatureRecord {
 
 type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
 
-const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon: any; color: string; bg: string }> = {
+const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon: LucideIcon; color: string; bg: string }> = {
   draft: { label: 'Draft', variant: 'default', icon: Clock, color: 'text-gray-600', bg: 'bg-gray-50' },
   sent: { label: 'Sent', variant: 'info', icon: Send, color: 'text-blue-600', bg: 'bg-blue-50' },
   viewed: { label: 'Viewed', variant: 'primary', icon: Eye, color: 'text-indigo-600', bg: 'bg-indigo-50' },
@@ -250,7 +248,6 @@ export default function ProposalsPage() {
           <div className="divide-y divide-gray-50">
             {filteredItems.map((proposal) => {
               const config = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.draft;
-              const StatusIcon = config.icon;
               const signatureRecord = signatureMap[proposal.id] ?? null;
 
               return (

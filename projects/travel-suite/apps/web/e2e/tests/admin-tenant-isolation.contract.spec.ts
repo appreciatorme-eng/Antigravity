@@ -37,6 +37,13 @@ test.describe("Admin tenant isolation - unauthenticated", () => {
 
     expect(response.status()).toBe(401);
   });
+
+  test("blocks WhatsApp health endpoint", async ({ request }) => {
+    const response = await request.get(
+      `/api/admin/whatsapp/health?organization_id=${FOREIGN_ORG_ID}`,
+    );
+    expect(response.status()).toBe(401);
+  });
 });
 
 authTest.describe("Admin tenant isolation - non-admin users", () => {
@@ -74,6 +81,13 @@ authTest.describe("Admin tenant isolation - non-admin users", () => {
       },
     );
 
+    expect(response.status()).toBe(403);
+  });
+
+  authTest("forbids WhatsApp health access", async ({ clientPage }) => {
+    const response = await clientPage.request.get(
+      `/api/admin/whatsapp/health?organization_id=${FOREIGN_ORG_ID}`,
+    );
     expect(response.status()).toBe(403);
   });
 });
@@ -138,6 +152,24 @@ authTest.describe("Admin tenant isolation - scoped access", () => {
         const json = await response.json();
         expect(json?.organization_id).not.toBe(FOREIGN_ORG_ID);
       }
+    },
+  );
+
+  authTest(
+    "non-super-admin cannot force foreign organization scope on WhatsApp health",
+    async ({ adminPage }) => {
+      const response = await adminPage.request.get(
+        `/api/admin/whatsapp/health?organization_id=${FOREIGN_ORG_ID}`,
+      );
+
+      expect([200, 403]).toContain(response.status());
+      if (response.status() !== 200) {
+        return;
+      }
+
+      const json = await response.json();
+      expect(json?.organization_id).not.toBe(FOREIGN_ORG_ID);
+      expect(json?.scope).toBe("organization");
     },
   );
 });

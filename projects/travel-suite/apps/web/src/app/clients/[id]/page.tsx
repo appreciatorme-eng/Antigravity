@@ -1,14 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import type { ComponentType } from "react";
 import {
-    Mail, Phone, MapPin, CalendarDays, BadgeCheck, Utensils,
+    Mail, Phone, MapPin, CalendarDays, Utensils,
     Accessibility, User, HeartPulse, FileText, Globe, Plane,
-    Tag, Activity, ArrowLeft, IndianRupee,
-    Languages, MessageCircle, Plus, TrendingUp, Eye,
+    Activity, ArrowLeft, IndianRupee,
+    Languages, MessageCircle, Plus, Eye,
     CheckCircle2, XCircle, Timer, AlertCircle, Send, Star,
     Home, Users, Target, Sparkles, ExternalLink, Clock,
-    BookOpen, ThumbsUp, ThumbsDown, Percent, Repeat2
+    Percent
 } from "lucide-react";
 import Link from "next/link";
 import { GlassCard } from "@/components/glass/GlassCard";
@@ -52,6 +53,61 @@ const getDaysSince = (dateStr: string | null | undefined) => {
     return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 };
 
+type ClientProfile = {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    created_at: string | null;
+    organization_id: string | null;
+    preferred_destination?: string | null;
+    travelers_count?: number | null;
+    budget_min?: number | null;
+    budget_max?: number | null;
+    travel_style?: string | null;
+    interests?: string[] | null;
+    home_airport?: string | null;
+    language_preference?: string | null;
+    client_tag?: string | null;
+    dietary_preferences?: string | null;
+    mobility_requirements?: string | null;
+    medical_notes?: string | null;
+    lifecycle_stage?: string | null;
+    referral_source?: string | null;
+    source_channel?: string | null;
+    notes?: string | null;
+    lead_status?: string | null;
+    dietary_requirements?: string[] | null;
+    mobility_needs?: string | null;
+};
+
+type TripRow = {
+    id: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    itinerary_id: string | null;
+    created_at: string | null;
+};
+
+type ItineraryMeta = {
+    id: string;
+    destination: string | null;
+    trip_title: string | null;
+    duration_days: number | null;
+};
+
+type ProposalRow = {
+    id: string;
+    title: string | null;
+    status: string | null;
+    total_price: number | null;
+    created_at: string | null;
+    viewed_at: string | null;
+    approved_at: string | null;
+    expires_at: string | null;
+};
+
 // ─── Config ─────────────────────────────────────────────────────────────────
 
 const STAGE_COLORS: Record<string, string> = {
@@ -76,7 +132,7 @@ const STAGE_LABELS: Record<string, string> = {
     past: "🏁 Closed",
 };
 
-const PROPOSAL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; hint: string }> = {
+const PROPOSAL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: ComponentType<{ className?: string }>; hint: string }> = {
     draft: {
         label: "Draft", hint: "Not sent yet",
         color: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-slate-800 dark:text-gray-400 dark:border-slate-700",
@@ -142,8 +198,7 @@ export default async function ClientProfilePage({
 
     // ─── Get a working Supabase client ────────────────────────────────────────
     // Strategy: try admin client first (bypasses RLS), fall back to server client
-    let supabase: any;
-    let usingAdmin = false;
+    let supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>;
     try {
         const admin = createAdminClient();
         // Test that the admin client is functional (not the unavailable Proxy)
@@ -153,7 +208,6 @@ export default async function ClientProfilePage({
             throw new Error("Admin unavailable");
         }
         supabase = admin;
-        usingAdmin = true;
     } catch {
         // Admin client unavailable — fall back to server client (uses cookies/session)
         console.warn("Admin client unavailable, falling back to server client for client profile");
@@ -161,7 +215,7 @@ export default async function ClientProfilePage({
     }
 
     // ─── Fetch profile ────────────────────────────────────────────────────────
-    let profile: any = null;
+    let profile: ClientProfile | null = null;
     try {
         // First try the profiles table directly
         const { data, error: profileError } = await supabase
@@ -178,7 +232,7 @@ export default async function ClientProfilePage({
             // (which has org-level RLS allowing admins to see their org's clients)
             const { data: clientRow, error: clientError } = await supabase
                 .from("clients")
-                .select("id, organization_id")
+                .select("id, organization_id, created_at")
                 .eq("id", id)
                 .single();
 
@@ -219,11 +273,11 @@ export default async function ClientProfilePage({
     }
 
     // ─── Fetch trips (partial failure OK) ─────────────────────────────────────
-    let trips: any[] = [];
+    let trips: TripRow[] = [];
     try {
         const { data, error } = await supabase
             .from("trips")
-            .select("id, status, start_date, end_date, destination, itinerary_id, created_at")
+            .select("id, status, start_date, end_date, itinerary_id, created_at")
             .eq("client_id", id)
             .order("created_at", { ascending: false });
         if (!error && data) trips = data;
@@ -233,11 +287,11 @@ export default async function ClientProfilePage({
     }
 
     // ─── Fetch itineraries linked to trips ────────────────────────────────────
-    let itineraryMap: Record<string, any> = {};
+    let itineraryMap: Record<string, ItineraryMeta> = {};
     try {
         const tripItineraryIds = trips
             .map(t => t.itinerary_id)
-            .filter(Boolean);
+            .filter((value): value is string => Boolean(value));
 
         if (tripItineraryIds.length > 0) {
             const { data } = await supabase
@@ -245,7 +299,9 @@ export default async function ClientProfilePage({
                 .select("id, destination, trip_title, duration_days")
                 .in("id", tripItineraryIds);
             if (data) {
-                itineraryMap = Object.fromEntries(data.map((i: any) => [i.id, i]));
+                itineraryMap = Object.fromEntries(
+                    data.map((itinerary) => [itinerary.id, itinerary as ItineraryMeta])
+                );
             }
         }
     } catch (err) {
@@ -253,7 +309,7 @@ export default async function ClientProfilePage({
     }
 
     // ─── Fetch proposals (partial failure OK) ─────────────────────────────────
-    let proposals: any[] = [];
+    let proposals: ProposalRow[] = [];
     try {
         const { data, error } = await supabase
             .from("proposals")
@@ -283,7 +339,7 @@ export default async function ClientProfilePage({
         .reduce((sum, p) => sum + (p.total_price ?? 0), 0);
 
     const memberSinceDays = getDaysSince(profile.created_at);
-    const language = (profile as any).language_preference ?? "English";
+    const language = profile.language_preference ?? "English";
     const initials = getInitials(profile.full_name ?? null);
 
     const hasPreferences = profile.preferred_destination || profile.travelers_count ||
@@ -508,7 +564,7 @@ export default async function ClientProfilePage({
                 <GlassCard padding="none" className="border-gray-100 dark:border-slate-800 overflow-hidden">
                     <div className="px-5 pt-4 pb-3 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-primary/5 to-transparent">
                         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                            <Sparkles className="w-3.5 h-3.5" /> What They're Looking For
+                            <Sparkles className="w-3.5 h-3.5" /> What They&apos;re Looking For
                         </h2>
                         <p className="text-xs text-text-muted mt-0.5 font-medium">Current travel interests & requirements</p>
                     </div>
@@ -834,7 +890,7 @@ export default async function ClientProfilePage({
                         <div className="space-y-2">
                             {trips && trips.length > 0 ? trips.map((trip) => {
                                 const statusConf = TRIP_STATUS_COLORS[(trip.status ?? "draft")] ?? TRIP_STATUS_COLORS.draft;
-                                const itin = itineraryMap[(trip as any).itinerary_id];
+                                const itin = trip.itinerary_id ? itineraryMap[trip.itinerary_id] : undefined;
                                 const tripTitle = itin?.trip_title ?? itin?.destination ?? "Untitled Trip";
                                 const tripDestination = itin?.destination ?? null;
 

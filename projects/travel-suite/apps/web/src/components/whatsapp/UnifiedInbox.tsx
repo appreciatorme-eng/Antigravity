@@ -1,27 +1,20 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   X,
   ChevronRight,
   MapPin,
-  Mic,
-  Image,
   FileText,
   Phone,
   Mail,
-  Star,
   TrendingUp,
   Car,
   CreditCard,
   UserPlus,
   ExternalLink,
-  SortAsc,
-  Filter,
   CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import {
   MessageThread,

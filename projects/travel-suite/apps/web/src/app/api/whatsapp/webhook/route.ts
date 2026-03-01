@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
+import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
+import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 
 const supabaseAdmin = createAdminClient();
 const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || null;
 const appSecret = process.env.WHATSAPP_APP_SECRET || null;
-const allowUnsignedWebhook = process.env.WHATSAPP_ALLOW_UNSIGNED_WEBHOOK === "true";
 
 function toIsoFromUnixSeconds(value: string): string {
     const parsed = Number(value);
@@ -67,25 +68,39 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
+
     try {
+        const allowUnsignedWebhook = isUnsignedWebhookAllowed();
         const rawBody = await request.text();
         const signatureHeader = request.headers.get("x-hub-signature-256");
         const signatureValid = verifySignature(rawBody, signatureHeader);
 
         if (!signatureValid && !allowUnsignedWebhook) {
-            await supabaseAdmin.from("whatsapp_webhook_events").insert({
-                provider_message_id: `invalid-signature-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                wa_id: null,
-                event_type: "location",
-                payload_hash: payloadHash(rawBody),
-                processing_status: "rejected",
-                reject_reason: appSecret
-                    ? "invalid_signature"
-                    : "missing_whatsapp_app_secret",
-                metadata: {
-                    signature_present: !!signatureHeader,
-                    mode: "strict",
-                },
+            try {
+                await supabaseAdmin.from("whatsapp_webhook_events").insert({
+                    provider_message_id: `invalid-signature-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    wa_id: null,
+                    event_type: "location",
+                    payload_hash: payloadHash(rawBody),
+                    processing_status: "rejected",
+                    reject_reason: appSecret
+                        ? "invalid_signature"
+                        : "missing_whatsapp_app_secret",
+                    metadata: {
+                        signature_present: !!signatureHeader,
+                        mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
+                    },
+                });
+            } catch (error) {
+                // Signature validation must fail-closed even if telemetry storage is unavailable.
+                logError("WhatsApp webhook signature rejection telemetry failed", error, requestContext);
+            }
+            logEvent("warn", "WhatsApp webhook rejected due to signature validation", {
+                ...requestContext,
+                signature_present: !!signatureHeader,
+                webhook_signature_mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
             });
             return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
         }
@@ -164,7 +179,9 @@ export async function POST(request: NextRequest) {
 
         // Process images asynchronously to avoid blocking the webhook response
         // In a real production app this should be queued (e.g. Inngest / SQS)
-        processWhatsAppImages(payload, rawBody, signatureValid).catch(console.error);
+        processWhatsAppImages(payload, rawBody, signatureValid, requestContext).catch((error) => {
+            logError("WhatsApp image processing failed", error, requestContext);
+        });
 
         return NextResponse.json({
             ok: true,
@@ -174,6 +191,7 @@ export async function POST(request: NextRequest) {
             duplicate_messages: duplicates,
         });
     } catch (error) {
+        logError("WhatsApp webhook processing failed", error, requestContext);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }
@@ -181,8 +199,17 @@ export async function POST(request: NextRequest) {
     }
 }
 
-async function processWhatsAppImages(payload: unknown, rawBody: string, signatureValid: boolean) {
+async function processWhatsAppImages(
+    payload: unknown,
+    rawBody: string,
+    signatureValid: boolean,
+    requestContext: ReturnType<typeof getRequestContext>,
+) {
     const images = parseWhatsAppImageMessages(payload);
+    logEvent("info", "WhatsApp image batch processing started", {
+        ...requestContext,
+        image_messages: images.length,
+    });
 
     for (const image of images) {
         // 1. Log event

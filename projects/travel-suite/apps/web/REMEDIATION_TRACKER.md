@@ -2,7 +2,7 @@
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
 
-## Round 10 Active Plan (Open)
+## Round 10 Active Plan (Completed)
 
 This round addresses the remaining gaps from the latest whole-code review on `main` (`6c30bb2`), with emphasis on admin-auth consistency, webhook hardening, lint debt reduction, and contract-test coverage.
 
@@ -10,7 +10,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-SEC-001: Migrate contacts admin APIs to shared `requireAdmin` guard
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/contacts/route.ts`
@@ -28,7 +28,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-SEC-002: Harden referrals admin API with shared guard and abuse controls
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/referrals/route.ts`
@@ -47,7 +47,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-SEC-003: Enforce strict WhatsApp webhook signature mode in production
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/whatsapp/webhook/route.ts`
@@ -65,7 +65,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-REL-001: Fully org-scope WhatsApp health telemetry queries
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Primary files:
   - `src/app/api/admin/whatsapp/health/route.ts`
@@ -84,7 +84,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-COST-001: Add throttles for remaining high-impact admin routes
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/app/api/admin/contacts/route.ts`
@@ -102,7 +102,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-OPS-001: Replace ad-hoc console logging with structured observability
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/app/api/payments/webhook/route.ts`
@@ -122,7 +122,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-QUAL-001: Lint debt burn-down phase 1 (475 -> <=350 warnings)
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/app/calendar/page.tsx`
@@ -142,7 +142,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-TEST-001: Expand authz and tenant-isolation contracts for open risk routes
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `e2e/tests/admin-api-authz.spec.ts`
@@ -160,7 +160,7 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 #### AGW10-TEST-002: Add targeted unit tests for security helpers
 
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Primary files:
   - `src/lib/auth/admin.ts`
@@ -191,21 +191,21 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 
 ### Sprint 10 (P0 Security and Boundary Closure)
 
-- `[ ]` AGW10-SEC-001
-- `[ ]` AGW10-SEC-002
-- `[ ]` AGW10-SEC-003
-- `[ ]` AGW10-REL-001
+- `[x]` AGW10-SEC-001
+- `[x]` AGW10-SEC-002
+- `[x]` AGW10-SEC-003
+- `[x]` AGW10-REL-001
 
 ### Sprint 11 (Cost/Operability + Quality Lift)
 
-- `[ ]` AGW10-COST-001
-- `[ ]` AGW10-OPS-001
-- `[ ]` AGW10-QUAL-001
+- `[x]` AGW10-COST-001
+- `[x]` AGW10-OPS-001
+- `[x]` AGW10-QUAL-001
 
 ### Sprint 12 (Coverage Lock-in)
 
-- `[ ]` AGW10-TEST-001
-- `[ ]` AGW10-TEST-002
+- `[x]` AGW10-TEST-001
+- `[x]` AGW10-TEST-002
 
 ## Round 9 Completion Summary
 
@@ -1019,3 +1019,6 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Completed Round 9 by hardening client trip APIs, refactoring PDF import + WhatsApp admin endpoints to shared admin auth and strict org ownership checks, adding additional throttles, tightening subscription validation, disabling risky production mock-success paths, and extending authz endpoint contracts.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e e2e/tests/admin-api-authz.spec.ts` pass with expected fixture-gated skips).
 - 2026-03-01: Added Round 10 actionable execution board from whole-code review findings, including strict order, sprint mapping, and updated baseline/target scorecard (tracker-only commit).
+- 2026-03-01: Completed Round 10 WS-M through WS-P by migrating remaining admin routes to shared guards, tightening WhatsApp production signature enforcement, fixing org-scoped health telemetry, adding missing throttles, and standardizing control-plane logging.
+- 2026-03-01: Closed AGW10 quality/test targets with lint warning burn-down from 475 to 347 (target <=350), new non-e2e security helper tests (`test:unit`), and expanded authz/tenant contract coverage for referrals, contacts promote, and WhatsApp health scope.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 347, `test:unit` pass, `test:e2e` targeted authz/tenant/public/webhook suite pass with expected fixture-gated skips).

@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+function omitFields<T extends Record<string, unknown>, K extends keyof T>(
+    value: T,
+    keys: readonly K[]
+): Omit<T, K> {
+    const clone: Partial<T> = { ...value };
+    for (const key of keys) {
+        delete clone[key];
+    }
+    return clone as Omit<T, K>;
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     try {
         const { id: tripId } = await params;
@@ -65,7 +76,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
 
             if (!itinError && originalItinerary) {
                 // Strip the exact matched ID to force an insert
-                const { id: _oldId, timestamp: _ts, created_at: _ca, updated_at: _ua, ...clonedItineraryData } = originalItinerary as any;
+                const clonedItineraryData = omitFields<
+                    typeof originalItinerary,
+                    "id" | "created_at" | "updated_at"
+                >(originalItinerary, ["id", "created_at", "updated_at"]);
 
                 clonedItineraryData.trip_title = `Copy of ${clonedItineraryData.trip_title}`;
 
@@ -82,7 +96,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         }
 
         // Create the new trip
-        const { id: _oldTripId, created_at: _tripCa, updated_at: _tripUa, ...clonedTripData } = originalTrip as any;
+        const clonedTripData = omitFields<
+            typeof originalTrip,
+            "id" | "created_at" | "updated_at"
+        >(originalTrip, ["id", "created_at", "updated_at"]);
 
         clonedTripData.itinerary_id = newItineraryId;
         clonedTripData.status = "draft"; // Reset the status for the new cloned trip

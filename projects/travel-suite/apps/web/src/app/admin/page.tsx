@@ -14,16 +14,11 @@ import {
     Car,
     Users,
     MapPin,
-    Bell,
     TrendingUp,
     Calendar,
     Activity,
-    ArrowUpRight,
-    TrendingDown,
     Plus,
     History,
-    CheckCircle2,
-    AlertCircle,
     Server,
     Zap,
     MessageSquare,
@@ -117,7 +112,6 @@ export default function AdminDashboard() {
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<HealthResponse | null>(null);
-    const [healthLoading, setHealthLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -230,7 +224,6 @@ export default function AdminDashboard() {
         const fetchHealth = async () => {
             try {
                 if (!mounted) return;
-                setHealthLoading(true);
                 const res = await fetch("/api/health", { cache: "no-store" });
                 const data = (await res.json()) as HealthResponse;
                 if (mounted) setHealth(data);
@@ -251,7 +244,7 @@ export default function AdminDashboard() {
                     });
                 }
             } finally {
-                if (mounted) setHealthLoading(false);
+                if (!mounted) return;
             }
         };
 

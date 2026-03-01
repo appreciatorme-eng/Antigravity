@@ -32,6 +32,25 @@ test.describe('Admin API Auth - Unauthenticated', () => {
     expect(res.status()).toBe(401);
   });
 
+  test('blocks admin referrals endpoint', async ({ request }) => {
+    const res = await request.get('/api/admin/referrals');
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks admin referrals mutation endpoint', async ({ request }) => {
+    const res = await request.post('/api/admin/referrals', {
+      data: { referralCode: 'ABC123' },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('blocks admin contact promote endpoint', async ({ request }) => {
+    const res = await request.post('/api/admin/contacts/00000000-0000-0000-0000-000000000001/promote', {
+      data: {},
+    });
+    expect(res.status()).toBe(401);
+  });
+
   test('blocks admin pdf imports endpoint', async ({ request }) => {
     const res = await request.get('/api/admin/pdf-imports');
     expect(res.status()).toBe(401);
@@ -100,6 +119,25 @@ authTest.describe('Admin API AuthZ - Non-admin users', () => {
   authTest('forbids non-admin access to admin pdf imports endpoint', async ({ clientPage }) => {
     const res = await clientPage.request.get('/api/admin/pdf-imports');
     expect([401, 403]).toContain(res.status());
+  });
+
+  authTest('forbids non-admin access to admin referrals endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.get('/api/admin/referrals');
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin mutation of admin referrals endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/referrals', {
+      data: { referralCode: 'ABC123' },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  authTest('forbids non-admin access to admin contact promote endpoint', async ({ clientPage }) => {
+    const res = await clientPage.request.post('/api/admin/contacts/00000000-0000-0000-0000-000000000001/promote', {
+      data: {},
+    });
+    expect(res.status()).toBe(403);
   });
 
   authTest('forbids non-admin access to admin WhatsApp health endpoint', async ({ clientPage }) => {

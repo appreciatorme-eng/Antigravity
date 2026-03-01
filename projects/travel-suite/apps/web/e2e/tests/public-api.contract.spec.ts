@@ -2,6 +2,9 @@ import { test, expect } from "@playwright/test";
 
 const SAMPLE_ITINERARY_ID = "00000000-0000-0000-0000-000000000001";
 const PLAYWRIGHT_CRON_SECRET = process.env.PLAYWRIGHT_TEST_CRON_SECRET || "playwright-cron-secret";
+const HAS_CONFIGURED_CRON_SECRET = Boolean(
+  process.env.CRON_SECRET || process.env.NOTIFICATION_CRON_SECRET
+);
 
 test.describe("Public API contracts", () => {
   test("admin cache clear endpoint requires authentication", async ({ request }) => {
@@ -52,6 +55,26 @@ test.describe("Public API contracts", () => {
 
   test("admin security diagnostics endpoint requires authentication", async ({ request }) => {
     const response = await request.get("/api/admin/security/diagnostics");
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin referrals endpoint requires authentication", async ({ request }) => {
+    const response = await request.get("/api/admin/referrals");
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin referrals mutation endpoint requires authentication", async ({ request }) => {
+    const response = await request.post("/api/admin/referrals", {
+      data: { referralCode: "ABC123" },
+    });
+    expect(response.status()).toBe(401);
+  });
+
+  test("admin contacts promote endpoint requires authentication", async ({ request }) => {
+    const response = await request.post(
+      "/api/admin/contacts/00000000-0000-0000-0000-000000000001/promote",
+      { data: {} },
+    );
     expect(response.status()).toBe(401);
   });
 
@@ -157,6 +180,8 @@ test.describe("Public API contracts", () => {
   });
 
   test("social process queue accepts configured cron bearer secret", async ({ request }) => {
+    test.skip(!HAS_CONFIGURED_CRON_SECRET, "Cron secret is not configured in test environment");
+
     const response = await request.post("/api/social/process-queue", {
       headers: {
         authorization: `Bearer ${PLAYWRIGHT_CRON_SECRET}`,
@@ -168,6 +193,8 @@ test.describe("Public API contracts", () => {
   });
 
   test("social refresh tokens accepts configured cron bearer secret", async ({ request }) => {
+    test.skip(!HAS_CONFIGURED_CRON_SECRET, "Cron secret is not configured in test environment");
+
     const response = await request.post("/api/social/refresh-tokens", {
       headers: {
         authorization: `Bearer ${PLAYWRIGHT_CRON_SECRET}`,

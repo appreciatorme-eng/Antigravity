@@ -1,69 +1,17 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { getRequestContext, getRequestId, logError } from "@/lib/observability/logger";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 type ClearCacheRequestParams = {
     destination: string | null;
     clearAll: boolean;
 };
 
-function safeHeaderEqual(left: string, right: string): boolean {
-    const leftBuffer = Buffer.from(left, "utf8");
-    const rightBuffer = Buffer.from(right, "utf8");
-    if (leftBuffer.length !== rightBuffer.length) return false;
-    return timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function isBearerRequest(req: NextRequest): boolean {
-    const auth = req.headers.get("authorization") || "";
-    return auth.toLowerCase().startsWith("bearer ");
-}
-
-function hasTrustedSameOrigin(req: NextRequest): boolean {
-    const host = req.headers.get("host");
-    if (!host) return false;
-
-    const expectedOrigin = `${req.nextUrl.protocol}//${host}`;
-    const origin = req.headers.get("origin");
-    const referer = req.headers.get("referer");
-
-    if (!origin && !referer) return false;
-
-    if (origin && origin !== expectedOrigin) {
-        return false;
-    }
-
-    if (referer) {
-        try {
-            const refererOrigin = new URL(referer).origin;
-            if (refererOrigin !== expectedOrigin) {
-                return false;
-            }
-        } catch {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function passesMutationCsrfGuard(req: NextRequest): boolean {
-    if (isBearerRequest(req)) {
-        return true;
-    }
-
-    const configuredToken = process.env.ADMIN_MUTATION_CSRF_TOKEN?.trim();
-    if (configuredToken) {
-        const providedToken = (req.headers.get("x-admin-csrf") || "").trim();
-        if (!providedToken) {
-            return false;
-        }
-        return safeHeaderEqual(providedToken, configuredToken);
-    }
-
-    return hasTrustedSameOrigin(req);
-}
+const CLEAR_CACHE_MUTATION_RATE_LIMIT_MAX = 20;
+const CLEAR_CACHE_MUTATION_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 async function parseClearCacheParams(req: NextRequest): Promise<ClearCacheRequestParams> {
     const searchDestination = sanitizeText(req.nextUrl.searchParams.get("destination"), { maxLength: 80 });
@@ -87,9 +35,25 @@ async function parseClearCacheParams(req: NextRequest): Promise<ClearCacheReques
 }
 
 async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
+    const requestId = getRequestId(req);
+    const requestContext = getRequestContext(req, requestId);
+
     const admin = await requireAdmin(req, { requireOrganization: false });
     if (!admin.ok) {
         return admin.response;
+    }
+
+    const rateLimit = await enforceRateLimit({
+        identifier: admin.userId,
+        limit: CLEAR_CACHE_MUTATION_RATE_LIMIT_MAX,
+        windowMs: CLEAR_CACHE_MUTATION_RATE_LIMIT_WINDOW_MS,
+        prefix: "api:admin:clear-cache:mutate",
+    });
+    if (!rateLimit.success) {
+        return NextResponse.json(
+            { error: "Too many cache clear requests. Please retry later." },
+            { status: 429 }
+        );
     }
 
     if (!passesMutationCsrfGuard(req)) {
@@ -143,7 +107,7 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
         const { data, error } = await query.select("id");
 
         if (error) {
-            console.error("Cache clear error:", error);
+            logError("Cache clear query failed", error, requestContext);
             return NextResponse.json(
                 {
                     success: false,
@@ -159,7 +123,7 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
             clearedCount: data?.length || 0,
         });
     } catch (err: unknown) {
-        console.error("Cache clear exception:", err);
+        logError("Cache clear mutation crashed", err, requestContext);
         return NextResponse.json(
             {
                 success: false,

@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassBadge } from '@/components/glass/GlassBadge';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -19,17 +18,22 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 export default function CalendarPage() {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [trips, setTrips] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    type CalendarTrip = {
+        id: string;
+        start_date: string | null;
+        end_date: string | null;
+        status: string | null;
+        clients?: unknown;
+    };
 
-    const fetchTrips = async () => {
-        setLoading(true);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [trips, setTrips] = useState<CalendarTrip[]>([]);
+
+    const fetchTrips = useCallback(async () => {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            setLoading(false);
             return;
         }
 
@@ -40,7 +44,6 @@ export default function CalendarPage() {
             .single();
 
         if (!profile?.organization_id) {
-            setLoading(false);
             return;
         }
 
@@ -60,14 +63,16 @@ export default function CalendarPage() {
             .lte('start_date', lastDay.toISOString());
 
         if (!error && data) {
-            setTrips(data);
+            setTrips(data as unknown as CalendarTrip[]);
         }
-        setLoading(false);
-    };
+    }, [currentDate]);
 
     useEffect(() => {
-        fetchTrips();
-    }, [currentDate]);
+        const timeoutId = window.setTimeout(() => {
+            void fetchTrips();
+        }, 0);
+        return () => window.clearTimeout(timeoutId);
+    }, [fetchTrips]);
 
     const nextMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
@@ -110,7 +115,7 @@ export default function CalendarPage() {
     };
 
     const getStatusColor = (status: string) => {
-        const colors: any = {
+        const colors: Record<string, string> = {
             draft: 'bg-gray-100 text-gray-700 border-gray-200',
             active: 'bg-emerald-100 text-emerald-800 border-emerald-200',
             completed: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -118,6 +123,15 @@ export default function CalendarPage() {
             proposed: 'bg-amber-100 text-amber-800 border-amber-200',
         };
         return colors[status] || colors.draft;
+    };
+
+    const getTripClientName = (trip: CalendarTrip): string => {
+        if (!trip.clients || typeof trip.clients !== 'object') {
+            return "Unknown";
+        }
+        const maybeRecord = trip.clients as Record<string, unknown>;
+        const fullName = maybeRecord.full_name;
+        return typeof fullName === "string" && fullName.length > 0 ? fullName : "Unknown";
     };
 
     return (
@@ -208,11 +222,11 @@ export default function CalendarPage() {
                                                         href={`/trips/${trip.id}`}
                                                         className={cn(
                                                             "block px-2 py-1 text-xs rounded-md border truncate transition-all duration-300 transform hover:scale-[1.02]",
-                                                            getStatusColor(trip.status)
+                                                            getStatusColor(trip.status || 'draft')
                                                         )}
-                                                        title={trip.clients?.full_name || "Unknown"}
+                                                        title={getTripClientName(trip)}
                                                     >
-                                                        <span className="font-bold truncate block">{trip.clients?.full_name || "Unknown"}</span>
+                                                        <span className="font-bold truncate block">{getTripClientName(trip)}</span>
                                                     </Link>
                                                 );
                                             })}

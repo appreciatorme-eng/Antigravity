@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import {
+  normalizeBearerToken,
+  parseRole,
+  shouldRecordAuthFailure,
+  type AdminRole,
+} from "@/lib/auth/admin-helpers";
 
 type RequestLike = Request & {
   headers: {
     get(name: string): string | null;
   };
 };
-
-type AdminRole = "admin" | "super_admin";
 
 type AdminProfile = {
   id: string;
@@ -38,7 +42,6 @@ type RequireAdminOptions = {
   requireOrganization?: boolean;
 };
 
-const ANON_AUTH_FAILURE_SAMPLE_RATE = 0.2;
 const AUTH_FAILURE_TELEMETRY_LIMIT = 15;
 const AUTH_FAILURE_TELEMETRY_WINDOW_MS = 5 * 60 * 1000;
 
@@ -52,21 +55,6 @@ function routePathFromRequest(request: RequestLike): string {
   } catch {
     return "unknown";
   }
-}
-
-function normalizeBearerToken(authorization: string | null): string | null {
-  if (!authorization) return null;
-  const [scheme, token] = authorization.split(" ");
-  if (!scheme || !token) return null;
-  if (scheme.toLowerCase() !== "bearer") return null;
-  return token.trim() || null;
-}
-
-function parseRole(input: string | null): AdminRole | null {
-  const role = (input || "").toLowerCase();
-  if (role === "admin") return "admin";
-  if (role === "super_admin") return "super_admin";
-  return null;
 }
 
 function sanitizeKv(value: string): string {
@@ -84,15 +72,6 @@ function getClientIp(request: RequestLike): string {
   if (realIp?.trim()) return realIp.trim();
 
   return "unknown";
-}
-
-function shouldRecordAuthFailure(params: {
-  userId?: string | null;
-  reason: string;
-}): boolean {
-  if (params.userId) return true;
-  if (params.reason !== "missing_or_invalid_auth") return true;
-  return Math.random() < ANON_AUTH_FAILURE_SAMPLE_RATE;
 }
 
 async function recordAdminAuthFailure(params: {

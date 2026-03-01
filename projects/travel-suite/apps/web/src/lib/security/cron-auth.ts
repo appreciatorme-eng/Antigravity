@@ -178,8 +178,8 @@ export async function authorizeCronRequest(
     if (!hasAnyCronCredentialConfigured()) {
         return {
             authorized: false,
-            status: 500,
-            reason: "Cron auth is not configured",
+            status: 401,
+            reason: "Unauthorized cron request",
         };
     }
 

@@ -111,23 +111,57 @@ export async function GET(req: NextRequest) {
 
     const [
       { data: driverProfiles = [] },
-      { count: location1h = 0 },
-      { count: location24h = 0 },
       { data: activeTrips = [] },
       { data: externalDrivers = [] },
     ] = await Promise.all([
       driverProfilesQuery,
-      admin.adminClient
-        .from("driver_locations")
-        .select("*", { count: "exact", head: true })
-        .gte("recorded_at", oneHourAgo),
-      admin.adminClient
-        .from("driver_locations")
-        .select("*", { count: "exact", head: true })
-        .gte("recorded_at", dayAgo),
       activeTripsQuery,
       externalDriversQuery,
     ]);
+
+    const scopedDriverIds = Array.from(
+      new Set(
+        (driverProfiles || [])
+          .map((driver) => driver.id)
+          .filter((driverId): driverId is string => Boolean(driverId)),
+      ),
+    );
+
+    let location1h = 0;
+    let location24h = 0;
+    if (scopedOrg.organizationId) {
+      if (scopedDriverIds.length > 0) {
+        const [{ count: location1hCount = 0 }, { count: location24hCount = 0 }] =
+          await Promise.all([
+            admin.adminClient
+              .from("driver_locations")
+              .select("*", { count: "exact", head: true })
+              .in("driver_id", scopedDriverIds)
+              .gte("recorded_at", oneHourAgo),
+            admin.adminClient
+              .from("driver_locations")
+              .select("*", { count: "exact", head: true })
+              .in("driver_id", scopedDriverIds)
+              .gte("recorded_at", dayAgo),
+          ]);
+        location1h = Number(location1hCount || 0);
+        location24h = Number(location24hCount || 0);
+      }
+    } else {
+      const [{ count: location1hCount = 0 }, { count: location24hCount = 0 }] =
+        await Promise.all([
+          admin.adminClient
+            .from("driver_locations")
+            .select("*", { count: "exact", head: true })
+            .gte("recorded_at", oneHourAgo),
+          admin.adminClient
+            .from("driver_locations")
+            .select("*", { count: "exact", head: true })
+            .gte("recorded_at", dayAgo),
+        ]);
+      location1h = Number(location1hCount || 0);
+      location24h = Number(location24hCount || 0);
+    }
 
     const externalDriverIds = (externalDrivers || [])
       .map((driver) => driver.id)
@@ -244,13 +278,14 @@ export async function GET(req: NextRequest) {
         ).length,
         active_trips_with_driver: (activeTrips || []).length,
         stale_active_driver_trips: staleActiveDriverTrips,
-        location_pings_last_1h: Number(location1h || 0),
-        location_pings_last_24h: Number(location24h || 0),
+        location_pings_last_1h: location1h,
+        location_pings_last_24h: location24h,
         unmapped_external_drivers: unmappedExternalDrivers,
       },
       latest_pings: latestPings,
       drivers_missing_phone_list: missingPhoneDrivers,
       organization_id: scopedOrg.organizationId,
+      scope: scopedOrg.organizationId ? "organization" : "global",
     });
   } catch (error) {
     return NextResponse.json(

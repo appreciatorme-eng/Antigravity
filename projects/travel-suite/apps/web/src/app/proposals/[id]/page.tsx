@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
@@ -14,12 +14,9 @@ import {
   CheckCircle,
   Eye,
   Calendar,
-  DollarSign,
-  Clock,
   AlertCircle,
   RefreshCcw,
   Wifi,
-  WifiOff,
   History,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -56,11 +53,18 @@ interface ProposalComment {
   author_name: string;
   author_email: string | null;
   comment: string;
-  is_resolved: boolean;
-  created_at: string;
+  is_resolved: boolean | null;
+  created_at: string | null;
   // Joined data
-  day_title?: string;
+  day_title?: string | null;
   day_number?: number;
+}
+
+interface ProposalVersion {
+  id: string;
+  version: number;
+  created_at: string;
+  data: unknown;
 }
 
 export default function AdminProposalViewPage() {
@@ -77,91 +81,13 @@ export default function AdminProposalViewPage() {
     selectedActivities: 0,
     optionalActivities: 0,
   });
-  const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [sendingProposal, setSendingProposal] = useState(false);
-  const [versions, setVersions] = useState<any[]>([]);
+  const [versions, setVersions] = useState<ProposalVersion[]>([]);
   const { toast } = useToast();
 
-  // Real-time subscription
-  const { isSubscribed } = useRealtimeProposal({
-    proposalId,
-    onProposalUpdate: (payload) => {
-      console.log('[Admin] Proposal updated via realtime:', payload);
-      setRealtimeConnected(true);
-      loadProposal(); // Reload proposal data
-    },
-    onActivityUpdate: (payload) => {
-      console.log('[Admin] Activity updated via realtime:', payload);
-      setRealtimeConnected(true);
-      loadProposal(); // Reload to update stats
-    },
-    onCommentAdded: (payload) => {
-      console.log('[Admin] New comment via realtime:', payload);
-      setRealtimeConnected(true);
-      loadComments(); // Reload comments only
-    },
-    enabled: !loading && !!proposal,
-  });
-
-  useEffect(() => {
-    loadProposal();
-  }, [proposalId]);
-
-  async function loadProposal() {
-    setLoading(true);
-    try {
-      const supabase = createClient();
-
-      // Load proposal with joined data
-      const { data: proposalData, error: proposalError } = await supabase
-        .from('proposals')
-        .select(
-          `
-          *,
-          clients(
-            profiles(full_name, email)
-          ),
-          tour_templates(name)
-        `
-        )
-        .eq('id', proposalId)
-        .single();
-
-      if (proposalError || !proposalData) {
-        console.error('Error loading proposal:', proposalError);
-        setLoading(false);
-        return;
-      }
-
-      const formattedProposal: Proposal = {
-        ...proposalData,
-        status: proposalData.status || 'draft',
-        total_price: proposalData.total_price || 0,
-        version: proposalData.version || 1,
-        created_at: proposalData.created_at || new Date().toISOString(),
-        updated_at: proposalData.updated_at || new Date().toISOString(),
-        client_name: proposalData.clients?.profiles?.full_name || 'Unknown Client',
-        client_email: proposalData.clients?.profiles?.email || undefined,
-        template_name: proposalData.tour_templates?.name,
-      };
-
-      setProposal(formattedProposal);
-
-      // Load comments
-      await loadComments();
-
-      // Load stats
-      await loadStats(supabase);
-    } catch (error) {
-      console.error('Error loading proposal:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadComments() {
+  const loadComments = useCallback(async () => {
     try {
       const supabase = createClient();
 
@@ -177,7 +103,7 @@ export default function AdminProposalViewPage() {
         .order('created_at', { ascending: false });
 
       const formattedComments =
-        commentsData?.map((comment: any) => ({
+        commentsData?.map((comment) => ({
           ...comment,
           day_title: comment.proposal_days?.title,
           day_number: comment.proposal_days?.day_number,
@@ -187,9 +113,9 @@ export default function AdminProposalViewPage() {
     } catch (error) {
       console.error('Error loading comments:', error);
     }
-  }
+  }, [proposalId]);
 
-  async function loadStats(supabase: ReturnType<typeof createClient>) {
+  const loadStats = useCallback(async (supabase: ReturnType<typeof createClient>) => {
     try {
       const { count: daysCount } = await supabase
         .from('proposal_days')
@@ -232,7 +158,78 @@ export default function AdminProposalViewPage() {
     } catch (error) {
       console.error('Error loading stats:', error);
     }
-  }
+  }, [proposalId]);
+
+  const loadProposal = useCallback(async () => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+
+      // Load proposal with joined data
+      const { data: proposalData, error: proposalError } = await supabase
+        .from('proposals')
+        .select(
+          `
+          *,
+          clients(
+            profiles(full_name, email)
+          ),
+          tour_templates(name)
+        `
+        )
+        .eq('id', proposalId)
+        .single();
+
+      if (proposalError || !proposalData) {
+        console.error('Error loading proposal:', proposalError);
+        setLoading(false);
+        return;
+      }
+
+      const formattedProposal: Proposal = {
+        ...proposalData,
+        status: proposalData.status || 'draft',
+        total_price: proposalData.total_price || 0,
+        version: proposalData.version || 1,
+        created_at: proposalData.created_at || new Date().toISOString(),
+        updated_at: proposalData.updated_at || new Date().toISOString(),
+        client_name: proposalData.clients?.profiles?.full_name || 'Unknown Client',
+        client_email: proposalData.clients?.profiles?.email || undefined,
+        template_name: proposalData.tour_templates?.name,
+      };
+
+      setProposal(formattedProposal);
+
+      await loadComments();
+      await loadStats(supabase);
+    } catch (error) {
+      console.error('Error loading proposal:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadComments, loadStats, proposalId]);
+
+  useEffect(() => {
+    void loadProposal();
+  }, [loadProposal]);
+
+  // Real-time subscription
+  const { isSubscribed } = useRealtimeProposal({
+    proposalId,
+    onProposalUpdate: (payload) => {
+      console.log('[Admin] Proposal updated via realtime:', payload);
+      void loadProposal(); // Reload proposal data
+    },
+    onActivityUpdate: (payload) => {
+      console.log('[Admin] Activity updated via realtime:', payload);
+      void loadProposal(); // Reload to update stats
+    },
+    onCommentAdded: (payload) => {
+      console.log('[Admin] New comment via realtime:', payload);
+      void loadComments(); // Reload comments only
+    },
+    enabled: !loading && !!proposal,
+  });
 
   function copyShareLink() {
     if (!proposal) return;
@@ -340,7 +337,14 @@ export default function AdminProposalViewPage() {
         .eq('proposal_id', proposalId)
         .order('version', { ascending: false });
 
-      setVersions(data || []);
+      const normalizedVersions: ProposalVersion[] = (data || []).map((versionRow) => ({
+        id: versionRow.id,
+        version: versionRow.version_number || 1,
+        created_at: versionRow.created_at || new Date().toISOString(),
+        data: versionRow.snapshot,
+      }));
+
+      setVersions(normalizedVersions);
       setShowVersionHistory(true);
     } catch (error) {
       console.error('Error loading version history:', error);
@@ -627,10 +631,10 @@ export default function AdminProposalViewPage() {
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-primary">
-                      {new Date(comment.created_at).toLocaleDateString()}
-                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-primary">
+                      {new Date(comment.created_at || Date.now()).toLocaleDateString()}
+                      </div>
                     {!comment.is_resolved && (
                       <button
                         onClick={() => markCommentResolved(comment.id)}
@@ -688,7 +692,7 @@ export default function AdminProposalViewPage() {
               <MessageCircle className="w-4 h-4 text-orange-600" />
               <span className="text-text-secondary">Last Comment:</span>
               <span className="text-secondary dark:text-white font-medium">
-                {new Date(comments[0].created_at).toLocaleString()}
+                {new Date(comments[0].created_at || Date.now()).toLocaleString()}
               </span>
             </div>
           )}
@@ -700,7 +704,7 @@ export default function AdminProposalViewPage() {
         <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">Next Steps</h3>
         <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1 list-disc list-inside">
           {proposal.status === 'draft' && (
-            <li>Click "Send to Client" to share the proposal link</li>
+            <li>Click &quot;Send to Client&quot; to share the proposal link</li>
           )}
           {proposal.status === 'sent' && !proposal.viewed_at && (
             <li>Waiting for client to view the proposal...</li>
@@ -712,7 +716,7 @@ export default function AdminProposalViewPage() {
             <li>Respond to {unresolvedComments.length} unresolved comment(s)</li>
           )}
           {proposal.approved_at && (
-            <li>Proposal approved! Move client to "payment_pending" in CRM</li>
+            <li>Proposal approved! Move client to &quot;payment_pending&quot; in CRM</li>
           )}
         </ul>
       </div>

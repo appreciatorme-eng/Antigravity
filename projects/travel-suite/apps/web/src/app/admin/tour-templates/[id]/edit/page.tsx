@@ -1,16 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import DraggableActivity from '@/components/DraggableActivity';
 import {
   ArrowLeft,
   Save,
-  Plus,
-  X,
-  GripVertical,
-  Upload,
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -65,18 +60,12 @@ export default function EditTemplatePage() {
   const [heroImageUrl, setHeroImageUrl] = useState('');
   const [basePrice, setBasePrice] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
   const [isPublic, setIsPublic] = useState(false);
 
   // Days
   const [days, setDays] = useState<TemplateDay[]>([]);
-  const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTemplate();
-  }, [templateId]);
-
-  async function loadTemplate() {
+  const loadTemplate = useCallback(async () => {
     setLoading(true);
     try {
       const supabase = createClient();
@@ -180,127 +169,11 @@ export default function EditTemplatePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [templateId, toast, router]);
 
-  const addDay = () => {
-    const newDay: TemplateDay = {
-      id: crypto.randomUUID(),
-      day_number: days.length + 1,
-      title: '',
-      description: '',
-      activities: [],
-      accommodation: null,
-    };
-    setDays([...days, newDay]);
-    setExpandedDay(newDay.id);
-  };
-
-  const removeDay = (dayId: string) => {
-    setDays(days.filter((d) => d.id !== dayId));
-  };
-
-  const updateDay = (dayId: string, updates: Partial<TemplateDay>) => {
-    setDays(days.map((d) => (d.id === dayId ? { ...d, ...updates } : d)));
-  };
-
-  const addActivity = (dayId: string) => {
-    const day = days.find((d) => d.id === dayId);
-    if (!day) return;
-
-    const newActivity: TemplateActivity = {
-      id: crypto.randomUUID(),
-      time: '09:00 AM',
-      title: '',
-      description: '',
-      location: '',
-      image_url: '',
-      price: 0,
-      is_optional: false,
-      is_premium: false,
-      display_order: day.activities.length,
-    };
-
-    updateDay(dayId, {
-      activities: [...day.activities, newActivity],
-    });
-  };
-
-  const removeActivity = (dayId: string, activityId: string) => {
-    const day = days.find((d) => d.id === dayId);
-    if (!day) return;
-
-    updateDay(dayId, {
-      activities: day.activities.filter((a) => a.id !== activityId),
-    });
-  };
-
-  const updateActivity = (
-    dayId: string,
-    activityId: string,
-    updates: Partial<TemplateActivity>
-  ) => {
-    const day = days.find((d) => d.id === dayId);
-    if (!day) return;
-
-    updateDay(dayId, {
-      activities: day.activities.map((a) => (a.id === activityId ? { ...a, ...updates } : a)),
-    });
-  };
-
-  const setAccommodation = (dayId: string) => {
-    const newAccommodation: TemplateAccommodation = {
-      id: crypto.randomUUID(),
-      hotel_name: '',
-      star_rating: 3,
-      room_type: '',
-      price_per_night: 0,
-      amenities: [],
-      image_url: '',
-    };
-
-    updateDay(dayId, { accommodation: newAccommodation });
-  };
-
-  const updateAccommodation = (dayId: string, updates: Partial<TemplateAccommodation>) => {
-    const day = days.find((d) => d.id === dayId);
-    if (!day || !day.accommodation) return;
-
-    updateDay(dayId, {
-      accommodation: { ...day.accommodation, ...updates },
-    });
-  };
-
-  const removeAccommodation = (dayId: string) => {
-    updateDay(dayId, { accommodation: null });
-  };
-
-  const reorderActivities = (dayId: string, fromIndex: number, toIndex: number) => {
-    const day = days.find((d) => d.id === dayId);
-    if (!day) return;
-
-    const reordered = [...day.activities];
-    const [moved] = reordered.splice(fromIndex, 1);
-    reordered.splice(toIndex, 0, moved);
-
-    // Update display_order for all activities
-    const updated = reordered.map((activity, index) => ({
-      ...activity,
-      display_order: index,
-    }));
-
-    updateDay(dayId, { activities: updated });
-  };
-
-  const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
+  useEffect(() => {
+    void loadTemplate();
+  }, [loadTemplate]);
 
   const handleSave = async () => {
     if (!name || !destination) {

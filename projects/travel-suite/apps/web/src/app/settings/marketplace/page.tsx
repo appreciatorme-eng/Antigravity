@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Edit2, Trash2, Eye, MessageSquare, TrendingUp,
-  MapPin, DollarSign, Users, Star, Copy, BarChart3,
-  Save, X, Upload, AlertCircle, Check, Settings,
+  MapPin, DollarSign, Users, Star, BarChart3,
+  Save, X, AlertCircle, Check, Settings,
 } from 'lucide-react'
 
 type Tab = 'listings' | 'profile' | 'analytics'
@@ -115,7 +115,6 @@ const MOCK_ANALYTICS: Analytics = {
 
 function ListingsTab() {
   const [listings, setListings] = useState<Listing[]>(MOCK_LISTINGS)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const handleDelete = (id: string) => {

@@ -12,7 +12,7 @@
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, MapPin, Clock, DollarSign, Calendar, Check, X, Image as ImageIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, MapPin, Clock, DollarSign, Calendar, Check, X } from 'lucide-react';
 import { ItineraryResult, Day, Activity } from '@/types/itinerary';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +41,6 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
         }
         setExpandedDays(newExpanded);
     };
-
-    const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 professional-itinerary">
@@ -123,7 +121,7 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
                     <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-slate-300 via-slate-200 to-transparent dark:from-slate-700 dark:via-slate-800 print:bg-slate-300" />
 
                     <div className="space-y-6">
-                        {itinerary.days.map((day, dayIndex) => (
+                        {itinerary.days.map((day) => (
                             <DayCard
                                 key={day.day_number}
                                 day={day}
@@ -131,7 +129,6 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
                                 onToggle={() => toggleDay(day.day_number)}
                                 images={images}
                                 brandColor={brandColor}
-                                isLast={dayIndex === itinerary.days.length - 1}
                             />
                         ))}
                     </div>
@@ -205,10 +202,9 @@ interface DayCardProps {
     onToggle: () => void;
     images: Record<string, string | null>;
     brandColor: string;
-    isLast: boolean;
 }
 
-function DayCard({ day, isExpanded, onToggle, images, brandColor, isLast }: DayCardProps) {
+function DayCard({ day, isExpanded, onToggle, images, brandColor }: DayCardProps) {
     const activityImageKey = (dayNumber: number, idx: number) => `${dayNumber}-${idx}`;
 
     return (
@@ -265,8 +261,6 @@ function DayCard({ day, isExpanded, onToggle, images, brandColor, isLast }: DayC
                             <ActivityCard
                                 key={idx}
                                 activity={activity}
-                                dayNumber={day.day_number}
-                                activityIndex={idx}
                                 image={images[activityImageKey(day.day_number, idx)] || null}
                                 brandColor={brandColor}
                             />
@@ -281,13 +275,11 @@ function DayCard({ day, isExpanded, onToggle, images, brandColor, isLast }: DayC
 // Activity Card Component
 interface ActivityCardProps {
     activity: Activity;
-    dayNumber: number;
-    activityIndex: number;
     image: string | null;
     brandColor: string;
 }
 
-function ActivityCard({ activity, dayNumber, activityIndex, image, brandColor }: ActivityCardProps) {
+function ActivityCard({ activity, image, brandColor }: ActivityCardProps) {
     return (
         <div className="group print:break-inside-avoid">
             {/* Activity Image (if available) */}

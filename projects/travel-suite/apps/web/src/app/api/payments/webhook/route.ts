@@ -50,6 +50,8 @@ interface RazorpayWebhookPayload {
   invoice?: { entity?: Record<string, unknown> };
 }
 
+type WebhookLogContext = ReturnType<typeof getRequestContext>;
+
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
@@ -109,6 +111,19 @@ function getInvoiceEntity(payload: RazorpayWebhookPayload): RazorpayInvoiceEntit
     id,
     payment_id: asString(entity.payment_id) || undefined,
   };
+}
+
+function logWebhookHandlerEvent(
+  level: 'info' | 'warn',
+  message: string,
+  context: WebhookLogContext,
+  extra: Record<string, unknown> = {}
+) {
+  logEvent(level, message, {
+    ...context,
+    payment_operation: 'webhook_handler',
+    ...extra,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -186,27 +201,27 @@ export async function POST(request: NextRequest) {
     // Handle different event types
     switch (eventType) {
       case 'payment.captured':
-        await handlePaymentCaptured(payload);
+        await handlePaymentCaptured(payload, requestContext);
         break;
 
       case 'payment.failed':
-        await handlePaymentFailed(payload);
+        await handlePaymentFailed(payload, requestContext);
         break;
 
       case 'subscription.charged':
-        await handleSubscriptionCharged(payload);
+        await handleSubscriptionCharged(payload, requestContext);
         break;
 
       case 'subscription.cancelled':
-        await handleSubscriptionCancelled(payload);
+        await handleSubscriptionCancelled(payload, requestContext);
         break;
 
       case 'subscription.paused':
-        await handleSubscriptionPaused(payload);
+        await handleSubscriptionPaused(payload, requestContext);
         break;
 
       case 'invoice.paid':
-        await handleInvoicePaid(payload);
+        await handleInvoicePaid(payload, requestContext);
         break;
 
       default:
@@ -246,14 +261,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
+async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const payment = getPaymentEntity(payload);
   if (!payment) {
-    console.warn('[Webhook] payment.captured missing payment entity');
+    logWebhookHandlerEvent('warn', 'payment.captured missing payment entity', requestContext, {
+      payment_event_type: 'payment.captured',
+    });
     return;
   }
 
-  console.log('[Webhook] Payment captured:', payment.id);
+  logWebhookHandlerEvent('info', 'Payment captured', requestContext, {
+    payment_event_type: 'payment.captured',
+    payment_id: payment.id,
+  });
 
   const invoiceId = payment.notes?.invoice_id;
 
@@ -272,14 +292,19 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
   }
 }
 
-async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
+async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const payment = getPaymentEntity(payload);
   if (!payment) {
-    console.warn('[Webhook] payment.failed missing payment entity');
+    logWebhookHandlerEvent('warn', 'payment.failed missing payment entity', requestContext, {
+      payment_event_type: 'payment.failed',
+    });
     return;
   }
 
-  console.log('[Webhook] Payment failed:', payment.id);
+  logWebhookHandlerEvent('info', 'Payment failed', requestContext, {
+    payment_event_type: 'payment.failed',
+    payment_id: payment.id,
+  });
 
   let organizationId = payment.notes?.organization_id || null;
   const subscriptionId = payment.notes?.subscription_id;
@@ -294,7 +319,10 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
   }
 
   if (!organizationId) {
-    console.warn('[Webhook] payment.failed missing organization_id');
+    logWebhookHandlerEvent('warn', 'payment.failed missing organization_id', requestContext, {
+      payment_event_type: 'payment.failed',
+      payment_id: payment.id,
+    });
     return;
   }
 
@@ -308,15 +336,21 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
   );
 }
 
-async function handleSubscriptionCharged(payload: RazorpayWebhookPayload) {
+async function handleSubscriptionCharged(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const subscription = getSubscriptionEntity(payload);
   const payment = getPaymentEntity(payload);
   if (!subscription || !payment) {
-    console.warn('[Webhook] subscription.charged missing subscription/payment entity');
+    logWebhookHandlerEvent('warn', 'subscription.charged missing subscription/payment entity', requestContext, {
+      payment_event_type: 'subscription.charged',
+    });
     return;
   }
 
-  console.log('[Webhook] Subscription charged:', subscription.id);
+  logWebhookHandlerEvent('info', 'Subscription charged', requestContext, {
+    payment_event_type: 'subscription.charged',
+    payment_subscription_id: subscription.id,
+    payment_id: payment.id,
+  });
 
   await paymentService.handleSubscriptionCharged(
     subscription.id,
@@ -326,14 +360,19 @@ async function handleSubscriptionCharged(payload: RazorpayWebhookPayload) {
   );
 }
 
-async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload) {
+async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const subscription = getSubscriptionEntity(payload);
   if (!subscription) {
-    console.warn('[Webhook] subscription.cancelled missing subscription entity');
+    logWebhookHandlerEvent('warn', 'subscription.cancelled missing subscription entity', requestContext, {
+      payment_event_type: 'subscription.cancelled',
+    });
     return;
   }
 
-  console.log('[Webhook] Subscription cancelled:', subscription.id);
+  logWebhookHandlerEvent('info', 'Subscription cancelled', requestContext, {
+    payment_event_type: 'subscription.cancelled',
+    payment_subscription_id: subscription.id,
+  });
 
   const supabase = createAdminClient();
 
@@ -347,14 +386,19 @@ async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload) {
     .eq('razorpay_subscription_id', subscription.id);
 }
 
-async function handleSubscriptionPaused(payload: RazorpayWebhookPayload) {
+async function handleSubscriptionPaused(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const subscription = getSubscriptionEntity(payload);
   if (!subscription) {
-    console.warn('[Webhook] subscription.paused missing subscription entity');
+    logWebhookHandlerEvent('warn', 'subscription.paused missing subscription entity', requestContext, {
+      payment_event_type: 'subscription.paused',
+    });
     return;
   }
 
-  console.log('[Webhook] Subscription paused:', subscription.id);
+  logWebhookHandlerEvent('info', 'Subscription paused', requestContext, {
+    payment_event_type: 'subscription.paused',
+    payment_subscription_id: subscription.id,
+  });
 
   const supabase = createAdminClient();
 
@@ -365,14 +409,19 @@ async function handleSubscriptionPaused(payload: RazorpayWebhookPayload) {
     .eq('razorpay_subscription_id', subscription.id);
 }
 
-async function handleInvoicePaid(payload: RazorpayWebhookPayload) {
+async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
   const invoice = getInvoiceEntity(payload);
   if (!invoice) {
-    console.warn('[Webhook] invoice.paid missing invoice entity');
+    logWebhookHandlerEvent('warn', 'invoice.paid missing invoice entity', requestContext, {
+      payment_event_type: 'invoice.paid',
+    });
     return;
   }
 
-  console.log('[Webhook] Invoice paid:', invoice.id);
+  logWebhookHandlerEvent('info', 'Invoice paid', requestContext, {
+    payment_event_type: 'invoice.paid',
+    payment_invoice_id: invoice.id,
+  });
 
   const supabase = createAdminClient();
 

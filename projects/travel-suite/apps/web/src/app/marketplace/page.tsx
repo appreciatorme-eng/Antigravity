@@ -7,21 +7,16 @@ import {
     Filter,
     Star,
     MapPin,
-    Trophy,
     RefreshCcw,
     Building2,
     ShieldCheck,
-    Tag,
     ArrowRight,
     Sparkles,
     Store
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { GlassInput } from "@/components/glass/GlassInput";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassCard } from "@/components/glass/GlassCard";
 import {
     fetchMarketplaceOptionCatalog,
     mergeMarketplaceOptions,
@@ -306,7 +301,7 @@ export default function MarketplacePage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-                            {profiles.map((profile: any, index: number) => (
+                            {profiles.map((profile: MarketplaceProfile, index: number) => (
                                 <Link key={profile.id} href={`/marketplace/${profile.organization_id}`}>
                                     <motion.div 
                                         initial={{ opacity: 0, y: 20 }} 

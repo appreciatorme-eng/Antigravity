@@ -1,55 +1,92 @@
 import { NextRequest } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/admin';
 import { captureOperationalMetric } from '@/lib/observability/metrics';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { jsonWithRequestId as withRequestId } from '@/lib/api/response';
 
-const supabaseAdmin = createAdminClient();
+type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
+const CONTACTS_PROMOTE_RATE_LIMIT_MAX = 40;
+const CONTACTS_PROMOTE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 function normalizePhone(phone?: string | null): string | null {
   return sanitizePhone(phone);
 }
 
-async function getAdminProfile(req: Request) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.substring(7);
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData?.user) return null;
+function resolveScopedOrganizationId(
+  admin: AdminContext,
+  request: Request,
+): { organizationId: string | null } | { status: number; error: string } {
+  const requestedOrganizationId = sanitizeText(
+    new URL(request.url).searchParams.get('organization_id') ||
+      new URL(request.url).searchParams.get('organizationId'),
+    { maxLength: 80 },
+  );
 
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('id,role,organization_id')
-    .eq('id', authData.user.id)
-    .maybeSingle();
+  if (admin.isSuperAdmin) {
+    return { organizationId: requestedOrganizationId || admin.organizationId || null };
+  }
 
-  const role = (profile?.role || "").toLowerCase();
-  if (!profile || (role !== "admin" && role !== "super_admin")) return null;
-  return profile;
+  if (!admin.organizationId) {
+    return { status: 400, error: 'Admin organization not configured' };
+  }
+
+  if (requestedOrganizationId && requestedOrganizationId !== admin.organizationId) {
+    return { status: 403, error: 'Cannot access contacts for another organization' };
+  }
+
+  return { organizationId: admin.organizationId };
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     const startedAt = Date.now();
     const nextReq = req as NextRequest;
     const requestId = getRequestId(nextReq);
-    const requestContext = getRequestContext(nextReq, requestId);
+  const requestContext = getRequestContext(nextReq, requestId);
 
   try {
-    const adminProfile = await getAdminProfile(req);
-    if (!adminProfile) return withRequestId({ error: 'Unauthorized' }, requestId, { status: 401 });
-    if (!adminProfile.organization_id) return withRequestId({ error: 'Admin organization not configured' }, requestId, { status: 400 });
+    const admin = await requireAdmin(nextReq, { requireOrganization: false });
+    if (!admin.ok) {
+      return withRequestId(
+        { error: admin.response.status === 401 ? 'Unauthorized' : 'Forbidden' },
+        requestId,
+        { status: admin.response.status || 401 },
+      );
+    }
+
+    const scopedOrg = resolveScopedOrganizationId(admin, req);
+    if ('error' in scopedOrg) {
+      return withRequestId({ error: scopedOrg.error }, requestId, { status: scopedOrg.status });
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: CONTACTS_PROMOTE_RATE_LIMIT_MAX,
+      windowMs: CONTACTS_PROMOTE_RATE_LIMIT_WINDOW_MS,
+      prefix: 'api:admin:contacts:promote',
+    });
+    if (!rateLimit.success) {
+      return withRequestId(
+        { error: 'Too many contact promotion requests. Please retry later.' },
+        requestId,
+        { status: 429 },
+      );
+    }
 
     const { id: rawId } = await params;
     const id = sanitizeText(rawId || '', { maxLength: 80 });
-    const { data: contact } = await supabaseAdmin
+    let contactQuery = admin.adminClient
       .from('crm_contacts')
       .select('id,organization_id,full_name,email,phone,phone_normalized,converted_profile_id')
-      .eq('id', id)
-      .maybeSingle();
+      .eq('id', id);
+    if (scopedOrg.organizationId) {
+      contactQuery = contactQuery.eq('organization_id', scopedOrg.organizationId);
+    }
+    const { data: contact } = await contactQuery.maybeSingle();
 
-    if (!contact || contact.organization_id !== adminProfile.organization_id) {
+    if (!contact) {
       return withRequestId({ error: 'Contact not found' }, requestId, { status: 404 });
     }
 
@@ -61,9 +98,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
     let profileId: string | null = null;
 
     if (contact.email) {
-      const safeEmail = sanitizeEmail(contact.email);
+        const safeEmail = sanitizeEmail(contact.email);
       if (safeEmail) {
-        const { data: existingByEmail } = await supabaseAdmin
+        const { data: existingByEmail } = await admin.adminClient
           .from('profiles')
           .select('id')
           .eq('email', safeEmail)
@@ -75,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
     if (!profileId && normalizedPhone) {
       const phoneWithoutPlus = normalizedPhone.replace(/^\+/, '');
       const candidates = Array.from(new Set([normalizedPhone, phoneWithoutPlus])).filter(Boolean);
-      const { data: existingByPhone } = await supabaseAdmin
+      const { data: existingByPhone } = await admin.adminClient
         .from('profiles')
         .select('id')
         .in('phone_normalized', candidates)
@@ -93,7 +130,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         );
       }
 
-      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: created, error: createError } = await admin.adminClient.auth.admin.createUser({
         email: safeEmail,
         email_confirm: true,
         user_metadata: {
@@ -106,7 +143,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
       profileId = created.user.id;
     }
 
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await admin.adminClient
       .from('profiles')
       .update({
         full_name: sanitizeText(contact.full_name, { maxLength: 120 }) || null,
@@ -114,7 +151,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         phone: sanitizePhone(contact.phone) || null,
         phone_normalized: normalizedPhone || null,
         role: 'client',
-        organization_id: adminProfile.organization_id,
+        organization_id: contact.organization_id,
         lead_status: 'new',
         lifecycle_stage: 'lead',
         client_tag: 'standard',
@@ -126,7 +163,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
       return withRequestId({ error: updateError.message }, requestId, { status: 400 });
     }
 
-    await supabaseAdmin
+    await admin.adminClient
       .from('crm_contacts')
       .update({
         converted_profile_id: profileId,
@@ -135,12 +172,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
       })
       .eq('id', contact.id);
 
-    await supabaseAdmin.from('workflow_stage_events').insert({
-      organization_id: adminProfile.organization_id,
+    await admin.adminClient.from('workflow_stage_events').insert({
+      organization_id: contact.organization_id,
       profile_id: profileId,
       from_stage: 'pre_lead',
       to_stage: 'lead',
-      changed_by: adminProfile.id,
+      changed_by: admin.userId,
     });
 
     const durationMs = Date.now() - startedAt;
