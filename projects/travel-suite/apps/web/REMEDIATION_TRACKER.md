@@ -86,7 +86,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Security `+0.8`, Observability `+0.2`
 
 ### AGW-SEC-004: Remove or protect public diagnostics and test surfaces
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -347,6 +347,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-SEC-001 completed. Hardened cron auth for social queue/token refresh with shared verification, signature support, replay protection, and public contract tests.
 - 2026-03-01: AGW-SEC-002 completed. Public review ingestion now requires validated token binding, removes organization fallback writes, adds strict schema validation, and applies abuse throttling.
 - 2026-03-01: AGW-SEC-003 completed. Protected admin embeddings/geocoding endpoints with requireAdmin and added admin audit log entries for endpoint activity.
+- 2026-03-01: AGW-SEC-004 completed. Added diagnostics token enforcement for geocoding test route, redacted public health output, and disabled test-db page in production.
 
 ## Current Sprint Board (Suggested)
 
@@ -354,7 +355,7 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-SEC-001
 - `[x]` AGW-SEC-002
 - `[x]` AGW-SEC-003
-- `[ ]` AGW-SEC-004
+- `[x]` AGW-SEC-004
 - `[ ]` AGW-COST-001
 
 ### Sprint B (Monetization + Reliability Core)

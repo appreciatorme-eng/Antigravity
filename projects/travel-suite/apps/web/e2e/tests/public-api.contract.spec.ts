@@ -154,4 +154,17 @@ test.describe("Public API contracts", () => {
     const response = await request.get("/api/admin/geocoding/usage");
     expect(response.status()).toBe(401);
   });
+
+  test("test-geocoding endpoint requires diagnostics token", async ({ request }) => {
+    const response = await request.get("/api/test-geocoding?location=Tokyo");
+    expect(response.status()).toBe(401);
+  });
+
+  test("health endpoint returns redacted response without diagnostics token", async ({ request }) => {
+    const response = await request.get("/api/health");
+    expect(response.status()).toBe(200);
+    const json = await response.json();
+    expect(json).toHaveProperty("status");
+    expect(json).not.toHaveProperty("checks");
+  });
 });

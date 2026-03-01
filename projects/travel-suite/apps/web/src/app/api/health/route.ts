@@ -8,6 +8,7 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
+import { isDiagnosticsTokenAuthorized } from "@/lib/security/diagnostics-auth";
 
 type CheckStatus = "healthy" | "degraded" | "down" | "unconfigured";
 
@@ -362,6 +363,23 @@ export async function GET(request: NextRequest) {
     const requestContext = getRequestContext(request, requestId);
 
     logEvent("info", "Health check requested", requestContext);
+
+    const diagnosticsAuthorized = isDiagnosticsTokenAuthorized(request);
+    if (!diagnosticsAuthorized) {
+        const durationMs = Date.now() - startedAt;
+        const response = NextResponse.json(
+            {
+                status: "healthy",
+                request_id: requestId,
+                checked_at: new Date().toISOString(),
+                duration_ms: durationMs,
+                detail: "Detailed diagnostics require HEALTHCHECK_TOKEN.",
+            },
+            { status: 200 }
+        );
+        response.headers.set("x-request-id", requestId);
+        return response;
+    }
 
     try {
         const [database, supabaseEdgeFunctions, firebaseFcm, whatsappApi, externalApis, notificationPipeline] = await Promise.all([

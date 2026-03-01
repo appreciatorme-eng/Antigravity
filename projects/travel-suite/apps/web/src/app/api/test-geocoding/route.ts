@@ -1,25 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { geocodeLocation } from '@/lib/geocoding-with-cache';
+import { NextRequest, NextResponse } from "next/server";
+import { geocodeLocation } from "@/lib/geocoding-with-cache";
+import {
+    diagnosticsUnauthorizedResponse,
+    isDiagnosticsTokenAuthorized,
+} from "@/lib/security/diagnostics-auth";
 
 /**
  * Test endpoint to verify geocoding is working
  * GET /api/test-geocoding?location=Tokyo
  */
 export async function GET(req: NextRequest) {
+    if (!isDiagnosticsTokenAuthorized(req)) {
+        return diagnosticsUnauthorizedResponse();
+    }
+
     const { searchParams } = new URL(req.url);
-    const location = searchParams.get('location') || 'Senso-ji Temple, Tokyo';
-
-    // Check environment variables
-    const hasMapboxToken = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    const hasSupabaseUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const hasSupabaseKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    console.log('🔍 Geocoding test for:', location);
-    console.log('Environment check:', {
-        hasMapboxToken,
-        hasSupabaseUrl,
-        hasSupabaseKey,
-    });
+    const location = searchParams.get("location") || "Senso-ji Temple, Tokyo";
 
     try {
         const result = await geocodeLocation(location);
@@ -28,27 +24,19 @@ export async function GET(req: NextRequest) {
             success: true,
             location,
             result,
-            environment: {
-                hasMapboxToken,
-                hasSupabaseUrl,
-                hasSupabaseKey,
-                mapboxTokenLength: process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.length || 0,
-            },
             message: result
                 ? `Successfully geocoded: ${location}`
-                : 'Geocoding returned null - check logs for details',
+                : "Geocoding returned null - check logs for details",
         });
     } catch (error) {
-        console.error('Geocoding test error:', error);
-        return NextResponse.json({
-            success: false,
-            location,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            environment: {
-                hasMapboxToken,
-                hasSupabaseUrl,
-                hasSupabaseKey,
+        console.error("Geocoding test error:", error);
+        return NextResponse.json(
+            {
+                success: false,
+                location,
+                error: error instanceof Error ? error.message : "Unknown error",
             },
-        }, { status: 500 });
+            { status: 500 }
+        );
     }
 }
