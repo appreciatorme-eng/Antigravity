@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const SAMPLE_ITINERARY_ID = "00000000-0000-0000-0000-000000000001";
+const PLAYWRIGHT_CRON_SECRET = process.env.PLAYWRIGHT_TEST_CRON_SECRET || "playwright-cron-secret";
 
 test.describe("Public API contracts", () => {
   test("admin cache clear endpoint requires authentication", async ({ request }) => {
@@ -85,5 +86,37 @@ test.describe("Public API contracts", () => {
     const response = await request.post("/api/notifications/process-queue");
     expect(response.status()).toBe(401);
     expect(response.headers()["x-request-id"]).toBeTruthy();
+  });
+
+  test("social process queue rejects unauthenticated cron requests", async ({ request }) => {
+    const response = await request.post("/api/social/process-queue");
+    expect(response.status()).toBe(401);
+  });
+
+  test("social refresh tokens rejects unauthenticated cron requests", async ({ request }) => {
+    const response = await request.post("/api/social/refresh-tokens");
+    expect(response.status()).toBe(401);
+  });
+
+  test("social process queue accepts configured cron bearer secret", async ({ request }) => {
+    const response = await request.post("/api/social/process-queue", {
+      headers: {
+        authorization: `Bearer ${PLAYWRIGHT_CRON_SECRET}`,
+        "x-cron-idempotency-key": `playwright-process-${Date.now()}`,
+      },
+    });
+
+    expect(response.status()).not.toBe(401);
+  });
+
+  test("social refresh tokens accepts configured cron bearer secret", async ({ request }) => {
+    const response = await request.post("/api/social/refresh-tokens", {
+      headers: {
+        authorization: `Bearer ${PLAYWRIGHT_CRON_SECRET}`,
+        "x-cron-idempotency-key": `playwright-refresh-${Date.now()}`,
+      },
+    });
+
+    expect(response.status()).not.toBe(401);
   });
 });

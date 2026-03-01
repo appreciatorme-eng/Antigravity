@@ -1,14 +1,23 @@
-import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { NextResponse } from "next/server";
+import { authorizeCronRequest } from "@/lib/security/cron-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+function parseMsEnv(value: string | undefined, fallbackMs: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs;
+}
 
 export async function POST(req: Request) {
     try {
-        // Authenticate the request via secret or Vercel Cron header
-        const authHeader = req.headers.get('authorization');
-        const isCron = req.headers.get('x-vercel-cron') === '1';
+        const cronAuth = await authorizeCronRequest(req, {
+            secretHeaderName: "x-social-cron-secret",
+            idempotencyHeaderName: "x-cron-idempotency-key",
+            replayWindowMs: parseMsEnv(process.env.SOCIAL_CRON_REPLAY_WINDOW_MS, 10 * 60_000),
+            maxClockSkewMs: parseMsEnv(process.env.SOCIAL_CRON_MAX_CLOCK_SKEW_MS, 5 * 60_000),
+        });
 
-        if (!isCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!cronAuth.authorized) {
+            return NextResponse.json({ error: cronAuth.reason }, { status: cronAuth.status });
         }
 
         const supabaseAdmin = createAdminClient();
@@ -16,7 +25,7 @@ export async function POST(req: Request) {
         // Find pending queue items older than now() that are not currently processing
         // and have attempts < 3
         const { data: pendingItems, error: fetchError } = await supabaseAdmin
-            .from('social_post_queue')
+            .from("social_post_queue")
             .select(`
                 *,
                 social_posts!inner (
@@ -27,24 +36,24 @@ export async function POST(req: Request) {
                     access_token_encrypted
                 )
             `)
-            .eq('status', 'pending')
-            .lt('scheduled_for', new Date().toISOString())
-            .lt('attempts', 3)
-            .order('scheduled_for', { ascending: true })
+            .eq("status", "pending")
+            .lt("scheduled_for", new Date().toISOString())
+            .lt("attempts", 3)
+            .order("scheduled_for", { ascending: true })
             .limit(10); // Batch size 10 to prevent timeouts
 
         if (fetchError) throw fetchError;
 
         if (!pendingItems || pendingItems.length === 0) {
-            return NextResponse.json({ message: 'No pending items' });
+            return NextResponse.json({ message: "No pending items" });
         }
 
         // Mark items as processing immediately
-        const processingIds = pendingItems.map(item => item.id);
+        const processingIds = pendingItems.map((item) => item.id);
         await supabaseAdmin
-            .from('social_post_queue')
-            .update({ status: 'processing', updated_at: new Date().toISOString() })
-            .in('id', processingIds);
+            .from("social_post_queue")
+            .update({ status: "processing", updated_at: new Date().toISOString() })
+            .in("id", processingIds);
 
         const results = [];
 
@@ -64,59 +73,56 @@ export async function POST(req: Request) {
 
                 // Mark successful
                 await supabaseAdmin
-                    .from('social_post_queue')
+                    .from("social_post_queue")
                     .update({
-                        status: 'sent',
+                        status: "sent",
                         platform_post_id: platformPostId,
                         platform_post_url: platformPostUrl,
                         attempts: item.attempts + 1,
-                        updated_at: new Date().toISOString()
+                        updated_at: new Date().toISOString(),
                     })
-                    .eq('id', item.id);
+                    .eq("id", item.id);
 
                 // Check remaining queue items for same post
                 const { count } = await supabaseAdmin
-                    .from('social_post_queue')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('post_id', item.post_id)
-                    .in('status', ['pending', 'processing']);
+                    .from("social_post_queue")
+                    .select("id", { count: "exact", head: true })
+                    .eq("post_id", item.post_id)
+                    .in("status", ["pending", "processing"]);
 
                 // If no more items pending/processing, mark post 'published'
                 if (count === 0) {
-                    await supabaseAdmin
-                        .from('social_posts')
-                        .update({ status: 'published' })
-                        .eq('id', item.post_id);
+                    await supabaseAdmin.from("social_posts").update({ status: "published" }).eq("id", item.post_id);
                 }
 
-                results.push({ id: item.id, status: 'success' });
+                results.push({ id: item.id, status: "success" });
             } catch (err: any) {
                 console.error(`Failed to publish item ${item.id}:`, err);
 
                 // Keep pending if under max attempts
-                const status = item.attempts + 1 >= 3 ? 'failed' : 'pending';
+                const status = item.attempts + 1 >= 3 ? "failed" : "pending";
 
                 await supabaseAdmin
-                    .from('social_post_queue')
+                    .from("social_post_queue")
                     .update({
                         status,
                         error_message: err.message,
                         attempts: item.attempts + 1,
-                        updated_at: new Date().toISOString()
+                        updated_at: new Date().toISOString(),
                     })
-                    .eq('id', item.id);
+                    .eq("id", item.id);
 
-                results.push({ id: item.id, status: 'failed', error: err.message });
+                results.push({ id: item.id, status: "failed", error: err.message });
             }
         }
 
         return NextResponse.json({
             success: true,
             processed: results.length,
-            results
+            results,
         });
     } catch (error: any) {
-        console.error('Error processing social queue:', error);
+        console.error("Error processing social queue:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

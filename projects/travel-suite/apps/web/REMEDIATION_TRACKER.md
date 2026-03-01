@@ -35,7 +35,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ## WS1: Security and Access Control (P0)
 
 ### AGW-SEC-001: Harden cron endpoint authentication
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -344,11 +344,12 @@ This tracker converts the deep review into executable work. It is designed for s
 ## Progress Log
 
 - 2026-03-01: Tracker created from deep review findings. No remediation code changes in this commit.
+- 2026-03-01: AGW-SEC-001 completed. Hardened cron auth for social queue/token refresh with shared verification, signature support, replay protection, and public contract tests.
 
 ## Current Sprint Board (Suggested)
 
 ### Sprint A (Security Lockdown)
-- `[ ]` AGW-SEC-001
+- `[x]` AGW-SEC-001
 - `[ ]` AGW-SEC-002
 - `[ ]` AGW-SEC-003
 - `[ ]` AGW-SEC-004
