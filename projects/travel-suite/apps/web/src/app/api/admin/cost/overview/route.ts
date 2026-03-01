@@ -3,9 +3,17 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
   getCachedJson,
-  isUpstashConfigured,
+  isJsonCacheConfigured,
   setCachedJson,
 } from "@/lib/cache/upstash";
+import { loadCostAlertAckMap } from "@/lib/cost/alert-ack";
+import {
+  buildCostOverviewCacheKey,
+  buildCostOverviewStaleCacheKey,
+  COST_OVERVIEW_CACHE_TTL_SECONDS,
+  COST_OVERVIEW_STALE_CACHE_TTL_SECONDS,
+  invalidateCostOverviewCache,
+} from "@/lib/cost/overview-cache";
 import {
   getEmergencyDailySpendCapUsd,
   setEmergencyDailySpendCapUsd,
@@ -100,9 +108,6 @@ const COST_SPIKE_MULTIPLIER = 1.8;
 const MIN_COST_SPIKE_USD = 5;
 const AUTH_FAILURE_ALERT_THRESHOLD = 5;
 const CAP_HIT_ALERT_THRESHOLD = 0.25;
-const COST_OVERVIEW_CACHE_TTL_SECONDS = 120;
-const COST_OVERVIEW_STALE_CACHE_TTL_SECONDS = 60 * 60;
-const COST_OVERVIEW_CACHE_VERSION = "v3";
 
 type OperationalAlertCategory = "cost_spike" | "auth_failures" | "cap_hit_rate";
 
@@ -231,15 +236,6 @@ function toInr(usd: number): number {
   return Number((usd * USD_TO_INR).toFixed(2));
 }
 
-function buildCacheKey(params: {
-  role: "admin" | "super_admin";
-  organizationId: string | null;
-  days: number;
-}): string {
-  const scope = params.organizationId || "global";
-  return `admin:cost_overview:${COST_OVERVIEW_CACHE_VERSION}:${params.role}:${scope}:days:${params.days}`;
-}
-
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return "Failed to load cost overview";
@@ -255,7 +251,7 @@ function toCacheMeta(
     Math.round((Date.now() - new Date(cachedAt).getTime()) / 1000),
   );
   return {
-    enabled: isUpstashConfigured(),
+    enabled: isJsonCacheConfigured(),
     status,
     cached_at: cachedAt,
     age_seconds: Number.isFinite(ageSeconds) ? ageSeconds : 0,
@@ -287,12 +283,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const cacheKey = buildCacheKey({
+  const cacheKey = buildCostOverviewCacheKey({
     role: admin.role,
     organizationId: scopedOrganizationId,
     days,
   });
-  const staleCacheKey = `${cacheKey}:stale`;
+  const staleCacheKey = buildCostOverviewStaleCacheKey(cacheKey);
 
   const cached = await getCachedJson<CostOverviewCacheEnvelope>(cacheKey);
   if (cached?.payload && cached.cached_at) {
@@ -307,6 +303,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    if (
+      process.env.NODE_ENV === "test" &&
+      request.headers.get("x-test-cost-overview-force-failure") === "1"
+    ) {
+      throw new Error("forced_cost_overview_failure");
+    }
+
     let scopedRecipientIds: string[] | null = null;
     if (scopedOrganizationId) {
       const { data: orgProfiles, error: orgProfilesError } =
@@ -767,63 +770,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const alertAckMap = new Map<
-      string,
-      {
-        acknowledged_at: string;
-        acknowledged_by: string | null;
-      }
-    >();
-    const activeAlertIds = new Set(alerts.map((alert) => alert.id));
-
-    if (
-      activeAlertIds.size > 0 &&
-      (!scopedRecipientIds || scopedRecipientIds.length > 0)
-    ) {
-      let alertAckQuery = admin.adminClient
-        .from("notification_logs")
-        .select("recipient_id,body,created_at,sent_at")
-        .eq("notification_type", "cost_alert_ack")
-        .order("created_at", { ascending: false })
-        .limit(5000);
-
-      if (scopedRecipientIds) {
-        alertAckQuery = alertAckQuery.in("recipient_id", scopedRecipientIds);
-      }
-
-      const { data: alertAckRows, error: alertAckError } = await alertAckQuery;
-      if (alertAckError) {
-        throw new Error(alertAckError.message);
-      }
-
-      for (const row of alertAckRows || []) {
-        const bodyKv = parseKvBody(row.body);
-        const alertId = (bodyKv.get("alert_id") || "").trim();
-        if (
-          !alertId ||
-          alertAckMap.has(alertId) ||
-          !activeAlertIds.has(alertId)
-        )
-          continue;
-
-        const ackOrganizationId = normalizeOrganizationScope(
-          bodyKv.get("organization_id") || null,
-        );
-        if (
-          scopedOrganizationId &&
-          ackOrganizationId &&
-          ackOrganizationId !== scopedOrganizationId
-        )
-          continue;
-
-        const acknowledgedAt =
-          row.created_at || row.sent_at || new Date().toISOString();
-        alertAckMap.set(alertId, {
-          acknowledged_at: acknowledgedAt,
-          acknowledged_by: row.recipient_id || null,
-        });
-      }
-    }
+    const alertAckMap = await loadCostAlertAckMap({
+      adminClient: admin.adminClient,
+      activeAlertIds: alerts.map((alert) => alert.id),
+      scopedOrganizationId,
+      scopedRecipientIds,
+    });
 
     let weeklyRevenueRows: Array<{
       organization_id: string;
@@ -1093,6 +1045,8 @@ export async function POST(request: NextRequest) {
     status: "sent",
     sent_at: nowIso,
   });
+
+  void invalidateCostOverviewCache();
 
   return NextResponse.json({
     category: parsed.data.category,

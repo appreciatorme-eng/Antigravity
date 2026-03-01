@@ -1,6 +1,13 @@
-# Travel Suite Web Remediation Tracker (Round 3)
+# Travel Suite Web Remediation Tracker (Round 4)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 4 Completion Summary
+
+- `[x]` AGW4-OBS-001: Added cost-overview cache invalidation hooks on cap updates and alert acknowledgments.
+- `[x]` AGW4-DATA-001: Added dedicated cost alert acknowledgment store + event history tables with RLS policies.
+- `[x]` AGW4-TEST-001: Added contract coverage for stale-fallback behavior and alert-ack authz/isolation paths.
+- `[x]` AGW4-QUAL-002: Reduced targeted lint warnings in add-ons/admin-insights API/UI modules.
 
 ## Round 3 Completion Summary
 
@@ -43,6 +50,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-A: Tenant Isolation and Admin Safety (P0)
 
 ### AGW2-SEC-001: Enforce org-scoped reads for admin cost overview
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -58,6 +66,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.4`, Observability `+0.2`
 
 ### AGW2-SEC-002: Restrict emergency cap mutation to super-admin only
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -72,6 +81,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.3`, Operability `+0.2`
 
 ### AGW2-SEC-003: Add org scoping for command center queue data
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -88,6 +98,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-B: OAuth Integrity and Secret Protection (P0)
 
 ### AGW2-SEC-004: Harden OAuth state with signature and replay protection
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -103,6 +114,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.6`, Reliability `+0.2`
 
 ### AGW2-SEC-005: Encrypt provider access tokens at rest
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -121,6 +133,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-C: Cost Guard and Abuse Closure (P0)
 
 ### AGW2-COST-001: Decommission public `/api/unsplash` bypass path
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -136,6 +149,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Cost `+0.5`, Security `+0.3`
 
 ### AGW2-COST-002: Make spend-cap checks atomic under concurrency
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -150,6 +164,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Reliability `+0.4`, Cost `+0.4`
 
 ### AGW2-COST-003: Remove non-distributed in-memory spend fallback in production
+
 - Status: `[x]`
 - Priority: `P0`
 - Primary files:
@@ -166,6 +181,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-D: HTTP Method and Control Plane Hardening (P1)
 
 ### AGW2-SEC-006: Convert destructive cache clear from GET to POST/DELETE
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -182,6 +198,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-E: Quality, Tests, and Operability (P1)
 
 ### AGW2-QUAL-001: Reduce high-risk lint warning hotspots
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -198,6 +215,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Maintainability `+0.4`, Reliability `+0.2`
 
 ### AGW2-TEST-001: Add tenant-isolation and authz negative API tests
+
 - Status: `[x]`
 - Priority: `P1`
 - Actions:
@@ -209,6 +227,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.3`, Testability `+0.3`
 
 ### AGW2-TEST-002: Add cap-race and quota-bypass tests
+
 - Status: `[x]`
 - Priority: `P1`
 - Actions:
@@ -221,6 +240,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Reliability `+0.3`, Cost `+0.3`, Testability `+0.2`
 
 ### AGW2-OBS-001: Add cost and abuse anomaly alerts
+
 - Status: `[x]`
 - Priority: `P1`
 - Actions:
@@ -235,6 +255,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-F: Monetization and Tour-Operator Conversion (P2)
 
 ### AGW2-MON-001: Add credit-pack overage and margin-safe packaging
+
 - Status: `[x]`
 - Priority: `P2`
 - Actions:
@@ -247,6 +268,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Monetization `+0.5`, Cost `+0.2`
 
 ### AGW2-UX-001: Strengthen daily operator workflow conversion loops
+
 - Status: `[x]`
 - Priority: `P2`
 - Actions:
@@ -261,6 +283,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 ## WS-G: Round 3 Reliability and Operability Hardening (P1)
 
 ### AGW3-OBS-002: Cache admin cost overview with stale fallback
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -277,6 +300,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Performance `+0.3`, Reliability `+0.3`, Operability `+0.2`
 
 ### AGW3-SEC-001: Throttle and sample admin auth-failure telemetry
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -291,6 +315,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Security `+0.2`, Operability `+0.2`
 
 ### AGW3-OPS-001: Add alert acknowledgment workflow
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -308,6 +333,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Operability `+0.4`, UX `+0.2`
 
 ### AGW3-OPS-002: Formalize runbook metadata contract
+
 - Status: `[x]`
 - Priority: `P1`
 - Primary files:
@@ -323,6 +349,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - Operability `+0.3`, Maintainability `+0.2`
 
 ### AGW3-QUAL-001: Targeted lint debt reduction in add-ons workflow
+
 - Status: `[x]`
 - Priority: `P2`
 - Primary files:
@@ -335,6 +362,76 @@ This tracker is based on the latest full review of `main` and is focused on clos
   - No unsafe `any` cast in add-ons badge rendering.
 - Score impact target:
   - Maintainability `+0.2`, Reliability `+0.1`
+
+## WS-H: Round 4 Cache/Data/Test Continuation (P1)
+
+### AGW4-OBS-001: Invalidate cost-overview cache on mutation paths
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/lib/cost/overview-cache.ts`
+  - `src/app/api/admin/cost/overview/route.ts`
+  - `src/app/api/admin/cost/alerts/ack/route.ts`
+- Actions:
+  - Add shared cost-overview cache namespace utilities.
+  - Invalidate cache after emergency-cap changes and alert acknowledgments.
+- Definition of Done:
+  - Admin cost views reflect updates immediately without waiting for TTL expiry.
+  - Invalidation is best-effort and non-blocking for mutation success.
+- Score impact target:
+  - Performance `+0.2`, Operability `+0.3`
+
+### AGW4-DATA-001: Move alert acknowledgments to dedicated tables
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `supabase/migrations/20260301071000_cost_alert_ack_store.sql`
+  - `src/lib/cost/alert-ack.ts`
+  - `src/lib/database.types.ts`
+- Actions:
+  - Add `cost_alert_acknowledgments` table with unique `(alert_id, organization_id)`.
+  - Add `cost_alert_ack_events` table for actor/event history.
+  - Implement API read/write helpers with legacy fallback compatibility.
+- Definition of Done:
+  - Acknowledgment state loads from dedicated store when available.
+  - Actor history is recorded for each acknowledgment.
+  - Legacy log path remains compatible during migration rollout.
+- Score impact target:
+  - Security `+0.2`, Operability `+0.3`, Maintainability `+0.2`
+
+### AGW4-TEST-001: Add cache-fallback and alert-ack isolation contracts
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `e2e/tests/admin-cost-overview-cache.contract.spec.ts`
+  - `e2e/tests/admin-tenant-isolation.contract.spec.ts`
+- Actions:
+  - Add forced-failure stale-cache contract test in admin scope.
+  - Add unauthenticated/non-admin/foreign-org ack endpoint authz checks.
+- Definition of Done:
+  - CI listing includes stale-fallback contract tests.
+  - Ack authz/isolation regressions are contract-guarded.
+- Score impact target:
+  - Testability `+0.3`, Reliability `+0.2`
+
+### AGW4-QUAL-002: Continue low-risk lint warning burn-down
+
+- Status: `[x]`
+- Priority: `P2`
+- Primary files:
+  - `src/app/api/add-ons/route.ts`
+  - `src/app/api/add-ons/[id]/route.ts`
+  - `src/app/admin/insights/page.tsx`
+- Actions:
+  - Remove unused imports and small static warning hotspots.
+- Definition of Done:
+  - Warning count decreases in modified modules.
+  - No behavior changes in affected routes/pages.
+- Score impact target:
+  - Maintainability `+0.1`
 
 ## Strict Execution Order
 
@@ -358,10 +455,15 @@ This tracker is based on the latest full review of `main` and is focused on clos
 18. `AGW3-OPS-001`
 19. `AGW3-OPS-002`
 20. `AGW3-QUAL-001`
+21. `AGW4-OBS-001`
+22. `AGW4-DATA-001`
+23. `AGW4-TEST-001`
+24. `AGW4-QUAL-002`
 
 ## Sprint Breakdown
 
 ### Sprint 1 (P0 Security and Cost Closure)
+
 - `[x]` AGW2-SEC-001
 - `[x]` AGW2-SEC-002
 - `[x]` AGW2-SEC-003
@@ -372,6 +474,7 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW2-COST-003
 
 ### Sprint 2 (Control Plane and Test Hardening)
+
 - `[x]` AGW2-SEC-006
 - `[x]` AGW2-TEST-001
 - `[x]` AGW2-TEST-002
@@ -379,15 +482,24 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - `[x]` AGW2-OBS-001
 
 ### Sprint 3 (Monetization and Conversion Lift)
+
 - `[x]` AGW2-MON-001
 - `[x]` AGW2-UX-001
 
 ### Sprint 4 (Round 3 Hardening)
+
 - `[x]` AGW3-OBS-002
 - `[x]` AGW3-SEC-001
 - `[x]` AGW3-OPS-001
 - `[x]` AGW3-OPS-002
 - `[x]` AGW3-QUAL-001
+
+### Sprint 5 (Round 4 Continuation)
+
+- `[x]` AGW4-OBS-001
+- `[x]` AGW4-DATA-001
+- `[x]` AGW4-TEST-001
+- `[x]` AGW4-QUAL-002
 
 ## Progress Log
 
@@ -398,3 +510,4 @@ This tracker is based on the latest full review of `main` and is focused on clos
 - 2026-03-01: Added anomaly alerting and tenant weekly margin reporting in cost overview, including cost-spike/cap-hit/auth-failure signals with runbook references.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only, `test:e2e:public` pass, `test:e2e -- --list` pass).
 - 2026-03-01: Completed Round 3 hardening by adding cached/stale cost overview reads, auth-failure telemetry throttling + sampling, alert acknowledgment workflow, structured runbook metadata, and targeted add-ons lint cleanup.
+- 2026-03-01: Completed Round 4 continuation by adding mutation-triggered cost-overview cache invalidation, dedicated acknowledgment tables + history migration, stale-fallback/authz contract tests, and additional lint hotspot cleanup.

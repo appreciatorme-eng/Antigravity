@@ -6,7 +6,7 @@
  * DELETE /api/add-ons/[id] - Delete add-on
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export async function PUT(

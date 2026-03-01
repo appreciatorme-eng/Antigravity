@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassBadge } from "@/components/glass/GlassBadge";
 import { useToast } from "@/components/ui/toast";
 import {
   Sun,

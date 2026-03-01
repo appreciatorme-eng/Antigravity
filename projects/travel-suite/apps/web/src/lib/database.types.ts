@@ -1471,6 +1471,99 @@ export type Database = {
           },
         ]
       }
+      cost_alert_ack_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string
+          alert_id: string
+          event_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          organization_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string
+          alert_id: string
+          event_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string
+          alert_id?: string
+          event_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_alert_ack_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_alert_ack_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_alert_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          acknowledged_by: string | null
+          alert_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          acknowledged_by?: string | null
+          alert_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string
+          acknowledged_by?: string | null
+          alert_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_alert_acknowledgments_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_alert_acknowledgments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_delivery_status: {
         Row: {
           attempt_number: number
