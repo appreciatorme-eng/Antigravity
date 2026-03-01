@@ -9,6 +9,7 @@ interface Connection {
     platform: "instagram" | "facebook";
     platform_page_id: string;
     token_expires_at: string | null;
+    is_expiring_soon: boolean;
 }
 
 interface Props {
@@ -20,10 +21,22 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
         fetch("/api/social/connections")
             .then(r => r.json())
             .then(data => {
-                const conns: Connection[] = data.connections || [];
+                const nowMs = Date.now();
+                const conns: Connection[] = (data.connections || []).map((conn: Omit<Connection, "is_expiring_soon">) => {
+                    const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : Number.NaN;
+                    const daysLeft = Number.isFinite(expiresAt)
+                        ? (expiresAt - nowMs) / (1000 * 60 * 60 * 24)
+                        : Number.POSITIVE_INFINITY;
+                    return {
+                        ...conn,
+                        is_expiring_soon: daysLeft < 7,
+                    };
+                });
+                if (cancelled) return;
                 setConnections(conns);
                 onConnectionsLoaded?.({
                     instagram: conns.some(c => c.platform === "instagram"),
@@ -31,19 +44,22 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
                 });
             })
             .catch(() => {
+                if (cancelled) return;
                 onConnectionsLoaded?.({ instagram: false, facebook: false });
             })
-            .finally(() => setLoading(false));
-    }, []);
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [onConnectionsLoaded]);
 
     const igConn = connections.find(c => c.platform === "instagram");
     const fbConn = connections.find(c => c.platform === "facebook");
 
-    const isExpiringSoon = (expiresAt: string | null) => {
-        if (!expiresAt) return false;
-        const daysLeft = (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-        return daysLeft < 7;
-    };
+    const isExpiringSoon = (connection: Connection | undefined) => connection?.is_expiring_soon === true;
 
     const handleConnect = (platform: string) => {
         if (platform === "facebook") {
@@ -76,8 +92,8 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
                     <Instagram className="w-3.5 h-3.5 text-white" />
                 </div>
                 {igConn ? (
-                    <span className={`flex items-center gap-1 ${isExpiringSoon(igConn.token_expires_at) ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {isExpiringSoon(igConn.token_expires_at)
+                    <span className={`flex items-center gap-1 ${isExpiringSoon(igConn) ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+                        {isExpiringSoon(igConn)
                             ? <><AlertCircle className="w-3.5 h-3.5" /> Expiring soon</>
                             : <><CheckCircle2 className="w-3.5 h-3.5" /> Connected</>
                         }
@@ -100,8 +116,8 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
                     <Facebook className="w-3.5 h-3.5 text-white" />
                 </div>
                 {fbConn ? (
-                    <span className={`flex items-center gap-1 ${isExpiringSoon(fbConn.token_expires_at) ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400"}`}>
-                        {isExpiringSoon(fbConn.token_expires_at)
+                    <span className={`flex items-center gap-1 ${isExpiringSoon(fbConn) ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400"}`}>
+                        {isExpiringSoon(fbConn)
                             ? <><AlertCircle className="w-3.5 h-3.5" /> Expiring soon</>
                             : <><CheckCircle2 className="w-3.5 h-3.5" /> Connected</>
                         }
@@ -117,7 +133,7 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
             </div>
 
             {/* Refresh if anything expiring */}
-            {(isExpiringSoon(igConn?.token_expires_at ?? null) || isExpiringSoon(fbConn?.token_expires_at ?? null)) && (
+            {(isExpiringSoon(igConn) || isExpiringSoon(fbConn)) && (
                 <>
                     <span className="text-slate-300 dark:text-slate-600">|</span>
                     <button

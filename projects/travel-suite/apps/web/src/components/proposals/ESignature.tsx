@@ -44,6 +44,7 @@ export default function ESignature({ proposalId: _proposalId, clientName, onSign
   const [signed, setSigned] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [signedAt, setSignedAt] = useState<string>('');
+  const [downloadFilename, setDownloadFilename] = useState('signed-proposal.png');
   const lastPoint = useRef<Point | null>(null);
 
   // Initialise canvas with guide line
@@ -175,8 +176,10 @@ export default function ESignature({ proposalId: _proposalId, clientName, onSign
     }
 
     const timestamp = getTimestampIST();
+    const downloadStamp = new Date().toISOString().replace(/[:.]/g, "-");
     setSignatureDataUrl(dataUrl);
     setSignedAt(timestamp);
+    setDownloadFilename(`signed-proposal-${downloadStamp}.png`);
     setSigned(true);
     onSigned(dataUrl);
   }
@@ -219,7 +222,7 @@ export default function ESignature({ proposalId: _proposalId, clientName, onSign
           {/* Download */}
           <a
             href={signatureDataUrl}
-            download={`signed-proposal-${Date.now()}.png`}
+            download={downloadFilename}
             className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-emerald-500 rounded-xl px-4 py-2.5 hover:bg-emerald-600 transition-colors"
           >
             <Download className="w-4 h-4" />

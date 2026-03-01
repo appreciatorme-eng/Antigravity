@@ -100,8 +100,11 @@ export function PastItineraryCard({ itinerary, compact = false }: PastItineraryC
         }
     })();
 
-    const daysAgo = Math.floor((Date.now() - new Date(itinerary.created_at).getTime()) / (1000 * 60 * 60 * 24));
-    const timeAgo = daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`;
+    const createdDateLabel = new Date(itinerary.created_at).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
 
     return (
         <GlassCard padding="none" className="group relative overflow-hidden transition-all duration-300 hover:shadow-md border-gray-100 dark:border-slate-800">
@@ -152,7 +155,7 @@ export function PastItineraryCard({ itinerary, compact = false }: PastItineraryC
                                 <Clock className="w-2.5 h-2.5" /> {itinerary.duration_days}d
                             </span>
                             <span className="text-[10px] font-bold text-text-muted flex items-center gap-0.5">
-                                <Calendar className="w-2.5 h-2.5" /> {timeAgo}
+                                <Calendar className="w-2.5 h-2.5" /> {createdDateLabel}
                             </span>
                             {itinerary.client?.full_name && (
                                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-0.5">

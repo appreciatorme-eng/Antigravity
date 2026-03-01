@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const STORAGE_KEY = 'touros_language'
@@ -13,17 +13,11 @@ interface LanguageToggleProps {
 }
 
 export function LanguageToggle({ className = '', size = 'md' }: LanguageToggleProps) {
-  const [lang, setLangState] = useState<Lang>('en')
-
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored === 'en' || stored === 'hi') {
-        setLangState(stored)
-      }
-    }
-  }, [])
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof window === 'undefined') return 'en'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored === 'en' || stored === 'hi' ? stored : 'en'
+  })
 
   const handleChange = (newLang: Lang) => {
     setLangState(newLang)
