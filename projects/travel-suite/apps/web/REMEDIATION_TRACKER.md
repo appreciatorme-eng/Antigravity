@@ -1,390 +1,297 @@
-# Travel Suite Web Remediation Tracker
+# Travel Suite Web Remediation Tracker (Round 2)
 
-This tracker converts the deep review into executable work. It is designed for sequential delivery: complete one item, validate, mark done, then move to the next.
+This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
 
-## Rules of Execution
+## Operating Rules
 
 - Status legend: `[ ]` Not started, `[~]` In progress, `[x]` Done, `[!]` Blocked.
-- Only one `P0` item should be in progress at a time.
-- Every item must pass its Definition of Done before marking `[x]`.
-- Keep commits small and linked to one or more item IDs.
-- Update this tracker in every remediation PR.
+- Only one `P0` item can be `[~]` at a time.
+- Every item must satisfy Definition of Done before moving to `[x]`.
+- Each merge commit should reference one or more tracker IDs.
+- Update this tracker in every remediation commit.
 
-## Baseline Scores (From Review)
+## Current Baseline Scores (/10)
 
-- Architecture & Codebase Structure: `6.5/10`
-- Security & Data Protection: `3.0/10`
-- Reliability & Fault Tolerance: `4.5/10`
-- Performance & Scalability: `5.5/10`
-- Testability & QA Readiness: `4.5/10`
-- Maintainability & Type Safety: `5.0/10`
-- UX/UI for Tour-Operator Workflows: `6.0/10`
-- Monetization Readiness: `4.5/10`
-- Cost Efficiency (COGS Control): `4.0/10`
-- Observability & Operability: `4.5/10`
-- Weighted overall SaaS readiness: `4.7/10`
+- Architecture & Codebase Structure: `7.8`
+- Security & Data Protection: `6.6`
+- Reliability & Fault Tolerance: `7.4`
+- Performance & Scalability: `7.6`
+- Testability & QA Readiness: `8.2`
+- Maintainability & Type Safety: `7.3`
+- UX/UI for Tour-Operator Workflows: `8.0`
+- Monetization Readiness: `7.8`
+- Cost Efficiency (COGS Control): `7.0`
+- Observability & Operability: `7.2`
+- Weighted overall SaaS readiness: `7.5`
 
 ## Target Scores
 
-- 30-day target weighted score: `6.2/10`
-- 60-day target weighted score: `7.2/10`
-- 90-day target weighted score: `8.0/10`
+- 30-day target weighted score: `8.0`
+- 60-day target weighted score: `8.4`
+- 90-day target weighted score: `8.8`
 
 ## Workstreams and Action Items
 
-## WS1: Security and Access Control (P0)
+## WS-A: Tenant Isolation and Admin Safety (P0)
 
-### AGW-SEC-001: Harden cron endpoint authentication
-- Status: `[x]`
+### AGW2-SEC-001: Enforce org-scoped reads for admin cost overview
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/social/process-queue/route.ts`
-  - `src/app/api/social/refresh-tokens/route.ts`
+  - `src/app/api/admin/cost/overview/route.ts`
 - Actions:
-  - Remove trust on weak header-only checks.
-  - Enforce secret/HMAC validation and fail-closed behavior.
-  - Add replay window/idempotency protection for cron calls.
+  - Enforce organization scoping for non-super-admin reads.
+  - Move global aggregates behind explicit super-admin path.
 - Definition of Done:
-  - Requests without valid secret/signature get `401`.
-  - Missing env secrets fail route startup or fail every request.
-  - Tests cover valid and invalid auth paths.
+  - Org admins can only see their org data.
+  - Super-admin-only path required for global cost overview.
+  - Regression tests cover cross-tenant access denial.
 - Score impact target:
-  - Security `+0.8`, Reliability `+0.2`
+  - Security `+0.4`, Observability `+0.2`
 
-### AGW-SEC-002: Fix tenant validation on public review ingestion
-- Status: `[x]`
+### AGW2-SEC-002: Restrict emergency cap mutation to super-admin only
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/social/reviews/public/route.ts`
+  - `src/app/api/admin/cost/overview/route.ts`
 - Actions:
-  - Remove fallback to first organization.
-  - Require valid signed token for org binding.
-  - Add strict input validation and abuse limits.
+  - Require explicit super-admin privilege for cap toggles and updates.
+  - Add mutation audit log with actor and payload summary.
 - Definition of Done:
-  - Invalid/missing token cannot write any review row.
-  - Every write is traceable to a verified tenant.
-  - Security tests cover tampered tokens and missing token paths.
+  - Non-super-admin receives `403` for cap mutation.
+  - Every cap mutation is auditable.
 - Score impact target:
-  - Security `+1.1`, Cost `+0.2`
+  - Security `+0.3`, Operability `+0.2`
 
-### AGW-SEC-003: Lock down exposed admin endpoints
-- Status: `[x]`
+### AGW2-SEC-003: Add org scoping for command center queue data
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/admin/generate-embeddings/route.ts`
-  - `src/app/api/admin/geocoding/usage/route.ts`
+  - `src/app/api/admin/operations/command-center/route.ts`
 - Actions:
-  - Add admin auth guard and tenant scoping where applicable.
-  - Add audit logging for admin actions.
+  - Enforce tenant filter for queue reads.
+  - Add a shared tenant-scope helper and fail-closed behavior.
 - Definition of Done:
-  - Non-admin users always receive `403`.
-  - Admin actions are logged with actor, timestamp, and payload summary.
+  - Queue rows are always scoped to caller organization.
+  - Missing org context fails request with explicit error.
 - Score impact target:
-  - Security `+0.8`, Observability `+0.2`
+  - Security `+0.3`, Reliability `+0.2`
 
-### AGW-SEC-004: Remove or protect public diagnostics and test surfaces
-- Status: `[x]`
+## WS-B: OAuth Integrity and Secret Protection (P0)
+
+### AGW2-SEC-004: Harden OAuth state with signature and replay protection
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/test-geocoding/route.ts`
-  - `src/app/api/health/route.ts`
-  - `src/app/test-db/page.tsx`
+  - `src/app/api/social/oauth/facebook/route.ts`
+  - `src/app/api/social/oauth/callback/route.ts`
 - Actions:
-  - Gate diagnostics by token/admin auth.
-  - Strip sensitive internals from public responses.
-  - Remove test pages from production build or behind admin-only routes.
+  - Replace unsigned state payload with signed token.
+  - Add nonce + TTL replay protection and callback binding checks.
 - Definition of Done:
-  - Public unauthenticated callers cannot access diagnostics internals.
-  - Healthcheck output is minimal and safe by default.
+  - Tampered/replayed state is rejected deterministically.
+  - OAuth callback requires valid signed state.
 - Score impact target:
-  - Security `+0.7`, Operability `+0.3`
+  - Security `+0.6`, Reliability `+0.2`
 
-## WS2: Cost Controls and Abuse Prevention (P0)
-
-### AGW-COST-001: Enforce auth + rate limiting for provider-cost endpoints
-- Status: `[x]`
+### AGW2-SEC-005: Encrypt provider access tokens at rest
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/bookings/flights/search/route.ts`
-  - `src/app/api/bookings/hotels/search/route.ts`
-  - `src/app/api/bookings/locations/search/route.ts`
-  - `src/app/api/images/*/route.ts`
-  - `src/app/api/social/ai-image/route.ts`
+  - `src/app/api/social/oauth/callback/route.ts`
+  - token persistence/access helpers under `src/lib/**`
 - Actions:
-  - Require authenticated user and tenant context.
-  - Add route-level rate limiting by org/user/IP.
-  - Add daily/monthly quota checks by plan.
+  - Implement envelope encryption for provider tokens.
+  - Rotate old plaintext-stored tokens via migration/rehydration path.
 - Definition of Done:
-  - Unauthenticated callers get `401`.
-  - Over-limit requests get deterministic `429` with reason code.
-  - Quota metering events are persisted.
+  - No plaintext token writes in production paths.
+  - Reads/writes use encryption helper consistently.
+  - Recovery procedure documented for key rotation.
 - Score impact target:
-  - Cost `+1.3`, Security `+0.4`, Performance `+0.2`
+  - Security `+0.7`, Compliance readiness `+0.2`
 
-### AGW-COST-002: Remove embedded key fallback and unsafe env defaults
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Primary files:
-  - `src/app/api/images/pixabay/route.ts`
-  - `src/lib/supabase/server.ts`
-  - `src/lib/supabase/client.ts`
-  - `src/lib/supabase/middleware.ts`
-  - `src/lib/itinerary-cache.ts`
-- Actions:
-  - Remove hardcoded API key fallback.
-  - Fail fast on missing critical env vars in non-local environments.
-- Definition of Done:
-  - No production path uses default dev keys.
-  - Startup/runtime reports missing required envs clearly.
-- Score impact target:
-  - Security `+0.5`, Reliability `+0.4`
+## WS-C: Cost Guard and Abuse Closure (P0)
 
-### AGW-COST-003: Add spend observability and hard usage caps
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Actions:
-  - Track per-tenant usage and cost by provider category.
-  - Add hard-stop guardrails at plan threshold and emergency threshold.
-  - Add admin dashboard for margin monitoring.
-- Definition of Done:
-  - Daily cost report available per tenant and per feature.
-  - Hard cap can be enabled without redeploy.
-- Score impact target:
-  - Cost `+1.0`, Monetization `+0.4`, Operability `+0.4`
-
-## WS3: Billing and Monetization Integrity (P0/P1)
-
-### AGW-MON-001: Consolidate plan definitions and enforcement limits
-- Status: `[x]`
+### AGW2-COST-001: Decommission public `/api/unsplash` bypass path
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/lib/billing/tiers.ts`
-  - `src/lib/subscriptions/limits.ts`
-  - `src/features/admin/billing/plans.ts`
+  - `src/app/api/unsplash/route.ts`
+  - `src/app/social/_components/SocialStudioClient.tsx`
 - Actions:
-  - Define a single source of truth for plan features and limits.
-  - Replace duplicated constants with shared definitions.
+  - Remove or fully gate public route.
+  - Route image fetches through authenticated cost-guarded endpoints.
 - Definition of Done:
-  - No plan mismatch exists between UI, billing, and enforcement logic.
-  - Contract tests validate all plan matrices.
+  - No public unauthenticated media-cost endpoint remains.
+  - Social Studio uses only guarded media routes.
 - Score impact target:
-  - Monetization `+1.3`, Architecture `+0.4`
+  - Cost `+0.5`, Security `+0.3`
 
-### AGW-MON-002: Build plan-limit enforcement consistency tests
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Actions:
-  - Add tests for free->paid upgrade, trial expiry, cancellation, and downgrade.
-  - Validate feature gating consistency across API and UI.
-- Definition of Done:
-  - All monetization scenarios in review plan have automated test coverage.
-- Score impact target:
-  - Testability `+0.8`, Monetization `+0.6`
-
-### AGW-MON-003: Remove public mock payment/business endpoints or gate by env
-- Status: `[x]`
+### AGW2-COST-002: Make spend-cap checks atomic under concurrency
+- Status: `[ ]`
 - Priority: `P0`
-- Owner: `Unassigned`
 - Primary files:
-  - `src/app/api/payments/razorpay/route.ts`
-  - `src/app/api/payments/track/[token]/route.ts`
-  - `src/app/api/leads/convert/route.ts`
-  - `src/app/api/whatsapp/*/route.ts`
+  - `src/lib/security/cost-endpoint-guard.ts`
 - Actions:
-  - Replace mocks with production-safe behavior or gate to dev-only.
-  - Add explicit 501/feature-flag behavior where integration is incomplete.
+  - Replace check-then-increment with atomic reservation/update.
+  - Add deterministic denial behavior at cap boundary.
 - Definition of Done:
-  - No production environment exposes fake success responses.
+  - Parallel requests cannot overshoot hard caps.
+  - Concurrency tests validate no race bypass.
 - Score impact target:
-  - Security `+0.6`, Monetization `+0.8`, UX trust `+0.4`
+  - Reliability `+0.4`, Cost `+0.4`
 
-## WS4: Reliability and Performance (P1)
-
-### AGW-REL-001: Normalize idempotency and retry semantics for async jobs
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Actions:
-  - Add idempotency keys for expensive side effects.
-  - Define retry policy with dead-letter behavior.
-- Definition of Done:
-  - Duplicate requests do not duplicate side effects.
-  - Retry paths are test-covered and observable.
-- Score impact target:
-  - Reliability `+1.0`, Cost `+0.3`
-
-### AGW-REL-002: Strengthen payment service auth context and error handling
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Primary file:
-  - `src/lib/payments/payment-service.ts`
-- Actions:
-  - Use correct privilege client for server/webhook contexts.
-  - Add explicit error taxonomy and monitoring tags.
-- Definition of Done:
-  - Webhook/server flows work without user session coupling.
-  - Error classes map to actionable alerts.
-- Score impact target:
-  - Reliability `+0.9`, Operability `+0.5`
-
-### AGW-PERF-001: Restrict image remote patterns and optimize loading paths
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Primary file:
-  - `next.config.mjs`
-- Actions:
-  - Replace wildcard host allowlist with explicit trusted domains.
-  - Add image optimization safeguards and caching policy.
-- Definition of Done:
-  - Only approved domains are allowed.
-  - Core image-heavy pages show improved LCP in local profiling.
-- Score impact target:
-  - Performance `+0.7`, Security `+0.3`
-
-## WS5: Quality and Maintainability (P1/P2)
-
-### AGW-QUAL-001: Reduce lint debt to release threshold
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
-- Actions:
-  - Eliminate `no-unused-vars` and `no-explicit-any` in high-risk modules first.
-  - Fix hooks dependency and state-in-effect warnings.
-- Definition of Done:
-  - Error count `0`; warnings under agreed threshold.
-- Score impact target:
-  - Maintainability `+1.2`, Testability `+0.4`
-
-### AGW-QUAL-002: Make E2E pipeline runnable in CI and local dev
-- Status: `[x]`
-- Priority: `P1`
-- Owner: `Unassigned`
+### AGW2-COST-003: Remove non-distributed in-memory spend fallback in production
+- Status: `[ ]`
+- Priority: `P0`
 - Primary files:
-  - `e2e/tests/auth.setup.ts`
-  - `e2e/fixtures/auth.ts`
-  - `e2e/playwright.config.ts`
+  - `src/lib/cost/spend-guardrails.ts`
 - Actions:
-  - Provide secure test credential strategy and env contract.
-  - Remove machine-specific node path assumptions.
+  - Disable mutating in-memory fallback in production.
+  - Require shared durable store for metering state.
 - Definition of Done:
-  - `npm run test:e2e -- --list` and smoke suite run on CI.
+  - Multi-instance deployments have consistent cap enforcement.
+  - Production startup fails fast on missing critical metering backend.
 - Score impact target:
-  - Testability `+1.1`, Reliability `+0.3`
+  - Reliability `+0.3`, Cost `+0.3`, Operability `+0.2`
 
-## WS6: Tour-Operator UX and Conversion (P1/P2)
+## WS-D: HTTP Method and Control Plane Hardening (P1)
 
-### AGW-UX-001: Build 10-minute “first value” onboarding flow
-- Status: `[x]`
+### AGW2-SEC-006: Convert destructive cache clear from GET to POST/DELETE
+- Status: `[ ]`
 - Priority: `P1`
-- Owner: `Unassigned`
+- Primary files:
+  - `src/app/api/admin/clear-cache/route.ts`
 - Actions:
-  - Wizard from account setup -> first itinerary -> first share.
-  - Add progress indicators and success milestones.
+  - Move mutation to POST/DELETE only.
+  - Add CSRF and elevated role guard.
 - Definition of Done:
-  - New tenant reaches first shared itinerary in <=10 minutes median.
+  - GET is safe and non-mutating.
+  - Cache mutation requires authenticated authorized caller.
 - Score impact target:
-  - UX `+1.2`, Monetization `+0.4`
+  - Security `+0.2`, Reliability `+0.2`
 
-### AGW-UX-002: Operator daily command center
-- Status: `[x]`
+## WS-E: Quality, Tests, and Operability (P1)
+
+### AGW2-QUAL-001: Reduce high-risk lint warning hotspots
+- Status: `[ ]`
 - Priority: `P1`
-- Owner: `Unassigned`
+- Primary files:
+  - `src/hooks/useRealtimeProposal.ts`
+  - `src/app/admin/trips/page.tsx`
+  - `src/components/trips/GroupManager.tsx`
 - Actions:
-  - Consolidate departures, pending payments, expiring quotes, and follow-ups.
-  - Mobile-first interactions for field operators.
+  - Resolve render-phase ref and state-in-effect anti-patterns.
+  - Burn down top warning clusters in core workflows first.
 - Definition of Done:
-  - Daily operational tasks complete with <=3 primary screens.
+  - Warning count reduced and hotspots eliminated in critical modules.
+  - Behavior parity validated through unit/e2e checks.
 - Score impact target:
-  - UX `+1.0`, Retention proxy `+0.6`
+  - Maintainability `+0.4`, Reliability `+0.2`
 
-### AGW-UX-003: Outcome-based upgrade prompts and add-on packaging
-- Status: `[x]`
+### AGW2-TEST-001: Add tenant-isolation and authz negative API tests
+- Status: `[ ]`
+- Priority: `P1`
+- Actions:
+  - Add unauthorized/cross-tenant access scenarios for admin and ops APIs.
+  - Add regression tests for all WS-A endpoints.
+- Definition of Done:
+  - CI fails on any cross-tenant data exposure regression.
+- Score impact target:
+  - Security `+0.3`, Testability `+0.3`
+
+### AGW2-TEST-002: Add cap-race and quota-bypass tests
+- Status: `[ ]`
+- Priority: `P1`
+- Actions:
+  - Add concurrent request tests for cap boundaries.
+  - Add public endpoint abuse tests for media/AI routes.
+- Definition of Done:
+  - Cap race condition is test-guarded.
+  - Bypass vectors are test-covered and blocked.
+- Score impact target:
+  - Reliability `+0.3`, Cost `+0.3`, Testability `+0.2`
+
+### AGW2-OBS-001: Add cost and abuse anomaly alerts
+- Status: `[ ]`
+- Priority: `P1`
+- Actions:
+  - Emit alerts for sudden cost spikes, repeated auth failures, and cap hit rate anomalies.
+  - Build tenant-level weekly margin report.
+- Definition of Done:
+  - Alerting exists with clear ownership and runbook references.
+  - Margin trends visible per tenant and feature category.
+- Score impact target:
+  - Operability `+0.5`, Cost `+0.2`
+
+## WS-F: Monetization and Tour-Operator Conversion (P2)
+
+### AGW2-MON-001: Add credit-pack overage and margin-safe packaging
+- Status: `[ ]`
 - Priority: `P2`
-- Owner: `Unassigned`
 - Actions:
-  - Trigger upgrades by usage/value moments, not generic paywalls.
-  - Package add-ons (AI credits, WhatsApp volume, premium templates).
+  - Introduce prepaid overage packs for AI/media usage.
+  - Gate premium automations behind transparent per-pack economics.
 - Definition of Done:
-  - Upgrade prompts mapped to measurable usage triggers.
+  - Overages are predictable and margin-positive.
+  - Pricing and limits are consistent across UI, API, and billing logic.
 - Score impact target:
-  - Monetization `+1.0`, Cost `+0.4`
+  - Monetization `+0.5`, Cost `+0.2`
 
-## Execution Order (Strict)
+### AGW2-UX-001: Strengthen daily operator workflow conversion loops
+- Status: `[ ]`
+- Priority: `P2`
+- Actions:
+  - Add actionable Daily Ops board metrics (at-risk departures, pending payments, expiring quotes).
+  - Tie upgrades to outcome events (time saved, recovered revenue, response SLA).
+- Definition of Done:
+  - Daily board usage and conversion events are measurable.
+  - Upgrade prompts are event-driven and outcome-linked.
+- Score impact target:
+  - UX `+0.4`, Monetization `+0.3`
 
-1. `AGW-SEC-001`
-2. `AGW-SEC-002`
-3. `AGW-SEC-003`
-4. `AGW-SEC-004`
-5. `AGW-COST-001`
-6. `AGW-MON-001`
-7. `AGW-MON-003`
-8. `AGW-COST-002`
-9. `AGW-REL-001`
-10. `AGW-REL-002`
-11. `AGW-PERF-001`
-12. `AGW-QUAL-002`
-13. `AGW-MON-002`
-14. `AGW-QUAL-001`
-15. `AGW-COST-003`
-16. `AGW-UX-001`
-17. `AGW-UX-002`
-18. `AGW-UX-003`
+## Strict Execution Order
+
+1. `AGW2-SEC-001`
+2. `AGW2-SEC-002`
+3. `AGW2-SEC-003`
+4. `AGW2-SEC-004`
+5. `AGW2-SEC-005`
+6. `AGW2-COST-001`
+7. `AGW2-COST-002`
+8. `AGW2-COST-003`
+9. `AGW2-SEC-006`
+10. `AGW2-TEST-001`
+11. `AGW2-TEST-002`
+12. `AGW2-QUAL-001`
+13. `AGW2-OBS-001`
+14. `AGW2-MON-001`
+15. `AGW2-UX-001`
+
+## Sprint Breakdown
+
+### Sprint 1 (P0 Security and Cost Closure)
+- `[ ]` AGW2-SEC-001
+- `[ ]` AGW2-SEC-002
+- `[ ]` AGW2-SEC-003
+- `[ ]` AGW2-SEC-004
+- `[ ]` AGW2-SEC-005
+- `[ ]` AGW2-COST-001
+- `[ ]` AGW2-COST-002
+- `[ ]` AGW2-COST-003
+
+### Sprint 2 (Control Plane and Test Hardening)
+- `[ ]` AGW2-SEC-006
+- `[ ]` AGW2-TEST-001
+- `[ ]` AGW2-TEST-002
+- `[ ]` AGW2-QUAL-001
+- `[ ]` AGW2-OBS-001
+
+### Sprint 3 (Monetization and Conversion Lift)
+- `[ ]` AGW2-MON-001
+- `[ ]` AGW2-UX-001
 
 ## Progress Log
 
-- 2026-03-01: Tracker created from deep review findings. No remediation code changes in this commit.
-- 2026-03-01: AGW-SEC-001 completed. Hardened cron auth for social queue/token refresh with shared verification, signature support, replay protection, and public contract tests.
-- 2026-03-01: AGW-SEC-002 completed. Public review ingestion now requires validated token binding, removes organization fallback writes, adds strict schema validation, and applies abuse throttling.
-- 2026-03-01: AGW-SEC-003 completed. Protected admin embeddings/geocoding endpoints with requireAdmin and added admin audit log entries for endpoint activity.
-- 2026-03-01: AGW-SEC-004 completed. Added diagnostics token enforcement for geocoding test route, redacted public health output, and disabled test-db page in production.
-- 2026-03-01: AGW-COST-001 completed. Added shared auth/tier/burst/daily guardrails across Amadeus, image provider, and social AI image routes with persisted metering audit entries.
-- 2026-03-01: AGW-MON-001 completed. Introduced canonical plan catalog and wired billing plans, pricing tiers, and subscription enforcement limits to shared plan definitions.
-- 2026-03-01: AGW-MON-003 completed. Mock payment, lead conversion, and WhatsApp utility endpoints are now explicitly disabled in production and gated by environment flags elsewhere.
-- 2026-03-01: AGW-COST-002 completed. Removed insecure key fallbacks, centralized Supabase runtime env handling with production fail-fast behavior, and enforced service-role-only cache writes.
-- 2026-03-01: AGW-REL-001 completed. Social publish queue now uses atomic pending->processing claims, idempotent already-sent handling, exponential backoff retries, configurable max attempts, and terminal failed state behavior.
-- 2026-03-01: AGW-REL-002 completed. Payment service methods now support explicit admin execution context for webhook/server flows, with structured payment error taxonomy, monitoring tags, and consistent HTTP error mapping across payment APIs.
-- 2026-03-01: AGW-PERF-001 completed. Replaced permissive Next.js image wildcard remote patterns with explicit trusted host allowlist, optional env-extendable hosts, and hardened optimization cache/CSP settings.
-- 2026-03-01: AGW-QUAL-002 completed. Playwright config now uses portable dev command, auth setup/fixtures support credential-aware skipping with explicit env contract, and full suite listing is runnable without machine-specific assumptions.
-- 2026-03-01: AGW-MON-002 completed. Added monetization contract tests covering plan catalog/UI consistency, upgrade path determinism, trial expiry, cancellation transitions, and scheduled downgrade activation.
-- 2026-03-01: AGW-QUAL-001 completed. Established phased lint release threshold with zero lint errors and max warning budget (<=550), including scoped legacy-rule downgrades and script ignores to unblock CI while debt remains visible.
-- 2026-03-01: AGW-COST-003 completed. Added spend-based hard-stop guardrails with per-category plan/emergency caps, Redis/local spend telemetry tracking, admin cost overview APIs, and a live margin monitoring dashboard with runtime emergency-cap controls.
-- 2026-03-01: AGW-UX-001 completed. Extended onboarding into a 5-step first-value sprint with live milestone tracking (setup -> first itinerary -> first share), progress polling, and guided actions to hit first shared itinerary faster.
-- 2026-03-01: AGW-UX-002 completed. Added an operator daily command center API and UI with three focused screens (command board, departures, revenue tasks) covering departures, pending payments, expiring quotes, and follow-up workload.
-- 2026-03-01: AGW-UX-003 completed. Implemented outcome-triggered upgrade prompts and packaged add-on recommendations in billing, driven by measurable usage/collections/ROI thresholds instead of generic paywalls.
-
-## Current Sprint Board (Suggested)
-
-### Sprint A (Security Lockdown)
-- `[x]` AGW-SEC-001
-- `[x]` AGW-SEC-002
-- `[x]` AGW-SEC-003
-- `[x]` AGW-SEC-004
-- `[x]` AGW-COST-001
-
-### Sprint B (Monetization + Reliability Core)
-- `[x]` AGW-MON-001
-- `[x]` AGW-MON-003
-- `[x]` AGW-COST-002
-- `[x]` AGW-REL-001
-- `[x]` AGW-REL-002
-
-### Sprint C (Scale, QA, Conversion)
-- `[x]` AGW-PERF-001
-- `[x]` AGW-QUAL-002
-- `[x]` AGW-MON-002
-- `[x]` AGW-QUAL-001
-- `[x]` AGW-COST-003
-- `[x]` AGW-UX-001
-- `[x]` AGW-UX-002
-- `[x]` AGW-UX-003
+- 2026-03-01: Replaced the previous fully-checked tracker with this Round 2 tracker based on the latest post-remediation line-by-line review findings.
+- 2026-03-01: No code changes in this commit; tracker-only planning update.
