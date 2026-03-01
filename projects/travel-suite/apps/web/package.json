@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings=550",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts",
     "test:e2e:public": "playwright test --config=e2e/playwright.public.config.ts",
