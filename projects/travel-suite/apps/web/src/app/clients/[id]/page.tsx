@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import {
     Mail, Phone, MapPin, CalendarDays, BadgeCheck, Utensils,
@@ -139,53 +140,99 @@ export default async function ClientProfilePage({
 }) {
     const { id } = await params;
 
-    // ✅ Use admin client (service role) to bypass RLS policies
-    // This is safe because this is a server component — the key never reaches the browser
-    let supabase: ReturnType<typeof createAdminClient>;
+    // ─── Get a working Supabase client ────────────────────────────────────────
+    // Strategy: try admin client first (bypasses RLS), fall back to server client
+    let supabase: any;
+    let usingAdmin = false;
     try {
-        supabase = createAdminClient();
-    } catch (err) {
-        // If the admin client isn't configured, fall back gracefully
-        throw new Error(`Admin client unavailable: ${err instanceof Error ? err.message : "unknown"}`);
+        const admin = createAdminClient();
+        // Test that the admin client is functional (not the unavailable Proxy)
+        // by attempting a lightweight operation
+        const testResult = await admin.from("profiles").select("id").limit(1);
+        if (testResult.error && testResult.error.message?.includes("not configured")) {
+            throw new Error("Admin unavailable");
+        }
+        supabase = admin;
+        usingAdmin = true;
+    } catch {
+        // Admin client unavailable — fall back to server client (uses cookies/session)
+        console.warn("Admin client unavailable, falling back to server client for client profile");
+        supabase = await createClient();
     }
 
-    // Fetch the client's profile
+    // ─── Fetch profile ────────────────────────────────────────────────────────
     let profile: any = null;
     try {
+        // First try the profiles table directly
         const { data, error: profileError } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", id)
             .single();
 
-        if (profileError) {
-            console.error("Profile fetch error:", profileError.message, "code:", profileError.code, "id:", id);
-            throw new Error(`Profile not found: ${profileError.message}`);
+        if (!profileError && data) {
+            profile = data;
+        } else if (profileError) {
+            console.warn("Direct profile fetch failed:", profileError.message);
+            // If RLS blocked the direct profile fetch, try through the clients table
+            // (which has org-level RLS allowing admins to see their org's clients)
+            const { data: clientRow, error: clientError } = await supabase
+                .from("clients")
+                .select("id, organization_id")
+                .eq("id", id)
+                .single();
+
+            if (clientError || !clientRow) {
+                console.error("Client lookup also failed:", clientError?.message);
+                notFound();
+            }
+
+            // If we found the client entry, try fetching the profile again
+            // using a broader approach
+            const { data: profileRetry } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", clientRow.id)
+                .maybeSingle();
+
+            if (profileRetry) {
+                profile = profileRetry;
+            } else {
+                // Build a minimal profile from the client record
+                profile = {
+                    id: clientRow.id,
+                    full_name: null,
+                    email: null,
+                    phone: null,
+                    created_at: clientRow.created_at,
+                    organization_id: clientRow.organization_id,
+                };
+            }
         }
-        profile = data;
     } catch (err) {
         console.error("Profile fetch exception:", err);
-        throw new Error(`Could not load client ${id.slice(0, 8)}: ${err instanceof Error ? err.message : "unknown error"}`);
+        notFound();
     }
 
     if (!profile) {
         notFound();
     }
 
-    // Fetch trips — wrapped in try-catch so partial data still renders
+    // ─── Fetch trips (partial failure OK) ─────────────────────────────────────
     let trips: any[] = [];
     try {
         const { data, error } = await supabase
             .from("trips")
-            .select("id, status, start_date, end_date, destination, itinerary_id")
+            .select("id, status, start_date, end_date, destination, itinerary_id, created_at")
             .eq("client_id", id)
-            .order("start_date", { ascending: false });
+            .order("created_at", { ascending: false });
         if (!error && data) trips = data;
+        else if (error) console.warn("Trips fetch:", error.message);
     } catch (err) {
-        console.error("Trips fetch failed:", err);
+        console.warn("Trips fetch failed:", err);
     }
 
-    // Fetch itineraries linked to this client's trips (for destination info)
+    // ─── Fetch itineraries linked to trips ────────────────────────────────────
     let itineraryMap: Record<string, any> = {};
     try {
         const tripItineraryIds = trips
@@ -198,14 +245,14 @@ export default async function ClientProfilePage({
                 .select("id, destination, trip_title, duration_days")
                 .in("id", tripItineraryIds);
             if (data) {
-                itineraryMap = Object.fromEntries(data.map(i => [i.id, i]));
+                itineraryMap = Object.fromEntries(data.map((i: any) => [i.id, i]));
             }
         }
     } catch (err) {
-        console.error("Itineraries fetch failed:", err);
+        console.warn("Itineraries fetch failed:", err);
     }
 
-    // Fetch proposals (enquiry history)
+    // ─── Fetch proposals (partial failure OK) ─────────────────────────────────
     let proposals: any[] = [];
     try {
         const { data, error } = await supabase
@@ -215,8 +262,9 @@ export default async function ClientProfilePage({
             .order("created_at", { ascending: false })
             .limit(15);
         if (!error && data) proposals = data;
+        else if (error) console.warn("Proposals fetch:", error.message);
     } catch (err) {
-        console.error("Proposals fetch failed:", err);
+        console.warn("Proposals fetch failed:", err);
     }
 
     // ─── Derived stats ───────────────────────────────────────────────────────

@@ -12,15 +12,31 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch itineraries with additional fields
+    // Fetch itineraries — select only columns guaranteed to exist
+    // Note: client_id FK points to clients(id) not profiles(id), so we can't
+    // do a direct PostgREST join to profiles via client_id. We fetch client
+    // names separately below.
     const { data: itineraries, error } = await supabase
       .from("itineraries")
-      .select("id, trip_title, destination, duration_days, created_at, budget, interests, client_id, template_id, summary, client:profiles!client_id(full_name)")
+      .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary, client_id, template_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      // If the query failed (e.g. client_id or template_id columns don't exist),
+      // retry with only the core columns that are guaranteed to exist
+      console.error("Itinerary fetch error, retrying with core columns:", error.message);
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("itineraries")
+        .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) {
+        return NextResponse.json({ error: fallbackError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ itineraries: fallbackData ?? [] });
     }
 
     // Fetch share info for all itineraries
@@ -59,9 +75,26 @@ export async function GET() {
       }
     }
 
-    // Merge share & trip info into itineraries
+    // Fetch client names for itineraries that have a client_id
+    let clientNameMap: Record<string, string> = {};
+    const clientIds = [...new Set((itineraries ?? []).map((i: any) => i.client_id).filter(Boolean))];
+    if (clientIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", clientIds);
+
+      if (profiles) {
+        for (const p of profiles) {
+          clientNameMap[p.id] = p.full_name ?? "";
+        }
+      }
+    }
+
+    // Merge share, trip & client info into itineraries
     const enriched = (itineraries ?? []).map((itin: any) => ({
       ...itin,
+      client: itin.client_id ? { full_name: clientNameMap[itin.client_id] ?? null } : null,
       share_code: shareMap[itin.id]?.share_code ?? null,
       share_status: shareMap[itin.id]?.status ?? null,
       trip_id: tripMap[itin.id] ?? null,

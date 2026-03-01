@@ -47,12 +47,6 @@ const INTEREST_OPTIONS = [
     '🏔️ Adventure & Trekking', '🧘 Yoga & Wellness', '💼 Business & MICE',
 ];
 
-const HOW_IT_WORKS = [
-    { icon: "✍️", step: "1", label: "Describe the trip", desc: "Enter destination, duration & budget" },
-    { icon: "⚡", step: "2", label: "AI generates plan", desc: "Full day-by-day itinerary in ~15 sec" },
-    { icon: "✏️", step: "3", label: "Review & personalise", desc: "Edit activities, add pricing & logistics" },
-    { icon: "📤", step: "4", label: "Save & share", desc: "Assign to client, send shareable link" },
-];
 
 export default function PlannerPage() {
     const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
@@ -212,45 +206,16 @@ Make it practical and specific:
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 pb-24">
 
-            {/* ═══ HERO — shown only when no result ═══ */}
+            {/* ═══ COMPACT HEADER — shown only when no result ═══ */}
             {!result && (
-                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 dark:from-emerald-950 dark:via-emerald-900 dark:to-teal-900">
-                    {/* Subtle dot grid overlay */}
-                    <div
-                        className="absolute inset-0 opacity-[0.07]"
-                        style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "28px 28px" }}
-                    />
-                    {/* Glowing orb */}
-                    <div className="absolute -top-32 -right-32 w-96 h-96 bg-teal-400/20 rounded-full blur-3xl" />
-                    <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-emerald-300/10 rounded-full blur-2xl" />
-
-                    <div className="relative max-w-4xl mx-auto px-6 py-14 text-center">
-                        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 text-xs font-bold text-white/90 tracking-widest uppercase mb-6">
-                            <Sparkles className="w-3.5 h-3.5" /> AI-Powered Trip Planner
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-serif text-white mb-4 leading-tight tracking-tight">
-                            Create stunning itineraries<br className="hidden md:block" /> your clients will love
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-900 dark:to-teal-900">
+                    <div className="max-w-2xl mx-auto px-6 py-6 text-center">
+                        <h1 className="text-2xl md:text-3xl font-serif text-white mb-2 leading-tight tracking-tight">
+                            AI Trip Planner
                         </h1>
-                        <p className="text-emerald-100 text-lg font-light max-w-2xl mx-auto mb-10 leading-relaxed">
-                            Type a destination, let AI draft a complete day-by-day plan, then personalise, save, and share it with your client — all in under a minute.
+                        <p className="text-emerald-100/80 text-sm font-light max-w-lg mx-auto leading-relaxed">
+                            Describe a trip → AI creates the full itinerary → Save &amp; share with your client
                         </p>
-
-                        {/* 4-step workflow */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
-                            {HOW_IT_WORKS.map((s, i) => (
-                                <div key={s.step} className="relative flex flex-col items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-4 text-left">
-                                    <div className="text-2xl">{s.icon}</div>
-                                    <div className="w-full">
-                                        <div className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-0.5">Step {s.step}</div>
-                                        <div className="text-sm font-bold text-white leading-tight">{s.label}</div>
-                                        <div className="text-xs text-white/60 mt-0.5 leading-snug">{s.desc}</div>
-                                    </div>
-                                    {i < HOW_IT_WORKS.length - 1 && (
-                                        <div className="hidden md:block absolute -right-1.5 top-1/2 -translate-y-1/2 text-white/30 text-lg">›</div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
                 </div>
             )}
@@ -259,7 +224,7 @@ Make it practical and specific:
 
                 {/* ═══ FORM — shown only when no result ═══ */}
                 {!result && (
-                    <div className="max-w-2xl mx-auto px-6 py-10 -mt-6 relative z-10">
+                    <div className="max-w-2xl mx-auto px-6 py-8 relative z-10">
                         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-emerald-500/10 border border-gray-100 dark:border-slate-800 overflow-hidden">
 
                             {/* Card Header */}

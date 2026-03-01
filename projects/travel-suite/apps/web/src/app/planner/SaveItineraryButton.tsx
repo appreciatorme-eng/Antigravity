@@ -53,23 +53,44 @@ export default function SaveItineraryButton({
                 .single();
 
             // Save itinerary to database
-            const { data: insertedItinerary, error: insertError } = await supabase
+            const itineraryRow = {
+                user_id: user.id,
+                trip_title: itineraryData.trip_title,
+                destination: itineraryData.destination || destination,
+                summary: itineraryData.summary || "",
+                duration_days: days,
+                budget: budget,
+                interests: interests,
+                raw_data: itineraryData as any,
+                template_id: templateId,
+            };
+
+            let insertedItinerary: { id: string } | null = null;
+            const { data: insertData, error: insertError } = await supabase
                 .from("itineraries")
-                .insert({
-                    user_id: user.id,
-                    trip_title: itineraryData.trip_title,
-                    destination: itineraryData.destination || destination,
-                    summary: itineraryData.summary,
-                    duration_days: days,
-                    budget: budget,
-                    interests: interests,
-                    raw_data: itineraryData as any,
-                    template_id: templateId,
-                })
+                .insert(itineraryRow as any)
                 .select("id")
                 .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                // If template_id column doesn't exist, retry without it
+                if (insertError.message?.includes("template_id") || insertError.code === "PGRST204") {
+                    const { template_id: _unused, ...rowWithoutTemplate } = itineraryRow;
+                    const { data: retryData, error: retryError } = await supabase
+                        .from("itineraries")
+                        .insert(rowWithoutTemplate as any)
+                        .select("id")
+                        .single();
+                    if (retryError) throw retryError;
+                    insertedItinerary = retryData;
+                } else {
+                    throw insertError;
+                }
+            } else {
+                insertedItinerary = insertData;
+            }
+
+            if (!insertedItinerary) throw new Error("Insert succeeded but returned no data");
 
             // Also create a trip record so it shows up on the Trips page
             const { data: insertedTrip, error: tripError } = await supabase
