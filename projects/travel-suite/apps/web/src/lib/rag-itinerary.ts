@@ -6,6 +6,7 @@
 import { generateEmbedding } from './embeddings';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
+import type { ItineraryResult } from '@/types/itinerary';
 
 let cachedOpenAiClient: OpenAI | null | undefined;
 
@@ -26,12 +27,58 @@ export interface RAGItineraryRequest {
     requestingOrgId?: string;
 }
 
+interface RAGTemplateMatch {
+    template_id: string;
+    name: string;
+    combined_rank: number | string;
+    similarity: number | string;
+    quality_score: number | string | null;
+}
+
+interface TemplateActivityRow {
+    time?: string | null;
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    price?: number | null;
+    duration?: string | null;
+    transport?: string | null;
+    image_url?: string | null;
+}
+
+interface TemplateDayRow {
+    day_number: number;
+    title?: string | null;
+    activities?: TemplateActivityRow[] | null;
+}
+
+interface TourTemplateRow {
+    id: string;
+    name: string;
+    destination: string;
+    duration_days: number;
+    description?: string | null;
+    days?: TemplateDayRow[] | null;
+}
+
+type RAGAssembledItinerary = ItineraryResult & Record<string, unknown> & {
+    source: 'rag_assembly' | 'rag_template_exact';
+    base_template_id: string;
+    similarity_score?: number;
+    template_count?: number;
+};
+
+function toFiniteNumber(value: number | string | null | undefined): number {
+    const parsed = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
 /**
  * Search for matching templates using RAG (unified across all operators)
  */
 export async function searchTemplates(
     request: RAGItineraryRequest
-): Promise<any[] | null> {
+): Promise<RAGTemplateMatch[] | null> {
     const supabase = await createClient();
 
     // Generate query embedding
@@ -49,7 +96,7 @@ export async function searchTemplates(
     }
 
     // Search similar templates across ALL public templates (unified sharing)
-    const { data: matches, error } = await supabase.rpc('search_similar_templates_with_quality', {
+    const { data: matchRows, error } = await supabase.rpc('search_similar_templates_with_quality', {
         p_query_embedding: `[${queryEmbedding.join(',')}]`,
         p_match_threshold: 0.7,
         p_match_count: 5,
@@ -57,6 +104,7 @@ export async function searchTemplates(
         p_max_days: request.days + 2,
         ...(request.requestingOrgId && { p_exclude_organization_id: request.requestingOrgId })
     });
+    const matches = (matchRows as RAGTemplateMatch[] | null) ?? null;
 
     if (error) {
         console.error('Template search error:', error);
@@ -65,8 +113,10 @@ export async function searchTemplates(
 
     if (matches && matches.length > 0) {
         console.log(`🔍 Found ${matches.length} templates from unified knowledge base:`);
-        matches.forEach((m: any, i: number) => {
-            console.log(`  ${i + 1}. ${m.name} (Rank: ${parseFloat(m.combined_rank).toFixed(2)}, Similarity: ${parseFloat(m.similarity).toFixed(2)}, Quality: ${m.quality_score})`);
+        matches.forEach((match, i) => {
+            console.log(
+                `  ${i + 1}. ${match.name} (Rank: ${toFiniteNumber(match.combined_rank).toFixed(2)}, Similarity: ${toFiniteNumber(match.similarity).toFixed(2)}, Quality: ${match.quality_score})`
+            );
         });
     }
 
@@ -77,16 +127,16 @@ export async function searchTemplates(
  * Assemble itinerary from template(s) with AI personalization
  */
 export async function assembleItinerary(
-    templates: any[],
+    templates: RAGTemplateMatch[],
     request: RAGItineraryRequest
-): Promise<any | null> {
+): Promise<RAGAssembledItinerary | null> {
     if (!templates || templates.length === 0) return null;
 
     const supabase = await createClient();
     const baseTemplate = templates[0]; // Highest similarity match
 
     // Fetch full template with days and activities
-    const { data: fullTemplate } = await supabase
+    const { data: fullTemplateData } = await supabase
         .from('tour_templates')
         .select(`
             *,
@@ -99,6 +149,7 @@ export async function assembleItinerary(
         .order('day_number', { foreignTable: 'template_days', ascending: true })
         .order('display_order', { foreignTable: 'template_days.template_activities', ascending: true })
         .single();
+    const fullTemplate = (fullTemplateData as TourTemplateRow | null) ?? null;
 
     if (!fullTemplate) return null;
 
@@ -125,14 +176,14 @@ Original Template:
 ${JSON.stringify({
         name: fullTemplate.name,
         destination: fullTemplate.destination,
-        days: fullTemplate.days?.map((d: any) => ({
-            day_number: d.day_number,
-            title: d.title,
-            activities: d.activities?.map((a: any) => ({
-                time: a.time,
-                title: a.title,
-                description: a.description,
-                location: a.location
+        days: fullTemplate.days?.map((day) => ({
+            day_number: day.day_number,
+            title: day.title,
+            activities: day.activities?.map((activity) => ({
+                time: activity.time,
+                title: activity.title,
+                description: activity.description,
+                location: activity.location
             }))
         }))
     }, null, 2)}
@@ -179,12 +230,14 @@ Return ONLY valid JSON matching this schema:
             temperature: 0.7,
         });
 
-        const assembledItinerary = JSON.parse(response.choices[0].message.content || '{}');
+        const assembledItinerary = JSON.parse(
+            response.choices[0].message.content || '{}'
+        ) as RAGAssembledItinerary;
 
         // Add metadata
         assembledItinerary.source = 'rag_assembly';
         assembledItinerary.base_template_id = baseTemplate.template_id;
-        assembledItinerary.similarity_score = baseTemplate.similarity;
+        assembledItinerary.similarity_score = toFiniteNumber(baseTemplate.similarity);
         assembledItinerary.template_count = templates.length;
 
         return assembledItinerary;
@@ -195,7 +248,7 @@ Return ONLY valid JSON matching this schema:
     }
 }
 
-function formatTemplateAsItinerary(template: any) {
+function formatTemplateAsItinerary(template: TourTemplateRow): RAGAssembledItinerary {
     // Convert template structure to itinerary format
     return {
         trip_title: template.name,
@@ -204,18 +257,18 @@ function formatTemplateAsItinerary(template: any) {
         summary: template.description || `Explore the best of ${template.destination} with this carefully curated itinerary.`,
         source: 'rag_template_exact',
         base_template_id: template.id,
-        days: (template.days || []).map((day: any) => ({
+        days: (template.days || []).map((day) => ({
             day_number: day.day_number,
             theme: day.title || `Day ${day.day_number}`,
-            activities: (day.activities || []).map((act: any) => ({
-                time: act.time || 'TBD',
-                title: act.title,
-                description: act.description || 'Details to be provided.',
-                location: act.location,
-                cost: act.price ? `$${act.price}` : undefined,
-                duration: act.duration,
-                transport: act.transport,
-                image: act.image_url
+            activities: (day.activities || []).map((activity) => ({
+                time: activity.time || 'TBD',
+                title: activity.title,
+                description: activity.description || 'Details to be provided.',
+                location: activity.location || '',
+                cost: activity.price ? `$${activity.price}` : undefined,
+                duration: activity.duration || undefined,
+                transport: activity.transport || undefined,
+                image: activity.image_url || undefined
             }))
         }))
     };

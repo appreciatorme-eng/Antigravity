@@ -8,6 +8,7 @@
  * - Inclusions/Exclusions section
  * - Dynamic operator colors
  */
+/* eslint-disable jsx-a11y/alt-text */
 
 import React from 'react';
 import {
@@ -17,9 +18,8 @@ import {
   Document,
   StyleSheet,
   Image,
-  Font,
 } from '@react-pdf/renderer';
-import type { ItineraryResult, Day, Activity } from '@/types/itinerary';
+import type { ItineraryResult } from '@/types/itinerary';
 import type { ItineraryBranding } from '../itinerary-types';
 
 interface Props {
@@ -381,7 +381,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
       <Page size="A4" style={styles.page}>
         <Text style={styles.sectionTitle}>Day-by-Day Itinerary</Text>
 
-        {itinerary.days.map((day, dayIndex) => (
+        {itinerary.days.map((day) => (
           <View key={day.day_number} style={styles.dayCard} wrap={false}>
             {/* Day Header */}
             <View style={styles.dayHeader}>
@@ -474,7 +474,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
               <View style={styles.cardHeader}>
                 <View style={[styles.cardIcon, styles.inclusionIcon]} />
                 <Text style={[styles.cardTitle, styles.inclusionTitle]}>
-                  What's Included
+                  What&apos;s Included
                 </Text>
               </View>
               {inclusions.map((item, idx) => (
@@ -492,7 +492,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
               <View style={styles.cardHeader}>
                 <View style={[styles.cardIcon, styles.exclusionIcon]} />
                 <Text style={[styles.cardTitle, styles.exclusionTitle]}>
-                  What's Not Included
+                  What&apos;s Not Included
                 </Text>
               </View>
               {exclusions.map((item, idx) => (

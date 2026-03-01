@@ -1,6 +1,45 @@
-# Travel Suite Web Remediation Tracker (Round 14)
+# Travel Suite Web Remediation Tracker (Round 15)
 
 This tracker is based on the latest full review of `main` and is focused on closing remaining security, tenant-isolation, reliability, and cost-control gaps.
+
+## Round 15 Active Plan (Completed)
+
+This round targets high-density type/lint debt in RAG and upsell engines plus template registry and PDF template surfaces, while preserving runtime behavior and test contracts.
+
+### WS-Z: AI and Recommendation Engine Type Hardening (P1)
+
+#### AGW15-QUAL-001: Remove unsafe `any` usage in RAG itinerary assembly and upsell engine
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/lib/rag-itinerary.ts`
+  - `src/lib/ai/upsell-engine.ts`
+  - `src/app/api/itinerary/generate/route.ts`
+- Actions:
+  - Introduce explicit row/model interfaces for RAG template search and assembly.
+  - Replace implicit-any Supabase relation handling with typed row normalization.
+  - Align itinerary-generate route typing with RAG similarity/output shape.
+- Definition of Done:
+  - Targeted AI/recommendation modules compile without `no-explicit-any` warnings.
+  - Existing itinerary generation and recommendation flows retain behavior.
+
+### WS-AA: Template Surface Warning Burn-down (P1)
+
+#### AGW15-QUAL-002: Reduce template registry/PDF lint noise with safe typing and cleanup
+
+- Status: `[x]`
+- Priority: `P1`
+- Primary files:
+  - `src/components/templates/TemplateRegistry.ts`
+  - `src/components/pdf/templates/ProfessionalTemplate.tsx`
+- Actions:
+  - Replace `as any` component casts with typed conversion helpers.
+  - Remove dead imports/unused params and resolve text lint findings in PDF template.
+  - Keep React PDF `Image` semantics unchanged while suppressing false-positive a11y lint for that renderer.
+- Definition of Done:
+  - Targeted template files no longer emit their previous high-signal lint warnings.
+  - Rendering output and template selection behavior remain unchanged.
 
 ## Round 14 Active Plan (Completed)
 
@@ -1264,3 +1303,5 @@ This round addresses the remaining gaps from the latest whole-code review on `ma
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 339, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
 - 2026-03-01: Completed Round 14 by resolving admin tour-template and social media hook-dependency/dead-code lint hotspots, and tightening local typing in social analytics/library components.
 - 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 325, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).
+- 2026-03-01: Completed Round 15 by hardening RAG and upsell-engine typing, normalizing route-level itinerary typing compatibility, and cleaning template registry/PDF warning hotspots.
+- 2026-03-01: Validation run completed (`typecheck` pass, `lint` pass with warnings only at 292, `test:unit` pass, `test:e2e:public` pass with expected env/runtime-gated skips).

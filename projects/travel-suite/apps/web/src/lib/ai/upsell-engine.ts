@@ -10,15 +10,16 @@
  * 3. Dynamic pricing based on demand
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // Types
 export interface Client {
   id: string;
   name: string;
   email: string;
+  organization_id: string;
   tags?: string[];
-  preferences?: Record<string, any>;
+  preferences?: Record<string, unknown>;
   lifecycle_stage?: string;
 }
 
@@ -55,8 +56,19 @@ export interface UpsellEngineConfig {
   minScore?: number;
 }
 
+interface PurchasedAddOnRow {
+  add_on_id: string;
+  purchased_at: string;
+  add_on?: Array<Pick<AddOn, 'category'>> | null;
+}
+
+interface TrendingPurchaseRow {
+  add_on_id: string;
+  add_on?: AddOn[] | null;
+}
+
 export class UpsellEngine {
-  private supabase;
+  private supabase: SupabaseClient;
   private maxRecommendations: number;
   private minScore: number;
 
@@ -127,12 +139,12 @@ export class UpsellEngine {
    */
   private scoreAddOn(
     addOn: AddOn,
-    client: any,
+    client: Client,
     trip: Trip | null,
-    purchaseHistory: any[]
+    purchaseHistory: PurchasedAddOnRow[]
   ): { score: number; reason: string; discount?: number } {
     let score = 50; // Base score
-    let reasons: string[] = [];
+    const reasons: string[] = [];
     let discount: number | undefined;
 
     // Rule 1: Tag-based recommendations (VIP, Adventure, etc.)
@@ -209,7 +221,7 @@ export class UpsellEngine {
 
     // Rule 4: Category diversity (encourage trying new categories)
     const purchasedCategories = new Set(
-      purchaseHistory.map((p) => p.add_on?.category).filter(Boolean)
+      purchaseHistory.map((p) => p.add_on?.[0]?.category).filter(Boolean)
     );
 
     if (!purchasedCategories.has(addOn.category)) {
@@ -239,11 +251,6 @@ export class UpsellEngine {
     // Rule 6: Purchase history patterns (repeat behavior)
     if (purchaseHistory.length > 0) {
       const lastPurchase = purchaseHistory[0];
-      const daysSinceLastPurchase = Math.floor(
-        (Date.now() - new Date(lastPurchase.purchased_at).getTime()) /
-          (1000 * 60 * 60 * 24)
-      );
-
       // Frequent buyers get recommendations
       if (purchaseHistory.length >= 3) {
         score += 10;
@@ -252,7 +259,7 @@ export class UpsellEngine {
 
       // Suggest complementary add-ons
       if (
-        lastPurchase.add_on?.category === 'Activities' &&
+        lastPurchase.add_on?.[0]?.category === 'Activities' &&
         addOn.category === 'Dining'
       ) {
         score += 15;
@@ -287,8 +294,8 @@ export class UpsellEngine {
   async getTrendingAddOns(organizationId: string): Promise<AddOn[]> {
     const { data, error } = await this.supabase
       .from('client_add_ons')
-      .select('add_on_id, add_ons(*)')
-      .eq('add_ons.organization_id', organizationId)
+      .select('add_on_id, add_on:add_ons(*)')
+      .eq('add_on.organization_id', organizationId)
       .gte('purchased_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
       .limit(10);
 
@@ -301,11 +308,12 @@ export class UpsellEngine {
     const purchaseCounts = new Map<string, number>();
     const addOnMap = new Map<string, AddOn>();
 
-    data?.forEach((purchase: any) => {
-      const addOnId = purchase.add_on_id;
+    data?.forEach((purchase) => {
+      const row = purchase as unknown as TrendingPurchaseRow;
+      const addOnId = row.add_on_id;
       purchaseCounts.set(addOnId, (purchaseCounts.get(addOnId) || 0) + 1);
-      if (purchase.add_ons) {
-        addOnMap.set(addOnId, purchase.add_ons);
+      if (row.add_on?.[0]) {
+        addOnMap.set(addOnId, row.add_on[0]);
       }
     });
 
@@ -321,7 +329,7 @@ export class UpsellEngine {
   // Private helper methods
   // ============================================================================
 
-  private async getClient(clientId: string): Promise<any> {
+  private async getClient(clientId: string): Promise<Client | null> {
     const { data, error } = await this.supabase
       .from('clients')
       .select('*, organization_id')
@@ -333,7 +341,7 @@ export class UpsellEngine {
       return null;
     }
 
-    return data;
+    return (data as Client | null) ?? null;
   }
 
   private async getAvailableAddOns(organizationId: string): Promise<AddOn[]> {
@@ -366,10 +374,10 @@ export class UpsellEngine {
     return data;
   }
 
-  private async getPurchasedAddOns(clientId: string): Promise<any[]> {
+  private async getPurchasedAddOns(clientId: string): Promise<PurchasedAddOnRow[]> {
     const { data, error } = await this.supabase
       .from('client_add_ons')
-      .select('*, add_ons(*)')
+      .select('add_on_id, purchased_at, add_on:add_ons(category)')
       .eq('client_id', clientId)
       .order('purchased_at', { ascending: false });
 
@@ -378,7 +386,7 @@ export class UpsellEngine {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as PurchasedAddOnRow[] | null) ?? [];
   }
 }
 

@@ -349,13 +349,13 @@ export async function POST(req: NextRequest) {
             });
 
             if (templates && templates.length > 0) {
-                console.log(`✅ [TIER 2: RAG HIT] Found ${templates.length} matching templates (top similarity: ${templates[0].similarity.toFixed(2)})`);
+                console.log(`✅ [TIER 2: RAG HIT] Found ${templates.length} matching templates (top similarity: ${Number(templates[0].similarity).toFixed(2)})`);
 
                 const itinerary = await assembleItinerary(templates, { destination, days });
 
                 if (itinerary) {
                     // GEOCODE ACTIVITIES - Add accurate coordinates
-                    const geocodedItinerary = await geocodeItineraryActivities(itinerary);
+                    const geocodedItinerary = await geocodeItineraryActivities(itinerary as unknown as ItineraryLike);
 
                     // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
                     await populateItineraryImages(geocodedItinerary);
