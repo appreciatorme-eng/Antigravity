@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
+import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
 
 // POST /api/payments/razorpay
-// Creates a mock Razorpay order
+// Creates a mock Razorpay order (development only)
 export async function POST(request: Request) {
+  const guard = ensureMockEndpointAllowed('/api/payments/razorpay:POST')
+  if (guard) return guard
+
   const body = await request.json()
   const { amount, currency = 'INR', receipt, notes } = body
 
@@ -25,15 +29,14 @@ export async function POST(request: Request) {
     status: 'created',
     notes: notes ?? {},
     created_at: Math.floor(Date.now() / 1000),
-    // In production: replace with real Razorpay SDK call
-    // const Razorpay = require('razorpay')
-    // const rzp = new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET })
-    // return NextResponse.json(await rzp.orders.create({ amount: amount * 100, currency, receipt }))
   })
 }
 
-// GET /api/payments/razorpay?orderId=xxx — check order status
+// GET /api/payments/razorpay?orderId=xxx — check order status (development only)
 export async function GET(request: Request) {
+  const guard = ensureMockEndpointAllowed('/api/payments/razorpay:GET')
+  if (guard) return guard
+
   const { searchParams } = new URL(request.url)
   const orderId = searchParams.get('orderId')
 

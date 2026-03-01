@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ensureMockEndpointAllowed } from "@/lib/security/mock-endpoint-guard";
 
 export async function GET(req: NextRequest) {
+    const guard = ensureMockEndpointAllowed("/api/whatsapp/status:GET");
+    if (guard) return guard;
+
     const { searchParams } = new URL(req.url);
     const instanceId = searchParams.get("instanceId");
 
@@ -9,27 +13,22 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Extract the created timestamp from our mock ID: instance_17140...
         const parts = instanceId.split("_");
         const createdAt = parseInt(parts[1], 10);
 
-        // Mock connection simulation: If 6 seconds have passed, we pretend the operator
-        // scanned the QR code via their phone's WhatsApp linked devices
         const now = Date.now();
         const elapsed = now - createdAt;
 
         if (elapsed > 6000) {
             return NextResponse.json({
                 status: "connected",
-                number: "+91 98765 43210", // A mock Indian tour operator number
-                name: "GoBuddy Travel Co."
+                number: "+91 98765 43210",
+                name: "GoBuddy Travel Co.",
             });
         }
 
-        // Still pending user to scan QR
         return NextResponse.json({ status: "pending" });
-
-    } catch (e) {
+    } catch {
         return NextResponse.json({ status: "error" }, { status: 500 });
     }
 }

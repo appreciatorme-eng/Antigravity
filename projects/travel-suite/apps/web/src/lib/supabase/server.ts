@@ -1,11 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Database } from '../database.types';
+import { getSupabasePublicRuntimeConfig } from './env';
 
 export async function createClient() {
     const cookieStore = await cookies();
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dev-anon-key';
+    const { supabaseUrl, supabaseAnonKey } = getSupabasePublicRuntimeConfig('server client');
 
     return createServerClient<Database>(
         supabaseUrl,

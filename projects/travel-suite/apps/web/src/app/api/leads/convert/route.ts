@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
 
 interface ConvertLeadBody {
   phone: string;
@@ -12,6 +13,9 @@ interface ConvertLeadBody {
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
+  const guard = ensureMockEndpointAllowed('/api/leads/convert:POST')
+  if (guard) return guard
+
   let body: ConvertLeadBody;
 
   try {
@@ -39,8 +43,6 @@ export async function POST(request: NextRequest): Promise<Response> {
     );
   }
 
-  // Generate mock IDs
-  // Production: insert to Supabase `clients` and `trips` tables with RLS policies
   const now = Date.now();
   const clientId = `cl_${now}_${Math.random().toString(36).slice(2, 7)}`;
   const tripId = `tr_${now}_${Math.random().toString(36).slice(2, 7)}`;

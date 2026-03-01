@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  PLAN_CATALOG,
+  normalizeCanonicalPlanId,
+  tierForPlan,
+  type CanonicalPlanId,
+  type CanonicalTier,
+} from "@/lib/billing/plan-catalog";
 
-export type SubscriptionTier = "free" | "pro" | "enterprise";
-export type SubscriptionPlanId = "free" | "pro_monthly" | "pro_annual" | "enterprise";
+export type SubscriptionTier = CanonicalTier;
+export type SubscriptionPlanId = CanonicalPlanId;
 export type LimitedFeature =
   | "clients"
   | "trips"
@@ -31,104 +38,46 @@ export interface FeatureLimitStatus {
   upgradePlan: "pro_monthly" | "enterprise" | null;
 }
 
-const LIMITS_BY_TIER: Record<SubscriptionTier, Record<LimitedFeature, FeatureLimitConfig>> = {
-  free: {
-    clients: {
-      limit: 10,
-      window: "all_time",
-      label: "clients",
-    },
-    trips: {
-      limit: 5,
-      window: "monthly",
-      label: "trips per month",
-    },
-    proposals: {
-      limit: 5,
-      window: "monthly",
-      label: "proposals per month",
-    },
-    templates: {
-      limit: 3,
-      window: "all_time",
-      label: "active templates",
-    },
-    team_members: {
-      limit: 1,
-      window: "all_time",
-      label: "team members",
-    },
-  },
-  pro: {
-    clients: {
-      limit: null,
-      window: "all_time",
-      label: "clients",
-    },
-    trips: {
-      limit: null,
-      window: "monthly",
-      label: "trips per month",
-    },
-    proposals: {
-      limit: null,
-      window: "monthly",
-      label: "proposals per month",
-    },
-    templates: {
-      limit: 6,
-      window: "all_time",
-      label: "active templates",
-    },
-    team_members: {
-      limit: 5,
-      window: "all_time",
-      label: "team members",
-    },
-  },
-  enterprise: {
-    clients: {
-      limit: null,
-      window: "all_time",
-      label: "clients",
-    },
-    trips: {
-      limit: null,
-      window: "monthly",
-      label: "trips per month",
-    },
-    proposals: {
-      limit: null,
-      window: "monthly",
-      label: "proposals per month",
-    },
-    templates: {
-      limit: null,
-      window: "all_time",
-      label: "active templates",
-    },
-    team_members: {
-      limit: null,
-      window: "all_time",
-      label: "team members",
-    },
-  },
+const FEATURE_LIMIT_LABELS: Record<LimitedFeature, string> = {
+  clients: "clients",
+  trips: "trips per month",
+  proposals: "proposals per month",
+  templates: "active templates",
+  team_members: "team members",
+};
+
+const FEATURE_LIMIT_WINDOWS: Record<LimitedFeature, CounterWindow> = {
+  clients: "all_time",
+  trips: "monthly",
+  proposals: "monthly",
+  templates: "all_time",
+  team_members: "all_time",
 };
 
 function normalizeTier(raw: string | null | undefined): SubscriptionTier {
-  if (!raw) return "free";
-  if (raw === "enterprise") return "enterprise";
-  if (raw === "pro") return "pro";
-  if (raw === "pro_monthly" || raw === "pro_annual") return "pro";
-  return "free";
+  return tierForPlan(normalizePlanId(raw));
 }
 
 function normalizePlanId(raw: string | null | undefined): SubscriptionPlanId {
-  if (!raw) return "free";
-  if (raw === "enterprise") return "enterprise";
-  if (raw === "pro_monthly" || raw === "pro_annual") return raw;
-  if (raw === "pro") return "pro_monthly";
-  return "free";
+  return normalizeCanonicalPlanId(raw);
+}
+
+function getLimitForFeature(planId: SubscriptionPlanId, feature: LimitedFeature): number | null {
+  const plan = PLAN_CATALOG[planId];
+
+  if (feature === "clients") return plan.limits.clients;
+  if (feature === "trips") return plan.limits.trips;
+  if (feature === "proposals") return plan.limits.proposals;
+  if (feature === "templates") return plan.limits.templates;
+  return plan.limits.teamMembers;
+}
+
+function getFeatureLimitConfig(planId: SubscriptionPlanId, feature: LimitedFeature): FeatureLimitConfig {
+  return {
+    limit: getLimitForFeature(planId, feature),
+    window: FEATURE_LIMIT_WINDOWS[feature],
+    label: FEATURE_LIMIT_LABELS[feature],
+  };
 }
 
 function getMonthlyWindowBounds(now = new Date()) {
@@ -232,9 +181,9 @@ async function getFeatureUsage(
   return { used: count || 0, resetAt: null };
 }
 
-function getUpgradePlan(tier: SubscriptionTier): "pro_monthly" | "enterprise" | null {
-  if (tier === "free") return "pro_monthly";
-  if (tier === "pro") return "enterprise";
+function getUpgradePlan(planId: SubscriptionPlanId): "pro_monthly" | "enterprise" | null {
+  if (planId === "free") return "pro_monthly";
+  if (planId === "pro_monthly" || planId === "pro_annual") return "enterprise";
   return null;
 }
 
@@ -244,10 +193,9 @@ export async function getFeatureLimitStatus(
   feature: LimitedFeature
 ): Promise<FeatureLimitStatus> {
   const { tier, planId } = await resolveOrganizationPlan(supabase, organizationId);
-  const config = LIMITS_BY_TIER[tier][feature];
+  const config = getFeatureLimitConfig(planId, feature);
   const usage = await getFeatureUsage(supabase, organizationId, feature);
-  const remaining =
-    config.limit === null ? null : Math.max(config.limit - usage.used, 0);
+  const remaining = config.limit === null ? null : Math.max(config.limit - usage.used, 0);
   const allowed = config.limit === null || usage.used < config.limit;
 
   return {
@@ -261,7 +209,7 @@ export async function getFeatureLimitStatus(
     window: config.window,
     label: config.label,
     resetAt: config.window === "monthly" ? usage.resetAt : null,
-    upgradePlan: getUpgradePlan(tier),
+    upgradePlan: getUpgradePlan(planId),
   };
 }
 

@@ -127,7 +127,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Cost `+1.3`, Security `+0.4`, Performance `+0.2`
 
 ### AGW-COST-002: Remove embedded key fallback and unsafe env defaults
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Primary files:
@@ -162,7 +162,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ## WS3: Billing and Monetization Integrity (P0/P1)
 
 ### AGW-MON-001: Consolidate plan definitions and enforcement limits
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -191,7 +191,7 @@ This tracker converts the deep review into executable work. It is designed for s
   - Testability `+0.8`, Monetization `+0.6`
 
 ### AGW-MON-003: Remove public mock payment/business endpoints or gate by env
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P0`
 - Owner: `Unassigned`
 - Primary files:
@@ -210,7 +210,7 @@ This tracker converts the deep review into executable work. It is designed for s
 ## WS4: Reliability and Performance (P1)
 
 ### AGW-REL-001: Normalize idempotency and retry semantics for async jobs
-- Status: `[ ]`
+- Status: `[x]`
 - Priority: `P1`
 - Owner: `Unassigned`
 - Actions:
@@ -349,6 +349,10 @@ This tracker converts the deep review into executable work. It is designed for s
 - 2026-03-01: AGW-SEC-003 completed. Protected admin embeddings/geocoding endpoints with requireAdmin and added admin audit log entries for endpoint activity.
 - 2026-03-01: AGW-SEC-004 completed. Added diagnostics token enforcement for geocoding test route, redacted public health output, and disabled test-db page in production.
 - 2026-03-01: AGW-COST-001 completed. Added shared auth/tier/burst/daily guardrails across Amadeus, image provider, and social AI image routes with persisted metering audit entries.
+- 2026-03-01: AGW-MON-001 completed. Introduced canonical plan catalog and wired billing plans, pricing tiers, and subscription enforcement limits to shared plan definitions.
+- 2026-03-01: AGW-MON-003 completed. Mock payment, lead conversion, and WhatsApp utility endpoints are now explicitly disabled in production and gated by environment flags elsewhere.
+- 2026-03-01: AGW-COST-002 completed. Removed insecure key fallbacks, centralized Supabase runtime env handling with production fail-fast behavior, and enforced service-role-only cache writes.
+- 2026-03-01: AGW-REL-001 completed. Social publish queue now uses atomic pending->processing claims, idempotent already-sent handling, exponential backoff retries, configurable max attempts, and terminal failed state behavior.
 
 ## Current Sprint Board (Suggested)
 
@@ -360,10 +364,10 @@ This tracker converts the deep review into executable work. It is designed for s
 - `[x]` AGW-COST-001
 
 ### Sprint B (Monetization + Reliability Core)
-- `[ ]` AGW-MON-001
-- `[ ]` AGW-MON-003
-- `[ ]` AGW-COST-002
-- `[ ]` AGW-REL-001
+- `[x]` AGW-MON-001
+- `[x]` AGW-MON-003
+- `[x]` AGW-COST-002
+- `[x]` AGW-REL-001
 - `[ ]` AGW-REL-002
 
 ### Sprint C (Scale, QA, Conversion)

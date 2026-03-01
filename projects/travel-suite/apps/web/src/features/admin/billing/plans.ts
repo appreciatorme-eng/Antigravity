@@ -1,3 +1,5 @@
+import { PLAN_CATALOG, limitToUiValue } from "@/lib/billing/plan-catalog";
+
 export interface BillingPlan {
   id: string;
   name: string;
@@ -16,26 +18,36 @@ export interface BillingPlan {
   popular?: boolean;
 }
 
+const FREE = PLAN_CATALOG.free;
+const PRO_MONTHLY = PLAN_CATALOG.pro_monthly;
+const PRO_ANNUAL = PLAN_CATALOG.pro_annual;
+const ENTERPRISE = PLAN_CATALOG.enterprise;
+
 export const BILLING_PLANS: BillingPlan[] = [
   {
-    id: "free",
+    id: FREE.id,
     name: "Free",
-    price: 0,
+    price: FREE.monthlyPriceInr,
     priceLabel: "Free",
-    features: ["Up to 10 clients", "5 proposals per month", "Basic email support", "Community access"],
+    features: [
+      "Up to 10 clients",
+      "5 proposals per month",
+      "Basic email support",
+      "Community access",
+    ],
     outcomes: ["Start operations quickly", "Validate demand with low setup cost"],
     limits: {
-      clients: 10,
-      proposals: 5,
-      users: 1,
-      aiRequests: 200,
+      clients: limitToUiValue(FREE.limits.clients),
+      proposals: limitToUiValue(FREE.limits.proposals),
+      users: limitToUiValue(FREE.limits.users),
+      aiRequests: FREE.limits.aiRequests ?? undefined,
     },
   },
   {
-    id: "pro_monthly",
+    id: PRO_MONTHLY.id,
     name: "Pro",
-    price: 4999,
-    priceLabel: "₹4,999/month",
+    price: PRO_MONTHLY.monthlyPriceInr,
+    priceLabel: `₹${PRO_MONTHLY.monthlyPriceInr.toLocaleString("en-IN")}/month`,
     gstLabel: "+ ₹900 GST",
     features: [
       "Unlimited clients",
@@ -48,32 +60,37 @@ export const BILLING_PLANS: BillingPlan[] = [
     outcomes: ["Recover delayed revenue with action queue", "Increase close-rate with conversion insights"],
     popular: true,
     limits: {
-      clients: -1,
-      proposals: -1,
-      users: 5,
-      aiRequests: 3000,
+      clients: limitToUiValue(PRO_MONTHLY.limits.clients),
+      proposals: limitToUiValue(PRO_MONTHLY.limits.proposals),
+      users: limitToUiValue(PRO_MONTHLY.limits.users),
+      aiRequests: PRO_MONTHLY.limits.aiRequests ?? undefined,
     },
   },
   {
-    id: "pro_annual",
+    id: PRO_ANNUAL.id,
     name: "Pro Annual",
-    price: 49990,
-    priceLabel: "₹49,990/year",
+    price: PRO_ANNUAL.annualTotalInr || PRO_ANNUAL.monthlyPriceInr * 12,
+    priceLabel: `₹${(PRO_ANNUAL.annualTotalInr || PRO_ANNUAL.monthlyPriceInr * 12).toLocaleString("en-IN")}/year`,
     gstLabel: "+ ₹8,998 GST",
     savings: "Save ₹9,990 (2 months free)",
-    features: ["Everything in Pro Monthly", "2 months free", "Annual billing discount", "Dedicated account manager"],
+    features: [
+      "Everything in Pro Monthly",
+      "2 months free",
+      "Annual billing discount",
+      "Dedicated account manager",
+    ],
     outcomes: ["Lower CAC payback window", "Predictable yearly operating costs"],
     limits: {
-      clients: -1,
-      proposals: -1,
-      users: 10,
-      aiRequests: 5000,
+      clients: limitToUiValue(PRO_ANNUAL.limits.clients),
+      proposals: limitToUiValue(PRO_ANNUAL.limits.proposals),
+      users: limitToUiValue(PRO_ANNUAL.limits.users),
+      aiRequests: PRO_ANNUAL.limits.aiRequests ?? undefined,
     },
   },
   {
-    id: "enterprise",
+    id: ENTERPRISE.id,
     name: "Enterprise",
-    price: 15000,
+    price: ENTERPRISE.monthlyPriceInr,
     priceLabel: "Custom",
     features: [
       "Unlimited everything",
@@ -85,10 +102,10 @@ export const BILLING_PLANS: BillingPlan[] = [
     ],
     outcomes: ["Run multi-brand operations in one control plane", "Automate high-volume trip pipelines safely"],
     limits: {
-      clients: -1,
-      proposals: -1,
-      users: -1,
-      aiRequests: 20000,
+      clients: limitToUiValue(ENTERPRISE.limits.clients),
+      proposals: limitToUiValue(ENTERPRISE.limits.proposals),
+      users: limitToUiValue(ENTERPRISE.limits.users),
+      aiRequests: ENTERPRISE.limits.aiRequests ?? undefined,
     },
   },
 ];

@@ -8,15 +8,15 @@ import { createClient } from '@supabase/supabase-js';
 
 // Server-side Supabase client for cache operations
 function getCacheClient() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-    if (!supabaseUrl || !supabaseKey) {
-        console.warn('Supabase not configured - cache system disabled');
+    if (!supabaseUrl || !serviceRoleKey) {
+        console.warn('Supabase cache client unavailable - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing');
         return null;
     }
 
-    return createClient(supabaseUrl, supabaseKey);
+    return createClient(supabaseUrl, serviceRoleKey);
 }
 
 export interface CacheKey {
@@ -35,7 +35,7 @@ export async function getCachedItinerary(
     days: number,
     budget?: string,
     interests?: string[]
-): Promise<any | null> {
+): Promise<unknown | null> {
     const client = getCacheClient();
     if (!client) return null;
 
@@ -69,7 +69,7 @@ export async function saveItineraryToCache(
     days: number,
     budget: string | undefined,
     interests: string[] | undefined,
-    itineraryData: any,
+    itineraryData: unknown,
     userId?: string
 ): Promise<string | null> {
     const client = getCacheClient();
@@ -102,7 +102,7 @@ export async function saveItineraryToCache(
  * Get cache statistics for monitoring
  * Returns hit rate, API calls avoided, cost savings, etc.
  */
-export async function getCacheStats(days: number = 30): Promise<any> {
+export async function getCacheStats(days: number = 30): Promise<unknown> {
     const client = getCacheClient();
     if (!client) return null;
 
@@ -127,7 +127,7 @@ export async function getCacheStats(days: number = 30): Promise<any> {
  * Extract cache parameters from user prompt and parsed data
  * Normalizes inputs for consistent cache key generation
  */
-export function extractCacheParams(prompt: string, itinerary: any): CacheKey {
+export function extractCacheParams(prompt: string, itinerary: { destination?: string; duration_days?: number; budget?: string; interests?: string[] }): CacheKey {
     return {
         destination: itinerary.destination || extractDestinationFromPrompt(prompt),
         days: itinerary.duration_days || 3,

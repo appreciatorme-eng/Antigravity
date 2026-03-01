@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { ensureMockEndpointAllowed } from "@/lib/security/mock-endpoint-guard";
 
 export async function POST() {
-    // In a real scenario, passing the instanceId, target number, and message
-    // payload to the whatsapp-web.js or Evolution API service would dispatch the message.
+    const guard = ensureMockEndpointAllowed("/api/whatsapp/test-message:POST");
+    if (guard) return guard;
 
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API dispatch time
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     return NextResponse.json({
         success: true,

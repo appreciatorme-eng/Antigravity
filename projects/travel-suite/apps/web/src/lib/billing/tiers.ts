@@ -1,4 +1,6 @@
 // Tier definitions for Indian tour operator SaaS
+import { PLAN_CATALOG } from "@/lib/billing/plan-catalog";
+
 export type TierName = 'free' | 'pro' | 'business' | 'enterprise'
 
 export interface Tier {
@@ -39,12 +41,12 @@ export const TIERS: Record<TierName, Tier> = {
   free: {
     name: 'free',
     displayName: 'Starter',
-    price: { monthly: 0, annual: 0 },
+    price: { monthly: PLAN_CATALOG.free.monthlyPriceInr, annual: PLAN_CATALOG.free.monthlyPriceInr },
     color: 'from-slate-500 to-slate-600',
     limits: {
-      activeTrips: 5,
-      clients: 20,
-      teamMembers: 1,
+      activeTrips: PLAN_CATALOG.free.limits.trips || 5,
+      clients: PLAN_CATALOG.free.limits.clients || 10,
+      teamMembers: PLAN_CATALOG.free.limits.teamMembers || 1,
       whatsappAutomations: false,
       tripTemplates: false,
       clientPortal: false,
@@ -67,7 +69,7 @@ export const TIERS: Record<TierName, Tier> = {
     },
     features: [
       '5 active trips',
-      '20 clients',
+      '10 clients',
       'Manual WhatsApp messaging',
       'Basic trip planner',
       'Quick Quote calculator',
@@ -77,13 +79,13 @@ export const TIERS: Record<TierName, Tier> = {
   pro: {
     name: 'pro',
     displayName: 'Pro',
-    price: { monthly: 3499, annual: 2799 }, // annual = 20% off
+    price: { monthly: PLAN_CATALOG.pro_monthly.monthlyPriceInr, annual: PLAN_CATALOG.pro_annual.monthlyPriceInr },
     badge: 'Most Popular',
     color: 'from-emerald-500 to-teal-600',
     limits: {
       activeTrips: 'unlimited',
       clients: 'unlimited',
-      teamMembers: 1,
+      teamMembers: PLAN_CATALOG.pro_monthly.limits.teamMembers || 5,
       whatsappAutomations: true,
       tripTemplates: true,
       clientPortal: false,
@@ -155,7 +157,7 @@ export const TIERS: Record<TierName, Tier> = {
   enterprise: {
     name: 'enterprise',
     displayName: 'Enterprise',
-    price: { monthly: 29999, annual: 23999 },
+    price: { monthly: PLAN_CATALOG.enterprise.monthlyPriceInr, annual: PLAN_CATALOG.enterprise.monthlyPriceInr },
     badge: 'Full Control',
     color: 'from-amber-500 to-orange-600',
     limits: {

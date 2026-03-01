@@ -1,14 +1,16 @@
-// GET /api/payments/track/[token]
-// Returns payment link status (reads from localStorage on client, this is a stub)
-// In production: reads from Supabase payment_links table
+import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
 
+// GET /api/payments/track/[token]
+// Returns mock payment link status (development only)
 export async function GET(
   request: Request,
   { params }: { params: { token: string } }
 ) {
+  const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:GET')
+  if (guard) return guard
+
   const { token } = params
 
-  // Simulate payment check — in production, query Razorpay/Supabase
   const mockStatus = {
     token,
     status: 'pending' as const,
@@ -23,13 +25,16 @@ export async function GET(
 }
 
 // POST /api/payments/track/[token]
-// Records a view or payment event
+// Records a view or payment event (development only)
 export async function POST(
   request: Request,
   { params }: { params: { token: string } }
 ) {
+  const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:POST')
+  if (guard) return guard
+
   const body = await request.json() as { event?: string; metadata?: Record<string, string> }
-  const { event, metadata } = body // event: 'viewed' | 'paid'
+  const { event } = body
 
   return Response.json({
     success: true,
