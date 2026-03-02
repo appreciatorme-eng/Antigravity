@@ -31,6 +31,7 @@ export default function TourAssistantChat() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
+    const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -74,44 +75,131 @@ export default function TourAssistantChat() {
         setMessages((prev) => [...prev, userMsg]);
         setInput("");
         setIsLoading(true);
+        setStreamingStatus(null);
+
+        // Create a placeholder assistant message for streaming
+        const assistantId = `a-${Date.now()}`;
+        setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
 
         try {
-            const res = await fetch("/api/assistant/chat", {
+            const res = await fetch("/api/assistant/chat/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: trimmed, history: historyForApi }),
             });
 
-            const data = await res.json() as {
-                reply?: string;
-                error?: string;
-                citations?: Array<{ id: string; question: string }>;
-                actionResult?: { success: boolean; message: string; data?: unknown };
-                actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
-            };
+            if (!res.ok || !res.body) {
+                // Fallback to non-streaming endpoint
+                const fallbackRes = await fetch("/api/assistant/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: trimmed, history: historyForApi }),
+                });
+                const data = await fallbackRes.json() as {
+                    reply?: string;
+                    error?: string;
+                    citations?: Array<{ id: string; question: string }>;
+                    actionResult?: { success: boolean; message: string; data?: unknown };
+                    actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
+                };
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === assistantId
+                            ? { ...m, content: data.reply ?? data.error ?? "Something went wrong.", citations: data.citations, actionResult: data.actionResult, actionProposal: data.actionProposal }
+                            : m
+                    )
+                );
+                if (!isOpen) setHasUnread(true);
+                return;
+            }
 
-            const assistantMsg: Message = {
-                id: `a-${Date.now()}`,
-                role: "assistant",
-                content: data.reply ?? data.error ?? "Sorry, something went wrong. Please try again.",
-                citations: data.citations,
-                actionResult: data.actionResult,
-                actionProposal: data.actionProposal,
-            };
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
 
-            setMessages((prev) => [...prev, assistantMsg]);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop() ?? "";
+
+                for (const block of lines) {
+                    const eventMatch = block.match(/^event:\s*(\S+)/m);
+                    const dataMatch = block.match(/^data:\s*(.+)$/m);
+                    if (!eventMatch || !dataMatch) continue;
+
+                    const eventType = eventMatch[1];
+                    let payload: Record<string, unknown> = {};
+                    try {
+                        payload = JSON.parse(dataMatch[1]) as Record<string, unknown>;
+                    } catch {
+                        continue;
+                    }
+
+                    switch (eventType) {
+                        case "status":
+                            setStreamingStatus(payload.status as string);
+                            break;
+
+                        case "token":
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === assistantId
+                                        ? { ...m, content: m.content + (payload.token as string) }
+                                        : m
+                                )
+                            );
+                            break;
+
+                        case "proposal":
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === assistantId
+                                        ? {
+                                              ...m,
+                                              content: (payload.reply as string) || m.content,
+                                              actionProposal: {
+                                                  actionName: payload.actionName as string,
+                                                  params: payload.params as Record<string, unknown>,
+                                                  confirmationMessage: payload.confirmationMessage as string,
+                                              },
+                                          }
+                                        : m
+                                )
+                            );
+                            break;
+
+                        case "error":
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === assistantId
+                                        ? { ...m, content: (payload.message as string) || "Something went wrong." }
+                                        : m
+                                )
+                            );
+                            break;
+
+                        case "done":
+                            // Stream complete
+                            break;
+                    }
+                }
+            }
+
             if (!isOpen) setHasUnread(true);
         } catch {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `err-${Date.now()}`,
-                    role: "assistant",
-                    content: "Connection error. Please check your network and try again.",
-                },
-            ]);
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.id === assistantId
+                        ? { ...m, content: "Connection error. Please check your network and try again." }
+                        : m
+                )
+            );
         } finally {
             setIsLoading(false);
+            setStreamingStatus(null);
         }
     }
 
@@ -263,20 +351,14 @@ export default function TourAssistantChat() {
                             ))}
 
                             {/* Typing indicator */}
-                            {isLoading && (
+                            {isLoading && streamingStatus && (
                                 <div className="flex gap-2 justify-start">
                                     <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center shrink-0 mt-0.5">
                                         <Bot className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-300" />
                                     </div>
                                     <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1.5 items-center">
-                                        {[0, 1, 2].map((i) => (
-                                            <motion.div
-                                                key={i}
-                                                className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500"
-                                                animate={{ y: [0, -4, 0] }}
-                                                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                                            />
-                                        ))}
+                                        <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">{streamingStatus}</span>
                                     </div>
                                 </div>
                             )}
