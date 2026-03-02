@@ -10,15 +10,17 @@ interface Message {
     role: "user" | "assistant";
     content: string;
     citations?: Array<{ id: string; question: string }>;
+    actionResult?: { success: boolean; message: string; data?: unknown };
+    actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
 }
 
-const WELCOME = "Hi! I'm your GoBuddy assistant. Ask me anything about trips, clients, drivers, invoices, or daily operations.";
+const WELCOME = "Hi! I'm GoBuddy, your operations co-pilot. I can look up live data from your business -- trips, clients, invoices, drivers, proposals. Ask me anything!";
 
 const QUICK_PROMPTS = [
-    "What is pending today?",
-    "How do I create a new trip?",
-    "Which clients need follow-up?",
-    "How does live location work?",
+    "What's happening today?",
+    "Show me overdue invoices",
+    "Any trips without drivers?",
+    "Client follow-ups needed",
 ];
 
 export default function TourAssistantChat() {
@@ -80,13 +82,21 @@ export default function TourAssistantChat() {
                 body: JSON.stringify({ message: trimmed, history: historyForApi }),
             });
 
-            const data = await res.json() as { reply?: string; error?: string; citations?: Array<{ id: string; question: string }> };
+            const data = await res.json() as {
+                reply?: string;
+                error?: string;
+                citations?: Array<{ id: string; question: string }>;
+                actionResult?: { success: boolean; message: string; data?: unknown };
+                actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
+            };
 
             const assistantMsg: Message = {
                 id: `a-${Date.now()}`,
                 role: "assistant",
                 content: data.reply ?? data.error ?? "Sorry, something went wrong. Please try again.",
                 citations: data.citations,
+                actionResult: data.actionResult,
+                actionProposal: data.actionProposal,
             };
 
             setMessages((prev) => [...prev, assistantMsg]);
@@ -152,7 +162,7 @@ export default function TourAssistantChat() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-white font-semibold text-sm leading-tight">GoBuddy Assistant</p>
-                                <p className="text-white/70 text-xs">Ask anything about your operations</p>
+                                <p className="text-white/70 text-xs">Your live business co-pilot</p>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
@@ -191,6 +201,16 @@ export default function TourAssistantChat() {
                                             <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500 leading-tight">
                                                 Source: {msg.citations[0].question}
                                             </p>
+                                        )}
+                                        {msg.actionResult && (
+                                            <div className={cn(
+                                                "mt-2 text-xs px-2 py-1.5 rounded-lg",
+                                                msg.actionResult.success
+                                                    ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                                                    : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                                            )}>
+                                                {msg.actionResult.success ? "Action completed successfully" : "Action failed"}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
