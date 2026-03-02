@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-suite.local/schemas/chat-action.schema.json",
+  "title": "Chat Action Request",
+  "type": "object",
+  "required": [
+    "organization_id",
+    "channel",
+    "action",
+    "requested_by",
+    "confirmation"
+  ],
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "description": "Tenant boundary identifier"
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["web", "whatsapp"]
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "get_pending_items",
+        "get_client_stage_summary",
+        "get_trip_status",
+        "update_itinerary_price",
+        "move_client_stage",
+        "assign_driver"
+      ]
+    },
+    "requested_by": {
+      "type": "object",
+      "required": ["user_id"],
+      "properties": {
+        "user_id": { "type": "string" },
+        "display_name": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "trip_id": { "type": "string" },
+        "itinerary_id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "driver_id": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "updates": {
+      "type": "object",
+      "properties": {
+        "price": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "lifecycle_stage": {
+          "type": "string",
+          "enum": [
+            "lead",
+            "prospect",
+            "proposal",
+            "payment_pending",
+            "payment_confirmed",
+            "active",
+            "review",
+            "past"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "confirmation": {
+      "type": "object",
+      "required": ["confirmed", "confirmation_text"],
+      "properties": {
+        "confirmed": { "type": "boolean" },
+        "confirmation_text": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
