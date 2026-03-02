@@ -209,6 +209,13 @@ export interface WhatsAppImageMessage {
     timestamp: string;
 }
 
+export interface WhatsAppTextMessage {
+    readonly waId: string;
+    readonly messageId: string;
+    readonly body: string;
+    readonly timestamp: string;
+}
+
 export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessage[] {
     const body = payload as any;
     const entries = body.entry || [];
@@ -236,6 +243,44 @@ export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessa
                     imageId: image.id,
                     caption: image.caption,
                     mimeType: image.mime_type,
+                    timestamp,
+                });
+            }
+        }
+    }
+
+    return output;
+}
+
+export function parseWhatsAppTextMessages(payload: unknown): WhatsAppTextMessage[] {
+    const body = payload as {
+        entry?: Array<{ changes?: Array<{ value?: { messages?: Array<Record<string, unknown>> } }> }>;
+    };
+
+    const entries = body.entry || [];
+    const output: WhatsAppTextMessage[] = [];
+
+    for (const entry of entries) {
+        const changes = entry.changes || [];
+        for (const change of changes) {
+            const messages = change.value?.messages || [];
+            for (const message of messages) {
+                if (message.type !== "text") continue;
+
+                const text = message.text as Record<string, unknown> | undefined;
+                const from = typeof message.from === "string" ? message.from : "";
+                const messageId = typeof message.id === "string" ? message.id : "";
+                const textBody = typeof text?.body === "string" ? text.body : "";
+                const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";
+
+                if (!from || !messageId || !textBody) {
+                    continue;
+                }
+
+                output.push({
+                    waId: normalizeWaId(from),
+                    messageId,
+                    body: textBody,
                     timestamp,
                 });
             }

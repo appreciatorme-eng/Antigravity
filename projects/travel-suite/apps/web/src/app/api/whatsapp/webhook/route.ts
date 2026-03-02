@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
+import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, parseWhatsAppTextMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
+import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 
@@ -177,6 +178,14 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Parse text messages synchronously so we can include counts in the response
+        const textMessages = parseWhatsAppTextMessages(payload);
+
+        // Process text messages asynchronously to avoid blocking the webhook response
+        processWhatsAppTextMessages(payload, rawBody, signatureValid, requestContext).catch((error) => {
+            logError("WhatsApp text message processing failed", error, requestContext);
+        });
+
         // Process images asynchronously to avoid blocking the webhook response
         // In a real production app this should be queued (e.g. Inngest / SQS)
         processWhatsAppImages(payload, rawBody, signatureValid, requestContext).catch((error) => {
@@ -189,6 +198,7 @@ export async function POST(request: NextRequest) {
             location_messages: locations.length,
             stored_locations: stored,
             duplicate_messages: duplicates,
+            text_messages: textMessages.length,
         });
     } catch (error) {
         logError("WhatsApp webhook processing failed", error, requestContext);
@@ -196,6 +206,59 @@ export async function POST(request: NextRequest) {
             { error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }
         );
+    }
+}
+
+async function processWhatsAppTextMessages(
+    payload: unknown,
+    rawBody: string,
+    signatureValid: boolean,
+    requestContext: ReturnType<typeof getRequestContext>,
+) {
+    const textMessages = parseWhatsAppTextMessages(payload);
+    logEvent("info", "WhatsApp text batch processing started", {
+        ...requestContext,
+        text_messages: textMessages.length,
+    });
+
+    for (const textMsg of textMessages) {
+        // 1. Log event for deduplication
+        const { error: eventError } = await supabaseAdmin
+            .from("whatsapp_webhook_events")
+            .insert({
+                provider_message_id: textMsg.messageId,
+                wa_id: textMsg.waId,
+                event_type: "text",
+                payload_hash: payloadHash(rawBody),
+                processing_status: "received",
+                metadata: {
+                    body_preview: textMsg.body.slice(0, 100),
+                    signature_verified: signatureValid,
+                },
+            });
+
+        if (eventError?.code === "23505") continue; // duplicate
+
+        // 2. Process through assistant
+        try {
+            const result = await handleWhatsAppMessage(textMsg.waId, textMsg.body, textMsg.waId);
+
+            await supabaseAdmin.from("whatsapp_webhook_events").update({
+                processing_status: result.success ? "processed" : "rejected",
+                reject_reason: result.error || null,
+                processed_at: new Date().toISOString(),
+                metadata: {
+                    body_preview: textMsg.body.slice(0, 100),
+                    signature_verified: signatureValid,
+                    reply_sent: result.replySent,
+                },
+            }).eq("provider_message_id", textMsg.messageId);
+        } catch (error) {
+            await supabaseAdmin.from("whatsapp_webhook_events").update({
+                processing_status: "rejected",
+                reject_reason: error instanceof Error ? error.message : "unknown_error",
+            }).eq("provider_message_id", textMsg.messageId);
+        }
     }
 }
 
