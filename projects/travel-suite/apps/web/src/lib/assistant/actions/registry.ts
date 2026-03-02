@@ -14,6 +14,11 @@ import { clientActions } from "./reads/clients";
 import { invoiceActions } from "./reads/invoices";
 import { driverActions } from "./reads/drivers";
 import { proposalActions } from "./reads/proposals";
+import { tripWriteActions } from "./writes/trips";
+import { clientWriteActions } from "./writes/clients";
+import { invoiceWriteActions } from "./writes/invoices";
+import { proposalWriteActions } from "./writes/proposals";
+import { notificationWriteActions } from "./writes/notifications";
 
 // ---------------------------------------------------------------------------
 // Combined action list
@@ -26,6 +31,11 @@ const allActions: readonly ActionDefinition[] = [
   ...invoiceActions,
   ...driverActions,
   ...proposalActions,
+  ...tripWriteActions,
+  ...clientWriteActions,
+  ...invoiceWriteActions,
+  ...proposalWriteActions,
+  ...notificationWriteActions,
 ];
 
 // ---------------------------------------------------------------------------

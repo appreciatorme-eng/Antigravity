@@ -120,6 +120,36 @@ export default function TourAssistantChat() {
         void sendMessage(input);
     }
 
+    async function confirmAction(actionName: string, params: Record<string, unknown>, confirmed: boolean) {
+        setIsLoading(true);
+        try {
+            const res = await fetch("/api/assistant/confirm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: confirmed ? "confirm" : "cancel",
+                    actionName,
+                    params,
+                }),
+            });
+            const data = await res.json() as { reply?: string; error?: string; actionResult?: { success: boolean; message: string; data?: unknown } };
+            const msg: Message = {
+                id: `a-${Date.now()}`,
+                role: "assistant",
+                content: data.reply ?? data.error ?? "Something went wrong.",
+                actionResult: data.actionResult,
+            };
+            setMessages((prev) => [...prev, msg]);
+        } catch {
+            setMessages((prev) => [
+                ...prev,
+                { id: `err-${Date.now()}`, role: "assistant", content: "Connection error. Please try again." },
+            ]);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     return (
         <>
             {/* Backdrop */}
@@ -210,6 +240,22 @@ export default function TourAssistantChat() {
                                                     : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
                                             )}>
                                                 {msg.actionResult.success ? "Action completed successfully" : "Action failed"}
+                                            </div>
+                                        )}
+                                        {msg.actionProposal && !isLoading && (
+                                            <div className="mt-2 flex gap-2">
+                                                <button
+                                                    onClick={() => confirmAction(msg.actionProposal!.actionName, msg.actionProposal!.params, true)}
+                                                    className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-medium"
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button
+                                                    onClick={() => confirmAction(msg.actionProposal!.actionName, msg.actionProposal!.params, false)}
+                                                    className="text-xs px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
+                                                >
+                                                    Cancel
+                                                </button>
                                             </div>
                                         )}
                                     </div>

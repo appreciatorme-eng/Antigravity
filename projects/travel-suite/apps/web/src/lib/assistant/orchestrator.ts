@@ -26,6 +26,7 @@ import type {
   ActionResult,
 } from "./types";
 import { getActionSchemas, findAction } from "./actions/registry";
+import { logAuditEvent } from "./audit";
 import { getCachedContextSnapshot } from "./context-engine";
 import { buildSystemPrompt } from "./prompts/system";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -273,6 +274,15 @@ async function executeToolCall(
   if (action.requiresConfirmation) {
     const confirmationMessage = `I'd like to perform **${action.name}** with these details: ${JSON.stringify(params)}. Shall I proceed?`;
 
+    // Audit: log the proposed write action
+    void logAuditEvent(ctx, {
+      sessionId: null,
+      eventType: "action_proposed",
+      actionName: toolCall.function.name,
+      actionParams: params,
+      actionResult: null,
+    });
+
     return {
       toolMessage: {
         role: "tool",
@@ -294,6 +304,15 @@ async function executeToolCall(
 
   // Execute read actions immediately
   const result = await action.execute(ctx, params);
+
+  // Audit: log the executed read action
+  void logAuditEvent(ctx, {
+    sessionId: null,
+    eventType: "action_executed",
+    actionName: toolCall.function.name,
+    actionParams: params,
+    actionResult: { success: result.success, message: result.message },
+  });
 
   return {
     toolMessage: {
