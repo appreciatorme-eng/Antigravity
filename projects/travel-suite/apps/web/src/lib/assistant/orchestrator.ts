@@ -26,6 +26,7 @@ import type {
   ActionResult,
 } from "./types";
 import { getActionSchemas, findAction } from "./actions/registry";
+import { isActionBlocked } from "./guardrails";
 import { logAuditEvent } from "./audit";
 import { getCachedContextSnapshot } from "./context-engine";
 import { buildSystemPrompt } from "./prompts/system";
@@ -234,6 +235,23 @@ async function executeToolCall(
   readonly confirmationPayload: OrchestratorResponse["actionProposal"] | null;
 }> {
   const action = findAction(toolCall.function.name);
+
+  // Blocklist check -- defence-in-depth against dangerous operations
+  if (isActionBlocked(toolCall.function.name)) {
+    return {
+      toolMessage: {
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify({
+          success: false,
+          message: `Action "${toolCall.function.name}" is not permitted through the assistant.`,
+        }),
+      },
+      actionResult: null,
+      requiresConfirmation: false,
+      confirmationPayload: null,
+    };
+  }
 
   if (!action) {
     return {

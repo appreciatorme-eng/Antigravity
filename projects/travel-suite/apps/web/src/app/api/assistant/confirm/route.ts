@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findAction } from "@/lib/assistant/actions/registry";
+import { isActionBlocked } from "@/lib/assistant/guardrails";
 import { logAuditEvent } from "@/lib/assistant/audit";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import type { ActionContext } from "@/lib/assistant/types";
 
 export async function POST(req: Request) {
@@ -29,6 +31,21 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "No organization found" },
         { status: 400 },
+      );
+    }
+
+    // Rate limit: 30 confirmations per 5 minutes per user (stricter for writes)
+    const rateLimit = await enforceRateLimit({
+      identifier: user.id,
+      limit: 30,
+      windowMs: 5 * 60 * 1000,
+      prefix: "assistant-confirm",
+    });
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many actions. Please slow down." },
+        { status: 429 },
       );
     }
 
@@ -74,6 +91,14 @@ export async function POST(req: Request) {
 
     // 6. Handle confirm
     if (action === "confirm") {
+      // Blocklist check -- defence-in-depth against dangerous operations
+      if (isActionBlocked(actionName)) {
+        return NextResponse.json(
+          { error: "This action is not permitted through the assistant." },
+          { status: 403 },
+        );
+      }
+
       const actionDef = findAction(actionName);
       if (!actionDef) {
         return NextResponse.json(

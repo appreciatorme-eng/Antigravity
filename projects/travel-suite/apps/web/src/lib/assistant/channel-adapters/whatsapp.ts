@@ -26,6 +26,8 @@ import { findAction } from "../actions/registry";
 import { logAuditEvent } from "../audit";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -180,6 +182,26 @@ export async function handleWhatsAppMessage(
     return { success: true, replySent: true, replyText: unknownReply };
   }
 
+  // Rate limit: 40 messages per 5 minutes per WhatsApp user
+  const rateLimit = await enforceRateLimit({
+    identifier: `wa-${sender.userId}`,
+    limit: 40,
+    windowMs: 5 * 60 * 1000,
+    prefix: "assistant-whatsapp",
+  });
+
+  if (!rateLimit.success) {
+    const rateLimitReply = "You're sending messages too quickly. Please wait a moment before trying again.";
+    await sendWhatsAppText(senderPhone, rateLimitReply);
+    return { success: true, replySent: true, replyText: rateLimitReply };
+  }
+
+  // Sanitize input
+  const sanitizedText = sanitizeText(messageText, { maxLength: 2000, preserveNewlines: true });
+  if (!sanitizedText) {
+    return { success: true, replySent: false, replyText: "" };
+  }
+
   // 2. Build action context
   const adminClient = createAdminClient();
   const ctx: ActionContext = {
@@ -202,12 +224,12 @@ export async function handleWhatsAppMessage(
   // 4. Check for pending action confirmation
   const pending = await getPendingAction(ctx, session.id);
   if (pending) {
-    const confirmReply = await handlePendingAction(ctx, session.id, messageText, pending);
+    const confirmReply = await handlePendingAction(ctx, session.id, sanitizedText, pending);
     if (confirmReply) {
       // Was a confirm/cancel -- send reply and update history
       const updatedHistory: readonly ConversationMessage[] = [
         ...session.conversationHistory,
-        { role: "user" as const, content: messageText },
+        { role: "user" as const, content: sanitizedText },
         { role: "assistant" as const, content: confirmReply },
       ];
       await updateSessionHistory(ctx, session.id, updatedHistory).catch(() => {});
@@ -222,7 +244,7 @@ export async function handleWhatsAppMessage(
   // 5. Call the orchestrator
   try {
     const response = await handleMessage({
-      message: messageText,
+      message: sanitizedText,
       history: session.conversationHistory,
       channel: "whatsapp",
       organizationId: sender.organizationId,
@@ -246,7 +268,7 @@ export async function handleWhatsAppMessage(
     // 7. Update session history
     const updatedHistory: readonly ConversationMessage[] = [
       ...session.conversationHistory,
-      { role: "user" as const, content: messageText },
+      { role: "user" as const, content: sanitizedText },
       { role: "assistant" as const, content: replyText },
     ];
     await updateSessionHistory(ctx, session.id, updatedHistory).catch(() => {});

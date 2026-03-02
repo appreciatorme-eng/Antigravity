@@ -2,10 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionContext, ConversationMessage } from "@/lib/assistant/types";
 import { getActionSchemas, findAction } from "@/lib/assistant/actions/registry";
+import { isActionBlocked } from "@/lib/assistant/guardrails";
 import { logAuditEvent } from "@/lib/assistant/audit";
 import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { buildSystemPrompt } from "@/lib/assistant/prompts/system";
 import { buildPreferencesBlock } from "@/lib/assistant/preferences";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -235,6 +238,22 @@ async function executeToolCall(
   readonly proposal: { actionName: string; params: Record<string, unknown>; confirmationMessage: string } | null;
 }> {
   const action = findAction(toolCall.function.name);
+
+  // Blocklist check -- defence-in-depth against dangerous operations
+  if (isActionBlocked(toolCall.function.name)) {
+    return {
+      toolMessage: {
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify({
+          success: false,
+          message: `Action "${toolCall.function.name}" is not permitted through the assistant.`,
+        }),
+      },
+      hasProposal: false,
+      proposal: null,
+    };
+  }
 
   if (!action) {
     return {
@@ -469,6 +488,21 @@ export async function POST(req: Request) {
       });
     }
 
+    // Rate limit: 60 messages per 5 minutes per user
+    const rateLimit = await enforceRateLimit({
+      identifier: user.id,
+      limit: 60,
+      windowMs: 5 * 60 * 1000,
+      prefix: "assistant-chat-stream",
+    });
+
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please slow down and try again." }),
+        { status: 429, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
     // 3. Parse request
     const body = (await req.json()) as {
       message?: string;
@@ -478,6 +512,15 @@ export async function POST(req: Request) {
     const { message, history = [] } = body;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return new Response(JSON.stringify({ error: "Message is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Sanitize and enforce length limit
+    const sanitizedMessage = sanitizeText(message, { maxLength: 2000, preserveNewlines: true });
+    if (!sanitizedMessage) {
       return new Response(JSON.stringify({ error: "Message is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -498,7 +541,7 @@ export async function POST(req: Request) {
           controller,
           organizationId,
           user.id,
-          message.trim(),
+          sanitizedMessage,
           normalizedHistory,
         ).catch(() => {
           try {

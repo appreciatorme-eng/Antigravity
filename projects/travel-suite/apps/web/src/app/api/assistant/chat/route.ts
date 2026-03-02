@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleMessage } from "@/lib/assistant/orchestrator";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/sanitize";
 import type { ConversationMessage } from "@/lib/assistant/types";
 
 export async function POST(req: Request) {
@@ -30,6 +32,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Rate limit: 60 messages per 5 minutes per user
+    const rateLimit = await enforceRateLimit({
+      identifier: user.id,
+      limit: 60,
+      windowMs: 5 * 60 * 1000,
+      prefix: "assistant-chat",
+    });
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down and try again." },
+        { status: 429 },
+      );
+    }
+
     // 3. Parse request body
     const body = (await req.json()) as {
       message?: string;
@@ -39,6 +56,15 @@ export async function POST(req: Request) {
     const { message, history = [] } = body;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Message is required" },
+        { status: 400 },
+      );
+    }
+
+    // Sanitize and enforce length limit
+    const sanitizedMessage = sanitizeText(message, { maxLength: 2000, preserveNewlines: true });
+    if (!sanitizedMessage) {
       return NextResponse.json(
         { error: "Message is required" },
         { status: 400 },
@@ -55,7 +81,7 @@ export async function POST(req: Request) {
 
     // 5. Call the orchestrator
     const response = await handleMessage({
-      message: message.trim(),
+      message: sanitizedMessage,
       history: normalizedHistory,
       channel: "web",
       organizationId: profile.organization_id,

@@ -286,7 +286,7 @@ const scheduleFollowup: ActionDefinition = {
         };
       }
 
-      // Update the client's last_contacted_at timestamp
+      // Safe: clientId was verified as belonging to ctx.organizationId via verifyClientAndGetProfile above
       const { error: updateError } = await ctx.supabase
         .from("profiles")
         .update({ last_contacted_at: new Date().toISOString() })

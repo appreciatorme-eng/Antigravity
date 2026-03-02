@@ -119,7 +119,7 @@ const updateClientStage: ActionDefinition = {
 
       const oldStage = profile?.lifecycle_stage ?? "unknown";
 
-      // Update the lifecycle stage
+      // Safe: clientId was verified as belonging to ctx.organizationId above
       const { error: updateError } = await ctx.supabase
         .from("profiles")
         .update({ lifecycle_stage: stage })
@@ -234,7 +234,7 @@ const addClientNote: ActionDefinition = {
           ? `${existingNotes}\n${timestampedNote}`
           : timestampedNote;
 
-      // Update the notes field
+      // Safe: clientId was verified as belonging to ctx.organizationId above
       const { error: updateError } = await ctx.supabase
         .from("profiles")
         .update({ notes: updatedNotes })
@@ -343,7 +343,7 @@ const updateClientTags: ActionDefinition = {
 
       const oldTag = profile?.client_tag ?? "none";
 
-      // Update the client_tag
+      // Safe: clientId was verified as belonging to ctx.organizationId above
       const { error: updateError } = await ctx.supabase
         .from("profiles")
         .update({ client_tag: tag })
