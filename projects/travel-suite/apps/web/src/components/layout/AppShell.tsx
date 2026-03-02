@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import MobileNav from "./MobileNav";
 import CommandPalette from "./CommandPalette";
-import FloatingActionButton from "./FloatingActionButton";
+import TourAssistantChat from "@/components/assistant/TourAssistantChat";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,8 +57,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <MobileNav />
             </div>
             <CommandPalette />
-            {/* FAB: mobile-only circular button (fixed bottom-right, above MobileNav) */}
-            <FloatingActionButton variant="mobile" />
+            {/* Tour Operator AI Assistant — floating chat bubble (bottom-right, above MobileNav) */}
+            <TourAssistantChat />
         </div>
     );
 }
