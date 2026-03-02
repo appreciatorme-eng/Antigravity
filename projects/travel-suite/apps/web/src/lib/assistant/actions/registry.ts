@@ -19,6 +19,8 @@ import { clientWriteActions } from "./writes/clients";
 import { invoiceWriteActions } from "./writes/invoices";
 import { proposalWriteActions } from "./writes/proposals";
 import { notificationWriteActions } from "./writes/notifications";
+import { preferenceReadActions } from "./reads/preferences";
+import { preferenceWriteActions } from "./writes/preferences";
 
 // ---------------------------------------------------------------------------
 // Combined action list
@@ -36,6 +38,8 @@ const allActions: readonly ActionDefinition[] = [
   ...invoiceWriteActions,
   ...proposalWriteActions,
   ...notificationWriteActions,
+  ...preferenceReadActions,
+  ...preferenceWriteActions,
 ];
 
 // ---------------------------------------------------------------------------

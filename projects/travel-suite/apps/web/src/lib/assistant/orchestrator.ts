@@ -29,6 +29,7 @@ import { getActionSchemas, findAction } from "./actions/registry";
 import { logAuditEvent } from "./audit";
 import { getCachedContextSnapshot } from "./context-engine";
 import { buildSystemPrompt } from "./prompts/system";
+import { buildPreferencesBlock } from "./preferences";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -390,13 +391,14 @@ export async function handleMessage(
   };
 
   // 4. Gather enrichment data in parallel
-  const [snapshot, orgName] = await Promise.all([
+  const [snapshot, orgName, prefsBlock] = await Promise.all([
     getCachedContextSnapshot(ctx),
     getOrganizationName(ctx),
+    buildPreferencesBlock(ctx),
   ]);
 
-  // 5. Build system prompt with business context
-  const baseSystemPrompt = buildSystemPrompt(orgName, snapshot);
+  // 5. Build system prompt with business context + user preferences
+  const baseSystemPrompt = buildSystemPrompt(orgName, snapshot) + prefsBlock;
 
   // 6. Build initial message array
   const tools = getActionSchemas();

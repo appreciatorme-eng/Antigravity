@@ -5,6 +5,7 @@ import { getActionSchemas, findAction } from "@/lib/assistant/actions/registry";
 import { logAuditEvent } from "@/lib/assistant/audit";
 import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { buildSystemPrompt } from "@/lib/assistant/prompts/system";
+import { buildPreferencesBlock } from "@/lib/assistant/preferences";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -338,12 +339,13 @@ async function handleStreamingRequest(
       supabase: adminClient,
     };
 
-    const [snapshot, orgName] = await Promise.all([
+    const [snapshot, orgName, prefsBlock] = await Promise.all([
       getCachedContextSnapshot(ctx),
       getOrganizationName(adminClient, organizationId),
+      buildPreferencesBlock(ctx),
     ]);
 
-    const baseSystemPrompt = buildSystemPrompt(orgName, snapshot);
+    const baseSystemPrompt = buildSystemPrompt(orgName, snapshot) + prefsBlock;
     const tools = getActionSchemas();
     let messages: readonly ChatMessage[] = buildChatMessages(baseSystemPrompt, history, message);
 
