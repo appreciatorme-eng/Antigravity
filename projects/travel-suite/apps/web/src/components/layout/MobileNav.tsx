@@ -64,6 +64,7 @@ interface SecondaryDrawerItem {
 const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
     { emoji: "🏪", label: "Marketplace", href: "/marketplace" },
     { emoji: "✨", label: "AI Insights", href: "/admin/insights" },
+    { emoji: "📝", label: "Proposals", href: "/proposals" },
     { emoji: "🧭", label: "Command", href: "/admin/operations" },
     { emoji: "💵", label: "Cost", href: "/admin/cost" },
     { emoji: "📣", label: "Social Studio", href: "/social" },
