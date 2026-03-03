@@ -12,23 +12,8 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { formatINRShort } from "@/lib/india/formats";
 import type { DashboardSeriesPoint } from "@/lib/queries/dashboard";
+import { RANGE_TO_MONTHS, type DashboardRange } from "@/lib/analytics/adapters";
 import { cn } from "@/lib/utils";
-
-type RevenueRange = "1y" | "6m" | "3m" | "1m";
-
-const RANGE_MONTHS: Record<RevenueRange, number> = {
-  "1y": 12,
-  "6m": 6,
-  "3m": 3,
-  "1m": 1,
-};
-
-const RANGE_LABELS: Array<{ value: RevenueRange; label: string }> = [
-  { value: "1y", label: "1Y" },
-  { value: "6m", label: "6M" },
-  { value: "3m", label: "3M" },
-  { value: "1m", label: "1M" },
-];
 
 function sumRevenue(points: DashboardSeriesPoint[]): number {
   return points.reduce((acc, p) => acc + p.revenue, 0);
@@ -36,15 +21,15 @@ function sumRevenue(points: DashboardSeriesPoint[]): number {
 
 interface RevenueKPICardProps {
   series: DashboardSeriesPoint[];
+  range: DashboardRange;
   loading?: boolean;
 }
 
-export function RevenueKPICard({ series, loading = false }: RevenueKPICardProps) {
-  const [range, setRange] = useState<RevenueRange>("6m");
+export function RevenueKPICard({ series, range, loading = false }: RevenueKPICardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const { currentRevenue, percentChange, trendUp, currentSlice } = useMemo(() => {
-    const months = RANGE_MONTHS[range];
+    const months = RANGE_TO_MONTHS[range];
     const current = series.slice(-months);
     const previous = series.slice(-(months * 2), -months);
 
@@ -88,40 +73,20 @@ export function RevenueKPICard({ series, loading = false }: RevenueKPICardProps)
       onClick={handleToggleExpand}
     >
       <div className="relative z-10">
-        {/* Icon row + range tabs */}
+        {/* Icon row */}
         <div className="flex items-center justify-between mb-4">
           <div className="p-3 rounded-2xl bg-emerald-500/10 transition-transform group-hover:scale-110 duration-500">
             <IndianRupee className="w-6 h-6 text-emerald-500" />
-          </div>
-
-          {/* Period toggle pills */}
-          <div
-            className="flex items-center gap-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {RANGE_LABELS.map((opt) => (
-              <button
-                key={opt.value}
-                className={cn(
-                  "px-2 py-0.5 text-[10px] font-black rounded-md tracking-wide transition-all",
-                  range === opt.value
-                    ? "bg-emerald-500 text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-                )}
-                onClick={() => setRange(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
           </div>
         </div>
 
         {/* Value + trend */}
         <div className="space-y-1">
           <motion.h3
-            initial={{ opacity: 0, y: 10 }}
+            key={range}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
             className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter"
           >
             {loading ? (

@@ -9,9 +9,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Users,
+  Briefcase,
+  FileText,
+  Target,
   Plus,
-  Zap,
   Activity,
   Eye,
   EyeOff,
@@ -121,39 +122,72 @@ export default function DashboardPage() {
     [filteredSeries]
   );
 
-  const kpiItems = [
-    {
-      label: "Active Trips",
-      value: stats.activeTrips || 8,
-      icon: Zap,
-      trend: "2 start today",
-      trendUp: true,
-      color: "text-primary",
-      bg: "bg-primary/10",
-      href: "/trips",
-    },
-    {
-      label: "WhatsApp Unread",
-      value: stats.pendingNotifications || 3,
-      icon: MessageCircle,
-      trend:
-        (stats.pendingNotifications || 3) > 0 ? "Action Required" : "All cleared",
-      trendUp: (stats.pendingNotifications || 3) === 0,
-      color: "text-[#25D366]",
-      bg: "bg-[#25D366]/10",
-      href: "/inbox",
-    },
-    {
-      label: "Client Pipeline",
-      value: stats.totalClients || 24,
-      icon: Users,
-      trend: "+3 this week",
-      trendUp: true,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      href: "/clients",
-    },
-  ];
+  const kpiItems = useMemo(() => {
+    const months = RANGE_TO_MONTHS[range];
+    const allSeries = data?.series ?? [];
+    const current = allSeries.slice(-months);
+    const previous = allSeries.slice(-(months * 2), -months);
+
+    function pctChange(curr: number, prev: number): number {
+      if (prev <= 0) return curr > 0 ? 100 : 0;
+      return ((curr - prev) / prev) * 100;
+    }
+
+    function trendLabel(pct: number): string {
+      return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}% vs prev`;
+    }
+
+    const currentBookings = current.reduce((s, p) => s + p.bookings, 0);
+    const previousBookings = previous.reduce((s, p) => s + p.bookings, 0);
+    const bookingsPct = pctChange(currentBookings, previousBookings);
+
+    const currentProposals = current.reduce((s, p) => s + p.proposals, 0);
+    const previousProposals = previous.reduce((s, p) => s + p.proposals, 0);
+    const proposalsPct = pctChange(currentProposals, previousProposals);
+
+    const currentConversions = current.reduce((s, p) => s + p.conversions, 0);
+    const currentConvRate = currentProposals > 0
+      ? (currentConversions / currentProposals) * 100
+      : 0;
+    const previousConversions = previous.reduce((s, p) => s + p.conversions, 0);
+    const previousConvRate = previousProposals > 0
+      ? (previousConversions / previousProposals) * 100
+      : 0;
+    const convRatePct = pctChange(currentConvRate, previousConvRate);
+
+    return [
+      {
+        label: "Trips Booked",
+        value: currentBookings,
+        icon: Briefcase,
+        trend: trendLabel(bookingsPct),
+        trendUp: bookingsPct >= 0,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        href: "/trips",
+      },
+      {
+        label: "Proposals Sent",
+        value: currentProposals,
+        icon: FileText,
+        trend: trendLabel(proposalsPct),
+        trendUp: proposalsPct >= 0,
+        color: "text-violet-500",
+        bg: "bg-violet-500/10",
+        href: "/proposals",
+      },
+      {
+        label: "Conversion Rate",
+        value: `${currentConvRate.toFixed(1)}%`,
+        icon: Target,
+        trend: trendLabel(convRatePct),
+        trendUp: convRatePct >= 0,
+        color: "text-blue-500",
+        bg: "bg-blue-500/10",
+        href: "/admin/insights",
+      },
+    ];
+  }, [data?.series, range]);
 
   const handlePointSelect = (point: RevenueChartPoint) => {
     const params = new URLSearchParams({
@@ -253,7 +287,7 @@ export default function DashboardPage() {
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
           className="group"
         >
-          <RevenueKPICard series={data?.series ?? []} loading={loading} />
+          <RevenueKPICard series={data?.series ?? []} range={range} loading={loading} />
         </motion.div>
         {kpiItems.map((item) => (
           <motion.div
