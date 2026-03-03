@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 /** Routes that don't have their own page — redirect breadcrumb to a parent. */
 const PATH_REDIRECTS: Record<string, string> = {
     "/dashboard": "/",
+    "/analytics": "/admin/analytics",
 };
 
 export function Breadcrumbs({ className }: { className?: string }) {

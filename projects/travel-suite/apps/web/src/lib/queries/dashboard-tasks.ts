@@ -64,6 +64,73 @@ export const dashboardTasksKeys = {
 };
 
 // ---------------------------------------------------------------------------
+// Local dismiss persistence (localStorage fallback)
+// ---------------------------------------------------------------------------
+
+const LOCAL_DISMISSED_KEY = "dashboard-dismissed-tasks";
+
+function getLocalDismissedIds(): Set<string> {
+  try {
+    if (typeof window === "undefined") return new Set();
+    const raw = localStorage.getItem(LOCAL_DISMISSED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function addLocalDismissedId(taskId: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    const ids = getLocalDismissedIds();
+    ids.add(taskId);
+    localStorage.setItem(LOCAL_DISMISSED_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* silently ignore storage errors */
+  }
+}
+
+function removeLocalDismissedIds(taskIds: string[]): void {
+  try {
+    if (typeof window === "undefined") return;
+    const ids = getLocalDismissedIds();
+    for (const id of taskIds) {
+      ids.delete(id);
+    }
+    localStorage.setItem(LOCAL_DISMISSED_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* silently ignore storage errors */
+  }
+}
+
+/** Filter server data against locally dismissed IDs */
+function applyLocalDismissals(
+  data: DashboardTasksResponse,
+): DashboardTasksResponse {
+  const dismissed = getLocalDismissedIds();
+  if (dismissed.size === 0) return data;
+
+  const stillActive = data.tasks.filter((t) => !dismissed.has(t.id));
+  const locallyDismissed = data.tasks.filter((t) => dismissed.has(t.id));
+
+  // Clean up stale localStorage entries for tasks no longer in server response
+  const allServerIds = new Set([
+    ...data.tasks.map((t) => t.id),
+    ...data.completedTasks.map((t) => t.id),
+  ]);
+  const staleIds = [...dismissed].filter((id) => !allServerIds.has(id));
+  if (staleIds.length > 0) {
+    removeLocalDismissedIds(staleIds);
+  }
+
+  return {
+    tasks: stillActive,
+    completedTasks: [...data.completedTasks, ...locallyDismissed],
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Helper: get auth headers
 // ---------------------------------------------------------------------------
 
@@ -85,7 +152,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 // ---------------------------------------------------------------------------
 
 export function useDashboardTasks() {
-  return useQuery<DashboardTasksResponse>({
+  return useQuery<DashboardTasksResponse, Error, DashboardTasksResponse>({
     queryKey: dashboardTasksKeys.all,
     queryFn: async () => {
       const headers = await getAuthHeaders();
@@ -97,6 +164,7 @@ export function useDashboardTasks() {
 
       return response.json() as Promise<DashboardTasksResponse>;
     },
+    select: applyLocalDismissals,
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
@@ -187,6 +255,9 @@ export function useDismissTask() {
     },
 
     onMutate: async (input: DismissTaskInput) => {
+      // Persist dismiss locally so it survives re-fetches and page reloads
+      addLocalDismissedId(input.taskId);
+
       await queryClient.cancelQueries({ queryKey: dashboardTasksKeys.all });
 
       const previous = queryClient.getQueryData<DashboardTasksResponse>(
@@ -210,13 +281,13 @@ export function useDismissTask() {
       return { previous };
     },
 
-    onError: (_error, _input, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData<DashboardTasksResponse>(
-          dashboardTasksKeys.all,
-          context.previous,
-        );
-      }
+    onSuccess: () => {
+      // Server confirmed the dismiss — refetch to get clean server state
+      queryClient.invalidateQueries({ queryKey: dashboardTasksKeys.all });
     },
+
+    // No onError rollback — localStorage keeps the task dismissed in the UI
+    // even if the API call fails. The select transform in useDashboardTasks
+    // filters out locally-dismissed tasks from any server re-fetch.
   });
 }
