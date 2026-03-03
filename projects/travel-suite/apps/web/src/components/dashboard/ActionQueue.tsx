@@ -177,7 +177,7 @@ function AssignDriverPanel({
   onCollapse,
 }: {
   taskId: string;
-  onDismiss: (id: string) => void;
+  onDismiss: () => void;
   onCollapse: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -192,10 +192,10 @@ function AssignDriverPanel({
       setTimeout(() => {
         setAssigningDriverId(null);
         onCollapse();
-        onDismiss(taskId);
+        onDismiss();
       }, 800);
     },
-    [taskId, onDismiss, onCollapse],
+    [onDismiss, onCollapse],
   );
 
   return (
@@ -288,7 +288,7 @@ function SendReminderPanel({
   onCollapse,
 }: {
   task: TaskItem;
-  onDismiss: (id: string) => void;
+  onDismiss: () => void;
   onCollapse: () => void;
 }) {
   const [sending, setSending] = useState(false);
@@ -298,9 +298,9 @@ function SendReminderPanel({
     setTimeout(() => {
       setSending(false);
       onCollapse();
-      onDismiss(task.id);
+      onDismiss();
     }, 1200);
-  }, [task.id, onDismiss, onCollapse]);
+  }, [onDismiss, onCollapse]);
 
   return (
     <div className="px-4 pb-4 pt-1 border-t border-white/5">
@@ -665,8 +665,12 @@ export function ActionQueue({ loading: loadingProp = false }: ActionQueueProps) 
   const highCount = tasks.filter((t) => t.priority === "high").length;
 
   const handleMarkDone = useCallback(
-    (taskId: string) => {
-      dismissMutation.mutate(taskId);
+    (task: TaskItem) => {
+      dismissMutation.mutate({
+        taskId: task.id,
+        taskType: task.type,
+        entityId: task.entityId,
+      });
     },
     [dismissMutation],
   );
@@ -815,7 +819,7 @@ export function ActionQueue({ loading: loadingProp = false }: ActionQueueProps) 
                             <motion.button
                               whileHover={{ scale: 1.08 }}
                               whileTap={{ scale: 0.94 }}
-                              onClick={() => handleMarkDone(task.id)}
+                              onClick={() => handleMarkDone(task)}
                               title="Mark as done"
                               className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all"
                             >
@@ -837,14 +841,14 @@ export function ActionQueue({ loading: loadingProp = false }: ActionQueueProps) 
                               {currentInlineAction === "assign_driver" && (
                                 <AssignDriverPanel
                                   taskId={task.id}
-                                  onDismiss={handleMarkDone}
+                                  onDismiss={() => handleMarkDone(task)}
                                   onCollapse={handleCollapse}
                                 />
                               )}
                               {currentInlineAction === "send_reminder" && (
                                 <SendReminderPanel
                                   task={task}
-                                  onDismiss={handleMarkDone}
+                                  onDismiss={() => handleMarkDone(task)}
                                   onCollapse={handleCollapse}
                                 />
                               )}

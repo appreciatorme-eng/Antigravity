@@ -14,6 +14,9 @@ export function Breadcrumbs({ className }: { className?: string }) {
     const pathname = usePathname();
     if (!pathname || pathname === "/") return null;
 
+    // Dashboard sub-pages have their own "Back to Dashboard" link
+    if (pathname.startsWith("/dashboard/")) return null;
+
     const paths = pathname.split("/").filter(Boolean);
     if (paths.length <= 1) return null; // Only show on nested pages
 

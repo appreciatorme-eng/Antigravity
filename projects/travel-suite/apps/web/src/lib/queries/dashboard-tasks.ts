@@ -151,11 +151,17 @@ export function useDriverSearch(query: string) {
 // 4. useDismissTask
 // ---------------------------------------------------------------------------
 
+export interface DismissTaskInput {
+  taskId: string;
+  taskType: string;
+  entityId: string;
+}
+
 export function useDismissTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (taskId: string) => {
+    mutationFn: async (input: DismissTaskInput) => {
       const headers = await getAuthHeaders();
       const response = await fetch("/api/dashboard/tasks/dismiss", {
         method: "POST",
@@ -163,7 +169,11 @@ export function useDismissTask() {
           ...headers,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ taskId }),
+        body: JSON.stringify({
+          taskId: input.taskId,
+          taskType: input.taskType,
+          entityId: input.entityId,
+        }),
       });
 
       if (!response.ok) {
@@ -176,20 +186,17 @@ export function useDismissTask() {
       return response.json() as Promise<{ success: boolean }>;
     },
 
-    onMutate: async (taskId: string) => {
-      // Cancel in-flight refetches so they don't overwrite the optimistic update
+    onMutate: async (input: DismissTaskInput) => {
       await queryClient.cancelQueries({ queryKey: dashboardTasksKeys.all });
 
-      // Snapshot current state for rollback
       const previous = queryClient.getQueryData<DashboardTasksResponse>(
         dashboardTasksKeys.all,
       );
 
-      // Optimistically move the dismissed task from tasks to completedTasks
       if (previous) {
-        const dismissedTask = previous.tasks.find((t) => t.id === taskId);
+        const dismissedTask = previous.tasks.find((t) => t.id === input.taskId);
         const updatedData: DashboardTasksResponse = {
-          tasks: previous.tasks.filter((t) => t.id !== taskId),
+          tasks: previous.tasks.filter((t) => t.id !== input.taskId),
           completedTasks: dismissedTask
             ? [...previous.completedTasks, dismissedTask]
             : previous.completedTasks,
@@ -203,8 +210,7 @@ export function useDismissTask() {
       return { previous };
     },
 
-    onError: (_error, _taskId, context) => {
-      // Roll back to the previous snapshot on failure
+    onError: (_error, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData<DashboardTasksResponse>(
           dashboardTasksKeys.all,
@@ -214,7 +220,6 @@ export function useDismissTask() {
     },
 
     onSettled: () => {
-      // Re-fetch to ensure server state is in sync
       queryClient.invalidateQueries({ queryKey: dashboardTasksKeys.all });
     },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,11 +15,20 @@ import {
   ShieldCheck,
   PartyPopper,
   ArrowLeft,
+  User,
+  Send,
+  Loader2,
+  Phone,
+  Search,
+  X,
+  ExternalLink,
+  MapPin,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 import {
   useDashboardTasks,
+  useDriverSearch,
   useDismissTask,
   type TaskItem,
 } from "@/lib/queries/dashboard-tasks";
@@ -30,6 +39,23 @@ import {
 
 type Priority = "high" | "medium" | "info";
 type Tab = "active" | "completed";
+
+type InlineAction =
+  | "assign_driver"
+  | "send_reminder"
+  | "view_leads"
+  | "follow_up"
+  | "view_schedule"
+  | "review_docs";
+
+const TASK_ACTION_CONFIG: Record<string, { label: string; inlineAction: InlineAction }> = {
+  driver_unassigned: { label: "Assign Now", inlineAction: "assign_driver" },
+  payment_overdue: { label: "Send Reminder", inlineAction: "send_reminder" },
+  new_whatsapp_lead: { label: "View Leads", inlineAction: "view_leads" },
+  quote_awaiting: { label: "Follow Up", inlineAction: "follow_up" },
+  pickup_today: { label: "View Schedule", inlineAction: "view_schedule" },
+  verification_pending: { label: "Review Docs", inlineAction: "review_docs" },
+};
 
 const PRIORITY_CONFIG: Record<
   Priority,
@@ -76,6 +102,43 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getActionConfig(taskType: string) {
+  return TASK_ACTION_CONFIG[taskType] ?? { label: "View", inlineAction: "view_leads" as InlineAction };
+}
+
+function getInlineAction(taskType: string): InlineAction {
+  return getActionConfig(taskType).inlineAction;
+}
+
+function TypeIconForTask({ taskType, className }: { taskType: string; className?: string }) {
+  const Icon = TYPE_ICONS[taskType] ?? FileText;
+  return <Icon className={className} />;
+}
+
+function PriorityIconForTask({ priority, className }: { priority: Priority; className?: string }) {
+  const Icon = PRIORITY_CONFIG[priority]?.icon ?? Clock;
+  return <Icon className={className} />;
+}
+
+// ---------------------------------------------------------------------------
+// Debounce hook
+// ---------------------------------------------------------------------------
+
+function useDebouncedValue(value: string, delayMs: number): string {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
+// ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
 
@@ -93,21 +156,373 @@ function SkeletonCard() {
 }
 
 // ---------------------------------------------------------------------------
-// Task Card (Active)
+// Inline Panel: Assign Driver
+// ---------------------------------------------------------------------------
+
+function AssignDriverPanel({
+  onDismiss,
+  onCollapse,
+}: {
+  onDismiss: () => void;
+  onCollapse: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(searchQuery, 300);
+  const { data: drivers, isLoading: isSearching } = useDriverSearch(debouncedQuery);
+  const [assigningDriverId, setAssigningDriverId] = useState<string | null>(null);
+
+  const handleAssign = useCallback(
+    (driverId: string) => {
+      setAssigningDriverId(driverId);
+      setTimeout(() => {
+        setAssigningDriverId(null);
+        onCollapse();
+        onDismiss();
+      }, 800);
+    },
+    [onDismiss, onCollapse],
+  );
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Pick a driver to assign
+      </p>
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search drivers..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-8 py-2 rounded-lg border border-white/10 bg-white/5 text-xs text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/40"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="max-h-60 overflow-y-auto space-y-2">
+        {isSearching ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          </div>
+        ) : drivers && drivers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {drivers.map((driver) => (
+              <motion.button
+                key={driver.id}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={assigningDriverId !== null}
+                onClick={() => handleAssign(driver.id)}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                  assigningDriverId === driver.id
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-white/10 bg-white/3 hover:border-primary/30 hover:bg-primary/5",
+                )}
+              >
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  {assigningDriverId === driver.id ? (
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  ) : (
+                    <User className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                    {driver.fullName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {driver.vehicleType ?? "No vehicle"}
+                    {driver.vehiclePlate ? ` · ${driver.vehiclePlate}` : ""}
+                    {" · "}
+                    {driver.todayTripCount === 0
+                      ? "Free today"
+                      : `${driver.todayTripCount} trip${driver.todayTripCount > 1 ? "s" : ""} today`}
+                  </p>
+                </div>
+                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+              </motion.button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 text-center py-4">No drivers found</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Send Reminder
+// ---------------------------------------------------------------------------
+
+function SendReminderPanel({
+  task,
+  onDismiss,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onDismiss: () => void;
+  onCollapse: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+
+  const handleSend = useCallback(() => {
+    setSending(true);
+    setTimeout(() => {
+      setSending(false);
+      onCollapse();
+      onDismiss();
+    }, 1200);
+  }, [onDismiss, onCollapse]);
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Send payment reminder
+      </p>
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/3 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-[#25D366]/10 flex items-center justify-center shrink-0">
+          <MessageCircle className="w-4 h-4 text-[#25D366]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-slate-800 dark:text-white">WhatsApp Reminder</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">{task.description}</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          disabled={sending}
+          onClick={handleSend}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30 disabled:opacity-60"
+        >
+          {sending ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</>
+          ) : (
+            <><Send className="w-3.5 h-3.5" /> Send via WhatsApp</>
+          )}
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Cancel
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: View Leads
+// ---------------------------------------------------------------------------
+
+function ViewLeadsPanel({ task, onCollapse }: { task: TaskItem; onCollapse: () => void }) {
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        New WhatsApp leads need your response
+      </p>
+      {Object.keys(task.entityData).length > 0 && (
+        <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+          {Object.entries(task.entityData).map(([key, value]) => (
+            <p key={key} className="text-[10px] text-slate-500">
+              <span className="font-bold capitalize">{key.replace(/_/g, " ")}:</span> {String(value)}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Link href="/inbox">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Open in WhatsApp
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Follow Up
+// ---------------------------------------------------------------------------
+
+function FollowUpPanel({ task, onCollapse }: { task: TaskItem; onCollapse: () => void }) {
+  const clientName = task.entityData.clientName as string | undefined;
+  const destination = task.entityData.destination as string | undefined;
+  const sentAt = task.entityData.sentAt as string | undefined;
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Follow up on quote
+      </p>
+      <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+        {clientName && (
+          <p className="text-[10px] text-slate-500"><span className="font-bold">Client:</span> {clientName}</p>
+        )}
+        {destination && (
+          <p className="text-[10px] text-slate-500"><span className="font-bold">Destination:</span> {destination}</p>
+        )}
+        {sentAt && (
+          <p className="text-[10px] text-slate-500"><span className="font-bold">Sent:</span> {sentAt}</p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30"
+        >
+          <Send className="w-3.5 h-3.5" /> Send Follow-up via WhatsApp
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: View Schedule
+// ---------------------------------------------------------------------------
+
+function ViewSchedulePanel({ task, onCollapse }: { task: TaskItem; onCollapse: () => void }) {
+  const destination = task.entityData.destination as string | undefined;
+  const clientName = task.entityData.clientName as string | undefined;
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Trip starting today
+      </p>
+      <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+        {destination && (
+          <p className="text-[10px] text-slate-500 flex items-center gap-1">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="font-bold">Destination:</span> {destination}
+          </p>
+        )}
+        {clientName && (
+          <p className="text-[10px] text-slate-500"><span className="font-bold">Client:</span> {clientName}</p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Link href={`/trips/${task.entityId}`}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black transition-all shadow-sm shadow-blue-500/30"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> View Trip Details
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Review Docs
+// ---------------------------------------------------------------------------
+
+function ReviewDocsPanel({ task, onCollapse }: { task: TaskItem; onCollapse: () => void }) {
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Document verification needed
+      </p>
+      {Object.keys(task.entityData).length > 0 && (
+        <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+          {Object.entries(task.entityData).map(([key, value]) => (
+            <p key={key} className="text-[10px] text-slate-500">
+              <span className="font-bold capitalize">{key.replace(/_/g, " ")}:</span> {String(value)}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Link href="/drivers">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black transition-all shadow-sm shadow-blue-500/30"
+          >
+            <User className="w-3.5 h-3.5" /> View Driver Profile
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Task Card (Active) — with action buttons + inline panels
 // ---------------------------------------------------------------------------
 
 function ActiveTaskCard({
   task,
   index,
+  isExpanded,
+  onToggleExpand,
+  onCollapse,
   onDismiss,
 }: {
   task: TaskItem;
   index: number;
-  onDismiss: (id: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onCollapse: () => void;
+  onDismiss: () => void;
 }) {
   const config = PRIORITY_CONFIG[task.priority];
-  const PriorityIcon = config.icon;
-  const TypeIcon = TYPE_ICONS[task.type] ?? FileText;
+  const actionConfig = getActionConfig(task.type);
+  const currentInlineAction = getInlineAction(task.type);
 
   return (
     <motion.div
@@ -123,7 +538,7 @@ function ActiveTaskCard({
     >
       <div
         className={cn(
-          "rounded-xl border-l-4 transition-all",
+          "rounded-xl border-l-4 transition-all overflow-hidden",
           config.border,
           config.bg,
           "border border-white/5 hover:border-white/10"
@@ -137,13 +552,13 @@ function ActiveTaskCard({
               config.badge
             )}
           >
-            <TypeIcon className="w-[18px] h-[18px]" />
+            <TypeIconForTask taskType={task.type} className="w-[18px] h-[18px]" />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <PriorityIcon className={cn("w-3.5 h-3.5 shrink-0", config.iconColor)} />
+              <PriorityIconForTask priority={task.priority} className={cn("w-3.5 h-3.5 shrink-0", config.iconColor)} />
               <span
                 className={cn(
                   "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full",
@@ -163,17 +578,66 @@ function ActiveTaskCard({
             </p>
           </div>
 
-          {/* Mark Done */}
-          <motion.button
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={() => onDismiss(task.id)}
-            title="Mark as done"
-            className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all shrink-0"
-          >
-            <CheckCircle className="w-4.5 h-4.5" />
-          </motion.button>
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onToggleExpand}
+              className={cn(
+                "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
+                task.priority === "high"
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
+                  : task.priority === "medium"
+                    ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
+                    : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30",
+              )}
+            >
+              {actionConfig.label}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
+              onClick={onDismiss}
+              title="Mark as done"
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all shrink-0"
+            >
+              <CheckCircle className="w-4.5 h-4.5" />
+            </motion.button>
+          </div>
         </div>
+
+        {/* Inline Panels */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              {currentInlineAction === "assign_driver" && (
+                <AssignDriverPanel onDismiss={onDismiss} onCollapse={onCollapse} />
+              )}
+              {currentInlineAction === "send_reminder" && (
+                <SendReminderPanel task={task} onDismiss={onDismiss} onCollapse={onCollapse} />
+              )}
+              {currentInlineAction === "view_leads" && (
+                <ViewLeadsPanel task={task} onCollapse={onCollapse} />
+              )}
+              {currentInlineAction === "follow_up" && (
+                <FollowUpPanel task={task} onCollapse={onCollapse} />
+              )}
+              {currentInlineAction === "view_schedule" && (
+                <ViewSchedulePanel task={task} onCollapse={onCollapse} />
+              )}
+              {currentInlineAction === "review_docs" && (
+                <ReviewDocsPanel task={task} onCollapse={onCollapse} />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -184,8 +648,6 @@ function ActiveTaskCard({
 // ---------------------------------------------------------------------------
 
 function CompletedTaskCard({ task, index }: { task: TaskItem; index: number }) {
-  const TypeIcon = TYPE_ICONS[task.type] ?? FileText;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -194,12 +656,9 @@ function CompletedTaskCard({ task, index }: { task: TaskItem; index: number }) {
     >
       <div className="rounded-xl border-l-4 border-l-emerald-500 bg-emerald-500/5 border border-white/5">
         <div className="flex items-start gap-3 p-4 opacity-70">
-          {/* Type Icon */}
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/10 text-emerald-500">
-            <TypeIcon className="w-[18px] h-[18px]" />
+            <TypeIconForTask taskType={task.type} className="w-[18px] h-[18px]" />
           </div>
-
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
@@ -228,8 +687,9 @@ function CompletedTaskCard({ task, index }: { task: TaskItem; index: number }) {
 
 export default function AllTasksPage() {
   const [activeTab, setActiveTab] = useState<Tab>("active");
+  const [expandedAction, setExpandedAction] = useState<string | null>(null);
   const { data, isLoading } = useDashboardTasks();
-  const dismissTask = useDismissTask();
+  const dismissMutation = useDismissTask();
 
   const tasks = data?.tasks ?? [];
   const completedTasks = data?.completedTasks ?? [];
@@ -242,9 +702,24 @@ export default function AllTasksPage() {
     { high: [], medium: [], info: [] }
   );
 
-  const handleDismiss = (taskId: string) => {
-    dismissTask.mutate(taskId);
-  };
+  const handleDismiss = useCallback(
+    (task: TaskItem) => {
+      dismissMutation.mutate({
+        taskId: task.id,
+        taskType: task.type,
+        entityId: task.entityId,
+      });
+    },
+    [dismissMutation],
+  );
+
+  const handleToggleExpand = useCallback((taskId: string) => {
+    setExpandedAction((prev) => (prev === taskId ? null : taskId));
+  }, []);
+
+  const handleCollapse = useCallback(() => {
+    setExpandedAction(null);
+  }, []);
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "active", label: "Active", count: tasks.length },
@@ -360,7 +835,10 @@ export default function AllTasksPage() {
                             key={task.id}
                             task={task}
                             index={index}
-                            onDismiss={handleDismiss}
+                            isExpanded={expandedAction === task.id}
+                            onToggleExpand={() => handleToggleExpand(task.id)}
+                            onCollapse={handleCollapse}
+                            onDismiss={() => handleDismiss(task)}
                           />
                         ))}
                       </AnimatePresence>
