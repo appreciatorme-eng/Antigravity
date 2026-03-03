@@ -1,0 +1,532 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  X,
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  IndianRupee,
+  Check,
+  FileText,
+  TrendingUp,
+  Send,
+  Building,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import type { ConversationContact } from './MessageThread';
+import { MOCK_TRIPS } from './ActionPickerModal';
+
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+
+export type ContextActionType = 'trip-detail' | 'create-trip' | 'send-quote';
+
+interface ContextActionModalProps {
+  isOpen: boolean;
+  type: ContextActionType;
+  tripName?: string;
+  contact: ConversationContact;
+  channel: 'whatsapp' | 'email';
+  onSendMessage?: (message: string, subject?: string) => void;
+  onClose: () => void;
+}
+
+// ─── MOCK QUOTE DATA ─────────────────────────────────────────────────────────
+
+interface MockQuote {
+  id: string;
+  name: string;
+  type: string;
+  destination: string;
+  duration: string;
+  price: number;
+  inclusions: string[];
+  validity: string;
+}
+
+const MOCK_QUOTES: MockQuote[] = [
+  {
+    id: 'q1',
+    name: 'Kerala Honeymoon Deluxe',
+    type: 'Honeymoon',
+    destination: 'Kerala',
+    duration: '6N/7D',
+    price: 85000,
+    inclusions: ['5-Star Hotels', 'Houseboat Stay', 'All Transfers', 'Daily Breakfast', 'Airport Pickup'],
+    validity: '7 days',
+  },
+  {
+    id: 'q2',
+    name: 'Rajasthan Heritage Grand Tour',
+    type: 'Cultural',
+    destination: 'Rajasthan',
+    duration: '7N/8D',
+    price: 95000,
+    inclusions: ['Heritage Hotels', 'Guided Tours', 'Desert Safari', 'Cultural Evening', 'All Transfers'],
+    validity: '5 days',
+  },
+  {
+    id: 'q3',
+    name: 'Goa Beach Holiday',
+    type: 'Beach',
+    destination: 'Goa',
+    duration: '3N/4D',
+    price: 35000,
+    inclusions: ['4-Star Resort', 'Airport Transfers', 'North & South Goa Tour', 'Welcome Drink'],
+    validity: '3 days',
+  },
+  {
+    id: 'q4',
+    name: 'Ladakh Bike Expedition',
+    type: 'Adventure',
+    destination: 'Ladakh',
+    duration: '8N/9D',
+    price: 65000,
+    inclusions: ['Royal Enfield Bikes', 'Camping Equipment', 'Support Vehicle', 'Mechanic on Trip', 'All Fuel'],
+    validity: '10 days',
+  },
+  {
+    id: 'q5',
+    name: 'Andaman Island Explorer',
+    type: 'Island',
+    destination: 'Andaman',
+    duration: '5N/6D',
+    price: 75000,
+    inclusions: ['Beach Resort', 'Scuba Diving', 'Glass Bottom Boat', 'Havelock Day Trip', 'Ferry Transfers'],
+    validity: '7 days',
+  },
+];
+
+function formatCurrency(n: number): string {
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+// ─── TRIP DETAIL PANEL ───────────────────────────────────────────────────────
+
+function TripDetailPanel({ tripName }: { tripName?: string }) {
+  const trip = useMemo(
+    () => MOCK_TRIPS.find((t) => t.name.toLowerCase().includes((tripName ?? '').toLowerCase())),
+    [tripName],
+  );
+
+  if (!trip) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+          <MapPin className="w-6 h-6 text-slate-600" />
+        </div>
+        <p className="text-sm font-semibold text-slate-300">{tripName ?? 'Trip'}</p>
+        <p className="text-xs text-slate-600">Full trip details not yet in system</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+          <MapPin className="w-5 h-5 text-indigo-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white">{trip.name}</p>
+          <p className="text-xs text-slate-400 mt-0.5">{trip.bookingId} · {trip.hotel}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { icon: <Calendar className="w-3.5 h-3.5" />, label: 'Dates', val: `${trip.startDate}–${trip.endDate}` },
+          { icon: <Users className="w-3.5 h-3.5" />, label: 'Guests', val: `${trip.pax} pax` },
+          { icon: <IndianRupee className="w-3.5 h-3.5" />, label: 'Total', val: formatCurrency(trip.amount) },
+        ].map(({ icon, label, val }) => (
+          <div key={label} className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-white/5 border border-white/8 text-center">
+            <span className="text-slate-500">{icon}</span>
+            <p className="text-[10px] text-slate-500">{label}</p>
+            <p className="text-xs font-bold text-white leading-tight">{val}</p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Day-wise Itinerary</p>
+        <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+          {trip.itinerarySummary.split('\n').map((day, idx) => (
+            <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/5 border border-white/8">
+              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+              <p className="text-xs text-slate-300 leading-relaxed">{day}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/8 border border-amber-500/20">
+        <Building className="w-4 h-4 text-amber-400 shrink-0" />
+        <div>
+          <p className="text-[10px] text-slate-500">Stay</p>
+          <p className="text-xs font-semibold text-white">{trip.hotel}</p>
+        </div>
+        <span className="ml-auto text-xs font-bold text-amber-400">{trip.duration}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── CREATE TRIP PANEL ────────────────────────────────────────────────────────
+
+const DESTINATIONS = [...new Set(MOCK_TRIPS.map((t) => t.destination))];
+const TRIP_TYPES = ['Honeymoon', 'Family Holiday', 'Adventure', 'Corporate Offsite', 'Beach Getaway', 'Heritage Tour'];
+
+function CreateTripPanel({
+  contact,
+  onClose,
+}: {
+  contact: ConversationContact;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [destination, setDestination] = useState('');
+  const [tripType, setTripType] = useState('');
+  const [pax, setPax] = useState(2);
+  const [startDate, setStartDate] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const destinationSuggestions = useMemo(() => {
+    const q = destination.toLowerCase();
+    return q ? DESTINATIONS.filter((d) => d.toLowerCase().includes(q)) : DESTINATIONS;
+  }, [destination]);
+
+  function handleCreate() {
+    const params = new URLSearchParams({
+      client: contact.name,
+      phone: contact.phone,
+      destination: destination || '',
+      type: tripType,
+      pax: String(pax),
+      date: startDate,
+      notes,
+    });
+    toast.success(`Opening trip planner for ${contact.name}`);
+    router.push(`/trips?${params.toString()}`);
+    onClose();
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Destination</p>
+        <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2.5">
+          <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <input
+            autoFocus
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            placeholder="Where to go?"
+            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {destinationSuggestions.map((d) => (
+            <button
+              key={d}
+              onClick={() => setDestination(d)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                destination === d
+                  ? 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/40'
+                  : 'bg-white/8 text-slate-400 border border-white/10 hover:bg-white/15'
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Trip Type</p>
+        <div className="flex flex-wrap gap-1.5">
+          {TRIP_TYPES.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTripType(t)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                tripType === t
+                  ? 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/40'
+                  : 'bg-white/8 text-slate-400 border border-white/10 hover:bg-white/15'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Guests</p>
+          <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2.5">
+            <Users className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={pax}
+              onChange={(e) => setPax(Math.max(1, Number(e.target.value)))}
+              className="flex-1 bg-transparent text-sm text-white outline-none"
+            />
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Start Date</p>
+          <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2.5">
+            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="flex-1 bg-transparent text-xs text-white outline-none [color-scheme:dark]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2.5">
+        <FileText className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Special requests, client preferences..."
+          rows={2}
+          className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none resize-none"
+        />
+      </div>
+
+      <button
+        onClick={handleCreate}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#1FAF54] text-white font-bold text-sm transition-colors active:scale-[0.98]"
+      >
+        <TrendingUp className="w-4 h-4" />
+        Start Planning
+      </button>
+    </div>
+  );
+}
+
+// ─── SEND QUOTE PANEL ─────────────────────────────────────────────────────────
+
+function SendQuotePanel({
+  contact,
+  channel,
+  onSend,
+}: {
+  contact: ConversationContact;
+  channel: 'whatsapp' | 'email';
+  onSend: (message: string, subject?: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<MockQuote | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return MOCK_QUOTES.filter(
+      (qt) =>
+        qt.name.toLowerCase().includes(q) ||
+        qt.destination.toLowerCase().includes(q) ||
+        qt.type.toLowerCase().includes(q),
+    );
+  }, [search]);
+
+  function buildMessage(): { body: string; subject?: string } {
+    if (!selected) return { body: '' };
+    const inclusions = selected.inclusions.map((i) => `✅ ${i}`).join('\n');
+
+    if (channel === 'whatsapp') {
+      return {
+        body: `${contact.name} Ji 🙏\n\nHere is your personalised travel quote from GoBuddy Adventures:\n\n🗺️ *${selected.name}*\n📍 ${selected.destination} · ${selected.duration} · ${selected.type}\n\n*INCLUSIONS*\n${inclusions}\n\n💰 *${formatCurrency(selected.price)}/person*\n⏰ Valid for ${selected.validity}\n\nReply here or call *+91 98765 00000* to confirm! 🎉\n— GoBuddy Adventures`,
+      };
+    }
+
+    const subject = `Your Personalised Quote — ${selected.name} | GoBuddy Adventures`;
+    const body = `Dear ${contact.name},\n\nThank you for your interest in travelling with GoBuddy Adventures!\n\n━━━━━━━━━━━━━━━━━━━━━\n${selected.name.toUpperCase()}\n━━━━━━━━━━━━━━━━━━━━━\n\n📍 Destination: ${selected.destination}\n⏱️ Duration: ${selected.duration}\n🏷️ Package Type: ${selected.type}\n💰 Price: ${formatCurrency(selected.price)} per person\n\n━━━━━━━━━━━━━━━━━━━━━\nWHAT'S INCLUDED\n━━━━━━━━━━━━━━━━━━━━━\n${inclusions}\n\n⏰ Quote valid for: ${selected.validity} from today.\n\nTo confirm your booking or request customisation, reply to this email or call +91 98765 00000.\n\nWe look forward to making your trip unforgettable! 🌟\n\nWarm regards,\nTeam GoBuddy Adventures\ngobuddy.in | +91 98765 00000`;
+
+    return { body, subject };
+  }
+
+  const { body, subject } = buildMessage();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2.5">
+        <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by destination or type..."
+          className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
+        />
+      </div>
+
+      <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+        {filtered.map((quote) => (
+          <button
+            key={quote.id}
+            onClick={() => setSelected(quote)}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              selected?.id === quote.id
+                ? 'border-indigo-500/50 bg-indigo-500/10'
+                : 'border-white/10 bg-white/5 hover:bg-white/10'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{quote.name}</p>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                <span>{quote.destination}</span>
+                <span>·</span>
+                <span>{quote.duration}</span>
+                <span>·</span>
+                <span className="text-indigo-300 font-semibold">{formatCurrency(quote.price)}/pax</span>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-0.5">{quote.type} · Valid {quote.validity}</p>
+            </div>
+            {selected?.id === quote.id && <Check className="w-4 h-4 text-indigo-400 shrink-0" />}
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-xs text-slate-500 text-center py-6">No quotes match your search</p>
+        )}
+      </div>
+
+      {selected && (
+        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Preview</p>
+          <pre className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto custom-scrollbar font-sans">
+            {body}
+          </pre>
+        </div>
+      )}
+
+      <button
+        onClick={() => selected && onSend(body, subject)}
+        disabled={!selected}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors active:scale-[0.98]"
+      >
+        <Send className="w-4 h-4" />
+        {channel === 'email' ? 'Send Quote via Email' : 'Send Quote via WhatsApp'}
+      </button>
+    </div>
+  );
+}
+
+// ─── MODAL CONFIG ─────────────────────────────────────────────────────────────
+
+const MODAL_CONFIG: Record<ContextActionType, {
+  title: string;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+}> = {
+  'trip-detail': {
+    title: 'Trip Details',
+    icon: <MapPin className="w-4 h-4" />,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/15',
+  },
+  'create-trip': {
+    title: 'Create New Trip',
+    icon: <TrendingUp className="w-4 h-4" />,
+    color: 'text-[#25D366]',
+    bgColor: 'bg-[#25D366]/15',
+  },
+  'send-quote': {
+    title: 'Send Quote',
+    icon: <FileText className="w-4 h-4" />,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-500/15',
+  },
+};
+
+// ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
+
+export function ContextActionModal({
+  isOpen,
+  type,
+  tripName,
+  contact,
+  channel,
+  onSendMessage,
+  onClose,
+}: ContextActionModalProps) {
+  const config = MODAL_CONFIG[type];
+
+  function handleSend(message: string, subject?: string) {
+    onSendMessage?.(message, subject);
+    toast.success(`Quote sent to ${contact.name} ✓`);
+    onClose();
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+            className="fixed inset-x-4 bottom-4 z-50 rounded-2xl border border-white/15 shadow-2xl overflow-hidden"
+            style={{
+              background: 'rgba(8, 18, 36, 0.96)',
+              backdropFilter: 'blur(24px)',
+              maxWidth: 560,
+              margin: '0 auto',
+            }}
+          >
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${config.bgColor} ${config.color}`}>
+                  {config.icon}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{config.title}</h3>
+                  <p className="text-[10px] text-slate-500">
+                    {type === 'trip-detail'
+                      ? (tripName ?? 'Trip')
+                      : `${contact.name} · via ${channel === 'email' ? '✉️ Email' : '💬 WhatsApp'}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-7 h-7 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors"
+              >
+                <X className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="p-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+              {type === 'trip-detail' && <TripDetailPanel tripName={tripName} />}
+              {type === 'create-trip' && <CreateTripPanel contact={contact} onClose={onClose} />}
+              {type === 'send-quote' && (
+                <SendQuotePanel contact={contact} channel={channel} onSend={handleSend} />
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+

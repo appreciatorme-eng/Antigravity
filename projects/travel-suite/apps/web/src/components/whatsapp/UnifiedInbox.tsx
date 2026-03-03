@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -32,16 +32,15 @@ import {
   MOCK_CLIENT_DETAILS,
   MOCK_DRIVER_DETAILS,
 } from './inbox-mock-data';
-import {
-  WHATSAPP_TEMPLATES,
-  fillTemplate,
-} from '@/lib/whatsapp/india-templates';
+import { ActionPickerModal, type ActionMode } from './ActionPickerModal';
+import { ContextActionModal, type ContextActionType } from './ContextActionModal';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 type FilterTab = 'all' | 'clients' | 'drivers' | 'leads' | 'unread';
 type ChannelFilter = 'all' | 'whatsapp' | 'email';
 type SortMode = 'recent' | 'unread' | 'priority';
+type ContextAction = ContextActionType | 'assign-driver' | 'request-payment' | 'add-to-crm';
 
 const AVATAR_COLORS: Record<ConversationContact['type'], string> = {
   client: '#6366f1',
@@ -177,10 +176,10 @@ function ConvItem({
 
 interface ContextPanelProps {
   conversation: Conversation | null;
-  onQuickAction?: (action: string, conversation: Conversation) => void;
+  onContextAction?: (action: ContextAction, tripName?: string) => void;
 }
 
-function ContextPanel({ conversation, onQuickAction }: ContextPanelProps) {
+function ContextPanel({ conversation, onContextAction }: ContextPanelProps) {
   const [ctxTab, setCtxTab] = useState<'info' | 'automations'>('info');
 
   if (!conversation) {
@@ -249,10 +248,7 @@ function ContextPanel({ conversation, onQuickAction }: ContextPanelProps) {
           </a>
           <button
             onClick={() => {
-              const profilePath = contact.type === 'driver'
-                ? `/drivers`
-                : `/clients/${contact.id}`;
-              onQuickAction?.('navigate', conversation);
+              const profilePath = contact.type === 'driver' ? `/drivers` : `/clients/${contact.id}`;
               window.open(profilePath, '_blank');
             }}
             className="flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
@@ -338,15 +334,17 @@ function ContextPanel({ conversation, onQuickAction }: ContextPanelProps) {
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recent Trips</p>
                 {clientDetail.recentTrips.slice(0, 3).map((trip) => (
-                  <div
+                  <button
                     key={trip}
-                    className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/8 cursor-pointer hover:bg-white/10 transition-colors"
+                    onClick={() => onContextAction?.('trip-detail', trip)}
+                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 transition-colors active:scale-[0.98]"
                   >
                     <div className="w-6 h-6 rounded-md bg-[#25D366]/15 flex items-center justify-center shrink-0">
                       <MapPin className="w-3 h-3 text-[#25D366]" />
                     </div>
-                    <p className="text-xs text-slate-300 truncate">{trip}</p>
-                  </div>
+                    <p className="text-xs text-slate-300 truncate flex-1 text-left">{trip}</p>
+                    <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
+                  </button>
                 ))}
               </div>
             )}
@@ -363,7 +361,7 @@ function ContextPanel({ conversation, onQuickAction }: ContextPanelProps) {
               ].map(({ icon, label, color, action }) => (
                 <button
                   key={label}
-                  onClick={() => onQuickAction?.(action, conversation)}
+                  onClick={() => onContextAction?.(action as ContextAction)}
                   className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-left transition-colors active:scale-[0.98]"
                 >
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}20`, color }}>
@@ -486,59 +484,39 @@ export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
     );
   }
 
-  const handleQuickAction = useCallback(
-    (action: string, conv: Conversation) => {
-      const { contact } = conv;
+  const [contextModal, setContextModal] = useState<{ type: ContextActionType; tripName?: string } | null>(null);
+  const [ctxActionModal, setCtxActionModal] = useState<ActionMode | null>(null);
+
+  function handleContextAction(action: ContextAction, tripName?: string) {
+    if (!selectedConversation) return;
+    const { contact } = selectedConversation;
+
+    if (action === 'add-to-crm') {
       const nameParam = encodeURIComponent(contact.name);
       const phoneParam = encodeURIComponent(contact.phone);
+      const email = MOCK_CLIENT_DETAILS[contact.id]?.email ?? '';
+      toast.success(`${contact.name} added to CRM ✓`, {
+        description: 'Navigating to client profile…',
+      });
+      setTimeout(
+        () => router.push(`/clients?name=${nameParam}&phone=${phoneParam}&email=${encodeURIComponent(email)}&source=inbox`),
+        900,
+      );
+      return;
+    }
 
-      switch (action) {
-        case 'create-trip': {
-          router.push(`/trips?client=${nameParam}&phone=${phoneParam}`);
-          toast.success(`Opening trip creation for ${contact.name}`);
-          break;
-        }
-        case 'send-quote': {
-          router.push(`/proposals/create?client=${nameParam}&phone=${phoneParam}`);
-          toast.success(`Opening quote builder for ${contact.name}`);
-          break;
-        }
-        case 'assign-driver': {
-          const tripParam = encodeURIComponent(contact.trip ?? '');
-          router.push(`/drivers?assign=${tripParam}&client=${nameParam}`);
-          toast.success('Opening driver assignment');
-          break;
-        }
-        case 'request-payment': {
-          const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'payment_request_upi');
-          if (!tpl) break;
-          const msg = fillTemplate(tpl, {
-            client_name: contact.name,
-            trip_name: contact.trip ?? 'Trip',
-            amount: '—',
-            due_date: '—',
-            booking_id: `GB-${Date.now().toString(36).toUpperCase()}`,
-            upi_id: 'gobuddy@paytm',
-            payment_link: `https://gobuddy.in/pay/${contact.id}`,
-            bank_account: '50200012345678',
-            bank_ifsc: 'HDFC0001234',
-            company_name: 'GoBuddy Adventures',
-          });
-          handleSendMessage(conv.id, msg);
-          toast.success(`Payment request sent to ${contact.name}`);
-          break;
-        }
-        case 'add-to-crm': {
-          router.push(`/clients?name=${nameParam}&phone=${phoneParam}&source=whatsapp`);
-          toast.success(`Adding ${contact.name} to CRM`);
-          break;
-        }
-        default:
-          break;
-      }
-    },
-    [router],
-  );
+    if (action === 'assign-driver') {
+      setCtxActionModal('driver');
+      return;
+    }
+
+    if (action === 'request-payment') {
+      setCtxActionModal('payment');
+      return;
+    }
+
+    setContextModal({ type: action as ContextActionType, tripName });
+  }
 
   const FILTER_TABS: Array<{ key: FilterTab; label: string; count?: number }> = [
     { key: 'all', label: 'All', count: conversations.length },
@@ -681,8 +659,46 @@ export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
         className="w-[240px] shrink-0 border-l border-white/10 overflow-hidden flex flex-col"
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
-        <ContextPanel conversation={selectedConversation} onQuickAction={handleQuickAction} />
+        <ContextPanel conversation={selectedConversation} onContextAction={handleContextAction} />
       </div>
+
+      {/* ── Context Panel → ActionPickerModal (Driver / Payment) ─────────── */}
+      {selectedConversation && ctxActionModal && (
+        <ActionPickerModal
+          isOpen
+          mode={ctxActionModal}
+          contact={selectedConversation.contact}
+          channel={selectedChannel}
+          onSend={(msg, subject) => {
+            handleSendMessage(selectedConversation.id, msg, subject);
+            const labels: Record<ActionMode, string> = {
+              itinerary: 'Itinerary',
+              payment: 'Payment request',
+              driver: 'Driver details',
+              location: 'Location request',
+            };
+            toast.success(`${labels[ctxActionModal]} sent to ${selectedConversation.contact.name} ✓`);
+            setCtxActionModal(null);
+          }}
+          onClose={() => setCtxActionModal(null)}
+        />
+      )}
+
+      {/* ── Context Panel → ContextActionModal (Trip / Quote / Create) ───── */}
+      {selectedConversation && contextModal && (
+        <ContextActionModal
+          isOpen
+          type={contextModal.type}
+          tripName={contextModal.tripName}
+          contact={selectedConversation.contact}
+          channel={selectedChannel}
+          onSendMessage={(msg, subject) => {
+            handleSendMessage(selectedConversation.id, msg, subject);
+            setContextModal(null);
+          }}
+          onClose={() => setContextModal(null)}
+        />
+      )}
     </div>
   );
 }
