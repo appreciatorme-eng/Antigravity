@@ -227,3 +227,19 @@ export function getRelevantSchemas(message: string): readonly OpenAITool[] {
 
   return collectSchemas(categories);
 }
+
+/**
+ * Count how many specific domain categories (excluding baseline "dashboard")
+ * are matched by the message. Returns 0 when intent is ambiguous.
+ */
+export function getSpecificCategoryCount(message: string): number {
+  let count = 0;
+  for (const rule of KEYWORD_RULES) {
+    if (rule.pattern.test(message)) {
+      // Only count if the rule includes at least one non-dashboard category
+      const hasSpecific = rule.categories.some((c) => c !== "dashboard");
+      if (hasSpecific) count++;
+    }
+  }
+  return count;
+}

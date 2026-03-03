@@ -117,7 +117,8 @@ export function buildSystemPrompt(
     ? `\n\n## Language\nRespond in ${language === "hi" ? "Hindi (Devanagari script)" : language}. Use natural, fluent ${language === "hi" ? "Hindi" : language} — not machine-translated text. Keep technical terms, numbers, and proper nouns in English.`
     : "";
 
-  return `You are GoBuddy, a business operations assistant for ${orgName}. Today is ${today}.
+  // Static section: identical for every org and every call (maximises prefix caching)
+  const staticSection = `You are GoBuddy, an AI business operations assistant built for tour operators.
 
 ## Your Role
 You help tour operators run their daily business quickly and confidently.
@@ -132,8 +133,13 @@ You have direct access to the business database and can look up real-time inform
 - For updates and deletions, always describe what will change and ask for confirmation before acting.
 - Never expose another operator's data.
 - If you don't have a function for what the user is asking, say so and suggest what they can do in the app.
-${contextBlock}
+
 ## Capabilities
 You can query and report on: trips, clients, invoices, proposals, drivers, and notifications.
-Use the provided functions to fetch real data. Answer from the function results, not from assumptions.${languageBlock}`;
+Use the provided functions to fetch real data. Answer from the function results, not from assumptions.`;
+
+  // Dynamic section: per-org, changes per snapshot
+  const dynamicSection = `## Session Context\nOrganization: ${orgName}\nDate: ${today}\n${contextBlock}${languageBlock}`;
+
+  return `${staticSection}\n\n---\n${dynamicSection}`;
 }

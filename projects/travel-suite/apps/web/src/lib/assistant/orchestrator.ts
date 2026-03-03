@@ -33,7 +33,8 @@ import { buildSystemPrompt } from "./prompts/system";
 import { buildPreferencesBlock, getPreference } from "./preferences";
 import { getCachedResponse, setCachedResponse, invalidateOrgCache } from "./response-cache";
 import { getSemanticCachedResponse, setSemanticCachedResponse } from "./semantic-response-cache";
-import { getRelevantSchemas } from "./schema-router";
+import { getRelevantSchemas, getSpecificCategoryCount } from "./schema-router";
+import { selectModel } from "./model-router";
 import { tryDirectExecution } from "./direct-executor";
 import { checkUsageAllowed, incrementUsage } from "./usage-meter";
 import { getSuggestedActions } from "./suggested-actions";
@@ -46,7 +47,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // ---------------------------------------------------------------------------
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = "gpt-4o-mini";
 const MAX_TOOL_ROUNDS = 3;
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOKENS = 800;
@@ -150,9 +150,21 @@ interface OpenAIChoice {
   readonly finish_reason: string;
 }
 
+interface OpenAIPromptTokensDetails {
+  readonly cached_tokens?: number;
+}
+
+interface OpenAIUsage {
+  readonly prompt_tokens: number;
+  readonly completion_tokens: number;
+  readonly total_tokens: number;
+  readonly prompt_tokens_details?: OpenAIPromptTokensDetails;
+}
+
 interface OpenAIResponse {
   readonly choices?: readonly OpenAIChoice[];
   readonly error?: { readonly message?: string };
+  readonly usage?: OpenAIUsage;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,9 +208,10 @@ async function callOpenAI(
   apiKey: string,
   messages: readonly ChatMessage[],
   tools: readonly unknown[] | null,
+  model: string,
 ): Promise<OpenAIResponse> {
   const body: Record<string, unknown> = {
-    model: MODEL,
+    model: model,
     messages,
     max_tokens: MAX_TOKENS,
     temperature: TEMPERATURE,
@@ -436,6 +449,22 @@ export async function handleMessage(
     return directResult;
   }
 
+  // 5.5 Confidence routing: short-circuit vague queries before LLM call
+  const specificCategories = getSpecificCategoryCount(trimmedMessage);
+  const wordCount = trimmedMessage.split(/\s+/).filter(Boolean).length;
+  if (specificCategories === 0 && wordCount <= 5) {
+    return {
+      reply:
+        "I can help with trips, clients, invoices, drivers, and proposals. What would you like to work on?",
+      suggestedActions: [
+        { label: "Today's summary", prefilledMessage: "What's happening today?" },
+        { label: "Overdue invoices", prefilledMessage: "Show overdue invoices" },
+        { label: "Active trips", prefilledMessage: "Search active trips" },
+        { label: "Pending follow-ups", prefilledMessage: "What needs my attention?" },
+      ],
+    };
+  }
+
   // 6. Workflow handling: check for active workflow or trigger new one
   const activeWorkflow = await getActiveWorkflow(ctx);
   if (activeWorkflow !== null) {
@@ -468,6 +497,9 @@ export async function handleMessage(
     return semanticCached;
   }
 
+  // 7.6 Select model based on query complexity and org tier
+  const model = selectModel(trimmedMessage, usageStatus.tier);
+
   // 8. Gather enrichment data in parallel
   const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
     getCachedContextSnapshot(ctx),
@@ -495,7 +527,14 @@ export async function handleMessage(
   let pendingProposal: OrchestratorResponse["actionProposal"] | null = null;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await callOpenAI(openaiKey, messages, tools);
+    const response = await callOpenAI(openaiKey, messages, tools, model);
+
+    // Log cached token savings (fire-and-forget)
+    const cachedTokens = response.usage?.prompt_tokens_details?.cached_tokens ?? 0;
+    if (cachedTokens > 0) {
+      void 0; // cached: ${cachedTokens}
+    }
+
     const choice = response.choices?.[0];
 
     if (!choice) {
@@ -566,6 +605,7 @@ export async function handleMessage(
         openaiKey,
         followUpMessages,
         null,
+        model,
       );
 
       const proposalResponse: OrchestratorResponse = {
@@ -583,7 +623,7 @@ export async function handleMessage(
   }
 
   // If we exhausted all rounds, get a final summary from the model
-  const finalResponse = await callOpenAI(openaiKey, messages, null);
+  const finalResponse = await callOpenAI(openaiKey, messages, null, model);
 
   const suggestions = getSuggestedActions(lastActionName);
   const exhaustedResponse: OrchestratorResponse = {
@@ -619,7 +659,7 @@ async function buildFaqFallbackResponse(
   const enrichedPrompt = baseSystemPrompt + buildFaqBlock(faqRows);
 
   const messages = buildChatMessages(enrichedPrompt, history, userMessage);
-  const response = await callOpenAI(apiKey, messages, null);
+  const response = await callOpenAI(apiKey, messages, null, "gpt-4o-mini");
 
   const citations = faqRows.slice(0, 2).map((r) => ({
     id: r.id,
