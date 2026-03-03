@@ -23,13 +23,15 @@ import type { ActionContext } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAlertThresholds, isQuietHours } from "./alert-preferences";
 import type { AlertThresholds } from "./alert-preferences";
+import { detectAnomalies } from "./anomaly-detector";
+import type { AnomalyAlertTrigger } from "./anomaly-detector";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface AlertTrigger {
-  readonly type: "invoice_overdue" | "trip_no_driver" | "client_dormant";
+  readonly type: "invoice_overdue" | "trip_no_driver" | "client_dormant" | "revenue_spike" | "revenue_drop" | "trip_spike" | "trip_drop" | "proposal_drop";
   readonly message: string;
   readonly entityType: string;
   readonly entityId: string;
@@ -40,6 +42,8 @@ interface EligibleAlertOrg {
   readonly userId: string;
   readonly phone: string;
 }
+
+type AnyAlert = AlertTrigger | AnomalyAlertTrigger;
 
 interface AlertQueueResult {
   readonly queued: number;
@@ -280,17 +284,20 @@ export async function generateAndQueueAlerts(): Promise<AlertQueueResult> {
       if (!thresholds.alertsEnabled) continue;
       if (isQuietHours(thresholds)) continue;
 
-      const alerts = await detectAlerts(
-        {
-          organizationId: entry.organizationId,
-          userId: entry.userId,
-          channel: "whatsapp",
-          supabase,
-        },
-        thresholds,
-      );
+      const entryCtx: ActionContext = {
+        organizationId: entry.organizationId,
+        userId: entry.userId,
+        channel: "whatsapp" as const,
+        supabase,
+      };
 
-      const capped = alerts.slice(0, thresholds.maxAlertsPerCycle);
+      const alerts = await detectAlerts(entryCtx, thresholds);
+      const anomalies = await detectAnomalies(entryCtx);
+
+      // Merge alerts, anomalies capped separately (max 2 anomaly alerts per cycle)
+      const anomalyCapped = anomalies.slice(0, 2);
+      const allAlerts: AnyAlert[] = [...alerts, ...anomalyCapped];
+      const capped = allAlerts.slice(0, thresholds.maxAlertsPerCycle);
 
       for (const alert of capped) {
         const idempotencyKey = `${entry.organizationId}:alert:${alert.type}:${alert.entityId}:${dateKey}`;

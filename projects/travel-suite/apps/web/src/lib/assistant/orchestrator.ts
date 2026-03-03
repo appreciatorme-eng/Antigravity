@@ -32,6 +32,7 @@ import { getCachedContextSnapshot } from "./context-engine";
 import { buildSystemPrompt } from "./prompts/system";
 import { buildPreferencesBlock, getPreference } from "./preferences";
 import { getCachedResponse, setCachedResponse, invalidateOrgCache } from "./response-cache";
+import { getSemanticCachedResponse, setSemanticCachedResponse } from "./semantic-response-cache";
 import { getRelevantSchemas } from "./schema-router";
 import { tryDirectExecution } from "./direct-executor";
 import { checkUsageAllowed, incrementUsage } from "./usage-meter";
@@ -460,6 +461,13 @@ export async function handleMessage(
     return cachedResponse;
   }
 
+  // 7.5. Semantic cache: fuzzy match for near-identical queries
+  const semanticCached = await getSemanticCachedResponse(ctx.organizationId, trimmedMessage, openaiKey);
+  if (semanticCached !== null) {
+    void incrementUsage(ctx, { isCacheHit: true });
+    return semanticCached;
+  }
+
   // 8. Gather enrichment data in parallel
   const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
     getCachedContextSnapshot(ctx),
@@ -518,6 +526,7 @@ export async function handleMessage(
         ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
       };
       void setCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
+      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, textResponse, openaiKey);
       void incrementUsage(ctx);
       return textResponse;
     }
@@ -564,6 +573,7 @@ export async function handleMessage(
         actionProposal: pendingProposal,
       };
       void setCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
+      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse, openaiKey);
       void incrementUsage(ctx);
       return proposalResponse;
     }
@@ -582,6 +592,7 @@ export async function handleMessage(
     ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
   };
   void setCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
+  void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse, openaiKey);
   void incrementUsage(ctx);
   return exhaustedResponse;
 }
