@@ -69,6 +69,7 @@ export interface ConversationContact {
   isOnline?: boolean;
   trip?: string;
   label?: 'lead' | 'payment' | 'location' | 'confirmed';
+  preferredLanguage?: 'en' | 'hi' | 'hinglish';
 }
 
 export interface Conversation {
@@ -231,9 +232,11 @@ interface MessageThreadProps {
   conversation: Conversation | null;
   channel?: 'whatsapp' | 'email';
   onSendMessage?: (conversationId: string, message: string, subject?: string) => void;
+  externalInput?: string;
+  onExternalInputConsumed?: () => void;
 }
 
-export function MessageThread({ conversation, channel = 'whatsapp', onSendMessage }: MessageThreadProps) {
+export function MessageThread({ conversation, channel = 'whatsapp', onSendMessage, externalInput, onExternalInputConsumed }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [showCanned, setShowCanned] = useState(false);
@@ -244,6 +247,13 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation?.messages.length]);
+
+  useEffect(() => {
+    if (externalInput && externalInput.trim()) {
+      setInputText(externalInput);
+      onExternalInputConsumed?.();
+    }
+  }, [externalInput]);
 
   function handleSend() {
     const text = inputText.trim();

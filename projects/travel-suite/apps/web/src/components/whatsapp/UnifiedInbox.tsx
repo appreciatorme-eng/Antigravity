@@ -34,6 +34,7 @@ import {
 } from './inbox-mock-data';
 import { ActionPickerModal, type ActionMode } from './ActionPickerModal';
 import { ContextActionModal, type ContextActionType } from './ContextActionModal';
+import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -404,9 +405,11 @@ function ContextPanel({ conversation, onContextAction }: ContextPanelProps) {
 
 interface UnifiedInboxProps {
   onSendMessage?: (convId: string, message: string) => void;
+  pendingTemplate?: WhatsAppTemplate | null;
+  onClearPendingTemplate?: () => void;
 }
 
-export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
+export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
   const router = useRouter();
   const [conversations, setConversations] = useState<ChannelConversation[]>(ALL_MOCK_CONVERSATIONS);
   const [selectedId, setSelectedId] = useState<string | null>('conv_1');
@@ -647,10 +650,29 @@ export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
             'radial-gradient(ellipse at top, rgba(37,211,102,0.04) 0%, rgba(10,22,40,0.5) 60%)',
         }}
       >
+        {pendingTemplate && (
+          <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-[#25D366]/10 border-b border-[#25D366]/20">
+            <span className="text-base shrink-0">{pendingTemplate.emoji ?? '📋'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#25D366] truncate">Template ready: {pendingTemplate.name}</p>
+              <p className="text-[11px] text-slate-400">
+                {selectedConversation ? 'Template pre-filled below — edit variables and send' : 'Select a conversation to apply this template'}
+              </p>
+            </div>
+            <button
+              onClick={onClearPendingTemplate}
+              className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+            >
+              <X className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
+        )}
         <MessageThread
           conversation={selectedConversation}
           channel={selectedChannel}
           onSendMessage={handleSendMessage}
+          externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
+          onExternalInputConsumed={onClearPendingTemplate}
         />
       </div>
 

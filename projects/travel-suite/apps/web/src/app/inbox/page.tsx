@@ -23,6 +23,7 @@ import { CannedResponses } from '@/components/whatsapp/CannedResponses';
 import {
   WHATSAPP_TEMPLATES,
   TEMPLATE_CATEGORIES_DISPLAY,
+  LANGUAGE_LABELS,
   type TemplateCategory,
   type WhatsAppTemplate,
 } from '@/lib/whatsapp/india-templates';
@@ -339,15 +340,18 @@ function getTomorrowDate() {
 
 // ─── TEMPLATES LIST VIEW ──────────────────────────────────────────────────────
 
-function TemplatesListView() {
+function TemplatesListView({ onUseTemplate }: { onUseTemplate?: (t: WhatsAppTemplate) => void }) {
   const [showCanned, setShowCanned] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
+  const [selectedLanguage, setSelectedLanguage] = useState<WhatsAppTemplate['language'] | 'all'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    if (selectedCategory === 'all') return WHATSAPP_TEMPLATES;
-    return WHATSAPP_TEMPLATES.filter((t) => t.category === selectedCategory);
-  }, [selectedCategory]);
+    let result = WHATSAPP_TEMPLATES;
+    if (selectedCategory !== 'all') result = result.filter((t) => t.category === selectedCategory);
+    if (selectedLanguage !== 'all') result = result.filter((t) => t.language === selectedLanguage);
+    return result;
+  }, [selectedCategory, selectedLanguage]);
 
   const categories = [
     'all',
@@ -377,6 +381,23 @@ function TemplatesListView() {
         </button>
       </div>
 
+      {/* Language filter */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
+        {(['all', 'en', 'hi', 'hinglish'] as const).map((lang) => (
+          <button
+            key={lang}
+            onClick={() => setSelectedLanguage(lang)}
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              selectedLanguage === lang
+                ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                : 'bg-white/8 text-slate-400 hover:text-white border border-white/10'
+            }`}
+          >
+            {LANGUAGE_LABELS[lang]}
+          </button>
+        ))}
+      </div>
+
       {/* Category filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
         {categories.map((cat) => (
@@ -404,11 +425,20 @@ function TemplatesListView() {
             <div className="p-4 flex-1">
               <div className="flex items-start gap-2 mb-2">
                 <span className="text-xl shrink-0">{template.emoji}</span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-white">{template.name}</p>
-                  <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-slate-400 uppercase tracking-wider mt-0.5">
-                    {TEMPLATE_CATEGORIES_DISPLAY[template.category]}
-                  </span>
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                    <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-slate-400 uppercase tracking-wider">
+                      {TEMPLATE_CATEGORIES_DISPLAY[template.category]}
+                    </span>
+                    <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                      template.language === 'en' ? 'bg-blue-500/15 text-blue-400' :
+                      template.language === 'hi' ? 'bg-orange-500/15 text-orange-400' :
+                      'bg-purple-500/15 text-purple-400'
+                    }`}>
+                      {template.language === 'en' ? '🇬🇧 EN' : template.language === 'hi' ? '🇮🇳 HI' : '🤝 Mix'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="text-xs text-slate-300 bg-black/20 rounded-lg p-3 font-mono leading-relaxed max-h-32 overflow-hidden relative">
@@ -440,7 +470,10 @@ function TemplatesListView() {
                 <Check className={`w-3.5 h-3.5 ${copiedId !== template.id ? 'opacity-0' : ''}`} />
                 {copiedId === template.id ? 'Copied!' : 'Copy'}
               </button>
-              <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-[#25D366]/15 text-[#25D366] hover:bg-[#25D366]/25 border border-[#25D366]/20 transition-colors">
+              <button
+                onClick={() => onUseTemplate?.(template)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-[#25D366]/15 text-[#25D366] hover:bg-[#25D366]/25 border border-[#25D366]/20 transition-colors"
+              >
                 <Send className="w-3.5 h-3.5" />
                 Use
               </button>
@@ -471,6 +504,12 @@ const PAGE_TABS: Array<{ key: PageTab; label: string; icon: React.ReactNode }> =
 
 export default function InboxPage() {
   const [activeTab, setActiveTab] = useState<PageTab>('inbox');
+  const [pendingTemplate, setPendingTemplate] = useState<WhatsAppTemplate | null>(null);
+
+  function handleUseTemplate(template: WhatsAppTemplate) {
+    setPendingTemplate(template);
+    setActiveTab('inbox');
+  }
 
   return (
     <div
@@ -563,7 +602,10 @@ export default function InboxPage() {
               transition={{ duration: 0.15 }}
               className="flex-1 overflow-hidden"
             >
-              <UnifiedInbox />
+              <UnifiedInbox
+                pendingTemplate={pendingTemplate}
+                onClearPendingTemplate={() => setPendingTemplate(null)}
+              />
             </motion.div>
           )}
 
@@ -589,7 +631,7 @@ export default function InboxPage() {
               transition={{ duration: 0.2 }}
               className="flex-1 overflow-hidden flex flex-col"
             >
-              <TemplatesListView />
+              <TemplatesListView onUseTemplate={handleUseTemplate} />
             </motion.div>
           )}
 

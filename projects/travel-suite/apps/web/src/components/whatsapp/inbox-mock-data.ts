@@ -22,6 +22,7 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
       isOnline: true,
       trip: 'Kerala Honeymoon 6N/7D',
       label: 'confirmed',
+      preferredLanguage: 'hinglish',
     },
     messages: [
       { id: 'm1', type: 'system', direction: 'in', body: 'Conversation started', timestamp: '9:00 AM' },
@@ -44,6 +45,7 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
       isOnline: false,
       lastSeen: 'today at 8:45 AM',
       label: 'location',
+      preferredLanguage: 'hi',
     },
     messages: [
       { id: 'm1', type: 'text', direction: 'out', body: 'Raju bhai, aaj Sharma ji ka pickup 6 AM pe hai. Gaadi clean rakhna.', timestamp: '5:00 AM', status: 'read' },
@@ -82,6 +84,7 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
       lastSeen: 'today at 9:00 AM',
       trip: 'Rajasthan Royal Tour',
       label: 'payment',
+      preferredLanguage: 'en',
     },
     messages: [
       { id: 'm1', type: 'text', direction: 'in', body: 'Namaste, invoice bhejiye GST wala. Company reimbursement ke liye chahiye.', timestamp: '8:00 AM' },
@@ -102,6 +105,7 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
       avatarColor: '#f97316',
       isOnline: true,
       lastSeen: 'now',
+      preferredLanguage: 'hi',
     },
     messages: [
       { id: 'm1', type: 'text', direction: 'in', body: 'Sir aaj traffic bahut hai Expressway pe. 20 minute late ho sakta hoon. Client ko inform kar dein?', timestamp: '7:30 AM' },
@@ -140,6 +144,7 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
       isOnline: false,
       lastSeen: 'yesterday',
       trip: 'Manali Snow Trip',
+      preferredLanguage: 'en',
     },
     messages: [
       { id: 'm1', type: 'text', direction: 'out', body: 'Amit Ji, Manali trip ka itinerary aur hotel vouchers bhej raha hoon.', timestamp: 'Yesterday 4:00 PM', status: 'read' },
@@ -165,6 +170,7 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
       avatarColor: '#8b5cf6',
       isOnline: false,
       trip: 'Andaman Beach Getaway',
+      preferredLanguage: 'en',
     },
     messages: [
       {
@@ -191,6 +197,7 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
       isOnline: false,
       trip: 'Corporate Offsite Jaipur',
       label: 'payment',
+      preferredLanguage: 'en',
     },
     messages: [
       {
@@ -234,6 +241,7 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
       isOnline: false,
       lastSeen: 'yesterday',
       trip: 'Shimla Family Package',
+      preferredLanguage: 'en',
     },
     messages: [
       {
