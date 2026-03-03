@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import {
     Mail, Phone, MapPin, CalendarDays, Utensils,
     Accessibility, User, HeartPulse, FileText, Globe, Plane,
-    Activity, ArrowLeft, IndianRupee,
+    Activity as ActivityIcon, ArrowLeft, IndianRupee,
     Languages, MessageCircle, Plus, Eye,
     CheckCircle2, XCircle, Timer, AlertCircle, Send, Star,
     Home, Users, Target, Sparkles, ExternalLink, Clock,
@@ -421,7 +421,7 @@ export default async function ClientProfilePage({
                                 </span>
                                 {profile.lifecycle_stage && (
                                     <span className={cn("flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border", STAGE_COLORS[profile.lifecycle_stage] ?? STAGE_COLORS.lead)}>
-                                        <Activity className="w-3 h-3" />
+                                        <ActivityIcon className="w-3 h-3" />
                                         {STAGE_LABELS[profile.lifecycle_stage] ?? profile.lifecycle_stage}
                                     </span>
                                 )}
@@ -710,7 +710,7 @@ export default async function ClientProfilePage({
                                 { label: "Travel Style", value: profile.travel_style, icon: Star },
                                 { label: "Flies From", value: profile.home_airport, icon: Globe },
                                 { label: "Referred By", value: profile.referral_source, icon: Target },
-                                { label: "Channel", value: profile.source_channel, icon: Activity },
+                                { label: "Channel", value: profile.source_channel, icon: ActivityIcon },
                                 { label: "Client Since", value: profile.created_at ? formatDate(profile.created_at) : null, icon: CalendarDays },
                             ].filter(item => item.value).map((item) => (
                                 <div key={item.label} className="flex items-start justify-between gap-3 py-2 border-b border-gray-50 dark:border-slate-800/80 last:border-0">
