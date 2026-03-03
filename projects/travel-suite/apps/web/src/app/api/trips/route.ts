@@ -19,6 +19,113 @@ function parseRole(role: string | null | undefined): "admin" | "super_admin" | n
     return null;
 }
 
+interface InvoiceRow {
+    trip_id: string;
+    total_amount: number;
+    paid_amount: number;
+    balance_amount: number;
+    status: string;
+}
+
+interface DriverRow {
+    trip_id: string;
+    day_number: number;
+}
+
+interface AccommodationRow {
+    trip_id: string;
+    day_number: number;
+}
+
+interface TripEnrichment {
+    invoice: { total_amount: number; paid_amount: number; balance_amount: number; payment_status: string };
+    driver_coverage: { covered_days: number; total_days: number };
+    accommodation_coverage: { covered_days: number; total_days: number };
+    has_itinerary: boolean;
+    days_until_departure: number | null;
+}
+
+function derivePaymentStatus(invoices: InvoiceRow[]): string {
+    if (invoices.length === 0) return "none";
+    const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+    const totalBalance = invoices.reduce((sum, inv) => sum + (inv.balance_amount || 0), 0);
+    if (totalBalance <= 0) return "paid";
+    if (totalPaid > 0) return "partial";
+    return "unpaid";
+}
+
+function computeDaysUntilDeparture(startDate: string | null): number | null {
+    if (!startDate) return null;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const departure = new Date(startDate);
+    departure.setHours(0, 0, 0, 0);
+    return Math.ceil((departure.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+async function enrichTrips(
+    tripIds: string[],
+    tripsData: Array<{ id: string; start_date: string | null; itineraries: { duration_days: number | null } | null; has_itinerary: boolean }>
+): Promise<Map<string, TripEnrichment>> {
+    const enrichmentMap = new Map<string, TripEnrichment>();
+
+    if (tripIds.length === 0) return enrichmentMap;
+
+    const [invoiceResult, driverResult, accommodationResult] = await Promise.all([
+        supabaseAdmin.from("invoices")
+            .select("trip_id, total_amount, paid_amount, balance_amount, status")
+            .in("trip_id", tripIds),
+        supabaseAdmin.from("trip_driver_assignments")
+            .select("trip_id, day_number")
+            .in("trip_id", tripIds),
+        supabaseAdmin.from("trip_accommodations")
+            .select("trip_id, day_number")
+            .in("trip_id", tripIds),
+    ]);
+
+    const invoicesByTrip = new Map<string, InvoiceRow[]>();
+    for (const row of (invoiceResult.data || []) as InvoiceRow[]) {
+        const existing = invoicesByTrip.get(row.trip_id) || [];
+        invoicesByTrip.set(row.trip_id, [...existing, row]);
+    }
+
+    const driverDaysByTrip = new Map<string, Set<number>>();
+    for (const row of (driverResult.data || []) as DriverRow[]) {
+        const existing = driverDaysByTrip.get(row.trip_id) || new Set();
+        existing.add(row.day_number);
+        driverDaysByTrip.set(row.trip_id, existing);
+    }
+
+    const accommodationDaysByTrip = new Map<string, Set<number>>();
+    for (const row of (accommodationResult.data || []) as AccommodationRow[]) {
+        const existing = accommodationDaysByTrip.get(row.trip_id) || new Set();
+        existing.add(row.day_number);
+        accommodationDaysByTrip.set(row.trip_id, existing);
+    }
+
+    for (const trip of tripsData) {
+        const invoices = invoicesByTrip.get(trip.id) || [];
+        const driverDays = driverDaysByTrip.get(trip.id) || new Set();
+        const accommodationDays = accommodationDaysByTrip.get(trip.id) || new Set();
+        const totalDays = trip.itineraries?.duration_days || 0;
+
+        enrichmentMap.set(trip.id, {
+            invoice: {
+                total_amount: invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0),
+                paid_amount: invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0),
+                balance_amount: invoices.reduce((sum, inv) => sum + (inv.balance_amount || 0), 0),
+                payment_status: derivePaymentStatus(invoices),
+            },
+            driver_coverage: { covered_days: driverDays.size, total_days: totalDays },
+            accommodation_coverage: { covered_days: accommodationDays.size, total_days: totalDays },
+            has_itinerary: trip.has_itinerary,
+            days_until_departure: computeDaysUntilDeparture(trip.start_date),
+        });
+    }
+
+    return enrichmentMap;
+}
+
 interface TripListRow {
     id: string;
     status: string | null;
@@ -105,7 +212,51 @@ export async function GET(req: NextRequest) {
 
             if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-            return NextResponse.json({ trips: data || [] });
+            const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
+                const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
+                return {
+                    id: t.id,
+                    start_date: t.start_date,
+                    itineraries: itinerary ? { duration_days: itinerary.duration_days } : null,
+                    has_itinerary: !!itinerary?.id,
+                };
+            });
+
+            const tripIds = rawTrips.map((t) => t.id);
+            const enrichmentMap = await enrichTrips(tripIds, rawTrips);
+
+            const enrichedTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
+                const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
+                const enrichment = enrichmentMap.get(t.id);
+                const defaults = {
+                    invoice: { total_amount: 0, paid_amount: 0, balance_amount: 0, payment_status: "none" },
+                    driver_coverage: { covered_days: 0, total_days: 0 },
+                    accommodation_coverage: { covered_days: 0, total_days: 0 },
+                    has_itinerary: false,
+                    days_until_departure: null,
+                };
+
+                return {
+                    id: t.id,
+                    status: t.status,
+                    start_date: t.start_date,
+                    end_date: t.end_date,
+                    created_at: t.created_at,
+                    organization_id: t.organization_id,
+                    profiles: null,
+                    itineraries: itinerary ? {
+                        id: itinerary.id,
+                        trip_title: itinerary.trip_title,
+                        duration_days: itinerary.duration_days,
+                        destination: itinerary.destination,
+                    } : null,
+                    itinerary_id: itinerary?.id || null,
+                    destination: itinerary?.destination || "TBD",
+                    ...(enrichment || defaults),
+                };
+            });
+
+            return NextResponse.json({ trips: enrichedTrips });
         }
 
         // Staff/Admin access - show organization-scoped trips only.
@@ -158,9 +309,30 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
+        const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
+            const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
+            return {
+                id: t.id,
+                start_date: t.start_date,
+                itineraries: itinerary ? { duration_days: itinerary.duration_days } : null,
+                has_itinerary: !!itinerary?.id,
+            };
+        });
+
+        const tripIds = rawTrips.map((t) => t.id);
+        const enrichmentMap = await enrichTrips(tripIds, rawTrips);
+
         const trips = ((data || []) as unknown as TripListRow[]).map((t) => {
             const profile = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
             const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
+            const enrichment = enrichmentMap.get(t.id);
+            const defaults = {
+                invoice: { total_amount: 0, paid_amount: 0, balance_amount: 0, payment_status: "none" },
+                driver_coverage: { covered_days: 0, total_days: 0 },
+                accommodation_coverage: { covered_days: 0, total_days: 0 },
+                has_itinerary: false,
+                days_until_departure: null,
+            };
 
             return {
                 id: t.id,
@@ -171,16 +343,17 @@ export async function GET(req: NextRequest) {
                 organization_id: t.organization_id,
                 profiles: profile ? {
                     full_name: profile.full_name,
-                    email: profile.email
+                    email: profile.email,
                 } : null,
                 itineraries: itinerary ? {
                     id: itinerary.id,
                     trip_title: itinerary.trip_title,
                     duration_days: itinerary.duration_days,
-                    destination: itinerary.destination
+                    destination: itinerary.destination,
                 } : null,
                 itinerary_id: itinerary?.id || null,
                 destination: itinerary?.destination || "TBD",
+                ...(enrichment || defaults),
             };
         });
 
