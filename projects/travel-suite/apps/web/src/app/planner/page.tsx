@@ -79,7 +79,12 @@ export default function PlannerPage() {
             if (data.template_id) setSelectedTemplate(data.template_id as ItineraryTemplateId);
             setActiveTab("itinerary");
             setIsEditing(false);
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            const mainEl = document.querySelector("main");
+            if (mainEl) {
+                mainEl.scrollTo({ top: 0, behavior: "smooth" });
+            } else {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
         } catch (err) {
             console.error("Error opening itinerary:", err);
             toast({ title: "Load failed", description: "Something went wrong loading the itinerary.", variant: "error" });
