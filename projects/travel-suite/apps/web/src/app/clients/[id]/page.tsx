@@ -505,7 +505,7 @@ export default async function ClientProfilePage({
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         {profile.phone && (
                             <a
                                 href={`https://wa.me/${(profile.phone ?? "").replace(/\D/g, "")}?text=Hi ${encodeURIComponent(profile.full_name?.split(" ")[0] ?? "there")}, just checking if you had a chance to look at the quote I sent!`}
@@ -513,8 +513,21 @@ export default async function ClientProfilePage({
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-[#25D366] text-white hover:bg-[#1eb857] transition-colors"
                             >
-                                <MessageCircle className="w-3 h-3" /> Follow Up
+                                <MessageCircle className="w-3 h-3" /> WhatsApp
                             </a>
+                        )}
+                        {profile.email && (
+                            <a
+                                href={`mailto:${profile.email}?subject=Re: ${encodeURIComponent(urgentProposal.title ?? "Your travel quote")}&body=Hi ${encodeURIComponent(profile.full_name?.split(" ")[0] ?? "there")},%0A%0AJust checking if you had a chance to look at the quote I sent. Let me know if you have any questions!`}
+                                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                            >
+                                <Mail className="w-3 h-3" /> Email
+                            </a>
+                        )}
+                        {!profile.phone && !profile.email && (
+                            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                <AlertCircle className="w-3 h-3" /> No contact info — add phone or email
+                            </span>
                         )}
                         <Link
                             href={`/proposals/${urgentProposal.id}`}
@@ -629,7 +642,7 @@ export default async function ClientProfilePage({
                 </GlassCard>
             )}
 
-            {/* ── 5 Key Stats ── */}
+            {/* ── 5 Key Stats (drill-through) ── */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 {[
                     {
@@ -639,6 +652,7 @@ export default async function ClientProfilePage({
                         icon: Plane,
                         color: "text-blue-600 dark:text-blue-400",
                         bg: "bg-blue-50 dark:bg-blue-900/20",
+                        href: "#trip-history",
                     },
                     {
                         label: "Quotes Sent",
@@ -647,6 +661,7 @@ export default async function ClientProfilePage({
                         icon: Send,
                         color: "text-violet-600 dark:text-violet-400",
                         bg: "bg-violet-50 dark:bg-violet-900/20",
+                        href: "#enquiry-history",
                     },
                     {
                         label: "Win Rate",
@@ -657,6 +672,7 @@ export default async function ClientProfilePage({
                         icon: Percent,
                         color: winRate >= 50 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
                         bg: winRate >= 50 ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-amber-50 dark:bg-amber-900/20",
+                        href: "#enquiry-history",
                     },
                     {
                         label: "Total Revenue",
@@ -665,6 +681,7 @@ export default async function ClientProfilePage({
                         icon: IndianRupee,
                         color: "text-emerald-600 dark:text-emerald-400",
                         bg: "bg-emerald-50 dark:bg-emerald-900/20",
+                        href: "#enquiry-history",
                     },
                     {
                         label: "Client Since",
@@ -673,20 +690,27 @@ export default async function ClientProfilePage({
                         icon: CalendarDays,
                         color: "text-slate-600 dark:text-slate-400",
                         bg: "bg-slate-50 dark:bg-slate-800",
+                        href: "#client-details",
                     },
                 ].map((stat) => (
-                    <GlassCard key={stat.label} padding="lg" className="border-gray-100 dark:border-slate-800 group hover:shadow-md transition-all">
-                        <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] mb-1.5 leading-tight">{stat.label}</p>
-                                <p className="text-2xl font-black text-secondary dark:text-white tabular-nums tracking-tight truncate">{stat.value}</p>
-                                <p className="text-[10px] text-text-muted font-medium mt-1 truncate">{stat.sub}</p>
+                    <a
+                        key={stat.label}
+                        href={stat.href}
+                        className="no-underline block group"
+                    >
+                        <GlassCard padding="lg" hoverEffect className="border-gray-100 dark:border-slate-800 hover:shadow-md hover:border-primary/20 transition-all h-full">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em] mb-1.5 leading-tight">{stat.label}</p>
+                                    <p className="text-2xl font-black text-secondary dark:text-white tabular-nums tracking-tight truncate">{stat.value}</p>
+                                    <p className="text-[10px] text-text-muted font-medium mt-1 truncate">{stat.sub}</p>
+                                </div>
+                                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", stat.bg)}>
+                                    <stat.icon className={cn("w-4 h-4", stat.color)} />
+                                </div>
                             </div>
-                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", stat.bg)}>
-                                <stat.icon className={cn("w-4 h-4", stat.color)} />
-                            </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
+                    </a>
                 ))}
             </div>
 
@@ -697,7 +721,7 @@ export default async function ClientProfilePage({
                 <div className="space-y-5">
 
                     {/* Client details */}
-                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800">
+                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800 scroll-mt-6" id="client-details">
                         <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
                             <User className="w-3.5 h-3.5" /> Client Details
                         </h2>
@@ -781,7 +805,7 @@ export default async function ClientProfilePage({
                 <div className="lg:col-span-2 space-y-5">
 
                     {/* ── ENQUIRY HISTORY ── */}
-                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800">
+                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800 scroll-mt-6" id="enquiry-history">
                         <div className="flex items-center justify-between mb-5">
                             <div>
                                 <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-0.5">
@@ -874,7 +898,7 @@ export default async function ClientProfilePage({
                     </GlassCard>
 
                     {/* ── TRIP HISTORY ── */}
-                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800">
+                    <GlassCard padding="lg" className="border-gray-100 dark:border-slate-800 scroll-mt-6" id="trip-history">
                         <div className="flex items-center justify-between mb-5">
                             <div>
                                 <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 mb-0.5">
