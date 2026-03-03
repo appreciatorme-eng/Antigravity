@@ -5,7 +5,7 @@ import { useUpdateItinerary } from "@/lib/queries/itineraries";
 import { useClients } from "@/lib/queries/clients";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { MapPin, Clock, DollarSign, Check, Share2, ExternalLink, Link2, Globe, Users, Calendar } from "lucide-react";
+import { MapPin, Clock, DollarSign, Check, Share2, ExternalLink, Link2, Globe, Users, Calendar, Eye, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -28,9 +28,11 @@ interface PastItineraryCardProps {
         trip_id?: string | null;
     };
     compact?: boolean;
+    onOpen?: (id: string) => void;
+    isLoading?: boolean;
 }
 
-export function PastItineraryCard({ itinerary, compact = false }: PastItineraryCardProps) {
+export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoading = false }: PastItineraryCardProps) {
     const { toast } = useToast();
     const { mutateAsync: updateItinerary, isPending } = useUpdateItinerary();
     const { data: clients, isLoading: isLoadingClients } = useClients();
@@ -106,25 +108,45 @@ export function PastItineraryCard({ itinerary, compact = false }: PastItineraryC
         year: "numeric",
     });
 
+    const handleCardClick = () => {
+        if (onOpen && !isLoading) {
+            onOpen(itinerary.id);
+        }
+    };
+
     return (
-        <GlassCard padding="none" className="group relative overflow-hidden transition-all duration-300 hover:shadow-md border-gray-100 dark:border-slate-800">
+        <GlassCard padding="none" className={cn(
+            "group relative overflow-hidden transition-all duration-300 hover:shadow-md border-gray-100 dark:border-slate-800",
+            onOpen && "cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-800",
+            isLoading && "opacity-70 pointer-events-none"
+        )}>
             {/* Hover accent strip */}
             <div className="absolute left-0 top-0 w-1 h-full bg-primary transform -translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
 
             <div className="p-4">
-                {/* ── Row 1: Icon + Title + Meta ── */}
-                <div className="flex items-start gap-3">
+                {/* ── Row 1: Icon + Title + Meta (clickable to open) ── */}
+                <div
+                    className={cn("flex items-start gap-3", onOpen && "cursor-pointer")}
+                    onClick={handleCardClick}
+                    role={onOpen ? "button" : undefined}
+                    tabIndex={onOpen ? 0 : undefined}
+                    onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") handleCardClick(); } : undefined}
+                >
                     <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 mt-0.5">
-                        <MapPin className="w-4 h-4 text-primary" />
+                        {isLoading ? (
+                            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                        ) : (
+                            <MapPin className="w-4 h-4 text-primary" />
+                        )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-sm font-bold text-secondary dark:text-white truncate tracking-tight leading-tight">
+                            <h3 className="text-sm font-bold text-secondary dark:text-white truncate tracking-tight leading-tight group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                 {itinerary.trip_title || itinerary.destination || "Untitled Itinerary"}
                             </h3>
                             {/* Top-right: share status + view trip */}
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 {itinerary.share_code && (
                                     <span className={cn(
                                         "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-widest",
@@ -172,6 +194,21 @@ export function PastItineraryCard({ itinerary, compact = false }: PastItineraryC
                         )}
                     </div>
                 </div>
+
+                {/* Open Itinerary button */}
+                {onOpen && (
+                    <button
+                        onClick={handleCardClick}
+                        disabled={isLoading}
+                        className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-100 dark:border-emerald-800/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                    >
+                        {isLoading ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading itinerary...</>
+                        ) : (
+                            <><Eye className="w-3.5 h-3.5" /> Open Itinerary</>
+                        )}
+                    </button>
+                )}
 
                 {/* ── Row 2: Assign Client + Price (always visible) ── */}
                 <div className="mt-3 pt-3 border-t border-gray-50 dark:border-slate-800/80 grid grid-cols-2 gap-2">

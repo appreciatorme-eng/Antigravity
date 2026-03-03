@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/toast";
 import {
     Loader2, MapPin, Calendar, Wallet, Sparkles, Plane,
     ChevronDown, Cloud, Share2, FolderOpen, ArrowRight,
@@ -49,6 +51,8 @@ const INTEREST_OPTIONS = [
 
 
 export default function PlannerPage() {
+    const supabase = createClient();
+    const { toast } = useToast();
     const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(5);
@@ -61,6 +65,49 @@ export default function PlannerPage() {
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState<PlannerTab>('itinerary');
+    const [openingItineraryId, setOpeningItineraryId] = useState<string | null>(null);
+
+    const handleOpenItinerary = useCallback(async (itineraryId: string) => {
+        setOpeningItineraryId(itineraryId);
+        try {
+            const { data, error: fetchError } = await supabase
+                .from("itineraries")
+                .select("raw_data, trip_title, destination, duration_days, budget, interests, template_id")
+                .eq("id", itineraryId)
+                .single();
+
+            if (fetchError || !data?.raw_data) {
+                toast({
+                    title: "Failed to load itinerary",
+                    description: "Could not fetch itinerary data. Please try again.",
+                    variant: "error",
+                });
+                return;
+            }
+
+            const itineraryData = data.raw_data as unknown as ItineraryResult;
+            setResult(itineraryData);
+            setPrompt(data.destination || itineraryData.destination || "");
+            setDays(data.duration_days || itineraryData.duration_days || 5);
+            if (data.budget) setBudget(data.budget);
+            if (data.interests) setInterests(data.interests);
+            if (data.template_id) setSelectedTemplate(data.template_id as ItineraryTemplateId);
+            setActiveTab("itinerary");
+            setIsEditing(false);
+
+            // Scroll to top to show the itinerary
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+            console.error("Error opening itinerary:", err);
+            toast({
+                title: "Load failed",
+                description: "Something went wrong loading the itinerary.",
+                variant: "error",
+            });
+        } finally {
+            setOpeningItineraryId(null);
+        }
+    }, [supabase, toast]);
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
@@ -755,7 +802,12 @@ Make it practical and specific:
                 {!isLoadingItineraries && hasPastItineraries && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {pastItineraries.map((itinerary: any) => (
-                            <PastItineraryCard key={itinerary.id} itinerary={itinerary} />
+                            <PastItineraryCard
+                                key={itinerary.id}
+                                itinerary={itinerary}
+                                onOpen={handleOpenItinerary}
+                                isLoading={openingItineraryId === itinerary.id}
+                            />
                         ))}
                     </div>
                 )}
