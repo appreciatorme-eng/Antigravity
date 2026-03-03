@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionContext, ConversationMessage } from "@/lib/assistant/types";
-import { getActionSchemas, findAction } from "@/lib/assistant/actions/registry";
+import { findAction } from "@/lib/assistant/actions/registry";
 import { isActionBlocked } from "@/lib/assistant/guardrails";
 import { logAuditEvent } from "@/lib/assistant/audit";
 import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { buildSystemPrompt } from "@/lib/assistant/prompts/system";
-import { buildPreferencesBlock } from "@/lib/assistant/preferences";
+import { buildPreferencesBlock, getPreference } from "@/lib/assistant/preferences";
+import { getCachedResponse, setCachedResponse, invalidateOrgCache } from "@/lib/assistant/response-cache";
+import { getRelevantSchemas } from "@/lib/assistant/schema-router";
+import { tryDirectExecution } from "@/lib/assistant/direct-executor";
+import { checkUsageAllowed, incrementUsage } from "@/lib/assistant/usage-meter";
+import { getSuggestedActions } from "@/lib/assistant/suggested-actions";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 
@@ -46,7 +51,7 @@ interface SSEWriter {
   readonly writeStatus: (status: string) => void;
   readonly writeToken: (token: string) => void;
   readonly writeData: (event: string, data: Record<string, unknown>) => void;
-  readonly writeDone: () => void;
+  readonly writeDone: (data?: Record<string, unknown>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,10 +71,22 @@ function createSSEWriter(controller: ReadableStreamDefaultController<Uint8Array>
     writeData(event: string, data: Record<string, unknown>) {
       controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
     },
-    writeDone() {
-      controller.enqueue(encoder.encode(`event: done\ndata: {}\n\n`));
+    writeDone(data?: Record<string, unknown>) {
+      controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify(data ?? {})}\n\n`));
     },
   };
+}
+
+/** Write a complete text reply as a series of SSE token events followed by done. */
+function writeTextAsSSE(writer: SSEWriter, text: string): void {
+  // Split into word-sized chunks for a natural streaming effect
+  const words = text.split(/(\s+)/);
+  for (const word of words) {
+    if (word.length > 0) {
+      writer.writeToken(word);
+    }
+  }
+  writer.writeDone();
 }
 
 async function getOrganizationName(
@@ -314,6 +331,11 @@ async function executeToolCall(
     actionResult: { success: result.success, message: result.message },
   });
 
+  // Invalidate response cache after write actions so stale data is not served
+  if (action.category === "write") {
+    void invalidateOrgCache(ctx.organizationId);
+  }
+
   return {
     toolMessage: {
       role: "tool",
@@ -358,17 +380,49 @@ async function handleStreamingRequest(
       supabase: adminClient,
     };
 
-    const [snapshot, orgName, prefsBlock] = await Promise.all([
+    // -- Usage metering: check if org is within their plan limit
+    const usageStatus = await checkUsageAllowed(ctx);
+    if (!usageStatus.allowed) {
+      writeTextAsSSE(
+        writer,
+        `You've used ${usageStatus.used} of ${usageStatus.limit} assistant messages this month on the ${usageStatus.tier} plan. Upgrade to get more messages, or wait until next month for your quota to reset.`,
+      );
+      controller.close();
+      return;
+    }
+
+    // -- Direct execution: try zero-cost pattern matching first
+    const directResult = await tryDirectExecution(message, ctx);
+    if (directResult !== null) {
+      void incrementUsage(ctx, { isDirectExecution: true });
+      writeTextAsSSE(writer, directResult.reply);
+      controller.close();
+      return;
+    }
+
+    // -- Response cache: check for cached response before OpenAI
+    const cachedResponse = await getCachedResponse(organizationId, message);
+    if (cachedResponse !== null) {
+      void incrementUsage(ctx, { isCacheHit: true });
+      writeTextAsSSE(writer, cachedResponse.reply);
+      controller.close();
+      return;
+    }
+
+    const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
       getCachedContextSnapshot(ctx),
       getOrganizationName(adminClient, organizationId),
       buildPreferencesBlock(ctx),
+      getPreference(ctx, "preferred_language"),
     ]);
 
-    const baseSystemPrompt = buildSystemPrompt(orgName, snapshot) + prefsBlock;
-    const tools = getActionSchemas();
+    const language = typeof languagePref === "string" ? languagePref : undefined;
+    const baseSystemPrompt = buildSystemPrompt(orgName, snapshot, language) + prefsBlock;
+    const tools = getRelevantSchemas(message);
     let messages: readonly ChatMessage[] = buildChatMessages(baseSystemPrompt, history, message);
 
     // Function calling loop (non-streaming)
+    let lastActionName: string | null = null;
     let pendingProposal: { actionName: string; params: Record<string, unknown>; confirmationMessage: string } | null = null;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -379,13 +433,15 @@ async function handleStreamingRequest(
       // No tool calls — stream the final response
       if (result.toolCalls.length === 0) {
         if (result.content && result.content.trim().length >= 10) {
-          // Good response from function-calling — just write it as tokens
+          // Good response from function-calling -- write it as tokens
           writer.writeStatus("Generating response...");
           for (const char of result.content) {
             writer.writeToken(char);
-            // Small delay for streaming effect
           }
-          writer.writeDone();
+          const suggestions = getSuggestedActions(lastActionName);
+          void setCachedResponse(organizationId, message, { reply: result.content });
+          void incrementUsage(ctx);
+          writer.writeDone(suggestions.length > 0 ? { suggestedActions: suggestions } : undefined);
           controller.close();
           return;
         }
@@ -406,6 +462,10 @@ async function handleStreamingRequest(
         writer.writeStatus(`Looking up ${toolCall.function.name.replace(/_/g, " ")}...`);
         const toolResult = await executeToolCall(toolCall, ctx);
         toolMessages.push(toolResult.toolMessage);
+
+        if (!toolResult.hasProposal && !toolResult.proposal) {
+          lastActionName = toolCall.function.name;
+        }
 
         if (toolResult.hasProposal && toolResult.proposal) {
           pendingProposal = toolResult.proposal;
@@ -430,6 +490,11 @@ async function handleStreamingRequest(
           reply: finalText,
         });
 
+        void setCachedResponse(organizationId, message, {
+          reply: finalText,
+          actionProposal: pendingProposal,
+        });
+        void incrementUsage(ctx);
         writer.writeDone();
         controller.close();
         return;
@@ -441,8 +506,11 @@ async function handleStreamingRequest(
 
     // Stream the final response
     writer.writeStatus("Generating response...");
-    await streamOpenAI(openaiKey, messages, writer);
-    writer.writeDone();
+    const streamedReply = await streamOpenAI(openaiKey, messages, writer);
+    const finalSuggestions = getSuggestedActions(lastActionName);
+    void setCachedResponse(organizationId, message, { reply: streamedReply });
+    void incrementUsage(ctx);
+    writer.writeDone(finalSuggestions.length > 0 ? { suggestedActions: finalSuggestions } : undefined);
     controller.close();
   } catch (error) {
     writer.writeData("error", {

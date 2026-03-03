@@ -208,4 +208,8 @@ export interface OrchestratorResponse {
     readonly confirmationMessage: string;
   };
   readonly actionResult?: ActionResult;
+  readonly suggestedActions?: ReadonlyArray<{
+    readonly label: string;
+    readonly prefilledMessage: string;
+  }>;
 }

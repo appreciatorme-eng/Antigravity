@@ -12,6 +12,7 @@ interface Message {
     citations?: Array<{ id: string; question: string }>;
     actionResult?: { success: boolean; message: string; data?: unknown };
     actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
+    suggestedActions?: Array<{ label: string; prefilledMessage: string }>;
 }
 
 const WELCOME = "Hi! I'm GoBuddy, your operations co-pilot. I can look up live data from your business -- trips, clients, invoices, drivers, proposals. Ask me anything!";
@@ -101,11 +102,12 @@ export default function TourAssistantChat() {
                     citations?: Array<{ id: string; question: string }>;
                     actionResult?: { success: boolean; message: string; data?: unknown };
                     actionProposal?: { actionName: string; params: Record<string, unknown>; confirmationMessage: string };
+                    suggestedActions?: Array<{ label: string; prefilledMessage: string }>;
                 };
                 setMessages((prev) =>
                     prev.map((m) =>
                         m.id === assistantId
-                            ? { ...m, content: data.reply ?? data.error ?? "Something went wrong.", citations: data.citations, actionResult: data.actionResult, actionProposal: data.actionProposal }
+                            ? { ...m, content: data.reply ?? data.error ?? "Something went wrong.", citations: data.citations, actionResult: data.actionResult, actionProposal: data.actionProposal, suggestedActions: data.suggestedActions }
                             : m
                     )
                 );
@@ -182,7 +184,15 @@ export default function TourAssistantChat() {
                             break;
 
                         case "done":
-                            // Stream complete
+                            if (payload.suggestedActions) {
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.id === assistantId
+                                            ? { ...m, suggestedActions: payload.suggestedActions as Array<{ label: string; prefilledMessage: string }> }
+                                            : m
+                                    )
+                                );
+                            }
                             break;
                     }
                 }
@@ -344,6 +354,19 @@ export default function TourAssistantChat() {
                                                 >
                                                     Cancel
                                                 </button>
+                                            </div>
+                                        )}
+                                        {msg.suggestedActions && msg.suggestedActions.length > 0 && !isLoading && (
+                                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                                {msg.suggestedActions.map((action) => (
+                                                    <button
+                                                        key={action.label}
+                                                        onClick={() => void sendMessage(action.prefilledMessage)}
+                                                        className="text-[11px] px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-colors whitespace-nowrap"
+                                                    >
+                                                        {action.label}
+                                                    </button>
+                                                ))}
                                             </div>
                                         )}
                                     </div>

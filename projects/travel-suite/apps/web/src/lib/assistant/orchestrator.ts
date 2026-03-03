@@ -25,12 +25,17 @@ import type {
   OrchestratorResponse,
   ActionResult,
 } from "./types";
-import { getActionSchemas, findAction } from "./actions/registry";
+import { findAction } from "./actions/registry";
 import { isActionBlocked } from "./guardrails";
 import { logAuditEvent } from "./audit";
 import { getCachedContextSnapshot } from "./context-engine";
 import { buildSystemPrompt } from "./prompts/system";
-import { buildPreferencesBlock } from "./preferences";
+import { buildPreferencesBlock, getPreference } from "./preferences";
+import { getCachedResponse, setCachedResponse, invalidateOrgCache } from "./response-cache";
+import { getRelevantSchemas } from "./schema-router";
+import { tryDirectExecution } from "./direct-executor";
+import { checkUsageAllowed, incrementUsage } from "./usage-meter";
+import { getSuggestedActions } from "./suggested-actions";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -324,7 +329,7 @@ async function executeToolCall(
   // Execute read actions immediately
   const result = await action.execute(ctx, params);
 
-  // Audit: log the executed read action
+  // Audit: log the executed action
   void logAuditEvent(ctx, {
     sessionId: null,
     eventType: "action_executed",
@@ -332,6 +337,11 @@ async function executeToolCall(
     actionParams: params,
     actionResult: { success: result.success, message: result.message },
   });
+
+  // Invalidate response cache after write actions so stale data is not served
+  if (action.category === "write") {
+    void invalidateOrgCache(ctx.organizationId);
+  }
 
   return {
     toolMessage: {
@@ -408,26 +418,52 @@ export async function handleMessage(
     supabase: adminClient,
   };
 
-  // 4. Gather enrichment data in parallel
-  const [snapshot, orgName, prefsBlock] = await Promise.all([
+  // 4. Usage metering: check if org is within their plan limit
+  const usageStatus = await checkUsageAllowed(ctx);
+  if (!usageStatus.allowed) {
+    return {
+      reply: `You've used ${usageStatus.used} of ${usageStatus.limit} assistant messages this month on the ${usageStatus.tier} plan. Upgrade to get more messages, or wait until next month for your quota to reset.`,
+    };
+  }
+
+  // 5. Direct execution: try zero-cost pattern matching first
+  const directResult = await tryDirectExecution(trimmedMessage, ctx);
+  if (directResult !== null) {
+    void incrementUsage(ctx, { isDirectExecution: true });
+    return directResult;
+  }
+
+  // 6. Response cache: check for cached response before OpenAI
+  const cachedResponse = await getCachedResponse(ctx.organizationId, trimmedMessage);
+  if (cachedResponse !== null) {
+    void incrementUsage(ctx, { isCacheHit: true });
+    return cachedResponse;
+  }
+
+  // 7. Gather enrichment data in parallel
+  const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
     getCachedContextSnapshot(ctx),
     getOrganizationName(ctx),
     buildPreferencesBlock(ctx),
+    getPreference(ctx, "preferred_language"),
   ]);
 
-  // 5. Build system prompt with business context + user preferences
-  const baseSystemPrompt = buildSystemPrompt(orgName, snapshot) + prefsBlock;
+  const language = typeof languagePref === "string" ? languagePref : undefined;
 
-  // 6. Build initial message array
-  const tools = getActionSchemas();
+  // 8. Build system prompt with business context + user preferences
+  const baseSystemPrompt = buildSystemPrompt(orgName, snapshot, language) + prefsBlock;
+
+  // 9. Build initial message array with smart schema routing
+  const tools = getRelevantSchemas(trimmedMessage);
   let messages: readonly ChatMessage[] = buildChatMessages(
     baseSystemPrompt,
     request.history,
     trimmedMessage,
   );
 
-  // 7. Function-calling loop (max MAX_TOOL_ROUNDS rounds)
+  // 10. Function-calling loop (max MAX_TOOL_ROUNDS rounds)
   let lastActionResult: ActionResult | null = null;
+  let lastActionName: string | null = null;
   let pendingProposal: OrchestratorResponse["actionProposal"] | null = null;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -455,10 +491,15 @@ export async function handleMessage(
         );
       }
 
-      return {
+      const suggestions = getSuggestedActions(lastActionName);
+      const textResponse: OrchestratorResponse = {
         reply: replyText,
         ...(lastActionResult ? { actionResult: lastActionResult } : {}),
+        ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
       };
+      void setCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
+      void incrementUsage(ctx);
+      return textResponse;
     }
 
     // Process each tool call
@@ -475,6 +516,7 @@ export async function handleMessage(
 
       if (result.actionResult) {
         lastActionResult = result.actionResult;
+        lastActionName = toolCall.function.name;
       }
 
       // If any tool requires confirmation, short-circuit
@@ -497,10 +539,13 @@ export async function handleMessage(
         null,
       );
 
-      return {
+      const proposalResponse: OrchestratorResponse = {
         reply: extractReplyText(confirmResponse),
         actionProposal: pendingProposal,
       };
+      void setCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
+      void incrementUsage(ctx);
+      return proposalResponse;
     }
 
     // Feed tool results back to OpenAI for the next round
@@ -510,10 +555,15 @@ export async function handleMessage(
   // If we exhausted all rounds, get a final summary from the model
   const finalResponse = await callOpenAI(openaiKey, messages, null);
 
-  return {
+  const suggestions = getSuggestedActions(lastActionName);
+  const exhaustedResponse: OrchestratorResponse = {
     reply: extractReplyText(finalResponse),
     ...(lastActionResult ? { actionResult: lastActionResult } : {}),
+    ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
   };
+  void setCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
+  void incrementUsage(ctx);
+  return exhaustedResponse;
 }
 
 // ---------------------------------------------------------------------------

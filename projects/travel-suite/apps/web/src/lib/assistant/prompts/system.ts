@@ -107,10 +107,15 @@ export function buildContextBlock(snapshot: ContextSnapshot): string {
 export function buildSystemPrompt(
   orgName: string,
   snapshot: ContextSnapshot | null,
+  language?: string,
 ): string {
   const today = formatDate(new Date().toISOString());
   const contextBlock =
     snapshot !== null ? `\n${buildContextBlock(snapshot)}\n` : "";
+
+  const languageBlock = language && language !== "en"
+    ? `\n\n## Language\nRespond in ${language === "hi" ? "Hindi (Devanagari script)" : language}. Use natural, fluent ${language === "hi" ? "Hindi" : language} — not machine-translated text. Keep technical terms, numbers, and proper nouns in English.`
+    : "";
 
   return `You are GoBuddy, a business operations assistant for ${orgName}. Today is ${today}.
 
@@ -130,5 +135,5 @@ You have direct access to the business database and can look up real-time inform
 ${contextBlock}
 ## Capabilities
 You can query and report on: trips, clients, invoices, proposals, drivers, and notifications.
-Use the provided functions to fetch real data. Answer from the function results, not from assumptions.`;
+Use the provided functions to fetch real data. Answer from the function results, not from assumptions.${languageBlock}`;
 }
