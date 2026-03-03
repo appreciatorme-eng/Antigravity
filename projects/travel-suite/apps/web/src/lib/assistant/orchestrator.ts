@@ -38,6 +38,7 @@ import { selectModel } from "./model-router";
 import { tryDirectExecution } from "./direct-executor";
 import { checkUsageAllowed, incrementUsage } from "./usage-meter";
 import { getSuggestedActions } from "./suggested-actions";
+import { getRecentMemory } from "./conversation-memory";
 import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "./workflows/engine";
 import { findWorkflow, ALL_WORKFLOWS } from "./workflows/definitions";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -181,10 +182,15 @@ interface ChatMessage {
 
 function buildChatMessages(
   systemPrompt: string,
+  memory: readonly ConversationMessage[],
   history: readonly ConversationMessage[],
   userMessage: string,
 ): readonly ChatMessage[] {
   const systemMsg: ChatMessage = { role: "system", content: systemPrompt };
+
+  const memorySlice = memory.map(
+    (msg): ChatMessage => ({ role: msg.role, content: msg.content }),
+  );
 
   const historySlice = history.slice(-MAX_HISTORY_MESSAGES).map(
     (msg): ChatMessage => ({
@@ -197,7 +203,7 @@ function buildChatMessages(
 
   const userMsg: ChatMessage = { role: "user", content: userMessage };
 
-  return [systemMsg, ...historySlice, userMsg];
+  return [systemMsg, ...memorySlice, ...historySlice, userMsg];
 }
 
 // ---------------------------------------------------------------------------
@@ -501,11 +507,12 @@ export async function handleMessage(
   const model = selectModel(trimmedMessage, usageStatus.tier);
 
   // 8. Gather enrichment data in parallel
-  const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
+  const [snapshot, orgName, prefsBlock, languagePref, memory] = await Promise.all([
     getCachedContextSnapshot(ctx),
     getOrganizationName(ctx),
     buildPreferencesBlock(ctx),
     getPreference(ctx, "preferred_language"),
+    getRecentMemory(ctx),
   ]);
 
   const language = typeof languagePref === "string" ? languagePref : undefined;
@@ -517,6 +524,7 @@ export async function handleMessage(
   const tools = getRelevantSchemas(trimmedMessage);
   let messages: readonly ChatMessage[] = buildChatMessages(
     baseSystemPrompt,
+    memory,
     request.history,
     trimmedMessage,
   );
@@ -658,7 +666,7 @@ async function buildFaqFallbackResponse(
 
   const enrichedPrompt = baseSystemPrompt + buildFaqBlock(faqRows);
 
-  const messages = buildChatMessages(enrichedPrompt, history, userMessage);
+  const messages = buildChatMessages(enrichedPrompt, [], history, userMessage);
   const response = await callOpenAI(apiKey, messages, null, "gpt-4o-mini");
 
   const citations = faqRows.slice(0, 2).map((r) => ({

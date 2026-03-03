@@ -349,6 +349,24 @@ export default function TourAssistantChat() {
                             );
                             break;
 
+                        case "suggestions":
+                            if (payload.suggestedActions) {
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.id === assistantId
+                                            ? {
+                                                  ...m,
+                                                  suggestedActions: payload.suggestedActions as Array<{
+                                                      label: string;
+                                                      prefilledMessage: string;
+                                                  }>,
+                                              }
+                                            : m
+                                    )
+                                );
+                            }
+                            break;
+
                         case "done":
                             if (payload.suggestedActions) {
                                 setMessages((prev) =>

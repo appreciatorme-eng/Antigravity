@@ -13,6 +13,7 @@ import { tryDirectExecution } from "@/lib/assistant/direct-executor";
 import { checkUsageAllowed, incrementUsage } from "@/lib/assistant/usage-meter";
 import { getSuggestedActions } from "@/lib/assistant/suggested-actions";
 import { saveConversationMessages } from "@/lib/assistant/conversation-store";
+import { getRecentMemory } from "@/lib/assistant/conversation-memory";
 import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "@/lib/assistant/workflows/engine";
 import { findWorkflow, ALL_WORKFLOWS } from "@/lib/assistant/workflows/definitions";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -110,10 +111,14 @@ async function getOrganizationName(
 
 function buildChatMessages(
   systemPrompt: string,
+  memory: readonly ConversationMessage[],
   history: readonly ConversationMessage[],
   userMessage: string,
 ): readonly ChatMessage[] {
   const systemMsg: ChatMessage = { role: "system", content: systemPrompt };
+  const memorySlice = memory.map(
+    (msg): ChatMessage => ({ role: msg.role, content: msg.content }),
+  );
   const historySlice = history.slice(-MAX_HISTORY_MESSAGES).map(
     (msg): ChatMessage => ({
       role: msg.role,
@@ -123,7 +128,7 @@ function buildChatMessages(
     }),
   );
   const userMsg: ChatMessage = { role: "user", content: userMessage };
-  return [systemMsg, ...historySlice, userMsg];
+  return [systemMsg, ...memorySlice, ...historySlice, userMsg];
 }
 
 /** Non-streaming OpenAI call (for tool-calling rounds). */
@@ -446,17 +451,18 @@ async function handleStreamingRequest(
       return;
     }
 
-    const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
+    const [snapshot, orgName, prefsBlock, languagePref, memory] = await Promise.all([
       getCachedContextSnapshot(ctx),
       getOrganizationName(adminClient, organizationId),
       buildPreferencesBlock(ctx),
       getPreference(ctx, "preferred_language"),
+      getRecentMemory(ctx),
     ]);
 
     const language = typeof languagePref === "string" ? languagePref : undefined;
     const baseSystemPrompt = buildSystemPrompt(orgName, snapshot, language) + prefsBlock;
     const tools = getRelevantSchemas(message);
-    let messages: readonly ChatMessage[] = buildChatMessages(baseSystemPrompt, history, message);
+    let messages: readonly ChatMessage[] = buildChatMessages(baseSystemPrompt, memory, history, message);
 
     // Function calling loop (non-streaming)
     let lastActionName: string | null = null;
@@ -479,7 +485,10 @@ async function handleStreamingRequest(
           void setCachedResponse(organizationId, message, { reply: result.content });
           void incrementUsage(ctx);
           void saveConversationMessages(ctx, sessionId, message, result.content, lastActionName, null);
-          writer.writeDone(suggestions.length > 0 ? { suggestedActions: suggestions } : undefined);
+          if (suggestions.length > 0) {
+            writer.writeData("suggestions", { suggestedActions: suggestions });
+          }
+          writer.writeDone();
           controller.close();
           return;
         }
@@ -544,13 +553,16 @@ async function handleStreamingRequest(
     }
 
     // Stream the final response
+    const finalSuggestions = getSuggestedActions(lastActionName);
+    if (finalSuggestions.length > 0) {
+      writer.writeData("suggestions", { suggestedActions: finalSuggestions });
+    }
     writer.writeStatus("Generating response...");
     const streamedReply = await streamOpenAI(openaiKey, messages, writer);
-    const finalSuggestions = getSuggestedActions(lastActionName);
     void setCachedResponse(organizationId, message, { reply: streamedReply });
     void incrementUsage(ctx);
     void saveConversationMessages(ctx, sessionId, message, streamedReply, lastActionName, null);
-    writer.writeDone(finalSuggestions.length > 0 ? { suggestedActions: finalSuggestions } : undefined);
+    writer.writeDone();
     controller.close();
   } catch (error) {
     writer.writeData("error", {
