@@ -218,9 +218,5 @@ export function useDismissTask() {
         );
       }
     },
-
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: dashboardTasksKeys.all });
-    },
   });
 }

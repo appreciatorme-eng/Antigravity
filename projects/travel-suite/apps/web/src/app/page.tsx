@@ -256,7 +256,7 @@ export default function DashboardPage() {
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
           className="group"
         >
-          <RevenueKPICard series={data?.series ?? []} range={range} loading={loading} href="/admin/billing" />
+          <RevenueKPICard series={data?.series ?? []} range={range} loading={loading} href="/analytics/drill-through?type=revenue" />
         </motion.div>
         {kpiItems.map((item) => (
           <motion.div

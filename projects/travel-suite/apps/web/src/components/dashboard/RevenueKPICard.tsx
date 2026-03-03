@@ -33,7 +33,7 @@ export function RevenueKPICard({
   series,
   range,
   loading = false,
-  href = "/admin/billing",
+  href = "/analytics/drill-through?type=revenue",
 }: RevenueKPICardProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -88,14 +88,45 @@ export function RevenueKPICard({
       onClick={handleCardClick}
     >
       <div className="relative z-10">
-        {/* Icon row */}
+        {/* Icon + trend row — matches KPICard layout */}
         <div className="flex items-center justify-between mb-4">
           <div className="p-3 rounded-2xl bg-emerald-500/10 transition-transform group-hover:scale-110 duration-500">
             <IndianRupee className="w-6 h-6 text-emerald-500" />
           </div>
+          <div className="flex items-center gap-1.5">
+            {!loading && (
+              <div
+                className={cn(
+                  "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
+                  trendUp
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+                )}
+              >
+                {trendUp ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
+                <span className="truncate max-w-[120px]">{trendText}</span>
+              </div>
+            )}
+            <button
+              onClick={handleToggleExpand}
+              className="p-1 -m-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Show breakdown"
+            >
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-slate-400 transition-transform duration-300",
+                  expanded && "rotate-180",
+                )}
+              />
+            </button>
+          </div>
         </div>
 
-        {/* Value + trend */}
+        {/* Value + label — matches KPICard layout */}
         <div className="space-y-1">
           <motion.h3
             key={range}
@@ -105,48 +136,14 @@ export function RevenueKPICard({
             className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter"
           >
             {loading ? (
-              <span className="inline-block w-24 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
+              <span className="inline-block w-20 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
             ) : (
               formatINRShort(currentRevenue)
             )}
           </motion.h3>
-
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Revenue
-            </p>
-            <div className="flex items-center gap-1.5">
-              {!loading && (
-                <div
-                  className={cn(
-                    "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
-                    trendUp
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-                  )}
-                >
-                  {trendUp ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  <span>{trendText}</span>
-                </div>
-              )}
-              <button
-                onClick={handleToggleExpand}
-                className="p-1 -m-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Show breakdown"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 text-slate-400 transition-transform duration-300",
-                    expanded && "rotate-180",
-                  )}
-                />
-              </button>
-            </div>
-          </div>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            Revenue
+          </p>
         </div>
       </div>
 

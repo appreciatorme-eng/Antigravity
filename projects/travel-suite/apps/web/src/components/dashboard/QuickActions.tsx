@@ -16,7 +16,7 @@ export function QuickActions() {
                 <QuickActionLink
                     href="/trips"
                     icon={Zap}
-                    label="Create New Trip"
+                    label="Open Trips"
                     description="AI-powered itinerary generation"
                     accent="bg-primary/10 text-primary"
                 />
@@ -35,10 +35,10 @@ export function QuickActions() {
                     accent="bg-violet-500/10 text-violet-500"
                 />
                 <QuickActionLink
-                    href="/admin/billing"
+                    href="/analytics/drill-through?type=revenue"
                     icon={CreditCard}
                     label="Financial Ledger"
-                    description="Invoices and subscription status"
+                    description="Revenue overview and transactions"
                     accent="bg-blue-500/10 text-blue-500"
                 />
                 <QuickActionLink
