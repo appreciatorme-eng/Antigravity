@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Bot, Loader2, Sparkles, Download, Copy, Check, RefreshCw } from "lucide-react";
+import { X, Send, Bot, Loader2, Sparkles, Download, Copy, Check, RefreshCw, Mic, MicOff } from "lucide-react";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 // cn utility no longer needed -- all styles use inline className strings and style objects
 
@@ -171,8 +171,71 @@ export default function TourAssistantChat() {
     const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [customPrompts, setCustomPrompts] = useState<string[]>([]);
+    const [isRecording, setIsRecording] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    interface SpeechRecognitionLike {
+        lang: string;
+        interimResults: boolean;
+        maxAlternatives: number;
+        onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+        onend: (() => void) | null;
+        onerror: (() => void) | null;
+        start: () => void;
+        stop: () => void;
+    }
+
+    const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+    const voiceSupported = typeof window !== "undefined" &&
+        ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+    function startRecording() {
+        const win = window as unknown as Record<string, new () => SpeechRecognitionLike>;
+        const SpeechRecognitionImpl = win["SpeechRecognition"] ?? win["webkitSpeechRecognition"];
+        if (!SpeechRecognitionImpl) return;
+
+        const recognition = new SpeechRecognitionImpl();
+        recognition.lang = "en-US";
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+            const results = event.results as ArrayLike<ArrayLike<{ transcript: string }>>;
+            const transcript = Array.from(results)
+                .map((r) => (r as ArrayLike<{ transcript: string }>)[0].transcript)
+                .join("");
+            setInput(transcript);
+        };
+
+        recognition.onend = () => {
+            setIsRecording(false);
+            recognitionRef.current = null;
+            inputRef.current?.focus();
+        };
+
+        recognition.onerror = () => {
+            setIsRecording(false);
+            recognitionRef.current = null;
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+        setIsRecording(true);
+    }
+
+    function stopRecording() {
+        recognitionRef.current?.stop();
+    }
+
+    function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
 
     // Scroll to bottom on new messages
     useEffect(() => {
@@ -466,6 +529,7 @@ export default function TourAssistantChat() {
                 @keyframes gb-cursor { 0%,100% { opacity:1; } 50% { opacity:0; } }
                 @keyframes gb-dot { 0%,80%,100% { transform:scale(0.55); opacity:0.35; } 40% { transform:scale(1); opacity:1; } }
                 @keyframes gb-pulse-ring { 0% { transform:scale(1); opacity:0.7; } 100% { transform:scale(1.7); opacity:0; } }
+                @keyframes gb-mic-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(220,38,38,0.5); } 50% { box-shadow:0 0 0 6px rgba(220,38,38,0); } }
                 .gb-spin { animation: gb-spin 5s linear infinite; }
                 .gb-cursor { animation: gb-cursor 0.9s ease infinite; display:inline-block; }
                 .gb-dot-1 { animation: gb-dot 1.3s ease infinite 0s; }
@@ -809,7 +873,7 @@ export default function TourAssistantChat() {
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                placeholder="Ask GoBuddy anything..."
+                                placeholder={isRecording ? "Listening..." : "Ask GoBuddy anything..."}
                                 disabled={isLoading}
                                 className="flex-1 text-sm rounded-xl px-4 py-2.5 outline-none transition-all disabled:opacity-40"
                                 style={{
@@ -820,6 +884,31 @@ export default function TourAssistantChat() {
                                 onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.45)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
                                 onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(124,58,237,0.2)"; e.currentTarget.style.boxShadow = "none"; }}
                             />
+                            {voiceSupported && (
+                                <button
+                                    type="button"
+                                    onClick={toggleRecording}
+                                    disabled={isLoading}
+                                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    style={{
+                                        background: isRecording
+                                            ? "linear-gradient(135deg, #dc2626, #b91c1c)"
+                                            : "rgba(124,58,237,0.12)",
+                                        border: isRecording
+                                            ? "none"
+                                            : "1px solid rgba(124,58,237,0.25)",
+                                        boxShadow: isRecording
+                                            ? "0 0 16px rgba(220,38,38,0.5)"
+                                            : "none",
+                                    }}
+                                    aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                                >
+                                    {isRecording
+                                        ? <MicOff className="w-4 h-4 text-white" />
+                                        : <Mic className="w-4 h-4" style={{ color: "#a78bfa" }} />
+                                    }
+                                </button>
+                            )}
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isLoading}
