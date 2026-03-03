@@ -25,9 +25,9 @@ import {
 import { toast } from 'sonner';
 import { CannedResponses } from './CannedResponses';
 import {
-  WHATSAPP_TEMPLATES,
-  fillTemplate,
-} from '@/lib/whatsapp/india-templates';
+  ActionPickerModal,
+  type ActionMode,
+} from './ActionPickerModal';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
 export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
@@ -237,6 +237,7 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [showCanned, setShowCanned] = useState(false);
+  const [modalMode, setModalMode] = useState<ActionMode | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
 
@@ -264,73 +265,16 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
     setShowCanned(false);
   }
 
-  function handleTripAction(action: 'itinerary' | 'payment' | 'location' | 'driver') {
+  function handleModalSend(message: string, subject?: string) {
     if (!conversation) return;
-    const { contact } = conversation;
-    const clientName = contact.name;
-    const tripName = contact.trip ?? 'Trip';
-
-    if (action === 'itinerary') {
-      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'itinerary_share');
-      if (!tpl) return;
-      const msg = fillTemplate(tpl, {
-        client_name: clientName,
-        destination: tripName.split(' ')[0] ?? 'destination',
-        trip_name: tripName,
-        start_date: 'TBD',
-        end_date: 'TBD',
-        duration: '—',
-        pax_count: '—',
-        itinerary_summary: 'Day 1 → Arrival & Check-in\nDay 2 → Sightseeing\nDay 3 → Activities\n...',
-        itinerary_link: `https://gobuddy.in/trip/${contact.id}`,
-        company_name: 'GoBuddy Adventures',
-      });
-      onSendMessage?.(conversation.id, msg);
-      toast.success('Itinerary sent to ' + clientName);
-    }
-
-    if (action === 'payment') {
-      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'payment_request_upi');
-      if (!tpl) return;
-      const msg = fillTemplate(tpl, {
-        client_name: clientName,
-        trip_name: tripName,
-        amount: '—',
-        due_date: '—',
-        booking_id: `GB-${Date.now().toString(36).toUpperCase()}`,
-        upi_id: 'gobuddy@paytm',
-        payment_link: `https://gobuddy.in/pay/${contact.id}`,
-        bank_account: '50200012345678',
-        bank_ifsc: 'HDFC0001234',
-        company_name: 'GoBuddy Adventures',
-      });
-      onSendMessage?.(conversation.id, msg);
-      toast.success('Payment link sent to ' + clientName);
-    }
-
-    if (action === 'location') {
-      const msg = `${clientName} Ji, kya aap apni current location share kar sakte hain? 📍\n\nWhatsApp mein 📎 Attachment → Location tap karein aur "Share Live Location" select karein.\n\nYe humein aapke pickup / drop coordination mein madad karega. 🙏`;
-      onSendMessage?.(conversation.id, msg);
-      toast.success('Location request sent');
-    }
-
-    if (action === 'driver') {
-      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'driver_assign_en');
-      if (!tpl) return;
-      const msg = fillTemplate(tpl, {
-        client_name: clientName,
-        destination: tripName.split(' ')[0] ?? 'destination',
-        driver_name: 'Raju Singh',
-        driver_phone: '+91 87654 32109',
-        vehicle_type: 'Toyota Innova Crysta',
-        vehicle_number: 'DL 01 AB 1234',
-        pickup_time: '6:00 AM',
-        pickup_location: 'Hotel lobby',
-        company_name: 'GoBuddy Adventures',
-      });
-      onSendMessage?.(conversation.id, msg);
-      toast.success('Driver details sent to ' + clientName);
-    }
+    onSendMessage?.(conversation.id, message, subject);
+    const labels: Record<ActionMode, string> = {
+      itinerary: 'Itinerary',
+      payment: 'Payment request',
+      driver: 'Driver details',
+      location: 'Location request',
+    };
+    toast.success(`${labels[modalMode ?? 'itinerary']} sent to ${conversation.contact.name}`);
   }
 
   if (!conversation) {
@@ -431,39 +375,24 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Trip Actions Bar — WhatsApp only */}
-      {!isEmail && (
-        <div className="shrink-0 px-4 pt-2 pb-1 flex items-center gap-2 overflow-x-auto">
+      {/* Trip Actions Bar — all channels */}
+      <div className="shrink-0 px-4 pt-2 pb-1 flex items-center gap-2 overflow-x-auto">
+        {([
+          { mode: 'itinerary' as ActionMode, label: 'Send Itinerary', icon: <FileText className="w-3.5 h-3.5" />, accent: 'hover:border-indigo-500/40 hover:text-indigo-300' },
+          { mode: 'payment' as ActionMode, label: 'Payment Link', icon: <CreditCard className="w-3.5 h-3.5" />, accent: 'hover:border-pink-500/40 hover:text-pink-300' },
+          { mode: 'location' as ActionMode, label: 'Request Location', icon: <Navigation className="w-3.5 h-3.5" />, accent: 'hover:border-blue-500/40 hover:text-blue-300' },
+          { mode: 'driver' as ActionMode, label: 'Driver Details', icon: <UserCheck className="w-3.5 h-3.5" />, accent: 'hover:border-amber-500/40 hover:text-amber-300' },
+        ]).map(({ mode, label, icon, accent }) => (
           <button
-            onClick={() => handleTripAction('itinerary')}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
+            key={mode}
+            onClick={() => setModalMode(mode)}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/12 border border-white/10 text-slate-300 text-xs font-medium transition-all active:scale-95 ${accent}`}
           >
-            <FileText className="w-3.5 h-3.5" />
-            Send Itinerary
+            {icon}
+            {label}
           </button>
-          <button
-            onClick={() => handleTripAction('payment')}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            Payment Link
-          </button>
-          <button
-            onClick={() => handleTripAction('location')}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
-          >
-            <Navigation className="w-3.5 h-3.5" />
-            Request Location
-          </button>
-          <button
-            onClick={() => handleTripAction('driver')}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            Driver Details
-          </button>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Input Area */}
       <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/10">
@@ -544,6 +473,17 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
         onClose={() => setShowCanned(false)}
         onSelect={handleCannedSelect}
       />
+
+      {modalMode && conversation && (
+        <ActionPickerModal
+          isOpen={!!modalMode}
+          mode={modalMode}
+          contact={conversation.contact}
+          channel={isEmail ? 'email' : 'whatsapp'}
+          onSend={handleModalSend}
+          onClose={() => setModalMode(null)}
+        />
+      )}
     </div>
   );
 }
