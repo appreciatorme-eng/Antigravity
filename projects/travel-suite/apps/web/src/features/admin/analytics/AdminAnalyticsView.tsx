@@ -37,14 +37,26 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
 
 // Revenue by top-5 destination (static seed data; real app pulls from analytics engine)
 const DESTINATION_REVENUE: Array<{ name: string; revenue: number; color: string; flag: string }> = [
-  { name: "Rajasthan", revenue: 840000, color: "bg-amber-500", flag: "🏰" },
-  { name: "Kerala", revenue: 620000, color: "bg-emerald-500", flag: "🌴" },
-  { name: "Goa", revenue: 410000, color: "bg-blue-500", flag: "🏖️" },
-  { name: "Himachal", revenue: 380000, color: "bg-violet-500", flag: "⛰️" },
-  { name: "Delhi NCR", revenue: 290000, color: "bg-orange-500", flag: "🏛️" },
+  { name: "Rajasthan", revenue: 840000, color: "bg-gradient-to-r from-amber-500 to-amber-400", flag: "🏰" },
+  { name: "Kerala", revenue: 620000, color: "bg-gradient-to-r from-emerald-500 to-teal-400", flag: "🌴" },
+  { name: "Goa", revenue: 410000, color: "bg-gradient-to-r from-sky-500 to-blue-400", flag: "🏖️" },
+  { name: "Himachal", revenue: 380000, color: "bg-gradient-to-r from-violet-500 to-purple-400", flag: "⛰️" },
+  { name: "Delhi NCR", revenue: 290000, color: "bg-gradient-to-r from-orange-500 to-amber-400", flag: "🏛️" },
 ];
 
 const MAX_DEST_REVENUE = Math.max(...DESTINATION_REVENUE.map((d) => d.revenue));
+
+const PIPELINE_COLORS: Record<string, string> = {
+  approved: "bg-emerald-500",
+  accepted: "bg-emerald-500",
+  confirmed: "bg-emerald-500",
+  converted: "bg-emerald-500",
+  sent: "bg-sky-500",
+  viewed: "bg-violet-500",
+  draft: "bg-slate-400",
+  expired: "bg-rose-400",
+  rejected: "bg-rose-500",
+};
 
 // Peak vs off-season comparison data
 const SEASON_DATA = {
@@ -92,18 +104,18 @@ export function AdminAnalyticsView() {
       fullValue: formatINR(snapshot.monthlyRevenueTotal),
       sub: `Last ${RANGE_TO_MONTHS[filters.range]} months`,
       icon: IndianRupee,
-      color: "text-emerald-600",
-      bg: "bg-emerald-50",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
       type: "revenue",
     },
     {
       label: "Proposals",
       value: `${snapshot.proposalsTotal}`,
       fullValue: null,
-      sub: "Scoped by cohorts",
+      sub: "Within selected filters",
       icon: FileCheck2,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      color: "text-sky-500",
+      bg: "bg-sky-500/10",
       type: "bookings",
     },
     {
@@ -112,18 +124,18 @@ export function AdminAnalyticsView() {
       fullValue: null,
       sub: "Proposal to closed",
       icon: TrendingUp,
-      color: "text-purple-600",
-      bg: "bg-purple-50",
+      color: "text-violet-500",
+      bg: "bg-violet-500/10",
       type: "conversion",
     },
     {
-      label: "Engagement",
+      label: "Proposal Views",
       value: `${snapshot.viewedProposalRate.toFixed(1)}%`,
       fullValue: null,
-      sub: "Viewed proposals",
+      sub: "Clients who opened proposals",
       icon: Users,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
       type: "clients",
     },
   ] as const;
@@ -143,7 +155,7 @@ export function AdminAnalyticsView() {
       >
         <div>
           <h1 className="text-4xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-premium drop-shadow-sm tracking-tight mb-1">Business Insights</h1>
-          <p className="mt-2 text-lg text-slate-500 font-medium">Cohort-aware analytics with per-widget drill-through.</p>
+          <p className="mt-2 text-lg text-slate-500 font-medium">Filter by destination, owner, or channel — click any metric to see the details.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -168,7 +180,7 @@ export function AdminAnalyticsView() {
       <GlassCard padding="lg" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Cohort Filters</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Filters</p>
             <p className="text-xs text-text-muted mt-1">Destination, sales owner, and source channel update all KPI widgets.</p>
           </div>
           <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-1 py-1">
@@ -333,9 +345,17 @@ export function AdminAnalyticsView() {
         </GlassCard>
 
         <GlassCard padding="lg">
-          <div className="mb-6">
-            <h2 className="text-xl font-serif text-secondary">Top Destinations</h2>
-            <p className="text-xs text-text-muted mt-1">Demand concentration by selected cohorts</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-secondary">Top Destinations</h2>
+              <p className="text-xs text-text-muted mt-1">Most popular destinations by your filters</p>
+            </div>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
           </div>
 
           {loading ? (
@@ -352,13 +372,20 @@ export function AdminAnalyticsView() {
           ) : (
             <div className="space-y-3">
               {snapshot.destinationRank.map((dest, idx) => (
-                <div key={dest.name} className="flex items-center justify-between p-3 bg-white/60 rounded-2xl border border-gray-100">
+                <Link
+                  key={dest.name}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations&destination=${encodeURIComponent(dest.name)}`}
+                  className="flex items-center justify-between p-3 bg-white/60 rounded-2xl border border-gray-100 hover:bg-white/80 hover:shadow-sm transition-all group"
+                >
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-text-muted w-4">{idx + 1}</span>
                     <span className="text-sm font-bold text-secondary">{dest.name}</span>
                   </div>
-                  <span className="text-xs font-black text-primary">{dest.trips}</span>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-primary">{dest.trips}</span>
+                    <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -372,23 +399,38 @@ export function AdminAnalyticsView() {
         transition={{ duration: 0.28, delay: 0.16 }}
       >
         <GlassCard padding="lg">
-          <div className="mb-6">
-            <h2 className="text-xl font-serif text-secondary">Revenue by Destination</h2>
-            <p className="text-xs text-text-muted mt-1">Top 5 destinations by total revenue (₹ lakh)</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-secondary">Revenue by Destination</h2>
+              <p className="text-xs text-text-muted mt-1">Top 5 destinations by total revenue (₹ lakh)</p>
+            </div>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              Drill <ChevronRight className="h-3 w-3" />
+            </Link>
           </div>
           <div className="space-y-4">
             {DESTINATION_REVENUE.map((dest) => {
               const widthPct = Math.round((dest.revenue / MAX_DEST_REVENUE) * 100);
               return (
-                <div key={dest.name} className="space-y-1.5">
+                <Link
+                  key={dest.name}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue&destination=${encodeURIComponent(dest.name)}`}
+                  className="block space-y-1.5 hover:bg-gray-50/50 rounded-xl p-2 -mx-2 transition-colors group"
+                >
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 font-semibold text-secondary">
                       <span>{dest.flag}</span>
                       {dest.name}
                     </span>
-                    <span className="font-bold text-primary tabular-nums">
-                      {formatINRShort(dest.revenue)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary tabular-nums">
+                        {formatINRShort(dest.revenue)}
+                      </span>
+                      <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                   <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100">
                     <motion.div
@@ -399,7 +441,7 @@ export function AdminAnalyticsView() {
                     />
                   </div>
                   <p className="text-xs text-text-muted">{formatINR(dest.revenue)}</p>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -414,86 +456,102 @@ export function AdminAnalyticsView() {
         transition={{ duration: 0.28, delay: 0.2 }}
       >
         {/* Peak Season Card */}
-        <div className={cn("rounded-2xl border p-5", SEASON_DATA.peak.bgColor)}>
-          <div className="mb-4 flex items-center gap-3">
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
-              <Sun className="h-5 w-5 text-white" />
+        <Link
+          href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=peak`}
+          className="block group"
+        >
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.peak.bgColor)}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
+                <Sun className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-white/70">
+                  {SEASON_DATA.peak.label}
+                </p>
+                <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>
+                  {SEASON_DATA.peak.months}
+                </p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
+                  +{PEAK_UPLIFT_PCT}% uplift
+                </span>
+                <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-white/50">
-                {SEASON_DATA.peak.label}
-              </p>
-              <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>
-                {SEASON_DATA.peak.months}
-              </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                  {formatINRShort(SEASON_DATA.peak.revenue)}
+                </p>
+                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.peak.revenue)}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                  {SEASON_DATA.peak.bookings}
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
+                  {formatINRShort(SEASON_DATA.peak.avgTrip)}
+                </p>
+              </div>
             </div>
-            <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
-              +{PEAK_UPLIFT_PCT}% uplift
-            </span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Revenue</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                {formatINRShort(SEASON_DATA.peak.revenue)}
-              </p>
-              <p className="text-xs text-white/30">{formatINR(SEASON_DATA.peak.revenue)}</p>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Bookings</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                {SEASON_DATA.peak.bookings}
-              </p>
-            </div>
-            <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Avg Trip</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                {formatINRShort(SEASON_DATA.peak.avgTrip)}
-              </p>
-            </div>
-          </div>
-        </div>
+        </Link>
 
         {/* Off Season Card */}
-        <div className={cn("rounded-2xl border p-5", SEASON_DATA.offSeason.bgColor)}>
+        <Link
+          href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=off`}
+          className="block group"
+        >
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.offSeason.bgColor)}>
           <div className="mb-4 flex items-center gap-3">
             <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.offSeason.color)}>
               <Cloud className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-white/50">
+              <p className="text-xs font-black uppercase tracking-widest text-white/70">
                 {SEASON_DATA.offSeason.label}
               </p>
               <p className={cn("text-sm font-bold", SEASON_DATA.offSeason.textColor)}>
                 {SEASON_DATA.offSeason.months}
               </p>
             </div>
-            <span className={cn("ml-auto rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
-              Shoulder period
-            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
+                Shoulder period
+              </span>
+              <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Revenue</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
               <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
                 {formatINRShort(SEASON_DATA.offSeason.revenue)}
               </p>
-              <p className="text-xs text-white/30">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
+              <p className="text-xs text-white/50">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Bookings</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
               <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
                 {SEASON_DATA.offSeason.bookings}
               </p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Avg Trip</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
               <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
                 {formatINRShort(SEASON_DATA.offSeason.avgTrip)}
               </p>
             </div>
           </div>
         </div>
+        </Link>
       </motion.div>
 
       <motion.div
@@ -503,24 +561,39 @@ export function AdminAnalyticsView() {
         transition={{ duration: 0.28, delay: 0.24 }}
       >
         <GlassCard padding="lg">
-          <h2 className="text-xl font-serif text-secondary mb-5">Proposal Pipeline</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-serif text-secondary">Proposal Pipeline</h2>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              Drill <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
           <div className="space-y-3">
             {snapshot.proposalStatusBreakdown.length === 0 ? (
               <p className="text-sm text-text-muted">No proposal status history yet.</p>
             ) : (
               snapshot.proposalStatusBreakdown.map((item) => (
-                <div key={item.status} className="space-y-1">
+                <Link
+                  key={item.status}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline&status=${encodeURIComponent(item.status)}`}
+                  className="block space-y-1 hover:bg-gray-50/50 rounded-lg p-1.5 -mx-1.5 transition-colors group"
+                >
                   <div className="flex items-center justify-between text-xs font-semibold text-text-secondary">
                     <span className="capitalize">{item.status.replaceAll("_", " ")}</span>
-                    <span className="text-secondary">{item.count}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-secondary">{item.count}</span>
+                      <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                   <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full"
+                      className={cn("h-full rounded-full", PIPELINE_COLORS[item.status.toLowerCase()] || "bg-primary")}
                       style={{ width: `${Math.min(100, (item.count / Math.max(snapshot.proposalsTotal, 1)) * 100)}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
@@ -529,20 +602,29 @@ export function AdminAnalyticsView() {
         <GlassCard padding="lg">
           <h2 className="text-xl font-serif text-secondary mb-5">Operations Status</h2>
           <div className="space-y-4">
-            <div className="p-4 rounded-2xl border border-gray-100 bg-white/60">
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Active clients</p>
-              <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeClients}</p>
-            </div>
-            <div className="p-4 rounded-2xl border border-gray-100 bg-white/60">
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Ongoing trips</p>
-              <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeTrips}</p>
-            </div>
             <Link
-              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=conversion`}
-              className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-primary"
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=operations&subtype=clients`}
+              className="block p-4 rounded-2xl border border-gray-100 bg-white/60 hover:bg-white/80 hover:shadow-sm transition-all group"
             >
-              Explore conversion drill-through
-              <TrendingUp className="h-3.5 w-3.5" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Active clients</p>
+                  <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeClients}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </Link>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=operations&subtype=trips`}
+              className="block p-4 rounded-2xl border border-gray-100 bg-white/60 hover:bg-white/80 hover:shadow-sm transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Ongoing trips</p>
+                  <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeTrips}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </Link>
           </div>
         </GlassCard>

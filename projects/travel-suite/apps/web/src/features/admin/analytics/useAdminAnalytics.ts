@@ -343,7 +343,7 @@ export function useAdminAnalytics() {
         if (showRefreshToast) {
           toast({
             title: "Analytics refreshed",
-            description: "Latest metrics and cohort filters are updated.",
+            description: "Latest metrics and filters are updated.",
             variant: "success",
           });
         }

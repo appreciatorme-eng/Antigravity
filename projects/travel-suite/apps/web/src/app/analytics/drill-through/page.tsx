@@ -13,140 +13,64 @@ import {
   Target,
   ArrowUpRight,
   Activity,
+  MapPin,
+  Sun,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { resolveWindow } from "@/lib/analytics/adapters";
+import type { DrillRow, DrillSummary } from "@/lib/analytics/drill-through-loaders";
+import {
+  loadRevenueDrill,
+  loadBookingsDrill,
+  loadConversionDrill,
+  loadClientsDrill,
+  loadDestinationsDrill,
+  loadDestinationRevenueDrill,
+  loadSeasonDrill,
+  loadPipelineDrill,
+  loadOperationsDrill,
+} from "@/lib/analytics/drill-through-loaders";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 
-type DrillType = "revenue" | "bookings" | "conversion" | "clients";
+type DrillType =
+  | "revenue"
+  | "bookings"
+  | "conversion"
+  | "clients"
+  | "destinations"
+  | "destination-revenue"
+  | "season"
+  | "pipeline"
+  | "operations";
+
 type TimeRange = "1y" | "6m" | "3m" | "1m";
-
-interface DrillRow {
-  id: string;
-  title: string;
-  subtitle: string;
-  amountLabel: string;
-  status: string;
-  dateLabel: string;
-  href: string;
-}
-
-interface DrillSummary {
-  label: string;
-  primaryValue: string;
-  secondaryValue: string;
-  windowLabel: string;
-}
-
-interface WindowSelection {
-  startISO: string;
-  endISO: string;
-  label: string;
-}
-
-interface ItineraryLite {
-  destination: string | null;
-  trip_title: string | null;
-}
-
-interface InvoiceDrillRow {
-  id: string;
-  created_at: string | null;
-  total_amount: number;
-  status: string;
-  invoice_number: string;
-}
-
-interface TripDrillRow {
-  id: string;
-  created_at: string | null;
-  status: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  itineraries: ItineraryLite | ItineraryLite[] | null;
-}
-
-interface ProposalDrillRow {
-  id: string;
-  title: string;
-  status: string | null;
-  total_price: number | null;
-  created_at: string | null;
-  viewed_at: string | null;
-}
-
-const RANGE_MONTHS: Record<TimeRange, number> = {
-  "1y": 12,
-  "6m": 6,
-  "3m": 3,
-  "1m": 1,
-};
 
 const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; color: string }> = {
   revenue: { title: "Revenue Breakdown", icon: DollarSign, color: "text-emerald-500" },
   bookings: { title: "Booking Volume Details", icon: Calendar, color: "text-blue-500" },
   clients: { title: "Client Acquisition Details", icon: Users, color: "text-indigo-500" },
   conversion: { title: "Conversion Funnel Details", icon: Target, color: "text-purple-500" },
+  destinations: { title: "Destination Breakdown", icon: MapPin, color: "text-teal-500" },
+  "destination-revenue": { title: "Revenue by Destination", icon: DollarSign, color: "text-amber-500" },
+  season: { title: "Seasonal Performance", icon: Sun, color: "text-orange-500" },
+  pipeline: { title: "Proposal Pipeline Details", icon: Target, color: "text-violet-500" },
+  operations: { title: "Operations Overview", icon: Activity, color: "text-sky-500" },
 };
 
+const VALID_TYPES: ReadonlySet<string> = new Set([
+  "revenue", "bookings", "conversion", "clients",
+  "destinations", "destination-revenue", "season", "pipeline", "operations",
+]);
+
 function asDrillType(value: string | null): DrillType {
-  if (value === "revenue" || value === "bookings" || value === "clients" || value === "conversion") {
-    return value;
-  }
+  if (value && VALID_TYPES.has(value)) return value as DrillType;
   return "revenue";
 }
 
 function asTimeRange(value: string | null): TimeRange {
-  if (value === "1m" || value === "3m" || value === "6m" || value === "1y") {
-    return value;
-  }
+  if (value === "1m" || value === "3m" || value === "6m" || value === "1y") return value;
   return "6m";
-}
-
-function parseMonthKey(value: string | null): { year: number; month: number } | null {
-  if (!value) return null;
-  const match = /^(\d{4})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
-  return { year, month };
-}
-
-function resolveWindow(monthKey: string | null, range: TimeRange): WindowSelection {
-  const parsedMonth = parseMonthKey(monthKey);
-  if (parsedMonth) {
-    const start = new Date(Date.UTC(parsedMonth.year, parsedMonth.month - 1, 1));
-    const end = new Date(Date.UTC(parsedMonth.year, parsedMonth.month, 1));
-    return {
-      startISO: start.toISOString(),
-      endISO: end.toISOString(),
-      label: start.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-    };
-  }
-
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (RANGE_MONTHS[range] - 1), 1));
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-
-  return {
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
-    label: `Last ${RANGE_MONTHS[range]} ${RANGE_MONTHS[range] === 1 ? "month" : "months"}`,
-  };
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return "N/A";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function getItinerary(value: TripDrillRow["itineraries"]): ItineraryLite | null {
-  if (!value) return null;
-  if (Array.isArray(value)) return value[0] || null;
-  return value;
 }
 
 function DrillThroughContent() {
@@ -156,6 +80,10 @@ function DrillThroughContent() {
   const type = asDrillType(searchParams.get("type"));
   const range = asTimeRange(searchParams.get("range"));
   const month = searchParams.get("month");
+  const destination = searchParams.get("destination");
+  const status = searchParams.get("status");
+  const season = searchParams.get("season");
+  const subtype = searchParams.get("subtype");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,9 +104,7 @@ function DrillThroughContent() {
           error: authError,
         } = await supabase.auth.getUser();
 
-        if (authError || !user) {
-          throw new Error("Unauthorized access");
-        }
+        if (authError || !user) throw new Error("Unauthorized access");
 
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
@@ -186,119 +112,26 @@ function DrillThroughContent() {
           .eq("id", user.id)
           .single();
 
-        if (profileError || !profile?.organization_id) {
-          throw new Error("Unable to resolve organization");
-        }
+        if (profileError || !profile?.organization_id) throw new Error("Unable to resolve organization");
 
-        const windowSelection = resolveWindow(month, range);
         const orgId = profile.organization_id;
+        const win = resolveWindow(month, range as "1y" | "6m" | "3m" | "1m");
 
-        if (type === "revenue") {
-          const { data, error: invoicesError } = await supabase
-            .from("invoices")
-            .select("id, invoice_number, total_amount, status, created_at")
-            .eq("organization_id", orgId)
-            .gte("created_at", windowSelection.startISO)
-            .lt("created_at", windowSelection.endISO)
-            .order("created_at", { ascending: false })
-            .limit(100);
+        const loaderMap: Record<DrillType, () => ReturnType<typeof loadRevenueDrill>> = {
+          revenue: () => loadRevenueDrill(supabase, orgId, win),
+          bookings: () => loadBookingsDrill(supabase, orgId, win),
+          conversion: () => loadConversionDrill(supabase, orgId, win),
+          clients: () => loadClientsDrill(supabase, orgId, win),
+          destinations: () => loadDestinationsDrill(supabase, orgId, win, destination),
+          "destination-revenue": () => loadDestinationRevenueDrill(supabase, orgId, win, destination),
+          season: () => loadSeasonDrill(supabase, orgId, season),
+          pipeline: () => loadPipelineDrill(supabase, orgId, win, status),
+          operations: () => loadOperationsDrill(supabase, orgId, subtype),
+        };
 
-          if (invoicesError) throw invoicesError;
-
-          const invoiceRows = (data || []) as InvoiceDrillRow[];
-          const paidRows = invoiceRows.filter((invoice) => (invoice.status || "").toLowerCase() === "paid");
-          const total = paidRows.reduce((sum, invoice) => sum + Number(invoice.total_amount || 0), 0);
-
-          setSummary({
-            label: "Paid invoice revenue",
-            primaryValue: `₹${total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-            secondaryValue: `${paidRows.length} paid invoice${paidRows.length === 1 ? "" : "s"}`,
-            windowLabel: windowSelection.label,
-          });
-
-          setRows(
-            invoiceRows.map((invoice) => ({
-              id: invoice.id,
-              title: `Invoice ${invoice.invoice_number}`,
-              subtitle: `Status: ${(invoice.status || "pending").toUpperCase()}`,
-              amountLabel: `₹${Number(invoice.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-              status: invoice.status || "pending",
-              dateLabel: formatDate(invoice.created_at),
-              href: "/admin/billing",
-            }))
-          );
-        } else if (type === "bookings") {
-          const { data, error: tripsError } = await supabase
-            .from("trips")
-            .select("id, status, start_date, end_date, created_at, itineraries(destination, trip_title)")
-            .eq("organization_id", orgId)
-            .gte("created_at", windowSelection.startISO)
-            .lt("created_at", windowSelection.endISO)
-            .order("created_at", { ascending: false })
-            .limit(100);
-
-          if (tripsError) throw tripsError;
-
-          const tripRows = (data || []) as TripDrillRow[];
-
-          setSummary({
-            label: "Trips created",
-            primaryValue: `${tripRows.length}`,
-            secondaryValue: "Bookings in selected window",
-            windowLabel: windowSelection.label,
-          });
-
-          setRows(
-            tripRows.map((trip) => {
-              const itinerary = getItinerary(trip.itineraries);
-              return {
-                id: trip.id,
-                title: itinerary?.trip_title || itinerary?.destination || "Trip record",
-                subtitle: `${formatDate(trip.start_date)} - ${formatDate(trip.end_date)}`,
-                amountLabel: (trip.status || "draft").replace(/_/g, " "),
-                status: trip.status || "draft",
-                dateLabel: formatDate(trip.created_at),
-                href: `/trips/${trip.id}`,
-              };
-            })
-          );
-        } else {
-          const { data, error: proposalsError } = await supabase
-            .from("proposals")
-            .select("id, title, status, total_price, created_at, viewed_at")
-            .eq("organization_id", orgId)
-            .gte("created_at", windowSelection.startISO)
-            .lt("created_at", windowSelection.endISO)
-            .order("created_at", { ascending: false })
-            .limit(100);
-
-          if (proposalsError) throw proposalsError;
-
-          const proposalRows = (data || []) as ProposalDrillRow[];
-          const approvedCount = proposalRows.filter((proposal) =>
-            ["approved", "accepted", "confirmed"].includes((proposal.status || "").toLowerCase())
-          ).length;
-          const conversionRate = proposalRows.length > 0 ? (approvedCount / proposalRows.length) * 100 : 0;
-
-          setSummary({
-            label: "Proposal conversion",
-            primaryValue: `${conversionRate.toFixed(1)}%`,
-            secondaryValue: `${approvedCount}/${proposalRows.length} approved`,
-            windowLabel: windowSelection.label,
-          });
-
-          setRows(
-            proposalRows.map((proposal) => ({
-              id: proposal.id,
-              title: proposal.title,
-              subtitle: proposal.viewed_at ? "Viewed by client" : "Awaiting client view",
-              amountLabel: `₹${Number(proposal.total_price || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-              status: proposal.status || "draft",
-              dateLabel: formatDate(proposal.created_at),
-              href: `/proposals/${proposal.id}`,
-            }))
-          );
-        }
+        const result = await loaderMap[type]();
+        setSummary(result.summary);
+        setRows(result.rows);
       } catch (err) {
         setRows([]);
         setSummary(null);
@@ -309,7 +142,7 @@ function DrillThroughContent() {
     };
 
     void loadData();
-  }, [month, range, supabase, type]);
+  }, [destination, month, range, season, status, subtype, supabase, type]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
