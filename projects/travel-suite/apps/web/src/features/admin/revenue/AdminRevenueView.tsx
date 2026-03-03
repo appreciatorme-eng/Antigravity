@@ -7,7 +7,6 @@ import {
   BarChart3,
   TrendingUp,
   Users,
-  MapPin,
   IndianRupee,
   RefreshCw,
   FileCheck2,
@@ -16,6 +15,10 @@ import {
   Cloud,
   Trophy,
   ShoppingCart,
+  Percent,
+  UserCheck,
+  Wallet,
+  ArrowUpRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
@@ -69,9 +72,14 @@ const SEASON_DATA = {
     revenue: 3840000,
     bookings: 214,
     avgTrip: 17944,
-    color: "from-amber-500 to-orange-600",
-    bgColor: "bg-amber-500/10 border-amber-500/20",
-    textColor: "text-amber-400",
+    color: "from-amber-500 to-orange-500",
+    bgColor: "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200/60",
+    textColor: "text-amber-700",
+    labelColor: "text-amber-500",
+    subColor: "text-amber-600/60",
+    statBg: "bg-amber-100/60",
+    statLabel: "text-amber-600/70",
+    badgeColor: "bg-gradient-to-r from-amber-500 to-orange-500",
   },
   offSeason: {
     label: "Off Season",
@@ -79,9 +87,14 @@ const SEASON_DATA = {
     revenue: 1960000,
     bookings: 128,
     avgTrip: 15312,
-    color: "from-blue-500 to-indigo-600",
-    bgColor: "bg-blue-500/10 border-blue-500/20",
-    textColor: "text-blue-400",
+    color: "from-sky-500 to-indigo-500",
+    bgColor: "bg-gradient-to-br from-sky-50 to-indigo-50 border-sky-200/60",
+    textColor: "text-sky-700",
+    labelColor: "text-sky-500",
+    subColor: "text-sky-600/60",
+    statBg: "bg-sky-100/60",
+    statLabel: "text-sky-600/70",
+    badgeColor: "bg-gradient-to-r from-sky-500 to-indigo-500",
   },
 };
 
@@ -89,17 +102,16 @@ const PEAK_UPLIFT_PCT = Math.round(
   ((SEASON_DATA.peak.revenue - SEASON_DATA.offSeason.revenue) / SEASON_DATA.offSeason.revenue) * 100
 );
 
-const TOP_CLIENTS = [
-  { name: "Sharma Family", revenue: 149100, trips: 3, location: "Delhi" },
-  { name: "Kapoor Enterprises", revenue: 225750, trips: 1, location: "Mumbai" },
-  { name: "Iyer Wedding Group", revenue: 405300, trips: 1, location: "Chennai" },
-  { name: "Mehta & Associates", revenue: 94080, trips: 2, location: "Ahmedabad" },
-  { name: "Priya Nair", revenue: 71925, trips: 2, location: "Kochi" },
-].sort((a, b) => b.revenue - a.revenue);
+const RANGE_LABEL_MAP: Record<DashboardRange, string> = {
+  "1y": "Last 12 Months",
+  "6m": "Last 6 Months",
+  "3m": "Last 3 Months",
+  "1m": "This Month",
+};
 
 export function AdminRevenueView() {
   const { loading, refreshing, error, filters, filterOptions, snapshot, setFilter, reload } = useAdminAnalytics();
-  const { addonData, loading: revenueLoading } = useAdminRevenue();
+  const { addonData } = useAdminRevenue();
   const [chartMetric, setChartMetric] = useState<RevenueMetricMode>("revenue");
 
   const drillBaseParams = useMemo(() => {
@@ -113,7 +125,7 @@ export function AdminRevenueView() {
       fullValue: formatINR(snapshot.monthlyRevenueTotal),
       sub: `Last ${RANGE_TO_MONTHS[filters.range]} months`,
       icon: IndianRupee,
-      color: "text-emerald-500",
+      color: "text-emerald-600",
       bg: "bg-emerald-500/10",
       type: "revenue",
     },
@@ -123,7 +135,7 @@ export function AdminRevenueView() {
       fullValue: null,
       sub: "Within selected filters",
       icon: FileCheck2,
-      color: "text-sky-500",
+      color: "text-sky-600",
       bg: "bg-sky-500/10",
       type: "bookings",
     },
@@ -133,7 +145,7 @@ export function AdminRevenueView() {
       fullValue: null,
       sub: "Proposal to closed",
       icon: TrendingUp,
-      color: "text-violet-500",
+      color: "text-violet-600",
       bg: "bg-violet-500/10",
       type: "conversion",
     },
@@ -143,7 +155,7 @@ export function AdminRevenueView() {
       fullValue: null,
       sub: "Clients who opened proposals",
       icon: Users,
-      color: "text-amber-500",
+      color: "text-amber-600",
       bg: "bg-amber-500/10",
       type: "clients",
     },
@@ -180,11 +192,16 @@ export function AdminRevenueView() {
         transition={{ duration: 0.28, delay: 0.04 }}
       >
         <div>
-          <h1 className="text-4xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-premium drop-shadow-sm tracking-tight mb-1">
-            Revenue
-          </h1>
-          <p className="mt-2 text-lg text-slate-500 font-medium">
-            Filter by destination, owner, or channel — click any metric to see the details.
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
+              <IndianRupee className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-serif text-secondary tracking-tight">
+              Revenue
+            </h1>
+          </div>
+          <p className="mt-2 text-sm text-slate-500 font-medium">
+            Filter by destination, owner, or channel — click any metric to drill through.
           </p>
         </div>
 
@@ -202,7 +219,7 @@ export function AdminRevenueView() {
             onClick={() => void reload()}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
-            Sync Data
+            Sync
           </GlassButton>
         </div>
       </motion.div>
@@ -212,7 +229,7 @@ export function AdminRevenueView() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Filters</p>
-            <p className="text-xs text-text-muted mt-1">Destination, sales owner, and source channel update all KPI widgets.</p>
+            <p className="text-xs text-text-muted mt-1">Destination, sales owner, and source channel update all widgets below.</p>
           </div>
           <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-1 py-1">
             {RANGE_OPTIONS.map((option) => (
@@ -240,9 +257,7 @@ export function AdminRevenueView() {
             >
               <option value="all">All destinations</option>
               {filterOptions.destinations.map((destination) => (
-                <option key={destination} value={destination}>
-                  {destination}
-                </option>
+                <option key={destination} value={destination}>{destination}</option>
               ))}
             </select>
           </label>
@@ -256,9 +271,7 @@ export function AdminRevenueView() {
             >
               <option value="all">All owners</option>
               {filterOptions.salesOwners.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.label}
-                </option>
+                <option key={owner.id} value={owner.id}>{owner.label}</option>
               ))}
             </select>
           </label>
@@ -272,9 +285,7 @@ export function AdminRevenueView() {
             >
               <option value="all">All channels</option>
               {filterOptions.sourceChannels.map((channel) => (
-                <option key={channel} value={channel}>
-                  {channel}
-                </option>
+                <option key={channel} value={channel}>{channel}</option>
               ))}
             </select>
           </label>
@@ -300,14 +311,13 @@ export function AdminRevenueView() {
             href={`/analytics/drill-through?${drillBaseParams.toString()}&type=${item.type}`}
             className="block"
           >
-            <GlassCard padding="lg" className="group hover:-translate-y-1 hover:shadow-card transition-all duration-300 animate-spring-up overflow-hidden relative border border-slate-200/50">
-              <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+            <GlassCard padding="lg" className="group hover:-translate-y-1 hover:shadow-card transition-all duration-300 overflow-hidden relative border border-slate-200/50">
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
                     <item.icon className={`h-6 w-6 ${item.color}`} />
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary">
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     Drill
                     <ChevronRight className="h-3 w-3" />
                   </div>
@@ -324,18 +334,65 @@ export function AdminRevenueView() {
         ))}
       </motion.div>
 
-      {/* Chart + Top Destinations */}
+      {/* Tour Operator Metrics */}
       <motion.div
-        className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.1 }}
+      >
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10">
+            <Wallet className="h-5 w-5 text-teal-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Avg Booking</p>
+            <p className="text-lg font-bold text-secondary tabular-nums truncate">{formatINRShort(snapshot.avgBookingValue)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+            <Percent className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Collection Rate</p>
+            <p className="text-lg font-bold text-secondary tabular-nums">{snapshot.collectionRate.toFixed(0)}%</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
+            <UserCheck className="h-5 w-5 text-violet-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Rev / Pax</p>
+            <p className="text-lg font-bold text-secondary tabular-nums truncate">{formatINRShort(snapshot.revenuePerPax)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white/70 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+            <Users className="h-5 w-5 text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Active Clients</p>
+            <p className="text-lg font-bold text-secondary tabular-nums">{snapshot.activeClients}</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Revenue Chart — Full Width (no sidebar) */}
+      <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.12 }}
       >
-        <GlassCard padding="lg" className="xl:col-span-2">
+        <GlassCard padding="lg">
           <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-xl font-serif text-secondary">Revenue and Bookings Trajectory</h2>
-              <p className="text-xs text-text-muted mt-1 uppercase tracking-tighter">Click points for monthly drill-through records</p>
+              <h2 className="text-xl font-serif text-secondary">Revenue & Bookings Trajectory</h2>
+              <p className="text-xs text-text-muted mt-1">Click points for monthly drill-through records</p>
             </div>
             <div className="flex bg-slate-100 p-1 rounded-xl">
               {METRIC_OPTIONS.map((option) => (
@@ -376,47 +433,6 @@ export function AdminRevenueView() {
             ))}
           </div>
         </GlassCard>
-
-        <GlassCard padding="lg">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-serif text-secondary">Top Destinations</h2>
-              <p className="text-xs text-text-muted mt-1">Most popular destinations by your filters</p>
-            </div>
-            <Link
-              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations`}
-              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
-            >
-              View all <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {snapshot.destinationRank.length === 0 ? (
-            <div className="py-12 text-center">
-              <MapPin className="h-12 w-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-text-muted">No destination data yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {snapshot.destinationRank.map((dest, idx) => (
-                <Link
-                  key={dest.name}
-                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations&destination=${encodeURIComponent(dest.name)}`}
-                  className="flex items-center justify-between p-3 bg-white/60 rounded-2xl border border-gray-100 hover:bg-white/80 hover:shadow-sm transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-text-muted w-4">{idx + 1}</span>
-                    <span className="text-sm font-bold text-secondary">{dest.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-primary">{dest.trips}</span>
-                    <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </GlassCard>
       </motion.div>
 
       {/* Revenue by Destination Bar Chart */}
@@ -453,9 +469,7 @@ export function AdminRevenueView() {
                       {dest.name}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-primary tabular-nums">
-                        {formatINRShort(dest.revenue)}
-                      </span>
+                      <span className="font-bold text-primary tabular-nums">{formatINRShort(dest.revenue)}</span>
                       <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
@@ -475,83 +489,85 @@ export function AdminRevenueView() {
         </GlassCard>
       </motion.div>
 
-      {/* Peak vs Off-Season Comparison */}
+      {/* Peak vs Off-Season — Light Mode Friendly */}
       <motion.div
         className="grid grid-cols-1 gap-6 md:grid-cols-2"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.2 }}
       >
+        {/* Peak Season */}
         <Link
           href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=peak`}
           className="block group"
         >
-          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.peak.bgColor)}>
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg group-hover:-translate-y-0.5", SEASON_DATA.peak.bgColor)}>
             <div className="mb-4 flex items-center gap-3">
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br shadow-md", SEASON_DATA.peak.color)}>
                 <Sun className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-white/70">{SEASON_DATA.peak.label}</p>
+                <p className={cn("text-xs font-black uppercase tracking-widest", SEASON_DATA.peak.labelColor)}>{SEASON_DATA.peak.label}</p>
                 <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>{SEASON_DATA.peak.months}</p>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm", SEASON_DATA.peak.badgeColor)}>
                   +{PEAK_UPLIFT_PCT}% uplift
                 </span>
-                <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.peak.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.peak.statLabel)}>Revenue</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{formatINRShort(SEASON_DATA.peak.revenue)}</p>
-                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.peak.revenue)}</p>
+                <p className="text-xs text-slate-400">{formatINR(SEASON_DATA.peak.revenue)}</p>
               </div>
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.peak.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.peak.statLabel)}>Bookings</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{SEASON_DATA.peak.bookings}</p>
               </div>
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.peak.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.peak.statLabel)}>Avg Trip</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{formatINRShort(SEASON_DATA.peak.avgTrip)}</p>
               </div>
             </div>
           </div>
         </Link>
 
+        {/* Off Season */}
         <Link
           href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=off`}
           className="block group"
         >
-          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.offSeason.bgColor)}>
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg group-hover:-translate-y-0.5", SEASON_DATA.offSeason.bgColor)}>
             <div className="mb-4 flex items-center gap-3">
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.offSeason.color)}>
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br shadow-md", SEASON_DATA.offSeason.color)}>
                 <Cloud className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-white/70">{SEASON_DATA.offSeason.label}</p>
+                <p className={cn("text-xs font-black uppercase tracking-widest", SEASON_DATA.offSeason.labelColor)}>{SEASON_DATA.offSeason.label}</p>
                 <p className={cn("text-sm font-bold", SEASON_DATA.offSeason.textColor)}>{SEASON_DATA.offSeason.months}</p>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm", SEASON_DATA.offSeason.badgeColor)}>
                   Shoulder period
                 </span>
-                <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.offSeason.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.offSeason.statLabel)}>Revenue</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{formatINRShort(SEASON_DATA.offSeason.revenue)}</p>
-                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
+                <p className="text-xs text-slate-400">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
               </div>
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.offSeason.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.offSeason.statLabel)}>Bookings</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{SEASON_DATA.offSeason.bookings}</p>
               </div>
-              <div className="rounded-xl bg-white/10 p-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
+              <div className={cn("rounded-xl p-3", SEASON_DATA.offSeason.statBg)}>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_DATA.offSeason.statLabel)}>Avg Trip</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{formatINRShort(SEASON_DATA.offSeason.avgTrip)}</p>
               </div>
             </div>
@@ -636,69 +652,88 @@ export function AdminRevenueView() {
         </GlassCard>
       </motion.div>
 
-      {/* Top 5 Clients by Revenue */}
+      {/* Dynamic Top Clients by Revenue */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.28 }}
       >
         <GlassCard padding="none" rounded="2xl">
-          <div className="border-b border-white/10 p-6">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-5 w-5 text-amber-400" />
-              <div>
-                <h2 className="text-lg font-serif text-secondary dark:text-white">Top Clients This Month</h2>
-                <p className="mt-0.5 text-sm text-text-secondary">By total revenue (incl. GST)</p>
+          <div className="border-b border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <div>
+                  <h2 className="text-lg font-serif text-secondary">Top Clients — {RANGE_LABEL_MAP[filters.range]}</h2>
+                  <p className="mt-0.5 text-sm text-text-secondary">By paid invoice revenue (incl. GST)</p>
+                </div>
               </div>
+              <Link
+                href="/clients"
+                className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+              >
+                All Clients <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/40 dark:bg-white/5">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">#</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Location</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Trips</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Revenue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {TOP_CLIENTS.map((client, idx) => (
-                  <tr key={client.name} className="transition-colors hover:bg-white/10 dark:hover:bg-white/5">
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span
-                        className={cn(
-                          "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black",
-                          idx === 0 ? "bg-amber-400/20 text-amber-400" :
-                          idx === 1 ? "bg-slate-400/20 text-slate-400" :
-                          idx === 2 ? "bg-orange-700/20 text-orange-700" :
-                          "bg-white/10 text-white/40"
-                        )}
-                      >
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="text-sm font-semibold text-secondary dark:text-white">{client.name}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <GlassBadge variant="info" size="sm">{client.location}</GlassBadge>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">
-                      {client.trips}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatINRShort(client.revenue)}
-                      <span className="ml-1 text-xs font-normal text-text-muted">
-                        {formatINR(client.revenue)}
-                      </span>
-                    </td>
+          {snapshot.topClients.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Users className="mx-auto h-10 w-10 text-gray-200 mb-3" />
+              <p className="text-sm text-text-muted">No paid invoices in this period.</p>
+              <p className="text-xs text-text-muted mt-1">Revenue appears once invoices are marked paid.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50/80">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">#</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Client</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Invoices</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Trips</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Revenue</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {snapshot.topClients.map((client, idx) => (
+                    <tr key={client.clientId} className="transition-colors hover:bg-gray-50/60">
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <span
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-full text-xs font-black",
+                            idx === 0 ? "bg-amber-100 text-amber-600" :
+                            idx === 1 ? "bg-slate-100 text-slate-500" :
+                            idx === 2 ? "bg-orange-100 text-orange-600" :
+                            "bg-gray-50 text-gray-400"
+                          )}
+                        >
+                          {idx + 1}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <Link
+                          href={`/clients/${client.clientId}`}
+                          className="text-sm font-semibold text-secondary hover:text-primary transition-colors"
+                        >
+                          {client.name}
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-text-secondary">
+                        {client.invoiceCount}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary">
+                        {client.trips}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right">
+                        <span className="text-sm font-bold text-emerald-600">{formatINRShort(client.revenue)}</span>
+                        <span className="ml-1 text-xs font-normal text-text-muted">{formatINR(client.revenue)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </GlassCard>
       </motion.div>
 
@@ -710,18 +745,18 @@ export function AdminRevenueView() {
           transition={{ duration: 0.28, delay: 0.32 }}
         >
           <GlassCard padding="none" rounded="2xl">
-            <div className="border-b border-white/10 p-6">
+            <div className="border-b border-gray-100 p-6">
               <div className="flex items-center gap-3">
                 <ShoppingCart className="h-5 w-5 text-primary" />
                 <div>
-                  <h2 className="text-lg font-serif text-secondary dark:text-white">Top Performing Add-ons</h2>
+                  <h2 className="text-lg font-serif text-secondary">Top Performing Add-ons</h2>
                   <p className="mt-1 text-sm text-text-secondary">By total revenue</p>
                 </div>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-white/40 dark:bg-white/5">
+                <thead className="bg-gray-50/80">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Add-on</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Category</th>
@@ -730,19 +765,19 @@ export function AdminRevenueView() {
                     <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Avg. Price</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-gray-100">
                   {addonData.slice(0, 10).map((item) => (
-                    <tr key={item.id} className="transition-colors hover:bg-white/10 dark:hover:bg-white/5">
+                    <tr key={item.id} className="transition-colors hover:bg-gray-50/60">
                       <td className="whitespace-nowrap px-6 py-4">
-                        <div className="text-sm font-medium text-secondary dark:text-white">{item.name}</div>
+                        <div className="text-sm font-medium text-secondary">{item.name}</div>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4">
                         <GlassBadge variant="info" size="sm">{item.category}</GlassBadge>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600">
                         {formatINRShort(item.total_revenue)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">{item.total_sales}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary">{item.total_sales}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-text-secondary">
                         {formatINR(item.avg_price)}
                       </td>

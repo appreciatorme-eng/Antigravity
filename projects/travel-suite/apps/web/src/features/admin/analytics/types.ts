@@ -38,6 +38,14 @@ export interface DestinationRank {
   trips: number;
 }
 
+export interface TopClientEntry {
+  clientId: string;
+  name: string;
+  revenue: number;
+  trips: number;
+  invoiceCount: number;
+}
+
 export interface AnalyticsSnapshot {
   monthlyRevenueTotal: number;
   proposalsTotal: number;
@@ -45,10 +53,15 @@ export interface AnalyticsSnapshot {
   activeTrips: number;
   activeClients: number;
   viewedProposalRate: number;
+  avgBookingValue: number;
+  collectionRate: number;
+  totalPax: number;
+  revenuePerPax: number;
   series: RevenueChartPoint[];
   destinationRank: DestinationRank[];
   proposalStatusBreakdown: Array<{ status: string; count: number }>;
   drivers: DriverCallout[];
+  topClients: TopClientEntry[];
 }
 
 export interface AnalyticsFilterState {
@@ -71,8 +84,13 @@ export const EMPTY_ANALYTICS_SNAPSHOT: AnalyticsSnapshot = {
   activeTrips: 0,
   activeClients: 0,
   viewedProposalRate: 0,
+  avgBookingValue: 0,
+  collectionRate: 0,
+  totalPax: 0,
+  revenuePerPax: 0,
   series: [],
   destinationRank: [],
   proposalStatusBreakdown: [],
   drivers: [],
+  topClients: [],
 };

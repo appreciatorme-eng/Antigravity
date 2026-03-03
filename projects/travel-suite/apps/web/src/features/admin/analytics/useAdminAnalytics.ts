@@ -225,6 +225,49 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     }))
   );
 
+  // Top clients by revenue (dynamic, based on filtered invoices)
+  const clientRevenueMap = new Map<string, { revenue: number; invoiceCount: number }>();
+  for (const invoice of filteredInvoices) {
+    if ((invoice.status || "").toLowerCase() !== "paid") continue;
+    const clientId = invoice.client_id;
+    if (!clientId) continue;
+    const amount = toNumber(invoice.total_amount, 0);
+    const existing = clientRevenueMap.get(clientId);
+    if (existing) {
+      clientRevenueMap.set(clientId, {
+        revenue: existing.revenue + amount,
+        invoiceCount: existing.invoiceCount + 1,
+      });
+    } else {
+      clientRevenueMap.set(clientId, { revenue: amount, invoiceCount: 1 });
+    }
+  }
+
+  const clientTripMap = new Map<string, number>();
+  for (const trip of filteredTrips) {
+    if (!trip.client_id) continue;
+    clientTripMap.set(trip.client_id, (clientTripMap.get(trip.client_id) || 0) + 1);
+  }
+
+  const topClients = Array.from(clientRevenueMap.entries())
+    .map(([clientId, data]) => ({
+      clientId,
+      name: profileNameMap.get(clientId) || `Client ${clientId.slice(0, 8)}`,
+      revenue: data.revenue,
+      trips: clientTripMap.get(clientId) || 0,
+      invoiceCount: data.invoiceCount,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // Tour operator metrics
+  const totalPaidInvoices = filteredInvoices.filter((inv) => (inv.status || "").toLowerCase() === "paid").length;
+  const totalAllInvoices = filteredInvoices.length;
+  const collectionRate = totalAllInvoices > 0 ? (totalPaidInvoices / totalAllInvoices) * 100 : 0;
+  const avgBookingValue = filteredTrips.length > 0 ? monthlyRevenueTotal / filteredTrips.length : 0;
+  const totalPax = filteredTrips.length * 2; // estimate: avg 2 pax/trip; real data would come from trip.pax_count
+  const revenuePerPax = totalPax > 0 ? monthlyRevenueTotal / totalPax : 0;
+
   return {
     monthlyRevenueTotal,
     proposalsTotal,
@@ -232,10 +275,15 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     activeTrips,
     activeClients,
     viewedProposalRate,
+    avgBookingValue,
+    collectionRate,
+    totalPax,
+    revenuePerPax,
     series,
     destinationRank,
     proposalStatusBreakdown,
     drivers,
+    topClients,
   };
 }
 
