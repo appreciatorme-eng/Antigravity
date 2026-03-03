@@ -20,7 +20,12 @@ import {
   Image,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { CannedResponses } from './CannedResponses';
+import {
+  WHATSAPP_TEMPLATES,
+  fillTemplate,
+} from '@/lib/whatsapp/india-templates';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
 export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
@@ -243,6 +248,75 @@ export function MessageThread({ conversation, onSendMessage }: MessageThreadProp
     setShowCanned(false);
   }
 
+  function handleTripAction(action: 'itinerary' | 'payment' | 'location' | 'driver') {
+    if (!conversation) return;
+    const { contact } = conversation;
+    const clientName = contact.name;
+    const tripName = contact.trip ?? 'Trip';
+
+    if (action === 'itinerary') {
+      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'itinerary_share');
+      if (!tpl) return;
+      const msg = fillTemplate(tpl, {
+        client_name: clientName,
+        destination: tripName.split(' ')[0] ?? 'destination',
+        trip_name: tripName,
+        start_date: 'TBD',
+        end_date: 'TBD',
+        duration: '—',
+        pax_count: '—',
+        itinerary_summary: 'Day 1 → Arrival & Check-in\nDay 2 → Sightseeing\nDay 3 → Activities\n...',
+        itinerary_link: `https://gobuddy.in/trip/${contact.id}`,
+        company_name: 'GoBuddy Adventures',
+      });
+      onSendMessage?.(conversation.id, msg);
+      toast.success('Itinerary sent to ' + clientName);
+    }
+
+    if (action === 'payment') {
+      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'payment_request_upi');
+      if (!tpl) return;
+      const msg = fillTemplate(tpl, {
+        client_name: clientName,
+        trip_name: tripName,
+        amount: '—',
+        due_date: '—',
+        booking_id: `GB-${Date.now().toString(36).toUpperCase()}`,
+        upi_id: 'gobuddy@paytm',
+        payment_link: `https://gobuddy.in/pay/${contact.id}`,
+        bank_account: '50200012345678',
+        bank_ifsc: 'HDFC0001234',
+        company_name: 'GoBuddy Adventures',
+      });
+      onSendMessage?.(conversation.id, msg);
+      toast.success('Payment link sent to ' + clientName);
+    }
+
+    if (action === 'location') {
+      const msg = `${clientName} Ji, kya aap apni current location share kar sakte hain? 📍\n\nWhatsApp mein 📎 Attachment → Location tap karein aur "Share Live Location" select karein.\n\nYe humein aapke pickup / drop coordination mein madad karega. 🙏`;
+      onSendMessage?.(conversation.id, msg);
+      toast.success('Location request sent');
+    }
+
+    if (action === 'driver') {
+      const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'driver_assign_en');
+      if (!tpl) return;
+      const msg = fillTemplate(tpl, {
+        client_name: clientName,
+        destination: tripName.split(' ')[0] ?? 'destination',
+        driver_name: 'Raju Singh',
+        driver_phone: '+91 87654 32109',
+        vehicle_type: 'Toyota Innova Crysta',
+        vehicle_number: 'DL 01 AB 1234',
+        pickup_time: '6:00 AM',
+        pickup_location: 'Hotel lobby',
+        company_name: 'GoBuddy Adventures',
+      });
+      onSendMessage?.(conversation.id, msg);
+      toast.success('Driver details sent to ' + clientName);
+    }
+  }
+
   if (!conversation) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-white/2">
@@ -338,20 +412,34 @@ export function MessageThread({ conversation, onSendMessage }: MessageThreadProp
 
       {/* Trip Actions Bar */}
       <div className="shrink-0 px-4 pt-2 pb-1 flex items-center gap-2 overflow-x-auto">
-        {[
-          { icon: <FileText className="w-3.5 h-3.5" />, label: 'Send Itinerary' },
-          { icon: <CreditCard className="w-3.5 h-3.5" />, label: 'Payment Link' },
-          { icon: <Navigation className="w-3.5 h-3.5" />, label: 'Request Location' },
-          { icon: <UserCheck className="w-3.5 h-3.5" />, label: 'Driver Details' },
-        ].map(({ icon, label }) => (
-          <button
-            key={label}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors"
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+        <button
+          onClick={() => handleTripAction('itinerary')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          Send Itinerary
+        </button>
+        <button
+          onClick={() => handleTripAction('payment')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          Payment Link
+        </button>
+        <button
+          onClick={() => handleTripAction('location')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          Request Location
+        </button>
+        <button
+          onClick={() => handleTripAction('driver')}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 text-slate-300 text-xs font-medium transition-colors active:scale-95"
+        >
+          <UserCheck className="w-3.5 h-3.5" />
+          Driver Details
+        </button>
       </div>
 
       {/* Input Area */}

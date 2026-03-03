@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   X,
@@ -16,12 +17,17 @@ import {
   ExternalLink,
   CheckCircle2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   MessageThread,
   type Conversation,
   type ConversationContact,
   type Message,
 } from './MessageThread';
+import {
+  WHATSAPP_TEMPLATES,
+  fillTemplate,
+} from '@/lib/whatsapp/india-templates';
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 
@@ -456,7 +462,12 @@ const MOCK_DRIVER_DETAILS: Record<string, {
   },
 };
 
-function ContextPanel({ conversation }: { conversation: Conversation | null }) {
+interface ContextPanelProps {
+  conversation: Conversation | null;
+  onQuickAction?: (action: string, conversation: Conversation) => void;
+}
+
+function ContextPanel({ conversation, onQuickAction }: ContextPanelProps) {
   const [ctxTab, setCtxTab] = useState<'info' | 'automations'>('info');
 
   if (!conversation) {
@@ -505,13 +516,34 @@ function ContextPanel({ conversation }: { conversation: Conversation | null }) {
         </div>
 
         <div className="flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10">
+          <a
+            href={`tel:${contact.phone.replace(/\s/g, '')}`}
+            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
+          >
             <Phone className="w-3 h-3" /> Call
-          </button>
-          <button className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10">
+          </a>
+          <a
+            href={`mailto:${clientDetail?.email ?? ''}`}
+            onClick={(e) => {
+              if (!clientDetail?.email) {
+                e.preventDefault();
+                toast.error('No email on file for this contact');
+              }
+            }}
+            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
+          >
             <Mail className="w-3 h-3" /> Email
-          </button>
-          <button className="flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10">
+          </a>
+          <button
+            onClick={() => {
+              const profilePath = contact.type === 'driver'
+                ? `/drivers`
+                : `/clients/${contact.id}`;
+              onQuickAction?.('navigate', conversation);
+              window.open(profilePath, '_blank');
+            }}
+            className="flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
+          >
             <ExternalLink className="w-3 h-3" />
           </button>
         </div>
@@ -608,15 +640,16 @@ function ContextPanel({ conversation }: { conversation: Conversation | null }) {
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quick Actions</p>
               {[
-                { icon: <TrendingUp className="w-3 h-3" />, label: 'Create Trip', color: '#25D366' },
-                { icon: <FileText className="w-3 h-3" />, label: 'Send Quote', color: '#6366f1' },
-                { icon: <Car className="w-3 h-3" />, label: 'Assign Driver', color: '#f59e0b' },
-                { icon: <CreditCard className="w-3 h-3" />, label: 'Request Payment', color: '#ec4899' },
-                { icon: <UserPlus className="w-3 h-3" />, label: 'Add to CRM', color: '#3b82f6' },
-              ].map(({ icon, label, color }) => (
+                { icon: <TrendingUp className="w-3 h-3" />, label: 'Create Trip', color: '#25D366', action: 'create-trip' },
+                { icon: <FileText className="w-3 h-3" />, label: 'Send Quote', color: '#6366f1', action: 'send-quote' },
+                { icon: <Car className="w-3 h-3" />, label: 'Assign Driver', color: '#f59e0b', action: 'assign-driver' },
+                { icon: <CreditCard className="w-3 h-3" />, label: 'Request Payment', color: '#ec4899', action: 'request-payment' },
+                { icon: <UserPlus className="w-3 h-3" />, label: 'Add to CRM', color: '#3b82f6', action: 'add-to-crm' },
+              ].map(({ icon, label, color, action }) => (
                 <button
                   key={label}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-left transition-colors"
+                  onClick={() => onQuickAction?.(action, conversation)}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-left transition-colors active:scale-[0.98]"
                 >
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}20`, color }}>
                     {icon}
@@ -661,6 +694,7 @@ interface UnifiedInboxProps {
 }
 
 export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
   const [selectedId, setSelectedId] = useState<string | null>('conv_1');
   const [search, setSearch] = useState('');
@@ -728,6 +762,60 @@ export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );
   }
+
+  const handleQuickAction = useCallback(
+    (action: string, conv: Conversation) => {
+      const { contact } = conv;
+      const nameParam = encodeURIComponent(contact.name);
+      const phoneParam = encodeURIComponent(contact.phone);
+
+      switch (action) {
+        case 'create-trip': {
+          router.push(`/trips?client=${nameParam}&phone=${phoneParam}`);
+          toast.success(`Opening trip creation for ${contact.name}`);
+          break;
+        }
+        case 'send-quote': {
+          router.push(`/proposals/create?client=${nameParam}&phone=${phoneParam}`);
+          toast.success(`Opening quote builder for ${contact.name}`);
+          break;
+        }
+        case 'assign-driver': {
+          const tripParam = encodeURIComponent(contact.trip ?? '');
+          router.push(`/drivers?assign=${tripParam}&client=${nameParam}`);
+          toast.success('Opening driver assignment');
+          break;
+        }
+        case 'request-payment': {
+          const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === 'payment_request_upi');
+          if (!tpl) break;
+          const msg = fillTemplate(tpl, {
+            client_name: contact.name,
+            trip_name: contact.trip ?? 'Trip',
+            amount: '—',
+            due_date: '—',
+            booking_id: `GB-${Date.now().toString(36).toUpperCase()}`,
+            upi_id: 'gobuddy@paytm',
+            payment_link: `https://gobuddy.in/pay/${contact.id}`,
+            bank_account: '50200012345678',
+            bank_ifsc: 'HDFC0001234',
+            company_name: 'GoBuddy Adventures',
+          });
+          handleSendMessage(conv.id, msg);
+          toast.success(`Payment request sent to ${contact.name}`);
+          break;
+        }
+        case 'add-to-crm': {
+          router.push(`/clients?name=${nameParam}&phone=${phoneParam}&source=whatsapp`);
+          toast.success(`Adding ${contact.name} to CRM`);
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [router],
+  );
 
   const FILTER_TABS: Array<{ key: FilterTab; label: string; count?: number }> = [
     { key: 'all', label: 'All', count: conversations.length },
@@ -845,7 +933,7 @@ export function UnifiedInbox({ onSendMessage }: UnifiedInboxProps) {
         className="w-[240px] shrink-0 border-l border-white/10 overflow-hidden flex flex-col"
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
-        <ContextPanel conversation={selectedConversation} />
+        <ContextPanel conversation={selectedConversation} onQuickAction={handleQuickAction} />
       </div>
     </div>
   );
