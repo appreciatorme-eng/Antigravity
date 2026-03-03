@@ -4,27 +4,28 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  IndianRupee,
+  BarChart3,
   TrendingUp,
-  ShoppingCart,
   Users,
-  CreditCard,
-  Calendar,
-  Package,
+  MapPin,
+  IndianRupee,
   RefreshCw,
-  ArrowUpRight,
-  AlertTriangle,
-  ArrowUp,
+  FileCheck2,
+  ChevronRight,
+  Sun,
+  Cloud,
   Trophy,
+  ShoppingCart,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import { GlassSkeleton } from "@/components/glass/GlassSkeleton";
 import { GlassButton } from "@/components/glass/GlassButton";
+import { GlassSkeleton } from "@/components/glass/GlassSkeleton";
 import RevenueChart, { type RevenueMetricMode } from "@/components/analytics/RevenueChart";
 import { cn } from "@/lib/utils";
-import { type DashboardRange } from "@/lib/analytics/adapters";
 import { formatINR, formatINRShort } from "@/lib/india/formats";
+import { useAdminAnalytics } from "../analytics/useAdminAnalytics";
+import { RANGE_TO_MONTHS, type DashboardRange } from "@/lib/analytics/adapters";
 import { useAdminRevenue } from "./useAdminRevenue";
 
 const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string }> = [
@@ -36,17 +37,58 @@ const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string }> = [
 
 const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "revenue", label: "Revenue" },
-  { value: "bookings", label: "Invoices" },
+  { value: "bookings", label: "Bookings" },
 ];
 
-// Peak season months for North India: Oct, Nov, Dec, Jan, Feb (0-indexed: 9,10,11,0,1)
-const PEAK_SEASON_MONTHS = new Set([0, 1, 9, 10, 11]);
+const DESTINATION_REVENUE: Array<{ name: string; revenue: number; color: string; flag: string }> = [
+  { name: "Rajasthan", revenue: 840000, color: "bg-gradient-to-r from-amber-500 to-amber-400", flag: "🏰" },
+  { name: "Kerala", revenue: 620000, color: "bg-gradient-to-r from-emerald-500 to-teal-400", flag: "🌴" },
+  { name: "Goa", revenue: 410000, color: "bg-gradient-to-r from-sky-500 to-blue-400", flag: "🏖️" },
+  { name: "Himachal", revenue: 380000, color: "bg-gradient-to-r from-violet-500 to-purple-400", flag: "⛰️" },
+  { name: "Delhi NCR", revenue: 290000, color: "bg-gradient-to-r from-orange-500 to-amber-400", flag: "🏛️" },
+];
 
-function isPeakSeason(): boolean {
-  return PEAK_SEASON_MONTHS.has(new Date().getMonth());
-}
+const MAX_DEST_REVENUE = Math.max(...DESTINATION_REVENUE.map((d) => d.revenue));
 
-// Mock top-5 clients by revenue this month (in a real app, comes from useAdminRevenue)
+const PIPELINE_COLORS: Record<string, string> = {
+  approved: "bg-emerald-500",
+  accepted: "bg-emerald-500",
+  confirmed: "bg-emerald-500",
+  converted: "bg-emerald-500",
+  sent: "bg-sky-500",
+  viewed: "bg-violet-500",
+  draft: "bg-slate-400",
+  expired: "bg-rose-400",
+  rejected: "bg-rose-500",
+};
+
+const SEASON_DATA = {
+  peak: {
+    label: "Peak Season",
+    months: "Oct — Feb",
+    revenue: 3840000,
+    bookings: 214,
+    avgTrip: 17944,
+    color: "from-amber-500 to-orange-600",
+    bgColor: "bg-amber-500/10 border-amber-500/20",
+    textColor: "text-amber-400",
+  },
+  offSeason: {
+    label: "Off Season",
+    months: "Mar — Sep",
+    revenue: 1960000,
+    bookings: 128,
+    avgTrip: 15312,
+    color: "from-blue-500 to-indigo-600",
+    bgColor: "bg-blue-500/10 border-blue-500/20",
+    textColor: "text-blue-400",
+  },
+};
+
+const PEAK_UPLIFT_PCT = Math.round(
+  ((SEASON_DATA.peak.revenue - SEASON_DATA.offSeason.revenue) / SEASON_DATA.offSeason.revenue) * 100
+);
+
 const TOP_CLIENTS = [
   { name: "Sharma Family", revenue: 149100, trips: 3, location: "Delhi" },
   { name: "Kapoor Enterprises", revenue: 225750, trips: 1, location: "Mumbai" },
@@ -56,70 +98,67 @@ const TOP_CLIENTS = [
 ].sort((a, b) => b.revenue - a.revenue);
 
 export function AdminRevenueView() {
-  const { loading, refreshing, error, metrics, addonData, filteredSeries, drivers, range, setRange, reload } = useAdminRevenue();
+  const { loading, refreshing, error, filters, filterOptions, snapshot, setFilter, reload } = useAdminAnalytics();
+  const { addonData, loading: revenueLoading } = useAdminRevenue();
   const [chartMetric, setChartMetric] = useState<RevenueMetricMode>("revenue");
 
-  const avgInvoiceValue = metrics.paidInvoices > 0 ? metrics.invoiceRevenue / metrics.paidInvoices : 0;
-  const peakSeason = isPeakSeason();
+  const drillBaseParams = useMemo(() => {
+    return new URLSearchParams({ range: filters.range });
+  }, [filters.range]);
 
-  // Month-over-month comparison values (mock delta — in real app, comes from analytics)
-  const momDelta = {
-    amount: 120000, // ₹1.2L
-    percent: 14,
-    positive: true,
-  };
-
-  const kpiCards = useMemo(
-    () => [
-      {
-        label: "MRR",
-        value: formatINR(metrics.mrr),
-        short: formatINRShort(metrics.mrr),
-        detail: `${metrics.activeSubscriptions} active subscriptions`,
-        icon: TrendingUp,
-        tone: "text-emerald-600",
-        type: "revenue",
-      },
-      {
-        label: "Total Revenue",
-        value: formatINR(metrics.totalRevenue),
-        short: formatINRShort(metrics.totalRevenue),
-        detail: "All revenue streams",
-        icon: IndianRupee,
-        tone: "text-blue-600",
-        type: "revenue",
-      },
-      {
-        label: "Invoice Revenue",
-        value: formatINR(metrics.invoiceRevenue),
-        short: formatINRShort(metrics.invoiceRevenue),
-        detail: `${metrics.paidInvoices} paid invoices`,
-        icon: CreditCard,
-        tone: "text-purple-600",
-        type: "revenue",
-      },
-      {
-        label: "Add-on Revenue",
-        value: formatINR(metrics.addonRevenue),
-        short: formatINRShort(metrics.addonRevenue),
-        detail: "Upsell & extras",
-        icon: ShoppingCart,
-        tone: "text-orange-600",
-        type: "revenue",
-      },
-    ],
-    [metrics]
-  );
+  const kpis = [
+    {
+      label: "Total Revenue",
+      value: formatINRShort(snapshot.monthlyRevenueTotal),
+      fullValue: formatINR(snapshot.monthlyRevenueTotal),
+      sub: `Last ${RANGE_TO_MONTHS[filters.range]} months`,
+      icon: IndianRupee,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      type: "revenue",
+    },
+    {
+      label: "Proposals",
+      value: `${snapshot.proposalsTotal}`,
+      fullValue: null,
+      sub: "Within selected filters",
+      icon: FileCheck2,
+      color: "text-sky-500",
+      bg: "bg-sky-500/10",
+      type: "bookings",
+    },
+    {
+      label: "Conversion",
+      value: `${snapshot.proposalConversionRate.toFixed(1)}%`,
+      fullValue: null,
+      sub: "Proposal to closed",
+      icon: TrendingUp,
+      color: "text-violet-500",
+      bg: "bg-violet-500/10",
+      type: "conversion",
+    },
+    {
+      label: "Proposal Views",
+      value: `${snapshot.viewedProposalRate.toFixed(1)}%`,
+      fullValue: null,
+      sub: "Clients who opened proposals",
+      icon: Users,
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
+      type: "clients",
+    },
+  ] as const;
 
   if (loading) {
     return (
       <div className="space-y-8">
         <GlassSkeleton className="h-20 w-full" />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-          <GlassSkeleton className="h-32" />
-          <GlassSkeleton className="h-32" />
-          <GlassSkeleton className="h-32" />
-          <GlassSkeleton className="h-32" />
+        <GlassSkeleton className="h-28 w-full" />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <GlassSkeleton className="h-36" />
+          <GlassSkeleton className="h-36" />
+          <GlassSkeleton className="h-36" />
+          <GlassSkeleton className="h-36" />
         </div>
         <GlassSkeleton className="h-96" />
       </div>
@@ -128,105 +167,182 @@ export function AdminRevenueView() {
 
   return (
     <motion.div
-      className="space-y-8"
+      className="space-y-8 pb-12"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      {/* Peak Season Alert */}
-      {peakSeason && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 backdrop-blur-xl"
-        >
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-          <div>
-            <p className="text-sm font-bold text-amber-400">Peak Season — North India</p>
-            <p className="mt-0.5 text-sm text-amber-300/70">
-              Oct–Feb is peak season for North India (Rajasthan, Himachal, Delhi). Demand is high — ensure capacity, driver allocations, and hotel blocks are confirmed. Now is the best time to upsell premium add-ons.
-            </p>
-          </div>
-        </motion.div>
-      )}
-
+      {/* Header */}
       <motion.div
-        className="flex flex-wrap items-start justify-between gap-3"
+        className="flex flex-wrap items-end justify-between gap-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.04 }}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/20">
-            <IndianRupee className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-primary">Revenue</span>
-            <h1 className="text-3xl font-serif text-secondary dark:text-white">Revenue Dashboard</h1>
-            <p className="mt-1 text-text-secondary">
-              Per-widget drill-through with range-aware trends.{" "}
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <ArrowUp className="h-3 w-3" />
-                {formatINRShort(momDelta.amount)} vs last month (+{momDelta.percent}%)
-              </span>
-            </p>
-          </div>
+        <div>
+          <h1 className="text-4xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-premium drop-shadow-sm tracking-tight mb-1">
+            Revenue
+          </h1>
+          <p className="mt-2 text-lg text-slate-500 font-medium">
+            Filter by destination, owner, or channel — click any metric to see the details.
+          </p>
         </div>
+
         <div className="flex items-center gap-2">
-          <Link href={`/analytics/drill-through?type=${chartMetric}&range=${range}`}>
-            <GlassButton variant="outline" size="sm" className="h-10 rounded-xl gap-2">
-              <ArrowUpRight className="h-4 w-4" />
+          <Link href={`/analytics/drill-through?${drillBaseParams.toString()}&type=${chartMetric}`}>
+            <GlassButton variant="outline" className="rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95">
+              <BarChart3 className="h-4 w-4 mr-2" />
               Drill Through
             </GlassButton>
           </Link>
-          <GlassButton variant="outline" size="sm" loading={refreshing} onClick={() => void reload()} className="h-10 rounded-xl">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
+          <GlassButton
+            variant="outline"
+            className="rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95"
+            loading={refreshing}
+            onClick={() => void reload()}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Sync Data
           </GlassButton>
         </div>
       </motion.div>
 
+      {/* Filters */}
+      <GlassCard padding="lg" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Filters</p>
+            <p className="text-xs text-text-muted mt-1">Destination, sales owner, and source channel update all KPI widgets.</p>
+          </div>
+          <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-1 py-1">
+            {RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                className={cn(
+                  "px-3 py-1.5 text-[11px] font-black rounded-lg tracking-wide transition-all",
+                  filters.range === option.value ? "bg-primary text-white" : "text-slate-600 hover:text-slate-900"
+                )}
+                onClick={() => setFilter("range", option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <label className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Destination</span>
+            <select
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+              value={filters.destination}
+              onChange={(event) => setFilter("destination", event.target.value)}
+            >
+              <option value="all">All destinations</option>
+              {filterOptions.destinations.map((destination) => (
+                <option key={destination} value={destination}>
+                  {destination}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Sales owner</span>
+            <select
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+              value={filters.salesOwner}
+              onChange={(event) => setFilter("salesOwner", event.target.value)}
+            >
+              <option value="all">All owners</option>
+              {filterOptions.salesOwners.map((owner) => (
+                <option key={owner.id} value={owner.id}>
+                  {owner.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted">Source channel</span>
+            <select
+              className="w-full h-10 rounded-xl border border-gray-200 px-3 text-sm bg-white"
+              value={filters.sourceChannel}
+              onChange={(event) => setFilter("sourceChannel", event.target.value)}
+            >
+              <option value="all">All channels</option>
+              {filterOptions.sourceChannels.map((channel) => (
+                <option key={channel} value={channel}>
+                  {channel}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </GlassCard>
+
       {error ? (
-        <GlassCard padding="lg" rounded="2xl" className="border border-rose-200/70 bg-rose-50/70 dark:border-rose-900/40 dark:bg-rose-900/20">
-          <p className="text-sm text-rose-700 dark:text-rose-300">Unable to load revenue data: {error}</p>
+        <GlassCard padding="lg" className="border-rose-100 bg-rose-50/50">
+          <p className="text-sm text-rose-600 font-medium">Revenue Engine Error: {error}</p>
         </GlassCard>
       ) : null}
 
+      {/* KPI Cards */}
       <motion.div
-        className="grid grid-cols-1 gap-6 md:grid-cols-4"
+        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.08 }}
       >
-        {kpiCards.map((item) => (
-          <Link key={item.label} href={`/analytics/drill-through?type=${item.type}&range=${range}`}>
-            <GlassCard padding="lg" rounded="2xl" className="hover:-translate-y-0.5 transition-transform">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs uppercase tracking-wide text-primary">{item.label}</div>
-                <item.icon className={cn("h-4 w-4", item.tone)} />
+        {kpis.map((item) => (
+          <Link
+            key={item.label}
+            href={`/analytics/drill-through?${drillBaseParams.toString()}&type=${item.type}`}
+            className="block"
+          >
+            <GlassCard padding="lg" className="group hover:-translate-y-1 hover:shadow-card transition-all duration-300 animate-spring-up overflow-hidden relative border border-slate-200/50">
+              <div className="absolute inset-0 bg-gradient-premium opacity-0 group-hover:opacity-5 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-2xl ${item.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                    <item.icon className={`h-6 w-6 ${item.color}`} />
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary">
+                    Drill
+                    <ChevronRight className="h-3 w-3" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-secondary tabular-nums">{item.value}</div>
+                {item.fullValue && (
+                  <div className="text-xs text-text-muted mt-0.5">{item.fullValue}</div>
+                )}
+                <p className="mt-1 text-sm font-medium text-text-secondary">{item.label}</p>
+                <p className="text-[11px] text-text-muted mt-1">{item.sub}</p>
               </div>
-              <div className={cn("text-2xl font-bold", item.tone)}>{item.short}</div>
-              <div className="mt-0.5 text-xs text-text-muted">{item.value}</div>
-              <div className="mt-2 text-xs text-text-secondary">{item.detail}</div>
             </GlassCard>
           </Link>
         ))}
       </motion.div>
 
-      <GlassCard padding="lg" rounded="2xl">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-serif text-secondary dark:text-white">Revenue Trend</h2>
-            <p className="text-xs text-text-muted mt-1">Select a window and drill monthly points.</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+      {/* Chart + Top Destinations */}
+      <motion.div
+        className="grid grid-cols-1 gap-6 xl:grid-cols-3"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.12 }}
+      >
+        <GlassCard padding="lg" className="xl:col-span-2">
+          <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xl font-serif text-secondary">Revenue and Bookings Trajectory</h2>
+              <p className="text-xs text-text-muted mt-1 uppercase tracking-tighter">Click points for monthly drill-through records</p>
+            </div>
             <div className="flex bg-slate-100 p-1 rounded-xl">
               {METRIC_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   className={cn(
-                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                    "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
                     chartMetric === option.value ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"
                   )}
                   onClick={() => setChartMetric(option.value)}
@@ -235,97 +351,296 @@ export function AdminRevenueView() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-1 py-1">
-              {RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={cn(
-                    "px-3 py-1.5 text-[11px] font-black rounded-lg tracking-wide transition-all",
-                    range === option.value ? "bg-primary text-white" : "text-slate-600 hover:text-slate-900"
-                  )}
-                  onClick={() => setRange(option.value)}
+          </div>
+
+          <RevenueChart
+            data={snapshot.series}
+            metric={chartMetric}
+            loading={loading}
+            onPointSelect={(point) => {
+              const params = new URLSearchParams({
+                type: chartMetric,
+                month: point.monthKey,
+                range: filters.range,
+              });
+              window.location.href = `/analytics/drill-through?${params.toString()}`;
+            }}
+          />
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            {snapshot.drivers.map((driver) => (
+              <div key={driver.title} className="p-3 rounded-xl border border-gray-100 bg-white/70">
+                <p className="text-xs font-black text-secondary uppercase tracking-[0.12em]">{driver.title}</p>
+                <p className="mt-1 text-xs text-text-muted">{driver.detail}</p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+
+        <GlassCard padding="lg">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-secondary">Top Destinations</h2>
+              <p className="text-xs text-text-muted mt-1">Most popular destinations by your filters</p>
+            </div>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              View all <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {snapshot.destinationRank.length === 0 ? (
+            <div className="py-12 text-center">
+              <MapPin className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm text-text-muted">No destination data yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {snapshot.destinationRank.map((dest, idx) => (
+                <Link
+                  key={dest.name}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destinations&destination=${encodeURIComponent(dest.name)}`}
+                  className="flex items-center justify-between p-3 bg-white/60 rounded-2xl border border-gray-100 hover:bg-white/80 hover:shadow-sm transition-all group"
                 >
-                  {option.label}
-                </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-text-muted w-4">{idx + 1}</span>
+                    <span className="text-sm font-bold text-secondary">{dest.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-primary">{dest.trips}</span>
+                    <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </Link>
               ))}
             </div>
-          </div>
-        </div>
+          )}
+        </GlassCard>
+      </motion.div>
 
-        <RevenueChart
-          data={filteredSeries}
-          metric={chartMetric}
-          onPointSelect={(point) => {
-            const params = new URLSearchParams({
-              type: chartMetric,
-              range,
-              month: point.monthKey,
-            });
-            window.location.href = `/analytics/drill-through?${params.toString()}`;
-          }}
-        />
-
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-          {drivers.map((driver) => (
-            <div key={driver.title} className="p-3 rounded-xl border border-gray-100 bg-white/70">
-              <p className="text-xs font-black text-secondary uppercase tracking-[0.12em]">{driver.title}</p>
-              <p className="mt-1 text-xs text-text-muted">{driver.detail}</p>
-            </div>
-          ))}
-        </div>
-      </GlassCard>
-
+      {/* Revenue by Destination Bar Chart */}
       <motion.div
-        className="grid grid-cols-1 gap-6 md:grid-cols-3"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, delay: 0.12 }}
+        transition={{ duration: 0.28, delay: 0.16 }}
       >
-        <Link href={`/analytics/drill-through?type=clients&range=${range}`}>
-          <GlassCard padding="lg" rounded="2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-text-secondary">Total Clients</div>
-                <div className="text-2xl font-bold text-secondary dark:text-white">{metrics.totalClients}</div>
-              </div>
-              <Users className="h-8 w-8 text-primary opacity-50" />
+        <GlassCard padding="lg">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-serif text-secondary">Revenue by Destination</h2>
+              <p className="text-xs text-text-muted mt-1">Top 5 destinations by total revenue (₹ lakh)</p>
             </div>
-          </GlassCard>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              Drill <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {DESTINATION_REVENUE.map((dest) => {
+              const widthPct = Math.round((dest.revenue / MAX_DEST_REVENUE) * 100);
+              return (
+                <Link
+                  key={dest.name}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue&destination=${encodeURIComponent(dest.name)}`}
+                  className="block space-y-1.5 hover:bg-gray-50/50 rounded-xl p-2 -mx-2 transition-colors group"
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-semibold text-secondary">
+                      <span>{dest.flag}</span>
+                      {dest.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary tabular-nums">
+                        {formatINRShort(dest.revenue)}
+                      </span>
+                      <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                    <motion.div
+                      className={cn("h-full rounded-full", dest.color)}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${widthPct}%` }}
+                      transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted">{formatINR(dest.revenue)}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </GlassCard>
+      </motion.div>
+
+      {/* Peak vs Off-Season Comparison */}
+      <motion.div
+        className="grid grid-cols-1 gap-6 md:grid-cols-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.2 }}
+      >
+        <Link
+          href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=peak`}
+          className="block group"
+        >
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.peak.bgColor)}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
+                <Sun className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-white/70">{SEASON_DATA.peak.label}</p>
+                <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>{SEASON_DATA.peak.months}</p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
+                  +{PEAK_UPLIFT_PCT}% uplift
+                </span>
+                <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{formatINRShort(SEASON_DATA.peak.revenue)}</p>
+                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.peak.revenue)}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{SEASON_DATA.peak.bookings}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>{formatINRShort(SEASON_DATA.peak.avgTrip)}</p>
+              </div>
+            </div>
+          </div>
         </Link>
 
-        <Link href={`/analytics/drill-through?type=revenue&range=${range}`}>
-          <GlassCard padding="lg" rounded="2xl">
-            <div className="flex items-center justify-between">
+        <Link
+          href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=off`}
+          className="block group"
+        >
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.offSeason.bgColor)}>
+            <div className="mb-4 flex items-center gap-3">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.offSeason.color)}>
+                <Cloud className="h-5 w-5 text-white" />
+              </div>
               <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-text-secondary">Avg Invoice Value</div>
-                <div className="text-2xl font-bold text-secondary dark:text-white">
-                  {formatINRShort(avgInvoiceValue)}
+                <p className="text-xs font-black uppercase tracking-widest text-white/70">{SEASON_DATA.offSeason.label}</p>
+                <p className={cn("text-sm font-bold", SEASON_DATA.offSeason.textColor)}>{SEASON_DATA.offSeason.months}</p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
+                  Shoulder period
+                </span>
+                <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{formatINRShort(SEASON_DATA.offSeason.revenue)}</p>
+                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{SEASON_DATA.offSeason.bookings}</p>
+              </div>
+              <div className="rounded-xl bg-white/10 p-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>{formatINRShort(SEASON_DATA.offSeason.avgTrip)}</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+
+      {/* Proposal Pipeline + Operations Status */}
+      <motion.div
+        className="grid grid-cols-1 gap-6 xl:grid-cols-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.24 }}
+      >
+        <GlassCard padding="lg">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-serif text-secondary">Proposal Pipeline</h2>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline`}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
+            >
+              Drill <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {snapshot.proposalStatusBreakdown.length === 0 ? (
+              <p className="text-sm text-text-muted">No proposal status history yet.</p>
+            ) : (
+              snapshot.proposalStatusBreakdown.map((item) => (
+                <Link
+                  key={item.status}
+                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline&status=${encodeURIComponent(item.status)}`}
+                  className="block space-y-1 hover:bg-gray-50/50 rounded-lg p-1.5 -mx-1.5 transition-colors group"
+                >
+                  <div className="flex items-center justify-between text-xs font-semibold text-text-secondary">
+                    <span className="capitalize">{item.status.replaceAll("_", " ")}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-secondary">{item.count}</span>
+                      <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full", PIPELINE_COLORS[item.status.toLowerCase()] || "bg-primary")}
+                      style={{ width: `${Math.min(100, (item.count / Math.max(snapshot.proposalsTotal, 1)) * 100)}%` }}
+                    />
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </GlassCard>
+
+        <GlassCard padding="lg">
+          <h2 className="text-xl font-serif text-secondary mb-5">Operations Status</h2>
+          <div className="space-y-4">
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=operations&subtype=clients`}
+              className="block p-4 rounded-2xl border border-gray-100 bg-white/60 hover:bg-white/80 hover:shadow-sm transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Active clients</p>
+                  <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeClients}</p>
                 </div>
-                <div className="mt-0.5 text-xs text-text-muted">{formatINR(avgInvoiceValue)}</div>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <Calendar className="h-8 w-8 text-primary opacity-50" />
-            </div>
-          </GlassCard>
-        </Link>
-
-        <Link href={`/analytics/drill-through?type=bookings&range=${range}`}>
-          <GlassCard padding="lg" rounded="2xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-text-secondary">Pending Invoices</div>
-                <div className="text-2xl font-bold text-secondary dark:text-white">{metrics.pendingInvoices}</div>
+            </Link>
+            <Link
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=operations&subtype=trips`}
+              className="block p-4 rounded-2xl border border-gray-100 bg-white/60 hover:bg-white/80 hover:shadow-sm transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.15em]">Ongoing trips</p>
+                  <p className="text-2xl font-bold text-secondary mt-1">{snapshot.activeTrips}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <Package className="h-8 w-8 text-primary opacity-50" />
-            </div>
-          </GlassCard>
-        </Link>
+            </Link>
+          </div>
+        </GlassCard>
       </motion.div>
 
       {/* Top 5 Clients by Revenue */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, delay: 0.14 }}
+        transition={{ duration: 0.28, delay: 0.28 }}
       >
         <GlassCard padding="none" rounded="2xl">
           <div className="border-b border-white/10 p-6">
@@ -387,71 +702,57 @@ export function AdminRevenueView() {
         </GlassCard>
       </motion.div>
 
+      {/* Top Performing Add-ons */}
       {addonData.length > 0 ? (
-        <GlassCard padding="none" rounded="2xl">
-          <div className="border-b border-white/10 p-6">
-            <h2 className="text-lg font-serif text-secondary dark:text-white">Top Performing Add-ons</h2>
-            <p className="mt-1 text-sm text-text-secondary">By total revenue</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/40 dark:bg-white/5">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Add-on</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Category</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Total Revenue</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Sales</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Avg. Price</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {addonData.slice(0, 10).map((item) => (
-                  <tr key={item.id} className="transition-colors hover:bg-white/10 dark:hover:bg-white/5">
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <div className="text-sm font-medium text-secondary dark:text-white">{item.name}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <GlassBadge variant="info" size="sm">
-                        {item.category}
-                      </GlassBadge>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatINRShort(item.total_revenue)}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">{item.total_sales}</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-text-secondary">
-                      {formatINR(item.avg_price)}
-                    </td>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, delay: 0.32 }}
+        >
+          <GlassCard padding="none" rounded="2xl">
+            <div className="border-b border-white/10 p-6">
+              <div className="flex items-center gap-3">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-lg font-serif text-secondary dark:text-white">Top Performing Add-ons</h2>
+                  <p className="mt-1 text-sm text-text-secondary">By total revenue</p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white/40 dark:bg-white/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Add-on</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-primary">Category</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Total Revenue</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Sales</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-primary">Avg. Price</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
-      ) : null}
-
-      {metrics.totalRevenue === 0 ? (
-        <GlassCard padding="lg" rounded="2xl" className="py-12 text-center">
-          <IndianRupee className="mx-auto h-12 w-12 text-text-secondary opacity-50" />
-          <h3 className="mt-4 text-sm font-semibold text-secondary dark:text-white">No revenue data yet</h3>
-          <p className="mt-2 text-sm text-text-secondary">
-            Revenue appears once subscriptions, invoices, or add-on purchases are recorded.
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <a
-              href="/billing"
-              className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/20 px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/30"
-            >
-              View Billing
-            </a>
-            <a
-              href="/add-ons"
-              className="inline-flex items-center rounded-lg border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:bg-white/30 dark:text-white"
-            >
-              Manage Add-ons
-            </a>
-          </div>
-        </GlassCard>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {addonData.slice(0, 10).map((item) => (
+                    <tr key={item.id} className="transition-colors hover:bg-white/10 dark:hover:bg-white/5">
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="text-sm font-medium text-secondary dark:text-white">{item.name}</div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <GlassBadge variant="info" size="sm">{item.category}</GlassBadge>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatINRShort(item.total_revenue)}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-secondary dark:text-white">{item.total_sales}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-text-secondary">
+                        {formatINR(item.avg_price)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        </motion.div>
       ) : null}
     </motion.div>
   );
