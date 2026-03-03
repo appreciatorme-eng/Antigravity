@@ -84,7 +84,7 @@ const createTripWorkflow: WorkflowDefinition = {
     },
     {
       id: "start_date",
-      prompt: "When does the trip start? (YYYY-MM-DD)",
+      prompt: "When does the trip start? (e.g., 'tomorrow', 'next Friday', 'March 15', or YYYY-MM-DD)",
       field: "start_date",
       type: "date",
       required: true,
@@ -92,7 +92,7 @@ const createTripWorkflow: WorkflowDefinition = {
     },
     {
       id: "end_date",
-      prompt: "When does the trip end? (YYYY-MM-DD)",
+      prompt: "When does the trip end? (e.g., 'in 7 days', 'next Sunday', 'April 20', or YYYY-MM-DD)",
       field: "end_date",
       type: "date",
       required: true,
@@ -225,7 +225,7 @@ const createInvoiceWorkflow: WorkflowDefinition = {
     },
     {
       id: "due_date",
-      prompt: "When is the payment due? (YYYY-MM-DD)",
+      prompt: "When is the payment due? (e.g., 'in 30 days', 'next month', 'April 15', or YYYY-MM-DD)",
       field: "due_date",
       type: "date",
       required: true,

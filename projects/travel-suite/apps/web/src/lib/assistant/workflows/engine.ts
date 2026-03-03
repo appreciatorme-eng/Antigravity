@@ -16,6 +16,7 @@ import { getCachedJson, setCachedJson, deleteCachedByPrefix } from "@/lib/cache/
 import type { ActionContext, OrchestratorResponse } from "../types";
 import { findAction } from "../actions/registry";
 import type { WorkflowDefinition } from "./definitions";
+import { parseNaturalDate } from "../date-parser";
 
 // Types
 
@@ -133,6 +134,15 @@ export async function processWorkflowStep(
     return advanceToNextStep(ctx, workflow, state, updatedValues);
   }
 
+  // Natural language date parsing for date-type fields
+  let resolvedInput = trimmed;
+  if (currentStep.type === "date") {
+    const parsedDate = parseNaturalDate(trimmed);
+    if (parsedDate !== null) {
+      resolvedInput = parsedDate;
+    }
+  }
+
   // Validate select options
   if (currentStep.type === "select" && currentStep.options) {
     const normalizedInput = trimmed.toLowerCase();
@@ -150,14 +160,14 @@ export async function processWorkflowStep(
 
   // Validate using custom validator
   if (currentStep.validate) {
-    const validationError = currentStep.validate(trimmed);
+    const validationError = currentStep.validate(resolvedInput);
     if (validationError) {
       return { reply: `${validationError} Please try again.` };
     }
   }
 
   // Store the value and advance
-  const updatedValues = { ...state.collectedValues, [currentStep.field]: trimmed };
+  const updatedValues = { ...state.collectedValues, [currentStep.field]: resolvedInput };
   return advanceToNextStep(ctx, workflow, state, updatedValues);
 }
 
