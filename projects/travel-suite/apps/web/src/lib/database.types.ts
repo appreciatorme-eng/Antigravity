@@ -459,6 +459,44 @@ export type Database = {
           },
         ]
       }
+      dashboard_task_dismissals: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          task_id: string
+          task_type: string
+          entity_id: string
+          dismissed_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          task_id: string
+          task_type: string
+          entity_id: string
+          dismissed_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          task_id?: string
+          task_type?: string
+          entity_id?: string
+          dismissed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_task_dismissals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       concierge_requests: {
         Row: {
           assigned_to: string | null

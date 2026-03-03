@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,15 +14,30 @@ import {
   Plane,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   PartyPopper,
   User,
   Send,
   Loader2,
-  Check,
   Phone,
+  Search,
+  X,
+  ExternalLink,
+  MapPin,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
+import {
+  useDashboardTasks,
+  useDriverSearch,
+  useDismissTask,
+  type TaskItem,
+} from "@/lib/queries/dashboard-tasks";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type Priority = "high" | "medium" | "info" | "done";
 type ActionType =
@@ -33,89 +48,26 @@ type ActionType =
   | "pickup_today"
   | "verification_pending";
 
-type InlineAction = "assign_driver" | "send_reminder" | "none";
+type InlineAction =
+  | "assign_driver"
+  | "send_reminder"
+  | "view_leads"
+  | "follow_up"
+  | "view_schedule"
+  | "review_docs";
 
-interface ActionItem {
-  id: string;
-  priority: Priority;
-  type: ActionType;
-  description: string;
-  count?: number;
-  actionLabel: string;
-  actionHref: string;
-  timestamp?: string;
-  inlineAction?: InlineAction;
-}
+// ---------------------------------------------------------------------------
+// Config maps
+// ---------------------------------------------------------------------------
 
-// Available drivers for quick assignment
-const AVAILABLE_DRIVERS = [
-  { id: "d1", name: "Raju Singh", phone: "+91 98765 43210", vehicle: "Innova Crysta", trips: 2 },
-  { id: "d2", name: "Deepak Verma", phone: "+91 98987 65432", vehicle: "Tempo Traveller", trips: 1 },
-  { id: "d3", name: "Amit Sharma", phone: "+91 97567 81234", vehicle: "Ertiga", trips: 0 },
-  { id: "d4", name: "Venkat Rao", phone: "+91 97456 23189", vehicle: "Innova", trips: 1 },
-];
-
-const INITIAL_ACTIONS: ActionItem[] = [
-  {
-    id: "1",
-    priority: "high",
-    type: "driver_unassigned",
-    description: "3 trips tomorrow still need driver assignment",
-    count: 3,
-    actionLabel: "Assign Now",
-    actionHref: "/drivers",
-    timestamp: "Trips depart 26 Feb",
-    inlineAction: "assign_driver",
-  },
-  {
-    id: "2",
-    priority: "high",
-    type: "payment_overdue",
-    description: "₹45,000 payment overdue from Sharma family — Rajasthan trip",
-    actionLabel: "Send Reminder",
-    actionHref: "/admin/billing",
-    timestamp: "Overdue by 5 days",
-    inlineAction: "send_reminder",
-  },
-  {
-    id: "3",
-    priority: "medium",
-    type: "new_whatsapp_lead",
-    description: "2 new WhatsApp leads from JustDial — reply within 1 hour",
-    count: 2,
-    actionLabel: "View Leads",
-    actionHref: "/inbox",
-    timestamp: "Just now",
-  },
-  {
-    id: "4",
-    priority: "medium",
-    type: "quote_awaiting",
-    description: "Mehta family quote sent 48 hours ago — no reply received yet",
-    actionLabel: "Follow Up",
-    actionHref: "/proposals",
-    timestamp: "Sent 2 days ago",
-  },
-  {
-    id: "5",
-    priority: "info",
-    type: "pickup_today",
-    description: "5 airport pickups scheduled today at IGI Airport, New Delhi",
-    count: 5,
-    actionLabel: "View Schedule",
-    actionHref: "/trips",
-    timestamp: "First at 6:30 AM IST",
-  },
-  {
-    id: "6",
-    priority: "info",
-    type: "verification_pending",
-    description: "Driver Suresh Kumar's documents expire in 3 days — renewal pending",
-    actionLabel: "Review Docs",
-    actionHref: "/drivers",
-    timestamp: "Expires 1 Mar",
-  },
-];
+const TASK_ACTION_CONFIG: Record<string, { label: string; inlineAction: InlineAction }> = {
+  driver_unassigned: { label: "Assign Now", inlineAction: "assign_driver" },
+  payment_overdue: { label: "Send Reminder", inlineAction: "send_reminder" },
+  new_whatsapp_lead: { label: "View Leads", inlineAction: "view_leads" },
+  quote_awaiting: { label: "Follow Up", inlineAction: "follow_up" },
+  pickup_today: { label: "View Schedule", inlineAction: "view_schedule" },
+  verification_pending: { label: "Review Docs", inlineAction: "review_docs" },
+};
 
 const TYPE_ICONS: Record<ActionType, React.ElementType> = {
   driver_unassigned: Car,
@@ -167,6 +119,26 @@ const PRIORITY_LABELS: Record<Priority, string> = {
   done: "Done",
 };
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getActionConfig(taskType: string) {
+  return TASK_ACTION_CONFIG[taskType] ?? { label: "View", inlineAction: "view_leads" as InlineAction };
+}
+
+function getInlineAction(taskType: string): InlineAction {
+  return getActionConfig(taskType).inlineAction;
+}
+
+function getTypeIcon(taskType: string): React.ElementType {
+  return TYPE_ICONS[taskType as ActionType] ?? FileText;
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
 function SkeletonRow() {
   return (
     <div className="flex items-center gap-4 p-4 rounded-xl border-l-4 border-l-slate-200 dark:border-l-slate-700 bg-slate-50 dark:bg-slate-800/30 animate-pulse">
@@ -180,52 +152,531 @@ function SkeletonRow() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Debounce hook
+// ---------------------------------------------------------------------------
+
+function useDebouncedValue(value: string, delayMs: number): string {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Assign Driver (with search)
+// ---------------------------------------------------------------------------
+
+function AssignDriverPanel({
+  taskId,
+  onDismiss,
+  onCollapse,
+}: {
+  taskId: string;
+  onDismiss: (id: string) => void;
+  onCollapse: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(searchQuery, 300);
+  const { data: drivers, isLoading: isSearching } = useDriverSearch(debouncedQuery);
+  const [assigningDriverId, setAssigningDriverId] = useState<string | null>(null);
+
+  const handleAssign = useCallback(
+    (driverId: string) => {
+      setAssigningDriverId(driverId);
+      // Brief "Assigning..." state, then auto-dismiss
+      setTimeout(() => {
+        setAssigningDriverId(null);
+        onCollapse();
+        onDismiss(taskId);
+      }, 800);
+    },
+    [taskId, onDismiss, onCollapse],
+  );
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Pick a driver to assign
+      </p>
+
+      {/* Search Input */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Search drivers..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-8 py-2 rounded-lg border border-white/10 bg-white/5 text-xs text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/40"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Results */}
+      <div className="max-h-60 overflow-y-auto space-y-2">
+        {isSearching ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          </div>
+        ) : drivers && drivers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {drivers.map((driver) => (
+              <motion.button
+                key={driver.id}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={assigningDriverId !== null}
+                onClick={() => handleAssign(driver.id)}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                  assigningDriverId === driver.id
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-white/10 bg-white/3 hover:border-primary/30 hover:bg-primary/5",
+                )}
+              >
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  {assigningDriverId === driver.id ? (
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  ) : (
+                    <User className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                    {driver.fullName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {driver.vehicleType ?? "No vehicle"}
+                    {driver.vehiclePlate ? ` · ${driver.vehiclePlate}` : ""}
+                    {" · "}
+                    {driver.todayTripCount === 0
+                      ? "Free today"
+                      : `${driver.todayTripCount} trip${driver.todayTripCount > 1 ? "s" : ""} today`}
+                  </p>
+                </div>
+                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+              </motion.button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 text-center py-4">No drivers found</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Send Reminder
+// ---------------------------------------------------------------------------
+
+function SendReminderPanel({
+  task,
+  onDismiss,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onDismiss: (id: string) => void;
+  onCollapse: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+
+  const handleSend = useCallback(() => {
+    setSending(true);
+    setTimeout(() => {
+      setSending(false);
+      onCollapse();
+      onDismiss(task.id);
+    }, 1200);
+  }, [task.id, onDismiss, onCollapse]);
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Send payment reminder
+      </p>
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/3 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-[#25D366]/10 flex items-center justify-center shrink-0">
+          <MessageCircle className="w-4 h-4 text-[#25D366]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-slate-800 dark:text-white">
+            WhatsApp Reminder
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">{task.description}</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          disabled={sending}
+          onClick={handleSend}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30 disabled:opacity-60"
+        >
+          {sending ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            <>
+              <Send className="w-3.5 h-3.5" />
+              Send via WhatsApp
+            </>
+          )}
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Cancel
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: View Leads
+// ---------------------------------------------------------------------------
+
+function ViewLeadsPanel({
+  task,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onCollapse: () => void;
+}) {
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        New WhatsApp leads need your response
+      </p>
+      {Object.keys(task.entityData).length > 0 && (
+        <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3">
+          <div className="space-y-1">
+            {Object.entries(task.entityData).map(([key, value]) => (
+              <p key={key} className="text-[10px] text-slate-500">
+                <span className="font-bold capitalize">{key.replace(/_/g, " ")}:</span>{" "}
+                {String(value)}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Link href="/inbox">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Open in WhatsApp
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Follow Up
+// ---------------------------------------------------------------------------
+
+function FollowUpPanel({
+  task,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onCollapse: () => void;
+}) {
+  const clientName = task.entityData.clientName as string | undefined;
+  const destination = task.entityData.destination as string | undefined;
+  const sentAt = task.entityData.sentAt as string | undefined;
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Follow up on quote
+      </p>
+      <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+        {clientName && (
+          <p className="text-[10px] text-slate-500">
+            <span className="font-bold">Client:</span> {clientName}
+          </p>
+        )}
+        {destination && (
+          <p className="text-[10px] text-slate-500">
+            <span className="font-bold">Destination:</span> {destination}
+          </p>
+        )}
+        {sentAt && (
+          <p className="text-[10px] text-slate-500">
+            <span className="font-bold">Sent:</span> {sentAt}
+          </p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30"
+        >
+          <Send className="w-3.5 h-3.5" />
+          Send Follow-up via WhatsApp
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: View Schedule
+// ---------------------------------------------------------------------------
+
+function ViewSchedulePanel({
+  task,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onCollapse: () => void;
+}) {
+  const destination = task.entityData.destination as string | undefined;
+  const clientName = task.entityData.clientName as string | undefined;
+
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Trip starting today
+      </p>
+      <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+        {destination && (
+          <p className="text-[10px] text-slate-500 flex items-center gap-1">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="font-bold">Destination:</span> {destination}
+          </p>
+        )}
+        {clientName && (
+          <p className="text-[10px] text-slate-500">
+            <span className="font-bold">Client:</span> {clientName}
+          </p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Link href={`/trips/${task.entityId}`}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black transition-all shadow-sm shadow-blue-500/30"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View Trip Details
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline Panel: Review Docs
+// ---------------------------------------------------------------------------
+
+function ReviewDocsPanel({
+  task,
+  onCollapse,
+}: {
+  task: TaskItem;
+  onCollapse: () => void;
+}) {
+  return (
+    <div className="px-4 pb-4 pt-1 border-t border-white/5">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
+        Document verification needed
+      </p>
+      {Object.keys(task.entityData).length > 0 && (
+        <div className="p-3 rounded-xl border border-white/10 bg-white/3 mb-3 space-y-1">
+          {Object.entries(task.entityData).map(([key, value]) => (
+            <p key={key} className="text-[10px] text-slate-500">
+              <span className="font-bold capitalize">{key.replace(/_/g, " ")}:</span>{" "}
+              {String(value)}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Link href="/drivers">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-black transition-all shadow-sm shadow-blue-500/30"
+          >
+            <User className="w-3.5 h-3.5" />
+            View Driver Profile
+          </motion.button>
+        </Link>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={onCollapse}
+          className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
+        >
+          Close
+        </motion.button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Completed Tasks Section
+// ---------------------------------------------------------------------------
+
+function CompletedTasksSection({ tasks }: { tasks: TaskItem[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (tasks.length === 0) return null;
+
+  const config = PRIORITY_CONFIG.done;
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+      >
+        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+        <span className="text-xs font-bold text-slate-500">
+          Completed ({tasks.length})
+        </span>
+        {isOpen ? (
+          <ChevronUp className="w-3.5 h-3.5 text-slate-400 ml-auto" />
+        ) : (
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-auto" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-2 pt-2">
+              {tasks.map((task) => {
+                const TypeIcon = getTypeIcon(task.type);
+                return (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      "rounded-xl border-l-4 transition-all overflow-hidden",
+                      config.border,
+                      config.bg,
+                      "border border-white/5 opacity-70",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 p-3">
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
+                          config.badge,
+                        )}
+                      >
+                        <TypeIcon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-snug line-through">
+                          {task.description}
+                        </p>
+                      </div>
+                      <CheckCircle className={cn("w-4 h-4 shrink-0", config.iconColor)} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
+
 interface ActionQueueProps {
   loading?: boolean;
 }
 
-export function ActionQueue({ loading = false }: ActionQueueProps) {
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+export function ActionQueue({ loading: loadingProp = false }: ActionQueueProps) {
+  const { data, isLoading: isQueryLoading } = useDashboardTasks();
+  const dismissMutation = useDismissTask();
+
   const [expandedAction, setExpandedAction] = useState<string | null>(null);
-  const [assigningDriver, setAssigningDriver] = useState<string | null>(null);
-  const [assignedDrivers, setAssignedDrivers] = useState<Record<string, string>>({});
-  const [sendingReminder, setSendingReminder] = useState(false);
-  const [reminderSent, setReminderSent] = useState<Set<string>>(new Set());
 
-  const visible = INITIAL_ACTIONS.filter((a) => !dismissed.has(a.id));
-  const highCount = visible.filter((a) => a.priority === "high").length;
+  const isLoading = loadingProp || isQueryLoading;
+  const tasks = data?.tasks ?? [];
+  const completedTasks = data?.completedTasks ?? [];
+  const highCount = tasks.filter((t) => t.priority === "high").length;
 
-  const handleMarkDone = (id: string) => {
-    setDismissed((prev) => new Set([...prev, id]));
-  };
+  const handleMarkDone = useCallback(
+    (taskId: string) => {
+      dismissMutation.mutate(taskId);
+    },
+    [dismissMutation],
+  );
 
-  const handleInlineAction = useCallback((item: ActionItem) => {
-    if (!item.inlineAction || item.inlineAction === "none") return;
-    setExpandedAction((prev) => (prev === item.id ? null : item.id));
+  const handleToggleExpand = useCallback((taskId: string) => {
+    setExpandedAction((prev) => (prev === taskId ? null : taskId));
   }, []);
 
-  const handleAssignDriver = useCallback((actionId: string, driverId: string, driverName: string) => {
-    setAssigningDriver(driverId);
-    // Simulate assignment
-    setTimeout(() => {
-      setAssignedDrivers((prev) => ({ ...prev, [actionId]: driverName }));
-      setAssigningDriver(null);
-      setExpandedAction(null);
-      // Auto-dismiss after short delay
-      setTimeout(() => handleMarkDone(actionId), 1500);
-    }, 800);
-  }, []);
-
-  const handleSendReminder = useCallback((actionId: string) => {
-    setSendingReminder(true);
-    // Simulate sending WhatsApp reminder
-    setTimeout(() => {
-      setSendingReminder(false);
-      setReminderSent((prev) => new Set([...prev, actionId]));
-      setExpandedAction(null);
-      // Auto-dismiss after short delay
-      setTimeout(() => handleMarkDone(actionId), 1500);
-    }, 1200);
+  const handleCollapse = useCallback(() => {
+    setExpandedAction(null);
   }, []);
 
   return (
@@ -236,14 +687,14 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
             Needs Your Attention
           </h3>
-          {!loading && highCount > 0 && (
+          {!isLoading && highCount > 0 && (
             <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-[10px] font-black text-white animate-pulse">
               {highCount}
             </span>
           )}
         </div>
         <Link
-          href="/trips"
+          href="/dashboard/tasks"
           className="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-colors"
         >
           View All <ChevronRight className="w-3 h-3" />
@@ -253,13 +704,13 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
       {/* Content */}
       <GlassCard padding="none" className="overflow-hidden">
         <div className="divide-y divide-white/5">
-          {loading ? (
+          {isLoading ? (
             <div className="p-4 space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <SkeletonRow key={i} />
               ))}
             </div>
-          ) : visible.length === 0 ? (
+          ) : tasks.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -270,27 +721,26 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                 <PartyPopper className="w-7 h-7 text-emerald-500" />
               </div>
               <h4 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                All clear! No actions needed
+                You&apos;re on top of everything!
               </h4>
               <p className="text-xs text-slate-500 font-medium">
-                Everything is running smoothly. Check back after new bookings come in.
+                All tasks completed for today. Great work!
               </p>
             </motion.div>
           ) : (
             <div className="p-4 space-y-3">
               <AnimatePresence initial={false}>
-                {visible.map((item, index) => {
-                  const config = PRIORITY_CONFIG[item.priority];
+                {tasks.map((task, index) => {
+                  const config = PRIORITY_CONFIG[task.priority as Priority] ?? PRIORITY_CONFIG.info;
                   const PriorityIcon = config.icon;
-                  const TypeIcon = TYPE_ICONS[item.type];
-                  const isExpanded = expandedAction === item.id;
-                  const isAssigned = !!assignedDrivers[item.id];
-                  const isReminderSent = reminderSent.has(item.id);
-                  const hasInlineAction = item.inlineAction && item.inlineAction !== "none";
+                  const TypeIcon = getTypeIcon(task.type);
+                  const actionConfig = getActionConfig(task.type);
+                  const isExpanded = expandedAction === task.id;
+                  const currentInlineAction = getInlineAction(task.type);
 
                   return (
                     <motion.div
-                      key={item.id}
+                      key={task.id}
                       layout
                       initial={{ opacity: 0, x: -16 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -306,7 +756,7 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                           "rounded-xl border-l-4 transition-all overflow-hidden",
                           config.border,
                           config.bg,
-                          "border border-white/5 hover:border-white/10"
+                          "border border-white/5 hover:border-white/10",
                         )}
                       >
                         <div className="flex items-start gap-3 p-4">
@@ -314,7 +764,7 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                           <div
                             className={cn(
                               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
-                              config.badge
+                              config.badge,
                             )}
                           >
                             <TypeIcon className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} />
@@ -329,72 +779,43 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                               <span
                                 className={cn(
                                   "text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full",
-                                  config.badge
+                                  config.badge,
                                 )}
                               >
-                                {PRIORITY_LABELS[item.priority]}
+                                {PRIORITY_LABELS[task.priority as Priority] ?? "Info"}
                               </span>
-                              {item.timestamp && (
+                              {task.timestamp && (
                                 <span className="text-[10px] text-slate-400 font-medium truncate">
-                                  {item.timestamp}
+                                  {task.timestamp}
                                 </span>
                               )}
                             </div>
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">
-                              {item.description}
+                              {task.description}
                             </p>
                           </div>
 
                           {/* Actions */}
                           <div className="flex items-center gap-2 shrink-0">
-                            {isAssigned ? (
-                              <span className="flex items-center gap-1.5 text-[11px] font-black text-emerald-500 px-3 py-1.5">
-                                <Check className="w-3.5 h-3.5" />
-                                {assignedDrivers[item.id]} assigned
-                              </span>
-                            ) : isReminderSent ? (
-                              <span className="flex items-center gap-1.5 text-[11px] font-black text-emerald-500 px-3 py-1.5">
-                                <Check className="w-3.5 h-3.5" />
-                                Reminder sent via WhatsApp
-                              </span>
-                            ) : hasInlineAction ? (
-                              <motion.button
-                                whileHover={{ scale: 1.04 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => handleInlineAction(item)}
-                                className={cn(
-                                  "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
-                                  item.priority === "high"
-                                    ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
-                                    : item.priority === "medium"
+                            <motion.button
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => handleToggleExpand(task.id)}
+                              className={cn(
+                                "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
+                                task.priority === "high"
+                                  ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
+                                  : task.priority === "medium"
                                     ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
-                                    : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30"
-                                )}
-                              >
-                                {item.actionLabel}
-                              </motion.button>
-                            ) : (
-                              <Link href={item.actionHref}>
-                                <motion.button
-                                  whileHover={{ scale: 1.04 }}
-                                  whileTap={{ scale: 0.97 }}
-                                  className={cn(
-                                    "text-[11px] font-black px-3 py-1.5 rounded-lg transition-all",
-                                    item.priority === "high"
-                                      ? "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/30"
-                                      : item.priority === "medium"
-                                      ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30"
-                                      : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30"
-                                  )}
-                                >
-                                  {item.actionLabel}
-                                </motion.button>
-                              </Link>
-                            )}
+                                    : "bg-blue-500 hover:bg-blue-600 text-white shadow-sm shadow-blue-500/30",
+                              )}
+                            >
+                              {actionConfig.label}
+                            </motion.button>
                             <motion.button
                               whileHover={{ scale: 1.08 }}
                               whileTap={{ scale: 0.94 }}
-                              onClick={() => handleMarkDone(item.id)}
+                              onClick={() => handleMarkDone(task.id)}
                               title="Mark as done"
                               className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-500 text-slate-400 transition-all"
                             >
@@ -403,9 +824,9 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                           </div>
                         </div>
 
-                        {/* Inline: Assign Driver Panel */}
+                        {/* Inline Panels */}
                         <AnimatePresence>
-                          {isExpanded && item.inlineAction === "assign_driver" && (
+                          {isExpanded && (
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
@@ -413,104 +834,32 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                               transition={{ duration: 0.25, ease: "easeOut" }}
                               className="overflow-hidden"
                             >
-                              <div className="px-4 pb-4 pt-1 border-t border-white/5">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
-                                  Pick a driver to assign
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {AVAILABLE_DRIVERS.map((driver) => (
-                                    <motion.button
-                                      key={driver.id}
-                                      whileHover={{ scale: 1.01 }}
-                                      whileTap={{ scale: 0.98 }}
-                                      disabled={assigningDriver !== null}
-                                      onClick={() => handleAssignDriver(item.id, driver.id, driver.name)}
-                                      className={cn(
-                                        "flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
-                                        assigningDriver === driver.id
-                                          ? "border-primary/40 bg-primary/5"
-                                          : "border-white/10 bg-white/3 hover:border-primary/30 hover:bg-primary/5"
-                                      )}
-                                    >
-                                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                                        {assigningDriver === driver.id ? (
-                                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                        ) : (
-                                          <User className="w-4 h-4 text-primary" />
-                                        )}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
-                                          {driver.name}
-                                        </p>
-                                        <p className="text-[10px] text-slate-500">
-                                          {driver.vehicle} · {driver.trips === 0 ? "Free today" : `${driver.trips} trip${driver.trips > 1 ? "s" : ""} today`}
-                                        </p>
-                                      </div>
-                                      <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                                    </motion.button>
-                                  ))}
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Inline: Send Reminder Panel */}
-                        <AnimatePresence>
-                          {isExpanded && item.inlineAction === "send_reminder" && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.25, ease: "easeOut" }}
-                              className="overflow-hidden"
-                            >
-                              <div className="px-4 pb-4 pt-1 border-t border-white/5">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5">
-                                  Send payment reminder
-                                </p>
-                                <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/3 mb-3">
-                                  <div className="w-8 h-8 rounded-lg bg-[#25D366]/10 flex items-center justify-center shrink-0">
-                                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-slate-800 dark:text-white">WhatsApp to Sharma Family</p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">
-                                      "Namaste! Gentle reminder — ₹45,000 pending for your Rajasthan trip. Pay via UPI/bank transfer. Thank you!"
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.97 }}
-                                    disabled={sendingReminder}
-                                    onClick={() => handleSendReminder(item.id)}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11px] font-black transition-all shadow-sm shadow-[#25D366]/30 disabled:opacity-60"
-                                  >
-                                    {sendingReminder ? (
-                                      <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        Sending...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Send className="w-3.5 h-3.5" />
-                                        Send via WhatsApp
-                                      </>
-                                    )}
-                                  </motion.button>
-                                  <motion.button
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.97 }}
-                                    onClick={() => setExpandedAction(null)}
-                                    className="px-4 py-2 rounded-lg border border-white/10 text-slate-500 text-[11px] font-bold hover:bg-white/5 transition-all"
-                                  >
-                                    Cancel
-                                  </motion.button>
-                                </div>
-                              </div>
+                              {currentInlineAction === "assign_driver" && (
+                                <AssignDriverPanel
+                                  taskId={task.id}
+                                  onDismiss={handleMarkDone}
+                                  onCollapse={handleCollapse}
+                                />
+                              )}
+                              {currentInlineAction === "send_reminder" && (
+                                <SendReminderPanel
+                                  task={task}
+                                  onDismiss={handleMarkDone}
+                                  onCollapse={handleCollapse}
+                                />
+                              )}
+                              {currentInlineAction === "view_leads" && (
+                                <ViewLeadsPanel task={task} onCollapse={handleCollapse} />
+                              )}
+                              {currentInlineAction === "follow_up" && (
+                                <FollowUpPanel task={task} onCollapse={handleCollapse} />
+                              )}
+                              {currentInlineAction === "view_schedule" && (
+                                <ViewSchedulePanel task={task} onCollapse={handleCollapse} />
+                              )}
+                              {currentInlineAction === "review_docs" && (
+                                <ReviewDocsPanel task={task} onCollapse={handleCollapse} />
+                              )}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -519,6 +868,9 @@ export function ActionQueue({ loading = false }: ActionQueueProps) {
                   );
                 })}
               </AnimatePresence>
+
+              {/* Completed Tasks */}
+              <CompletedTasksSection tasks={completedTasks} />
             </div>
           )}
         </div>
