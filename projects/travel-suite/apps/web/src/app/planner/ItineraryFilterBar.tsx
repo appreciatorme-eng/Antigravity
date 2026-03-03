@@ -3,14 +3,15 @@
 import { useMemo } from "react";
 import {
     Search, Eye, Send, MessageCircle, CheckCircle, Briefcase,
-    Clock, TrendingUp, Zap, FolderOpen, X, Filter,
+    Clock, TrendingUp, Zap, FolderOpen, X, Filter, Bell,
     type LucideIcon,
 } from "lucide-react";
+import { hasClientActivity } from "./NeedsAttentionQueue";
 import { cn } from "@/lib/utils";
 
 export type ItineraryStage =
     | "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "converted"
-    | "active_leads" | "won";
+    | "active_leads" | "won" | "needs_attention";
 
 /** Compound stages that map to multiple individual stages */
 const COMPOUND_STAGES: Record<string, string[]> = {
@@ -22,6 +23,7 @@ const COMPOUND_STAGES: Record<string, string[]> = {
 const COMPOUND_LABELS: Record<string, string> = {
     active_leads: "Active Leads",
     won: "Approved & Converted",
+    needs_attention: "Needs Attention",
 };
 
 interface StageConfig {
@@ -121,9 +123,10 @@ export function deriveStage(itinerary: {
     return "draft";
 }
 
-/** Check if an itinerary matches a filter (supports compound stages) */
+/** Check if an itinerary matches a filter (supports compound stages + needs_attention) */
 export function matchesFilter(itinerary: any, filter: ItineraryStage): boolean {
     if (filter === "all") return true;
+    if (filter === "needs_attention") return hasClientActivity(itinerary);
     const stage = deriveStage(itinerary);
     const compoundSet = COMPOUND_STAGES[filter];
     if (compoundSet) return compoundSet.includes(stage);
@@ -174,6 +177,10 @@ export function ItineraryFilterBar({
         return counts;
     }, [itineraries]);
 
+    const attentionCount = useMemo(() => {
+        return itineraries.filter(hasClientActivity).length;
+    }, [itineraries]);
+
     const summaryStats: StatDrill[] = useMemo(() => {
         const total = itineraries.length;
         const approved = stageCounts.approved;
@@ -183,11 +190,11 @@ export function ItineraryFilterBar({
 
         return [
             { label: "Total Plans", value: total, icon: FolderOpen, color: "text-emerald-500", iconGradient: "from-emerald-500 to-teal-500", filterTarget: "all" },
+            { label: "Needs Attention", value: attentionCount, icon: Bell, color: "text-red-500", iconGradient: "from-red-500 to-orange-500", filterTarget: "needs_attention" },
             { label: "Active Leads", value: activeLeads, icon: Zap, color: "text-amber-500", iconGradient: "from-amber-400 to-orange-500", filterTarget: "active_leads" },
-            { label: "Approved", value: approved, icon: CheckCircle, color: "text-emerald-500", iconGradient: "from-emerald-400 to-green-500", filterTarget: "approved" },
             { label: "Conversion", value: `${conversionRate}%`, icon: TrendingUp, color: "text-indigo-500", iconGradient: "from-indigo-500 to-violet-500", filterTarget: "won" },
         ];
-    }, [itineraries, stageCounts]);
+    }, [itineraries, stageCounts, attentionCount]);
 
     const handleStatClick = (stat: StatDrill) => {
         if (filterStage === stat.filterTarget) {
@@ -222,6 +229,15 @@ export function ItineraryFilterBar({
                             {/* Active indicator line */}
                             {isActive && (
                                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400" />
+                            )}
+                            {/* Pulse badge for needs attention */}
+                            {stat.filterTarget === "needs_attention" && attentionCount > 0 && !isActive && (
+                                <div className="absolute top-2 right-2">
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                                    </span>
+                                </div>
                             )}
                             <div className="flex items-center gap-3">
                                 <div className={cn(

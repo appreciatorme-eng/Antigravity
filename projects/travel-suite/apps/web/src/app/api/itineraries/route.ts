@@ -13,9 +13,6 @@ export async function GET() {
     }
 
     // Fetch itineraries — select only columns guaranteed to exist
-    // Note: client_id FK points to clients(id) not profiles(id), so we can't
-    // do a direct PostgREST join to profiles via client_id. We fetch client
-    // names separately below.
     const { data: itineraries, error } = await supabase
       .from("itineraries")
       .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary, client_id, template_id")
@@ -23,8 +20,6 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      // If the query failed (e.g. client_id or template_id columns don't exist),
-      // retry with only the core columns that are guaranteed to exist
       console.error("Itinerary fetch error, retrying with core columns:", error.message);
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("itineraries")
@@ -39,20 +34,40 @@ export async function GET() {
       return NextResponse.json({ itineraries: fallbackData ?? [] });
     }
 
-    // Fetch share info for all itineraries
+    // Fetch share info for all itineraries — now includes feedback data
     const itineraryIds = (itineraries ?? []).map((i: any) => i.id);
-    let shareMap: Record<string, { share_code: string; status: string | null }> = {};
+    let shareMap: Record<string, {
+      share_code: string;
+      status: string | null;
+      client_comments: any;
+      client_preferences: any;
+      wishlist_items: any;
+      viewed_at: string | null;
+      approved_at: string | null;
+      approved_by: string | null;
+      self_service_status: string | null;
+    }> = {};
 
     if (itineraryIds.length > 0) {
       const { data: shares } = await supabase
         .from("shared_itineraries")
-        .select("itinerary_id, share_code, status")
+        .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
         .in("itinerary_id", itineraryIds);
 
       if (shares) {
         for (const s of shares) {
           if (s.itinerary_id) {
-            shareMap[s.itinerary_id] = { share_code: s.share_code, status: s.status };
+            shareMap[s.itinerary_id] = {
+              share_code: s.share_code,
+              status: s.status,
+              client_comments: s.client_comments ?? [],
+              client_preferences: s.client_preferences ?? null,
+              wishlist_items: s.wishlist_items ?? [],
+              viewed_at: s.viewed_at ?? null,
+              approved_at: s.approved_at ?? null,
+              approved_by: s.approved_by ?? null,
+              self_service_status: s.self_service_status ?? null,
+            };
           }
         }
       }
@@ -92,13 +107,24 @@ export async function GET() {
     }
 
     // Merge share, trip & client info into itineraries
-    const enriched = (itineraries ?? []).map((itin: any) => ({
-      ...itin,
-      client: itin.client_id ? { full_name: clientNameMap[itin.client_id] ?? null } : null,
-      share_code: shareMap[itin.id]?.share_code ?? null,
-      share_status: shareMap[itin.id]?.status ?? null,
-      trip_id: tripMap[itin.id] ?? null,
-    }));
+    const enriched = (itineraries ?? []).map((itin: any) => {
+      const share = shareMap[itin.id];
+      return {
+        ...itin,
+        client: itin.client_id ? { full_name: clientNameMap[itin.client_id] ?? null } : null,
+        share_code: share?.share_code ?? null,
+        share_status: share?.status ?? null,
+        trip_id: tripMap[itin.id] ?? null,
+        // Client feedback fields
+        client_comments: share?.client_comments ?? [],
+        client_preferences: share?.client_preferences ?? null,
+        wishlist_items: share?.wishlist_items ?? [],
+        viewed_at: share?.viewed_at ?? null,
+        approved_at: share?.approved_at ?? null,
+        approved_by: share?.approved_by ?? null,
+        self_service_status: share?.self_service_status ?? null,
+      };
+    });
 
     return NextResponse.json({ itineraries: enriched });
   } catch (error) {

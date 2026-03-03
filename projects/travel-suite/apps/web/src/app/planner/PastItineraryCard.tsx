@@ -5,11 +5,13 @@ import { useUpdateItinerary } from "@/lib/queries/itineraries";
 import { useClients } from "@/lib/queries/clients";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { MapPin, Clock, DollarSign, Check, Share2, ExternalLink, Globe, Users, Calendar, Eye, Loader2 } from "lucide-react";
+import { MapPin, Clock, DollarSign, Check, Share2, ExternalLink, Globe, Users, Calendar, Eye, Loader2, MessageCircle } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { deriveStage, STAGE_CONFIG } from "./ItineraryFilterBar";
+import { ClientFeedbackPanel } from "./ClientFeedbackPanel";
+import { hasClientActivity } from "./NeedsAttentionQueue";
 
 interface PastItineraryCardProps {
     itinerary: {
@@ -26,6 +28,12 @@ interface PastItineraryCardProps {
         share_code?: string | null;
         share_status?: string | null;
         trip_id?: string | null;
+        client_comments?: any[];
+        client_preferences?: any;
+        wishlist_items?: string[];
+        approved_by?: string | null;
+        approved_at?: string | null;
+        self_service_status?: string | null;
     };
     compact?: boolean;
     onOpen?: (id: string) => void;
@@ -83,6 +91,10 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
     const stage = deriveStage(itinerary);
     const stageConfig = STAGE_CONFIG[stage] ?? STAGE_CONFIG.draft;
     const StageIcon = stageConfig.icon;
+    const hasActivity = hasClientActivity(itinerary);
+    const comments = itinerary.client_comments ?? [];
+    const preferences = itinerary.client_preferences ?? null;
+    const wishlist = itinerary.wishlist_items ?? [];
 
     const createdDateLabel = new Date(itinerary.created_at).toLocaleDateString("en-IN", {
         day: "2-digit", month: "short", year: "numeric",
@@ -168,6 +180,15 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             {itinerary.client?.full_name && (
                                 <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 flex items-center gap-1">
                                     <Users className="w-2.5 h-2.5" /> {itinerary.client.full_name}
+                                </span>
+                            )}
+                            {hasActivity && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+                                    </span>
+                                    <MessageCircle className="w-2.5 h-2.5" /> Feedback
                                 </span>
                             )}
                         </div>
@@ -281,6 +302,18 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                         ))}
                     </div>
                 )}
+
+                {/* Client Feedback Panel */}
+                <div onClick={(e) => e.stopPropagation()}>
+                    <ClientFeedbackPanel
+                        comments={comments}
+                        preferences={preferences}
+                        wishlistItems={wishlist}
+                        approvedBy={itinerary.approved_by ?? null}
+                        approvedAt={itinerary.approved_at ?? null}
+                        clientName={itinerary.client?.full_name ?? null}
+                    />
+                </div>
             </div>
         </div>
     );

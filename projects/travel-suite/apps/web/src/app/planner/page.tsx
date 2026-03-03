@@ -28,6 +28,7 @@ import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter, type ItineraryStage } from "./ItineraryFilterBar";
+import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
 import { PlannerHero } from "./PlannerHero";
 import { cn } from "@/lib/utils";
 
@@ -573,6 +574,13 @@ export default function PlannerPage() {
                 {/* Filter bar + itinerary grid */}
                 {!isLoadingItineraries && hasPastItineraries && (
                     <div className="space-y-6">
+                        {/* Priority attention queue */}
+                        <NeedsAttentionQueue
+                            itineraries={pastItineraries}
+                            onOpenItinerary={handleOpenItinerary}
+                            openingItineraryId={openingItineraryId}
+                        />
+
                         <ItineraryFilterBar
                             itineraries={pastItineraries}
                             filterStage={filterStage}
