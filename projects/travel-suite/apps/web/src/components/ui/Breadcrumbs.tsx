@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/** Routes that don't have their own page — redirect breadcrumb to a parent. */
+const PATH_REDIRECTS: Record<string, string> = {
+    "/dashboard": "/",
+};
+
 export function Breadcrumbs({ className }: { className?: string }) {
     const pathname = usePathname();
     if (!pathname || pathname === "/") return null;
@@ -19,7 +24,8 @@ export function Breadcrumbs({ className }: { className?: string }) {
             </Link>
 
             {paths.map((path, idx) => {
-                const href = `/${paths.slice(0, idx + 1).join("/")}`;
+                const rawHref = `/${paths.slice(0, idx + 1).join("/")}`;
+                const href = PATH_REDIRECTS[rawHref] ?? rawHref;
                 const isLast = idx === paths.length - 1;
 
                 // Capitalize and remove hyphens

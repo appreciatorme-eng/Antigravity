@@ -255,7 +255,7 @@ export default function AllTasksPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       {/* Back link */}
       <Link
-        href="/dashboard"
+        href="/"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
