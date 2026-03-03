@@ -3,10 +3,9 @@
 import { useMemo } from "react";
 import {
     Search, Eye, Send, MessageCircle, CheckCircle, Briefcase,
-    Clock, TrendingUp, Zap, FolderOpen, X,
+    Clock, TrendingUp, Zap, FolderOpen, X, Filter,
     type LucideIcon,
 } from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 
 export type ItineraryStage =
@@ -33,17 +32,19 @@ interface StageConfig {
     borderColor: string;
     darkColor: string;
     darkBg: string;
+    gradient: string;
 }
 
 export const STAGE_CONFIG: Record<string, StageConfig> = {
     draft: {
         label: "Draft",
         icon: Clock,
-        color: "text-gray-600",
-        bg: "bg-gray-50",
-        borderColor: "border-gray-200",
-        darkColor: "dark:text-gray-400",
-        darkBg: "dark:bg-gray-800/30",
+        color: "text-slate-500",
+        bg: "bg-slate-50",
+        borderColor: "border-slate-200",
+        darkColor: "dark:text-slate-400",
+        darkBg: "dark:bg-slate-800/30",
+        gradient: "from-slate-400 to-slate-500",
     },
     shared: {
         label: "Shared",
@@ -53,6 +54,7 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         borderColor: "border-violet-200",
         darkColor: "dark:text-violet-400",
         darkBg: "dark:bg-violet-900/20",
+        gradient: "from-violet-500 to-purple-500",
     },
     viewed: {
         label: "Viewed",
@@ -62,6 +64,7 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         borderColor: "border-blue-200",
         darkColor: "dark:text-blue-400",
         darkBg: "dark:bg-blue-900/20",
+        gradient: "from-blue-500 to-cyan-500",
     },
     feedback: {
         label: "Feedback",
@@ -71,6 +74,7 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         borderColor: "border-amber-200",
         darkColor: "dark:text-amber-400",
         darkBg: "dark:bg-amber-900/20",
+        gradient: "from-amber-500 to-orange-500",
     },
     approved: {
         label: "Approved",
@@ -80,6 +84,7 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         borderColor: "border-emerald-200",
         darkColor: "dark:text-emerald-400",
         darkBg: "dark:bg-emerald-900/20",
+        gradient: "from-emerald-500 to-green-500",
     },
     converted: {
         label: "Trip Created",
@@ -89,17 +94,18 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         borderColor: "border-primary/20",
         darkColor: "dark:text-emerald-300",
         darkBg: "dark:bg-primary/10",
+        gradient: "from-emerald-400 to-teal-500",
     },
 };
 
-const FILTER_TABS: { value: ItineraryStage; label: string }[] = [
+const FILTER_TABS: { value: ItineraryStage; label: string; icon?: LucideIcon }[] = [
     { value: "all", label: "All" },
-    { value: "draft", label: "Draft" },
-    { value: "shared", label: "Shared" },
-    { value: "viewed", label: "Viewed" },
-    { value: "feedback", label: "Feedback" },
-    { value: "approved", label: "Approved" },
-    { value: "converted", label: "Trips" },
+    { value: "draft", label: "Draft", icon: Clock },
+    { value: "shared", label: "Shared", icon: Send },
+    { value: "viewed", label: "Viewed", icon: Eye },
+    { value: "feedback", label: "Feedback", icon: MessageCircle },
+    { value: "approved", label: "Approved", icon: CheckCircle },
+    { value: "converted", label: "Trips", icon: Briefcase },
 ];
 
 export function deriveStage(itinerary: {
@@ -146,7 +152,7 @@ interface StatDrill {
     value: string | number;
     icon: LucideIcon;
     color: string;
-    bg: string;
+    iconGradient: string;
     filterTarget: ItineraryStage;
 }
 
@@ -176,15 +182,14 @@ export function ItineraryFilterBar({
         const conversionRate = total > 0 ? Math.round(((approved + converted) / total) * 100) : 0;
 
         return [
-            { label: "Total Plans", value: total, icon: FolderOpen, color: "text-primary", bg: "bg-primary/10", filterTarget: "all" },
-            { label: "Active Leads", value: activeLeads, icon: Zap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", filterTarget: "active_leads" },
-            { label: "Approved", value: approved, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", filterTarget: "approved" },
-            { label: "Conversion", value: `${conversionRate}%`, icon: TrendingUp, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-900/20", filterTarget: "won" },
+            { label: "Total Plans", value: total, icon: FolderOpen, color: "text-emerald-500", iconGradient: "from-emerald-500 to-teal-500", filterTarget: "all" },
+            { label: "Active Leads", value: activeLeads, icon: Zap, color: "text-amber-500", iconGradient: "from-amber-400 to-orange-500", filterTarget: "active_leads" },
+            { label: "Approved", value: approved, icon: CheckCircle, color: "text-emerald-500", iconGradient: "from-emerald-400 to-green-500", filterTarget: "approved" },
+            { label: "Conversion", value: `${conversionRate}%`, icon: TrendingUp, color: "text-indigo-500", iconGradient: "from-indigo-500 to-violet-500", filterTarget: "won" },
         ];
     }, [itineraries, stageCounts]);
 
     const handleStatClick = (stat: StatDrill) => {
-        // Toggle: click again to deselect
         if (filterStage === stat.filterTarget) {
             onFilterChange("all");
         } else {
@@ -192,109 +197,106 @@ export function ItineraryFilterBar({
         }
     };
 
-    /** Check if a chip tab should appear active — compound filters highlight matching individual chips */
     const isChipActive = (tabValue: ItineraryStage): boolean => {
-        if (filterStage === tabValue) return true;
-        // If a compound filter is active, highlight "All" only when "all"
-        return false;
+        return filterStage === tabValue;
     };
-
-    /** Check if the current filter is a compound KPI drill */
-    const isCompoundActive = filterStage in COMPOUND_STAGES;
 
     return (
         <div className="space-y-4">
-            {/* Summary stats row — clickable drill-throughs */}
+            {/* ── KPI Stats Row ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {summaryStats.map((stat) => {
+                {summaryStats.map((stat, idx) => {
                     const isActive = filterStage === stat.filterTarget;
                     return (
                         <button
                             key={stat.label}
                             onClick={() => handleStatClick(stat)}
-                            className="text-left focus:outline-none"
+                            className={cn(
+                                "group text-left rounded-2xl p-4 border-2 transition-all duration-300 relative overflow-hidden",
+                                isActive
+                                    ? "bg-white dark:bg-slate-900 border-emerald-400 dark:border-emerald-600 shadow-lg shadow-emerald-500/10 scale-[1.02]"
+                                    : "bg-white/80 dark:bg-slate-900/80 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-md"
+                            )}
+                            style={{ animationDelay: `${idx * 80}ms` }}
                         >
-                            <GlassCard
-                                padding="sm"
-                                className={cn(
-                                    "group border transition-all duration-200 cursor-pointer",
-                                    isActive
-                                        ? "border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10"
-                                        : "border-gray-100 dark:border-slate-800 hover:border-primary/40 hover:shadow-md"
-                                )}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={cn(
-                                        "w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
-                                        stat.bg
-                                    )}>
-                                        <stat.icon className={cn("w-4.5 h-4.5", stat.color)} />
-                                    </div>
-                                    <div>
-                                        <p className={cn(
-                                            "text-[10px] font-bold uppercase tracking-widest transition-colors",
-                                            isActive ? "text-primary" : "text-text-muted"
-                                        )}>
-                                            {stat.label}
-                                        </p>
-                                        <p className="text-lg font-black text-secondary dark:text-white tracking-tight tabular-nums leading-tight">
-                                            {stat.value}
-                                        </p>
-                                    </div>
+                            {/* Active indicator line */}
+                            {isActive && (
+                                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400" />
+                            )}
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 bg-gradient-to-br shadow-sm",
+                                    stat.iconGradient,
+                                    isActive ? "scale-110 shadow-md" : "group-hover:scale-105"
+                                )}>
+                                    <stat.icon className="w-4.5 h-4.5 text-white" />
                                 </div>
-                            </GlassCard>
+                                <div className="min-w-0">
+                                    <p className={cn(
+                                        "text-[10px] font-black uppercase tracking-[0.12em] transition-colors truncate",
+                                        isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"
+                                    )}>
+                                        {stat.label}
+                                    </p>
+                                    <p className="text-xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums leading-tight">
+                                        {stat.value}
+                                    </p>
+                                </div>
+                            </div>
                         </button>
                     );
                 })}
             </div>
 
-            {/* Search + Filter chips row */}
+            {/* ── Search + Filter Chips Row ── */}
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 {/* Search */}
-                <GlassCard padding="none" className="flex-1 overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm">
-                    <div className="flex items-center px-3.5 py-2">
-                        <Search className="w-4 h-4 text-text-muted mr-2.5 shrink-0" />
-                        <input
-                            type="text"
-                            placeholder="Search by title, destination, or client..."
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-secondary dark:text-white placeholder:text-text-muted/60 text-sm h-8"
-                            value={searchQuery}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => onSearchChange("")}
-                                className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-text-muted transition-colors"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                        )}
+                <div className="flex-1 relative group">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10">
+                        <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
                     </div>
-                </GlassCard>
+                    <input
+                        type="text"
+                        placeholder="Search by title, destination, or client..."
+                        className="w-full h-10 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl pl-10 pr-9 text-sm text-slate-800 dark:text-white placeholder:text-slate-400/70 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => onSearchChange("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
 
                 {/* Filter chips */}
-                <div className="flex items-center gap-1.5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-1 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+                <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/80 p-1 rounded-xl border border-slate-100 dark:border-slate-800 overflow-x-auto">
                     {FILTER_TABS.map((tab) => {
                         const count = stageCounts[tab.value] ?? 0;
                         const chipActive = isChipActive(tab.value);
+                        const TabIcon = tab.icon;
                         return (
                             <button
                                 key={tab.value}
                                 onClick={() => onFilterChange(tab.value)}
                                 className={cn(
-                                    "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center gap-1.5",
+                                    "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 whitespace-nowrap flex items-center gap-1.5",
                                     chipActive
-                                        ? "bg-primary text-white shadow-md shadow-primary/20"
-                                        : "text-text-secondary hover:bg-gray-100 dark:hover:bg-slate-800"
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20"
+                                        : "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 hover:shadow-sm"
                                 )}
                             >
+                                {TabIcon && <TabIcon className="w-3 h-3" />}
                                 {tab.label}
                                 {count > 0 && (
                                     <span className={cn(
-                                        "text-[9px] font-black tabular-nums px-1.5 py-0.5 rounded-full",
+                                        "text-[9px] font-black tabular-nums px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
                                         chipActive
-                                            ? "bg-white/25 text-white"
-                                            : "bg-gray-100 dark:bg-slate-800 text-text-muted"
+                                            ? "bg-white/20 text-white"
+                                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
                                     )}>
                                         {count}
                                     </span>
@@ -305,21 +307,23 @@ export function ItineraryFilterBar({
                 </div>
             </div>
 
-            {/* Active filter banner */}
+            {/* ── Active Filter Banner ── */}
             {(filterStage !== "all" || searchQuery) && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20">
-                    <span className="text-xs font-bold text-primary">
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
+                    <Filter className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
                         Showing {filteredCount} {filteredCount === 1 ? "itinerary" : "itineraries"}
                         {filterStage !== "all" && (
-                            <> in <span className="uppercase">{getFilterLabel(filterStage)}</span></>
+                            <> in <span className="uppercase tracking-wide">{getFilterLabel(filterStage)}</span></>
                         )}
                         {searchQuery && <> matching &ldquo;{searchQuery}&rdquo;</>}
                     </span>
                     <button
                         onClick={() => { onFilterChange("all"); onSearchChange(""); }}
-                        className="ml-auto text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+                        className="ml-auto flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
                     >
-                        Clear Filters
+                        <X className="w-3 h-3" />
+                        Clear
                     </button>
                 </div>
             )}
