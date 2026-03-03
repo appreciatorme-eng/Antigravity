@@ -5,11 +5,27 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User, Link as LinkIcon, FileText } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User, Link as LinkIcon, FileText, FolderOpen, Clock, Globe, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
+
+interface SavedItinerary {
+    id: string;
+    trip_title: string;
+    destination: string | null;
+    duration_days: number | null;
+    summary: string | null;
+    created_at: string;
+    budget: string | null;
+    interests: string[] | null;
+    client_id: string | null;
+    client: { full_name: string | null } | null;
+    trip_id: string | null;
+    share_code: string | null;
+    share_status: string | null;
+}
 
 interface Client {
     id: string;
@@ -57,9 +73,15 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedData, setGeneratedData] = useState<ItineraryResult | null>(null);
-    const [importMode, setImportMode] = useState<"ai" | "url" | "pdf">("ai");
+    const [importMode, setImportMode] = useState<"saved" | "ai" | "url" | "pdf">("saved");
     const [importUrl, setImportUrl] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
+
+    // Saved Itineraries
+    const [savedItineraries, setSavedItineraries] = useState<SavedItinerary[]>([]);
+    const [loadingSaved, setLoadingSaved] = useState(false);
+    const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
+    const [loadingRawData, setLoadingRawData] = useState(false);
 
     // Clients Data
     const [clients, setClients] = useState<Client[]>([]);
@@ -95,9 +117,79 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         setLoadingClients(false);
     }, [supabase]);
 
+    const fetchSavedItineraries = useCallback(async () => {
+        setLoadingSaved(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/itineraries", {
+                headers: {
+                    "Authorization": `Bearer ${session?.access_token}`,
+                },
+            });
+
+            if (!response.ok) {
+                console.error("Error fetching saved itineraries");
+                return;
+            }
+
+            const payload = await response.json();
+            setSavedItineraries(payload.itineraries || []);
+        } catch (error) {
+            console.error("Error fetching saved itineraries:", error);
+        } finally {
+            setLoadingSaved(false);
+        }
+    }, [supabase]);
+
+    const handleSelectSavedItinerary = useCallback(async (itinerary: SavedItinerary) => {
+        setSelectedSavedId(itinerary.id);
+        setLoadingRawData(true);
+        try {
+            const { data, error } = await supabase
+                .from("itineraries")
+                .select("raw_data")
+                .eq("id", itinerary.id)
+                .single();
+
+            if (error || !data?.raw_data) {
+                toast({
+                    title: "Failed to load itinerary",
+                    description: "Could not fetch itinerary data. Please try again.",
+                    variant: "error",
+                });
+                setSelectedSavedId(null);
+                return;
+            }
+
+            setGeneratedData(data.raw_data as unknown as ItineraryResult);
+
+            // Auto-fill client if the saved itinerary has one
+            if (itinerary.client_id) {
+                setClientId(itinerary.client_id);
+            }
+
+            toast({
+                title: "Itinerary loaded",
+                description: `"${itinerary.trip_title}" is ready. Fill in client & dates to create the trip.`,
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Error loading itinerary raw data:", error);
+            toast({
+                title: "Load failed",
+                description: "Something went wrong loading the itinerary.",
+                variant: "error",
+            });
+            setSelectedSavedId(null);
+        } finally {
+            setLoadingRawData(false);
+        }
+    }, [supabase, toast]);
+
     useEffect(() => {
         if (open) {
             void fetchClients();
+            void fetchSavedItineraries();
             void loadTripLimit();
             // Reset state on open
             setClientId("");
@@ -108,9 +200,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setPdfFile(null);
             setGeneratedData(null);
             setCreating(false);
-            setImportMode("ai");
+            setImportMode("saved");
+            setSelectedSavedId(null);
         }
-    }, [open, fetchClients]);
+    }, [open, fetchClients, fetchSavedItineraries]);
 
     const loadTripLimit = async () => {
         try {
@@ -422,7 +515,18 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     {/* Import Mode Selector */}
                     {!generatedData ? (
                         <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 space-y-4">
-                            <div className="flex gap-2 p-1 bg-white border rounded-lg w-fit">
+                            <div className="flex flex-wrap gap-2 p-1 bg-white border rounded-lg w-fit">
+                                <button
+                                    onClick={() => setImportMode("saved")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "saved" ? "bg-emerald-100 text-emerald-700" : "text-gray-500 hover:bg-gray-100"}`}
+                                >
+                                    <FolderOpen className="w-4 h-4" /> Saved Plans
+                                    {savedItineraries.length > 0 && (
+                                        <span className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 ${importMode === "saved" ? "bg-emerald-200 text-emerald-800" : "bg-gray-200 text-gray-600"}`}>
+                                            {savedItineraries.length}
+                                        </span>
+                                    )}
+                                </button>
                                 <button
                                     onClick={() => setImportMode("ai")}
                                     className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "ai" ? "bg-purple-100 text-purple-700" : "text-gray-500 hover:bg-gray-100"}`}
@@ -442,6 +546,107 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                     <FileText className="w-4 h-4" /> From PDF Upload
                                 </button>
                             </div>
+
+                            {importMode === "saved" && (
+                                <div className="space-y-3 pt-2">
+                                    {loadingSaved ? (
+                                        <div className="flex items-center justify-center py-8 gap-2 text-gray-500">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span className="text-sm">Loading saved plans...</span>
+                                        </div>
+                                    ) : savedItineraries.length === 0 ? (
+                                        <div className="text-center py-8 space-y-2">
+                                            <FolderOpen className="w-8 h-8 mx-auto text-gray-300" />
+                                            <p className="text-sm font-medium text-gray-600">No saved plans yet</p>
+                                            <p className="text-xs text-gray-400">
+                                                Create itineraries in the Planner page and they&apos;ll appear here.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <p className="text-xs text-gray-500">
+                                                Select a saved itinerary from the Planner to use as the trip blueprint.
+                                            </p>
+                                            <div className="max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                                                {savedItineraries.map((itinerary) => (
+                                                    <button
+                                                        key={itinerary.id}
+                                                        type="button"
+                                                        disabled={loadingRawData}
+                                                        onClick={() => handleSelectSavedItinerary(itinerary)}
+                                                        className={`w-full rounded-xl border p-3 text-left transition hover:shadow-sm ${
+                                                            selectedSavedId === itinerary.id
+                                                                ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500"
+                                                                : "border-gray-200 bg-white hover:border-gray-300"
+                                                        } ${loadingRawData && selectedSavedId === itinerary.id ? "opacity-70" : ""}`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                    {itinerary.trip_title}
+                                                                </p>
+                                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                                                    {itinerary.destination && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Globe className="w-3 h-3" />
+                                                                            {itinerary.destination}
+                                                                        </span>
+                                                                    )}
+                                                                    {itinerary.duration_days && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Calendar className="w-3 h-3" />
+                                                                            {itinerary.duration_days} days
+                                                                        </span>
+                                                                    )}
+                                                                    {itinerary.client?.full_name && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <User className="w-3 h-3" />
+                                                                            {itinerary.client.full_name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="shrink-0 flex flex-col items-end gap-1">
+                                                                {loadingRawData && selectedSavedId === itinerary.id ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                                                                ) : selectedSavedId === itinerary.id ? (
+                                                                    <Check className="w-4 h-4 text-emerald-600" />
+                                                                ) : null}
+                                                                <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    {new Date(itinerary.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {itinerary.summary && (
+                                                            <p className="mt-1.5 text-xs text-gray-500 line-clamp-2">
+                                                                {itinerary.summary}
+                                                            </p>
+                                                        )}
+                                                        {itinerary.interests && itinerary.interests.length > 0 && (
+                                                            <div className="mt-2 flex flex-wrap gap-1">
+                                                                {itinerary.interests.slice(0, 4).map((interest) => (
+                                                                    <span
+                                                                        key={interest}
+                                                                        className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600"
+                                                                    >
+                                                                        {interest}
+                                                                    </span>
+                                                                ))}
+                                                                {itinerary.interests.length > 4 && (
+                                                                    <span className="text-[10px] text-gray-400">
+                                                                        +{itinerary.interests.length - 4} more
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             {importMode === "ai" && (
                                 <div className="space-y-4 pt-2">
