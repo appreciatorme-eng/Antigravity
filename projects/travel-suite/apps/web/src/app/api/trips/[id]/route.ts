@@ -113,7 +113,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                     id,
                     full_name,
                     email,
-                    phone
+                    phone,
+                    phone_whatsapp,
+                    dietary_requirements,
+                    preferred_destination,
+                    travel_style,
+                    budget_min,
+                    budget_max,
+                    mobility_needs
                 ),
                 itineraries (
                     id,
@@ -154,6 +161,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                     ...itinerary,
                     raw_data: {
                         days: itinerary.raw_data?.days || [],
+                        flights: itinerary.raw_data?.flights || [],
                     },
                 }
                 : null,
@@ -317,6 +325,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             }
         }
 
+        // Invoice summary
+        const { data: invoiceAggData } = await supabaseAdmin
+            .from("invoices")
+            .select("total_amount, paid_amount, balance_amount")
+            .eq("trip_id", tripId);
+
+        const invoiceSummary = invoiceAggData && invoiceAggData.length > 0
+            ? {
+                total_amount: invoiceAggData.reduce((sum, inv) => sum + (inv.total_amount || 0), 0),
+                paid_amount: invoiceAggData.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0),
+                balance_amount: invoiceAggData.reduce((sum, inv) => sum + (inv.balance_amount || 0), 0),
+                invoice_count: invoiceAggData.length,
+            }
+            : null;
+
         return NextResponse.json({
             trip: mappedTrip,
             drivers: driversData || [],
@@ -325,6 +348,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             reminderStatusByDay,
             busyDriversByDay,
             latestDriverLocation: latestLocation || null,
+            invoiceSummary,
         });
     } catch (error) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });

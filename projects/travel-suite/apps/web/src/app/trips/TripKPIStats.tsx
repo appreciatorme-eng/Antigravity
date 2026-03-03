@@ -3,14 +3,15 @@
 import { useMemo } from "react";
 import { IndianRupee, Plane, CalendarClock, Wallet } from "lucide-react";
 import { KPICard } from "@/components/dashboard/KPICard";
-import type { EnrichedTrip } from "./types";
+import type { EnrichedTrip, TripKPIDrillAction } from "./types";
 
 interface TripKPIStatsProps {
     trips: readonly EnrichedTrip[];
     loading: boolean;
+    onDrillThrough?: (action: TripKPIDrillAction) => void;
 }
 
-export function TripKPIStats({ trips, loading }: TripKPIStatsProps) {
+export function TripKPIStats({ trips, loading, onDrillThrough }: TripKPIStatsProps) {
     const stats = useMemo(() => {
         const confirmedOrCompleted = trips.filter((t) =>
             ["confirmed", "completed", "in_progress"].includes(t.status || "")
@@ -44,40 +45,44 @@ export function TripKPIStats({ trips, loading }: TripKPIStatsProps) {
                 value={stats.totalRevenue}
                 icon={IndianRupee}
                 isCurrency
-                color="text-emerald-600"
-                bg="bg-emerald-100/50"
+                color="text-emerald-500"
+                bg="bg-emerald-500/10"
                 loading={loading}
                 trend={`${trips.length} trips`}
                 trendUp
+                onClick={onDrillThrough ? () => onDrillThrough("revenue") : undefined}
             />
             <KPICard
                 label="Active Trips"
                 value={stats.activeTrips}
                 icon={Plane}
-                color="text-blue-600"
-                bg="bg-blue-100/50"
+                color="text-sky-500"
+                bg="bg-sky-500/10"
                 loading={loading}
+                onClick={onDrillThrough ? () => onDrillThrough("active") : undefined}
             />
             <KPICard
                 label="Departing Soon"
                 value={stats.upcomingDepartures}
                 icon={CalendarClock}
-                color="text-amber-600"
-                bg="bg-amber-100/50"
+                color="text-amber-500"
+                bg="bg-amber-500/10"
                 loading={loading}
                 trend="Within 7 days"
                 trendUp={stats.upcomingDepartures === 0}
+                onClick={onDrillThrough ? () => onDrillThrough("departing_soon") : undefined}
             />
             <KPICard
                 label="Collection Pending"
                 value={stats.collectionPending}
                 icon={Wallet}
                 isCurrency
-                color="text-rose-600"
-                bg="bg-rose-100/50"
+                color="text-rose-500"
+                bg="bg-rose-500/10"
                 loading={loading}
                 trendUp={false}
                 trend={stats.collectionPending > 0 ? "Needs follow-up" : undefined}
+                onClick={onDrillThrough ? () => onDrillThrough("collection_pending") : undefined}
             />
         </div>
     );

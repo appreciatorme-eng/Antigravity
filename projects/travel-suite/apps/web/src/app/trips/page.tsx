@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useCallback, useRef, useState, useMemo } from "react";
 import { useTrips } from "@/lib/queries/trips";
 import {
     Search,
@@ -10,14 +10,15 @@ import {
     ArrowDownUp,
     List as ListIcon,
     LayoutGrid,
+    X,
 } from "lucide-react";
 import CreateTripModal from "@/components/CreateTripModal";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassListSkeleton } from "@/components/glass/GlassSkeleton";
 import { cn } from "@/lib/utils";
-import type { EnrichedTrip, TripSortKey, QuickFilter } from "./types";
-import { STATUS_OPTIONS } from "./types";
+import type { EnrichedTrip, TripSortKey, QuickFilter, TripKPIDrillAction } from "./types";
+import { STATUS_OPTIONS, DRILL_LABELS } from "./types";
 import { sortTrips, applyQuickFilters } from "./utils";
 import { TripKPIStats } from "./TripKPIStats";
 import { DepartingSoonSection } from "./DepartingSoonSection";
@@ -44,6 +45,9 @@ export default function TripsPage() {
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [sortKey, setSortKey] = useState<TripSortKey>("departure");
     const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());
+    const [activeDrill, setActiveDrill] = useState<TripKPIDrillAction | null>(null);
+
+    const departingSoonRef = useRef<HTMLDivElement>(null);
 
     const { data: rawTrips, isLoading: loading, refetch: fetchTrips } = useTrips(statusFilter, searchQuery);
     const trips: EnrichedTrip[] = useMemo(() => rawTrips || [], [rawTrips]);
@@ -64,6 +68,39 @@ export default function TripsPage() {
             return next;
         });
     };
+
+    const handleDrillThrough = useCallback((action: TripKPIDrillAction) => {
+        setActiveDrill(action);
+        switch (action) {
+            case "revenue":
+                setStatusFilter("confirmed");
+                setSortKey("value");
+                setQuickFilters(new Set());
+                break;
+            case "active":
+                setStatusFilter("confirmed");
+                setQuickFilters(new Set());
+                break;
+            case "departing_soon":
+                setStatusFilter("all");
+                setQuickFilters(new Set(["departing_this_week"]));
+                setTimeout(() => {
+                    departingSoonRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+                break;
+            case "collection_pending":
+                setStatusFilter("all");
+                setQuickFilters(new Set(["payment_due"]));
+                break;
+        }
+    }, []);
+
+    const clearDrill = useCallback(() => {
+        setActiveDrill(null);
+        setStatusFilter("all");
+        setSortKey("departure");
+        setQuickFilters(new Set());
+    }, []);
 
     return (
         <div className="space-y-8 pb-20">
@@ -94,10 +131,28 @@ export default function TripsPage() {
             </div>
 
             {/* KPI Stats */}
-            <TripKPIStats trips={trips} loading={loading} />
+            <TripKPIStats trips={trips} loading={loading} onDrillThrough={handleDrillThrough} />
+
+            {/* Drill-Through Banner */}
+            {activeDrill && (
+                <div className="flex items-center justify-between px-5 py-3 rounded-2xl bg-primary/5 border border-primary/20">
+                    <span className="text-xs font-black uppercase tracking-widest text-primary">
+                        Filtered by {DRILL_LABELS[activeDrill]}
+                    </span>
+                    <button
+                        onClick={clearDrill}
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/70 transition-colors"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                        Clear
+                    </button>
+                </div>
+            )}
 
             {/* Departing Soon */}
-            {!loading && <DepartingSoonSection trips={trips} />}
+            <div ref={departingSoonRef}>
+                {!loading && <DepartingSoonSection trips={trips} />}
+            </div>
 
             {/* Command Bar */}
             <div className="flex flex-col lg:flex-row gap-4 items-center">
@@ -119,7 +174,7 @@ export default function TripsPage() {
                         <Filter className="w-4 h-4 text-primary shrink-0" />
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={(e) => { setStatusFilter(e.target.value); setActiveDrill(null); }}
                             className="bg-transparent border-none focus:ring-0 text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
                         >
                             {STATUS_OPTIONS.map((opt) => (
@@ -171,7 +226,7 @@ export default function TripsPage() {
                     return (
                         <button
                             key={opt.value}
-                            onClick={() => toggleQuickFilter(opt.value)}
+                            onClick={() => { toggleQuickFilter(opt.value); setActiveDrill(null); }}
                             className={cn(
                                 "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
                                 isActive
@@ -185,7 +240,7 @@ export default function TripsPage() {
                 })}
                 {quickFilters.size > 0 && (
                     <button
-                        onClick={() => setQuickFilters(new Set())}
+                        onClick={() => { setQuickFilters(new Set()); setActiveDrill(null); }}
                         className="px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-rose-500 transition-colors"
                     >
                         Clear filters
@@ -205,17 +260,17 @@ export default function TripsPage() {
                             <Plane className="w-10 h-10 text-gray-200 animate-pulse" />
                         </div>
                         <h3 className="text-3xl font-serif text-secondary dark:text-white tracking-tight">
-                            {quickFilters.size > 0 ? "No Matching Trips" : "No Trips Yet"}
+                            {quickFilters.size > 0 || activeDrill ? "No Matching Trips" : "No Trips Yet"}
                         </h3>
                         <p className="text-text-muted mt-4 max-w-sm mx-auto font-medium">
-                            {quickFilters.size > 0
+                            {quickFilters.size > 0 || activeDrill
                                 ? "No trips match the active filters. Try adjusting your criteria."
                                 : "No trips found. Create your first trip to get started."
                             }
                         </p>
-                        {quickFilters.size > 0 ? (
+                        {quickFilters.size > 0 || activeDrill ? (
                             <button
-                                onClick={() => setQuickFilters(new Set())}
+                                onClick={clearDrill}
                                 className="mt-8 text-sm font-bold text-primary hover:underline"
                             >
                                 Clear all filters

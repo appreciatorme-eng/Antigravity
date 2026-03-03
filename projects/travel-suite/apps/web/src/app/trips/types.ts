@@ -48,6 +48,15 @@ export type TripSortKey = "departure" | "created" | "value" | "client";
 
 export type QuickFilter = "departing_this_week" | "missing_driver" | "payment_due";
 
+export type TripKPIDrillAction = "revenue" | "active" | "departing_soon" | "collection_pending";
+
+export const DRILL_LABELS: Record<TripKPIDrillAction, string> = {
+    revenue: "Total Revenue",
+    active: "Active Trips",
+    departing_soon: "Departing Soon",
+    collection_pending: "Collection Pending",
+};
+
 export const STATUS_OPTIONS = [
     { value: "all", label: "All Trips" },
     { value: "draft", label: "Draft" },

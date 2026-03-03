@@ -50,6 +50,8 @@ interface KPICardProps {
   isCurrency?: boolean;
   /** If true, show the full Indian number (1,20,000) instead of short form (1.2L) */
   fullCurrencyFormat?: boolean;
+  /** Click handler for drill-through */
+  onClick?: () => void;
 }
 
 export function KPICard({
@@ -63,6 +65,7 @@ export function KPICard({
   loading = false,
   isCurrency = false,
   fullCurrencyFormat = false,
+  onClick,
 }: KPICardProps) {
   // Format the displayed value
   const displayValue = (() => {
@@ -88,7 +91,11 @@ export function KPICard({
   return (
     <GlassCard
       padding="lg"
-      className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5"
+      className={cn(
+        "group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5",
+        onClick && "cursor-pointer hover:ring-2 hover:ring-primary/20"
+      )}
+      onClick={onClick}
     >
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
