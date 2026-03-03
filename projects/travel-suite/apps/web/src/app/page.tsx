@@ -16,7 +16,7 @@ import {
   Activity,
   Eye,
   EyeOff,
-  MessageCircle,
+  Inbox,
 } from "lucide-react";
 import { useDashboardStats } from "@/lib/queries/dashboard";
 import RevenueChart, {
@@ -31,7 +31,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActionQueue } from "@/components/dashboard/ActionQueue";
 import { TodaysTimeline } from "@/components/dashboard/TodaysTimeline";
-import { WhatsAppDashboardPreview } from "@/components/dashboard/WhatsAppDashboardPreview";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { cn } from "@/lib/utils";
 import {
   buildMoMDriverCallouts,
@@ -222,18 +222,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <Link href="/inbox">
             <GlassButton
               variant="outline"
-              className="relative group h-12 px-6 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors shadow-sm"
+              className="h-12 px-5 transition-colors shadow-sm"
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">WhatsApp Inbox</span>
-              {(stats.pendingNotifications || 3) > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 border-2 border-emerald-50 text-[10px] font-bold text-white shadow-xl animate-in zoom-in-50">
-                  {stats.pendingNotifications || 3}
-                </span>
-              )}
+              <Inbox className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Inbox</span>
             </GlassButton>
           </Link>
           <Link href="/trips">
@@ -248,46 +244,19 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ── SECTION 1: Action Queue ─────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.05 }}
-      >
-        <ActionQueue loading={loading} />
-      </motion.div>
-
-      {/* ── SECTION 2: Today's Timeline (60%) + WhatsApp Preview (40%) ──── */}
-      <motion.div
-        className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.1 }}
-      >
-        <div className="lg:col-span-3 flex flex-col">
-          <TodaysTimeline loading={loading} />
-        </div>
-        <div className="lg:col-span-2 flex flex-col">
-          <WhatsAppDashboardPreview
-            loading={loading}
-            unreadCount={stats.pendingNotifications || 3}
-          />
-        </div>
-      </motion.div>
-
-      {/* ── SECTION 3: KPI Cards ─────────────────────────────────────────── */}
+      {/* ── SECTION 1: KPI Cards — Business at a Glance ──────────────── */}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
       >
         <motion.div
           whileHover={{ y: -4, scale: 1.01 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
           className="group"
         >
-          <RevenueKPICard series={data?.series ?? []} range={range} loading={loading} />
+          <RevenueKPICard series={data?.series ?? []} range={range} loading={loading} href="/admin/billing" />
         </motion.div>
         {kpiItems.map((item) => (
           <motion.div
@@ -303,12 +272,21 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* ── SECTION 4: Financial Chart + Quick Actions ────────────────────── */}
+      {/* ── SECTION 2: Action Queue ─────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
+        <ActionQueue loading={loading} />
+      </motion.div>
+
+      {/* ── SECTION 3: Financial Chart + Quick Actions ────────────────────── */}
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.2 }}
+        transition={{ duration: 0.35, delay: 0.15 }}
       >
         {/* Financial Chart */}
         <GlassCard className="lg:col-span-2" padding="xl">
@@ -443,11 +421,20 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
+      {/* ── SECTION 4: Today's Schedule ──────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.2 }}
+      >
+        <TodaysTimeline loading={loading} />
+      </motion.div>
+
       {/* ── SECTION 5: Activity Feed ──────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.28 }}
+        transition={{ duration: 0.35, delay: 0.25 }}
       >
         <ActivityFeed activities={activities} loading={loading} />
       </motion.div>

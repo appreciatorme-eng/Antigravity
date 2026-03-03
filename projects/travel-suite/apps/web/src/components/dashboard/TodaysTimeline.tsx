@@ -341,16 +341,11 @@ export function TodaysTimeline({ loading = false }: TodaysTimelineProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-12 px-6 text-center"
+            className="flex items-center gap-3 px-5 py-4"
           >
-            <div className="w-12 h-12 rounded-2xl bg-slate-500/10 flex items-center justify-center mb-3">
-              <CalendarX className="w-6 h-6 text-slate-400" />
-            </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-              No trips scheduled for today
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              Enjoy the calm — new bookings will show up here automatically!
+            <CalendarX className="w-5 h-5 text-slate-400 shrink-0" />
+            <p className="text-sm font-medium text-slate-500">
+              No trips scheduled for today — new bookings will appear here.
             </p>
           </motion.div>
         ) : (

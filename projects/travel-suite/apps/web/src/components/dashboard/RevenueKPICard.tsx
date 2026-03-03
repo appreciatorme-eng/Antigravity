@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IndianRupee,
@@ -8,6 +10,7 @@ import {
   TrendingDown,
   ChevronDown,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { formatINRShort } from "@/lib/india/formats";
@@ -23,9 +26,16 @@ interface RevenueKPICardProps {
   series: DashboardSeriesPoint[];
   range: DashboardRange;
   loading?: boolean;
+  href?: string;
 }
 
-export function RevenueKPICard({ series, range, loading = false }: RevenueKPICardProps) {
+export function RevenueKPICard({
+  series,
+  range,
+  loading = false,
+  href = "/admin/billing",
+}: RevenueKPICardProps) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
 
   const { currentRevenue, percentChange, trendUp, currentSlice } = useMemo(() => {
@@ -56,12 +66,17 @@ export function RevenueKPICard({ series, range, loading = false }: RevenueKPICar
     [currentSlice],
   );
 
-  const handleToggleExpand = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+  const handleCardClick = useCallback(() => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    router.push(href);
+  }, [expanded, router, href]);
 
-  const handleClose = useCallback(() => {
-    setExpanded(false);
+  const handleToggleExpand = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded((prev) => !prev);
   }, []);
 
   const trendText = `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(1)}% vs prev`;
@@ -70,7 +85,7 @@ export function RevenueKPICard({ series, range, loading = false }: RevenueKPICar
     <GlassCard
       padding="lg"
       className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/5 cursor-pointer"
-      onClick={handleToggleExpand}
+      onClick={handleCardClick}
     >
       <div className="relative z-10">
         {/* Icon row */}
@@ -118,12 +133,18 @@ export function RevenueKPICard({ series, range, loading = false }: RevenueKPICar
                   <span>{trendText}</span>
                 </div>
               )}
-              <ChevronDown
-                className={cn(
-                  "w-3.5 h-3.5 text-slate-400 transition-transform duration-300",
-                  expanded && "rotate-180",
-                )}
-              />
+              <button
+                onClick={handleToggleExpand}
+                className="p-1 -m-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Show breakdown"
+              >
+                <ChevronDown
+                  className={cn(
+                    "w-3.5 h-3.5 text-slate-400 transition-transform duration-300",
+                    expanded && "rotate-180",
+                  )}
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -146,7 +167,7 @@ export function RevenueKPICard({ series, range, loading = false }: RevenueKPICar
                   Monthly Breakdown
                 </p>
                 <button
-                  onClick={handleClose}
+                  onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
                   className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-3.5 h-3.5 text-slate-400" />
@@ -186,6 +207,16 @@ export function RevenueKPICard({ series, range, loading = false }: RevenueKPICar
                   {formatINRShort(currentRevenue)}
                 </span>
               </div>
+
+              {/* View Transactions link */}
+              <Link
+                href={href}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-slate-200/40 dark:border-slate-700/40 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View All Transactions
+              </Link>
             </div>
           </motion.div>
         )}
