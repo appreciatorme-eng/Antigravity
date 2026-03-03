@@ -332,7 +332,7 @@ function DrillThroughContent() {
         </div>
 
         <div className="flex gap-2">
-          <Link href="/admin/analytics">
+          <Link href="/analytics">
             <GlassButton variant="outline" className="h-10 px-4 text-xs">
               <BarChart3 className="w-4 h-4 mr-2" />
               Back to Analytics

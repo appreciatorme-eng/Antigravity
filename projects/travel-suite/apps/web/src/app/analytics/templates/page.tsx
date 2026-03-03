@@ -1,10 +1,4 @@
-/**
- * Template Analytics Dashboard
- *
- * View top-performing templates and usage trends
- */
-
-'use client';
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getTopTemplatesByUsage, type TopTemplate } from '@/lib/analytics/template-analytics';
@@ -208,7 +202,7 @@ export default function TemplateAnalyticsPage() {
                         : 'text-text-secondary'
                     }`}
                   >
-                    {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                    {index === 0 ? '\u{1F947}' : index === 1 ? '\u{1F948}' : index === 2 ? '\u{1F949}' : index + 1}
                   </span>
                 </div>
 
@@ -265,14 +259,14 @@ export default function TemplateAnalyticsPage() {
           <div className="flex items-start gap-3">
             <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">📊 Insights</h3>
+              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Insights</h3>
               <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-1">
                 <li>
-                  • Your top template has been used <strong>{templates[0]?.total_uses}</strong>{' '}
+                  Your top template has been used <strong>{templates[0]?.total_uses}</strong>{' '}
                   times in the last {timePeriod} days
                 </li>
                 <li>
-                  • Average conversion rate:{' '}
+                  Average conversion rate:{' '}
                   <strong>
                     {Math.round(
                       templates.reduce((sum, t) => sum + Number(t.conversion_rate), 0) /
@@ -282,13 +276,13 @@ export default function TemplateAnalyticsPage() {
                   </strong>
                 </li>
                 <li>
-                  • Total views across all templates:{' '}
+                  Total views across all templates:{' '}
                   <strong>
                     {templates.reduce((sum, t) => sum + Number(t.total_views), 0)}
                   </strong>
                 </li>
                 <li>
-                  • Templates with &gt;50% conversion rate:{' '}
+                  Templates with &gt;50% conversion rate:{' '}
                   <strong>
                     {templates.filter((t) => Number(t.conversion_rate) >= 50).length}
                   </strong>

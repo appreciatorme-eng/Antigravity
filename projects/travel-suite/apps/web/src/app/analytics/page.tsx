@@ -2,6 +2,6 @@
 
 import { AdminAnalyticsView } from "@/features/admin/analytics/AdminAnalyticsView";
 
-export default function AdminAnalyticsPage() {
+export default function AnalyticsPage() {
   return <AdminAnalyticsView />;
 }
