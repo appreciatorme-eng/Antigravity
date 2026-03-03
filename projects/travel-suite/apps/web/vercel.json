@@ -1,4 +1,9 @@
 {
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm ci --legacy-peer-deps",
+  "devCommand": "npm run dev",
   "crons": [
     {
       "path": "/api/cron/assistant-briefing",
