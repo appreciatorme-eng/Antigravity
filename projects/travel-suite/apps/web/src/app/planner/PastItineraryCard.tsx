@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { GlassCard } from "@/components/glass/GlassCard";
+import { deriveStage, STAGE_CONFIG } from "./ItineraryFilterBar";
 
 interface PastItineraryCardProps {
     itinerary: {
@@ -89,18 +90,9 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
         toast({ title: "Link copied! 🔗", description: "Share this with your client." });
     };
 
-    const shareStatusStyle = (() => {
-        switch (itinerary.share_status) {
-            case "viewed":
-                return { label: "Viewed", color: "text-blue-600 bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" };
-            case "commented":
-                return { label: "Feedback", color: "text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800" };
-            case "approved":
-                return { label: "Approved ✅", color: "text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800" };
-            default:
-                return { label: "Shared", color: "text-violet-600 bg-violet-50 border-violet-100 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800" };
-        }
-    })();
+    const stage = deriveStage(itinerary);
+    const stageConfig = STAGE_CONFIG[stage] ?? STAGE_CONFIG.draft;
+    const StageIcon = stageConfig.icon;
 
     const createdDateLabel = new Date(itinerary.created_at).toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -145,17 +137,16 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             <h3 className="text-sm font-bold text-secondary dark:text-white truncate tracking-tight leading-tight group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                 {itinerary.trip_title || itinerary.destination || "Untitled Itinerary"}
                             </h3>
-                            {/* Top-right: share status + view trip */}
+                            {/* Top-right: stage badge + view trip */}
                             <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                {itinerary.share_code && (
-                                    <span className={cn(
-                                        "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-widest",
-                                        shareStatusStyle.color
-                                    )}>
-                                        <Link2 className="w-2.5 h-2.5" />
-                                        {shareStatusStyle.label}
-                                    </span>
-                                )}
+                                <span className={cn(
+                                    "flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-widest",
+                                    stageConfig.color, stageConfig.bg, stageConfig.borderColor,
+                                    stageConfig.darkColor, stageConfig.darkBg,
+                                )}>
+                                    <StageIcon className="w-2.5 h-2.5" />
+                                    {stageConfig.label}
+                                </span>
                                 {itinerary.trip_id && (
                                     <Link
                                         href={`/trips/${itinerary.trip_id}`}

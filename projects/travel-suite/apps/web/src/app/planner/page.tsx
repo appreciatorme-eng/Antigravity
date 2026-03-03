@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -27,6 +27,7 @@ import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
+import { ItineraryFilterBar, deriveStage, type ItineraryStage } from "./ItineraryFilterBar";
 import { cn } from "@/lib/utils";
 
 // Dynamic import for Leaflet (SSR incompatible)
@@ -66,6 +67,8 @@ export default function PlannerPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState<PlannerTab>('itinerary');
     const [openingItineraryId, setOpeningItineraryId] = useState<string | null>(null);
+    const [filterStage, setFilterStage] = useState<ItineraryStage>("all");
+    const [searchQuery, setSearchQuery] = useState("");
 
     const handleOpenItinerary = useCallback(async (itineraryId: string) => {
         setOpeningItineraryId(itineraryId);
@@ -249,6 +252,31 @@ Make it practical and specific:
     };
 
     const hasPastItineraries = pastItineraries && pastItineraries.length > 0;
+
+    const filteredItineraries = useMemo(() => {
+        if (!pastItineraries) return [];
+        let items = [...pastItineraries];
+
+        // Stage filter
+        if (filterStage !== "all") {
+            items = items.filter((itin: any) => deriveStage(itin) === filterStage);
+        }
+
+        // Search filter
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            items = items.filter((itin: any) => {
+                const title = (itin.trip_title || "").toLowerCase();
+                const dest = (itin.destination || "").toLowerCase();
+                const client = (itin.client?.full_name || "").toLowerCase();
+                return title.includes(q) || dest.includes(q) || client.includes(q);
+            });
+        }
+
+        return items;
+    }, [pastItineraries, filterStage, searchQuery]);
+
+    const isFiltering = filterStage !== "all" || searchQuery.trim().length > 0;
 
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 pb-24">
@@ -745,18 +773,12 @@ Make it practical and specific:
                 {/* Section header */}
                 <div className="flex items-start justify-between mb-6 gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-secondary dark:text-white tracking-tight">Your Saved Itineraries</h2>
+                        <h2 className="text-2xl font-bold text-secondary dark:text-white tracking-tight">Your Itineraries</h2>
                         <p className="text-sm text-text-muted mt-1 max-w-xl">
-                            After generating a trip and hitting <span className="font-bold text-emerald-600">Save Trip</span>, it appears here automatically.
-                            Assign a client, set a price, and share with one click.
+                            Track every itinerary from draft to trip. Filter by stage, assign clients, set prices, and share with one click.
                         </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                        {hasPastItineraries && (
-                            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700">
-                                {pastItineraries.length} saved
-                            </span>
-                        )}
                         {hasPastItineraries && (
                             <Link
                                 href="/trips"
@@ -770,10 +792,17 @@ Make it practical and specific:
 
                 {/* Loading skeletons */}
                 {isLoadingItineraries && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-40 bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
-                        ))}
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="h-16 bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-40 bg-gray-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -798,17 +827,42 @@ Make it practical and specific:
                     </div>
                 )}
 
-                {/* Itinerary grid */}
+                {/* Filter bar + itinerary grid */}
                 {!isLoadingItineraries && hasPastItineraries && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {pastItineraries.map((itinerary: any) => (
-                            <PastItineraryCard
-                                key={itinerary.id}
-                                itinerary={itinerary}
-                                onOpen={handleOpenItinerary}
-                                isLoading={openingItineraryId === itinerary.id}
-                            />
-                        ))}
+                    <div className="space-y-6">
+                        <ItineraryFilterBar
+                            itineraries={pastItineraries}
+                            filterStage={filterStage}
+                            onFilterChange={setFilterStage}
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            filteredCount={filteredItineraries.length}
+                        />
+
+                        {/* No results after filtering */}
+                        {filteredItineraries.length === 0 && isFiltering && (
+                            <div className="flex flex-col items-center justify-center py-12 px-8 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700 text-center bg-white/30 dark:bg-slate-900/10">
+                                <FolderOpen className="w-10 h-10 text-gray-300 dark:text-slate-600 mb-3" />
+                                <h3 className="text-base font-bold text-secondary dark:text-white mb-1">No matching itineraries</h3>
+                                <p className="text-sm text-text-muted max-w-sm">
+                                    Try adjusting your filters or search query.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Itinerary grid */}
+                        {filteredItineraries.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredItineraries.map((itinerary: any) => (
+                                    <PastItineraryCard
+                                        key={itinerary.id}
+                                        itinerary={itinerary}
+                                        onOpen={handleOpenItinerary}
+                                        isLoading={openingItineraryId === itinerary.id}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

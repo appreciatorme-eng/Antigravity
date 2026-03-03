@@ -27,7 +27,6 @@ import {
     Gift,
     Receipt,
     Wallet,
-    ScrollText,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -104,7 +103,6 @@ const SECONDARY_ITEMS: NavItem[] = [
     { icon: TrendingUp, label: "Revenue", href: "/admin/revenue" },
     { icon: Store, label: "Marketplace", href: "/marketplace" },
     { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
-    { icon: ScrollText, label: "Proposals", href: "/proposals" },
     { icon: Calendar, label: "Command Center", href: "/admin/operations" },
     { icon: Wallet, label: "Cost Guardrails", href: "/admin/cost" },
     { icon: Megaphone, label: "Social Studio", href: "/social" },
