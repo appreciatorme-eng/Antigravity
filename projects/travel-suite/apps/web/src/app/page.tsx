@@ -16,7 +16,6 @@ import {
   Eye,
   EyeOff,
   MessageCircle,
-  IndianRupee,
 } from "lucide-react";
 import { useDashboardStats } from "@/lib/queries/dashboard";
 import RevenueChart, {
@@ -26,6 +25,7 @@ import RevenueChart, {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { KPICard } from "@/components/dashboard/KPICard";
+import { RevenueKPICard } from "@/components/dashboard/RevenueKPICard";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ActionQueue } from "@/components/dashboard/ActionQueue";
@@ -121,21 +121,7 @@ export default function DashboardPage() {
     [filteredSeries]
   );
 
-  // Today's estimated revenue from active trips (mock: ₹1,85,000)
-  const todayRevenue = 185000;
-
   const kpiItems = [
-    {
-      label: "Today's Revenue",
-      value: todayRevenue,
-      icon: IndianRupee,
-      trend: "₹45K more than yesterday",
-      trendUp: true,
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-      href: "/admin/billing",
-      isCurrency: true,
-    },
     {
       label: "Active Trips",
       value: stats.activeTrips || 8,
@@ -262,6 +248,13 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
       >
+        <motion.div
+          whileHover={{ y: -4, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          className="group"
+        >
+          <RevenueKPICard series={data?.series ?? []} loading={loading} />
+        </motion.div>
         {kpiItems.map((item) => (
           <motion.div
             key={item.label}
