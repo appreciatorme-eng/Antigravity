@@ -166,8 +166,8 @@ export function TripDetailHeader({
         </GlassButton>
 
         <GlassButton
-          variant="secondary"
-          className="h-14 px-6 rounded-2xl hover:shadow-lg"
+          variant="outline"
+          className="h-14 px-6 rounded-2xl hover:shadow-md border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white dark:border-amber-400 dark:text-amber-400"
           onClick={onNotify}
         >
           <Bell className="w-4 h-4" />
