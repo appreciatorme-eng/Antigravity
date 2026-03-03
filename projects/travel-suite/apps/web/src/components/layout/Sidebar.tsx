@@ -78,13 +78,6 @@ const PRIMARY_ITEMS: NavItem[] = [
         badgeColor: "#3b82f6",
     },
     {
-        icon: TrendingUp,
-        label: "Revenue",
-        href: "/admin/revenue",
-        badge: 0,
-        badgeColor: "#00d084",
-    },
-    {
         icon: Receipt,
         label: "Invoices",
         href: "/admin/invoices",
@@ -108,6 +101,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [
+    { icon: TrendingUp, label: "Revenue", href: "/admin/revenue" },
     { icon: Store, label: "Marketplace", href: "/marketplace" },
     { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
     { icon: ScrollText, label: "Proposals", href: "/proposals" },
