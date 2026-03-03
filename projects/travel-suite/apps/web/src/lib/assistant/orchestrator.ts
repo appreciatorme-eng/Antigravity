@@ -36,6 +36,8 @@ import { getRelevantSchemas } from "./schema-router";
 import { tryDirectExecution } from "./direct-executor";
 import { checkUsageAllowed, incrementUsage } from "./usage-meter";
 import { getSuggestedActions } from "./suggested-actions";
+import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "./workflows/engine";
+import { findWorkflow, ALL_WORKFLOWS } from "./workflows/definitions";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -433,14 +435,32 @@ export async function handleMessage(
     return directResult;
   }
 
-  // 6. Response cache: check for cached response before OpenAI
+  // 6. Workflow handling: check for active workflow or trigger new one
+  const activeWorkflow = await getActiveWorkflow(ctx);
+  if (activeWorkflow !== null) {
+    const workflowDef = ALL_WORKFLOWS.find((w) => w.id === activeWorkflow.workflowId);
+    if (workflowDef) {
+      const workflowResult = await processWorkflowStep(ctx, workflowDef, activeWorkflow, trimmedMessage);
+      void incrementUsage(ctx, { isDirectExecution: true });
+      return workflowResult;
+    }
+  }
+
+  const triggeredWorkflow = findWorkflow(trimmedMessage);
+  if (triggeredWorkflow !== null) {
+    const workflowResult = await startWorkflow(ctx, triggeredWorkflow);
+    void incrementUsage(ctx, { isDirectExecution: true });
+    return workflowResult;
+  }
+
+  // 7. Response cache: check for cached response before OpenAI
   const cachedResponse = await getCachedResponse(ctx.organizationId, trimmedMessage);
   if (cachedResponse !== null) {
     void incrementUsage(ctx, { isCacheHit: true });
     return cachedResponse;
   }
 
-  // 7. Gather enrichment data in parallel
+  // 8. Gather enrichment data in parallel
   const [snapshot, orgName, prefsBlock, languagePref] = await Promise.all([
     getCachedContextSnapshot(ctx),
     getOrganizationName(ctx),
@@ -450,10 +470,10 @@ export async function handleMessage(
 
   const language = typeof languagePref === "string" ? languagePref : undefined;
 
-  // 8. Build system prompt with business context + user preferences
+  // 9. Build system prompt with business context + user preferences
   const baseSystemPrompt = buildSystemPrompt(orgName, snapshot, language) + prefsBlock;
 
-  // 9. Build initial message array with smart schema routing
+  // 10. Build initial message array with smart schema routing
   const tools = getRelevantSchemas(trimmedMessage);
   let messages: readonly ChatMessage[] = buildChatMessages(
     baseSystemPrompt,
@@ -461,7 +481,7 @@ export async function handleMessage(
     trimmedMessage,
   );
 
-  // 10. Function-calling loop (max MAX_TOOL_ROUNDS rounds)
+  // 11. Function-calling loop (max MAX_TOOL_ROUNDS rounds)
   let lastActionResult: ActionResult | null = null;
   let lastActionName: string | null = null;
   let pendingProposal: OrchestratorResponse["actionProposal"] | null = null;

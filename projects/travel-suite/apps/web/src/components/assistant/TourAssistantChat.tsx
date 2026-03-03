@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Bot, Loader2, Sparkles } from "lucide-react";
+import { X, Send, Bot, Loader2, Sparkles, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -218,6 +218,30 @@ export default function TourAssistantChat() {
         void sendMessage(input);
     }
 
+    async function exportCSV(actionName: string, data: unknown) {
+        try {
+            const res = await fetch("/api/assistant/export", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ actionName, data }),
+            });
+            if (!res.ok) return;
+            const blob = await res.blob();
+            const disposition = res.headers.get("Content-Disposition");
+            const filename = disposition?.match(/filename="(.+)"/)?.[1] ?? "export.csv";
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch {
+            // Silent failure -- export is best-effort
+        }
+    }
+
     async function confirmAction(actionName: string, params: Record<string, unknown>, confirmed: boolean) {
         setIsLoading(true);
         try {
@@ -332,12 +356,22 @@ export default function TourAssistantChat() {
                                         )}
                                         {msg.actionResult && (
                                             <div className={cn(
-                                                "mt-2 text-xs px-2 py-1.5 rounded-lg",
+                                                "mt-2 text-xs px-2 py-1.5 rounded-lg flex items-center justify-between",
                                                 msg.actionResult.success
                                                     ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
                                                     : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
                                             )}>
-                                                {msg.actionResult.success ? "Action completed successfully" : "Action failed"}
+                                                <span>{msg.actionResult.success ? "Action completed successfully" : "Action failed"}</span>
+                                                {msg.actionResult.success && msg.actionResult.data != null && Array.isArray(msg.actionResult.data) && msg.actionResult.data.length > 0 ? (
+                                                    <button
+                                                        onClick={() => void exportCSV("export", msg.actionResult!.data)}
+                                                        className="ml-2 flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-800/40 hover:bg-green-200 dark:hover:bg-green-700/40 transition-colors"
+                                                        title="Export as CSV"
+                                                    >
+                                                        <Download className="w-3 h-3" />
+                                                        CSV
+                                                    </button>
+                                                ) : null}
                                             </div>
                                         )}
                                         {msg.actionProposal && !isLoading && (

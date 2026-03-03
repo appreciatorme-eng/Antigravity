@@ -4,12 +4,16 @@ import "server-only";
  * Proactive Alerts -- periodic detection of issues needing attention.
  *
  * Scans each organisation for:
- *   1. Invoices overdue by more than 7 days
- *   2. Trips starting tomorrow with no assigned driver
- *   3. Clients not contacted in the last 30 days
+ *   1. Invoices overdue by more than 7 days (filterable by minimum amount)
+ *   2. Trips starting within a configurable lead time with no assigned driver
+ *   3. Clients not contacted within a configurable number of days
  *
- * Detected alerts are queued as WhatsApp notifications (max 3 per org
- * per cycle) with idempotency keys to prevent duplicate sends.
+ * Alert thresholds, quiet hours, and per-cycle caps are loaded from
+ * user preferences via alert-preferences.ts. Sensible defaults apply
+ * when no preferences are configured.
+ *
+ * Detected alerts are queued as WhatsApp notifications with idempotency
+ * keys to prevent duplicate sends.
  *
  * All queries use the admin client to bypass RLS.
  * Errors are caught at every boundary and never thrown to callers.
@@ -17,6 +21,8 @@ import "server-only";
 
 import type { ActionContext } from "./types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAlertThresholds, isQuietHours } from "./alert-preferences";
+import type { AlertThresholds } from "./alert-preferences";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,9 +62,6 @@ const nDaysFromNowISO = (days: number): string =>
 const nDaysAgoISO = (days: number): string =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-/** Maximum alerts to queue per organisation per cycle. */
-const MAX_ALERTS_PER_ORG = 3;
-
 // ---------------------------------------------------------------------------
 // Alert detection
 // ---------------------------------------------------------------------------
@@ -72,6 +75,7 @@ const MAX_ALERTS_PER_ORG = 3;
  */
 export async function detectAlerts(
   ctx: ActionContext,
+  thresholds?: AlertThresholds | null,
 ): Promise<readonly AlertTrigger[]> {
   const alerts: AlertTrigger[] = [];
 
@@ -82,7 +86,7 @@ export async function detectAlerts(
     const { data: overdueInvoices, error: invError } = await ctx.supabase
       .from("invoices")
       .select(
-        "id, invoice_number, client_id, profiles!invoices_client_id_fkey(full_name)",
+        "id, invoice_number, client_id, balance_amount, profiles!invoices_client_id_fkey(full_name)",
       )
       .eq("organization_id", ctx.organizationId)
       .in("status", ["overdue", "issued"])
@@ -90,7 +94,14 @@ export async function detectAlerts(
       .limit(10);
 
     if (!invError && overdueInvoices) {
+      const minAmount = thresholds?.minOverdueAmountInr ?? 0;
+
       for (const inv of overdueInvoices) {
+        const balanceAmount =
+          typeof inv.balance_amount === "number" ? inv.balance_amount : 0;
+
+        if (balanceAmount < minAmount) continue;
+
         const profiles = inv.profiles as
           | { full_name: string | null }
           | null;
@@ -110,7 +121,8 @@ export async function detectAlerts(
 
   // 2. Trips starting tomorrow with no driver
   try {
-    const tomorrow = nDaysFromNowISO(1);
+    const leadDays = thresholds?.tripLeadTimeDays ?? 1;
+    const leadDate = nDaysFromNowISO(leadDays);
 
     const { data: driverlessTrips, error: tripError } = await ctx.supabase
       .from("trips")
@@ -118,11 +130,13 @@ export async function detectAlerts(
         "id, client_id, profiles!trips_client_id_fkey(full_name)",
       )
       .eq("organization_id", ctx.organizationId)
-      .eq("start_date", tomorrow)
+      .eq("start_date", leadDate)
       .is("driver_id", null)
       .limit(10);
 
     if (!tripError && driverlessTrips) {
+      const label = leadDays === 1 ? "tomorrow" : `in ${leadDays} days`;
+
       for (const trip of driverlessTrips) {
         const profiles = trip.profiles as
           | { full_name: string | null }
@@ -131,7 +145,7 @@ export async function detectAlerts(
 
         alerts.push({
           type: "trip_no_driver",
-          message: `Trip for ${clientName} starts tomorrow but has no driver assigned.`,
+          message: `Trip for ${clientName} starts ${label} but has no driver assigned.`,
           entityType: "trip",
           entityId: trip.id,
         });
@@ -143,13 +157,14 @@ export async function detectAlerts(
 
   // 3. Clients not contacted in 30 days
   try {
-    const thirtyDaysAgo = nDaysAgoISO(30);
+    const dormantDays = thresholds?.dormantClientDays ?? 30;
+    const dormantCutoff = nDaysAgoISO(dormantDays);
 
     const { data: dormantClients, error: clientError } = await ctx.supabase
       .from("profiles")
       .select("id, full_name, lifecycle_stage, last_contacted_at")
       .eq("organization_id", ctx.organizationId)
-      .lt("last_contacted_at", thirtyDaysAgo)
+      .lt("last_contacted_at", dormantCutoff)
       .not("lifecycle_stage", "eq", "trip_completed")
       .not("last_contacted_at", "is", null)
       .limit(10);
@@ -160,7 +175,7 @@ export async function detectAlerts(
 
         alerts.push({
           type: "client_dormant",
-          message: `${clientName} has not been contacted in over 30 days.`,
+          message: `${clientName} has not been contacted in over ${dormantDays} days.`,
           entityType: "client",
           entityId: client.id,
         });
@@ -221,9 +236,11 @@ export async function getEligibleOrgsForAlerts(): Promise<
  * Detect and queue alerts for all eligible organisations.
  *
  * For each org:
- *   1. Detect alert conditions.
- *   2. Take the first `MAX_ALERTS_PER_ORG` alerts.
- *   3. Insert into `notification_queue` with idempotency keys
+ *   1. Load alert thresholds from user preferences.
+ *   2. Skip if alerts are disabled or it is quiet hours.
+ *   3. Detect alert conditions using the loaded thresholds.
+ *   4. Cap alerts to `thresholds.maxAlertsPerCycle`.
+ *   5. Insert into `notification_queue` with idempotency keys
  *      scoped to org + alert type + entity + calendar day.
  */
 export async function generateAndQueueAlerts(): Promise<AlertQueueResult> {
@@ -253,14 +270,27 @@ export async function generateAndQueueAlerts(): Promise<AlertQueueResult> {
 
   for (const entry of uniqueEntries) {
     try {
-      const alerts = await detectAlerts({
+      const thresholds = await getAlertThresholds({
         organizationId: entry.organizationId,
         userId: entry.userId,
         channel: "whatsapp",
         supabase,
       });
 
-      const capped = alerts.slice(0, MAX_ALERTS_PER_ORG);
+      if (!thresholds.alertsEnabled) continue;
+      if (isQuietHours(thresholds)) continue;
+
+      const alerts = await detectAlerts(
+        {
+          organizationId: entry.organizationId,
+          userId: entry.userId,
+          channel: "whatsapp",
+          supabase,
+        },
+        thresholds,
+      );
+
+      const capped = alerts.slice(0, thresholds.maxAlertsPerCycle);
 
       for (const alert of capped) {
         const idempotencyKey = `${entry.organizationId}:alert:${alert.type}:${alert.entityId}:${dateKey}`;

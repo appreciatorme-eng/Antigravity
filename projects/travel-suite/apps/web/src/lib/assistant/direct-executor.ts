@@ -25,6 +25,7 @@ import { findAction } from "./actions/registry";
 interface DirectPattern {
   readonly pattern: RegExp;
   readonly actionName: string;
+  readonly params?: Readonly<Record<string, unknown>>;
   readonly formatReply: (result: ActionResult) => string;
 }
 
@@ -73,6 +74,102 @@ const DIRECT_PATTERNS: readonly DirectPattern[] = [
     actionName: "get_kpi_snapshot",
     formatReply: formatPassthrough,
   },
+
+  // --- Trips today / this week ---
+  {
+    pattern:
+      /^(how\s+many\s+trips\s+today|trips?\s+this\s+week|upcoming\s+trips?)/i,
+    actionName: "search_trips",
+    params: { status: "active" },
+    formatReply: (result) =>
+      `Here are your upcoming trips:\n\n${result.message}`,
+  },
+
+  // --- Client follow-ups ---
+  {
+    pattern:
+      /^(client\s+follow[\s-]?ups?|who\s+needs?\s+follow[\s-]?up|follow[\s-]?up\s+needed|clients?\s+to\s+contact)/i,
+    actionName: "search_clients",
+    params: { lifecycle_stage: "follow_up" },
+    formatReply: (result) =>
+      `Clients needing follow-up:\n\n${result.message}`,
+  },
+
+  // --- Revenue / earnings ---
+  {
+    pattern:
+      /^(revenue\s+this\s+month|how\s+much\s+revenue|monthly\s+earnings?|this\s+month\s+revenue)/i,
+    actionName: "generate_report",
+    params: { period: "this_month", type: "revenue" },
+    formatReply: (result) =>
+      `Here's your revenue report:\n\n${result.message}`,
+  },
+
+  // --- Pending proposals ---
+  {
+    pattern:
+      /^(pending\s+proposals?|open\s+proposals?|proposals?\s+pending|show\s+(me\s+)?proposals?)/i,
+    actionName: "search_proposals",
+    params: { status: "draft" },
+    formatReply: (result) =>
+      `Here are your pending proposals:\n\n${result.message}`,
+  },
+
+  // --- Available drivers ---
+  {
+    pattern:
+      /^(available\s+drivers?|free\s+drivers?|driver\s+availability|which\s+drivers?)/i,
+    actionName: "search_drivers",
+    params: { available: true },
+    formatReply: (result) =>
+      `Here are your available drivers:\n\n${result.message}`,
+  },
+
+  // --- Total clients ---
+  {
+    pattern: /^(how\s+many\s+clients?|total\s+clients?|client\s+count)/i,
+    actionName: "search_clients",
+    params: {},
+    formatReply: formatPassthrough,
+  },
+
+  // --- Failed notifications ---
+  {
+    pattern:
+      /^(failed\s+notifications?|notification\s+errors?|delivery\s+failures?)/i,
+    actionName: "get_today_summary",
+    formatReply: (result) =>
+      `Here's your notification status:\n\n${result.message}`,
+  },
+
+  // --- Weekly report ---
+  {
+    pattern: /^(weekly\s+report|this\s+week\s+report|week\s+summary)/i,
+    actionName: "generate_report",
+    params: { period: "this_week", type: "summary" },
+    formatReply: (result) =>
+      `Here's your weekly summary:\n\n${result.message}`,
+  },
+
+  // --- Last month report ---
+  {
+    pattern:
+      /^(last\s+month\s+report|previous\s+month|last\s+month\s+summary)/i,
+    actionName: "generate_report",
+    params: { period: "last_month", type: "summary" },
+    formatReply: (result) =>
+      `Here's your last month's summary:\n\n${result.message}`,
+  },
+
+  // --- Top clients ---
+  {
+    pattern:
+      /^(top\s+clients?|best\s+clients?|most\s+active\s+clients?|vip\s+clients?)/i,
+    actionName: "search_clients",
+    params: { lifecycle_stage: "repeat_client" },
+    formatReply: (result) =>
+      `Here are your top clients:\n\n${result.message}`,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -108,8 +205,8 @@ export async function tryDirectExecution(
       return null;
     }
 
-    // Execute with empty params -- direct patterns need no arguments
-    const result: ActionResult = await action.execute(ctx, {});
+    // Execute with pattern-specific params (or empty for parameterless patterns)
+    const result: ActionResult = await action.execute(ctx, match.params ?? {});
 
     if (!result.success) {
       return null;

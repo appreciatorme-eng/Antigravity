@@ -12,6 +12,9 @@ import { getRelevantSchemas } from "@/lib/assistant/schema-router";
 import { tryDirectExecution } from "@/lib/assistant/direct-executor";
 import { checkUsageAllowed, incrementUsage } from "@/lib/assistant/usage-meter";
 import { getSuggestedActions } from "@/lib/assistant/suggested-actions";
+import { saveConversationMessages } from "@/lib/assistant/conversation-store";
+import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "@/lib/assistant/workflows/engine";
+import { findWorkflow, ALL_WORKFLOWS } from "@/lib/assistant/workflows/definitions";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 
@@ -357,6 +360,7 @@ async function handleStreamingRequest(
   userId: string,
   message: string,
   history: readonly ConversationMessage[],
+  sessionId: string,
 ) {
   const writer = createSSEWriter(controller);
 
@@ -383,10 +387,9 @@ async function handleStreamingRequest(
     // -- Usage metering: check if org is within their plan limit
     const usageStatus = await checkUsageAllowed(ctx);
     if (!usageStatus.allowed) {
-      writeTextAsSSE(
-        writer,
-        `You've used ${usageStatus.used} of ${usageStatus.limit} assistant messages this month on the ${usageStatus.tier} plan. Upgrade to get more messages, or wait until next month for your quota to reset.`,
-      );
+      const usageLimitReply = `You've used ${usageStatus.used} of ${usageStatus.limit} assistant messages this month on the ${usageStatus.tier} plan. Upgrade to get more messages, or wait until next month for your quota to reset.`;
+      writeTextAsSSE(writer, usageLimitReply);
+      void saveConversationMessages(ctx, sessionId, message, usageLimitReply, null, null);
       controller.close();
       return;
     }
@@ -396,6 +399,39 @@ async function handleStreamingRequest(
     if (directResult !== null) {
       void incrementUsage(ctx, { isDirectExecution: true });
       writeTextAsSSE(writer, directResult.reply);
+      void saveConversationMessages(ctx, sessionId, message, directResult.reply, null, null);
+      controller.close();
+      return;
+    }
+
+    // -- Workflow handling: check for active workflow or trigger new one
+    const activeWorkflow = await getActiveWorkflow(ctx);
+    if (activeWorkflow !== null) {
+      const workflowDef = ALL_WORKFLOWS.find((w) => w.id === activeWorkflow.workflowId);
+      if (workflowDef) {
+        const workflowResult = await processWorkflowStep(ctx, workflowDef, activeWorkflow, message);
+        void incrementUsage(ctx, { isDirectExecution: true });
+        writeTextAsSSE(writer, workflowResult.reply);
+        if (workflowResult.actionProposal) {
+          writer.writeData("proposal", {
+            actionName: workflowResult.actionProposal.actionName,
+            params: workflowResult.actionProposal.params,
+            confirmationMessage: workflowResult.actionProposal.confirmationMessage,
+            reply: workflowResult.reply,
+          });
+        }
+        void saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null);
+        controller.close();
+        return;
+      }
+    }
+
+    const triggeredWorkflow = findWorkflow(message);
+    if (triggeredWorkflow !== null) {
+      const workflowResult = await startWorkflow(ctx, triggeredWorkflow);
+      void incrementUsage(ctx, { isDirectExecution: true });
+      writeTextAsSSE(writer, workflowResult.reply);
+      void saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null);
       controller.close();
       return;
     }
@@ -405,6 +441,7 @@ async function handleStreamingRequest(
     if (cachedResponse !== null) {
       void incrementUsage(ctx, { isCacheHit: true });
       writeTextAsSSE(writer, cachedResponse.reply);
+      void saveConversationMessages(ctx, sessionId, message, cachedResponse.reply, null, null);
       controller.close();
       return;
     }
@@ -441,6 +478,7 @@ async function handleStreamingRequest(
           const suggestions = getSuggestedActions(lastActionName);
           void setCachedResponse(organizationId, message, { reply: result.content });
           void incrementUsage(ctx);
+          void saveConversationMessages(ctx, sessionId, message, result.content, lastActionName, null);
           writer.writeDone(suggestions.length > 0 ? { suggestedActions: suggestions } : undefined);
           controller.close();
           return;
@@ -495,6 +533,7 @@ async function handleStreamingRequest(
           actionProposal: pendingProposal,
         });
         void incrementUsage(ctx);
+        void saveConversationMessages(ctx, sessionId, message, finalText, pendingProposal.actionName, null);
         writer.writeDone();
         controller.close();
         return;
@@ -510,6 +549,7 @@ async function handleStreamingRequest(
     const finalSuggestions = getSuggestedActions(lastActionName);
     void setCachedResponse(organizationId, message, { reply: streamedReply });
     void incrementUsage(ctx);
+    void saveConversationMessages(ctx, sessionId, message, streamedReply, lastActionName, null);
     writer.writeDone(finalSuggestions.length > 0 ? { suggestedActions: finalSuggestions } : undefined);
     controller.close();
   } catch (error) {
@@ -603,6 +643,7 @@ export async function POST(req: Request) {
       }));
 
     // 4. Create SSE stream
+    const sessionId = `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         handleStreamingRequest(
@@ -611,6 +652,7 @@ export async function POST(req: Request) {
           user.id,
           sanitizedMessage,
           normalizedHistory,
+          sessionId,
         ).catch(() => {
           try {
             controller.close();
