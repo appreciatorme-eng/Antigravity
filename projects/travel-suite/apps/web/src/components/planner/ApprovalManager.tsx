@@ -33,6 +33,10 @@ interface Comment {
   author: string;
   comment: string;
   created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  operator_reply?: string;
+  operator_reply_at?: string;
 }
 
 interface Preferences {
@@ -500,14 +504,36 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
                 <p className="text-sm text-gray-400">No comments yet.</p>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="rounded-xl border border-gray-100 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm">{comment.author}</span>
-                      <span className="text-[11px] text-gray-400">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </span>
+                  <div key={comment.id} className="space-y-1">
+                    <div className={`rounded-xl border p-3 ${comment.resolved_at ? "border-emerald-100 bg-emerald-50/30 opacity-70" : "border-gray-100"}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm">{comment.author}</span>
+                        <div className="flex items-center gap-2">
+                          {comment.resolved_at && (
+                            <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Resolved
+                            </span>
+                          )}
+                          <span className="text-[11px] text-gray-400">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <p className={`text-sm mt-1 ${comment.resolved_at ? "text-gray-400 line-through" : "text-gray-600"}`}>{comment.comment}</p>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{comment.comment}</p>
+                    {comment.operator_reply && (
+                      <div className="ml-4 pl-3 border-l-2 border-emerald-400 bg-emerald-50 rounded-r-lg p-2.5">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-semibold text-emerald-700">Tour Operator</p>
+                          {comment.operator_reply_at && (
+                            <span className="text-[10px] text-emerald-500">
+                              {new Date(comment.operator_reply_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-emerald-900 whitespace-pre-wrap">{comment.operator_reply}</p>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

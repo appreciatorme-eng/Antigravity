@@ -93,6 +93,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
     const StageIcon = stageConfig.icon;
     const hasActivity = hasClientActivity(itinerary);
     const comments = itinerary.client_comments ?? [];
+    const unresolvedCount = comments.filter((c: any) => !c.resolved_at).length;
     const preferences = itinerary.client_preferences ?? null;
     const wishlist = itinerary.wishlist_items ?? [];
 
@@ -188,7 +189,10 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
                                     </span>
-                                    <MessageCircle className="w-2.5 h-2.5" /> Feedback
+                                    <MessageCircle className="w-2.5 h-2.5" />
+                                    {unresolvedCount > 0
+                                        ? `${unresolvedCount} unresolved`
+                                        : "Feedback"}
                                 </span>
                             )}
                         </div>
@@ -306,6 +310,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                 {/* Client Feedback Panel */}
                 <div onClick={(e) => e.stopPropagation()}>
                     <ClientFeedbackPanel
+                        itineraryId={itinerary.id}
                         comments={comments}
                         preferences={preferences}
                         wishlistItems={wishlist}

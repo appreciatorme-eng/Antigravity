@@ -48,6 +48,10 @@ type ShareComment = {
   author: string;
   comment: string;
   created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+  operator_reply?: string;
+  operator_reply_at?: string;
 };
 
 type SharePreferences = {
@@ -123,11 +127,21 @@ function parseCommentArray(value: Json | null | undefined): ShareComment[] {
       sanitizeText(record.created_at, { maxLength: 80 }) || new Date().toISOString();
 
     if (!comment) continue;
+
+    const resolved_at = sanitizeText(record.resolved_at, { maxLength: 80 }) || undefined;
+    const resolved_by = sanitizeText(record.resolved_by, { maxLength: 120 }) || undefined;
+    const operator_reply = sanitizeText(record.operator_reply, { maxLength: 2000, preserveNewlines: true }) || undefined;
+    const operator_reply_at = sanitizeText(record.operator_reply_at, { maxLength: 80 }) || undefined;
+
     comments.push({
       id,
       author,
       comment,
       created_at: createdAt,
+      ...(resolved_at && { resolved_at }),
+      ...(resolved_by && { resolved_by }),
+      ...(operator_reply && { operator_reply }),
+      ...(operator_reply_at && { operator_reply_at }),
     });
   }
 

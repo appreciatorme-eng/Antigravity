@@ -4,33 +4,19 @@ import { useMemo, useState } from "react";
 import {
     Bell, MessageCircle, Heart, Settings2, Clock, ChevronDown,
     ChevronUp, MapPin, ArrowRight, AlertTriangle, CheckCircle,
-    Sparkles, Eye,
+    Sparkles, Eye, Check, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deriveStage } from "./ItineraryFilterBar";
-
-interface Comment {
-    id: string;
-    author: string;
-    comment: string;
-    created_at: string;
-}
-
-interface Preferences {
-    budget_preference?: string;
-    pace?: string;
-    room_preference?: string;
-    must_have?: string[];
-    avoid?: string[];
-    notes?: string;
-}
+import { useFeedbackAction } from "@/lib/queries/itineraries";
+import type { ClientComment, ClientPreferences } from "@/types/feedback";
 
 export interface AttentionItem {
     id: string;
     trip_title: string;
     destination: string;
-    client_comments: Comment[];
-    client_preferences: Preferences | null;
+    client_comments: ClientComment[];
+    client_preferences: ClientPreferences | null;
     wishlist_items: string[];
     self_service_status: string | null;
     share_status: string | null;
@@ -51,19 +37,20 @@ interface EnrichedAttentionItem extends AttentionItem {
 
 /** Check if an itinerary has unresolved client activity requiring operator attention */
 export function hasClientActivity(itinerary: any): boolean {
-    const comments = itinerary.client_comments ?? [];
+    const comments: ClientComment[] = itinerary.client_comments ?? [];
     const prefs = itinerary.client_preferences;
     const wishlist = itinerary.wishlist_items ?? [];
     const selfService = itinerary.self_service_status;
     const stage = deriveStage(itinerary);
 
-    // Has unread comments (any comments while not yet converted to trip)
-    if (comments.length > 0 && stage !== "converted") return true;
+    // Only unresolved comments need attention
+    const unresolvedComments = comments.filter((c) => !c.resolved_at);
+    if (unresolvedComments.length > 0 && stage !== "converted") return true;
     // Has preference updates
     if (prefs && Object.keys(prefs).length > 0 && stage !== "converted") return true;
     // Has wishlist items
     if (wishlist.length > 0 && stage !== "converted") return true;
-    // Self-service has been updated
+    // Self-service has been updated (but 'resolved' no longer triggers)
     if (selfService === "updated") return true;
 
     return false;
@@ -112,9 +99,10 @@ function enrichItem(item: AttentionItem): EnrichedAttentionItem {
         ? new Date(Math.max(...timestamps.map(t => t.getTime())))
         : new Date();
 
-    // Build activity summary
+    // Build activity summary — show unresolved counts
+    const unresolvedCount = comments.filter((c) => !c.resolved_at).length;
     const activitySummary: string[] = [];
-    if (comments.length > 0) activitySummary.push(`${comments.length} comment${comments.length > 1 ? "s" : ""}`);
+    if (unresolvedCount > 0) activitySummary.push(`${unresolvedCount} unresolved comment${unresolvedCount > 1 ? "s" : ""}`);
     if (prefs && Object.keys(prefs).length > 0) activitySummary.push("preferences updated");
     if (wishlist.length > 0) activitySummary.push(`${wishlist.length} wishlist item${wishlist.length > 1 ? "s" : ""}`);
     if (item.approved_by) activitySummary.push(`approved by ${item.approved_by}`);
@@ -136,6 +124,7 @@ interface NeedsAttentionQueueProps {
 
 export function NeedsAttentionQueue({ itineraries, onOpenItinerary, openingItineraryId }: NeedsAttentionQueueProps) {
     const [isExpanded, setIsExpanded] = useState(true);
+    const feedbackAction = useFeedbackAction();
 
     const attentionItems = useMemo(() => {
         const items = itineraries
@@ -274,13 +263,36 @@ export function NeedsAttentionQueue({ itineraries, onOpenItinerary, openingItine
                                         )}
                                     </div>
 
-                                    {/* Open action */}
-                                    <button
-                                        className="shrink-0 mt-1 w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 group-hover:text-emerald-600 text-slate-400 transition-all"
-                                        onClick={(e) => { e.stopPropagation(); onOpenItinerary(item.id); }}
-                                    >
-                                        <Eye className="w-3.5 h-3.5" />
-                                    </button>
+                                    {/* Actions */}
+                                    <div className="flex flex-col gap-1.5 shrink-0 mt-1">
+                                        <button
+                                            className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 group-hover:text-emerald-600 text-slate-400 transition-all"
+                                            onClick={(e) => { e.stopPropagation(); onOpenItinerary(item.id); }}
+                                            title="Open itinerary"
+                                        >
+                                            <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                                                feedbackAction.isPending
+                                                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-400 cursor-wait"
+                                                    : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 hover:text-emerald-700"
+                                            )}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                feedbackAction.mutate({ itineraryId: item.id, action: "resolve_all" });
+                                            }}
+                                            disabled={feedbackAction.isPending}
+                                            title="Resolve all feedback"
+                                        >
+                                            {feedbackAction.isPending ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <Check className="w-3.5 h-3.5" />
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );
