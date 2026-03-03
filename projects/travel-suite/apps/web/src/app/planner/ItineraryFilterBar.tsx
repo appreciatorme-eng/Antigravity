@@ -9,7 +9,21 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 
-export type ItineraryStage = "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "converted";
+export type ItineraryStage =
+    | "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "converted"
+    | "active_leads" | "won";
+
+/** Compound stages that map to multiple individual stages */
+const COMPOUND_STAGES: Record<string, string[]> = {
+    active_leads: ["shared", "viewed", "feedback"],
+    won: ["approved", "converted"],
+};
+
+/** Labels for compound stages shown in the filter banner */
+const COMPOUND_LABELS: Record<string, string> = {
+    active_leads: "Active Leads",
+    won: "Approved & Converted",
+};
 
 interface StageConfig {
     label: string;
@@ -101,6 +115,23 @@ export function deriveStage(itinerary: {
     return "draft";
 }
 
+/** Check if an itinerary matches a filter (supports compound stages) */
+export function matchesFilter(itinerary: any, filter: ItineraryStage): boolean {
+    if (filter === "all") return true;
+    const stage = deriveStage(itinerary);
+    const compoundSet = COMPOUND_STAGES[filter];
+    if (compoundSet) return compoundSet.includes(stage);
+    return stage === filter;
+}
+
+/** Get display label for a filter stage (including compound) */
+export function getFilterLabel(filter: ItineraryStage): string {
+    if (filter === "all") return "All";
+    const compoundLabel = COMPOUND_LABELS[filter];
+    if (compoundLabel) return compoundLabel;
+    return STAGE_CONFIG[filter]?.label ?? filter;
+}
+
 interface ItineraryFilterBarProps {
     itineraries: any[];
     filterStage: ItineraryStage;
@@ -108,6 +139,15 @@ interface ItineraryFilterBarProps {
     searchQuery: string;
     onSearchChange: (query: string) => void;
     filteredCount: number;
+}
+
+interface StatDrill {
+    label: string;
+    value: string | number;
+    icon: LucideIcon;
+    color: string;
+    bg: string;
+    filterTarget: ItineraryStage;
 }
 
 export function ItineraryFilterBar({
@@ -128,41 +168,84 @@ export function ItineraryFilterBar({
         return counts;
     }, [itineraries]);
 
-    const summaryStats = useMemo(() => {
+    const summaryStats: StatDrill[] = useMemo(() => {
         const total = itineraries.length;
-        const withClients = itineraries.filter((i: any) => i.client_id).length;
         const approved = stageCounts.approved;
         const converted = stageCounts.converted;
         const activeLeads = stageCounts.shared + stageCounts.viewed + stageCounts.feedback;
         const conversionRate = total > 0 ? Math.round(((approved + converted) / total) * 100) : 0;
 
         return [
-            { label: "Total Plans", value: total, icon: FolderOpen, color: "text-primary", bg: "bg-primary/10" },
-            { label: "Active Leads", value: activeLeads, icon: Zap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20" },
-            { label: "Approved", value: approved, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-            { label: "Conversion", value: `${conversionRate}%`, icon: TrendingUp, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-900/20" },
+            { label: "Total Plans", value: total, icon: FolderOpen, color: "text-primary", bg: "bg-primary/10", filterTarget: "all" },
+            { label: "Active Leads", value: activeLeads, icon: Zap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20", filterTarget: "active_leads" },
+            { label: "Approved", value: approved, icon: CheckCircle, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20", filterTarget: "approved" },
+            { label: "Conversion", value: `${conversionRate}%`, icon: TrendingUp, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-900/20", filterTarget: "won" },
         ];
     }, [itineraries, stageCounts]);
 
+    const handleStatClick = (stat: StatDrill) => {
+        // Toggle: click again to deselect
+        if (filterStage === stat.filterTarget) {
+            onFilterChange("all");
+        } else {
+            onFilterChange(stat.filterTarget);
+        }
+    };
+
+    /** Check if a chip tab should appear active — compound filters highlight matching individual chips */
+    const isChipActive = (tabValue: ItineraryStage): boolean => {
+        if (filterStage === tabValue) return true;
+        // If a compound filter is active, highlight "All" only when "all"
+        return false;
+    };
+
+    /** Check if the current filter is a compound KPI drill */
+    const isCompoundActive = filterStage in COMPOUND_STAGES;
+
     return (
         <div className="space-y-4">
-            {/* Summary stats row */}
+            {/* Summary stats row — clickable drill-throughs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {summaryStats.map((stat) => (
-                    <GlassCard key={stat.label} padding="sm" className="group border-gray-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3">
-                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", stat.bg)}>
-                                <stat.icon className={cn("w-4.5 h-4.5", stat.color)} />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{stat.label}</p>
-                                <p className="text-lg font-black text-secondary dark:text-white tracking-tight tabular-nums leading-tight">
-                                    {stat.value}
-                                </p>
-                            </div>
-                        </div>
-                    </GlassCard>
-                ))}
+                {summaryStats.map((stat) => {
+                    const isActive = filterStage === stat.filterTarget;
+                    return (
+                        <button
+                            key={stat.label}
+                            onClick={() => handleStatClick(stat)}
+                            className="text-left focus:outline-none"
+                        >
+                            <GlassCard
+                                padding="sm"
+                                className={cn(
+                                    "group border transition-all duration-200 cursor-pointer",
+                                    isActive
+                                        ? "border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10"
+                                        : "border-gray-100 dark:border-slate-800 hover:border-primary/40 hover:shadow-md"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
+                                        stat.bg
+                                    )}>
+                                        <stat.icon className={cn("w-4.5 h-4.5", stat.color)} />
+                                    </div>
+                                    <div>
+                                        <p className={cn(
+                                            "text-[10px] font-bold uppercase tracking-widest transition-colors",
+                                            isActive ? "text-primary" : "text-text-muted"
+                                        )}>
+                                            {stat.label}
+                                        </p>
+                                        <p className="text-lg font-black text-secondary dark:text-white tracking-tight tabular-nums leading-tight">
+                                            {stat.value}
+                                        </p>
+                                    </div>
+                                </div>
+                            </GlassCard>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Search + Filter chips row */}
@@ -193,14 +276,14 @@ export function ItineraryFilterBar({
                 <div className="flex items-center gap-1.5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-1 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-x-auto">
                     {FILTER_TABS.map((tab) => {
                         const count = stageCounts[tab.value] ?? 0;
-                        const isActive = filterStage === tab.value;
+                        const chipActive = isChipActive(tab.value);
                         return (
                             <button
                                 key={tab.value}
                                 onClick={() => onFilterChange(tab.value)}
                                 className={cn(
                                     "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center gap-1.5",
-                                    isActive
+                                    chipActive
                                         ? "bg-primary text-white shadow-md shadow-primary/20"
                                         : "text-text-secondary hover:bg-gray-100 dark:hover:bg-slate-800"
                                 )}
@@ -209,7 +292,7 @@ export function ItineraryFilterBar({
                                 {count > 0 && (
                                     <span className={cn(
                                         "text-[9px] font-black tabular-nums px-1.5 py-0.5 rounded-full",
-                                        isActive
+                                        chipActive
                                             ? "bg-white/25 text-white"
                                             : "bg-gray-100 dark:bg-slate-800 text-text-muted"
                                     )}>
@@ -228,7 +311,7 @@ export function ItineraryFilterBar({
                     <span className="text-xs font-bold text-primary">
                         Showing {filteredCount} {filteredCount === 1 ? "itinerary" : "itineraries"}
                         {filterStage !== "all" && (
-                            <> in <span className="uppercase">{STAGE_CONFIG[filterStage]?.label ?? filterStage}</span></>
+                            <> in <span className="uppercase">{getFilterLabel(filterStage)}</span></>
                         )}
                         {searchQuery && <> matching &ldquo;{searchQuery}&rdquo;</>}
                     </span>

@@ -27,7 +27,7 @@ import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
-import { ItineraryFilterBar, deriveStage, type ItineraryStage } from "./ItineraryFilterBar";
+import { ItineraryFilterBar, matchesFilter, type ItineraryStage } from "./ItineraryFilterBar";
 import { cn } from "@/lib/utils";
 
 // Dynamic import for Leaflet (SSR incompatible)
@@ -257,9 +257,9 @@ Make it practical and specific:
         if (!pastItineraries) return [];
         let items = [...pastItineraries];
 
-        // Stage filter
+        // Stage filter (supports compound stages like active_leads, won)
         if (filterStage !== "all") {
-            items = items.filter((itin: any) => deriveStage(itin) === filterStage);
+            items = items.filter((itin: any) => matchesFilter(itin, filterStage));
         }
 
         // Search filter
