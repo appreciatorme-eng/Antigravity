@@ -23,14 +23,14 @@ export function EventChip({ event, onEventClick }: EventChipProps) {
         onEventClick(event);
       }}
       className={cn(
-        "w-full text-left px-2 py-1 text-xs rounded-md border truncate transition-all flex items-center gap-1.5 group/chip relative",
+        "w-full text-left px-2 py-1.5 text-xs rounded-lg border transition-all flex items-center gap-1.5 group/chip relative",
         config.bgColor,
         config.textColor,
         config.borderColor,
       )}
       title={event.title}
     >
-      <Icon className="w-3 h-3 flex-shrink-0 opacity-60" />
+      <Icon className="w-3 h-3 flex-shrink-0" />
       <span className="font-bold truncate">{event.title}</span>
 
       {/* Quick action overlay on hover - show first action icon */}

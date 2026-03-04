@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useCalendarActions } from "./useCalendarActions";
@@ -26,8 +27,13 @@ const CATEGORY_OPTIONS = [
   { value: "other", label: "Other" },
 ] as const;
 
+const TIME_MODE_OPTIONS = [
+  { key: true as const, label: "All Day" },
+  { key: false as const, label: "Set Time" },
+];
+
 const INPUT_CLASS =
-  "w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-900 dark:text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none";
+  "w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-900 dark:text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-colors";
 
 const LABEL_CLASS =
   "block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5";
@@ -63,7 +69,7 @@ function buildInitialForm(
     endTime:
       defaultHour !== null
         ? `${String(defaultHour + 1).padStart(2, "0")}:00`
-        : "10:00",
+        : "",
     location: "",
     description: "",
   };
@@ -104,7 +110,9 @@ export function AddEventModal({ defaults, onClose }: AddEventModalProps) {
 
     const endDate = form.allDay
       ? `${form.date}T23:59:59`
-      : `${form.date}T${form.endTime}:00`;
+      : form.endTime.trim()
+        ? `${form.date}T${form.endTime}:00`
+        : null;
 
     await actions.createPersonalEvent.mutateAsync({
       title: form.title.trim(),
@@ -133,7 +141,7 @@ export function AddEventModal({ defaults, onClose }: AddEventModalProps) {
 
   return (
     <GlassModal isOpen onClose={onClose} title="Add Event" size="md">
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* Title */}
         <div>
           <label className={LABEL_CLASS}>
@@ -182,24 +190,29 @@ export function AddEventModal({ defaults, onClose }: AddEventModalProps) {
           </div>
         </div>
 
-        {/* All Day toggle */}
-        <div className="flex items-center gap-3">
-          <input
-            id="allDay"
-            type="checkbox"
-            checked={form.allDay}
-            onChange={(e) => updateField("allDay", e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/20"
-          />
-          <label
-            htmlFor="allDay"
-            className="text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            All Day
-          </label>
+        {/* Time Mode Toggle — segmented pill control */}
+        <div>
+          <label className={LABEL_CLASS}>Duration</label>
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl gap-1">
+            {TIME_MODE_OPTIONS.map(({ key, label }) => (
+              <button
+                key={String(key)}
+                type="button"
+                onClick={() => updateField("allDay", key)}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-semibold transition-all",
+                  form.allDay === key
+                    ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Start Time + End Time (hidden when allDay) */}
+        {/* Start Time + End Time (visible only when "Set Time" is active) */}
         {!form.allDay && (
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -212,7 +225,12 @@ export function AddEventModal({ defaults, onClose }: AddEventModalProps) {
               />
             </div>
             <div>
-              <label className={LABEL_CLASS}>End Time</label>
+              <label className={LABEL_CLASS}>
+                End Time{" "}
+                <span className="text-slate-400 font-normal normal-case">
+                  (optional)
+                </span>
+              </label>
               <input
                 type="time"
                 value={form.endTime}
