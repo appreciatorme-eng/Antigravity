@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
@@ -20,10 +20,12 @@ import { CarouselBuilder } from "./CarouselBuilder";
 import { MediaLibrary } from "./MediaLibrary";
 import { ReviewsToInsta } from "./ReviewsToInsta";
 import { PosterExtractor } from "./PosterExtractor";
-import { CaptionEngine, CaptionTone } from "./CaptionEngine";
+import { CaptionEngine, CaptionTone, CaptionPlatform } from "./CaptionEngine";
 import { PostHistory } from "./PostHistory";
 import { SocialAnalytics } from "./SocialAnalytics";
 import { PlatformStatusBar } from "./PlatformStatusBar";
+import { BulkExporter } from "./BulkExporter";
+import { TripImporter } from "./TripImporter";
 
 interface Props {
     initialOrgData: {
@@ -74,6 +76,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     // Captions state (needed for captions modal)
     const [captions, setCaptions] = useState<any>(null);
     const [captionTone, setCaptionTone] = useState<CaptionTone>("Luxury");
+    const [captionPlatform, setCaptionPlatform] = useState<CaptionPlatform>("instagram");
     const [generatingCaptions, setGeneratingCaptions] = useState(false);
 
     // Image upload handler
@@ -107,7 +110,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             const resp = await fetch("/api/social/captions", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ templateData, tone: captionTone }),
+                body: JSON.stringify({ templateData, tone: captionTone, platform: captionPlatform }),
             });
             if (!resp.ok) throw new Error("Caption generation failed");
             const data = await resp.json();
@@ -117,7 +120,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         } finally {
             setGeneratingCaptions(false);
         }
-    }, [templateData, captionTone]);
+    }, [templateData, captionTone, captionPlatform]);
 
     // Toolbar action handler
     const handleActionSelect = useCallback((action: ToolbarAction) => {
@@ -127,6 +130,45 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     // Close action modal
     const closeAction = useCallback(() => {
         setActiveAction(null);
+    }, []);
+
+    // --- Auto-save draft (debounced 3s) ---
+    const draftTimerRef = useRef<NodeJS.Timeout>(null);
+
+    useEffect(() => {
+        if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+        draftTimerRef.current = setTimeout(() => {
+            localStorage.setItem("social-studio-draft", JSON.stringify({
+                templateData,
+                availableBackgrounds,
+                savedAt: Date.now(),
+            }));
+        }, 3000);
+        return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+    }, [templateData, availableBackgrounds]);
+
+    // --- Restore draft on mount (once, if < 24h old) ---
+    const draftRestoredRef = useRef(false);
+
+    useEffect(() => {
+        if (draftRestoredRef.current) return;
+        draftRestoredRef.current = true;
+        try {
+            const raw = localStorage.getItem("social-studio-draft");
+            if (!raw) return;
+            const draft = JSON.parse(raw);
+            const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+            if (Date.now() - draft.savedAt > TWENTY_FOUR_HOURS) return;
+            if (draft.templateData) {
+                setTemplateData((prev) => ({ ...prev, ...draft.templateData }));
+            }
+            if (draft.availableBackgrounds?.length) {
+                setAvailableBackgrounds(draft.availableBackgrounds);
+            }
+            toast.success("Draft restored from earlier session");
+        } catch {
+            /* ignore corrupt data */
+        }
     }, []);
 
     return (
@@ -281,6 +323,22 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                 </GlassModal>
             )}
 
+            {/* Import from Trip */}
+            {activeAction === "trips" && (
+                <GlassModal isOpen onClose={closeAction} title="Import from Trip" size="lg">
+                    <TripImporter
+                        onImport={(data) => {
+                            setTemplateData(prev => ({ ...prev, ...data }));
+                            if (data.heroImage) {
+                                setAvailableBackgrounds(prev => [...prev, data.heroImage!]);
+                            }
+                            closeAction();
+                            toast.success("Trip data imported! Templates updated.");
+                        }}
+                    />
+                </GlassModal>
+            )}
+
             {/* AI Captions */}
             {activeAction === "captions" && (
                 <GlassModal isOpen onClose={closeAction} title="AI Captions" size="lg">
@@ -322,8 +380,29 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                         </button>
 
                         {/* Results */}
-                        {captions && <CaptionEngine captions={captions} />}
+                        {captions && (
+                            <CaptionEngine
+                                captions={captions}
+                                selectedPlatform={captionPlatform}
+                                onPlatformChange={setCaptionPlatform}
+                            />
+                        )}
                     </div>
+                </GlassModal>
+            )}
+
+            {/* Campaign Pack / Bulk Exporter */}
+            {activeAction === "bulk" && (
+                <GlassModal isOpen onClose={closeAction} title="Campaign Pack" size="lg">
+                    <BulkExporter
+                        templateData={templateData}
+                        backgrounds={availableBackgrounds}
+                        selectedBackground={templateData.heroImage || ""}
+                        onComplete={(count) => {
+                            closeAction();
+                            toast.success(`Downloaded ${count} images as ZIP!`);
+                        }}
+                    />
                 </GlassModal>
             )}
 

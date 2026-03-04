@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle, Zap } from "lucide-react";
+import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle, Zap, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -272,7 +272,7 @@ export const PublishKitDrawer = ({
                                             ? "Publish Now"
                                             : "Schedule Post"}
                                     </Button>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-4 gap-2">
                                         <Button
                                             variant="outline"
                                             className="font-semibold h-10 rounded-xl"
@@ -329,6 +329,17 @@ export const PublishKitDrawer = ({
                                         >
                                             {hdDownloading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
                                             HD
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="font-semibold h-10 rounded-xl text-green-600 border-green-200 hover:bg-green-50"
+                                            onClick={() => {
+                                                const text = encodeURIComponent(caption);
+                                                window.open(`https://wa.me/?text=${text}`, "_blank");
+                                            }}
+                                        >
+                                            <MessageCircle className="w-4 h-4 mr-2" />
+                                            WhatsApp
                                         </Button>
                                     </div>
                                 </>

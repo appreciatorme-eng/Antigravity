@@ -10,6 +10,8 @@ import {
   Wand2,
   History,
   BarChart3,
+  MapPin,
+  Package,
   ChevronDown,
   MoreHorizontal,
 } from "lucide-react";
@@ -23,6 +25,8 @@ export type ToolbarAction =
   | "library"
   | "reviews"
   | "extractor"
+  | "trips"
+  | "bulk"
   | "history"
   | "analytics";
 
@@ -38,10 +42,12 @@ const PRIMARY_ACTIONS = [
 ];
 
 const MORE_ACTIONS = [
+  { id: "trips" as const, label: "Import from Trip", icon: MapPin },
   { id: "carousel" as const, label: "Carousel Builder", icon: Layers },
   { id: "library" as const, label: "Media Library", icon: ImageIcon },
   { id: "reviews" as const, label: "Reviews \u2192 Insta", icon: Star },
   { id: "extractor" as const, label: "Magic Analyzer", icon: Wand2 },
+  { id: "bulk" as const, label: "Campaign Pack", icon: Package },
   { id: "history" as const, label: "Post History", icon: History },
   { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
 ];

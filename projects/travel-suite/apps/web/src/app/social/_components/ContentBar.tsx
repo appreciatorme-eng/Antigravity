@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Pencil,
@@ -10,6 +10,10 @@ import {
   Sparkles,
   ToggleLeft,
   ToggleRight,
+  BookmarkPlus,
+  Bookmark,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
   generateBrandPalette,
@@ -37,6 +41,19 @@ interface TemplateData {
   reviewerTrip: string;
   brandPalette?: BrandPalette;
 }
+
+interface ContentPreset {
+  id: string;
+  name: string;
+  destination: string;
+  price: string;
+  offer: string;
+  season: string;
+  services: string[];
+}
+
+const PRESETS_STORAGE_KEY = "social-studio-presets";
+const MAX_PRESETS = 20;
 
 interface ContentBarProps {
   templateData: TemplateData;
@@ -86,6 +103,80 @@ export function ContentBar({
   const [brandColorEnabled, setBrandColorEnabled] = useState(
     Boolean(templateData.brandPalette),
   );
+
+  // Preset state
+  const [presets, setPresets] = useState<ContentPreset[]>([]);
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [showPresetsDropdown, setShowPresetsDropdown] = useState(false);
+  const presetsDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load presets from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setPresets(parsed);
+      }
+    } catch {
+      /* ignore corrupt data */
+    }
+  }, []);
+
+  // Persist presets to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+  }, [presets]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        presetsDropdownRef.current &&
+        !presetsDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowPresetsDropdown(false);
+      }
+    };
+    if (showPresetsDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPresetsDropdown]);
+
+  const savePreset = () => {
+    const trimmed = presetName.trim();
+    if (!trimmed) return;
+    const newPreset: ContentPreset = {
+      id: Date.now().toString(36),
+      name: trimmed,
+      destination: templateData.destination,
+      price: templateData.price,
+      offer: templateData.offer,
+      season: templateData.season,
+      services: [...templateData.services],
+    };
+    setPresets((prev) => [newPreset, ...prev].slice(0, MAX_PRESETS));
+    setPresetName("");
+    setShowSaveInput(false);
+  };
+
+  const loadPreset = (preset: ContentPreset) => {
+    setTemplateData((prev) => ({
+      ...prev,
+      destination: preset.destination,
+      price: preset.price,
+      offer: preset.offer,
+      season: preset.season,
+      services: [...preset.services],
+    }));
+    setShowPresetsDropdown(false);
+  };
+
+  const deletePreset = (id: string) => {
+    setPresets((prev) => prev.filter((p) => p.id !== id));
+  };
 
   const palette = orgPrimaryColor
     ? generateBrandPalette(orgPrimaryColor)
@@ -162,6 +253,126 @@ export function ContentBar({
           >
             Brand Colors {hasBrandColors ? "\u2713" : "\u2717"}
           </span>
+        </div>
+
+        {/* Preset actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Save Preset */}
+          {showSaveInput ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") savePreset();
+                  if (e.key === "Escape") {
+                    setShowSaveInput(false);
+                    setPresetName("");
+                  }
+                }}
+                placeholder="Preset name..."
+                autoFocus
+                className="px-2.5 py-1.5 text-xs rounded-lg border border-indigo-300 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-400 w-28"
+              />
+              <button
+                onClick={savePreset}
+                disabled={!presetName.trim()}
+                className="px-2.5 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setShowSaveInput(false);
+                  setPresetName("");
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSaveInput(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              title="Save current content as preset"
+            >
+              <BookmarkPlus className="w-3.5 h-3.5" />
+              Save
+            </button>
+          )}
+
+          {/* Load Preset dropdown */}
+          <div className="relative" ref={presetsDropdownRef}>
+            <button
+              onClick={() => setShowPresetsDropdown((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-colors ${
+                showPresetsDropdown
+                  ? "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+              title="Load a saved preset"
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              Presets
+              {presets.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full">
+                  {presets.length}
+                </span>
+              )}
+            </button>
+
+            {/* Dropdown panel */}
+            <AnimatePresence>
+              {showPresetsDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-1.5 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden"
+                >
+                  {presets.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-xs text-slate-400">
+                      No presets saved yet. Click &quot;Save&quot; to create one.
+                    </div>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                      {presets.map((preset) => (
+                        <div
+                          key={preset.id}
+                          className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                        >
+                          <button
+                            onClick={() => loadPreset(preset)}
+                            className="flex-1 text-left min-w-0"
+                          >
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
+                              {preset.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              {preset.destination} &middot; {preset.price}
+                            </p>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePreset(preset.id);
+                            }}
+                            className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                            title="Delete preset"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Toggle button */}
