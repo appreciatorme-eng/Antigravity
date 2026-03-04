@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toPng } from "html-to-image";
-import { Download, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square } from "lucide-react";
+import { Download, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
 import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout } from "@/components/social/templates/layouts/LayoutRenderer";
@@ -25,9 +25,10 @@ const USER_TIER = "Enterprise";
 interface Props {
     templateData: any;
     connections?: { instagram: boolean; facebook: boolean };
+    onTemplateSelect?: (template: SocialTemplate) => void;
 }
 
-export const TemplateGallery = ({ templateData, connections = { instagram: false, facebook: false } }: Props) => {
+export const TemplateGallery = ({ templateData, connections = { instagram: false, facebook: false }, onTemplateSelect }: Props) => {
     const [activeCategory, setActiveCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [aspectRatio, setAspectRatio] = useState<"square" | "portrait" | "story">("square");
@@ -260,7 +261,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             </p>
 
             {/* ── Template Grid ───────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {PRESET_TEMPLATES.map((preset, idx) => {
                     const locked = !canAccessTemplate(preset.tier, USER_TIER);
                     const isLoading = downloading === preset.id;
@@ -271,7 +272,8 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.035 }}
-                            className="group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 flex flex-col hover:shadow-xl transition-all duration-300"
+                            onClick={() => !locked && onTemplateSelect?.(preset)}
+                            className={`group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 flex flex-col hover:shadow-xl transition-all duration-300 ${!locked && onTemplateSelect ? "cursor-pointer" : ""}`}
                         >
                             {/* OFFSCREEN HIGH-RES RENDER */}
                             <div
@@ -308,20 +310,31 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                                 {/* Hover actions */}
                                 {!locked && (
                                     <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px] z-20">
-                                        <Button
-                                            size="sm"
-                                            className="bg-white text-black hover:bg-slate-100 font-bold shadow-xl"
-                                            onClick={() => setDrawerTemplate(preset)}
-                                        >
-                                            <Instagram className="w-4 h-4 mr-1.5" /> Use This
-                                        </Button>
-                                        <button
-                                            title="Preview in phone"
-                                            onClick={() => setPhoneMockupId(phoneMockupId === preset.id ? null : preset.id)}
-                                            className="p-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-colors"
-                                        >
-                                            <Smartphone className="w-4 h-4 text-white" />
-                                        </button>
+                                        {onTemplateSelect ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                                    <Maximize2 className="w-6 h-6 text-white" />
+                                                </div>
+                                                <span className="text-white font-bold text-sm">Open in Editor</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-white text-black hover:bg-slate-100 font-bold shadow-xl"
+                                                    onClick={(e) => { e.stopPropagation(); setDrawerTemplate(preset); }}
+                                                >
+                                                    <Instagram className="w-4 h-4 mr-1.5" /> Use This
+                                                </Button>
+                                                <button
+                                                    title="Preview in phone"
+                                                    onClick={(e) => { e.stopPropagation(); setPhoneMockupId(phoneMockupId === preset.id ? null : preset.id); }}
+                                                    className="p-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-colors"
+                                                >
+                                                    <Smartphone className="w-4 h-4 text-white" />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -405,7 +418,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                                     ) : (
                                         <>
                                             <button
-                                                onClick={() => downloadImage(`export-${preset.id}`, `${preset.name.replace(/\s+/g, "-")}.png`, preset.id)}
+                                                onClick={(e) => { e.stopPropagation(); downloadImage(`export-${preset.id}`, `${preset.name.replace(/\s+/g, "-")}.png`, preset.id); }}
                                                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                                                 title="Download"
                                             >
