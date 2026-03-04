@@ -67,3 +67,7 @@ coverage/
 # Supabase
 supabase/.temp/
 
+
+# AI Research & Design References (stored globally)
+.ai-research/
+AI_DESIGN_INTELLIGENCE.md
