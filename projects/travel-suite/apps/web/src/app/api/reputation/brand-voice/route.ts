@@ -1,0 +1,283 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
+
+const VALID_TONES: BrandVoiceTone[] = [
+  "professional_warm",
+  "casual_friendly",
+  "formal",
+  "luxury",
+];
+
+const VALID_LANGUAGES: LanguagePreference[] = ["en", "hi", "mixed"];
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+    }
+
+    const organizationId = profile.organization_id;
+
+    // Fetch existing brand voice
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
+      .from("reputation_brand_voice")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json({ brandVoice: existing });
+    }
+
+    // Create default if not exists
+    const defaultVoice = {
+      organization_id: organizationId,
+      tone: "professional_warm" as const,
+      language_preference: "en" as const,
+      owner_name: null,
+      sign_off: null,
+      key_phrases: [] as string[],
+      avoid_phrases: [] as string[],
+      sample_responses: [] as string[],
+      auto_respond_positive: false,
+      auto_respond_min_rating: 4,
+      escalation_threshold: 2,
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: created, error: insertError } = await (supabase as any)
+      .from("reputation_brand_voice")
+      .insert(defaultVoice)
+      .select()
+      .single();
+
+    if (insertError) {
+      // If insert fails (race condition), try to fetch again
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: retryFetch } = await (supabase as any)
+        .from("reputation_brand_voice")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (retryFetch) {
+        return NextResponse.json({ brandVoice: retryFetch });
+      }
+
+      throw insertError;
+    }
+
+    return NextResponse.json({ brandVoice: created });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("Error fetching brand voice:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+    }
+
+    const organizationId = profile.organization_id;
+    const body = await req.json();
+
+    // Validate fields
+    const updateData: Record<string, unknown> = {};
+
+    if (body.tone !== undefined) {
+      if (!VALID_TONES.includes(body.tone)) {
+        return NextResponse.json(
+          { error: `Invalid tone. Must be one of: ${VALID_TONES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      updateData.tone = body.tone;
+    }
+
+    if (body.language_preference !== undefined) {
+      if (!VALID_LANGUAGES.includes(body.language_preference)) {
+        return NextResponse.json(
+          { error: `Invalid language preference. Must be one of: ${VALID_LANGUAGES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      updateData.language_preference = body.language_preference;
+    }
+
+    if (body.owner_name !== undefined) {
+      updateData.owner_name =
+        typeof body.owner_name === "string" && body.owner_name.trim()
+          ? body.owner_name.trim()
+          : null;
+    }
+
+    if (body.sign_off !== undefined) {
+      updateData.sign_off =
+        typeof body.sign_off === "string" && body.sign_off.trim()
+          ? body.sign_off.trim()
+          : null;
+    }
+
+    if (body.key_phrases !== undefined) {
+      if (!isStringArray(body.key_phrases)) {
+        return NextResponse.json(
+          { error: "key_phrases must be an array of strings" },
+          { status: 400 }
+        );
+      }
+      updateData.key_phrases = body.key_phrases;
+    }
+
+    if (body.avoid_phrases !== undefined) {
+      if (!isStringArray(body.avoid_phrases)) {
+        return NextResponse.json(
+          { error: "avoid_phrases must be an array of strings" },
+          { status: 400 }
+        );
+      }
+      updateData.avoid_phrases = body.avoid_phrases;
+    }
+
+    if (body.sample_responses !== undefined) {
+      if (!isStringArray(body.sample_responses)) {
+        return NextResponse.json(
+          { error: "sample_responses must be an array of strings" },
+          { status: 400 }
+        );
+      }
+      updateData.sample_responses = body.sample_responses;
+    }
+
+    if (body.auto_respond_positive !== undefined) {
+      updateData.auto_respond_positive = Boolean(body.auto_respond_positive);
+    }
+
+    if (body.auto_respond_min_rating !== undefined) {
+      const rating = Number(body.auto_respond_min_rating);
+      if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        return NextResponse.json(
+          { error: "auto_respond_min_rating must be between 1 and 5" },
+          { status: 400 }
+        );
+      }
+      updateData.auto_respond_min_rating = rating;
+    }
+
+    if (body.escalation_threshold !== undefined) {
+      const threshold = Number(body.escalation_threshold);
+      if (!Number.isFinite(threshold) || threshold < 1 || threshold > 5) {
+        return NextResponse.json(
+          { error: "escalation_threshold must be between 1 and 5" },
+          { status: 400 }
+        );
+      }
+      updateData.escalation_threshold = threshold;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: "No valid fields to update" },
+        { status: 400 }
+      );
+    }
+
+    updateData.updated_at = new Date().toISOString();
+
+    // Upsert: update if exists, insert default + updates if not
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
+      .from("reputation_brand_voice")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    let brandVoice: ReputationBrandVoice;
+
+    if (existing) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updated, error: updateError } = await (supabase as any)
+        .from("reputation_brand_voice")
+        .update(updateData)
+        .eq("organization_id", organizationId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+      brandVoice = updated as ReputationBrandVoice;
+    } else {
+      const defaultWithUpdates = {
+        organization_id: organizationId,
+        tone: "professional_warm",
+        language_preference: "en",
+        owner_name: null,
+        sign_off: null,
+        key_phrases: [],
+        avoid_phrases: [],
+        sample_responses: [],
+        auto_respond_positive: false,
+        auto_respond_min_rating: 4,
+        escalation_threshold: 2,
+        ...updateData,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: created, error: insertError } = await (supabase as any)
+        .from("reputation_brand_voice")
+        .insert(defaultWithUpdates)
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+      brandVoice = created as ReputationBrandVoice;
+    }
+
+    return NextResponse.json({ brandVoice });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("Error updating brand voice:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
