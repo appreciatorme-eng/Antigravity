@@ -46,7 +46,21 @@ interface UnsplashResult {
 // Constants
 // ---------------------------------------------------------------------------
 
-const AI_STYLES: AiImageStyle[] = ["cinematic", "vibrant", "luxury", "minimal"];
+const AI_STYLES: AiImageStyle[] = [
+    "cinematic", "editorial", "vibrant", "luxury",
+    "tropical", "dramatic", "heritage", "minimal",
+];
+
+const STYLE_LABELS: Record<AiImageStyle, string> = {
+    cinematic: "Cinematic",
+    editorial: "Editorial",
+    vibrant: "Vibrant",
+    luxury: "Luxury",
+    tropical: "Tropical",
+    dramatic: "Dramatic",
+    heritage: "Heritage",
+    minimal: "Minimal",
+};
 
 const SECTION_ANIMATION = {
     initial: { opacity: 0, height: 0 },
@@ -94,7 +108,7 @@ export function BackgroundPicker({
                     prompt,
                     width: 1080,
                     height: 1080,
-                    count: 4,
+                    count: 1,
                 }),
             });
 
@@ -227,7 +241,7 @@ export function BackgroundPicker({
                     ) : (
                         <>
                             <Wand2 className="w-4 h-4" />
-                            Generate AI Backgrounds
+                            Generate Background
                         </>
                     )}
                 </button>
@@ -270,23 +284,25 @@ export function BackgroundPicker({
             <AnimatePresence>
                 {activeSource === "ai" && (
                     <motion.div {...SECTION_ANIMATION}>
-                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <div className="space-y-2 pt-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                 Style:
                             </span>
-                            {AI_STYLES.map((style) => (
-                                <button
-                                    key={style}
-                                    onClick={() => setAiStyle(style)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold capitalize transition-all ${
-                                        aiStyle === style
-                                            ? "bg-indigo-600 text-white shadow-sm"
-                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
-                                    }`}
-                                >
-                                    {style}
-                                </button>
-                            ))}
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {AI_STYLES.map((style) => (
+                                    <button
+                                        key={style}
+                                        onClick={() => setAiStyle(style)}
+                                        className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all text-center ${
+                                            aiStyle === style
+                                                ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-700"
+                                                : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+                                        }`}
+                                    >
+                                        {STYLE_LABELS[style]}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </motion.div>
                 )}

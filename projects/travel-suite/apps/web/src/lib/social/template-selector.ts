@@ -43,8 +43,12 @@ const CATEGORY_KEYWORDS: Record<TemplateCategory, string[]> = {
 // Map styles to preferred layouts
 const STYLE_LAYOUT_PREFERENCE: Record<AiImageStyle, LayoutType[]> = {
   cinematic: ["GradientHeroLayout", "MagazineCoverLayout", "DuotoneLayout"],
+  editorial: ["MagazineCoverLayout", "SplitLayout", "DuotoneLayout"],
   luxury: ["ElegantLayout", "MagazineCoverLayout", "CenterLayout"],
   vibrant: ["BoldTypographyLayout", "DiagonalSplitLayout", "SplitLayout"],
+  tropical: ["GradientHeroLayout", "BoldTypographyLayout", "SplitLayout"],
+  dramatic: ["GradientHeroLayout", "DuotoneLayout", "DiagonalSplitLayout"],
+  heritage: ["ElegantLayout", "CenterLayout", "MagazineCoverLayout"],
   minimal: ["CenterLayout", "BottomLayout", "ElegantLayout"],
 };
 

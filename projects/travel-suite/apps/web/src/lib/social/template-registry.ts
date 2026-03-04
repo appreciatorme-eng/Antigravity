@@ -18,7 +18,13 @@ export const templates: SocialTemplate[] = [
             headline: "Happy Holi!",
             subheadline: "May your life be filled with vibrant colors",
             body: "Special 20% off on all domestic packages this Holi."
-        }
+        },
+        palette: {
+            bg: "bg-gradient-to-br from-rose-500 to-orange-500",
+            text: "text-white",
+            accent: "#ff6b6b",
+            overlay: "linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,140,66,0.1))",
+        },
     },
     {
         id: "holi_special_2",
@@ -32,6 +38,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["holi", "sale", "festival"],
         seasonalAvailability: ["holi_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-rose-500 to-orange-500",
+            text: "text-white",
+            accent: "#ff6b6b",
+            overlay: "linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,140,66,0.1))",
+        },
     },
     {
         id: "diwali_grand_offer",
@@ -45,6 +57,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["diwali", "sale", "festive"],
         seasonalAvailability: ["diwali_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-amber-500 to-yellow-600",
+            text: "text-white",
+            accent: "#f59e0b",
+            overlay: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(234,179,8,0.1))",
+        },
     },
     {
         id: "diwali_lights_2",
@@ -58,6 +76,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "dark",
         tags: ["diwali", "lights", "luxury"],
         seasonalAvailability: ["diwali_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-amber-500 to-yellow-600",
+            text: "text-white",
+            accent: "#f59e0b",
+            overlay: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(234,179,8,0.1))",
+        },
     },
     {
         id: "christmas_travel_1",
@@ -71,6 +95,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "dark",
         tags: ["christmas", "winter", "holiday", "getaway"],
         seasonalAvailability: ["christmas_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-red-700 to-green-800",
+            text: "text-white",
+            accent: "#dc2626",
+            overlay: "linear-gradient(135deg, rgba(220,38,38,0.12), rgba(22,163,74,0.08))",
+        },
     },
     {
         id: "christmas_package_2",
@@ -84,6 +114,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["christmas", "package", "family"],
         seasonalAvailability: ["christmas_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-red-700 to-green-800",
+            text: "text-white",
+            accent: "#dc2626",
+            overlay: "linear-gradient(135deg, rgba(220,38,38,0.12), rgba(22,163,74,0.08))",
+        },
     },
     {
         id: "navratri_special_1",
@@ -97,6 +133,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["navratri", "garba", "gujarat", "festival"],
         seasonalAvailability: ["navratri_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-orange-500 to-red-600",
+            text: "text-white",
+            accent: "#ea580c",
+            overlay: "linear-gradient(135deg, rgba(234,88,12,0.15), rgba(220,38,38,0.1))",
+        },
     },
     {
         id: "eid_mubarak_1",
@@ -109,6 +151,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["eid", "mubarak", "holiday", "tour"],
+        palette: {
+            bg: "bg-gradient-to-br from-emerald-600 to-teal-700",
+            text: "text-white",
+            accent: "#059669",
+            overlay: "linear-gradient(135deg, rgba(5,150,105,0.15), rgba(13,148,136,0.1))",
+        },
     },
     {
         id: "independence_day_1",
@@ -122,6 +170,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["independence", "india", "sale", "tricolor"],
         seasonalAvailability: ["independence_day_2026"],
+        palette: {
+            bg: "bg-gradient-to-br from-orange-500 via-white to-green-600",
+            text: "text-white",
+            accent: "#ea580c",
+            overlay: "linear-gradient(135deg, rgba(234,88,12,0.1), rgba(22,163,74,0.08))",
+        },
     },
     {
         id: "new_year_1",
@@ -134,6 +188,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["new year", "celebration", "travel", "2027"],
+        palette: {
+            bg: "bg-gradient-to-br from-violet-600 to-indigo-900",
+            text: "text-white",
+            accent: "#8b5cf6",
+            overlay: "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(67,56,202,0.1))",
+        },
     },
 
     // ─── SEASON ─────────────────────────────────────────────────────────────────
@@ -148,6 +208,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["summer", "beach", "escape", "hot"],
+        palette: {
+            bg: "bg-gradient-to-br from-cyan-400 to-blue-500",
+            text: "text-white",
+            accent: "#06b6d4",
+            overlay: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(59,130,246,0.1))",
+        },
     },
     {
         id: "summer_special_2",
@@ -160,6 +226,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["summer", "deal", "sale", "vacation"],
+        palette: {
+            bg: "bg-gradient-to-br from-cyan-400 to-blue-500",
+            text: "text-white",
+            accent: "#06b6d4",
+            overlay: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(59,130,246,0.1))",
+        },
     },
     {
         id: "monsoon_magic_1",
@@ -172,6 +244,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["monsoon", "rain", "kerala", "nature"],
+        palette: {
+            bg: "bg-gradient-to-br from-slate-700 to-emerald-800",
+            text: "text-white",
+            accent: "#10b981",
+            overlay: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(51,65,85,0.1))",
+        },
     },
     {
         id: "winter_hills_1",
@@ -184,6 +262,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["winter", "snow", "manali", "hills"],
+        palette: {
+            bg: "bg-gradient-to-br from-indigo-400 to-blue-800",
+            text: "text-white",
+            accent: "#818cf8",
+            overlay: "linear-gradient(135deg, rgba(129,140,248,0.15), rgba(30,64,175,0.1))",
+        },
     },
 
     // ─── DESTINATION ────────────────────────────────────────────────────────────
@@ -198,6 +282,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["dubai", "uae", "luxury", "burj"],
+        palette: {
+            bg: "bg-gradient-to-br from-amber-600 to-yellow-800",
+            text: "text-white",
+            accent: "#d4a017",
+            overlay: "linear-gradient(135deg, rgba(212,160,23,0.15), rgba(161,98,7,0.1))",
+        },
     },
     {
         id: "destination_bali_1",
@@ -210,6 +300,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["bali", "indonesia", "paradise", "tropical"],
+        palette: {
+            bg: "bg-gradient-to-br from-emerald-500 to-teal-600",
+            text: "text-white",
+            accent: "#10b981",
+            overlay: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(13,148,136,0.1))",
+        },
     },
     {
         id: "destination_maldives_1",
@@ -222,6 +318,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["maldives", "luxury", "overwater", "island"],
+        palette: {
+            bg: "bg-gradient-to-br from-cyan-400 to-blue-600",
+            text: "text-white",
+            accent: "#06b6d4",
+            overlay: "linear-gradient(135deg, rgba(6,182,212,0.15), rgba(37,99,235,0.1))",
+        },
     },
     {
         id: "destination_kashmir_1",
@@ -234,6 +336,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["kashmir", "valley", "snow", "paradise"],
+        palette: {
+            bg: "bg-gradient-to-br from-slate-600 to-blue-900",
+            text: "text-white",
+            accent: "#60a5fa",
+            overlay: "linear-gradient(135deg, rgba(96,165,250,0.12), rgba(30,58,138,0.1))",
+        },
     },
     {
         id: "destination_europe_1",
@@ -246,6 +354,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["europe", "paris", "rome", "travel"],
+        palette: {
+            bg: "bg-gradient-to-br from-blue-500 to-indigo-700",
+            text: "text-white",
+            accent: "#3b82f6",
+            overlay: "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(67,56,202,0.1))",
+        },
     },
     {
         id: "destination_thailand_1",
@@ -258,6 +372,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["thailand", "bangkok", "phuket", "asia"],
+        palette: {
+            bg: "bg-gradient-to-br from-amber-500 to-orange-600",
+            text: "text-white",
+            accent: "#f59e0b",
+            overlay: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(234,88,12,0.08))",
+        },
     },
     {
         id: "destination_kerala_1",
@@ -270,6 +390,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["kerala", "backwaters", "ayurveda", "india"],
+        palette: {
+            bg: "bg-gradient-to-br from-green-500 to-emerald-700",
+            text: "text-white",
+            accent: "#22c55e",
+            overlay: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(4,120,87,0.1))",
+        },
     },
 
     // ─── PACKAGE TYPE ────────────────────────────────────────────────────────────
@@ -284,6 +410,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["maldives", "honeymoon", "romantic", "couples"],
+        palette: {
+            bg: "bg-gradient-to-br from-pink-400 to-rose-600",
+            text: "text-white",
+            accent: "#ec4899",
+            overlay: "linear-gradient(135deg, rgba(236,72,153,0.15), rgba(225,29,72,0.1))",
+        },
     },
     {
         id: "honeymoon_europe",
@@ -296,6 +428,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["europe", "honeymoon", "paris", "romantic"],
+        palette: {
+            bg: "bg-gradient-to-br from-pink-400 to-rose-600",
+            text: "text-white",
+            accent: "#ec4899",
+            overlay: "linear-gradient(135deg, rgba(236,72,153,0.15), rgba(225,29,72,0.1))",
+        },
     },
     {
         id: "family_fun_1",
@@ -308,6 +446,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["family", "kids", "fun", "vacation"],
+        palette: {
+            bg: "bg-gradient-to-br from-sky-400 to-blue-500",
+            text: "text-white",
+            accent: "#0ea5e9",
+            overlay: "linear-gradient(135deg, rgba(14,165,233,0.12), rgba(59,130,246,0.08))",
+        },
     },
     {
         id: "adventure_trip_1",
@@ -320,6 +464,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["adventure", "trek", "camping", "mountains"],
+        palette: {
+            bg: "bg-gradient-to-br from-emerald-500 to-green-700",
+            text: "text-white",
+            accent: "#10b981",
+            overlay: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(21,128,61,0.1))",
+        },
     },
     {
         id: "luxury_escape_1",
@@ -332,6 +482,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["luxury", "premium", "5star", "exclusive"],
+        palette: {
+            bg: "bg-gradient-to-br from-amber-600 to-yellow-800",
+            text: "text-white",
+            accent: "#d4a017",
+            overlay: "linear-gradient(135deg, rgba(212,160,23,0.15), rgba(161,98,7,0.1))",
+        },
     },
     {
         id: "corporate_travel_1",
@@ -344,6 +500,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["corporate", "business", "mice", "conference"],
+        palette: {
+            bg: "bg-gradient-to-br from-slate-700 to-blue-900",
+            text: "text-white",
+            accent: "#3b82f6",
+            overlay: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(30,58,138,0.08))",
+        },
     },
 
     // ─── PROMOTION ───────────────────────────────────────────────────────────────
@@ -358,6 +520,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["flash sale", "urgent", "48hr", "deal"],
+        palette: {
+            bg: "bg-gradient-to-br from-red-500 to-rose-600",
+            text: "text-white",
+            accent: "#ef4444",
+            overlay: "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(225,29,72,0.1))",
+        },
     },
     {
         id: "early_bird_1",
@@ -370,6 +538,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["early bird", "book now", "save", "advance"],
+        palette: {
+            bg: "bg-gradient-to-br from-teal-500 to-cyan-600",
+            text: "text-white",
+            accent: "#14b8a6",
+            overlay: "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(6,182,212,0.08))",
+        },
     },
     {
         id: "group_discount_1",
@@ -382,6 +556,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["group", "discount", "10+", "friends"],
+        palette: {
+            bg: "bg-gradient-to-br from-violet-500 to-purple-700",
+            text: "text-white",
+            accent: "#8b5cf6",
+            overlay: "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(126,34,206,0.1))",
+        },
     },
     {
         id: "last_minute_1",
@@ -394,6 +574,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "dark",
         tags: ["last minute", "deal", "urgent", "limited"],
+        palette: {
+            bg: "bg-gradient-to-br from-orange-500 to-red-600",
+            text: "text-white",
+            accent: "#f97316",
+            overlay: "linear-gradient(135deg, rgba(249,115,22,0.15), rgba(220,38,38,0.1))",
+        },
     },
 
     // ─── REVIEW ──────────────────────────────────────────────────────────────────
@@ -443,6 +629,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "brand",
         tags: ["carousel", "highlights", "photos", "trip"],
         isCarousel: true,
+        palette: {
+            bg: "bg-gradient-to-br from-amber-100 to-orange-100",
+            text: "text-slate-800",
+            accent: "#c4956a",
+            overlay: "linear-gradient(135deg, rgba(196,149,106,0.1), rgba(139,115,85,0.08))",
+        },
     },
     {
         id: "day_by_day_carousel",
@@ -455,6 +647,12 @@ export const templates: SocialTemplate[] = [
         colorScheme: "dark",
         tags: ["carousel", "itinerary", "day by day", "trip"],
         isCarousel: true,
+        palette: {
+            bg: "bg-gradient-to-br from-stone-200 to-amber-100",
+            text: "text-slate-800",
+            accent: "#8b7355",
+            overlay: "linear-gradient(135deg, rgba(139,115,85,0.12), rgba(196,149,106,0.08))",
+        },
     },
 
     // ─── INFORMATIONAL ───────────────────────────────────────────────────────────
@@ -468,6 +666,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "brand",
         tags: ["services", "about", "what we offer"],
+        palette: {
+            bg: "bg-gradient-to-br from-slate-600 to-slate-800",
+            text: "text-white",
+            accent: "#3b82f6",
+            overlay: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(51,65,85,0.08))",
+        },
     },
     {
         id: "why_choose_us",
@@ -479,6 +683,12 @@ export const templates: SocialTemplate[] = [
         aspectRatio: "square",
         colorScheme: "light",
         tags: ["trust", "why us", "agency", "benefits"],
+        palette: {
+            bg: "bg-gradient-to-br from-blue-50 to-indigo-100",
+            text: "text-slate-900",
+            accent: "#4f46e5",
+            overlay: "linear-gradient(135deg, rgba(79,70,229,0.08), rgba(99,102,241,0.05))",
+        },
     },
 
     // ─── SERVICE SHOWCASE (real poster format) ───────────────────────────────────

@@ -23,12 +23,12 @@ function maxCountByTier(tier: "free" | "pro" | "enterprise"): number {
 function clampDimension(value: unknown, fallback: number): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-    return Math.min(Math.max(Math.floor(parsed), 512), 1536);
+    return Math.min(Math.max(Math.floor(parsed), 1024), 1536);
 }
 
 function selectModel(tier: "free" | "pro" | "enterprise"): string {
     if (tier === "enterprise") return "fal-ai/flux-pro/v1.1-ultra";
-    return "fal-ai/flux/schnell";
+    return "fal-ai/flux/dev";
 }
 
 async function generateImage(
@@ -38,12 +38,19 @@ async function generateImage(
     height: number,
 ): Promise<string | null> {
     try {
+        const isEnterprise = model.includes("flux-pro");
         const result = await fal.subscribe(model, {
             input: {
                 prompt,
                 image_size: { width, height },
                 num_images: 1,
                 enable_safety_checker: false,
+                ...(isEnterprise
+                    ? {}
+                    : {
+                          num_inference_steps: 30,
+                          guidance_scale: 3.5,
+                      }),
             },
         });
 
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
         const requestedCount = Number(body?.count);
         const count = Number.isFinite(requestedCount)
             ? Math.min(Math.max(Math.floor(requestedCount), 1), tierMax)
-            : Math.min(4, tierMax);
+            : Math.min(1, tierMax);
 
         const model = selectModel(guard.context.tier);
 

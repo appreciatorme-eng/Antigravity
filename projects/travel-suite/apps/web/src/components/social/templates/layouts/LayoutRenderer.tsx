@@ -41,96 +41,310 @@ const PosterFooter = ({ templateData, absolute = true }: { templateData: any; ab
     );
 };
 
-// ── Existing layouts (with logo support added) ───────────────────────────────
+// ── Cinematic Hero (CenterLayout) ────────────────────────────────────────────
+// Full-bleed hero image with layered gradient overlays and centered text composition.
 
 export const CenterLayout = ({ templateData }: LayoutProps) => (
-    <div className="text-center w-full h-full flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
+        {/* Hero image background */}
+        {templateData.heroImage && (
+            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+        )}
+
+        {/* Gradient overlay layer 1: bottom fade */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.85) 100%)" }} />
+        {/* Gradient overlay layer 2: radial vignette */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%)" }} />
+        {/* Gradient overlay layer 3: top subtle */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 35%)" }} />
+
+        {/* Corner accent: top-left */}
+        <div style={{ position: "absolute", top: 40, left: 40, width: 80, height: 80, borderTop: "3px solid rgba(255,255,255,0.5)", borderLeft: "3px solid rgba(255,255,255,0.5)" }} />
+        {/* Corner accent: bottom-right */}
+        <div style={{ position: "absolute", bottom: 40, right: 40, width: 80, height: 80, borderBottom: "3px solid rgba(255,255,255,0.5)", borderRight: "3px solid rgba(255,255,255,0.5)" }} />
+
+        {/* Logo centered at top */}
         {templateData.logoUrl && (
-            <div className="absolute top-12">
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 300), height: "auto", objectFit: "contain" }} alt="logo" />
+            <div style={{ position: "absolute", top: 48, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
+                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 280), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             </div>
         )}
-        <h3 className="text-4xl font-bold tracking-widest uppercase opacity-80">{templateData.season}</h3>
-        <h1 className="text-[120px] font-black leading-none drop-shadow-xl line-clamp-2 mt-4">{templateData.destination}</h1>
-        <div className="bg-white/20 backdrop-blur-md px-16 py-6 rounded-full inline-block border border-white/40 mt-10">
-            <span className="text-6xl font-bold">{templateData.offer}</span>
+
+        {/* Center content stack */}
+        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "0 60px" }}>
+            {/* Decorative line top */}
+            <div style={{ width: 60, height: 3, background: "linear-gradient(90deg, transparent, #ffffff, transparent)", marginBottom: 20 }} />
+
+            {/* Destination name */}
+            <div style={{ fontSize: 110, fontWeight: 900, lineHeight: 0.95, color: "white", textShadow: "0 6px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)", letterSpacing: "-0.02em" }}>
+                {templateData.destination || "Destination"}
+            </div>
+
+            {/* Decorative line bottom */}
+            <div style={{ width: 60, height: 3, background: "linear-gradient(90deg, transparent, #ffffff, transparent)", marginTop: 20 }} />
+
+            {/* Season edition */}
+            {templateData.season && (
+                <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: "0.35em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.7)", marginTop: 16 }}>
+                    {templateData.season} Edition
+                </div>
+            )}
+
+            {/* Offer pill with frosted glass */}
+            {templateData.offer && (
+                <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 9999, padding: "14px 40px", marginTop: 32, border: "1px solid rgba(255,255,255,0.25)" }}>
+                    <span style={{ fontSize: 32, fontWeight: 700, color: "white" }}>{templateData.offer}</span>
+                </div>
+            )}
+
+            {/* Price badge */}
+            {templateData.price && (
+                <div style={{ display: "flex", alignItems: "center", background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "14px 40px", borderRadius: 9999, fontSize: 38, fontWeight: 900, boxShadow: "0 8px 32px rgba(255,107,107,0.4)", marginTop: 28 }}>
+                    Starting @ {templateData.price}
+                </div>
+            )}
         </div>
-        <p className="text-7xl font-bold tracking-tight mt-10">Starting @ {templateData.price}</p>
-        <div className="absolute bottom-16 left-0 right-0 text-center">
-            <div className="text-4xl font-bold bg-black/40 inline-flex px-12 py-6 rounded-2xl">
-                {templateData.companyName} • {templateData.contactNumber}
+
+        {/* Bottom contact bar */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.6)", padding: "20px 48px", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10 }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "white", letterSpacing: "0.05em" }}>
+                {templateData.companyName}
+            </div>
+            <div style={{ width: 6, height: 6, borderRadius: 9999, background: "rgba(255,255,255,0.5)", margin: "0 20px" }} />
+            <div style={{ fontSize: 22, color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>
+                {templateData.contactNumber}
             </div>
         </div>
     </div>
 );
 
+// ── Editorial Frame (ElegantLayout) ──────────────────────────────────────────
+// Magazine editorial feel with thin inset border frame and elegant serif typography.
+
 export const ElegantLayout = ({ templateData }: LayoutProps) => (
-    <div className="w-full h-full flex items-center justify-center border-[20px] border-white/20 p-16">
-        <div className="w-full h-full border-[4px] border-white/40 flex flex-col items-center justify-center p-16 text-center space-y-16">
-            <p className="text-5xl tracking-[1em] uppercase font-light opacity-80">{templateData.season}</p>
-            <h1 className="text-[130px] font-serif font-bold leading-none line-clamp-2">{templateData.destination}</h1>
-            <div className="w-32 h-2 bg-white/50 rounded-full my-8"></div>
-            <p className="text-6xl font-light italic">{templateData.offer}</p>
-            <p className="text-8xl font-serif mt-8">{templateData.price}</p>
-            <div className="mt-auto pt-16 w-full px-8 flex justify-between items-center text-left">
-                <div>
-                    <p className="text-4xl tracking-widest">{templateData.companyName}</p>
-                    <p className="text-3xl mt-4 opacity-70 font-serif">{templateData.contactNumber}</p>
+    <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", width: "100%", height: "100%" }}>
+        {/* Hero image background */}
+        {templateData.heroImage && (
+            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+        )}
+
+        {/* Dark overlay concentrated where text sits */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.5) 100%)" }} />
+
+        {/* Thin white inset border frame */}
+        <div style={{ position: "absolute", top: 30, left: 30, right: 30, bottom: 30, border: "2px solid rgba(255,255,255,0.4)", zIndex: 5 }} />
+
+        {/* Content inside the frame */}
+        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", padding: "60px 80px", textAlign: "center" }}>
+
+            {/* Logo top-left inside frame */}
+            {templateData.logoUrl && (
+                <div style={{ position: "absolute", top: 50, left: 60 }}>
+                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 200), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
                 </div>
-                {templateData.logoUrl && (
-                    <img src={templateData.logoUrl} style={{ width: templateData.logoWidth || 200 }} className="object-contain" alt="logo" />
+            )}
+
+            {/* Season tag top-right */}
+            {templateData.season && (
+                <div style={{ position: "absolute", top: 56, right: 60, fontSize: 18, fontWeight: 400, letterSpacing: "0.4em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.6)", fontFamily: "Inter, sans-serif" }}>
+                    {templateData.season}
+                </div>
+            )}
+
+            {/* Thin line above destination */}
+            <div style={{ width: 100, height: 1, background: "rgba(255,255,255,0.4)", marginBottom: 28 }} />
+
+            {/* Destination in serif */}
+            <div style={{ fontSize: 100, fontWeight: 700, lineHeight: 0.95, color: "white", fontStyle: "italic", textShadow: "0 4px 30px rgba(0,0,0,0.4)", letterSpacing: "-0.01em" }}>
+                {templateData.destination || "Destination"}
+            </div>
+
+            {/* Thin line below destination */}
+            <div style={{ width: 100, height: 1, background: "rgba(255,255,255,0.4)", marginTop: 28 }} />
+
+            {/* Offer text - italic elegant */}
+            {templateData.offer && (
+                <div style={{ fontSize: 30, fontWeight: 400, fontStyle: "italic", color: "rgba(255,255,255,0.85)", marginTop: 28, letterSpacing: "0.03em" }}>
+                    {templateData.offer}
+                </div>
+            )}
+
+            {/* Price in bold serif */}
+            {templateData.price && (
+                <div style={{ fontSize: 56, fontWeight: 700, color: "white", marginTop: 20, letterSpacing: "0.02em" }}>
+                    {templateData.price}
+                </div>
+            )}
+
+            {/* Bottom contact row */}
+            <div style={{ position: "absolute", bottom: 50, left: 60, right: 60, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ fontSize: 22, fontWeight: 600, color: "white", fontFamily: "Inter, sans-serif", letterSpacing: "0.1em" }}>
+                        {templateData.companyName}
+                    </div>
+                    <div style={{ width: 4, height: 4, borderRadius: 9999, background: "rgba(255,255,255,0.5)" }} />
+                    <div style={{ fontSize: 20, color: "rgba(255,255,255,0.7)", fontFamily: "Inter, sans-serif" }}>
+                        {templateData.contactNumber}
+                    </div>
+                </div>
+                {templateData.website && (
+                    <div style={{ fontSize: 18, color: "rgba(255,255,255,0.5)", fontFamily: "Inter, sans-serif" }}>
+                        {templateData.website}
+                    </div>
                 )}
             </div>
         </div>
     </div>
 );
 
-export const SplitLayout = ({ templateData }: LayoutProps) => (
-    <div className="w-full h-full flex flex-col justify-between">
-        <div className="flex justify-between items-start w-full">
-            {templateData.logoUrl ? (
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 260), height: "auto", objectFit: "contain" }} alt="logo" />
-            ) : (
-                <h2 className="text-5xl font-bold tracking-wider">{templateData.companyName}</h2>
-            )}
-            <div className="bg-white text-slate-900 px-8 py-4 rounded-xl text-3xl font-bold shadow-lg">
-                {templateData.season}
+// ── Dynamic Split (SplitLayout) ──────────────────────────────────────────────
+// Hero image on the right side with a gradient-blended dark content panel on the left.
+
+export const SplitLayout = ({ templateData }: LayoutProps) => {
+    const services: string[] = templateData.services || [];
+    return (
+        <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
+            {/* Dark panel left side (45%) */}
+            <div style={{ position: "relative", width: "45%", height: "100%", background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px", zIndex: 5 }}>
+
+                {/* Logo */}
+                {templateData.logoUrl ? (
+                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 28 }} alt="logo" />
+                ) : (
+                    <div style={{ fontSize: 26, fontWeight: 800, color: "white", letterSpacing: "0.05em", marginBottom: 28, opacity: 0.9 }}>
+                        {templateData.companyName}
+                    </div>
+                )}
+
+                {/* Decorative line */}
+                <div style={{ width: 50, height: 3, background: "linear-gradient(90deg, #ff6b6b, #ff8c42)", marginBottom: 24 }} />
+
+                {/* Season */}
+                {templateData.season && (
+                    <div style={{ fontSize: 18, fontWeight: 500, letterSpacing: "0.3em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>
+                        {templateData.season}
+                    </div>
+                )}
+
+                {/* Destination */}
+                <div style={{ fontSize: 72, fontWeight: 900, lineHeight: 0.95, color: "white", textShadow: "0 4px 20px rgba(0,0,0,0.3)", marginBottom: 24 }}>
+                    {templateData.destination || "Destination"}
+                </div>
+
+                {/* Offer pill frosted */}
+                {templateData.offer && (
+                    <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "14px 24px", borderLeft: "4px solid rgba(255,107,107,0.8)", marginBottom: 20, display: "flex" }}>
+                        <span style={{ fontSize: 24, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{templateData.offer}</span>
+                    </div>
+                )}
+
+                {/* Price badge */}
+                {templateData.price && (
+                    <div style={{ display: "flex", alignItems: "center", background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "12px 32px", borderRadius: 9999, fontSize: 32, fontWeight: 900, boxShadow: "0 8px 32px rgba(255,107,107,0.4)", marginBottom: 28, alignSelf: "flex-start" }}>
+                        {templateData.price}
+                    </div>
+                )}
+
+                {/* Service icons row */}
+                {services.length > 0 && (
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
+                        {services.slice(0, 4).map((s: string) => (
+                            <div key={s} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "6px 14px", fontSize: 16, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>
+                                {getServiceIcon(s)} {s}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Contact info */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, color: "rgba(255,255,255,0.6)", fontSize: 18, marginTop: "auto" }}>
+                    <span style={{ fontWeight: 700, color: "white" }}>{templateData.companyName}</span>
+                    <span>|</span>
+                    <span>{templateData.contactNumber}</span>
+                </div>
+            </div>
+
+            {/* Hero image right side (55%) with gradient blend */}
+            <div style={{ position: "relative", width: "55%", height: "100%" }}>
+                {templateData.heroImage ? (
+                    <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                ) : (
+                    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)" }} />
+                )}
+                {/* Gradient edge blending from dark panel into the image */}
+                <div style={{ position: "absolute", top: 0, left: 0, width: "40%", height: "100%", background: "linear-gradient(to right, #0f172a 0%, rgba(15,23,42,0.6) 40%, transparent 100%)" }} />
+                {/* Bottom subtle gradient */}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to top, rgba(0,0,0,0.3), transparent)" }} />
             </div>
         </div>
-        <div className="space-y-6">
-            <h1 className="text-[140px] font-black leading-none tracking-tighter truncate w-full">{templateData.destination}</h1>
-            <p className="text-6xl font-medium opacity-90">{templateData.offer}</p>
-        </div>
-        <div className="flex justify-between items-end w-full">
-            <div className="text-8xl font-black">{templateData.price}</div>
-            <div className="text-4xl font-semibold bg-black/30 p-8 rounded-3xl backdrop-blur-sm">
-                Call: {templateData.contactNumber}
-            </div>
-        </div>
-    </div>
-);
+    );
+};
+
+// ── Floating Card (BottomLayout) ─────────────────────────────────────────────
+// Full-bleed hero image with an elevated white card overlaying the bottom portion.
 
 export const BottomLayout = ({ templateData }: LayoutProps) => (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
+        {/* Hero image background */}
+        {templateData.heroImage && (
+            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+        )}
+
+        {/* Subtle top gradient for logo readability */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "25%", background: "linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)", zIndex: 2 }} />
+
+        {/* Logo centered at top */}
         {templateData.logoUrl && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 z-10">
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 260), height: "auto", objectFit: "contain" }} alt="logo" />
+            <div style={{ position: "absolute", top: 40, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
+                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 240), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center -translate-y-24">
-            <div className="text-center">
-                <h1 className="text-[160px] font-black leading-[0.9] drop-shadow-2xl">{templateData.destination.split(' ')[0]}</h1>
-                <h2 className="text-[80px] font-bold opacity-80 mt-4">{templateData.destination.split(' ').slice(1).join(' ')}</h2>
+
+        {/* Rotated offer badge sticker */}
+        {templateData.offer && (
+            <div style={{ position: "absolute", top: 50, right: 30, background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "10px 28px", fontSize: 20, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.08em", transform: "rotate(3deg)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 10 }}>
+                {templateData.offer}
             </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-white/10 backdrop-blur-xl border-t border-white/20 p-16 flex justify-between items-center rounded-t-[60px]">
-            <div>
-                <p className="text-3xl text-white/70 uppercase tracking-widest mb-2 font-bold">{templateData.offer}</p>
-                <p className="text-8xl font-black">{templateData.price}</p>
+        )}
+
+        {/* White floating card at bottom */}
+        <div style={{ position: "absolute", bottom: 36, left: 36, right: 36, background: "white", borderRadius: 24, padding: "36px 44px", boxShadow: "0 20px 60px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.15)", zIndex: 10 }}>
+            {/* Destination name */}
+            <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1.05, color: "#1a2d5a", letterSpacing: "-0.02em" }}>
+                {templateData.destination || "Destination"}
             </div>
-            <div className="text-right">
-                <p className="text-5xl font-bold">{templateData.companyName}</p>
-                <p className="text-3xl mt-4 opacity-80 backdrop-blur-md bg-black/20 p-4 rounded-xl">{templateData.contactNumber}</p>
+
+            {/* Accent line */}
+            <div style={{ width: 60, height: 4, background: "linear-gradient(90deg, #ff6b6b, #ff8c42)", borderRadius: 2, marginTop: 16, marginBottom: 16 }} />
+
+            {/* Offer text */}
+            {templateData.offer && (
+                <div style={{ fontSize: 22, fontWeight: 500, color: "#64748b", marginBottom: 12 }}>
+                    {templateData.offer}
+                </div>
+            )}
+
+            {/* Price in accent color */}
+            {templateData.price && (
+                <div style={{ fontSize: 44, fontWeight: 900, color: "#ff6b6b", letterSpacing: "-0.01em" }}>
+                    {templateData.price}
+                </div>
+            )}
+
+            {/* Divider */}
+            <div style={{ width: "100%", height: 1, background: "#e2e8f0", marginTop: 20, marginBottom: 16 }} />
+
+            {/* Company and contact */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#1a2d5a", letterSpacing: "0.05em" }}>
+                    {templateData.companyName}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 4, height: 4, borderRadius: 9999, background: "#cbd5e1" }} />
+                    <div style={{ fontSize: 18, color: "#64748b", fontWeight: 500 }}>
+                        {templateData.contactNumber}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -164,12 +378,76 @@ export const ReviewLayout = ({ templateData }: LayoutProps) => (
 );
 
 export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 border-[20px] border-white/10 p-16">
-        <div className="text-center space-y-8">
-            <h1 className="text-[100px] font-bold text-white leading-none">Carousel Slide 1</h1>
-            <p className="text-4xl text-slate-400">Swipe for more...</p>
-            <div className="bg-blue-600 px-12 py-6 rounded-full text-white text-3xl font-bold mt-12">
+    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", fontFamily: "Georgia, serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#faf6f0" }}>
+        {/* Hero image as faded background texture */}
+        {templateData.heroImage && (
+            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.12, filter: "sepia(40%)" }} alt="" />
+        )}
+
+        {/* Vintage paper texture overlay */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at center, transparent 50%, rgba(139,115,85,0.15) 100%)" }} />
+
+        {/* Outer stamp border */}
+        <div style={{ position: "absolute", top: 28, left: 28, right: 28, bottom: 28, border: "3px solid #8b7355", opacity: 0.6 }} />
+        {/* Inner stamp border */}
+        <div style={{ position: "absolute", top: 40, left: 40, right: 40, bottom: 40, border: "1px solid #8b7355", opacity: 0.35 }} />
+
+        {/* Corner decorative stamps */}
+        <div style={{ position: "absolute", top: 48, left: 48, width: 60, height: 60, borderTop: "3px solid #c4956a", borderLeft: "3px solid #c4956a" }} />
+        <div style={{ position: "absolute", top: 48, right: 48, width: 60, height: 60, borderTop: "3px solid #c4956a", borderRight: "3px solid #c4956a" }} />
+        <div style={{ position: "absolute", bottom: 48, left: 48, width: 60, height: 60, borderBottom: "3px solid #c4956a", borderLeft: "3px solid #c4956a" }} />
+        <div style={{ position: "absolute", bottom: 48, right: 48, width: 60, height: 60, borderBottom: "3px solid #c4956a", borderRight: "3px solid #c4956a" }} />
+
+        {/* Logo at top */}
+        {templateData.logoUrl && (
+            <div style={{ position: "absolute", top: 64, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
+                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 200), height: "auto", objectFit: "contain", opacity: 0.7 }} alt="logo" />
+            </div>
+        )}
+
+        {/* Center content */}
+        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "0 80px" }}>
+            {/* Small serif label */}
+            <div style={{ fontSize: 20, fontWeight: 400, letterSpacing: "0.5em", textTransform: "uppercase" as const, color: "#8b7355", marginBottom: 16 }}>
+                {templateData.season || "Travel Collection"}
+            </div>
+
+            {/* Decorative line */}
+            <div style={{ width: 80, height: 2, background: "linear-gradient(90deg, transparent, #8b7355, transparent)", marginBottom: 24 }} />
+
+            {/* Destination in large serif */}
+            <div style={{ fontSize: 96, fontWeight: 700, lineHeight: 0.95, color: "#2c1810", fontStyle: "italic", letterSpacing: "-0.01em", textShadow: "0 2px 12px rgba(44,24,16,0.1)" }}>
+                {templateData.destination || "Destination"}
+            </div>
+
+            {/* Decorative line */}
+            <div style={{ width: 80, height: 2, background: "linear-gradient(90deg, transparent, #8b7355, transparent)", marginTop: 24 }} />
+
+            {/* Offer text */}
+            {templateData.offer && (
+                <div style={{ fontSize: 26, fontWeight: 400, fontStyle: "italic", color: "#6b5744", marginTop: 24, letterSpacing: "0.05em" }}>
+                    {templateData.offer}
+                </div>
+            )}
+
+            {/* Vintage price stamp */}
+            {templateData.price && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: 28, border: "3px solid #c4956a", borderRadius: 9999, padding: "12px 36px", background: "rgba(196,149,106,0.1)" }}>
+                    <span style={{ fontSize: 38, fontWeight: 700, color: "#8b5e34", letterSpacing: "0.02em" }}>
+                        {templateData.price}
+                    </span>
+                </div>
+            )}
+        </div>
+
+        {/* Bottom contact bar - vintage style */}
+        <div style={{ position: "absolute", bottom: 56, left: 60, right: 60, display: "flex", justifyContent: "center", alignItems: "center", gap: 20, zIndex: 10 }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#5c4433", fontFamily: "Inter, sans-serif", letterSpacing: "0.08em" }}>
                 {templateData.companyName}
+            </div>
+            <div style={{ width: 4, height: 4, borderRadius: 9999, background: "#8b7355" }} />
+            <div style={{ fontSize: 18, color: "#8b7355", fontFamily: "Inter, sans-serif" }}>
+                {templateData.contactNumber}
             </div>
         </div>
     </div>

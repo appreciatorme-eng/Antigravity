@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toPng } from "html-to-image";
-import { Download, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2 } from "lucide-react";
+import { Download, Eye, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
 import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout } from "@/components/social/templates/layouts/LayoutRenderer";
@@ -36,6 +36,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
     const [downloading, setDownloading] = useState<string | null>(null);
     const [hdExporting, setHdExporting] = useState<string | null>(null);
     const [phoneMockupId, setPhoneMockupId] = useState<string | null>(null);
+    const [previewTemplate, setPreviewTemplate] = useState<SocialTemplate | null>(null);
 
     const upcomingFestivals = getUpcomingFestivals();
     const dims = RATIO_DIMS[aspectRatio];
@@ -150,13 +151,16 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
     };
 
     const renderBg = (preset: SocialTemplate) => {
-        // Layouts that carry their own solid backgrounds
         const selfBgLayouts = [
             "ServiceShowcaseLayout", "HeroServicesLayout", "InfoSplitLayout",
             "GradientHeroLayout", "DiagonalSplitLayout", "MagazineCoverLayout",
             "DuotoneLayout", "BoldTypographyLayout",
         ];
         if (selfBgLayouts.includes(preset.layout)) return "";
+        // CarouselSlideLayout has its own built-in background
+        if (preset.layout === "CarouselSlideLayout") return "";
+        // Use template-specific palette if available
+        if (preset.palette) return `${preset.palette.bg} ${preset.palette.text}`;
         if (preset.colorScheme === "dark")  return "bg-slate-900 text-white";
         if (preset.colorScheme === "light") return "bg-white text-slate-900";
         return "bg-gradient-to-br from-indigo-500 to-purple-600 text-white";
@@ -259,6 +263,95 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                 {PRESET_TEMPLATES.length} template{PRESET_TEMPLATES.length !== 1 ? "s" : ""}
                 {searchQuery ? ` for "${searchQuery}"` : activeCategory !== "All" ? ` in ${activeCategory}` : " total"}
             </p>
+
+            {/* ── Quick Preview Panel ─────────────────────────────── */}
+            <AnimatePresence>
+                {previewTemplate && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Eye className="w-5 h-5 text-indigo-500" />
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                            Preview: {previewTemplate.name}
+                                        </h3>
+                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
+                                            {previewTemplate.layout.replace("Layout", "")} · {previewTemplate.category}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setPhoneMockupId(phoneMockupId === previewTemplate.id ? null : previewTemplate.id)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
+                                    >
+                                        <Smartphone className="w-3.5 h-3.5" /> Phone
+                                    </button>
+                                    <button
+                                        onClick={() => setPreviewTemplate(null)}
+                                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Preview content */}
+                            <div className="flex gap-5 items-start justify-center">
+                                {/* Large preview (540px = 50% of 1080) */}
+                                <div
+                                    className={`relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 ${renderBg(previewTemplate)}`}
+                                    style={{ width: 540, height: dims.h * (540 / dims.w), flexShrink: 0 }}
+                                >
+                                    <div
+                                        className={`origin-top-left overflow-hidden ${renderBg(previewTemplate)} relative`}
+                                        style={{ width: dims.w, height: dims.h, transform: `scale(${540 / dims.w})` }}
+                                    >
+                                        {renderLayout(previewTemplate)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-3 justify-center pt-1">
+                                <button
+                                    onClick={() => downloadImage(`export-${previewTemplate.id}`, `${previewTemplate.name.replace(/\s+/g, "-")}.png`, previewTemplate.id)}
+                                    disabled={downloading === previewTemplate.id}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                >
+                                    {downloading === previewTemplate.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    Download
+                                </button>
+                                <button
+                                    onClick={() => handleHdExport(previewTemplate.id, previewTemplate)}
+                                    disabled={hdExporting === previewTemplate.id}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                                >
+                                    {hdExporting === previewTemplate.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                                    HD Export
+                                </button>
+                                {onTemplateSelect && (
+                                    <button
+                                        onClick={() => { onTemplateSelect(previewTemplate); setPreviewTemplate(null); }}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-900 transition-colors"
+                                    >
+                                        <Maximize2 className="w-4 h-4" />
+                                        Open in Editor
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── Template Grid ───────────────────────────────────────────── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -417,6 +510,17 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                                         </span>
                                     ) : (
                                         <>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setPreviewTemplate(previewTemplate?.id === preset.id ? null : preset); }}
+                                                className={`p-1.5 rounded-lg transition-colors ${
+                                                    previewTemplate?.id === preset.id
+                                                        ? "text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/30"
+                                                        : "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                }`}
+                                                title="Quick Preview"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); downloadImage(`export-${preset.id}`, `${preset.name.replace(/\s+/g, "-")}.png`, preset.id); }}
                                                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"

@@ -44,6 +44,17 @@ export interface SocialTemplate {
     defaultText?: Record<string, string>;
     defaultImage?: string;
     isCarousel?: boolean;
+    /** Per-template color palette for unique visual identity */
+    palette?: {
+        /** Tailwind bg class OR inline gradient for fallback background */
+        bg: string;
+        /** Tailwind text color class */
+        text: string;
+        /** Hex color for badges, pills, highlights */
+        accent: string;
+        /** CSS gradient for hero overlay tint */
+        overlay: string;
+    };
 }
 
 export interface CarouselSlide {
