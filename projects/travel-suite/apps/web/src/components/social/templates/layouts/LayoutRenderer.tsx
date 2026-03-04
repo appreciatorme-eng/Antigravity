@@ -2,6 +2,7 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { SocialTemplate } from "@/lib/social/types";
+import { ThemeOverlay } from "./ThemeDecorations";
 
 interface LayoutProps {
     templateData: any;
@@ -77,6 +78,9 @@ export const CenterLayout = ({ templateData, preset }: LayoutProps) => {
         {palette.overlay && (
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: palette.overlay }} />
         )}
+
+        {/* Theme-specific decorative elements */}
+        <ThemeOverlay templateId={preset.id} accent={palette.accent} />
 
         {/* Corner accent: top-left */}
         <div style={{ position: "absolute", top: 40, left: 40, width: 80, height: 80, borderTop: "3px solid rgba(255,255,255,0.5)", borderLeft: "3px solid rgba(255,255,255,0.5)" }} />
@@ -158,6 +162,9 @@ export const ElegantLayout = ({ templateData, preset }: LayoutProps) => {
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: palette.overlay }} />
         )}
 
+        {/* Theme-specific decorative elements */}
+        <ThemeOverlay templateId={preset.id} accent={palette.accent} />
+
         {/* Thin white inset border frame */}
         <div style={{ position: "absolute", top: 30, left: 30, right: 30, bottom: 30, border: "2px solid rgba(255,255,255,0.4)", zIndex: 5 }} />
 
@@ -233,6 +240,9 @@ export const SplitLayout = ({ templateData, preset }: LayoutProps) => {
     const services: string[] = templateData.services || [];
     return (
         <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
+            {/* Theme-specific decorative elements */}
+            <ThemeOverlay templateId={preset.id} accent={palette.accent} />
+
             {/* Dark panel left side (45%) */}
             <div style={{ position: "relative", width: "45%", height: "100%", background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px", zIndex: 5 }}>
 
@@ -323,6 +333,9 @@ export const BottomLayout = ({ templateData, preset }: LayoutProps) => {
 
         {/* Subtle top gradient for logo readability */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "25%", background: "linear-gradient(to bottom, rgba(0,0,0,0.4), transparent)", zIndex: 2 }} />
+
+        {/* Theme-specific decorative elements */}
+        <ThemeOverlay templateId={preset.id} accent={palette.accent} />
 
         {/* Logo centered at top */}
         {templateData.logoUrl && (
@@ -427,6 +440,9 @@ export const CarouselSlideLayout = ({ templateData, preset }: LayoutProps) => {
 
         {/* Vintage paper texture overlay */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at center, transparent 50%, rgba(139,115,85,0.15) 100%)" }} />
+
+        {/* Theme-specific decorative elements */}
+        <ThemeOverlay templateId={preset.id} accent={palette.accent} />
 
         {/* Outer stamp border */}
         <div style={{ position: "absolute", top: 28, left: 28, right: 28, bottom: 28, border: "3px solid #8b7355", opacity: 0.6 }} />
