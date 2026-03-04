@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarSkeleton } from "./CalendarSkeleton";
-import { CalendarEmptyState } from "./CalendarEmptyState";
 import { MonthView } from "./MonthView";
 import { WeekView } from "./WeekView";
 import { DayView } from "./DayView";
@@ -204,8 +203,6 @@ export function CalendarCommandCenter() {
                 error instanceof Error ? error.message : "Failed to load events"
               }
             />
-          ) : filteredEvents.length === 0 && events.length === 0 ? (
-            <CalendarEmptyState />
           ) : viewMode === "month" ? (
             <MonthView
               events={filteredEvents}

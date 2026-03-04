@@ -291,8 +291,14 @@ export function useCalendarActions() {
       queryClient.invalidateQueries({ queryKey: calendarKeys.all });
       toast({ title: "Event created", variant: "success" });
     },
-    onError: () => {
-      toast({ title: "Failed to create event", variant: "error" });
+    onError: (err: Error) => {
+      const message =
+        err.message?.includes("does not exist")
+          ? "Calendar table not set up. Please contact support."
+          : err.message?.includes("Not authenticated")
+            ? "Please sign in to create events."
+            : "Failed to create event";
+      toast({ title: message, variant: "error" });
     },
   });
 

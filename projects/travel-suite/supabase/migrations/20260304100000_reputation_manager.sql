@@ -4,6 +4,9 @@
 -- Phase 4: reputation_platform_connections, reputation_competitors
 -- Phase 5: reputation_widgets
 
+-- pgcrypto lives in 'extensions' schema on Supabase; grant access
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- ============================================================
 -- PHASE 1: Foundation
 -- ============================================================
@@ -202,7 +205,7 @@ CREATE TABLE IF NOT EXISTS reputation_campaign_sends (
 
   notification_queue_id UUID,
 
-  nps_token TEXT UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  nps_token TEXT UNIQUE DEFAULT encode(extensions.gen_random_bytes(32), 'hex'),
   nps_token_expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
 
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -287,7 +290,7 @@ CREATE TABLE IF NOT EXISTS reputation_widgets (
   platforms_filter TEXT[] DEFAULT '{}',
   destinations_filter TEXT[] DEFAULT '{}',
 
-  embed_token TEXT UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+  embed_token TEXT UNIQUE DEFAULT encode(extensions.gen_random_bytes(16), 'hex'),
   is_active BOOLEAN DEFAULT TRUE,
 
   show_branding BOOLEAN DEFAULT TRUE,
