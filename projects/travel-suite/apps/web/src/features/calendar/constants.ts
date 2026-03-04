@@ -1,0 +1,179 @@
+import {
+  Plane,
+  FileText,
+  IndianRupee,
+  FileSearch,
+  Share2,
+  MessageCircle,
+  Send,
+  CreditCard,
+  Copy,
+  Pencil,
+  ArrowRightLeft,
+  Clock,
+  Eye,
+  ExternalLink,
+} from "lucide-react";
+
+import type {
+  CalendarEventType,
+  EventTypeConfig,
+  QuickAction,
+  BadgeVariant,
+} from "./types";
+
+// ---------------------------------------------------------------------------
+// Event type visual configuration
+// ---------------------------------------------------------------------------
+
+export const EVENT_TYPE_CONFIG: Record<CalendarEventType, EventTypeConfig> = {
+  trip: {
+    label: "Trips",
+    color: "#00d084",
+    textColor: "text-green-800",
+    borderColor: "border-green-300",
+    dotColor: "bg-green-500",
+    bgColor: "bg-green-100",
+    icon: Plane,
+    badgeVariant: "primary",
+  },
+  invoice: {
+    label: "Invoices",
+    color: "#f59e0b",
+    textColor: "text-amber-800",
+    borderColor: "border-amber-300",
+    dotColor: "bg-amber-500",
+    bgColor: "bg-amber-100",
+    icon: FileText,
+    badgeVariant: "warning",
+  },
+  payment: {
+    label: "Payments",
+    color: "#10b981",
+    textColor: "text-emerald-800",
+    borderColor: "border-emerald-300",
+    dotColor: "bg-emerald-500",
+    bgColor: "bg-emerald-100",
+    icon: IndianRupee,
+    badgeVariant: "success",
+  },
+  proposal: {
+    label: "Proposals",
+    color: "#3b82f6",
+    textColor: "text-blue-800",
+    borderColor: "border-blue-300",
+    dotColor: "bg-blue-500",
+    bgColor: "bg-blue-100",
+    icon: FileSearch,
+    badgeVariant: "info",
+  },
+  social_post: {
+    label: "Social Posts",
+    color: "#8b5cf6",
+    textColor: "text-violet-800",
+    borderColor: "border-violet-300",
+    dotColor: "bg-violet-500",
+    bgColor: "bg-violet-100",
+    icon: Share2,
+    badgeVariant: "secondary",
+  },
+  concierge: {
+    label: "Concierge",
+    color: "#ec4899",
+    textColor: "text-pink-800",
+    borderColor: "border-pink-300",
+    dotColor: "bg-pink-500",
+    bgColor: "bg-pink-100",
+    icon: MessageCircle,
+    badgeVariant: "danger",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Quick actions per event type
+// ---------------------------------------------------------------------------
+
+export const QUICK_ACTIONS: Record<CalendarEventType, QuickAction[]> = {
+  trip: [
+    { label: "View Trip", icon: Eye, action: "view" },
+    { label: "Clone", icon: Copy, action: "clone" },
+  ],
+  invoice: [
+    { label: "Send Invoice", icon: Send, action: "send" },
+    { label: "Record Payment", icon: CreditCard, action: "record_payment" },
+  ],
+  payment: [
+    { label: "View Invoice", icon: ExternalLink, action: "view_invoice" },
+  ],
+  proposal: [
+    { label: "Send", icon: Send, action: "send" },
+    { label: "Convert", icon: ArrowRightLeft, action: "convert" },
+  ],
+  social_post: [
+    { label: "Edit", icon: Pencil, action: "edit" },
+    { label: "Reschedule", icon: Clock, action: "reschedule" },
+  ],
+  concierge: [
+    { label: "Respond", icon: Send, action: "respond" },
+    { label: "View Trip", icon: Eye, action: "view_trip" },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Status → badge variant mapping
+// ---------------------------------------------------------------------------
+
+export const STATUS_VARIANT_MAP: Record<string, BadgeVariant> = {
+  draft: "default",
+  pending: "default",
+  active: "primary",
+  confirmed: "primary",
+  issued: "primary",
+  completed: "success",
+  paid: "success",
+  overdue: "danger",
+  cancelled: "danger",
+  proposed: "info",
+  sent: "info",
+  viewed: "info",
+  scheduled: "info",
+  partial: "warning",
+};
+
+// ---------------------------------------------------------------------------
+// Calendar display constants
+// ---------------------------------------------------------------------------
+
+export const MONTH_NAMES: string[] = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export const DAY_NAMES: string[] = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+];
+
+export const ALL_EVENT_TYPES: CalendarEventType[] = [
+  "trip",
+  "invoice",
+  "payment",
+  "proposal",
+  "social_post",
+  "concierge",
+];
