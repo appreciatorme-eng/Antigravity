@@ -74,8 +74,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
         () => _profile = row == null ? null : Map<String, dynamic>.from(row),
       );
     } finally {
-      if (!mounted) return;
-      setState(() => _loadingProfile = false);
+      if (mounted) setState(() => _loadingProfile = false);
     }
   }
 
@@ -87,8 +86,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
       if (!mounted) return;
       setState(() => _onDuty = v);
     } finally {
-      if (!mounted) return;
-      setState(() => _loadingDuty = false);
+      if (mounted) setState(() => _loadingDuty = false);
     }
   }
 
@@ -136,8 +134,7 @@ class _DriverDashboardState extends State<DriverDashboard> {
         _todayAssignment = null;
       });
     } finally {
-      if (!mounted) return;
-      setState(() => _loadingAssignment = false);
+      if (mounted) setState(() => _loadingAssignment = false);
     }
   }
 
@@ -1312,8 +1309,7 @@ class _DriverChecklistCardState extends State<_DriverChecklistCard> {
         _done[id] = v;
       }
     } finally {
-      if (!mounted) return;
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

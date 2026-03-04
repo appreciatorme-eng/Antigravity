@@ -117,9 +117,11 @@ async def chat_trip_planner(
                 user_id=user_id,
             )
             return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Trip planning failed: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 # Support Bot Endpoints
@@ -156,9 +158,11 @@ async def chat_support(
             user_id=user_id,
         )
         return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Support chat failed: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 # Recommender Endpoints
@@ -176,9 +180,14 @@ async def chat_recommend(
     provides increasingly personalized suggestions.
     """
     try:
-        effective_user_id = requested_user_id or user_id
-        if not requested_user_id and user_id == "dev-user":
-            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+        # Enforce ownership: JWT identity is the source of truth
+        effective_user_id = user_id
+        if user_id == "dev-user":
+            if not requested_user_id:
+                raise HTTPException(status_code=400, detail="user_id query parameter is required in dev mode")
+            effective_user_id = requested_user_id
+        elif requested_user_id and requested_user_id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden: cannot access another user's data")
 
         ai_limiter.check(get_client_key(raw_request, effective_user_id))
         result = await get_recommendations(
@@ -192,7 +201,7 @@ async def chat_recommend(
         raise
     except Exception as e:
         logger.error("Recommendation failed: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/recommend/preferences")
@@ -205,9 +214,14 @@ async def update_user_preferences(
     Update user preferences for better recommendations.
     """
     try:
-        effective_user_id = requested_user_id or user_id
-        if not requested_user_id and user_id == "dev-user":
-            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+        # Enforce ownership: JWT identity is the source of truth
+        effective_user_id = user_id
+        if user_id == "dev-user":
+            if not requested_user_id:
+                raise HTTPException(status_code=400, detail="user_id query parameter is required in dev mode")
+            effective_user_id = requested_user_id
+        elif requested_user_id and requested_user_id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden: cannot access another user's data")
 
         result = await update_preferences(
             user_id=effective_user_id,
@@ -219,7 +233,7 @@ async def update_user_preferences(
         raise
     except Exception as e:
         logger.error("Preference update failed: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 @router.post("/recommend/feedback")
@@ -232,9 +246,14 @@ async def submit_feedback(
     Submit feedback about a destination for learning.
     """
     try:
-        effective_user_id = requested_user_id or user_id
-        if not requested_user_id and user_id == "dev-user":
-            raise HTTPException(status_code=400, detail="user_id query parameter is required")
+        # Enforce ownership: JWT identity is the source of truth
+        effective_user_id = user_id
+        if user_id == "dev-user":
+            if not requested_user_id:
+                raise HTTPException(status_code=400, detail="user_id query parameter is required in dev mode")
+            effective_user_id = requested_user_id
+        elif requested_user_id and requested_user_id != user_id:
+            raise HTTPException(status_code=403, detail="Forbidden: cannot access another user's data")
 
         result = await provide_feedback(
             user_id=effective_user_id,
@@ -247,7 +266,7 @@ async def submit_feedback(
         raise
     except Exception as e:
         logger.error("Feedback submission failed: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="An internal error occurred. Please try again.")
 
 
 # Conversation History (optional endpoint)

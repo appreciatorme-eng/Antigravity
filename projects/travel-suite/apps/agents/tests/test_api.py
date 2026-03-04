@@ -247,6 +247,81 @@ class TestRecommendEndpoint:
             assert data["data"]["feedback_recorded"] is True
 
 
+class TestRecommenderOwnership:
+    """Tests that recommender endpoints enforce user ownership (IDOR prevention)."""
+
+    @pytest.fixture(autouse=True)
+    def _override_auth(self, client):
+        """Override FastAPI's get_user_id dependency to simulate real user auth."""
+        from api.auth import get_user_id
+        from main import app
+
+        app.dependency_overrides[get_user_id] = lambda: "user-A"
+        yield
+        app.dependency_overrides.pop(get_user_id, None)
+
+    def test_recommend_rejects_cross_user_access(self, client):
+        """Authenticated user cannot access another user's recommendations."""
+        with patch("api.routes.get_recommendations") as mock_rec:
+            mock_rec.return_value = {"recommendations": "...", "personalized": True}
+
+            response = client.post(
+                "/api/chat/recommend?user_id=user-B",
+                json={"num_recommendations": 3},
+            )
+            assert response.status_code == 403
+
+    def test_preferences_rejects_cross_user_access(self, client):
+        """Authenticated user cannot update another user's preferences."""
+        with patch("api.routes.update_preferences") as mock_update:
+            mock_update.return_value = {"updated": True}
+
+            response = client.post(
+                "/api/recommend/preferences?user_id=user-B",
+                json={"preference_type": "budget", "preference_value": "luxury"},
+            )
+            assert response.status_code == 403
+
+    def test_feedback_rejects_cross_user_access(self, client):
+        """Authenticated user cannot submit feedback as another user."""
+        with patch("api.routes.provide_feedback") as mock_feedback:
+            mock_feedback.return_value = {"feedback_recorded": True}
+
+            response = client.post(
+                "/api/recommend/feedback?user_id=user-B",
+                json={"destination": "Bali", "feedback": "Great!", "rating": 5},
+            )
+            assert response.status_code == 403
+
+    def test_recommend_allows_own_user_id(self, client):
+        """Authenticated user can pass their own user_id (no-op, same as JWT)."""
+        with patch("api.routes.get_recommendations") as mock_rec:
+            mock_rec.return_value = {
+                "recommendations": "...", "user_id": "user-A",
+                "personalized": True, "agent": "TravelRecommender",
+            }
+
+            response = client.post(
+                "/api/chat/recommend?user_id=user-A",
+                json={"num_recommendations": 3},
+            )
+            assert response.status_code == 200
+
+    def test_recommend_works_without_query_param(self, client):
+        """Authenticated user can omit user_id param — falls back to JWT."""
+        with patch("api.routes.get_recommendations") as mock_rec:
+            mock_rec.return_value = {
+                "recommendations": "...", "user_id": "user-A",
+                "personalized": True, "agent": "TravelRecommender",
+            }
+
+            response = client.post(
+                "/api/chat/recommend",
+                json={"num_recommendations": 3},
+            )
+            assert response.status_code == 200
+
+
 class TestConversationsEndpoint:
     """Tests for conversation history endpoint."""
 

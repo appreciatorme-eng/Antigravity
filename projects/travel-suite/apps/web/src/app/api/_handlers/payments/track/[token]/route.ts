@@ -4,12 +4,12 @@ import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
 // Returns mock payment link status (development only)
 export async function GET(
   request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:GET')
   if (guard) return guard
 
-  const { token } = params
+  const { token } = await params
 
   const mockStatus = {
     token,
@@ -28,17 +28,18 @@ export async function GET(
 // Records a view or payment event (development only)
 export async function POST(
   request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:POST')
   if (guard) return guard
 
+  const { token } = await params
   const body = await request.json() as { event?: string; metadata?: Record<string, string> }
   const { event } = body
 
   return Response.json({
     success: true,
-    token: params.token,
+    token,
     event,
     timestamp: new Date().toISOString(),
   })

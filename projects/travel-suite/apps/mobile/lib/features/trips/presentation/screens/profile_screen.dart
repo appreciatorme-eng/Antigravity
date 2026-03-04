@@ -37,8 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         () => _profile = row == null ? null : Map<String, dynamic>.from(row),
       );
     } finally {
-      if (!mounted) return;
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

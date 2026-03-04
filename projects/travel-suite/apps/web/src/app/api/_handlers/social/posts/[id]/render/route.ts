@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // Polyfill missing Blob dependencies if needed by running in edge or letting node standard blob handle it
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { id } = await params;
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -31,7 +32,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         const storagePath = `${profile.organization_id}/posts/${Date.now()}-${filename}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
             .from("social-media")
             .upload(storagePath, buffer, {
                 contentType: "image/png",
@@ -49,7 +50,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         const { data: post, error: updateError } = await supabase
             .from("social_posts")
             .update({ rendered_image_url: publicUrl })
-            .eq("id", params.id)
+            .eq("id", id)
             .eq("organization_id", profile.organization_id)
             .select()
             .single();
@@ -57,8 +58,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         if (updateError) throw updateError;
 
         return NextResponse.json({ post });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Render upload error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "An internal error occurred" }, { status: 500 });
     }
 }

@@ -7,7 +7,7 @@
  * Security: HMAC-SHA256 signature verification on POST requests.
  * ------------------------------------------------------------------ */
 
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 import { NextResponse } from "next/server";
 
@@ -64,9 +64,13 @@ function verifySignature(
   signature: string,
   secret: string,
 ): boolean {
-  const expected =
-    "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
-  return expected === signature;
+  if (!signature.startsWith("sha256=")) return false;
+  const provided = signature.slice("sha256=".length);
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const providedBuffer = Buffer.from(provided, "utf8");
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  if (providedBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(providedBuffer, expectedBuffer);
 }
 
 // ---------------------------------------------------------------------------
@@ -103,15 +107,21 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ status: "ok" }, { status: 200 });
   }
 
-  // 2. HMAC signature verification
+  // 2. HMAC signature verification (fail-closed)
   const appSecret = process.env.WHATSAPP_APP_SECRET;
   const signatureHeader = request.headers.get("X-Hub-Signature-256");
 
-  if (appSecret && signatureHeader) {
-    if (!verifySignature(rawBody, signatureHeader, appSecret)) {
-      console.error("[WhatsApp webhook] HMAC signature mismatch");
-      return new Response("Unauthorized", { status: 401 });
-    }
+  if (!appSecret) {
+    console.error("[WhatsApp webhook] WHATSAPP_APP_SECRET not configured");
+    return new Response("Webhook not configured", { status: 500 });
+  }
+  if (!signatureHeader) {
+    console.error("[WhatsApp webhook] Missing X-Hub-Signature-256 header");
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!verifySignature(rawBody, signatureHeader, appSecret)) {
+    console.error("[WhatsApp webhook] HMAC signature mismatch");
+    return new Response("Unauthorized", { status: 401 });
   }
 
   // 3. Parse body
