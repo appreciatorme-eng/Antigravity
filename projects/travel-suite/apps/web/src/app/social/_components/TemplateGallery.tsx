@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { Download, Eye, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -166,9 +166,25 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
         return "bg-gradient-to-br from-indigo-500 to-purple-600 text-white";
     };
 
-    // Scale 1080-wide canvas into a ~270px visual preview
-    const PREVIEW_BOX = 270;
-    const scale = PREVIEW_BOX / dims.w;
+    // Responsive preview: measure actual card width and scale 1080px canvas to fill it
+    const gridRef = useRef<HTMLDivElement>(null);
+    const [cardWidth, setCardWidth] = useState(0);
+
+    const measureCard = useCallback(() => {
+        if (!gridRef.current) return;
+        const firstCard = gridRef.current.querySelector<HTMLElement>("[data-template-card]");
+        if (firstCard) setCardWidth(firstCard.offsetWidth);
+    }, []);
+
+    useEffect(() => {
+        measureCard();
+        const ro = new ResizeObserver(measureCard);
+        if (gridRef.current) ro.observe(gridRef.current);
+        return () => ro.disconnect();
+    }, [measureCard]);
+
+    const previewWidth = cardWidth || 300;
+    const scale = previewWidth / dims.w;
     const previewH = dims.h * scale;
 
     return (
@@ -354,7 +370,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             </AnimatePresence>
 
             {/* ── Template Grid ───────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
                 {PRESET_TEMPLATES.map((preset, idx) => {
                     const locked = !canAccessTemplate(preset.tier, USER_TIER);
                     const isLoading = downloading === preset.id;
@@ -366,6 +382,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.035 }}
                             onClick={() => !locked && onTemplateSelect?.(preset)}
+                            data-template-card
                             className={`group relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 flex flex-col hover:shadow-xl transition-all duration-300 ${!locked && onTemplateSelect ? "cursor-pointer" : ""}`}
                         >
                             {/* OFFSCREEN HIGH-RES RENDER */}
@@ -377,13 +394,13 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                                 {renderLayout(preset)}
                             </div>
 
-                            {/* VISUAL PREVIEW (scaled CSS) */}
+                            {/* VISUAL PREVIEW (scaled CSS — fills card width) */}
                             <div
-                                className="relative w-full overflow-hidden flex items-start justify-center border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50"
-                                style={{ height: previewH + 4, maxHeight: previewH + 4 }}
+                                className="relative w-full overflow-hidden border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50"
+                                style={{ height: previewH }}
                             >
                                 <div
-                                    className={`pointer-events-none origin-top-left overflow-hidden ${renderBg(preset)} flex flex-col relative`}
+                                    className={`pointer-events-none origin-top-left overflow-hidden ${renderBg(preset)} flex flex-col absolute top-0 left-0`}
                                     style={{ width: dims.w, height: dims.h, transform: `scale(${scale})` }}
                                 >
                                     {renderLayout(preset)}
