@@ -1,0 +1,47 @@
+import { createCatchAllHandlers } from "@/lib/api-dispatch";
+
+export const maxDuration = 60;
+
+const routes = createCatchAllHandlers([
+  ["clear-cache", () => import("@/app/api/_handlers/admin/clear-cache/route")],
+  ["clients", () => import("@/app/api/_handlers/admin/clients/route")],
+  ["contacts/:id/promote", () => import("@/app/api/_handlers/admin/contacts/[id]/promote/route")],
+  ["contacts", () => import("@/app/api/_handlers/admin/contacts/route")],
+  ["cost/alerts/ack", () => import("@/app/api/_handlers/admin/cost/alerts/ack/route")],
+  ["cost/overview", () => import("@/app/api/_handlers/admin/cost/overview/route")],
+  ["generate-embeddings", () => import("@/app/api/_handlers/admin/generate-embeddings/route")],
+  ["geocoding/usage", () => import("@/app/api/_handlers/admin/geocoding/usage/route")],
+  ["insights/action-queue", () => import("@/app/api/_handlers/admin/insights/action-queue/route")],
+  ["insights/ai-usage", () => import("@/app/api/_handlers/admin/insights/ai-usage/route")],
+  ["insights/auto-requote", () => import("@/app/api/_handlers/admin/insights/auto-requote/route")],
+  ["insights/batch-jobs", () => import("@/app/api/_handlers/admin/insights/batch-jobs/route")],
+  ["insights/best-quote", () => import("@/app/api/_handlers/admin/insights/best-quote/route")],
+  ["insights/daily-brief", () => import("@/app/api/_handlers/admin/insights/daily-brief/route")],
+  ["insights/margin-leak", () => import("@/app/api/_handlers/admin/insights/margin-leak/route")],
+  ["insights/ops-copilot", () => import("@/app/api/_handlers/admin/insights/ops-copilot/route")],
+  ["insights/proposal-risk", () => import("@/app/api/_handlers/admin/insights/proposal-risk/route")],
+  ["insights/roi", () => import("@/app/api/_handlers/admin/insights/roi/route")],
+  ["insights/smart-upsell-timing", () => import("@/app/api/_handlers/admin/insights/smart-upsell-timing/route")],
+  ["insights/upsell-recommendations", () => import("@/app/api/_handlers/admin/insights/upsell-recommendations/route")],
+  ["insights/win-loss", () => import("@/app/api/_handlers/admin/insights/win-loss/route")],
+  ["marketplace/verify", () => import("@/app/api/_handlers/admin/marketplace/verify/route")],
+  ["notifications/delivery/retry", () => import("@/app/api/_handlers/admin/notifications/delivery/retry/route")],
+  ["notifications/delivery", () => import("@/app/api/_handlers/admin/notifications/delivery/route")],
+  ["operations/command-center", () => import("@/app/api/_handlers/admin/operations/command-center/route")],
+  ["pdf-imports/upload", () => import("@/app/api/_handlers/admin/pdf-imports/upload/route")],
+  ["pdf-imports/:id", () => import("@/app/api/_handlers/admin/pdf-imports/[id]/route")],
+  ["pdf-imports", () => import("@/app/api/_handlers/admin/pdf-imports/route")],
+  ["referrals", () => import("@/app/api/_handlers/admin/referrals/route")],
+  ["security/diagnostics", () => import("@/app/api/_handlers/admin/security/diagnostics/route")],
+  ["social/generate", () => import("@/app/api/_handlers/admin/social/generate/route")],
+  ["tour-templates/extract", () => import("@/app/api/_handlers/admin/tour-templates/extract/route")],
+  ["trips/:id/clone", () => import("@/app/api/_handlers/admin/trips/[id]/clone/route")],
+  ["trips/:id", () => import("@/app/api/_handlers/admin/trips/[id]/route")],
+  ["trips", () => import("@/app/api/_handlers/admin/trips/route")],
+  ["whatsapp/health", () => import("@/app/api/_handlers/admin/whatsapp/health/route")],
+  ["whatsapp/normalize-driver-phones", () => import("@/app/api/_handlers/admin/whatsapp/normalize-driver-phones/route")],
+  ["workflow/events", () => import("@/app/api/_handlers/admin/workflow/events/route")],
+  ["workflow/rules", () => import("@/app/api/_handlers/admin/workflow/rules/route")],
+]);
+
+export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;
