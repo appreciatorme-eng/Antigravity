@@ -29,6 +29,11 @@ const VALID_LAYOUTS = new Set<LayoutType>([
   "MagazineCoverLayout",
   "DuotoneLayout",
   "BoldTypographyLayout",
+  "CollageGridLayout",
+  "TriPanelLayout",
+  "PolaroidScatterLayout",
+  "WindowGalleryLayout",
+  "MosaicStripLayout",
 ]);
 
 const VALID_ASPECTS = new Set<AspectRatio>(["square", "portrait", "story"]);

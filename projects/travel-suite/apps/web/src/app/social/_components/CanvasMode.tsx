@@ -33,6 +33,11 @@ import {
     MagazineCoverLayout,
     DuotoneLayout,
     BoldTypographyLayout,
+    CollageGridLayout,
+    TriPanelLayout,
+    PolaroidScatterLayout,
+    WindowGalleryLayout,
+    MosaicStripLayout,
 } from "@/components/social/templates/layouts/LayoutRenderer";
 
 // ---------------------------------------------------------------------------
@@ -70,6 +75,11 @@ function renderLayout(preset: SocialTemplate, templateData: any) {
         case "MagazineCoverLayout":     return <MagazineCoverLayout {...p} />;
         case "DuotoneLayout":           return <DuotoneLayout {...p} />;
         case "BoldTypographyLayout":    return <BoldTypographyLayout {...p} />;
+        case "CollageGridLayout":       return <CollageGridLayout {...p} />;
+        case "TriPanelLayout":          return <TriPanelLayout {...p} />;
+        case "PolaroidScatterLayout":   return <PolaroidScatterLayout {...p} />;
+        case "WindowGalleryLayout":     return <WindowGalleryLayout {...p} />;
+        case "MosaicStripLayout":       return <MosaicStripLayout {...p} />;
         default:                        return <CenterLayout {...p} />;
     }
 }
@@ -79,6 +89,8 @@ function renderBg(preset: SocialTemplate): string {
         "ServiceShowcaseLayout", "HeroServicesLayout", "InfoSplitLayout",
         "GradientHeroLayout", "DiagonalSplitLayout", "MagazineCoverLayout",
         "DuotoneLayout", "BoldTypographyLayout",
+        "CollageGridLayout", "TriPanelLayout", "PolaroidScatterLayout",
+        "WindowGalleryLayout", "MosaicStripLayout",
     ];
     if (selfBgLayouts.includes(preset.layout)) return "";
     if (preset.colorScheme === "dark")  return "bg-slate-900 text-white";
@@ -175,7 +187,10 @@ export function CanvasMode({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    templateData,
+                    templateData: {
+                        ...templateData,
+                        galleryImages: templateData.galleryImages || [],
+                    },
                     layoutType: template.layout,
                     backgroundUrl: templateData.heroImage,
                     aspectRatio: "square",

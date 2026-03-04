@@ -5,7 +5,7 @@ import { toPng } from "html-to-image";
 import { Download, Eye, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
-import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout } from "@/components/social/templates/layouts/LayoutRenderer";
+import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout, CollageGridLayout, TriPanelLayout, PolaroidScatterLayout, WindowGalleryLayout, MosaicStripLayout } from "@/components/social/templates/layouts/LayoutRenderer";
 import { SocialTemplate } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
@@ -275,6 +275,11 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             case "MagazineCoverLayout":     return <MagazineCoverLayout {...p} />;
             case "DuotoneLayout":           return <DuotoneLayout {...p} />;
             case "BoldTypographyLayout":    return <BoldTypographyLayout {...p} />;
+            case "CollageGridLayout":       return <CollageGridLayout {...p} />;
+            case "TriPanelLayout":          return <TriPanelLayout {...p} />;
+            case "PolaroidScatterLayout":   return <PolaroidScatterLayout {...p} />;
+            case "WindowGalleryLayout":     return <WindowGalleryLayout {...p} />;
+            case "MosaicStripLayout":       return <MosaicStripLayout {...p} />;
             default:                        return <CenterLayout {...p} />;
         }
     };
@@ -284,6 +289,8 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             "ServiceShowcaseLayout", "HeroServicesLayout", "InfoSplitLayout",
             "GradientHeroLayout", "DiagonalSplitLayout", "MagazineCoverLayout",
             "DuotoneLayout", "BoldTypographyLayout",
+            "CollageGridLayout", "TriPanelLayout", "PolaroidScatterLayout",
+            "WindowGalleryLayout", "MosaicStripLayout",
         ];
         if (selfBgLayouts.includes(preset.layout)) return "";
         // CarouselSlideLayout has its own built-in background

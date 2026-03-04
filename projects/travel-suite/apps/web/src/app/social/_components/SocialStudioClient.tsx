@@ -5,11 +5,13 @@ import { AnimatePresence } from "framer-motion";
 import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { SocialTemplate } from "@/lib/social/types";
+import { matchDestination } from "@/lib/social/destination-images";
 import { GlassModal } from "@/components/glass/GlassModal";
 
 // New components
 import { ContentBar } from "./ContentBar";
 import { BackgroundPicker } from "./BackgroundPicker";
+import { GallerySlotPicker } from "./GallerySlotPicker";
 import { CanvasMode } from "./CanvasMode";
 import { ToolbarActions, type ToolbarAction } from "./ToolbarActions";
 import { TemplateGallery } from "./TemplateGallery";
@@ -69,6 +71,11 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
 
     // Canvas mode
     const [canvasTemplate, setCanvasTemplate] = useState<SocialTemplate | null>(null);
+
+    // Track which multi-image template is being previewed (for GallerySlotPicker)
+    const [previewedTemplate, setPreviewedTemplate] = useState<SocialTemplate | null>(null);
+    const isMultiImage = previewedTemplate?.isMultiImage ?? false;
+    const imageSlotCount = previewedTemplate?.imageSlotCount ?? 3;
 
     // Toolbar action modals
     const [activeAction, setActiveAction] = useState<ToolbarAction | null>(null);
@@ -171,6 +178,40 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         }
     }, []);
 
+    // --- Auto-populate galleryImages from destination library ---
+    const prevDestRef = useRef(templateData.destination);
+
+    useEffect(() => {
+        // Only trigger when destination actually changes (not on every render)
+        if (prevDestRef.current === templateData.destination) return;
+        prevDestRef.current = templateData.destination;
+
+        const images = matchDestination(templateData.destination);
+        if (images.length >= 2) {
+            setTemplateData((prev: any) => ({
+                ...prev,
+                galleryImages: images.map((img) => img.url),
+            }));
+            // Also add to available backgrounds pool
+            const newUrls = images.map((img) => img.url);
+            setAvailableBackgrounds((prev) => {
+                const merged = new Set([...prev, ...newUrls]);
+                return Array.from(merged);
+            });
+        }
+    }, [templateData.destination]);
+
+    // Gallery image change handler for GallerySlotPicker
+    const handleGalleryChange = useCallback((images: string[]) => {
+        setTemplateData((prev: any) => ({ ...prev, galleryImages: images }));
+    }, []);
+
+    // Template select handler — track previewed template + open canvas
+    const handleTemplateSelect = useCallback((template: SocialTemplate) => {
+        setPreviewedTemplate(template);
+        setCanvasTemplate(template);
+    }, []);
+
     return (
         <div className="space-y-5 animate-fade-in-up pb-20 mt-4">
             {/* Header */}
@@ -202,21 +243,31 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                 onImageUpload={handleImageUpload}
             />
 
-            {/* Background Picker */}
-            <BackgroundPicker
-                templateData={templateData}
-                selectedBackground={templateData.heroImage || ""}
-                availableBackgrounds={availableBackgrounds}
-                onBackgroundChange={handleBackgroundChange}
-                onBackgroundsGenerated={handleBackgroundsGenerated}
-                onImageUpload={(e) => handleImageUpload(e, "hero")}
-            />
+            {/* Background / Gallery Picker — conditional on multi-image */}
+            {isMultiImage ? (
+                <GallerySlotPicker
+                    galleryImages={(templateData as any).galleryImages || []}
+                    slotCount={imageSlotCount}
+                    destination={templateData.destination}
+                    onGalleryChange={handleGalleryChange}
+                    onImageUpload={(e) => handleImageUpload(e, "hero")}
+                />
+            ) : (
+                <BackgroundPicker
+                    templateData={templateData}
+                    selectedBackground={templateData.heroImage || ""}
+                    availableBackgrounds={availableBackgrounds}
+                    onBackgroundChange={handleBackgroundChange}
+                    onBackgroundsGenerated={handleBackgroundsGenerated}
+                    onImageUpload={(e) => handleImageUpload(e, "hero")}
+                />
+            )}
 
             {/* Template Gallery (full width, 3 cols) */}
             <TemplateGallery
                 templateData={templateData}
                 connections={connections}
-                onTemplateSelect={setCanvasTemplate}
+                onTemplateSelect={handleTemplateSelect}
             />
 
             {/* Canvas Mode (full-screen overlay) */}

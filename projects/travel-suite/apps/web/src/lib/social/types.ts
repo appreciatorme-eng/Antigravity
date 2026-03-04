@@ -22,7 +22,12 @@ export type LayoutType =
     | "DiagonalSplitLayout"
     | "MagazineCoverLayout"
     | "DuotoneLayout"
-    | "BoldTypographyLayout";
+    | "BoldTypographyLayout"
+    | "CollageGridLayout"
+    | "TriPanelLayout"
+    | "PolaroidScatterLayout"
+    | "WindowGalleryLayout"
+    | "MosaicStripLayout";
 
 export type TierLevel = "Starter" | "Pro" | "Business" | "Enterprise";
 
@@ -44,6 +49,10 @@ export interface SocialTemplate {
     defaultText?: Record<string, string>;
     defaultImage?: string;
     isCarousel?: boolean;
+    /** Signals this template uses multiple images in a grid/collage layout */
+    isMultiImage?: boolean;
+    /** How many image slots this layout uses (3-5) */
+    imageSlotCount?: number;
     /** Per-template color palette for unique visual identity */
     palette?: {
         /** Tailwind bg class OR inline gradient for fallback background */
@@ -86,6 +95,8 @@ export interface TemplateDataForRender {
   logoUrl?: string;
   logoWidth?: number;
   heroImage?: string;
+  /** Array of 3-5 image URLs for multi-image layouts */
+  galleryImages?: string[];
   services?: string[];
   bulletPoints?: string[];
   reviewText?: string;
