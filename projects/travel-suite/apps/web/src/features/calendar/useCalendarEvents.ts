@@ -374,6 +374,55 @@ async function fetchConciergeRequests(
 }
 
 // ---------------------------------------------------------------------------
+// Fetch + normalise: Personal Events
+// ---------------------------------------------------------------------------
+
+async function fetchPersonalEvents(
+  supabase: SupabaseClient,
+  orgId: string,
+  windowStart: string,
+  windowEnd: string,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await (supabase as any)
+    .from("calendar_events")
+    .select("*")
+    .eq("organization_id", orgId)
+    .gte("start_time", windowStart)
+    .lte("start_time", windowEnd);
+
+  if (error) throw error;
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    type: "personal" as const,
+    title: row.title,
+    subtitle:
+      row.category === "meeting"
+        ? "Meeting"
+        : row.category === "task"
+          ? "Task"
+          : row.category === "reminder"
+            ? "Reminder"
+            : "Personal",
+    startDate: row.start_time,
+    endDate: row.end_time ?? null,
+    status: row.status ?? "active",
+    statusVariant: getStatusVariant(row.status ?? "active"),
+    amount: null,
+    currency: null,
+    href: "#",
+    drillHref: null,
+    entityData: {
+      type: "personal" as const,
+      description: row.description ?? null,
+      location: row.location ?? null,
+      category: row.category ?? "personal",
+      allDay: row.all_day ?? false,
+    },
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Main hook
 // ---------------------------------------------------------------------------
 
@@ -405,6 +454,7 @@ export function useCalendarEvents(month: number, year: number) {
         fetchProposals(supabase, orgId, startIso, endIso),
         fetchSocialPosts(supabase, orgId, startIso, endIso),
         fetchConciergeRequests(supabase, orgId, startIso, endIso),
+        fetchPersonalEvents(supabase, orgId, startIso, endIso),
       ]);
 
       // Merge all fulfilled results into a single array

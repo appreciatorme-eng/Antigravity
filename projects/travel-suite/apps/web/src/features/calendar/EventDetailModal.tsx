@@ -12,6 +12,7 @@ import { ProposalEventDetail } from "./details/ProposalEventDetail";
 import { PaymentEventDetail } from "./details/PaymentEventDetail";
 import { SocialPostEventDetail } from "./details/SocialPostEventDetail";
 import { ConciergeEventDetail } from "./details/ConciergeEventDetail";
+import { PersonalEventDetail } from "./details/PersonalEventDetail";
 import type { CalendarEvent } from "./types";
 
 interface EventDetailModalProps {
@@ -70,6 +71,15 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             onClose={onClose}
           />
         );
+      case "personal":
+        return (
+          <PersonalEventDetail
+            data={event.entityData}
+            event={event}
+            actions={actions}
+            onClose={onClose}
+          />
+        );
     }
   }
 
@@ -102,15 +112,17 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
       {/* Footer with View Details link */}
       <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-        <GlassButton
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            window.location.href = event.href;
-          }}
-        >
-          View Full Details
-        </GlassButton>
+        {event.type !== "personal" && (
+          <GlassButton
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              window.location.href = event.href;
+            }}
+          >
+            View Full Details
+          </GlassButton>
+        )}
         {event.drillHref && (
           <GlassButton
             variant="ghost"

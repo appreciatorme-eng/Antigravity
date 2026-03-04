@@ -248,6 +248,105 @@ export function useCalendarActions() {
     },
   });
 
+  // -- Create personal event -------------------------------------------------
+
+  const createPersonalEvent = useMutation({
+    mutationFn: async (input: {
+      title: string;
+      description: string | null;
+      startDate: string;
+      endDate: string | null;
+      location: string | null;
+      category: string;
+      allDay: boolean;
+    }) => {
+      const supabase = createClient();
+      const orgId = await getOrgId(supabase);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await (supabase as any)
+        .from("calendar_events")
+        .insert({
+          organization_id: orgId,
+          created_by: user.id,
+          title: input.title,
+          description: input.description,
+          location: input.location,
+          start_time: input.startDate,
+          end_time: input.endDate,
+          all_day: input.allDay,
+          category: input.category,
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+      toast({ title: "Event created", variant: "success" });
+    },
+    onError: () => {
+      toast({ title: "Failed to create event", variant: "error" });
+    },
+  });
+
+  // -- Update personal event -------------------------------------------------
+
+  const updatePersonalEvent = useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      [key: string]: any;
+    }) => {
+      const supabase = createClient();
+      const { data, error } = await (supabase as any)
+        .from("calendar_events")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+      toast({ title: "Event updated", variant: "success" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update event", variant: "error" });
+    },
+  });
+
+  // -- Delete personal event -------------------------------------------------
+
+  const deletePersonalEvent = useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createClient();
+      const { error } = await (supabase as any)
+        .from("calendar_events")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+      toast({ title: "Event deleted", variant: "success" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete event", variant: "error" });
+    },
+  });
+
   return {
     updateTripStatus,
     sendInvoice,
@@ -255,5 +354,8 @@ export function useCalendarActions() {
     sendProposal,
     convertProposal,
     respondConcierge,
+    createPersonalEvent,
+    updatePersonalEvent,
+    deletePersonalEvent,
   };
 }

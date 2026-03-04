@@ -1,5 +1,5 @@
 import { STATUS_VARIANT_MAP } from "./constants";
-import type { BadgeVariant, CalendarEvent, EventLane } from "./types";
+import type { BadgeVariant, CalendarEvent, EventLane, PersonalEventData } from "./types";
 
 // ---------------------------------------------------------------------------
 // Date arithmetic helpers
@@ -267,4 +267,140 @@ export function computeEventLanes(
 
     return { event, startCol, span, lane: assignedLane };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Time grid helpers (Day / Week views)
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a Date to pixel offset from the top of the time grid.
+ */
+export function timeToPixelOffset(
+  date: Date,
+  startHour: number,
+  hourHeight: number,
+): number {
+  const hours = date.getHours() + date.getMinutes() / 60;
+  return Math.max(0, (hours - startHour) * hourHeight);
+}
+
+/**
+ * Split a day's events into all-day (multi-day + explicit allDay) vs timed.
+ */
+export function partitionDayEvents(
+  events: CalendarEvent[],
+  year: number,
+  month: number,
+  day: number,
+): { allDay: CalendarEvent[]; timed: CalendarEvent[] } {
+  const dayEvents = getEventsForDay(events, year, month, day);
+  const allDay: CalendarEvent[] = [];
+  const timed: CalendarEvent[] = [];
+
+  for (const event of dayEvents) {
+    const start = new Date(event.startDate);
+    const end = event.endDate ? new Date(event.endDate) : start;
+    const isMultiDay = !isSameDay(start, end);
+    const isAllDay =
+      event.entityData.type === "personal" &&
+      (event.entityData as PersonalEventData).allDay;
+
+    if (isMultiDay || isAllDay) {
+      allDay.push(event);
+    } else {
+      timed.push(event);
+    }
+  }
+
+  return { allDay, timed };
+}
+
+/**
+ * Assign side-by-side columns to overlapping timed events.
+ * Uses a greedy sweep-line approach.
+ */
+export function computeTimeGridColumns(
+  events: CalendarEvent[],
+): Array<{ event: CalendarEvent; column: number; totalColumns: number }> {
+  if (events.length === 0) return [];
+
+  const sorted = [...events].sort((a, b) => {
+    const aStart = new Date(a.startDate).getTime();
+    const bStart = new Date(b.startDate).getTime();
+    if (aStart !== bStart) return aStart - bStart;
+    const aEnd = a.endDate ? new Date(a.endDate).getTime() : aStart + 3600000;
+    const bEnd = b.endDate ? new Date(b.endDate).getTime() : bStart + 3600000;
+    return (bEnd - bStart) - (aEnd - aStart);
+  });
+
+  const clusters: CalendarEvent[][] = [];
+  let currentCluster: CalendarEvent[] = [];
+  let clusterEnd = 0;
+
+  for (const event of sorted) {
+    const eventStart = new Date(event.startDate).getTime();
+    const eventEnd = event.endDate
+      ? new Date(event.endDate).getTime()
+      : eventStart + 3600000;
+
+    if (currentCluster.length === 0 || eventStart < clusterEnd) {
+      currentCluster.push(event);
+      clusterEnd = Math.max(clusterEnd, eventEnd);
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [event];
+      clusterEnd = eventEnd;
+    }
+  }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  const result: Array<{ event: CalendarEvent; column: number; totalColumns: number }> = [];
+
+  for (const cluster of clusters) {
+    const columns: CalendarEvent[][] = [];
+
+    for (const event of cluster) {
+      const eventStart = new Date(event.startDate).getTime();
+      let placed = false;
+
+      for (let col = 0; col < columns.length; col++) {
+        const lastInCol = columns[col][columns[col].length - 1];
+        const lastEnd = lastInCol.endDate
+          ? new Date(lastInCol.endDate).getTime()
+          : new Date(lastInCol.startDate).getTime() + 3600000;
+
+        if (eventStart >= lastEnd) {
+          columns[col].push(event);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        columns.push([event]);
+      }
+    }
+
+    const totalColumns = columns.length;
+    for (let col = 0; col < columns.length; col++) {
+      for (const event of columns[col]) {
+        result.push({ event, column: col, totalColumns });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Format an hour number (0-23) as a display label.
+ */
+export function formatHourLabel(hour: number): string {
+  if (hour === 0) return "12 AM";
+  if (hour < 12) return `${hour} AM`;
+  if (hour === 12) return "12 PM";
+  return `${hour - 12} PM`;
 }

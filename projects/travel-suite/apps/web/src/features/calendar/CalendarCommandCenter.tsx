@@ -10,8 +10,10 @@ import { CalendarSkeleton } from "./CalendarSkeleton";
 import { CalendarEmptyState } from "./CalendarEmptyState";
 import { MonthView } from "./MonthView";
 import { WeekView } from "./WeekView";
+import { DayView } from "./DayView";
 import { DayDrawer } from "./DayDrawer";
 import { EventDetailModal } from "./EventDetailModal";
+import { AddEventModal } from "./AddEventModal";
 import { useCalendarEvents } from "./useCalendarEvents";
 import { useCalendarActions } from "./useCalendarActions";
 import { ALL_EVENT_TYPES } from "./constants";
@@ -43,6 +45,11 @@ export function CalendarCommandCenter() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [addEventDefaults, setAddEventDefaults] = useState<{
+    date: Date;
+    hour: number | null;
+  } | null>(null);
 
   // ---- Data fetching ----
   const {
@@ -98,8 +105,30 @@ export function CalendarCommandCenter() {
     });
   }, []);
 
+  const handlePrevDay = useCallback(() => {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() - 1);
+      return next;
+    });
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + 1);
+      return next;
+    });
+  }, []);
+
   const handleToday = useCallback(() => {
     setCurrentDate(new Date());
+  }, []);
+
+  // ---- Time slot click (week/day view) ----
+  const handleTimeSlotClick = useCallback((date: Date, hour: number) => {
+    setAddEventDefaults({ date, hour });
+    setShowAddEvent(true);
   }, []);
 
   // ---- Day drawer events ----
@@ -113,6 +142,21 @@ export function CalendarCommandCenter() {
     );
   }, [filteredEvents, selectedDay]);
 
+  // ---- View-mode-aware navigation ----
+  const handlePrev =
+    viewMode === "month"
+      ? handlePrevMonth
+      : viewMode === "week"
+        ? handlePrevWeek
+        : handlePrevDay;
+
+  const handleNext =
+    viewMode === "month"
+      ? handleNextMonth
+      : viewMode === "week"
+        ? handleNextWeek
+        : handleNextDay;
+
   // ---- Render ----
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
@@ -122,7 +166,7 @@ export function CalendarCommandCenter() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
-        <h1 className="text-4xl md:text-5xl font-serif text-transparent bg-clip-text bg-gradient-premium tracking-tight">
+        <h1 className="text-4xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight">
           Command Center
         </h1>
         <p className="mt-2 text-lg text-slate-500">
@@ -136,11 +180,15 @@ export function CalendarCommandCenter() {
         viewMode={viewMode}
         filters={filters}
         eventCounts={eventCounts}
-        onPrev={viewMode === "month" ? handlePrevMonth : handlePrevWeek}
-        onNext={viewMode === "month" ? handleNextMonth : handleNextWeek}
+        onPrev={handlePrev}
+        onNext={handleNext}
         onToday={handleToday}
         onViewModeChange={setViewMode}
         onFiltersChange={setFilters}
+        onAddEvent={() => {
+          setAddEventDefaults({ date: currentDate, hour: null });
+          setShowAddEvent(true);
+        }}
       />
 
       {/* Calendar Grid */}
@@ -165,12 +213,20 @@ export function CalendarCommandCenter() {
               onDayClick={setSelectedDay}
               onEventClick={setSelectedEvent}
             />
+          ) : viewMode === "day" ? (
+            <DayView
+              events={filteredEvents}
+              currentDate={currentDate}
+              onEventClick={setSelectedEvent}
+              onTimeSlotClick={handleTimeSlotClick}
+            />
           ) : (
             <WeekView
               events={filteredEvents}
               currentDate={currentDate}
               onDayClick={setSelectedDay}
               onEventClick={setSelectedEvent}
+              onTimeSlotClick={handleTimeSlotClick}
             />
           )}
         </div>
@@ -194,6 +250,19 @@ export function CalendarCommandCenter() {
           <EventDetailModal
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Add Event Modal */}
+      <AnimatePresence>
+        {showAddEvent && (
+          <AddEventModal
+            defaults={addEventDefaults}
+            onClose={() => {
+              setShowAddEvent(false);
+              setAddEventDefaults(null);
+            }}
           />
         )}
       </AnimatePresence>

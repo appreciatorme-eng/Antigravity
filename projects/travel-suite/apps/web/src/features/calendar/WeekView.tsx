@@ -2,21 +2,20 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/glass/GlassCard";
-import { WeekDayColumn } from "./WeekDayColumn";
+import { AllDayEventsBar } from "./AllDayEventsBar";
+import { WeekTimeGrid } from "./WeekTimeGrid";
 import { DAY_NAMES } from "./constants";
-import { getWeekDates, getEventsForDay, isToday } from "./utils";
+import { getWeekDates, isToday, partitionDayEvents } from "./utils";
 import type { CalendarEvent } from "./types";
-
-// ---------------------------------------------------------------------------
-// WeekView — 7-column view for the current week with full event cards
-// ---------------------------------------------------------------------------
 
 interface WeekViewProps {
   events: CalendarEvent[];
   currentDate: Date;
   onDayClick: (day: { year: number; month: number; day: number }) => void;
   onEventClick: (event: CalendarEvent) => void;
+  onTimeSlotClick: (date: Date, hour: number) => void;
 }
 
 export function WeekView({
@@ -24,98 +23,97 @@ export function WeekView({
   currentDate,
   onDayClick,
   onEventClick,
+  onTimeSlotClick,
 }: WeekViewProps) {
-  // Derive the 7 dates (Sun-Sat) for the week containing currentDate
   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
 
-  // Pre-compute events for each day to avoid filtering inside each column
-  const dayEvents = useMemo(
-    () =>
-      weekDates.map((date) =>
-        getEventsForDay(
-          events,
-          date.getFullYear(),
-          date.getMonth(),
-          date.getDate(),
-        ),
-      ),
-    [events, weekDates],
-  );
+  // Collect all all-day events for the week
+  const allDayEvents = useMemo(() => {
+    const seen = new Set<string>();
+    const result: CalendarEvent[] = [];
+
+    for (const date of weekDates) {
+      const { allDay } = partitionDayEvents(
+        events,
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      for (const event of allDay) {
+        if (!seen.has(event.id)) {
+          seen.add(event.id);
+          result.push(event);
+        }
+      }
+    }
+
+    return result;
+  }, [events, weekDates]);
 
   return (
     <GlassCard padding="none" className="overflow-hidden">
-      {/* Weekday name headers */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 border-b border-gray-200 rounded-t-2xl overflow-hidden">
+      {/* Weekday name + date headers */}
+      <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-0 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl overflow-hidden">
+        {/* Empty gutter cell */}
+        <div className="bg-gray-50/80 dark:bg-gray-800/50" />
+
         {weekDates.map((date, idx) => {
-          const today = isToday(
+          const todayCol = isToday(
             date.getFullYear(),
             date.getMonth(),
             date.getDate(),
           );
 
           return (
-            <motion.div
-              key={idx}
+            <motion.button
+              key={date.toISOString()}
+              type="button"
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: idx * 0.04,
-                duration: 0.2,
-                ease: "easeOut",
-              }}
-              className={headerCellClass(today)}
-            >
-              <span className="text-xs font-bold uppercase tracking-widest">
-                {DAY_NAMES[idx]}
-              </span>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Day columns */}
-      <div className="grid grid-cols-7 bg-white rounded-b-xl overflow-hidden">
-        {weekDates.map((date, idx) => {
-          const today = isToday(
-            date.getFullYear(),
-            date.getMonth(),
-            date.getDate(),
-          );
-
-          return (
-            <WeekDayColumn
-              key={date.toISOString()}
-              date={date}
-              events={dayEvents[idx]}
-              isToday={today}
-              onDayClick={() =>
+              transition={{ delay: idx * 0.04, duration: 0.2, ease: "easeOut" }}
+              onClick={() =>
                 onDayClick({
                   year: date.getFullYear(),
                   month: date.getMonth(),
                   day: date.getDate(),
                 })
               }
-              onEventClick={onEventClick}
-              index={idx}
-            />
+              className={cn(
+                "py-3 text-center transition-colors border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+                "hover:bg-gray-50/60 dark:hover:bg-gray-800/60 cursor-pointer",
+                todayCol
+                  ? "bg-primary/[0.08]"
+                  : "bg-gray-50/80 dark:bg-gray-800/50",
+              )}
+            >
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary block">
+                {DAY_NAMES[idx]}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold mt-1",
+                  todayCol
+                    ? "bg-primary text-white"
+                    : "text-text-secondary",
+                )}
+              >
+                {date.getDate()}
+              </span>
+            </motion.button>
           );
         })}
       </div>
+
+      {/* All-day events bar */}
+      <AllDayEventsBar events={allDayEvents} onEventClick={onEventClick} />
+
+      {/* Time grid */}
+      <WeekTimeGrid
+        weekDates={weekDates}
+        events={events}
+        onEventClick={onEventClick}
+        onTimeSlotClick={onTimeSlotClick}
+      />
     </GlassCard>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function headerCellClass(today: boolean): string {
-  const base =
-    "py-3 text-center text-text-secondary transition-colors";
-
-  if (today) {
-    return `${base} bg-primary/[0.08]`;
-  }
-
-  return `${base} bg-gray-50/80`;
 }

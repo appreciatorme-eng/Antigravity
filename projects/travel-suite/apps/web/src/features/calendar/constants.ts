@@ -13,6 +13,8 @@ import {
   Clock,
   Eye,
   ExternalLink,
+  UserCircle,
+  Trash2,
 } from "lucide-react";
 
 import type {
@@ -87,6 +89,16 @@ export const EVENT_TYPE_CONFIG: Record<CalendarEventType, EventTypeConfig> = {
     icon: MessageCircle,
     badgeVariant: "danger",
   },
+  personal: {
+    label: "Personal",
+    color: "#6366f1",
+    textColor: "text-indigo-800",
+    borderColor: "border-indigo-300",
+    dotColor: "bg-indigo-500",
+    bgColor: "bg-indigo-100",
+    icon: UserCircle,
+    badgeVariant: "default",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -116,6 +128,10 @@ export const QUICK_ACTIONS: Record<CalendarEventType, QuickAction[]> = {
   concierge: [
     { label: "Respond", icon: Send, action: "respond" },
     { label: "View Trip", icon: Eye, action: "view_trip" },
+  ],
+  personal: [
+    { label: "Edit", icon: Pencil, action: "edit" },
+    { label: "Delete", icon: Trash2, action: "delete" },
   ],
 };
 
@@ -176,4 +192,17 @@ export const ALL_EVENT_TYPES: CalendarEventType[] = [
   "proposal",
   "social_post",
   "concierge",
+  "personal",
 ];
+
+// ---------------------------------------------------------------------------
+// Time grid constants (Day/Week views)
+// ---------------------------------------------------------------------------
+
+export const DAY_START_HOUR = 6;
+export const DAY_END_HOUR = 23;
+export const HOUR_HEIGHT_PX = 60;
+export const HOURS: number[] = Array.from(
+  { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
+  (_, i) => DAY_START_HOUR + i,
+);

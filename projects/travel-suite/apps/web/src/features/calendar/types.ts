@@ -10,9 +10,10 @@ export type CalendarEventType =
   | "payment"
   | "proposal"
   | "social_post"
-  | "concierge";
+  | "concierge"
+  | "personal";
 
-export type CalendarViewMode = "month" | "week";
+export type CalendarViewMode = "month" | "week" | "day";
 
 export type BadgeVariant =
   | "default"
@@ -46,7 +47,8 @@ export interface CalendarEvent {
     | ProposalEventData
     | PaymentEventData
     | SocialPostEventData
-    | ConciergeEventData;
+    | ConciergeEventData
+    | PersonalEventData;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,14 @@ export interface ConciergeEventData {
   response: string | null;
 }
 
+export interface PersonalEventData {
+  type: "personal";
+  description: string | null;
+  location: string | null;
+  category: "meeting" | "task" | "reminder" | "personal" | "other";
+  allDay: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Filter state
 // ---------------------------------------------------------------------------
@@ -145,4 +155,18 @@ export interface EventLane {
   startCol: number;
   span: number;
   lane: number;
+}
+
+// ---------------------------------------------------------------------------
+// Personal event creation input
+// ---------------------------------------------------------------------------
+
+export interface CreatePersonalEventInput {
+  title: string;
+  description: string | null;
+  startDate: string;
+  endDate: string | null;
+  location: string | null;
+  category: "meeting" | "task" | "reminder" | "personal" | "other";
+  allDay: boolean;
 }

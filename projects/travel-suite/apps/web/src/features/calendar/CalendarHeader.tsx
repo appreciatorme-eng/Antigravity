@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { cn } from "@/lib/utils";
 import { MONTH_NAMES } from "./constants";
 import { CalendarFilters } from "./CalendarFilters";
+import { getWeekDates } from "./utils";
 import type {
   CalendarViewMode,
   CalendarFiltersState,
@@ -22,6 +23,34 @@ interface CalendarHeaderProps {
   onToday: () => void;
   onViewModeChange: (mode: CalendarViewMode) => void;
   onFiltersChange: (filters: CalendarFiltersState) => void;
+  onAddEvent: () => void;
+}
+
+function getDateDisplay(date: Date, mode: CalendarViewMode): string {
+  if (mode === "day") {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  if (mode === "week") {
+    const weekDates = getWeekDates(date);
+    const start = weekDates[0];
+    const end = weekDates[6];
+    const startStr = start.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const endStr = end.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return `${startStr} \u2014 ${endStr}`;
+  }
+  return `${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 export function CalendarHeader({
@@ -34,6 +63,7 @@ export function CalendarHeader({
   onToday,
   onViewModeChange,
   onFiltersChange,
+  onAddEvent,
 }: CalendarHeaderProps) {
   return (
     <GlassCard padding="lg" className="space-y-4">
@@ -50,7 +80,7 @@ export function CalendarHeader({
           </button>
 
           <h2 className="text-2xl font-serif text-secondary min-w-[220px] text-center">
-            {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
+            {getDateDisplay(currentDate, viewMode)}
           </h2>
 
           <button
@@ -64,10 +94,20 @@ export function CalendarHeader({
           <GlassButton variant="outline" size="sm" onClick={onToday}>
             Today
           </GlassButton>
+
+          <GlassButton
+            variant="primary"
+            size="sm"
+            onClick={onAddEvent}
+            className="gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Add Event
+          </GlassButton>
         </div>
 
         {/* View Toggle */}
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex bg-slate-100 dark:bg-gray-800 p-1 rounded-xl">
           <button
             onClick={() => onViewModeChange("month")}
             className={cn(
@@ -89,6 +129,17 @@ export function CalendarHeader({
             )}
           >
             Week
+          </button>
+          <button
+            onClick={() => onViewModeChange("day")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
+              viewMode === "day"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500",
+            )}
+          >
+            Day
           </button>
         </div>
       </div>
