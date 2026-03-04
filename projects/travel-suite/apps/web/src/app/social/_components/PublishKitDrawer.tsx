@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -37,6 +37,7 @@ export const PublishKitDrawer = ({
     const [scheduleTime, setScheduleTime] = useState("09:00");
     const [publishing, setPublishing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [hdDownloading, setHdDownloading] = useState(false);
     const [published, setPublished] = useState(false);
 
     const handlePublish = async () => {
@@ -271,7 +272,7 @@ export const PublishKitDrawer = ({
                                             ? "Publish Now"
                                             : "Schedule Post"}
                                     </Button>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <Button
                                             variant="outline"
                                             className="font-semibold h-10 rounded-xl"
@@ -279,7 +280,7 @@ export const PublishKitDrawer = ({
                                             disabled={saving}
                                         >
                                             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                                            Save Draft
+                                            Draft
                                         </Button>
                                         <Button
                                             variant="outline"
@@ -288,6 +289,46 @@ export const PublishKitDrawer = ({
                                         >
                                             <Download className="w-4 h-4 mr-2" />
                                             Download
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="font-semibold h-10 rounded-xl text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                            onClick={async () => {
+                                                setHdDownloading(true);
+                                                try {
+                                                    const res = await fetch("/api/social/render-poster", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            templateData,
+                                                            layoutType: template?.layout || "CenterLayout",
+                                                            backgroundUrl: templateData?.heroImage,
+                                                            aspectRatio: "square",
+                                                            format: "png",
+                                                            quality: 95,
+                                                        }),
+                                                    });
+                                                    if (!res.ok) throw new Error("HD export failed");
+                                                    const blob = await res.blob();
+                                                    const url = URL.createObjectURL(blob);
+                                                    const link = document.createElement("a");
+                                                    link.download = "poster-HD.png";
+                                                    link.href = url;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                    URL.revokeObjectURL(url);
+                                                    toast.success("HD poster downloaded!");
+                                                } catch {
+                                                    toast.error("HD export failed. Try the standard download.");
+                                                } finally {
+                                                    setHdDownloading(false);
+                                                }
+                                            }}
+                                            disabled={hdDownloading}
+                                        >
+                                            {hdDownloading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                                            HD
                                         </Button>
                                     </div>
                                 </>

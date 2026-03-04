@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toPng } from "html-to-image";
-import { Download, Instagram, Linkedin, Lock, Search, X, Zap, Smartphone, Square } from "lucide-react";
+import { Download, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
 import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout } from "@/components/social/templates/layouts/LayoutRenderer";
@@ -33,6 +33,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
     const [aspectRatio, setAspectRatio] = useState<"square" | "portrait" | "story">("square");
     const [drawerTemplate, setDrawerTemplate] = useState<SocialTemplate | null>(null);
     const [downloading, setDownloading] = useState<string | null>(null);
+    const [hdExporting, setHdExporting] = useState<string | null>(null);
     const [phoneMockupId, setPhoneMockupId] = useState<string | null>(null);
 
     const upcomingFestivals = getUpcomingFestivals();
@@ -85,6 +86,46 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             }),
         });
         if (!res.ok) throw new Error("Save failed");
+    };
+
+    const handleHdExport = async (templateId: string, preset: SocialTemplate) => {
+        setHdExporting(templateId);
+        try {
+            const res = await fetch("/api/social/render-poster", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    templateData,
+                    layoutType: preset.layout,
+                    backgroundUrl: templateData.heroImage,
+                    aspectRatio,
+                    format: "png",
+                    quality: 95,
+                }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({ error: "HD export failed" }));
+                throw new Error(errData.error || "HD export failed");
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.download = `${preset.name.replace(/\s+/g, "-")}-HD.png`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast.success("HD poster downloaded!");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "HD export failed";
+            toast.error(message);
+        } finally {
+            setHdExporting(null);
+        }
     };
 
     const renderLayout = (preset: SocialTemplate) => {
@@ -372,6 +413,21 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
                                                     ? <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
                                                     : <Download className="w-4 h-4" />
                                                 }
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleHdExport(preset.id, preset);
+                                                }}
+                                                disabled={hdExporting === preset.id}
+                                                className="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
+                                                title="HD Export (Server Rendered)"
+                                            >
+                                                {hdExporting === preset.id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Zap className="w-4 h-4" />
+                                                )}
                                             </button>
                                             <div className="flex gap-0.5 opacity-40">
                                                 <Instagram className="w-3.5 h-3.5 text-pink-500" />

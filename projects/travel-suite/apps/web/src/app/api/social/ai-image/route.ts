@@ -1,40 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { fal } from "@fal-ai/client";
 
 /**
  * POST /api/social/ai-image
- * Generates AI background images for poster templates.
+ * Generates AI background images for poster templates using FAL.ai Flux models.
  *
  * Body: { prompt: string, width?: number, height?: number, count?: number }
- * Returns: { images: { url: string; provider: string }[] }
+ * Returns: { images: { url: string; provider: string }[], requested, generated, tier_limit }
  */
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 
-function buildPollinationsUrl(prompt: string, width: number, height: number, seed: number): string {
-    const encoded = encodeURIComponent(prompt);
-    return `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
-}
-
-async function fetchImageAsDataUrl(url: string, timeoutMs = 45_000): Promise<string | null> {
-    try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(url, {
-            signal: controller.signal,
-            headers: { Accept: "image/*" },
-        });
-        clearTimeout(timer);
-        if (!res.ok) return null;
-        const buffer = await res.arrayBuffer();
-        if (buffer.byteLength < 1000) return null;
-        const contentType = res.headers.get("content-type") || "image/jpeg";
-        const base64 = Buffer.from(buffer).toString("base64");
-        return `data:${contentType};base64,${base64}`;
-    } catch {
-        return null;
-    }
-}
+fal.config({ credentials: process.env.FAL_KEY });
 
 function maxCountByTier(tier: "free" | "pro" | "enterprise"): number {
     if (tier === "enterprise") return 8;
@@ -46,6 +24,38 @@ function clampDimension(value: unknown, fallback: number): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
     return Math.min(Math.max(Math.floor(parsed), 512), 1536);
+}
+
+function selectModel(tier: "free" | "pro" | "enterprise"): string {
+    if (tier === "enterprise") return "fal-ai/flux-pro/v1.1-ultra";
+    return "fal-ai/flux/schnell";
+}
+
+async function generateImage(
+    model: string,
+    prompt: string,
+    width: number,
+    height: number,
+): Promise<string | null> {
+    try {
+        const result = await fal.subscribe(model, {
+            input: {
+                prompt,
+                image_size: { width, height },
+                num_images: 1,
+                enable_safety_checker: false,
+            },
+        });
+
+        const images = result.data?.images;
+        if (!Array.isArray(images) || images.length === 0) return null;
+
+        const url = images[0]?.url;
+        return typeof url === "string" ? url : null;
+    } catch (err) {
+        console.error("[ai-image] FAL generation error:", err);
+        return null;
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -71,21 +81,18 @@ export async function POST(req: NextRequest) {
             ? Math.min(Math.max(Math.floor(requestedCount), 1), tierMax)
             : Math.min(4, tierMax);
 
-        const seeds = Array.from({ length: count }, (_, i) =>
-            Date.now() + i * 7919 + Math.floor(Math.random() * 10000)
-        );
+        const model = selectModel(guard.context.tier);
 
         const results = await Promise.allSettled(
-            seeds.map((seed) => {
-                const url = buildPollinationsUrl(prompt, width, height, seed);
-                return fetchImageAsDataUrl(url);
-            })
+            Array.from({ length: count }, () =>
+                generateImage(model, prompt, width, height)
+            )
         );
 
         const images: { url: string; provider: string }[] = [];
         for (const result of results) {
             if (result.status === "fulfilled" && result.value) {
-                images.push({ url: result.value, provider: "pollinations" });
+                images.push({ url: result.value, provider: "fal" });
             }
         }
 

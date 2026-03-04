@@ -1,6 +1,6 @@
 /**
  * Smart prompt engineering for AI-generated travel poster backgrounds.
- * Used with Pollinations AI (free) and Together AI (free tier).
+ * Used with FAL.ai Flux models.
  */
 
 export type AiImageStyle = "cinematic" | "minimal" | "vibrant" | "luxury";

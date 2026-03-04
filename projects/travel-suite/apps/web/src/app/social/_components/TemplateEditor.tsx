@@ -4,10 +4,11 @@
 import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
-import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight, Wand2, ImageIcon, Camera, Loader2 } from "lucide-react";
+import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight, Wand2, ImageIcon, Camera, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateBrandPalette, type BrandPalette } from "@/lib/social/color-utils";
 import { generateBackgroundPrompt, type AiImageStyle } from "@/lib/social/ai-prompts";
+import { toast } from "sonner";
 
 interface TemplateDataBase {
     companyName: string;
@@ -58,6 +59,15 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
     const [aiImages, setAiImages] = useState<{ url: string; provider: string }[]>([]);
     const [generatingAi, setGeneratingAi] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [smartGenerating, setSmartGenerating] = useState(false);
+    const [smartProgress, setSmartProgress] = useState("");
+    const [smartResult, setSmartResult] = useState<{
+        image: string;
+        templateId: string;
+        templateName: string;
+        templateData: Record<string, unknown>;
+        backgroundUrl: string | null;
+    } | null>(null);
 
     const palette = orgPrimaryColor ? generateBrandPalette(orgPrimaryColor) : null;
 
@@ -99,6 +109,62 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
         }
     };
 
+    const handleSmartGenerate = async () => {
+        if (!templateData.destination) {
+            toast.warning("Enter a destination first");
+            return;
+        }
+        setSmartGenerating(true);
+        setSmartResult(null);
+        try {
+            setSmartProgress("Generating content with AI...");
+            await new Promise(r => setTimeout(r, 300));
+            setSmartProgress("Creating background image...");
+            await new Promise(r => setTimeout(r, 300));
+            setSmartProgress("Compositing poster...");
+
+            const res = await fetch("/api/social/smart-poster", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: templateData.destination,
+                    price: templateData.price,
+                    offer: templateData.offer,
+                    season: templateData.season,
+                    companyName: templateData.companyName,
+                    contactNumber: templateData.contactNumber,
+                    email: templateData.email,
+                    website: templateData.website,
+                    logoUrl: templateData.logoUrl,
+                    aspectRatio: "square",
+                    style: aiStyle,
+                }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({ error: "Generation failed" }));
+                throw new Error(errData.error || "Generation failed");
+            }
+
+            const data = await res.json();
+            setSmartResult({
+                image: data.poster.image,
+                templateId: data.templateId,
+                templateName: data.templateName,
+                templateData: data.templateData,
+                backgroundUrl: data.backgroundUrl,
+            });
+            setSmartProgress("");
+            toast.success(`Poster created with ${data.templateName}!`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Smart generation failed";
+            toast.error(message);
+            setSmartProgress("");
+        } finally {
+            setSmartGenerating(false);
+        }
+    };
+
     return (
         <div className="lg:col-span-4 space-y-4">
             <GlassCard className="p-6 space-y-5 border border-slate-200 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:bg-slate-900/40">
@@ -127,6 +193,69 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                     </div>
                     <p className="text-[9px] text-white/60 mt-1 text-center font-medium">Auto-generates cinematic AI backgrounds from your destination</p>
                 </button>
+
+                {/* Smart One-Click Generation */}
+                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800">
+                    <button
+                        onClick={handleSmartGenerate}
+                        disabled={smartGenerating || !templateData.destination}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all disabled:opacity-50"
+                    >
+                        {smartGenerating ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                {smartProgress || "Generating..."}
+                            </>
+                        ) : (
+                            <>
+                                <Zap className="w-4 h-4" />
+                                Smart Generate Poster
+                            </>
+                        )}
+                    </button>
+                    <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-1.5 text-center">
+                        AI picks the best template, generates background, and composes a ready-to-post poster
+                    </p>
+                </div>
+
+                {/* Smart Result Preview */}
+                {smartResult && (
+                    <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={smartResult.image} alt="AI Generated Poster" className="w-full" />
+                        <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
+                            <button
+                                onClick={() => {
+                                    const link = document.createElement("a");
+                                    link.download = `smart-poster-${Date.now()}.png`;
+                                    link.href = smartResult.image;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                }}
+                                className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                            >
+                                Download
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (smartResult.templateData) {
+                                        setTemplateData({
+                                            ...templateData,
+                                            ...(smartResult.templateData as Partial<TTemplateData>),
+                                            heroImage: smartResult.backgroundUrl || templateData.heroImage,
+                                        } as TTemplateData);
+                                    }
+                                    setSmartResult(null);
+                                    toast.info("Loaded into editor -- customize and download!");
+                                }}
+                                className="flex-1 px-3 py-2 border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 rounded-lg text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                            >
+                                Edit Further
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Brand Color Toggle */}
                 {palette && (
@@ -283,7 +412,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                             {heroTab === "ai" && (
                                 <div className="space-y-3">
                                     <p className="text-[10px] text-slate-500 font-medium">
-                                        AI generates stunning backgrounds from your destination. Powered by Pollinations AI (free).
+                                        AI generates stunning backgrounds from your destination. Powered by FAL.ai Flux.
                                     </p>
 
                                     {/* Style selector */}

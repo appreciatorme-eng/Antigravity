@@ -14,6 +14,8 @@ const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "unpkg.com",
   "tiles.openfreemap.org",
   "**.supabase.co",
+  "fal.media",
+  "v3.fal.media",
 ];
 
 function parseCsvHosts(value) {
@@ -50,7 +52,7 @@ const nextConfig = {
   turbopack: {
     root: projectRoot,
   },
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["pdf-parse", "sharp"],
   outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns,

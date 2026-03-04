@@ -58,3 +58,42 @@ export interface CarouselSlide {
 // Database types for insert/select wrappers (omitting for brevity as we'll mostly use definitions from supabase types later)
 export type PostStatus = 'draft' | 'ready' | 'scheduled' | 'publishing' | 'published' | 'failed';
 export type PostSource = 'manual' | 'ai_generated' | 'auto_review' | 'auto_festival' | 'itinerary';
+
+// ---------------------------------------------------------------------------
+// Server-side poster rendering types
+// ---------------------------------------------------------------------------
+
+export interface TemplateDataForRender {
+  companyName: string;
+  destination: string;
+  price: string;
+  offer: string;
+  season: string;
+  contactNumber: string;
+  email: string;
+  website: string;
+  logoUrl?: string;
+  logoWidth?: number;
+  heroImage?: string;
+  services?: string[];
+  bulletPoints?: string[];
+  reviewText?: string;
+  reviewerName?: string;
+  reviewerTrip?: string;
+}
+
+export interface PosterRenderInput {
+  templateData: TemplateDataForRender;
+  layoutType: LayoutType;
+  backgroundUrl?: string;
+  aspectRatio: AspectRatio;
+  format: "png" | "jpeg" | "webp";
+  quality?: number;
+}
+
+export interface PosterRenderOutput {
+  buffer: Buffer;
+  contentType: string;
+  width: number;
+  height: number;
+}
