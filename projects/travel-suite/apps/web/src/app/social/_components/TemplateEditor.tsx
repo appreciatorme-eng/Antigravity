@@ -82,10 +82,15 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt, width: 1080, height: 1080, count: 4 }),
             });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({ error: "AI generation failed" }));
+                setAiError(errData.error || `AI generation failed (${res.status})`);
+                return;
+            }
             const data = await res.json();
             const imgs = data.images || [];
             if (imgs.length === 0) {
-                setAiError("AI generation took too long. Try again or use Stock Photos.");
+                setAiError("No images returned. Try a different destination or style.");
             }
             setAiImages(imgs);
         } catch {

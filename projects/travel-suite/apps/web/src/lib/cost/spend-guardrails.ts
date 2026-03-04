@@ -64,7 +64,10 @@ function getRedisClient(): Redis | null {
 function requireDistributedSpendStore(operation: string): Redis | null {
   const redis = getRedisClient();
   if (!redis && isProductionRuntime()) {
-    throw new Error(`Distributed spend metering backend is required in production (${operation})`);
+    console.warn(
+      `[spend-guardrails] Redis not configured for ${operation}, falling back to local in-memory tracking. ` +
+      `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed metering.`
+    );
   }
   return redis;
 }
