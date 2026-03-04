@@ -72,6 +72,9 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     // Canvas mode
     const [canvasTemplate, setCanvasTemplate] = useState<SocialTemplate | null>(null);
 
+    // AI Poster (bypasses template rendering — the AI image IS the poster)
+    const [aiPosterUrl, setAiPosterUrl] = useState<string | null>(null);
+
     // Track which multi-image template is being previewed (for GallerySlotPicker)
     const [previewedTemplate, setPreviewedTemplate] = useState<SocialTemplate | null>(null);
     const isMultiImage = previewedTemplate?.isMultiImage ?? false;
@@ -148,11 +151,12 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             localStorage.setItem("social-studio-draft", JSON.stringify({
                 templateData,
                 availableBackgrounds,
+                aiPosterUrl,
                 savedAt: Date.now(),
             }));
         }, 3000);
         return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
-    }, [templateData, availableBackgrounds]);
+    }, [templateData, availableBackgrounds, aiPosterUrl]);
 
     // --- Restore draft on mount (once, if < 24h old) ---
     const draftRestoredRef = useRef(false);
@@ -171,6 +175,9 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             }
             if (draft.availableBackgrounds?.length) {
                 setAvailableBackgrounds(draft.availableBackgrounds);
+            }
+            if (typeof draft.aiPosterUrl === "string" && draft.aiPosterUrl) {
+                setAiPosterUrl(draft.aiPosterUrl);
             }
             toast.success("Draft restored from earlier session");
         } catch {
@@ -204,6 +211,12 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     // Gallery image change handler for GallerySlotPicker
     const handleGalleryChange = useCallback((images: string[]) => {
         setTemplateData((prev: any) => ({ ...prev, galleryImages: images }));
+    }, []);
+
+    // AI Poster generated — set as poster URL and also update heroImage for preview
+    const handleAiPosterGenerated = useCallback((url: string) => {
+        setAiPosterUrl(url);
+        setTemplateData(prev => ({ ...prev, heroImage: url }));
     }, []);
 
     // Template select handler — track previewed template + open canvas
@@ -260,6 +273,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                     onBackgroundChange={handleBackgroundChange}
                     onBackgroundsGenerated={handleBackgroundsGenerated}
                     onImageUpload={(e) => handleImageUpload(e, "hero")}
+                    onAiPosterGenerated={handleAiPosterGenerated}
                 />
             )}
 
@@ -282,6 +296,8 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                         onTemplateDataChange={setTemplateData}
                         onBackgroundChange={handleBackgroundChange}
                         onClose={() => setCanvasTemplate(null)}
+                        aiPosterUrl={aiPosterUrl}
+                        onClearAiPoster={() => setAiPosterUrl(null)}
                     />
                 )}
             </AnimatePresence>

@@ -16,6 +16,8 @@ import {
     Send,
     X,
     Check,
+    Sparkles,
+    RotateCcw,
 } from "lucide-react";
 import { SocialTemplate } from "@/lib/social/types";
 import {
@@ -53,6 +55,10 @@ interface CanvasModeProps {
     onTemplateDataChange: (updater: (prev: any) => any) => void;
     onBackgroundChange: (url: string) => void;
     onClose: () => void;
+    /** When set, the AI-generated poster bypasses template rendering */
+    aiPosterUrl?: string | null;
+    /** Clear the AI poster and return to template mode */
+    onClearAiPoster?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +117,8 @@ export function CanvasMode({
     onTemplateDataChange,
     onBackgroundChange,
     onClose,
+    aiPosterUrl,
+    onClearAiPoster,
 }: CanvasModeProps) {
     // ── Internal state ──────────────────────────────────────────────────────
     const [activeBackgroundIndex, setActiveBackgroundIndex] = useState(() =>
@@ -154,10 +162,27 @@ export function CanvasMode({
         [goToPrevBackground, goToNextBackground, onClose],
     );
 
-    // ── Download (client-side html-to-image) ────────────────────────────────
+    // ── Download (client-side html-to-image, or direct AI poster fetch) ─────
     const handleDownload = async () => {
         setDownloading(true);
         try {
+            // AI Poster bypass — download the AI image directly
+            if (aiPosterUrl) {
+                const resp = await fetch(aiPosterUrl);
+                if (!resp.ok) throw new Error("Failed to fetch AI poster");
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.download = `AI-Poster-${template.name.replace(/\s+/g, "-")}.png`;
+                link.href = url;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                toast.success("AI Poster downloaded!");
+                return;
+            }
+
             const node = document.getElementById(`canvas-export-${template.id}`);
             if (!node) return;
             const { toPng } = await import("html-to-image");
@@ -179,10 +204,27 @@ export function CanvasMode({
         }
     };
 
-    // ── HD Export (server-side render) ───────────────────────────────────────
+    // ── HD Export (server-side render, or direct AI poster — already HD) ────
     const handleHdExport = async () => {
         setHdExporting(true);
         try {
+            // AI Poster bypass — the AI image is already HD quality (1080x1080+)
+            if (aiPosterUrl) {
+                const resp = await fetch(aiPosterUrl);
+                if (!resp.ok) throw new Error("Failed to fetch AI poster");
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.download = `AI-Poster-${template.name.replace(/\s+/g, "-")}-HD.png`;
+                link.href = url;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                toast.success("AI Poster HD downloaded!");
+                return;
+            }
+
             const res = await fetch("/api/social/render-poster", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -265,11 +307,19 @@ export function CanvasMode({
                         <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                     </button>
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             {template.name}
+                            {aiPosterUrl && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full">
+                                    <Sparkles className="w-3 h-3" />
+                                    AI Poster
+                                </span>
+                            )}
                         </h2>
                         <p className="text-xs text-slate-500">
-                            {template.layout.replace("Layout", "")} &middot; {template.category}
+                            {aiPosterUrl
+                                ? "AI-generated poster — download directly"
+                                : `${template.layout.replace("Layout", "")} \u00B7 ${template.category}`}
                         </p>
                     </div>
                 </div>
@@ -298,6 +348,25 @@ export function CanvasMode({
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-0 overflow-hidden">
                 {/* ── Left: Preview ────────────────────────────────────────── */}
                 <div className="lg:col-span-3 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 p-8 overflow-auto">
+                    {/* ── AI Poster Mode Banner ────────────────────────── */}
+                    {aiPosterUrl && (
+                        <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-900/20 dark:to-fuchsia-900/20 border border-purple-200 dark:border-purple-800">
+                            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                                AI-Generated Poster — text &amp; design baked into the image
+                            </span>
+                            {onClearAiPoster && (
+                                <button
+                                    onClick={onClearAiPoster}
+                                    className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-300 bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/40 transition-colors"
+                                >
+                                    <RotateCcw className="w-3 h-3" />
+                                    Switch to Template
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {showPhoneMockup ? (
                         /* ── Phone mockup ──────────────────────────────────── */
                         <div className="relative w-[220px] bg-black rounded-[36px] p-[6px] shadow-2xl border-2 border-slate-700 mx-auto">
@@ -311,18 +380,26 @@ export function CanvasMode({
                                         {templateData?.companyName || "your_agency"}
                                     </span>
                                 </div>
-                                {/* Scaled template */}
+                                {/* Scaled template OR AI poster */}
                                 <div className="overflow-hidden" style={{ width: 208, height: 208 }}>
-                                    <div
-                                        className={`origin-top-left ${renderBg(template)} overflow-hidden`}
-                                        style={{
-                                            width: 1080,
-                                            height: 1080,
-                                            transform: `scale(${208 / 1080})`,
-                                        }}
-                                    >
-                                        {renderLayout(template, templateData)}
-                                    </div>
+                                    {aiPosterUrl ? (
+                                        <img
+                                            src={aiPosterUrl}
+                                            alt="AI-generated poster"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={`origin-top-left ${renderBg(template)} overflow-hidden`}
+                                            style={{
+                                                width: 1080,
+                                                height: 1080,
+                                                transform: `scale(${208 / 1080})`,
+                                            }}
+                                        >
+                                            {renderLayout(template, templateData)}
+                                        </div>
+                                    )}
                                 </div>
                                 {/* IG actions */}
                                 <div className="px-3 py-2 bg-white space-y-0.5">
@@ -335,8 +412,28 @@ export function CanvasMode({
                                 </div>
                             </div>
                         </div>
+                    ) : aiPosterUrl ? (
+                        /* ── AI Poster full-size preview ───────────────────── */
+                        <div
+                            className="relative overflow-hidden rounded-2xl shadow-2xl border border-purple-300 dark:border-purple-700"
+                            style={{
+                                width: PREVIEW_WIDTH,
+                                height: PREVIEW_WIDTH,
+                            }}
+                        >
+                            <img
+                                src={aiPosterUrl}
+                                alt="AI-generated poster"
+                                className="w-full h-full object-contain"
+                            />
+                            {/* AI badge overlay */}
+                            <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-purple-600/90 backdrop-blur-sm text-white text-xs font-bold rounded-lg shadow-lg">
+                                <Sparkles className="w-3 h-3" />
+                                AI Poster
+                            </div>
+                        </div>
                     ) : (
-                        /* ── Full-size preview ─────────────────────────────── */
+                        /* ── Full-size template preview ────────────────────── */
                         <div
                             className="relative overflow-hidden rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800"
                             style={{
@@ -357,8 +454,8 @@ export function CanvasMode({
                         </div>
                     )}
 
-                    {/* ── Background carousel dots ────────────────────────── */}
-                    {backgrounds.length > 1 && (
+                    {/* ── Background carousel dots (hidden for AI poster) ── */}
+                    {!aiPosterUrl && backgrounds.length > 1 && (
                         <div className="flex items-center gap-3 mt-6">
                             <button
                                 onClick={goToPrevBackground}
@@ -394,105 +491,160 @@ export function CanvasMode({
 
                 {/* ── Right: Editing Panel ─────────────────────────────────── */}
                 <div className="lg:col-span-2 border-l border-slate-200 dark:border-slate-800 overflow-y-auto p-6 space-y-6">
-                    {/* ── Content Section ──────────────────────────────────── */}
-                    <div>
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-                            <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg flex items-center justify-center text-xs">
-                                &#9998;
-                            </span>
-                            Content
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelCls}>Destination</label>
-                                <input
-                                    type="text"
-                                    value={templateData.destination || ""}
-                                    onChange={(e) =>
-                                        onTemplateDataChange((prev) => ({
-                                            ...prev,
-                                            destination: e.target.value,
-                                        }))
-                                    }
-                                    className={inputCls}
-                                />
+                    {aiPosterUrl ? (
+                        /* ── AI Poster info panel (replaces Content + Backgrounds) ── */
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <span className="w-6 h-6 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                </span>
+                                AI-Generated Poster
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                This poster was generated by AI with text, colors, and design baked
+                                directly into the image. Content editing is not available — to change
+                                text, go back and generate a new poster with updated content.
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                                    <span className="text-slate-400">Destination</span>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate">
+                                        {templateData.destination || "—"}
+                                    </p>
+                                </div>
+                                <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                                    <span className="text-slate-400">Price</span>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate">
+                                        {templateData.price || "—"}
+                                    </p>
+                                </div>
+                                <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                                    <span className="text-slate-400">Offer</span>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate">
+                                        {templateData.offer || "—"}
+                                    </p>
+                                </div>
+                                <div className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                                    <span className="text-slate-400">Brand</span>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200 truncate">
+                                        {templateData.companyName || "—"}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <label className={labelCls}>Price</label>
-                                <input
-                                    type="text"
-                                    value={templateData.price || ""}
-                                    onChange={(e) =>
-                                        onTemplateDataChange((prev) => ({
-                                            ...prev,
-                                            price: e.target.value,
-                                        }))
-                                    }
-                                    className={inputCls}
-                                />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Offer</label>
-                                <input
-                                    type="text"
-                                    value={templateData.offer || ""}
-                                    onChange={(e) =>
-                                        onTemplateDataChange((prev) => ({
-                                            ...prev,
-                                            offer: e.target.value,
-                                        }))
-                                    }
-                                    className={inputCls}
-                                />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Season</label>
-                                <input
-                                    type="text"
-                                    value={templateData.season || ""}
-                                    onChange={(e) =>
-                                        onTemplateDataChange((prev) => ({
-                                            ...prev,
-                                            season: e.target.value,
-                                        }))
-                                    }
-                                    className={inputCls}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ── Backgrounds Section ─────────────────────────────── */}
-                    <div>
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-                            <span className="w-6 h-6 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center text-xs">
-                                &#128444;
-                            </span>
-                            Backgrounds
-                        </h3>
-                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                            {backgrounds.map((url, idx) => (
+                            {onClearAiPoster && (
                                 <button
-                                    key={idx}
-                                    onClick={() => {
-                                        setActiveBackgroundIndex(idx);
-                                        onBackgroundChange(url);
-                                    }}
-                                    className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 transition-all ${
-                                        idx === activeBackgroundIndex
-                                            ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-950"
-                                            : "ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-slate-400"
-                                    }`}
+                                    onClick={onClearAiPoster}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
                                 >
-                                    <img
-                                        src={url}
-                                        alt={`Background ${idx + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <RotateCcw className="w-4 h-4" />
+                                    Switch to Template Mode
                                 </button>
-                            ))}
+                            )}
                         </div>
-                    </div>
+                    ) : (
+                        /* ── Normal Content + Backgrounds editing ──────────── */
+                        <>
+                            {/* ── Content Section ──────────────────────────────── */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg flex items-center justify-center text-xs">
+                                        &#9998;
+                                    </span>
+                                    Content
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={labelCls}>Destination</label>
+                                        <input
+                                            type="text"
+                                            value={templateData.destination || ""}
+                                            onChange={(e) =>
+                                                onTemplateDataChange((prev) => ({
+                                                    ...prev,
+                                                    destination: e.target.value,
+                                                }))
+                                            }
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Price</label>
+                                        <input
+                                            type="text"
+                                            value={templateData.price || ""}
+                                            onChange={(e) =>
+                                                onTemplateDataChange((prev) => ({
+                                                    ...prev,
+                                                    price: e.target.value,
+                                                }))
+                                            }
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Offer</label>
+                                        <input
+                                            type="text"
+                                            value={templateData.offer || ""}
+                                            onChange={(e) =>
+                                                onTemplateDataChange((prev) => ({
+                                                    ...prev,
+                                                    offer: e.target.value,
+                                                }))
+                                            }
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Season</label>
+                                        <input
+                                            type="text"
+                                            value={templateData.season || ""}
+                                            onChange={(e) =>
+                                                onTemplateDataChange((prev) => ({
+                                                    ...prev,
+                                                    season: e.target.value,
+                                                }))
+                                            }
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── Backgrounds Section ──────────────────────────── */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-purple-100 dark:bg-purple-900/40 rounded-lg flex items-center justify-center text-xs">
+                                        &#128444;
+                                    </span>
+                                    Backgrounds
+                                </h3>
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {backgrounds.map((url, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                setActiveBackgroundIndex(idx);
+                                                onBackgroundChange(url);
+                                            }}
+                                            className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 transition-all ${
+                                                idx === activeBackgroundIndex
+                                                    ? "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-950"
+                                                    : "ring-1 ring-slate-200 dark:ring-slate-700 hover:ring-slate-400"
+                                            }`}
+                                        >
+                                            <img
+                                                src={url}
+                                                alt={`Background ${idx + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* ── Export Section ───────────────────────────────────── */}
                     <div>

@@ -14,11 +14,15 @@ import {
     Sparkles,
     Database,
     Camera,
+    Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
     generateBackgroundPrompt,
+    generateFullPosterPrompt,
+    POSTER_STYLE_LABELS,
     type AiImageStyle,
+    type AiPosterStyle,
 } from "@/lib/social/ai-prompts";
 import {
     matchDestination,
@@ -33,6 +37,13 @@ interface BackgroundPickerProps {
     templateData: {
         destination: string;
         heroImage?: string;
+        price?: string;
+        offer?: string;
+        companyName?: string;
+        season?: string;
+        contactNumber?: string;
+        email?: string;
+        website?: string;
         [key: string]: unknown;
     };
     selectedBackground: string;
@@ -40,6 +51,7 @@ interface BackgroundPickerProps {
     onBackgroundChange: (url: string) => void;
     onBackgroundsGenerated: (urls: string[]) => void;
     onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onAiPosterGenerated?: (url: string) => void;
 }
 
 type ActiveSource = "ai" | "stock" | "upload";
@@ -54,6 +66,7 @@ interface CachedImage {
     destination: string;
     style: string;
     timestamp: number;
+    mode: "background" | "poster";
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +89,11 @@ const STYLE_LABELS: Record<AiImageStyle, string> = {
     minimal: "Minimal",
 };
 
+const POSTER_STYLES: AiPosterStyle[] = [
+    "magazine_cover", "luxury_editorial", "bold_modern",
+    "minimal_elegant", "vibrant_festival",
+];
+
 const SECTION_ANIMATION = {
     initial: { opacity: 0, height: 0 },
     animate: { opacity: 1, height: "auto" },
@@ -83,32 +101,34 @@ const SECTION_ANIMATION = {
     transition: { duration: 0.2 },
 };
 
-const CACHE_KEY = "social-studio-bg-cache";
-const MAX_CACHE = 50;
+const BG_CACHE_KEY = "social-studio-bg-cache";
+const POSTER_CACHE_KEY = "social-studio-poster-cache";
+const MAX_BG_CACHE = 50;
+const MAX_POSTER_CACHE = 20;
 
 // ---------------------------------------------------------------------------
 // Cache Helpers (immutable)
 // ---------------------------------------------------------------------------
 
-function loadCachedImages(): CachedImage[] {
+function loadCachedImages(mode: "background" | "poster"): CachedImage[] {
     try {
-        return JSON.parse(localStorage.getItem(CACHE_KEY) || "[]");
+        const key = mode === "poster" ? POSTER_CACHE_KEY : BG_CACHE_KEY;
+        return JSON.parse(localStorage.getItem(key) || "[]");
     } catch {
         return [];
     }
 }
 
 function saveCachedImage(img: CachedImage): void {
-    const cache = loadCachedImages();
-    const updated = [img, ...cache.filter((c) => c.url !== img.url)].slice(
-        0,
-        MAX_CACHE
-    );
-    localStorage.setItem(CACHE_KEY, JSON.stringify(updated));
+    const key = img.mode === "poster" ? POSTER_CACHE_KEY : BG_CACHE_KEY;
+    const max = img.mode === "poster" ? MAX_POSTER_CACHE : MAX_BG_CACHE;
+    const cache = loadCachedImages(img.mode);
+    const updated = [img, ...cache.filter((c) => c.url !== img.url)].slice(0, max);
+    localStorage.setItem(key, JSON.stringify(updated));
 }
 
-function getCachedImagesForDestination(destination: string): CachedImage[] {
-    const cache = loadCachedImages();
+function getCachedImagesForDestination(destination: string, mode: "background" | "poster"): CachedImage[] {
+    const cache = loadCachedImages(mode);
     const dest = destination.toLowerCase();
     return cache.filter((c) => c.destination.toLowerCase() === dest);
 }
@@ -124,10 +144,14 @@ export function BackgroundPicker({
     onBackgroundChange,
     onBackgroundsGenerated,
     onImageUpload,
+    onAiPosterGenerated,
 }: BackgroundPickerProps) {
     const [activeSource, setActiveSource] = useState<ActiveSource>("stock");
     const [aiStyle, setAiStyle] = useState<AiImageStyle>("cinematic");
+    const [aiMode, setAiMode] = useState<"background" | "poster">("background");
+    const [posterStyle, setPosterStyle] = useState<AiPosterStyle>("magazine_cover");
     const [generatingAi, setGeneratingAi] = useState(false);
+    const [generatingPoster, setGeneratingPoster] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
 
     const [unsplashQuery, setUnsplashQuery] = useState(
@@ -138,11 +162,14 @@ export function BackgroundPicker({
     );
     const [searchingUnsplash, setSearchingUnsplash] = useState(false);
 
-    const [cachedImages, setCachedImages] = useState<CachedImage[]>([]);
+    const [cachedBgImages, setCachedBgImages] = useState<CachedImage[]>([]);
+    const [cachedPosterImages, setCachedPosterImages] = useState<CachedImage[]>([]);
     const [cachedUrls, setCachedUrls] = useState<Set<string>>(new Set());
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const initialSearchDoneRef = useRef(false);
+
+    const isGenerating = generatingAi || generatingPoster;
 
     // -----------------------------------------------------------------------
     // Curated: Pre-matched destination images (instant, no API call)
@@ -166,17 +193,15 @@ export function BackgroundPicker({
     // -----------------------------------------------------------------------
 
     useEffect(() => {
-        const cached = getCachedImagesForDestination(
-            templateData.destination
-        );
-        setCachedImages(cached);
-        setCachedUrls(new Set(cached.map((c) => c.url)));
+        const bgCached = getCachedImagesForDestination(templateData.destination, "background");
+        const posterCached = getCachedImagesForDestination(templateData.destination, "poster");
+        setCachedBgImages(bgCached);
+        setCachedPosterImages(posterCached);
+        setCachedUrls(new Set([...bgCached, ...posterCached].map((c) => c.url)));
 
-        if (cached.length > 0) {
-            const cachedUrls = cached.map((c) => c.url);
-            onBackgroundsGenerated(cachedUrls);
+        if (bgCached.length > 0) {
+            onBackgroundsGenerated(bgCached.map((c) => c.url));
         }
-        // Only run when destination changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [templateData.destination]);
 
@@ -188,10 +213,8 @@ export function BackgroundPicker({
         if (templateData.destination && !initialSearchDoneRef.current) {
             initialSearchDoneRef.current = true;
             setUnsplashQuery(templateData.destination);
-            // Trigger initial stock search
             fetchUnsplashImagesForQuery(templateData.destination);
         }
-        // Only on mount
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -202,8 +225,6 @@ export function BackgroundPicker({
     useEffect(() => {
         if (activeSource !== "stock") return;
         if (!templateData.destination) return;
-
-        // Skip the initial render since we handle it above
         if (!initialSearchDoneRef.current) return;
 
         setUnsplashQuery(templateData.destination);
@@ -233,6 +254,7 @@ export function BackgroundPicker({
                     width: 1080,
                     height: 1080,
                     count: 1,
+                    mode: "background",
                 }),
             });
 
@@ -258,22 +280,19 @@ export function BackgroundPicker({
 
             const urls = imgs.map((img) => img.url);
 
-            // Cache each generated image
             for (const url of urls) {
                 saveCachedImage({
                     url,
                     destination: templateData.destination,
                     style: aiStyle,
                     timestamp: Date.now(),
+                    mode: "background",
                 });
             }
 
-            // Refresh cached images state
-            const freshCached = getCachedImagesForDestination(
-                templateData.destination
-            );
-            setCachedImages(freshCached);
-            setCachedUrls(new Set(freshCached.map((c) => c.url)));
+            const freshCached = getCachedImagesForDestination(templateData.destination, "background");
+            setCachedBgImages(freshCached);
+            setCachedUrls((prev) => new Set([...prev, ...urls]));
 
             onBackgroundsGenerated(urls);
             onBackgroundChange(urls[0]);
@@ -281,6 +300,73 @@ export function BackgroundPicker({
             setAiError("Failed to generate images. Please try again.");
         } finally {
             setGeneratingAi(false);
+        }
+    };
+
+    // -----------------------------------------------------------------------
+    // AI Poster Generation (Magazine-Cover Quality)
+    // -----------------------------------------------------------------------
+
+    const handleGenerateAiPoster = async () => {
+        setGeneratingPoster(true);
+        setAiError(null);
+        try {
+            const prompt = generateFullPosterPrompt(templateData, posterStyle);
+            const res = await fetch("/api/social/ai-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt,
+                    width: 1080,
+                    height: 1080,
+                    count: 1,
+                    mode: "poster",
+                }),
+            });
+
+            if (!res.ok) {
+                const errData = await res
+                    .json()
+                    .catch(() => ({ error: "AI poster generation failed" }));
+                setAiError(
+                    errData.error || `AI poster generation failed (${res.status})`
+                );
+                return;
+            }
+
+            const data = await res.json();
+            const imgs: { url: string }[] = data.images || [];
+
+            if (imgs.length === 0) {
+                setAiError(
+                    "No poster returned. Try a different style or destination."
+                );
+                return;
+            }
+
+            const url = imgs[0].url;
+
+            saveCachedImage({
+                url,
+                destination: templateData.destination,
+                style: posterStyle,
+                timestamp: Date.now(),
+                mode: "poster",
+            });
+
+            const freshCached = getCachedImagesForDestination(templateData.destination, "poster");
+            setCachedPosterImages(freshCached);
+            setCachedUrls((prev) => new Set([...prev, url]));
+
+            if (onAiPosterGenerated) {
+                onAiPosterGenerated(url);
+            }
+
+            toast.success("AI poster generated! Your canvas has been updated.");
+        } catch {
+            setAiError("Failed to generate poster. Please try again.");
+        } finally {
+            setGeneratingPoster(false);
         }
     };
 
@@ -327,6 +413,8 @@ export function BackgroundPicker({
     // -----------------------------------------------------------------------
     // Render
     // -----------------------------------------------------------------------
+
+    const activeCachedImages = aiMode === "poster" ? cachedPosterImages : cachedBgImages;
 
     return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
@@ -393,30 +481,46 @@ export function BackgroundPicker({
                     Stock Photos
                 </button>
 
-                {/* Generate AI Backgrounds (Premium) */}
+                {/* AI Background (Premium) */}
                 <button
                     onClick={() => {
                         setActiveSource("ai");
-                        handleGenerateAiImages();
+                        setAiMode("background");
                     }}
-                    disabled={generatingAi}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 disabled:opacity-60"
+                    disabled={isGenerating}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeSource === "ai" && aiMode === "background"
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                    } disabled:opacity-60`}
                 >
-                    {generatingAi ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Generating...
-                        </>
-                    ) : (
-                        <>
-                            <Wand2 className="w-4 h-4" />
-                            AI Generate
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-[9px] font-extrabold text-white leading-none">
-                                <Sparkles className="w-2.5 h-2.5" />
-                                Premium
-                            </span>
-                        </>
-                    )}
+                    <Wand2 className="w-4 h-4" />
+                    AI Background
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-[9px] font-extrabold text-white leading-none">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Premium
+                    </span>
+                </button>
+
+                {/* AI Poster (Ultra) */}
+                <button
+                    onClick={() => {
+                        setActiveSource("ai");
+                        setAiMode("poster");
+                    }}
+                    disabled={isGenerating}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                        activeSource === "ai" && aiMode === "poster"
+                            ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+                    } disabled:opacity-60`}
+                >
+                    <Crown className="w-4 h-4" />
+                    AI Poster
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-[9px] font-extrabold text-white leading-none">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Ultra
+                    </span>
                 </button>
 
                 {/* Upload */}
@@ -436,53 +540,116 @@ export function BackgroundPicker({
                 />
             </div>
 
-            {/* 3. AI Style Selector (visible when source is "ai") */}
+            {/* 3. AI Panel (visible when source is "ai") */}
             <AnimatePresence>
                 {activeSource === "ai" && (
                     <motion.div {...SECTION_ANIMATION}>
                         <div className="space-y-3 pt-1">
-                            <div className="space-y-2">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    Style:
-                                </span>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                    {AI_STYLES.map((style) => (
-                                        <button
-                                            key={style}
-                                            onClick={() => setAiStyle(style)}
-                                            className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all text-center ${
-                                                aiStyle === style
-                                                    ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-700"
-                                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
-                                            }`}
-                                        >
-                                            {STYLE_LABELS[style]}
-                                        </button>
-                                    ))}
-                                </div>
+                            {/* Mode indicator */}
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
+                                aiMode === "poster"
+                                    ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
+                                    : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
+                            }`}>
+                                {aiMode === "poster" ? (
+                                    <>
+                                        <Crown className="w-3.5 h-3.5" />
+                                        AI Poster Mode — Generates a complete designed poster with text baked in
+                                    </>
+                                ) : (
+                                    <>
+                                        <Wand2 className="w-3.5 h-3.5" />
+                                        AI Background Mode — Generates a background photo for your template
+                                    </>
+                                )}
                             </div>
 
-                            {/* Cached AI images for this destination */}
-                            {cachedImages.length > 0 && (
+                            {/* Style selector */}
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    {aiMode === "poster" ? "Poster Style:" : "Photo Style:"}
+                                </span>
+
+                                {aiMode === "poster" ? (
+                                    // Poster styles (5 options, 3 columns)
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        {POSTER_STYLES.map((style) => (
+                                            <button
+                                                key={style}
+                                                onClick={() => setPosterStyle(style)}
+                                                className={`px-2 py-2 rounded-lg text-[11px] font-bold transition-all text-center ${
+                                                    posterStyle === style
+                                                        ? "bg-purple-600 text-white shadow-sm ring-2 ring-purple-300 dark:ring-purple-700"
+                                                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                {POSTER_STYLE_LABELS[style]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    // Background styles (8 options, 4 columns)
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {AI_STYLES.map((style) => (
+                                            <button
+                                                key={style}
+                                                onClick={() => setAiStyle(style)}
+                                                className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all text-center ${
+                                                    aiStyle === style
+                                                        ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-700"
+                                                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                {STYLE_LABELS[style]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Generate button */}
+                            <button
+                                onClick={aiMode === "poster" ? handleGenerateAiPoster : handleGenerateAiImages}
+                                disabled={isGenerating}
+                                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-60 ${
+                                    aiMode === "poster"
+                                        ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                                }`}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        {aiMode === "poster" ? "Creating your poster..." : "Generating..."}
+                                    </>
+                                ) : (
+                                    <>
+                                        {aiMode === "poster" ? <Crown className="w-4 h-4" /> : <Wand2 className="w-4 h-4" />}
+                                        {aiMode === "poster" ? "Generate AI Poster" : "Generate AI Background"}
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Cached images for this mode */}
+                            {activeCachedImages.length > 0 && (
                                 <div className="space-y-1.5">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                        Previously Generated:
+                                        {aiMode === "poster" ? "Previously Generated Posters:" : "Previously Generated:"}
                                     </span>
                                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                        {cachedImages.map((cached) => {
+                                        {activeCachedImages.map((cached) => {
                                             const isSelected =
-                                                cached.url ===
-                                                selectedBackground;
+                                                cached.url === selectedBackground;
                                             return (
                                                 <button
                                                     key={`cached-${cached.url}`}
                                                     onClick={() => {
-                                                        onBackgroundChange(
-                                                            cached.url
-                                                        );
-                                                        onBackgroundsGenerated([
-                                                            cached.url,
-                                                        ]);
+                                                        if (cached.mode === "poster" && onAiPosterGenerated) {
+                                                            onAiPosterGenerated(cached.url);
+                                                        } else {
+                                                            onBackgroundChange(cached.url);
+                                                            onBackgroundsGenerated([cached.url]);
+                                                        }
                                                     }}
                                                     className={`relative shrink-0 w-20 h-20 rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-105 ${
                                                         isSelected
@@ -492,14 +659,23 @@ export function BackgroundPicker({
                                                 >
                                                     <img
                                                         src={cached.url}
-                                                        alt={`Cached ${cached.style} background`}
+                                                        alt={`Cached ${cached.style} ${cached.mode}`}
                                                         className="w-20 h-20 rounded-xl object-cover"
                                                     />
-                                                    <span className="absolute top-1 left-1 flex items-center gap-0.5 px-1 py-0.5 rounded bg-black/60 text-[8px] font-bold text-amber-300">
-                                                        <Database className="w-2 h-2" />
-                                                        {STYLE_LABELS[
-                                                            cached.style as AiImageStyle
-                                                        ] || cached.style}
+                                                    <span className={`absolute top-1 left-1 flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold ${
+                                                        cached.mode === "poster"
+                                                            ? "bg-purple-600/80 text-white"
+                                                            : "bg-black/60 text-amber-300"
+                                                    }`}>
+                                                        {cached.mode === "poster" ? (
+                                                            <Crown className="w-2 h-2" />
+                                                        ) : (
+                                                            <Database className="w-2 h-2" />
+                                                        )}
+                                                        {cached.mode === "poster"
+                                                            ? (POSTER_STYLE_LABELS[cached.style as AiPosterStyle] || cached.style)
+                                                            : (STYLE_LABELS[cached.style as AiImageStyle] || cached.style)
+                                                        }
                                                     </span>
                                                     {isSelected && (
                                                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
@@ -650,13 +826,13 @@ export function BackgroundPicker({
             </AnimatePresence>
 
             {/* 5. Error State */}
-            {aiError && !generatingAi && (
+            {aiError && !isGenerating && (
                 <div className="text-center py-3 px-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800">
                     <p className="text-xs text-red-600 dark:text-red-400 font-medium">
                         {aiError}
                     </p>
                     <button
-                        onClick={handleGenerateAiImages}
+                        onClick={aiMode === "poster" ? handleGenerateAiPoster : handleGenerateAiImages}
                         className="mt-2 text-[10px] font-bold text-red-600 hover:text-red-700 underline"
                     >
                         Try again

@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import type { CostEndpointCategory } from "@/lib/security/cost-endpoint-guard";
 import { fal } from "@fal-ai/client";
 
 /**
  * POST /api/social/ai-image
- * Generates AI background images for poster templates using FAL.ai Flux models.
+ * Generates AI images for poster templates using FAL.ai Flux models.
  *
- * Body: { prompt: string, width?: number, height?: number, count?: number }
- * Returns: { images: { url: string; provider: string }[], requested, generated, tier_limit }
+ * Supports two modes:
+ *   - "background" (default): Generates a background photo (flux/dev or flux-pro)
+ *   - "poster": Generates a complete composed poster with text baked in
+ *     (always flux-pro, higher steps & guidance for text quality)
+ *
+ * Body: { prompt, width?, height?, count?, mode?: "background" | "poster" }
+ * Returns: { images, requested, generated, tier_limit, mode }
  */
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 fal.config({ credentials: process.env.FAL_KEY });
+
+type GenerationMode = "background" | "poster";
 
 function maxCountByTier(tier: "free" | "pro" | "enterprise"): number {
     if (tier === "enterprise") return 8;
@@ -26,9 +34,30 @@ function clampDimension(value: unknown, fallback: number): number {
     return Math.min(Math.max(Math.floor(parsed), 1024), 1536);
 }
 
-function selectModel(tier: "free" | "pro" | "enterprise"): string {
+function selectModel(tier: "free" | "pro" | "enterprise", mode: GenerationMode): string {
+    if (mode === "poster") return "fal-ai/flux-pro/v1.1-ultra";
     if (tier === "enterprise") return "fal-ai/flux-pro/v1.1-ultra";
     return "fal-ai/flux/dev";
+}
+
+function getCostCategory(mode: GenerationMode): CostEndpointCategory {
+    return mode === "poster" ? "ai_poster" : "ai_image";
+}
+
+interface GenerationConfig {
+    numInferenceSteps: number;
+    guidanceScale: number;
+}
+
+function getGenerationConfig(mode: GenerationMode, model: string): GenerationConfig {
+    if (mode === "poster") {
+        return { numInferenceSteps: 50, guidanceScale: 4.5 };
+    }
+    const isEnterprise = model.includes("flux-pro");
+    if (isEnterprise) {
+        return { numInferenceSteps: 40, guidanceScale: 3.5 };
+    }
+    return { numInferenceSteps: 30, guidanceScale: 3.5 };
 }
 
 async function generateImage(
@@ -36,20 +65,21 @@ async function generateImage(
     prompt: string,
     width: number,
     height: number,
+    config: GenerationConfig,
 ): Promise<string | null> {
     try {
-        const isEnterprise = model.includes("flux-pro");
+        const isProModel = model.includes("flux-pro");
         const result = await fal.subscribe(model, {
             input: {
                 prompt,
                 image_size: { width, height },
                 num_images: 1,
                 enable_safety_checker: false,
-                ...(isEnterprise
+                ...(isProModel
                     ? {}
                     : {
-                          num_inference_steps: 30,
-                          guidance_scale: 3.5,
+                          num_inference_steps: config.numInferenceSteps,
+                          guidance_scale: config.guidanceScale,
                       }),
             },
         });
@@ -66,11 +96,21 @@ async function generateImage(
 }
 
 export async function POST(req: NextRequest) {
-    const guard = await guardCostEndpoint(req, "ai_image");
+    let body: Record<string, unknown>;
+    try {
+        body = await req.json();
+    } catch {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const mode: GenerationMode =
+        body?.mode === "poster" ? "poster" : "background";
+
+    const costCategory = getCostCategory(mode);
+    const guard = await guardCostEndpoint(req, costCategory);
     if (!guard.ok) return guard.response;
 
     try {
-        const body = await req.json();
         const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
 
         if (!prompt) {
@@ -82,17 +122,27 @@ export async function POST(req: NextRequest) {
 
         const width = clampDimension(body?.width, 1080);
         const height = clampDimension(body?.height, 1080);
-        const tierMax = maxCountByTier(guard.context.tier);
-        const requestedCount = Number(body?.count);
-        const count = Number.isFinite(requestedCount)
-            ? Math.min(Math.max(Math.floor(requestedCount), 1), tierMax)
-            : Math.min(1, tierMax);
 
-        const model = selectModel(guard.context.tier);
+        // Poster mode: always 1 image (premium quality over quantity)
+        const tierMax = mode === "poster" ? 1 : maxCountByTier(guard.context.tier);
+        const requestedCount = Number(body?.count);
+        const count = mode === "poster"
+            ? 1
+            : Number.isFinite(requestedCount)
+                ? Math.min(Math.max(Math.floor(requestedCount), 1), tierMax)
+                : Math.min(1, tierMax);
+
+        const model = selectModel(guard.context.tier, mode);
+        const config = getGenerationConfig(mode, model);
+
+        const logPrefix = mode === "poster" ? "[ai-poster]" : "[ai-image]";
+        console.log(
+            `${logPrefix} Generating: model=${model}, steps=${config.numInferenceSteps}, guidance=${config.guidanceScale}, ${width}x${height}`
+        );
 
         const results = await Promise.allSettled(
             Array.from({ length: count }, () =>
-                generateImage(model, prompt, width, height)
+                generateImage(model, prompt, width, height, config)
             )
         );
 
@@ -109,12 +159,13 @@ export async function POST(req: NextRequest) {
                 requested: count,
                 generated: images.length,
                 tier_limit: tierMax,
+                mode,
             }),
             guard.context
         );
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Internal error";
-        console.error("[ai-image] Error:", err);
+        console.error(`[ai-${mode}] Error:`, err);
         return withCostGuardHeaders(
             NextResponse.json({ error: message }, { status: 500 }),
             guard.context
