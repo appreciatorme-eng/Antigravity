@@ -19,14 +19,28 @@ const getServiceIcon = (name: string) =>
     SERVICE_ICONS[Object.keys(SERVICE_ICONS).find(k => name.toLowerCase().includes(k.toLowerCase())) ?? ""] ||
     "✦";
 
+// ── Palette color extraction ────────────────────────────────────────────────
+const getPalette = (preset: { palette?: { accent?: string; overlay?: string } }) => {
+    const accent = preset?.palette?.accent || "#ff6b6b";
+    return {
+        accent,
+        /** Accent at 40% opacity for shadows/glows */
+        accentGlow: `${accent}66`,
+        /** Accent at 15% opacity for subtle tints */
+        accentTint: `${accent}26`,
+        /** Overlay gradient for hero image tinting */
+        overlay: preset?.palette?.overlay || "",
+    };
+};
+
 // ── Shared dark-blue contact footer with WhatsApp QR ────────────────────────
-const PosterFooter = ({ templateData, absolute = true }: { templateData: any; absolute?: boolean }) => {
+const PosterFooter = ({ templateData, absolute = true, accentColor }: { templateData: any; absolute?: boolean; accentColor?: string }) => {
     const digits = (templateData.contactNumber || "").replace(/\D/g, "");
     const waUrl = digits ? `https://wa.me/${digits}` : "https://wa.me/";
     return (
         <div
             className={absolute ? "absolute bottom-0 left-0 right-0" : ""}
-            style={{ background: "#1a2d5a", padding: "22px 48px", minHeight: 140, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}
+            style={{ background: accentColor || "#1a2d5a", padding: "22px 48px", minHeight: 140, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}
         >
             <div style={{ color: "#ffffff", lineHeight: 2, fontSize: 22 }}>
                 <div>📞 {templateData.contactNumber || "+91 00000 00000"}</div>
@@ -34,7 +48,7 @@ const PosterFooter = ({ templateData, absolute = true }: { templateData: any; ab
                 <div>🌐 {templateData.website || "www.yourcompany.com"}</div>
             </div>
             <div style={{ textAlign: "center", color: "#ffffff" }}>
-                <QRCodeSVG value={waUrl} size={84} bgColor="#1a2d5a" fgColor="#ffffff" />
+                <QRCodeSVG value={waUrl} size={84} bgColor={accentColor || "#1a2d5a"} fgColor="#ffffff" />
                 <p style={{ fontSize: 14, marginTop: 4, opacity: 0.65 }}>Scan for WhatsApp</p>
             </div>
         </div>
@@ -44,7 +58,9 @@ const PosterFooter = ({ templateData, absolute = true }: { templateData: any; ab
 // ── Cinematic Hero (CenterLayout) ────────────────────────────────────────────
 // Full-bleed hero image with layered gradient overlays and centered text composition.
 
-export const CenterLayout = ({ templateData }: LayoutProps) => (
+export const CenterLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
+    return (
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
@@ -57,6 +73,10 @@ export const CenterLayout = ({ templateData }: LayoutProps) => (
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%)" }} />
         {/* Gradient overlay layer 3: top subtle */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 35%)" }} />
+        {/* Palette overlay tint */}
+        {palette.overlay && (
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: palette.overlay }} />
+        )}
 
         {/* Corner accent: top-left */}
         <div style={{ position: "absolute", top: 40, left: 40, width: 80, height: 80, borderTop: "3px solid rgba(255,255,255,0.5)", borderLeft: "3px solid rgba(255,255,255,0.5)" }} />
@@ -99,7 +119,7 @@ export const CenterLayout = ({ templateData }: LayoutProps) => (
 
             {/* Price badge */}
             {templateData.price && (
-                <div style={{ display: "flex", alignItems: "center", background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "14px 40px", borderRadius: 9999, fontSize: 38, fontWeight: 900, boxShadow: "0 8px 32px rgba(255,107,107,0.4)", marginTop: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", background: palette.accent, color: "white", padding: "14px 40px", borderRadius: 9999, fontSize: 38, fontWeight: 900, boxShadow: `0 8px 32px ${palette.accentGlow}`, marginTop: 28 }}>
                     Starting @ {templateData.price}
                 </div>
             )}
@@ -116,12 +136,15 @@ export const CenterLayout = ({ templateData }: LayoutProps) => (
             </div>
         </div>
     </div>
-);
+    );
+};
 
 // ── Editorial Frame (ElegantLayout) ──────────────────────────────────────────
 // Magazine editorial feel with thin inset border frame and elegant serif typography.
 
-export const ElegantLayout = ({ templateData }: LayoutProps) => (
+export const ElegantLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
+    return (
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
@@ -130,6 +153,10 @@ export const ElegantLayout = ({ templateData }: LayoutProps) => (
 
         {/* Dark overlay concentrated where text sits */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.5) 100%)" }} />
+        {/* Palette overlay tint */}
+        {palette.overlay && (
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: palette.overlay }} />
+        )}
 
         {/* Thin white inset border frame */}
         <div style={{ position: "absolute", top: 30, left: 30, right: 30, bottom: 30, border: "2px solid rgba(255,255,255,0.4)", zIndex: 5 }} />
@@ -195,12 +222,14 @@ export const ElegantLayout = ({ templateData }: LayoutProps) => (
             </div>
         </div>
     </div>
-);
+    );
+};
 
 // ── Dynamic Split (SplitLayout) ──────────────────────────────────────────────
 // Hero image on the right side with a gradient-blended dark content panel on the left.
 
-export const SplitLayout = ({ templateData }: LayoutProps) => {
+export const SplitLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
     const services: string[] = templateData.services || [];
     return (
         <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
@@ -217,7 +246,7 @@ export const SplitLayout = ({ templateData }: LayoutProps) => {
                 )}
 
                 {/* Decorative line */}
-                <div style={{ width: 50, height: 3, background: "linear-gradient(90deg, #ff6b6b, #ff8c42)", marginBottom: 24 }} />
+                <div style={{ width: 50, height: 3, background: palette.accent, marginBottom: 24 }} />
 
                 {/* Season */}
                 {templateData.season && (
@@ -233,14 +262,14 @@ export const SplitLayout = ({ templateData }: LayoutProps) => {
 
                 {/* Offer pill frosted */}
                 {templateData.offer && (
-                    <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "14px 24px", borderLeft: "4px solid rgba(255,107,107,0.8)", marginBottom: 20, display: "flex" }}>
+                    <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 12, padding: "14px 24px", borderLeft: `4px solid ${palette.accent}`, marginBottom: 20, display: "flex" }}>
                         <span style={{ fontSize: 24, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{templateData.offer}</span>
                     </div>
                 )}
 
                 {/* Price badge */}
                 {templateData.price && (
-                    <div style={{ display: "flex", alignItems: "center", background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "12px 32px", borderRadius: 9999, fontSize: 32, fontWeight: 900, boxShadow: "0 8px 32px rgba(255,107,107,0.4)", marginBottom: 28, alignSelf: "flex-start" }}>
+                    <div style={{ display: "flex", alignItems: "center", background: palette.accent, color: "white", padding: "12px 32px", borderRadius: 9999, fontSize: 32, fontWeight: 900, boxShadow: `0 8px 32px ${palette.accentGlow}`, marginBottom: 28, alignSelf: "flex-start" }}>
                         {templateData.price}
                     </div>
                 )}
@@ -283,7 +312,9 @@ export const SplitLayout = ({ templateData }: LayoutProps) => {
 // ── Floating Card (BottomLayout) ─────────────────────────────────────────────
 // Full-bleed hero image with an elevated white card overlaying the bottom portion.
 
-export const BottomLayout = ({ templateData }: LayoutProps) => (
+export const BottomLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
+    return (
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
@@ -302,7 +333,7 @@ export const BottomLayout = ({ templateData }: LayoutProps) => (
 
         {/* Rotated offer badge sticker */}
         {templateData.offer && (
-            <div style={{ position: "absolute", top: 50, right: 30, background: "linear-gradient(135deg, #ff6b6b, #ff8c42)", color: "white", padding: "10px 28px", fontSize: 20, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.08em", transform: "rotate(3deg)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 10 }}>
+            <div style={{ position: "absolute", top: 50, right: 30, background: palette.accent, color: "white", padding: "10px 28px", fontSize: 20, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.08em", transform: "rotate(3deg)", borderRadius: 6, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 10 }}>
                 {templateData.offer}
             </div>
         )}
@@ -315,7 +346,7 @@ export const BottomLayout = ({ templateData }: LayoutProps) => (
             </div>
 
             {/* Accent line */}
-            <div style={{ width: 60, height: 4, background: "linear-gradient(90deg, #ff6b6b, #ff8c42)", borderRadius: 2, marginTop: 16, marginBottom: 16 }} />
+            <div style={{ width: 60, height: 4, background: palette.accent, borderRadius: 2, marginTop: 16, marginBottom: 16 }} />
 
             {/* Offer text */}
             {templateData.offer && (
@@ -326,7 +357,7 @@ export const BottomLayout = ({ templateData }: LayoutProps) => (
 
             {/* Price in accent color */}
             {templateData.price && (
-                <div style={{ fontSize: 44, fontWeight: 900, color: "#ff6b6b", letterSpacing: "-0.01em" }}>
+                <div style={{ fontSize: 44, fontWeight: 900, color: palette.accent, letterSpacing: "-0.01em" }}>
                     {templateData.price}
                 </div>
             )}
@@ -348,13 +379,20 @@ export const BottomLayout = ({ templateData }: LayoutProps) => (
             </div>
         </div>
     </div>
-);
+    );
+};
 
-export const ReviewLayout = ({ templateData }: LayoutProps) => (
+export const ReviewLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
+    return (
     <div className="w-full h-full bg-white flex flex-col items-center justify-center p-24 text-center relative overflow-hidden text-slate-800">
+        {/* Hero image as subtle background */}
+        {templateData.heroImage && (
+            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.06 }} alt="" />
+        )}
         <div className="relative z-10 w-full max-w-5xl mx-auto space-y-16">
             <div className="flex justify-center gap-2">
-                {[1, 2, 3, 4, 5].map((s: number) => <span key={s} className="text-amber-500 text-6xl">★</span>)}
+                {[1, 2, 3, 4, 5].map((s: number) => <span key={s} className="text-6xl" style={{ color: palette.accent }}>★</span>)}
             </div>
             <h2 className="text-7xl font-serif italic text-slate-800 leading-tight">
                 &ldquo;{templateData.reviewText || 'The most incredible experience of our lives! Every detail was planned perfectly.'}&rdquo;
@@ -368,16 +406,19 @@ export const ReviewLayout = ({ templateData }: LayoutProps) => (
                 {templateData.logoUrl ? (
                     <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 180), height: "auto", objectFit: "contain" }} alt="logo" />
                 ) : (
-                    <p className="text-3xl font-bold text-blue-600">{templateData.companyName}</p>
+                    <p className="text-3xl font-bold" style={{ color: palette.accent }}>{templateData.companyName}</p>
                 )}
                 <div className="h-8 w-[2px] bg-slate-200"></div>
                 <p className="text-2xl text-slate-400 font-medium">{templateData.contactNumber}</p>
             </div>
         </div>
     </div>
-);
+    );
+};
 
-export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
+export const CarouselSlideLayout = ({ templateData, preset }: LayoutProps) => {
+    const palette = getPalette(preset);
+    return (
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", fontFamily: "Georgia, serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#faf6f0" }}>
         {/* Hero image as faded background texture */}
         {templateData.heroImage && (
@@ -393,10 +434,10 @@ export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
         <div style={{ position: "absolute", top: 40, left: 40, right: 40, bottom: 40, border: "1px solid #8b7355", opacity: 0.35 }} />
 
         {/* Corner decorative stamps */}
-        <div style={{ position: "absolute", top: 48, left: 48, width: 60, height: 60, borderTop: "3px solid #c4956a", borderLeft: "3px solid #c4956a" }} />
-        <div style={{ position: "absolute", top: 48, right: 48, width: 60, height: 60, borderTop: "3px solid #c4956a", borderRight: "3px solid #c4956a" }} />
-        <div style={{ position: "absolute", bottom: 48, left: 48, width: 60, height: 60, borderBottom: "3px solid #c4956a", borderLeft: "3px solid #c4956a" }} />
-        <div style={{ position: "absolute", bottom: 48, right: 48, width: 60, height: 60, borderBottom: "3px solid #c4956a", borderRight: "3px solid #c4956a" }} />
+        <div style={{ position: "absolute", top: 48, left: 48, width: 60, height: 60, borderTop: `3px solid ${palette.accent}`, borderLeft: `3px solid ${palette.accent}` }} />
+        <div style={{ position: "absolute", top: 48, right: 48, width: 60, height: 60, borderTop: `3px solid ${palette.accent}`, borderRight: `3px solid ${palette.accent}` }} />
+        <div style={{ position: "absolute", bottom: 48, left: 48, width: 60, height: 60, borderBottom: `3px solid ${palette.accent}`, borderLeft: `3px solid ${palette.accent}` }} />
+        <div style={{ position: "absolute", bottom: 48, right: 48, width: 60, height: 60, borderBottom: `3px solid ${palette.accent}`, borderRight: `3px solid ${palette.accent}` }} />
 
         {/* Logo at top */}
         {templateData.logoUrl && (
@@ -432,8 +473,8 @@ export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
 
             {/* Vintage price stamp */}
             {templateData.price && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: 28, border: "3px solid #c4956a", borderRadius: 9999, padding: "12px 36px", background: "rgba(196,149,106,0.1)" }}>
-                    <span style={{ fontSize: 38, fontWeight: 700, color: "#8b5e34", letterSpacing: "0.02em" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginTop: 28, border: `3px solid ${palette.accent}`, borderRadius: 9999, padding: "12px 36px", background: palette.accentTint }}>
+                    <span style={{ fontSize: 38, fontWeight: 700, color: palette.accent, letterSpacing: "0.02em" }}>
                         {templateData.price}
                     </span>
                 </div>
@@ -451,7 +492,8 @@ export const CarouselSlideLayout = ({ templateData }: LayoutProps) => (
             </div>
         </div>
     </div>
-);
+    );
+};
 
 // ── NEW: ServiceShowcaseLayout ───────────────────────────────────────────────
 // Matches real "Luxury Car Service" poster: white bg, logo top-center, navy+purple
