@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -9,14 +9,38 @@ import {
   BarChart3,
   Settings,
   AlertTriangle,
-  Loader2,
   Star,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
-import type { ReputationDashboardData, ReputationReview } from "@/lib/reputation/types";
+import type { ReputationReview } from "@/lib/reputation/types";
 import { PLATFORM_LABELS } from "@/lib/reputation/constants";
 import { ReputationHealthScore } from "./ReputationHealthScore";
 import { ReputationKPIRow } from "./ReputationKPIRow";
 import { ReviewInbox } from "./ReviewInbox";
+import CampaignList from "./CampaignList";
+import CampaignBuilder from "./CampaignBuilder";
+import { SentimentChart } from "./SentimentChart";
+import { TopicCloud } from "./TopicCloud";
+import ReviewToRevenueChart from "./ReviewToRevenueChart";
+import CompetitorBenchmark from "./CompetitorBenchmark";
+import RatingDistribution from "./RatingDistribution";
+import { BrandVoiceSettings } from "./BrandVoiceSettings";
+import PlatformConnectionCards from "./PlatformConnectionCards";
+import WidgetConfigurator from "./WidgetConfigurator";
+import NPSSurveyPreview from "./NPSSurveyPreview";
+import {
+  MOCK_DASHBOARD_DATA,
+  MOCK_REVIEWS,
+  MOCK_CAMPAIGNS,
+  MOCK_SENTIMENT_DATA,
+  MOCK_TOPICS,
+  MOCK_REVENUE_DATA,
+  MOCK_COMPETITORS,
+  MOCK_CONNECTIONS,
+  MOCK_BRAND_VOICE,
+  MOCK_WIDGET,
+} from "./mock-data";
 
 interface ReputationDashboardProps {
   organizationName: string;
@@ -32,6 +56,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
+// ─── Rating Distribution Bar (inline for Overview) ──────────────
 function RatingDistributionBar({
   distribution,
   total,
@@ -48,17 +73,17 @@ function RatingDistributionBar({
         const pct = total > 0 ? (count / total) * 100 : 0;
         return (
           <div key={star} className="flex items-center gap-3">
-            <span className="text-sm text-slate-400 w-4 text-right">{star}</span>
-            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-            <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+            <span className="text-sm text-gray-400 w-4 text-right">{star}</span>
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-amber-400/80 rounded-full"
+                className="h-full bg-amber-400 rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
               />
             </div>
-            <span className="text-xs text-slate-500 w-10 text-right">{count}</span>
+            <span className="text-xs text-gray-400 w-10 text-right">{count}</span>
           </div>
         );
       })}
@@ -66,22 +91,10 @@ function RatingDistributionBar({
   );
 }
 
-function ComingSoonCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-8 text-center">
-      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-        <Megaphone className="w-8 h-8 text-slate-500" />
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-400 max-w-md mx-auto">{description}</p>
-      <div className="mt-4 inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-500 font-medium">
-        Coming Soon
-      </div>
-    </div>
-  );
-}
+// ─── Overview Tab ───────────────────────────────────────────────
+function OverviewTab() {
+  const data = { ...MOCK_DASHBOARD_DATA, recentReviews: MOCK_REVIEWS.slice(0, 5) };
 
-function OverviewTab({ data }: { data: ReputationDashboardData }) {
   return (
     <div className="space-y-6">
       {/* Health Score + KPIs */}
@@ -104,10 +117,10 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3"
+          className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3"
         >
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-          <p className="text-sm text-red-300">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-700">
             <span className="font-semibold">{data.attentionCount}</span>{" "}
             {data.attentionCount === 1 ? "review requires" : "reviews require"} your
             attention.
@@ -117,33 +130,32 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
 
       {/* Platform Breakdown + Rating Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Platform Breakdown */}
-        <div className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Platform Breakdown</h3>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Platform Breakdown</h3>
           {data.platformBreakdown.length === 0 ? (
-            <p className="text-sm text-slate-500">No platform data yet.</p>
+            <p className="text-sm text-gray-400">No platform data yet.</p>
           ) : (
             <div className="space-y-3">
               {data.platformBreakdown.map((p) => (
                 <div
                   key={p.platform}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5"
+                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100"
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: p.color }}
                     />
-                    <span className="text-sm text-white font-medium">{p.label}</span>
+                    <span className="text-sm text-gray-900 font-medium">{p.label}</span>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                      <span className="text-sm text-white font-semibold">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span className="text-sm text-gray-900 font-semibold">
                         {p.rating.toFixed(1)}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-gray-500">
                       {p.count} {p.count === 1 ? "review" : "reviews"}
                     </span>
                   </div>
@@ -153,9 +165,8 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
           )}
         </div>
 
-        {/* Rating Distribution */}
-        <div className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Rating Distribution</h3>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Rating Distribution</h3>
           <RatingDistributionBar
             distribution={data.ratingDistribution}
             total={data.totalReviews}
@@ -165,9 +176,8 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
 
       {/* Sentiment + Recent Reviews */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sentiment Breakdown */}
-        <div className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Sentiment</h3>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Sentiment</h3>
           <div className="space-y-3">
             {(
               [
@@ -185,26 +195,25 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
                       className="w-2.5 h-2.5 rounded-full"
                       style={{ backgroundColor: s.color }}
                     />
-                    <span className="text-sm text-slate-300">{s.label}</span>
+                    <span className="text-sm text-gray-600">{s.label}</span>
                   </div>
-                  <span className="text-sm font-semibold text-white">{count}</span>
+                  <span className="text-sm font-semibold text-gray-900">{count}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Recent Reviews */}
-        <div className="lg:col-span-2 bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-white mb-4">Recent Reviews</h3>
+        <div className="lg:col-span-2 bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Recent Reviews</h3>
           {data.recentReviews.length === 0 ? (
-            <p className="text-sm text-slate-500">No reviews yet.</p>
+            <p className="text-sm text-gray-400">No reviews yet.</p>
           ) : (
             <div className="space-y-3">
               {data.recentReviews.map((review: ReputationReview) => (
                 <div
                   key={review.id}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5"
+                  className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
                 >
                   <div className="shrink-0 mt-0.5">
                     <div className="flex items-center gap-0.5">
@@ -213,8 +222,8 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
                           key={i}
                           className={`w-3 h-3 ${
                             i < review.rating
-                              ? "text-amber-400 fill-amber-400"
-                              : "text-slate-600"
+                              ? "text-amber-500 fill-amber-500"
+                              : "text-gray-300"
                           }`}
                         />
                       ))}
@@ -222,15 +231,15 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-white truncate">
+                      <span className="text-sm font-medium text-gray-900 truncate">
                         {review.reviewer_name}
                       </span>
-                      <span className="text-[10px] text-slate-500 shrink-0">
+                      <span className="text-[10px] text-gray-400 shrink-0">
                         {PLATFORM_LABELS[review.platform] ?? review.platform}
                       </span>
                     </div>
                     {review.comment && (
-                      <p className="text-xs text-slate-400 line-clamp-2">
+                      <p className="text-xs text-gray-500 line-clamp-2">
                         {review.comment}
                       </p>
                     )}
@@ -245,49 +254,147 @@ function OverviewTab({ data }: { data: ReputationDashboardData }) {
   );
 }
 
+// ─── Campaigns Tab ──────────────────────────────────────────────
+function CampaignsTab() {
+  const [isCreating, setIsCreating] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Review Campaigns</h2>
+        {!isCreating && (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Campaign
+          </button>
+        )}
+      </div>
+
+      {isCreating ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CampaignBuilder
+            onSave={(data) => {
+              console.log("Campaign saved:", data);
+              setIsCreating(false);
+            }}
+            onCancel={() => setIsCreating(false)}
+          />
+          <NPSSurveyPreview />
+        </div>
+      ) : (
+        <CampaignList campaigns={MOCK_CAMPAIGNS} />
+      )}
+    </div>
+  );
+}
+
+// ─── Analytics Tab ──────────────────────────────────────────────
+function AnalyticsTab() {
+  return (
+    <div className="space-y-6">
+      {/* Sentiment Chart - full width */}
+      <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">Sentiment Over Time</h3>
+        <SentimentChart data={MOCK_SENTIMENT_DATA} />
+      </div>
+
+      {/* Topic Cloud + Review-to-Revenue */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Topic Analysis</h3>
+          <TopicCloud topics={MOCK_TOPICS} />
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Review-to-Revenue Correlation</h3>
+          <ReviewToRevenueChart data={MOCK_REVENUE_DATA} />
+        </div>
+      </div>
+
+      {/* Competitor Benchmark + Rating Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Competitor Benchmark</h3>
+          <CompetitorBenchmark
+            orgRating={MOCK_DASHBOARD_DATA.overallRating}
+            orgReviewCount={MOCK_DASHBOARD_DATA.totalReviews}
+            competitors={MOCK_COMPETITORS}
+          />
+        </div>
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Rating Distribution</h3>
+          <RatingDistribution distribution={MOCK_DASHBOARD_DATA.ratingDistribution} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Tab ───────────────────────────────────────────────
+function SettingsTab() {
+  return (
+    <div className="space-y-8">
+      {/* Platform Connections */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Platform Connections</h2>
+        <PlatformConnectionCards connections={MOCK_CONNECTIONS} />
+      </section>
+
+      {/* Brand Voice */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Brand Voice</h2>
+        <BrandVoiceSettings
+          brandVoice={MOCK_BRAND_VOICE}
+          onSave={(data) => console.log("Brand voice saved:", data)}
+        />
+      </section>
+
+      {/* Review Widget */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Review Widget</h2>
+        <WidgetConfigurator
+          widget={MOCK_WIDGET}
+          onSave={(config) => console.log("Widget config saved:", config)}
+        />
+      </section>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ─────────────────────────────────────────────
 export function ReputationDashboard({ organizationName }: ReputationDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [dashboardData, setDashboardData] = useState<ReputationDashboardData | null>(
-    null
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch("/api/reputation/dashboard");
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to load dashboard");
-      }
-      const data: ReputationDashboardData = await res.json();
-      setDashboardData(data);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load dashboard";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Reputation Manager</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Monitor and manage reviews for {organizationName}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Reputation Manager</h1>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+              {MOCK_DASHBOARD_DATA.totalReviews} reviews
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Monitor and manage reviews for {organizationName}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            /* no-op with mock data */
+          }}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          title="Refresh data"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1 overflow-x-auto">
+      <div className="flex items-center gap-1 bg-gray-100 border border-gray-200 rounded-xl p-1 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -297,14 +404,14 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
               onClick={() => setActiveTab(tab.id)}
               className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 isActive
-                  ? "text-white"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  ? "text-gray-900"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
               {isActive && (
                 <motion.div
                   layoutId="reputation-tab-bg"
-                  className="absolute inset-0 bg-white/10 border border-white/10 rounded-lg"
+                  className="absolute inset-0 bg-white border border-gray-200 rounded-lg shadow-sm"
                   transition={{ type: "spring", stiffness: 400, damping: 35 }}
                 />
               )}
@@ -324,40 +431,11 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
         >
-          {loading && activeTab === "overview" ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-slate-500 animate-spin" />
-            </div>
-          ) : error && activeTab === "overview" ? (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center">
-              <p className="text-sm text-red-300">{error}</p>
-              <button
-                onClick={fetchDashboard}
-                className="mt-3 text-xs text-red-400 hover:text-red-300 underline"
-              >
-                Try again
-              </button>
-            </div>
-          ) : activeTab === "overview" && dashboardData ? (
-            <OverviewTab data={dashboardData} />
-          ) : activeTab === "reviews" ? (
-            <ReviewInbox organizationName={organizationName} />
-          ) : activeTab === "campaigns" ? (
-            <ComingSoonCard
-              title="Review Campaigns"
-              description="Automate review collection with post-trip NPS surveys and smart routing to platforms."
-            />
-          ) : activeTab === "analytics" ? (
-            <ComingSoonCard
-              title="Reputation Analytics"
-              description="Track trends, compare platforms, and analyze sentiment over time."
-            />
-          ) : activeTab === "settings" ? (
-            <ComingSoonCard
-              title="Reputation Settings"
-              description="Configure brand voice, platform connections, and notification preferences."
-            />
-          ) : null}
+          {activeTab === "overview" && <OverviewTab />}
+          {activeTab === "reviews" && <ReviewInbox organizationName={organizationName} />}
+          {activeTab === "campaigns" && <CampaignsTab />}
+          {activeTab === "analytics" && <AnalyticsTab />}
+          {activeTab === "settings" && <SettingsTab />}
         </motion.div>
       </AnimatePresence>
     </div>

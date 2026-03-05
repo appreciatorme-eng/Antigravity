@@ -141,7 +141,7 @@ export default function PlatformConnectionCards({
               key={platform.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative rounded-xl border border-white/10 bg-slate-800/50 p-5 flex flex-col gap-3"
+              className="relative rounded-xl border border-gray-200 bg-white shadow-sm p-5 flex flex-col gap-3"
             >
               {/* Platform header */}
               <div className="flex items-center gap-3">
@@ -152,11 +152,11 @@ export default function PlatformConnectionCards({
                   {platform.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
                     {platform.label}
                   </p>
                   {isConnected && connection.platform_account_name && (
-                    <p className="text-xs text-slate-400 truncate">
+                    <p className="text-xs text-gray-500 truncate">
                       {connection.platform_account_name}
                     </p>
                   )}
@@ -167,22 +167,22 @@ export default function PlatformConnectionCards({
               <div className="flex items-center gap-2">
                 {isConnected ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-medium text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-medium text-emerald-600">
                       Connected
                     </span>
                   </>
                 ) : (
                   <>
-                    <WifiOff className="w-4 h-4 text-slate-500" />
-                    <span className="text-xs text-slate-500">Not connected</span>
+                    <WifiOff className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs text-gray-400">Not connected</span>
                   </>
                 )}
               </div>
 
               {/* Sync info */}
               {isConnected && (
-                <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                <div className="text-xs text-gray-500 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   <span>Last synced: {formatLastSynced(connection.last_synced_at)}</span>
                 </div>
@@ -190,7 +190,7 @@ export default function PlatformConnectionCards({
 
               {/* Sync error */}
               {isConnected && connection.sync_error && (
-                <div className="flex items-start gap-1.5 text-xs text-red-400 bg-red-500/10 rounded-lg px-2 py-1.5">
+                <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 rounded-lg px-2 py-1.5">
                   <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
                   <span>{connection.sync_error}</span>
                 </div>
@@ -201,7 +201,7 @@ export default function PlatformConnectionCards({
                 {isConnected ? (
                   <button
                     onClick={() => handleDisconnect(connection.id)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Disconnect
@@ -213,7 +213,7 @@ export default function PlatformConnectionCards({
                       setFormData({ platform_account_id: "", platform_account_name: "" });
                       setError(null);
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white hover:bg-white/10 border border-white/15 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Connect
@@ -234,30 +234,30 @@ export default function PlatformConnectionCards({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-white/10 bg-slate-800/70 p-5">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <Wifi className="w-4 h-4 text-primary" />
                   Connect{" "}
                   {PLATFORMS.find((p) => p.id === connectingPlatform)?.label}
                 </h3>
                 <button
                   onClick={() => setConnectingPlatform(null)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-400"
+                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-500"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {error && (
-                <div className="mb-3 text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2">
+                <div className="mb-3 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
                   {error}
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">
+                  <label className="block text-xs text-gray-500 mb-1">
                     Account ID / Place ID
                   </label>
                   <input
@@ -269,12 +269,12 @@ export default function PlatformConnectionCards({
                         platform_account_id: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
                     placeholder="e.g. ChIJ..."
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">
+                  <label className="block text-xs text-gray-500 mb-1">
                     Account Name
                   </label>
                   <input
@@ -286,7 +286,7 @@ export default function PlatformConnectionCards({
                         platform_account_name: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
                     placeholder="e.g. My Travel Agency"
                   />
                 </div>

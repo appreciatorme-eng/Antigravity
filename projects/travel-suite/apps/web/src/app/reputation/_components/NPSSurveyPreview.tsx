@@ -182,27 +182,27 @@ export default function NPSSurveyPreview({
 
       {/* Routing legend */}
       <div className="mt-4 grid grid-cols-3 gap-2 text-center w-full max-w-[280px]">
-        <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/10 p-2">
-          <p className="text-[10px] font-bold text-emerald-400">
+        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2">
+          <p className="text-[10px] font-bold text-emerald-600">
             {promoter}-10
           </p>
-          <p className="text-[8px] text-zinc-500 mt-0.5">
+          <p className="text-[8px] text-gray-400 mt-0.5">
             Public Review
           </p>
         </div>
-        <div className="rounded-lg bg-amber-500/5 border border-amber-500/10 p-2">
-          <p className="text-[10px] font-bold text-amber-400">
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-2">
+          <p className="text-[10px] font-bold text-amber-500">
             {passive}-{promoter - 1}
           </p>
-          <p className="text-[8px] text-zinc-500 mt-0.5">
+          <p className="text-[8px] text-gray-400 mt-0.5">
             Follow-up
           </p>
         </div>
-        <div className="rounded-lg bg-red-500/5 border border-red-500/10 p-2">
-          <p className="text-[10px] font-bold text-red-400">
+        <div className="rounded-lg bg-red-50 border border-red-200 p-2">
+          <p className="text-[10px] font-bold text-red-600">
             1-{passive - 1}
           </p>
-          <p className="text-[8px] text-zinc-500 mt-0.5">
+          <p className="text-[8px] text-gray-400 mt-0.5">
             Private Form
           </p>
         </div>

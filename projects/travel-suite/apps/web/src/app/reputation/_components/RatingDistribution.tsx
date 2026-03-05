@@ -32,12 +32,12 @@ export default function RatingDistribution({
           <div key={rating} className="flex items-center gap-3">
             {/* Star label */}
             <div className="flex items-center gap-1 w-12 shrink-0">
-              <span className="text-sm font-medium text-white">{rating}</span>
+              <span className="text-sm font-medium text-gray-900">{rating}</span>
               <Star className="w-3.5 h-3.5" style={{ color }} fill={color} />
             </div>
 
             {/* Bar container */}
-            <div className="flex-1 h-6 bg-slate-800/60 rounded-full overflow-hidden relative">
+            <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden relative">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${percentage}%` }}
@@ -49,8 +49,8 @@ export default function RatingDistribution({
 
             {/* Count + percentage */}
             <div className="w-20 shrink-0 text-right">
-              <span className="text-xs font-medium text-white">{count}</span>
-              <span className="text-xs text-slate-400 ml-1">
+              <span className="text-xs font-medium text-gray-900">{count}</span>
+              <span className="text-xs text-gray-500 ml-1">
                 ({percentage.toFixed(0)}%)
               </span>
             </div>
@@ -59,9 +59,9 @@ export default function RatingDistribution({
       })}
 
       {/* Total */}
-      <div className="pt-2 border-t border-white/5 flex justify-between items-center">
-        <span className="text-xs text-slate-400">Total reviews</span>
-        <span className="text-sm font-semibold text-white">{total}</span>
+      <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+        <span className="text-xs text-gray-500">Total reviews</span>
+        <span className="text-sm font-semibold text-gray-900">{total}</span>
       </div>
     </div>
   );

@@ -25,10 +25,10 @@ function RatingDisplay({ rating, size = "md" }: { rating: number; size?: "sm" | 
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`font-bold text-white ${sizeClasses[size]}`}>
+      <span className={`font-bold text-gray-900 ${sizeClasses[size]}`}>
         {rating.toFixed(1)}
       </span>
-      <Star className="w-4 h-4 text-amber-400" fill="#fbbf24" />
+      <Star className="w-4 h-4 text-amber-500" fill="#f59e0b" />
     </div>
   );
 }
@@ -51,7 +51,7 @@ function RatingBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-medium ${isOrg ? "text-primary" : "text-slate-300"}`}>
+        <span className={`text-xs font-medium ${isOrg ? "text-primary" : "text-gray-600"}`}>
           {label}
           {isOrg && (
             <span className="ml-1.5 text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
@@ -59,9 +59,9 @@ function RatingBar({
             </span>
           )}
         </span>
-        <span className="text-xs font-semibold text-white">{rating.toFixed(1)}</span>
+        <span className="text-xs font-semibold text-gray-900">{rating.toFixed(1)}</span>
       </div>
-      <div className="h-2.5 bg-slate-800/60 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
@@ -132,16 +132,16 @@ export default function CompetitorBenchmark({
   return (
     <div className="space-y-5">
       {/* Your position summary */}
-      <div className="flex items-center justify-between rounded-xl bg-slate-800/40 border border-white/5 p-4">
+      <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-200 p-4">
         <div>
-          <p className="text-xs text-slate-400 mb-1">Your Position</p>
+          <p className="text-xs text-gray-500 mb-1">Your Position</p>
           <div className="flex items-center gap-2">
             <Trophy
-              className={`w-5 h-5 ${isLeading ? "text-amber-400" : "text-slate-400"}`}
+              className={`w-5 h-5 ${isLeading ? "text-amber-500" : "text-gray-400"}`}
             />
-            <span className="text-lg font-bold text-white">
+            <span className="text-lg font-bold text-gray-900">
               #{orgPosition}
-              <span className="text-sm font-normal text-slate-400 ml-1">
+              <span className="text-sm font-normal text-gray-500 ml-1">
                 of {allRatings.length}
               </span>
             </span>
@@ -149,7 +149,7 @@ export default function CompetitorBenchmark({
         </div>
         <div className="text-right">
           <RatingDisplay rating={orgRating} />
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-gray-500 mt-0.5">
             {orgReviewCount} reviews
           </p>
         </div>
@@ -179,11 +179,11 @@ export default function CompetitorBenchmark({
               {competitorRating > 0 && (
                 <div className="absolute right-0 -top-1 flex items-center gap-1">
                   {diff > 0 ? (
-                    <span className="flex items-center text-[10px] text-emerald-400">
+                    <span className="flex items-center text-[10px] text-emerald-600">
                       <TrendingUp className="w-3 h-3 mr-0.5" />+{diff.toFixed(1)}
                     </span>
                   ) : diff < 0 ? (
-                    <span className="flex items-center text-[10px] text-red-400">
+                    <span className="flex items-center text-[10px] text-red-600">
                       <TrendingDown className="w-3 h-3 mr-0.5" />{diff.toFixed(1)}
                     </span>
                   ) : null}
@@ -191,14 +191,14 @@ export default function CompetitorBenchmark({
               )}
               {/* Review count */}
               {competitor.latest_review_count !== null && (
-                <p className="text-[10px] text-slate-500 mt-0.5">
+                <p className="text-[10px] text-gray-400 mt-0.5">
                   {competitor.latest_review_count} reviews
                 </p>
               )}
               {/* Remove button */}
               <button
                 onClick={() => handleRemove(competitor.id)}
-                className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-0.5 rounded-full bg-slate-700 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all"
+                className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 p-0.5 rounded-full bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -210,18 +210,18 @@ export default function CompetitorBenchmark({
       {/* Pending competitors (no rating yet) */}
       {localCompetitors.some((c) => c.latest_rating === null) && (
         <div className="space-y-2">
-          <p className="text-xs text-slate-500">Awaiting data...</p>
+          <p className="text-xs text-gray-400">Awaiting data...</p>
           {localCompetitors
             .filter((c) => c.latest_rating === null)
             .map((c) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/30 border border-white/5"
+                className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-100"
               >
-                <span className="text-xs text-slate-400">{c.competitor_name}</span>
+                <span className="text-xs text-gray-500">{c.competitor_name}</span>
                 <button
                   onClick={() => handleRemove(c.id)}
-                  className="p-1 rounded hover:bg-red-500/10 text-slate-500 hover:text-red-400"
+                  className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -239,9 +239,9 @@ export default function CompetitorBenchmark({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-white/10 bg-slate-800/40 p-4 space-y-3">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
+                <label className="block text-xs text-gray-500 mb-1">
                   Competitor Name
                 </label>
                 <input
@@ -250,12 +250,12 @@ export default function CompetitorBenchmark({
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
                   placeholder="e.g. Rival Tours"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
+                <label className="block text-xs text-gray-500 mb-1">
                   Google Place ID (optional)
                 </label>
                 <input
@@ -267,7 +267,7 @@ export default function CompetitorBenchmark({
                       googlePlaceId: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
                   placeholder="ChIJ..."
                 />
               </div>
@@ -280,7 +280,7 @@ export default function CompetitorBenchmark({
                 </button>
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -290,7 +290,7 @@ export default function CompetitorBenchmark({
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-white/10 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-gray-200 text-xs text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Competitor

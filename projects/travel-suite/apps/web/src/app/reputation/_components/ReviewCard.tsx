@@ -91,7 +91,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-5 hover:bg-white/[0.07] transition-colors"
+      className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5 hover:bg-gray-50 transition-colors"
     >
       {/* Header Row */}
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -115,26 +115,26 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
                 key={i}
                 className={`w-3.5 h-3.5 ${
                   i < review.rating
-                    ? "text-amber-400 fill-amber-400"
-                    : "text-slate-700"
+                    ? "text-amber-500 fill-amber-500"
+                    : "text-gray-300"
                 }`}
               />
             ))}
           </div>
 
           {/* Reviewer name */}
-          <span className="text-sm font-medium text-white truncate">
+          <span className="text-sm font-medium text-gray-900 truncate">
             {review.reviewer_name}
           </span>
 
           {/* Verified badge */}
           {review.is_verified_client && (
-            <BadgeCheck className="w-4 h-4 text-blue-400 shrink-0" />
+            <BadgeCheck className="w-4 h-4 text-blue-600 shrink-0" />
           )}
 
           {/* Attention indicator */}
           {review.requires_attention && (
-            <span className="shrink-0 flex items-center gap-1 text-[10px] text-red-400">
+            <span className="shrink-0 flex items-center gap-1 text-[10px] text-red-600">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               {review.attention_reason || "Needs attention"}
             </span>
@@ -143,7 +143,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           <ResponseStatusBadge status={review.response_status} />
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-gray-400">
             {timeAgo(review.review_date)}
           </span>
         </div>
@@ -151,20 +151,20 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
 
       {/* Title */}
       {review.title && (
-        <h4 className="text-sm font-semibold text-white mb-1">{review.title}</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">{review.title}</h4>
       )}
 
       {/* Comment */}
       {displayComment && (
         <div className="mb-3">
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-gray-600 leading-relaxed">
             {displayComment}
             {hasLongComment && !expanded && "..."}
           </p>
           {hasLongComment && (
             <button
               onClick={() => setExpanded((prev) => !prev)}
-              className="mt-1 text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              className="mt-1 text-xs text-blue-600 hover:text-blue-500 flex items-center gap-1"
             >
               {expanded ? (
                 <>
@@ -186,7 +186,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
           {tags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400"
+              className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200 text-gray-500"
             >
               {tag}
             </span>
@@ -200,7 +200,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
           {topics.map((topic) => (
             <span
               key={topic}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300"
+              className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-600"
             >
               {topic.replace(/_/g, " ")}
             </span>
@@ -209,12 +209,12 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
       )}
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between pt-2 border-t border-white/5">
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <div className="flex items-center gap-2">
           {onFlag && (
             <button
               onClick={() => onFlag(review.id)}
-              className="text-xs text-slate-500 hover:text-orange-400 flex items-center gap-1 transition-colors"
+              className="text-xs text-gray-400 hover:text-orange-400 flex items-center gap-1 transition-colors"
             >
               <Flag className="w-3.5 h-3.5" />
               Flag
@@ -223,7 +223,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
           {onRespond && review.response_status !== "responded" && (
             <button
               onClick={() => onRespond(review.id)}
-              className="text-xs text-slate-500 hover:text-blue-400 flex items-center gap-1 transition-colors"
+              className="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-1 transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Respond
@@ -236,7 +236,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
             href={review.platform_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-slate-500 hover:text-white flex items-center gap-1 transition-colors"
+            className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             View on {platformLabel}

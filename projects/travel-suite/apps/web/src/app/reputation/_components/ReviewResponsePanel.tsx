@@ -34,7 +34,7 @@ function RatingStars({ rating }: { rating: number }) {
           className={`w-3.5 h-3.5 ${
             i < rating
               ? "fill-yellow-400 text-yellow-400"
-              : "fill-transparent text-white/20"
+              : "fill-transparent text-gray-300"
           }`}
         />
       ))}
@@ -45,9 +45,9 @@ function RatingStars({ rating }: { rating: number }) {
 function ShimmerBlock({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-lg bg-white/5 ${className}`}
+      className={`relative overflow-hidden rounded-lg bg-gray-100 ${className}`}
     >
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
     </div>
   );
 }
@@ -134,7 +134,7 @@ export function ReviewResponsePanel({
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -143,7 +143,7 @@ export function ReviewResponsePanel({
 
           {/* Slide-over panel */}
           <motion.div
-            className="fixed right-0 top-0 z-50 h-full w-full max-w-lg overflow-y-auto bg-[#0f1117] border-l border-white/10 shadow-2xl"
+            className="fixed right-0 top-0 z-50 h-full w-full max-w-lg overflow-y-auto bg-white border-l border-gray-200 shadow-2xl"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -151,20 +151,20 @@ export function ReviewResponsePanel({
           >
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                <h2 className="text-lg font-semibold text-white">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">
                   Compose Response
                 </h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Review details */}
-              <div className="px-6 py-4 border-b border-white/5">
+              <div className="px-6 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3 mb-3">
                   <span
                     className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide"
@@ -177,12 +177,12 @@ export function ReviewResponsePanel({
                     {platformLabel}
                   </span>
                   <RatingStars rating={review.rating} />
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-gray-500">
                     by {review.reviewer_name}
                   </span>
                 </div>
                 {review.comment && (
-                  <p className="text-sm text-white/70 leading-relaxed line-clamp-4">
+                  <p className="text-sm text-gray-600 leading-relaxed line-clamp-4">
                     {review.comment}
                   </p>
                 )}
@@ -193,8 +193,8 @@ export function ReviewResponsePanel({
                 {/* AI suggestion section */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-white/80 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
+                    <h3 className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
                       AI Suggested Response
                     </h3>
                   </div>
@@ -209,7 +209,7 @@ export function ReviewResponsePanel({
                   ) : aiResponse ? (
                     <div className="space-y-2">
                       <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
-                        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                           {aiResponse}
                         </p>
                       </div>
@@ -217,14 +217,14 @@ export function ReviewResponsePanel({
                         <button
                           onClick={() => handleGenerateAI(true)}
                           disabled={generating}
-                          className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                         >
                           <RefreshCw className="w-3 h-3" />
                           Regenerate
                         </button>
                         <button
                           onClick={handleUseAI}
-                          className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                          className="inline-flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-500 px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
                         >
                           <CheckCircle2 className="w-3 h-3" />
                           Use This
@@ -235,7 +235,7 @@ export function ReviewResponsePanel({
                     <button
                       onClick={() => handleGenerateAI(false)}
                       disabled={generating}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/50 transition-colors text-sm"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-purple-500/30 text-purple-600 hover:bg-purple-500/10 hover:border-purple-500/50 transition-colors text-sm"
                     >
                       <Sparkles className="w-4 h-4" />
                       Generate AI Response
@@ -243,18 +243,18 @@ export function ReviewResponsePanel({
                   )}
 
                   {error && (
-                    <p className="text-xs text-red-400 mt-1">{error}</p>
+                    <p className="text-xs text-red-600 mt-1">{error}</p>
                   )}
                 </div>
 
                 {/* Mode toggle */}
-                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-white/5 w-fit">
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-gray-100 w-fit">
                   <button
                     onClick={() => setMode("edit")}
                     className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
                       mode === "edit"
-                        ? "bg-white/10 text-white"
-                        : "text-white/40 hover:text-white/60"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-600"
                     }`}
                   >
                     <Edit3 className="w-3 h-3" />
@@ -264,8 +264,8 @@ export function ReviewResponsePanel({
                     onClick={() => setMode("preview")}
                     className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
                       mode === "preview"
-                        ? "bg-white/10 text-white"
-                        : "text-white/40 hover:text-white/60"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-600"
                     }`}
                   >
                     <Eye className="w-3 h-3" />
@@ -276,7 +276,7 @@ export function ReviewResponsePanel({
                 {/* Response textarea / preview */}
                 {mode === "edit" ? (
                   <div className="space-y-2">
-                    <label className="text-xs text-white/50 font-medium">
+                    <label className="text-xs text-gray-500 font-medium">
                       Your Response
                     </label>
                     <textarea
@@ -286,24 +286,24 @@ export function ReviewResponsePanel({
                       }}
                       placeholder="Type your response here or generate one with AI..."
                       rows={8}
-                      className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500/30 resize-y"
+                      className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500/30 resize-y"
                     />
-                    <p className="text-[10px] text-white/30">
+                    <p className="text-[10px] text-gray-400">
                       {activeResponse.length} characters
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <label className="text-xs text-white/50 font-medium">
+                    <label className="text-xs text-gray-500 font-medium">
                       Response Preview
                     </label>
-                    <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
                       {activeResponse.trim() ? (
-                        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                           {activeResponse}
                         </p>
                       ) : (
-                        <p className="text-sm text-white/30 italic">
+                        <p className="text-sm text-gray-400 italic">
                           No response written yet.
                         </p>
                       )}
@@ -313,11 +313,11 @@ export function ReviewResponsePanel({
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-white/10">
+              <div className="px-6 py-4 border-t border-gray-200">
                 <button
                   onClick={handleSave}
                   disabled={saving || !activeResponse.trim()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-white/10 disabled:text-white/30 text-white text-sm font-medium transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-gray-100 disabled:text-gray-400 text-white text-sm font-medium transition-colors"
                 >
                   {saving ? (
                     <>

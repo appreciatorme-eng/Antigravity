@@ -127,24 +127,24 @@ export default function WidgetConfigurator({
       <div className="space-y-5">
         <div className="flex items-center gap-2 mb-1">
           <Settings2 className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold text-white">Configuration</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Configuration</h3>
         </div>
 
         {/* Widget name */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Widget Name</label>
+          <label className="block text-xs text-gray-500 mb-1.5">Widget Name</label>
           <input
             type="text"
             value={config.name}
             onChange={(e) => updateConfig("name", e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
             placeholder="e.g. Homepage Reviews"
           />
         </div>
 
         {/* Widget type */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
             <Layout className="w-3.5 h-3.5" />
             Widget Type
           </label>
@@ -155,12 +155,12 @@ export default function WidgetConfigurator({
                 onClick={() => updateConfig("widget_type", type.value)}
                 className={`px-3 py-2.5 rounded-lg border text-left transition-all ${
                   config.widget_type === type.value
-                    ? "border-primary/50 bg-primary/10 text-white"
-                    : "border-white/10 bg-slate-800/30 text-slate-400 hover:text-white hover:border-white/20"
+                    ? "border-primary/50 bg-primary/10 text-gray-900"
+                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-900 hover:border-gray-300"
                 }`}
               >
                 <p className="text-xs font-medium">{type.label}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
+                <p className="text-[10px] text-gray-400 mt-0.5">
                   {type.description}
                 </p>
               </button>
@@ -170,7 +170,7 @@ export default function WidgetConfigurator({
 
         {/* Theme */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
             <Palette className="w-3.5 h-3.5" />
             Theme
           </label>
@@ -181,8 +181,8 @@ export default function WidgetConfigurator({
                 onClick={() => updateConfig("theme", theme.value)}
                 className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                   config.theme === theme.value
-                    ? "border-primary/50 bg-primary/10 text-white"
-                    : "border-white/10 bg-slate-800/30 text-slate-400 hover:text-white"
+                    ? "border-primary/50 bg-primary/10 text-gray-900"
+                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {theme.label}
@@ -193,26 +193,26 @@ export default function WidgetConfigurator({
 
         {/* Accent color */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Accent Color</label>
+          <label className="block text-xs text-gray-500 mb-1.5">Accent Color</label>
           <div className="flex items-center gap-3">
             <input
               type="color"
               value={config.accent_color ?? "#00d084"}
               onChange={(e) => updateConfig("accent_color", e.target.value)}
-              className="w-10 h-10 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+              className="w-10 h-10 rounded-lg border border-gray-200 bg-transparent cursor-pointer"
             />
             <input
               type="text"
               value={config.accent_color ?? "#00d084"}
               onChange={(e) => updateConfig("accent_color", e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+              className="flex-1 px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 font-mono focus:outline-none focus:border-primary/50"
             />
           </div>
         </div>
 
         {/* Min rating slider */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
             <Star className="w-3.5 h-3.5" />
             Minimum Rating to Show: {config.min_rating_to_show}
           </label>
@@ -227,7 +227,7 @@ export default function WidgetConfigurator({
             }
             className="w-full accent-primary"
           />
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
             <span>1 star</span>
             <span>5 stars</span>
           </div>
@@ -235,7 +235,7 @@ export default function WidgetConfigurator({
 
         {/* Max reviews */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">Max Reviews</label>
+          <label className="block text-xs text-gray-500 mb-1.5">Max Reviews</label>
           <input
             type="number"
             min={1}
@@ -244,13 +244,13 @@ export default function WidgetConfigurator({
             onChange={(e) =>
               updateConfig("max_reviews", parseInt(e.target.value, 10) || 10)
             }
-            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white focus:outline-none focus:border-primary/50"
+            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 focus:outline-none focus:border-primary/50"
           />
         </div>
 
         {/* Platform filters */}
         <div>
-          <label className="block text-xs text-slate-400 mb-2">
+          <label className="block text-xs text-gray-500 mb-2">
             Platform Filter (leave empty for all)
           </label>
           <div className="flex flex-wrap gap-2">
@@ -261,7 +261,7 @@ export default function WidgetConfigurator({
                 className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                   (config.platforms_filter ?? []).includes(platform.id)
                     ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-white/10 bg-slate-800/30 text-slate-400 hover:text-white"
+                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {platform.label}
@@ -272,11 +272,11 @@ export default function WidgetConfigurator({
 
         {/* Show branding toggle */}
         <div className="flex items-center justify-between">
-          <label className="text-xs text-slate-400">Show Branding</label>
+          <label className="text-xs text-gray-500">Show Branding</label>
           <button
             onClick={() => updateConfig("show_branding", !config.show_branding)}
             className={`w-10 h-5 rounded-full transition-colors relative ${
-              config.show_branding ? "bg-primary" : "bg-slate-700"
+              config.show_branding ? "bg-primary" : "bg-gray-300"
             }`}
           >
             <motion.div
@@ -289,28 +289,28 @@ export default function WidgetConfigurator({
 
         {/* Custom header */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">
+          <label className="block text-xs text-gray-500 mb-1.5">
             Custom Header Text
           </label>
           <input
             type="text"
             value={config.custom_header ?? ""}
             onChange={(e) => updateConfig("custom_header", e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
             placeholder="e.g. What Our Travelers Say"
           />
         </div>
 
         {/* Custom footer */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1.5">
+          <label className="block text-xs text-gray-500 mb-1.5">
             Custom Footer Text
           </label>
           <input
             type="text"
             value={config.custom_footer ?? ""}
             onChange={(e) => updateConfig("custom_footer", e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-slate-900/60 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
+            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary/50"
             placeholder="e.g. Rated 4.8/5 across platforms"
           />
         </div>
@@ -331,7 +331,7 @@ export default function WidgetConfigurator({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-white">Live Preview</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Live Preview</h3>
           </div>
           <WidgetPreview config={previewConfig} />
         </div>
@@ -340,24 +340,24 @@ export default function WidgetConfigurator({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Code className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-semibold text-white">Embed Code</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Embed Code</h3>
           </div>
-          <div className="relative rounded-xl bg-slate-900 border border-white/10 p-4">
-            <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-all leading-relaxed">
+          <div className="relative rounded-xl bg-gray-50 border border-gray-200 p-4">
+            <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap break-all leading-relaxed">
               {embedCode}
             </pre>
             <button
               onClick={handleCopyEmbed}
-              className="absolute top-3 right-3 p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white transition-colors"
+              className="absolute top-3 right-3 p-2 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 text-gray-500 hover:text-gray-900 transition-colors"
             >
               {copied ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}
             </button>
           </div>
-          <p className="text-[10px] text-slate-500 mt-2">
+          <p className="text-[10px] text-gray-400 mt-2">
             Paste this code into your website where you want the review widget
             to appear.
           </p>

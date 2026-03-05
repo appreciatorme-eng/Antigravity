@@ -25,7 +25,7 @@ function KPICard({ icon: Icon, iconColor, label, value, subtitle, index }: KPICa
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-5"
+      className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5"
     >
       <div className="flex items-center gap-3 mb-3">
         <div
@@ -34,12 +34,12 @@ function KPICard({ icon: Icon, iconColor, label, value, subtitle, index }: KPICa
         >
           <Icon className="w-4.5 h-4.5" style={{ color: iconColor }} />
         </div>
-        <span className="text-xs text-slate-400 font-medium">{label}</span>
+        <span className="text-xs text-gray-500 font-medium">{label}</span>
       </div>
       <div>
-        <span className="text-2xl font-bold text-white">{value}</span>
+        <span className="text-2xl font-bold text-gray-900">{value}</span>
         {subtitle && (
-          <span className="text-xs text-slate-500 ml-2">{subtitle}</span>
+          <span className="text-xs text-gray-400 ml-2">{subtitle}</span>
         )}
       </div>
     </motion.div>

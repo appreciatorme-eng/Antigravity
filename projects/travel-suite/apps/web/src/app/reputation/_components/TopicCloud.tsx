@@ -16,22 +16,22 @@ const SENTIMENT_PILL_COLORS: Record<string, { bg: string; border: string; text: 
   positive: {
     bg: "rgba(34, 197, 94, 0.12)",
     border: "rgba(34, 197, 94, 0.25)",
-    text: "#4ade80",
+    text: "#16a34a",
   },
   neutral: {
     bg: "rgba(234, 179, 8, 0.12)",
     border: "rgba(234, 179, 8, 0.25)",
-    text: "#facc15",
+    text: "#ca8a04",
   },
   negative: {
     bg: "rgba(239, 68, 68, 0.12)",
     border: "rgba(239, 68, 68, 0.25)",
-    text: "#f87171",
+    text: "#dc2626",
   },
   default: {
     bg: "rgba(139, 92, 246, 0.12)",
     border: "rgba(139, 92, 246, 0.25)",
-    text: "#a78bfa",
+    text: "#7c3aed",
   },
 };
 
@@ -50,7 +50,7 @@ function getTopicSize(count: number, maxCount: number): string {
 export function TopicCloud({ topics }: TopicCloudProps) {
   if (topics.length === 0) {
     return (
-      <div className="w-full rounded-xl border border-dashed border-white/10 flex items-center justify-center text-sm text-white/40 py-8">
+      <div className="w-full rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400 py-8">
         No topic data available yet.
       </div>
     );

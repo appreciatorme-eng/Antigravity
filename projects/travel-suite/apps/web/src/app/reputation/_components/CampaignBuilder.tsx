@@ -123,7 +123,7 @@ export default function CampaignBuilder({
       <div>
         <label
           htmlFor="campaign-name"
-          className="block text-sm font-medium text-zinc-300 mb-1.5"
+          className="block text-sm font-medium text-gray-600 mb-1.5"
         >
           Campaign Name
         </label>
@@ -134,7 +134,7 @@ export default function CampaignBuilder({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Post-Trip Rajasthan Review"
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
         />
       </div>
 
@@ -143,7 +143,7 @@ export default function CampaignBuilder({
         <div>
           <label
             htmlFor="campaign-type"
-            className="block text-sm font-medium text-zinc-300 mb-1.5"
+            className="block text-sm font-medium text-gray-600 mb-1.5"
           >
             Campaign Type
           </label>
@@ -151,7 +151,7 @@ export default function CampaignBuilder({
             id="campaign-type"
             value={campaignType}
             onChange={(e) => setCampaignType(e.target.value as CampaignType)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
           >
             {CAMPAIGN_TYPES.map((ct) => (
               <option key={ct.value} value={ct.value}>
@@ -164,7 +164,7 @@ export default function CampaignBuilder({
         <div>
           <label
             htmlFor="trigger-event"
-            className="block text-sm font-medium text-zinc-300 mb-1.5"
+            className="block text-sm font-medium text-gray-600 mb-1.5"
           >
             Trigger Event
           </label>
@@ -172,7 +172,7 @@ export default function CampaignBuilder({
             id="trigger-event"
             value={triggerEvent}
             onChange={(e) => setTriggerEvent(e.target.value as TriggerEvent)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
           >
             {TRIGGER_EVENTS.map((te) => (
               <option key={te.value} value={te.value}>
@@ -187,7 +187,7 @@ export default function CampaignBuilder({
       <div>
         <label
           htmlFor="trigger-delay"
-          className="block text-sm font-medium text-zinc-300 mb-1.5"
+          className="block text-sm font-medium text-gray-600 mb-1.5"
         >
           Delay After Trigger (hours)
         </label>
@@ -198,23 +198,23 @@ export default function CampaignBuilder({
           max={168}
           value={triggerDelayHours}
           onChange={(e) => setTriggerDelayHours(Number(e.target.value))}
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
         />
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           Wait this many hours after the trigger event before sending the survey
         </p>
       </div>
 
       {/* NPS Configuration */}
-      <div className="rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 space-y-4">
-        <h3 className="text-sm font-semibold text-zinc-200">
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900">
           NPS Question Configuration
         </h3>
 
         <div>
           <label
             htmlFor="nps-question"
-            className="block text-xs font-medium text-zinc-400 mb-1"
+            className="block text-xs font-medium text-gray-500 mb-1"
           >
             NPS Question
           </label>
@@ -223,14 +223,14 @@ export default function CampaignBuilder({
             type="text"
             value={npsQuestion}
             onChange={(e) => setNpsQuestion(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors"
           />
         </div>
 
         <div>
           <label
             htmlFor="nps-followup"
-            className="block text-xs font-medium text-zinc-400 mb-1"
+            className="block text-xs font-medium text-gray-500 mb-1"
           >
             Follow-up Question
           </label>
@@ -239,14 +239,14 @@ export default function CampaignBuilder({
             type="text"
             value={npsFollowupQuestion}
             onChange={(e) => setNpsFollowupQuestion(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-colors"
           />
         </div>
       </div>
 
       {/* Routing Thresholds */}
-      <div className="rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 space-y-4">
-        <h3 className="text-sm font-semibold text-zinc-200">
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900">
           NPS Score Routing
         </h3>
 
@@ -254,11 +254,11 @@ export default function CampaignBuilder({
           <div className="flex items-center justify-between mb-1">
             <label
               htmlFor="promoter-threshold"
-              className="text-xs font-medium text-zinc-400"
+              className="text-xs font-medium text-gray-500"
             >
               Promoter Threshold
             </label>
-            <span className="text-xs font-bold text-emerald-400">
+            <span className="text-xs font-bold text-emerald-600">
               {promoterThreshold}+
             </span>
           </div>
@@ -277,7 +277,7 @@ export default function CampaignBuilder({
             }}
             className="w-full accent-emerald-500"
           />
-          <div className="flex justify-between text-[10px] text-zinc-500">
+          <div className="flex justify-between text-[10px] text-gray-400">
             <span>7</span>
             <span>10</span>
           </div>
@@ -287,11 +287,11 @@ export default function CampaignBuilder({
           <div className="flex items-center justify-between mb-1">
             <label
               htmlFor="passive-threshold"
-              className="text-xs font-medium text-zinc-400"
+              className="text-xs font-medium text-gray-500"
             >
               Passive Threshold
             </label>
-            <span className="text-xs font-bold text-amber-400">
+            <span className="text-xs font-bold text-amber-500">
               {passiveThreshold}-{promoterThreshold - 1}
             </span>
           </div>
@@ -310,13 +310,13 @@ export default function CampaignBuilder({
             }}
             className="w-full accent-amber-500"
           />
-          <div className="flex justify-between text-[10px] text-zinc-500">
+          <div className="flex justify-between text-[10px] text-gray-400">
             <span>5</span>
             <span>9</span>
           </div>
         </div>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-gray-400">
           Detractors: 1-{passiveThreshold - 1} | Passive:{" "}
           {passiveThreshold}-{promoterThreshold - 1} | Promoters:{" "}
           {promoterThreshold}-10
@@ -325,20 +325,20 @@ export default function CampaignBuilder({
         {/* Visual preview of routing */}
         <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
           <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-2">
-            <p className="font-bold text-red-400">Detractor</p>
-            <p className="text-zinc-500">
+            <p className="font-bold text-red-600">Detractor</p>
+            <p className="text-gray-400">
               1-{passiveThreshold - 1}
             </p>
           </div>
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2">
-            <p className="font-bold text-amber-400">Passive</p>
-            <p className="text-zinc-500">
+            <p className="font-bold text-amber-500">Passive</p>
+            <p className="text-gray-400">
               {passiveThreshold}-{promoterThreshold - 1}
             </p>
           </div>
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2">
-            <p className="font-bold text-emerald-400">Promoter</p>
-            <p className="text-zinc-500">{promoterThreshold}-10</p>
+            <p className="font-bold text-emerald-600">Promoter</p>
+            <p className="text-gray-400">{promoterThreshold}-10</p>
           </div>
         </div>
       </div>
@@ -348,7 +348,7 @@ export default function CampaignBuilder({
         <div>
           <label
             htmlFor="promoter-action"
-            className="block text-sm font-medium text-zinc-300 mb-1.5"
+            className="block text-sm font-medium text-gray-600 mb-1.5"
           >
             Promoter Action
           </label>
@@ -358,7 +358,7 @@ export default function CampaignBuilder({
             onChange={(e) =>
               setPromoterAction(e.target.value as PromoterAction)
             }
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
           >
             {PROMOTER_ACTIONS.map((pa) => (
               <option key={pa.value} value={pa.value}>
@@ -371,7 +371,7 @@ export default function CampaignBuilder({
         <div>
           <label
             htmlFor="detractor-action"
-            className="block text-sm font-medium text-zinc-300 mb-1.5"
+            className="block text-sm font-medium text-gray-600 mb-1.5"
           >
             Detractor Action
           </label>
@@ -381,7 +381,7 @@ export default function CampaignBuilder({
             onChange={(e) =>
               setDetractorAction(e.target.value as DetractorAction)
             }
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
           >
             {DETRACTOR_ACTIONS.map((da) => (
               <option key={da.value} value={da.value}>
@@ -397,7 +397,7 @@ export default function CampaignBuilder({
         <div>
           <label
             htmlFor="custom-review-url"
-            className="block text-sm font-medium text-zinc-300 mb-1.5"
+            className="block text-sm font-medium text-gray-600 mb-1.5"
           >
             Custom Review URL
           </label>
@@ -407,14 +407,14 @@ export default function CampaignBuilder({
             value={promoterReviewUrl}
             onChange={(e) => setPromoterReviewUrl(e.target.value)}
             placeholder="https://..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-800/50 px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 transition-colors"
           />
         </div>
       )}
 
       {/* Channel Sequence */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-2">
+        <label className="block text-sm font-medium text-gray-600 mb-2">
           Delivery Channels
         </label>
         <div className="flex gap-3">
@@ -429,8 +429,8 @@ export default function CampaignBuilder({
                   flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all
                   ${
                     isActive
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-                      : "border-zinc-700 bg-zinc-800/30 text-zinc-400 hover:border-zinc-600"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600"
+                      : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
                   }
                 `}
               >
@@ -438,7 +438,7 @@ export default function CampaignBuilder({
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     isActive
                       ? "border-emerald-500 bg-emerald-500"
-                      : "border-zinc-600"
+                      : "border-gray-300"
                   }`}
                 >
                   {isActive && (
@@ -463,18 +463,18 @@ export default function CampaignBuilder({
       </div>
 
       {/* Preview Panel */}
-      <div className="rounded-xl border border-zinc-700 bg-zinc-800/30 p-4">
-        <h3 className="text-sm font-semibold text-zinc-200 mb-3">
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">
           Flow Preview
         </h3>
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1.5">
-            <span className="text-blue-400 font-medium">
+            <span className="text-blue-600 font-medium">
               {TRIGGER_EVENTS.find((t) => t.value === triggerEvent)?.label}
             </span>
           </div>
           <svg
-            className="w-4 h-4 text-zinc-600 shrink-0"
+            className="w-4 h-4 text-gray-300 shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -482,13 +482,13 @@ export default function CampaignBuilder({
           >
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
-          <div className="rounded-lg bg-zinc-700/50 border border-zinc-600 px-3 py-1.5">
-            <span className="text-zinc-300 font-medium">
+          <div className="rounded-lg bg-gray-100 border border-gray-200 px-3 py-1.5">
+            <span className="text-gray-600 font-medium">
               {triggerDelayHours}h delay
             </span>
           </div>
           <svg
-            className="w-4 h-4 text-zinc-600 shrink-0"
+            className="w-4 h-4 text-gray-300 shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -497,10 +497,10 @@ export default function CampaignBuilder({
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
           <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
-            <span className="text-purple-400 font-medium">NPS Survey</span>
+            <span className="text-purple-600 font-medium">NPS Survey</span>
           </div>
           <svg
-            className="w-4 h-4 text-zinc-600 shrink-0"
+            className="w-4 h-4 text-gray-300 shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -509,7 +509,7 @@ export default function CampaignBuilder({
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
-            <span className="text-emerald-400 font-medium">Route</span>
+            <span className="text-emerald-600 font-medium">Route</span>
           </div>
         </div>
       </div>
@@ -519,7 +519,7 @@ export default function CampaignBuilder({
         <button
           type="button"
           onClick={onCancel}
-          className="px-5 py-2.5 rounded-xl border border-zinc-700 text-sm font-medium text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
+          className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
         >
           Cancel
         </button>

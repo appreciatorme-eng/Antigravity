@@ -39,8 +39,8 @@ function CustomTooltip({
   if (!active || !payload) return null;
 
   return (
-    <div className="rounded-lg bg-[#1a1b23]/95 backdrop-blur-md border border-white/10 px-3 py-2.5 shadow-xl">
-      <p className="text-[11px] text-white/50 mb-1.5 font-medium">{label}</p>
+    <div className="rounded-lg bg-white border border-gray-200 shadow-lg px-3 py-2.5">
+      <p className="text-[11px] text-gray-500 mb-1.5 font-medium">{label}</p>
       <div className="space-y-1">
         {payload.map((entry) => (
           <div
@@ -52,9 +52,9 @@ function CustomTooltip({
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-white/70 capitalize">{entry.name}</span>
+              <span className="text-gray-600 capitalize">{entry.name}</span>
             </span>
-            <span className="text-white font-medium tabular-nums">
+            <span className="text-gray-900 font-medium tabular-nums">
               {entry.value}
             </span>
           </div>
@@ -67,7 +67,7 @@ function CustomTooltip({
 export function SentimentChart({ data }: SentimentChartProps) {
   if (data.length === 0) {
     return (
-      <div className="h-[280px] w-full rounded-xl border border-dashed border-white/10 flex items-center justify-center text-sm text-white/40">
+      <div className="h-[280px] w-full rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
         No sentiment data available yet.
       </div>
     );
@@ -98,18 +98,18 @@ export function SentimentChart({ data }: SentimentChartProps) {
           <CartesianGrid
             strokeDasharray="4 4"
             vertical={false}
-            stroke="rgba(255,255,255,0.06)"
+            stroke="#f3f4f6"
           />
 
           <XAxis
             dataKey="date"
-            stroke="rgba(255,255,255,0.3)"
+            stroke="#9ca3af"
             fontSize={11}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="rgba(255,255,255,0.3)"
+            stroke="#9ca3af"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -119,7 +119,7 @@ export function SentimentChart({ data }: SentimentChartProps) {
           <Tooltip
             content={<CustomTooltip />}
             cursor={{
-              stroke: "rgba(255,255,255,0.15)",
+              stroke: "#e5e7eb",
               strokeWidth: 1,
             }}
           />

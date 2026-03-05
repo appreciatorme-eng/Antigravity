@@ -18,6 +18,7 @@ import type {
 } from "@/lib/reputation/types";
 import { PLATFORM_LABELS } from "@/lib/reputation/constants";
 import { ReviewCard } from "./ReviewCard";
+import { ReviewResponsePanel } from "./ReviewResponsePanel";
 
 interface ReviewInboxProps {
   organizationName?: string;
@@ -93,13 +94,13 @@ function AddReviewModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-white">Add Manual Review</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Add Manual Review</h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -108,7 +109,7 @@ function AddReviewModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Reviewer Name */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">
+            <label className="block text-xs text-gray-500 mb-1.5">
               Reviewer Name *
             </label>
             <input
@@ -116,14 +117,14 @@ function AddReviewModal({
               required
               value={formData.reviewer_name}
               onChange={(e) => updateField("reviewer_name", e.target.value)}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
               placeholder="Enter reviewer name"
             />
           </div>
 
           {/* Rating */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Rating *</label>
+            <label className="block text-xs text-gray-500 mb-1.5">Rating *</label>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -135,8 +136,8 @@ function AddReviewModal({
                   <Star
                     className={`w-6 h-6 transition-colors ${
                       star <= formData.rating
-                        ? "text-amber-400 fill-amber-400"
-                        : "text-slate-700 hover:text-slate-500"
+                        ? "text-amber-500 fill-amber-500"
+                        : "text-gray-300 hover:text-gray-400"
                     }`}
                   />
                 </button>
@@ -146,16 +147,16 @@ function AddReviewModal({
 
           {/* Platform */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Platform</label>
+            <label className="block text-xs text-gray-500 mb-1.5">Platform</label>
             <select
               value={formData.platform}
               onChange={(e) =>
                 updateField("platform", e.target.value as ReputationPlatform)
               }
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-gray-400"
             >
               {Object.entries(PLATFORM_LABELS).map(([key, label]) => (
-                <option key={key} value={key} className="bg-slate-900">
+                <option key={key} value={key}>
                   {label}
                 </option>
               ))}
@@ -164,36 +165,36 @@ function AddReviewModal({
 
           {/* Title */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Title</label>
+            <label className="block text-xs text-gray-500 mb-1.5">Title</label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => updateField("title", e.target.value)}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
               placeholder="Optional review title"
             />
           </div>
 
           {/* Comment */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Comment</label>
+            <label className="block text-xs text-gray-500 mb-1.5">Comment</label>
             <textarea
               value={formData.comment}
               onChange={(e) => updateField("comment", e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20 resize-none"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400 resize-none"
               placeholder="Review comment..."
             />
           </div>
 
           {/* Destination */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Destination</label>
+            <label className="block text-xs text-gray-500 mb-1.5">Destination</label>
             <input
               type="text"
               value={formData.destination}
               onChange={(e) => updateField("destination", e.target.value)}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
               placeholder="e.g., Goa, Manali"
             />
           </div>
@@ -203,14 +204,14 @@ function AddReviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || !formData.reviewer_name}
-              className="px-4 py-2 bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-gray-100 border border-gray-200 text-gray-900 text-sm font-medium rounded-xl hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Add Review
@@ -234,6 +235,8 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<ReputationReview | null>(null);
+  const [isResponsePanelOpen, setIsResponsePanelOpen] = useState(false);
 
   const limit = 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -298,12 +301,6 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
     }
   };
 
-  const handleRespond = (id: string) => {
-    // For Phase 1 this scrolls to / opens the review.
-    // Full response modal is a Phase 2 feature.
-    console.log("Open response for review:", id);
-  };
-
   const handleAddReview = async (formData: AddReviewFormData) => {
     try {
       setSubmitting(true);
@@ -330,18 +327,18 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       {/* Search + Add */}
       <div className="flex items-center gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search reviews..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/20"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
           />
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white/10 border border-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/15 transition-all shrink-0"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 border border-gray-200 text-gray-900 text-sm font-medium rounded-xl hover:bg-gray-100 transition-all shrink-0"
         >
           <Plus className="w-4 h-4" />
           Add Review
@@ -356,8 +353,8 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
             onClick={() => setPlatformFilter(f.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${
               platformFilter === f.value
-                ? "bg-white/10 border-white/20 text-white"
-                : "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/10"
+                ? "bg-gray-100 border-gray-300 text-gray-900"
+                : "bg-gray-50 border-gray-100 text-gray-500 hover:text-gray-700 hover:border-gray-200"
             }`}
           >
             {f.label}
@@ -373,14 +370,14 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
             onClick={() => setStatusFilter(f.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${
               statusFilter === f.value
-                ? "bg-white/10 border-white/20 text-white"
-                : "bg-white/5 border-white/5 text-slate-400 hover:text-white hover:border-white/10"
+                ? "bg-gray-100 border-gray-300 text-gray-900"
+                : "bg-gray-50 border-gray-100 text-gray-500 hover:text-gray-700 hover:border-gray-200"
             }`}
           >
             {f.label}
           </button>
         ))}
-        <span className="text-xs text-slate-500 ml-auto">
+        <span className="text-xs text-gray-400 ml-auto">
           {total} {total === 1 ? "review" : "reviews"}
         </span>
       </div>
@@ -388,15 +385,15 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       {/* Review List */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 text-slate-500 animate-spin" />
+          <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
         </div>
       ) : reviews.length === 0 ? (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-            <Inbox className="w-8 h-8 text-slate-500" />
+        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-12 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center">
+            <Inbox className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">No reviews found</h3>
-          <p className="text-sm text-slate-400 max-w-sm mx-auto">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews found</h3>
+          <p className="text-sm text-gray-500 max-w-sm mx-auto">
             {searchQuery || platformFilter !== "all" || statusFilter !== "all"
               ? "Try adjusting your filters or search query."
               : `Start collecting reviews for ${organizationName ?? "your agency"}. You can add reviews manually or connect platforms.`}
@@ -416,7 +413,10 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
                 key={review.id}
                 review={review}
                 onFlag={handleFlag}
-                onRespond={handleRespond}
+                onRespond={() => {
+                  setSelectedReview(review);
+                  setIsResponsePanelOpen(true);
+                }}
               />
             ))}
           </motion.div>
@@ -429,17 +429,17 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-gray-500">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -457,6 +457,21 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Review Response Panel */}
+      <ReviewResponsePanel
+        review={selectedReview}
+        isOpen={isResponsePanelOpen}
+        onClose={() => {
+          setIsResponsePanelOpen(false);
+          setSelectedReview(null);
+        }}
+        onSave={(id, text) => {
+          console.log("Response saved:", id, text);
+          setIsResponsePanelOpen(false);
+          setSelectedReview(null);
+        }}
+      />
     </div>
   );
 }

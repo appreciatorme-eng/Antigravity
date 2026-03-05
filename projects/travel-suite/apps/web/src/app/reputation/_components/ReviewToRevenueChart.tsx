@@ -41,18 +41,18 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-xl bg-slate-900/95 border border-white/10 backdrop-blur-md px-4 py-3 shadow-2xl">
-      <p className="text-xs font-semibold text-white mb-2">{label}</p>
+    <div className="rounded-xl bg-white border border-gray-200 shadow-lg px-4 py-3">
+      <p className="text-xs font-semibold text-gray-900 mb-2">{label}</p>
       {payload.map((entry) => (
         <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
           <span
             className="w-2 h-2 rounded-full"
             style={{ backgroundColor: entry.color }}
           />
-          <span className="text-slate-400">
+          <span className="text-gray-500">
             {entry.dataKey === "avgRating" ? "Avg Rating" : "Bookings"}:
           </span>
-          <span className="text-white font-medium">
+          <span className="text-gray-900 font-medium">
             {entry.dataKey === "avgRating"
               ? entry.value.toFixed(1)
               : entry.value}
@@ -92,7 +92,7 @@ export default function ReviewToRevenueChart({
 
   if (data.length === 0) {
     return (
-      <div className="h-[320px] rounded-xl border border-dashed border-white/10 flex items-center justify-center text-sm text-slate-500">
+      <div className="h-[320px] rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
         No review-to-revenue data available yet.
       </div>
     );
@@ -105,20 +105,20 @@ export default function ReviewToRevenueChart({
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2 rounded-lg bg-slate-800/40 border border-white/5 px-4 py-3"
+          className="flex items-start gap-2 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3"
         >
           {correlationText.isPositive ? (
             <TrendingUp className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
           ) : (
             <TrendingDown className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
           )}
-          <p className="text-xs text-slate-300">
+          <p className="text-xs text-gray-600">
             Since your rating {correlationText.ratingDirection} from{" "}
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-gray-900">
               {correlationText.ratingFrom}
             </span>{" "}
             to{" "}
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-gray-900">
               {correlationText.ratingTo}
             </span>
             , bookings {correlationText.bookingDirection}{" "}
@@ -155,7 +155,7 @@ export default function ReviewToRevenueChart({
             <CartesianGrid
               strokeDasharray="4 4"
               vertical={false}
-              stroke="rgba(255,255,255,0.05)"
+              stroke="#f3f4f6"
             />
 
             <XAxis
@@ -225,7 +225,7 @@ export default function ReviewToRevenueChart({
               dot={{ r: 3, fill: "#00d084", strokeWidth: 0 }}
               activeDot={{
                 r: 5,
-                stroke: "#ffffff",
+                stroke: "#e5e7eb",
                 strokeWidth: 1,
               }}
             />

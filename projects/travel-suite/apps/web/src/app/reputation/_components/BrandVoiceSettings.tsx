@@ -112,17 +112,17 @@ function TagInput({
   );
 
   return (
-    <div className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 focus-within:ring-1 focus-within:ring-purple-500/50 focus-within:border-purple-500/30 transition-colors">
+    <div className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2 focus-within:ring-1 focus-within:ring-purple-500/50 focus-within:border-purple-500/30 transition-colors">
       <div className="flex flex-wrap gap-1.5 mb-1">
         {tags.map((tag, i) => (
           <span
             key={`${tag}-${i}`}
-            className="inline-flex items-center gap-1 text-xs bg-purple-500/15 text-purple-300 border border-purple-500/25 rounded-md px-2 py-0.5"
+            className="inline-flex items-center gap-1 text-xs bg-purple-500/15 text-purple-600 border border-purple-500/25 rounded-md px-2 py-0.5"
           >
             {tag}
             <button
               onClick={() => removeTag(i)}
-              className="hover:text-white transition-colors"
+              className="hover:text-gray-700 transition-colors"
             >
               <X className="w-3 h-3" />
             </button>
@@ -135,7 +135,7 @@ function TagInput({
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? placeholder : "Add more..."}
-          className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
+          className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
         />
         {inputValue.trim() && (
           <button
@@ -179,14 +179,14 @@ function SampleResponsesList({
       {responses.map((response, i) => (
         <div
           key={i}
-          className="relative group rounded-lg bg-white/5 border border-white/10 p-3"
+          className="relative group rounded-lg bg-gray-50 border border-gray-200 p-3"
         >
-          <p className="text-xs text-white/70 leading-relaxed pr-6">
+          <p className="text-xs text-gray-600 leading-relaxed pr-6">
             {response}
           </p>
           <button
             onClick={() => removeResponse(i)}
-            className="absolute top-2 right-2 p-1 rounded text-white/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+            className="absolute top-2 right-2 p-1 rounded text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -198,7 +198,7 @@ function SampleResponsesList({
           onChange={(e) => setNewResponse(e.target.value)}
           placeholder="Paste a sample response here..."
           rows={3}
-          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/50 resize-none"
+          className="flex-1 rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500/50 resize-none"
         />
         <button
           onClick={addResponse}
@@ -279,8 +279,8 @@ export function BrandVoiceSettings({
     <div className="space-y-8">
       {/* Tone Selector */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Volume2 className="w-4 h-4 text-purple-400" />
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <Volume2 className="w-4 h-4 text-purple-600" />
           Response Tone
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -290,18 +290,18 @@ export function BrandVoiceSettings({
               onClick={() => setTone(option.value)}
               className={`text-left rounded-xl p-4 border transition-all ${
                 tone === option.value
-                  ? "bg-purple-500/15 border-purple-500/40 ring-1 ring-purple-500/20"
-                  : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
+                  ? "bg-purple-500/10 border-purple-500/40 ring-1 ring-purple-500/20"
+                  : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
               }`}
             >
               <p
                 className={`text-sm font-medium ${
-                  tone === option.value ? "text-purple-300" : "text-white/80"
+                  tone === option.value ? "text-purple-600" : "text-gray-600"
                 }`}
               >
                 {option.label}
               </p>
-              <p className="text-xs text-white/40 mt-1">{option.description}</p>
+              <p className="text-xs text-gray-500 mt-1">{option.description}</p>
             </button>
           ))}
         </div>
@@ -309,7 +309,7 @@ export function BrandVoiceSettings({
 
       {/* Language Preference */}
       <section className="space-y-3">
-        <label className="text-sm font-semibold text-white">
+        <label className="text-sm font-semibold text-gray-900">
           Language Preference
         </label>
         <div className="flex items-center gap-2">
@@ -319,8 +319,8 @@ export function BrandVoiceSettings({
               onClick={() => setLanguagePreference(lang.value)}
               className={`px-4 py-2 rounded-lg text-xs font-medium border transition-all ${
                 languagePreference === lang.value
-                  ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
-                  : "bg-white/5 border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
+                  ? "bg-purple-500/10 border-purple-500/40 text-purple-600"
+                  : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               {lang.label}
@@ -331,38 +331,38 @@ export function BrandVoiceSettings({
 
       {/* Owner Name */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white">Owner Name</label>
-        <p className="text-xs text-white/40">
+        <label className="text-sm font-semibold text-gray-900">Owner Name</label>
+        <p className="text-xs text-gray-500">
           Name that will sign off on responses.
         </p>
         <input
           value={ownerName}
           onChange={(e) => setOwnerName(e.target.value)}
           placeholder="e.g., Rajesh Kumar, Owner"
-          className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500/30"
+          className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-gray-400"
         />
       </section>
 
       {/* Sign-off */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white">
+        <label className="text-sm font-semibold text-gray-900">
           Sign-off Text
         </label>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-gray-500">
           Closing text appended to every response.
         </p>
         <input
           value={signOff}
           onChange={(e) => setSignOff(e.target.value)}
           placeholder="e.g., Warm regards, Team TravelCo"
-          className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500/30"
+          className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-purple-500/50 focus:border-gray-400"
         />
       </section>
 
       {/* Key Phrases */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white">Key Phrases</label>
-        <p className="text-xs text-white/40">
+        <label className="text-sm font-semibold text-gray-900">Key Phrases</label>
+        <p className="text-xs text-gray-500">
           Phrases the AI should try to include in responses.
         </p>
         <TagInput
@@ -374,10 +374,10 @@ export function BrandVoiceSettings({
 
       {/* Avoid Phrases */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white">
+        <label className="text-sm font-semibold text-gray-900">
           Avoid Phrases
         </label>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-gray-500">
           Phrases the AI should never use.
         </p>
         <TagInput
@@ -389,11 +389,11 @@ export function BrandVoiceSettings({
 
       {/* Sample Responses */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-purple-400" />
+        <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-purple-600" />
           Sample Responses
         </label>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-gray-500">
           Provide examples of ideal responses. The AI learns from these.
         </p>
         <SampleResponsesList
@@ -406,18 +406,18 @@ export function BrandVoiceSettings({
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <label className="text-sm font-semibold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
+            <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600" />
               Auto-respond to Positive Reviews
             </label>
-            <p className="text-xs text-white/40 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               Automatically generate and post responses for high-rated reviews.
             </p>
           </div>
           <button
             onClick={() => setAutoRespondPositive(!autoRespondPositive)}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              autoRespondPositive ? "bg-purple-600" : "bg-white/10"
+              autoRespondPositive ? "bg-purple-600" : "bg-gray-200"
             }`}
           >
             <span
@@ -430,7 +430,7 @@ export function BrandVoiceSettings({
 
         {autoRespondPositive && (
           <div className="space-y-2 pl-1">
-            <label className="text-xs text-white/50">
+            <label className="text-xs text-gray-500">
               Minimum rating for auto-response: {autoRespondMinRating} stars
             </label>
             <input
@@ -442,9 +442,9 @@ export function BrandVoiceSettings({
               onChange={(e) =>
                 setAutoRespondMinRating(Number(e.target.value))
               }
-              className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-purple-500"
+              className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-purple-500"
             />
-            <div className="flex justify-between text-[10px] text-white/30">
+            <div className="flex justify-between text-[10px] text-gray-400">
               <span>1 star</span>
               <span>5 stars</span>
             </div>
@@ -454,10 +454,10 @@ export function BrandVoiceSettings({
 
       {/* Escalation threshold */}
       <section className="space-y-2">
-        <label className="text-sm font-semibold text-white">
+        <label className="text-sm font-semibold text-gray-900">
           Escalation Threshold
         </label>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-gray-500">
           Reviews at or below this rating will be flagged for manual attention.
           Currently: {escalationThreshold} star{escalationThreshold !== 1 ? "s" : ""} and below.
         </p>
@@ -470,9 +470,9 @@ export function BrandVoiceSettings({
           onChange={(e) =>
             setEscalationThreshold(Number(e.target.value))
           }
-          className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-purple-500"
+          className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-purple-500"
         />
-        <div className="flex justify-between text-[10px] text-white/30">
+        <div className="flex justify-between text-[10px] text-gray-400">
           <span>1 star</span>
           <span>5 stars</span>
         </div>
@@ -480,22 +480,22 @@ export function BrandVoiceSettings({
 
       {/* Preview */}
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-purple-400" />
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-purple-600" />
           Tone Preview
         </h3>
-        <div className="rounded-xl bg-purple-500/8 border border-purple-500/15 p-4">
-          <p className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wide">
+        <div className="rounded-xl bg-purple-50 border border-purple-200 p-4">
+          <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">
             Example in {TONE_OPTIONS.find((t) => t.value === tone)?.label ?? tone} tone:
           </p>
-          <p className="text-sm text-white/70 leading-relaxed italic">
+          <p className="text-sm text-gray-600 leading-relaxed italic">
             &ldquo;{TONE_PREVIEW_EXAMPLES[tone]}&rdquo;
           </p>
           {signOff && (
-            <p className="text-sm text-white/50 mt-2">{signOff}</p>
+            <p className="text-sm text-gray-500 mt-2">{signOff}</p>
           )}
           {ownerName && (
-            <p className="text-xs text-white/40 mt-1">- {ownerName}</p>
+            <p className="text-xs text-gray-500 mt-1">- {ownerName}</p>
           )}
         </div>
       </section>
@@ -505,7 +505,7 @@ export function BrandVoiceSettings({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-white/10 disabled:text-white/30 text-white text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:bg-gray-100 disabled:text-gray-400 text-white text-sm font-medium transition-colors"
         >
           {saving ? (
             <>

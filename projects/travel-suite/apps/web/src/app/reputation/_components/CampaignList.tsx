@@ -14,18 +14,18 @@ const STATUS_STYLES: Record<
 > = {
   active: {
     bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    dot: "bg-emerald-400",
+    text: "text-emerald-600",
+    dot: "bg-emerald-500",
   },
   paused: {
     bg: "bg-amber-500/10",
-    text: "text-amber-400",
-    dot: "bg-amber-400",
+    text: "text-amber-500",
+    dot: "bg-amber-500",
   },
   archived: {
-    bg: "bg-zinc-500/10",
-    text: "text-zinc-400",
-    dot: "bg-zinc-400",
+    bg: "bg-gray-100",
+    text: "text-gray-500",
+    dot: "bg-gray-400",
   },
 };
 
@@ -43,7 +43,7 @@ function StatusBadge({ status }: { status: CampaignStatus }) {
 
 function TypeBadge({ campaignType }: { campaignType: string }) {
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-400">
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-600">
       {CAMPAIGN_TYPE_LABELS[campaignType] ?? campaignType}
     </span>
   );
@@ -64,12 +64,12 @@ function FunnelBar({
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-baseline justify-between mb-1">
-        <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">
+        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">
           {label}
         </span>
-        <span className="text-xs font-bold text-zinc-300">{value}</span>
+        <span className="text-xs font-bold text-gray-600">{value}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-zinc-700/50">
+      <div className="h-1.5 rounded-full bg-gray-100">
         <div
           className={`h-full rounded-full ${color} transition-all duration-500`}
           style={{ width: `${Math.max(pct, 2)}%` }}
@@ -84,10 +84,10 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
 
   if (campaigns.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-zinc-700 bg-zinc-800/20 p-12 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-12 text-center">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white border border-gray-200 flex items-center justify-center">
           <svg
-            className="w-8 h-8 text-zinc-500"
+            className="w-8 h-8 text-gray-400"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -98,10 +98,10 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
             <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
           </svg>
         </div>
-        <h3 className="text-base font-semibold text-zinc-300 mb-1">
+        <h3 className="text-base font-semibold text-gray-600 mb-1">
           Create your first review campaign
         </h3>
-        <p className="text-sm text-zinc-500 max-w-xs mx-auto">
+        <p className="text-sm text-gray-400 max-w-xs mx-auto">
           Automatically collect reviews from your clients after their trips.
           Boost your online reputation on autopilot.
         </p>
@@ -127,8 +127,8 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
             key={campaign.id}
             className={`rounded-xl border transition-all cursor-pointer ${
               isSelected
-                ? "border-emerald-500/40 bg-zinc-800/60"
-                : "border-zinc-700/60 bg-zinc-800/30 hover:border-zinc-600"
+                ? "border-emerald-500/40 bg-white shadow-sm"
+                : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
             {/* Header */}
@@ -142,7 +142,7 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <h3 className="text-sm font-semibold text-zinc-100 truncate">
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
                       {campaign.name}
                     </h3>
                     <StatusBadge status={campaign.status as CampaignStatus} />
@@ -180,10 +180,10 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
 
                 {/* Conversion badge */}
                 <div className="shrink-0 text-right">
-                  <p className="text-2xl font-bold text-zinc-100">
+                  <p className="text-2xl font-bold text-gray-900">
                     {conversionRate}%
                   </p>
-                  <p className="text-[10px] text-zinc-500 font-medium">
+                  <p className="text-[10px] text-gray-400 font-medium">
                     conversion
                   </p>
                 </div>
@@ -192,7 +192,7 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
 
             {/* Expanded actions */}
             {isSelected && (
-              <div className="border-t border-zinc-700/50 px-4 py-3 flex items-center gap-2">
+              <div className="border-t border-gray-200 px-4 py-3 flex items-center gap-2">
                 {campaign.status === "active" && (
                   <ActionButton
                     label="Pause"
@@ -215,7 +215,7 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
                   />
                 )}
                 <div className="flex-1" />
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-gray-400">
                   Created{" "}
                   {new Date(campaign.created_at).toLocaleDateString()}
                 </span>
@@ -239,9 +239,9 @@ function ActionButton({
 }) {
   const styles = {
     emerald:
-      "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10",
-    amber: "border-amber-500/30 text-amber-400 hover:bg-amber-500/10",
-    zinc: "border-zinc-600 text-zinc-400 hover:bg-zinc-700/50",
+      "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10",
+    amber: "border-amber-500/30 text-amber-500 hover:bg-amber-500/10",
+    zinc: "border-gray-200 text-gray-500 hover:bg-gray-50",
   };
 
   return (

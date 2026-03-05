@@ -27,7 +27,7 @@ export function ReputationHealthScore({
   const center = size / 2;
 
   return (
-    <div className="bg-white/5 border border-white/10 backdrop-blur rounded-2xl p-6 flex flex-col items-center">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 flex flex-col items-center">
       <div className="relative" style={{ width: size, height: size }}>
         <svg
           width={size}
@@ -41,7 +41,7 @@ export function ReputationHealthScore({
             cy={center}
             r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.05)"
+            stroke="rgba(0,0,0,0.05)"
             strokeWidth={strokeWidth}
           />
           {/* Progress circle */}
@@ -63,14 +63,14 @@ export function ReputationHealthScore({
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
-            className="text-4xl font-bold text-white"
+            className="text-4xl font-bold text-gray-900"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
           >
             {score}
           </motion.span>
-          <span className="text-xs text-slate-400 mt-1">out of 100</span>
+          <span className="text-xs text-gray-500 mt-1">out of 100</span>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export function ReputationHealthScore({
         >
           {label}
         </span>
-        <p className="text-xs text-slate-500 mt-0.5">Health Score</p>
+        <p className="text-xs text-gray-400 mt-0.5">Health Score</p>
       </div>
     </div>
   );
