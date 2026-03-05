@@ -81,7 +81,6 @@ const routes = createCatchAllHandlers([
   ["trips", () => import("@/app/api/_handlers/trips/route")],
   ["unsplash", () => import("@/app/api/_handlers/unsplash/route")],
   ["weather", () => import("@/app/api/_handlers/weather/route")],
-  ["webhooks/whatsapp", () => import("@/app/api/_handlers/webhooks/whatsapp/route")],
   ["whatsapp/connect", () => import("@/app/api/_handlers/whatsapp/connect/route")],
   ["whatsapp/status", () => import("@/app/api/_handlers/whatsapp/status/route")],
   ["whatsapp/test-message", () => import("@/app/api/_handlers/whatsapp/test-message/route")],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -228,6 +228,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<ReputationPlatform | "all">(
     "all"
@@ -241,7 +242,18 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const limit = 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  const fetchReviews = useCallback(async () => {
+  // Debounce search input → searchQuery (400 ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchInput), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Reset page when filters or debounced search change
+  useEffect(() => {
+    setPage(1);
+  }, [platformFilter, statusFilter, searchQuery]);
+
+  const fetchReviews = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -264,26 +276,28 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
         params.set("search", searchQuery.trim());
       }
 
-      const res = await fetch(`/api/reputation/reviews?${params.toString()}`);
+      const res = await fetch(`/api/reputation/reviews?${params.toString()}`, { signal });
       if (!res.ok) throw new Error("Failed to fetch reviews");
       const data = await res.json();
       setReviews(data.reviews ?? []);
       setTotal(data.total ?? 0);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error("Error fetching reviews:", err);
     } finally {
       setLoading(false);
     }
   }, [page, platformFilter, statusFilter, searchQuery]);
 
+  // Cancel stale in-flight request when deps change
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
-    fetchReviews();
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    fetchReviews(controller.signal);
+    return () => controller.abort();
   }, [fetchReviews]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [platformFilter, statusFilter, searchQuery]);
 
   const handleFlag = async (id: string) => {
     try {
@@ -330,8 +344,8 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search reviews..."
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
           />
@@ -394,7 +408,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews found</h3>
           <p className="text-sm text-gray-500 max-w-sm mx-auto">
-            {searchQuery || platformFilter !== "all" || statusFilter !== "all"
+            {searchInput || platformFilter !== "all" || statusFilter !== "all"
               ? "Try adjusting your filters or search query."
               : `Start collecting reviews for ${organizationName ?? "your agency"}. You can add reviews manually or connect platforms.`}
           </p>

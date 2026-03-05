@@ -1,5 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { repFrom } from "@/lib/reputation/db";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { ReputationWidget, ReputationReview } from "@/lib/reputation/types";
 
 function corsHeaders(): HeadersInit {
@@ -19,25 +23,37 @@ export async function OPTIONS() {
 }
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
 
-    if (!token || typeof token !== "string") {
+    if (!token || typeof token !== "string" || !UUID_REGEX.test(token)) {
       return NextResponse.json(
         { error: "Invalid token" },
         { status: 400, headers: corsHeaders() }
       );
     }
 
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await enforceRateLimit({
+      identifier: ip,
+      limit: 60,
+      windowMs: 60_000,
+      prefix: "pub:widget:get",
+    });
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: corsHeaders() }
+      );
+    }
+
     const supabase = await createClient();
 
     // Look up widget by embed_token
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: widget, error: widgetError } = await (supabase as any)
-      .from("reputation_widgets")
+    const { data: widget, error: widgetError } = await repFrom(supabase, "reputation_widgets")
       .select("*")
       .eq("embed_token", token)
       .maybeSingle();
@@ -63,9 +79,7 @@ export async function GET(
     }
 
     // Fetch reviews matching widget filters
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
-      .from("reputation_reviews")
+    let query = repFrom(supabase, "reputation_reviews")
       .select("*")
       .eq("organization_id", typedWidget.organization_id)
       .gte("rating", typedWidget.min_rating_to_show)
@@ -127,10 +141,9 @@ export async function GET(
       headers: corsHeaders(),
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Error fetching widget data:", error);
     return NextResponse.json(
-      { error: message },
+      { error: "Internal server error" },
       { status: 500, headers: corsHeaders() }
     );
   }

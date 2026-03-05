@@ -1,18 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { repFrom } from "@/lib/reputation/db";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
+
+    if (!token || !UUID_REGEX.test(token)) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    }
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await enforceRateLimit({
+      identifier: ip,
+      limit: 30,
+      windowMs: 60_000,
+      prefix: "pub:nps:get",
+    });
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const supabase = await createClient();
 
     // Lookup campaign send by nps_token (no auth required - public endpoint)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: send, error: sendError } = await (supabase as any)
-      .from("reputation_campaign_sends")
+    const { data: send, error: sendError } = await repFrom(supabase, "reputation_campaign_sends")
       .select("*, reputation_review_campaigns(*)")
       .eq("nps_token", token)
       .maybeSingle();
@@ -50,8 +68,7 @@ export async function GET(
     // Fetch trip info if available
     let tripInfo: { name: string; destination: string } | null = null;
     if (send.trip_id) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: trip } = await (supabase as any)
+      const { data: trip } = await supabase
         .from("trips")
         .select("name, destination")
         .eq("id", send.trip_id)
@@ -92,9 +109,7 @@ export async function GET(
       passive_threshold: campaign?.passive_threshold ?? 7,
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
     console.error("Error loading NPS form data:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -42,6 +42,11 @@ const RATE_LIMITS: Record<CostEndpointCategory, CategoryRateLimits> = {
     pro: { burstPerMinute: 3, daily: 50 },
     enterprise: { burstPerMinute: 10, daily: 500 },
   },
+  ai_text: {
+    free: { burstPerMinute: 5, daily: 100 },
+    pro: { burstPerMinute: 15, daily: 1000 },
+    enterprise: { burstPerMinute: 40, daily: 5000 },
+  },
 };
 
 export interface CostEndpointGuardContext {

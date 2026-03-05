@@ -1,17 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { repFrom } from "@/lib/reputation/db";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { RouteTarget } from "@/lib/reputation/types";
 import { NPS_BOUNDARIES, REVIEW_LINK_TEMPLATES } from "@/lib/reputation/constants";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await enforceRateLimit({
+      identifier: ip,
+      limit: 10,
+      windowMs: 60_000,
+      prefix: "pub:nps:submit",
+    });
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const supabase = await createClient();
     const body = await req.json();
 
     const { token, score, feedback } = body;
 
     // Validate required fields
-    if (!token || typeof token !== "string") {
+    if (!token || typeof token !== "string" || !UUID_REGEX.test(token)) {
       return NextResponse.json(
         { error: "token is required" },
         { status: 400 }
@@ -27,9 +42,7 @@ export async function POST(req: Request) {
     }
 
     // Look up the campaign send by nps_token
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: send, error: sendError } = await (supabase as any)
-      .from("reputation_campaign_sends")
+    const { data: send, error: sendError } = await repFrom(supabase, "reputation_campaign_sends")
       .select("*, reputation_review_campaigns(*)")
       .eq("nps_token", token)
       .maybeSingle();
@@ -88,9 +101,7 @@ export async function POST(req: Request) {
       completed_at: new Date().toISOString(),
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (supabase as any)
-      .from("reputation_campaign_sends")
+    const { error: updateError } = await repFrom(supabase, "reputation_campaign_sends")
       .update(updateData)
       .eq("id", send.id);
 
@@ -100,9 +111,7 @@ export async function POST(req: Request) {
 
     // For detractors, flag for attention if there's an associated review
     if (routedTo === "internal_feedback" && send.trip_id) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
-        .from("reputation_reviews")
+      await repFrom(supabase, "reputation_reviews")
         .update({
           requires_attention: true,
           attention_reason: `Low NPS score (${scoreValue}/10) from campaign survey`,
@@ -117,10 +126,8 @@ export async function POST(req: Request) {
       review_link: reviewLink,
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
     console.error("Error submitting NPS score:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

@@ -5,7 +5,11 @@ let warnedFallback = false;
 function isProductionLikeEnvironment(): boolean {
   const nodeEnv = process.env.NODE_ENV?.toLowerCase();
   const vercelEnv = process.env.VERCEL_ENV?.toLowerCase();
-  return nodeEnv === "production" || vercelEnv === "production";
+  return (
+    nodeEnv === "production" ||
+    vercelEnv === "production" ||
+    vercelEnv === "preview"
+  );
 }
 
 function allowDevFallback(): boolean {
@@ -29,17 +33,26 @@ export function getSupabasePublicRuntimeConfig(context: string): {
     };
   }
 
+  const missing = [
+    !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
+    !supabaseAnonKey && "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ].filter(Boolean);
+
   if (!allowDevFallback()) {
+    console.error(
+      `[supabase/env] Missing required env vars for ${context}: ${missing.join(", ")}. ` +
+        "Refusing to start with dev fallback in production/preview environment."
+    );
     throw new Error(
-      `Missing NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY for ${context}`
+      `Missing ${missing.join(", ")} — required for ${context}`
     );
   }
 
   if (!warnedFallback) {
     warnedFallback = true;
-    console.warn(
-      "Supabase public env vars missing. Falling back to local dev defaults. " +
-        "Set ALLOW_SUPABASE_DEV_FALLBACK=false to disable fallback."
+    console.error(
+      `[supabase/env] Missing ${missing.join(", ")} for ${context}. ` +
+        "Using local dev fallback. Set ALLOW_SUPABASE_DEV_FALLBACK=false to disable."
     );
   }
 

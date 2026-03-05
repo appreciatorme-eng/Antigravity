@@ -9,6 +9,7 @@ import {
   getEmergencyDailySpendCapUsd,
 } from "@/lib/cost/spend-guardrails";
 import { REPUTATION_TIER_LIMITS } from "@/lib/reputation/constants";
+import { repFrom } from "@/lib/reputation/db";
 import type {
   AIResponseResult,
   BrandVoiceTone,
@@ -112,12 +113,10 @@ function parseResponseResult(rawText: string, tone: BrandVoiceTone): AIResponseR
 }
 
 async function getOrCreateBrandVoice(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: Parameters<typeof repFrom>[0],
   organizationId: string
 ): Promise<ReputationBrandVoice> {
-  const { data: existing } = await supabase
-    .from("reputation_brand_voice")
+  const { data: existing } = await repFrom(supabase, "reputation_brand_voice")
     .select("*")
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -141,8 +140,7 @@ async function getOrCreateBrandVoice(
     escalation_threshold: 2,
   };
 
-  const { data: created, error } = await supabase
-    .from("reputation_brand_voice")
+  const { data: created, error } = await repFrom(supabase, "reputation_brand_voice")
     .insert(defaultVoice)
     .select()
     .single();
@@ -193,9 +191,7 @@ export async function POST(req: Request) {
       monthStart.setUTCDate(1);
       monthStart.setUTCHours(0, 0, 0, 0);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { count } = await (supabase as any)
-        .from("reputation_reviews")
+      const { count } = await repFrom(supabase, "reputation_reviews")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .not("ai_suggested_response", "is", null)
@@ -224,9 +220,7 @@ export async function POST(req: Request) {
     }
 
     // Fetch the review
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error: reviewError } = await (supabase as any)
-      .from("reputation_reviews")
+    const { data: review, error: reviewError } = await repFrom(supabase, "reputation_reviews")
       .select("*")
       .eq("id", reviewId)
       .eq("organization_id", organizationId)
@@ -258,11 +252,11 @@ export async function POST(req: Request) {
     }
 
     // Cost guard
-    const costPerRequest = getEstimatedRequestCostUsd("ai_image");
-    const planCap = getPlanDailySpendCapUsd("ai_image", tier);
-    const emergencyCap = await getEmergencyDailySpendCapUsd("ai_image");
+    const costPerRequest = getEstimatedRequestCostUsd("ai_text");
+    const planCap = getPlanDailySpendCapUsd("ai_text", tier);
+    const emergencyCap = await getEmergencyDailySpendCapUsd("ai_text");
 
-    const reservation = await reserveDailySpendUsd(organizationId, "ai_image", costPerRequest, {
+    const reservation = await reserveDailySpendUsd(organizationId, "ai_text", costPerRequest, {
       planCapUsd: planCap,
       emergencyCapUsd: emergencyCap,
     });
@@ -297,9 +291,7 @@ export async function POST(req: Request) {
     const aiResponse = parseResponseResult(responseText, brandVoice.tone);
 
     // Save AI suggested response to the review
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from("reputation_reviews")
+    await repFrom(supabase, "reputation_reviews")
       .update({
         ai_suggested_response: aiResponse.suggested_response,
         updated_at: new Date().toISOString(),
@@ -309,8 +301,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ response: aiResponse });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Error generating AI response:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

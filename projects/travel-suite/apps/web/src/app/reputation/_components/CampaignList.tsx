@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { ReputationReviewCampaign, CampaignStatus } from "@/lib/reputation/types";
 import { CAMPAIGN_TYPE_LABELS } from "@/lib/reputation/constants";
 
@@ -81,6 +82,28 @@ function FunnelBar({
 
 export default function CampaignList({ campaigns }: CampaignListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleStatusChange = useCallback(async (campaignId: string, status: CampaignStatus) => {
+    try {
+      const method = status === "archived" ? "DELETE" : "PATCH";
+      const url = `/api/reputation/campaigns/${campaignId}`;
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        ...(method === "PATCH" ? { body: JSON.stringify({ status }) } : {}),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        console.error("Failed to update campaign status:", data.error);
+        return;
+      }
+      setSelectedId(null);
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating campaign status:", error);
+    }
+  }, [router]);
 
   if (campaigns.length === 0) {
     return (
@@ -255,26 +278,3 @@ function ActionButton({
   );
 }
 
-async function handleStatusChange(campaignId: string, status: CampaignStatus) {
-  try {
-    const method = status === "archived" ? "DELETE" : "PATCH";
-    const url = `/api/reputation/campaigns/${campaignId}`;
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      ...(method === "PATCH" ? { body: JSON.stringify({ status }) } : {}),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      console.error("Failed to update campaign status:", data.error);
-      return;
-    }
-
-    // Reload page to reflect changes
-    window.location.reload();
-  } catch (error) {
-    console.error("Error updating campaign status:", error);
-  }
-}

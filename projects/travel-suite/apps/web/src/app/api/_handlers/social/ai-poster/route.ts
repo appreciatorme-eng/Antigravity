@@ -41,16 +41,9 @@ export async function POST(req: NextRequest) {
         const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
         if (!geminiApiKey) {
+            console.error("[ai-poster] GOOGLE_API_KEY not configured");
             return withCostGuardHeaders(
-                NextResponse.json({
-                    destination: "Custom Trip",
-                    price: "$1,299",
-                    offer: "Limited Time Offer",
-                    season: "Special Edition",
-                    services: ["Hotels", "Flights", "Tours"],
-                    bulletPoints: ["All Inclusive", "Luxury Stay"],
-                    suggestedUnsplashQuery: "travel"
-                }),
+                NextResponse.json({ error: "AI service is not configured" }, { status: 503 }),
                 guard.context
             );
         }

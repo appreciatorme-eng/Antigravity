@@ -1,13 +1,14 @@
 import { Redis } from "@upstash/redis";
 import type { SubscriptionTier } from "@/lib/subscriptions/limits";
 
-export type CostCategory = "amadeus" | "image_search" | "ai_image" | "ai_poster";
+export type CostCategory = "amadeus" | "image_search" | "ai_image" | "ai_poster" | "ai_text";
 
 const COST_PER_REQUEST_USD: Record<CostCategory, number> = {
   amadeus: 0.025,
   image_search: 0.004,
   ai_image: 0.06,
   ai_poster: 0.12,
+  ai_text: 0.008,
 };
 
 const PLAN_DAILY_SPEND_CAP_USD: Record<CostCategory, Record<SubscriptionTier, number>> = {
@@ -31,6 +32,11 @@ const PLAN_DAILY_SPEND_CAP_USD: Record<CostCategory, Record<SubscriptionTier, nu
     pro: 8,
     enterprise: 60,
   },
+  ai_text: {
+    free: 1,
+    pro: 10,
+    enterprise: 40,
+  },
 };
 
 const DEFAULT_EMERGENCY_DAILY_SPEND_CAP_USD: Record<CostCategory, number> = {
@@ -38,6 +44,7 @@ const DEFAULT_EMERGENCY_DAILY_SPEND_CAP_USD: Record<CostCategory, number> = {
   image_search: 35,
   ai_image: 55,
   ai_poster: 40,
+  ai_text: 20,
 };
 
 const localSpendStore = new Map<string, { value: number; resetAt: number }>();
