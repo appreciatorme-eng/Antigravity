@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Platform settings: Redis-first (60 s TTL) with Supabase fallback.
 // Writes update DB → invalidate Redis → log to platform_audit_log.
 
@@ -56,14 +57,14 @@ function redisKey(key: string): string {
 }
 
 async function fetchFromSupabase(key: string): Promise<JsonValue | null> {
-  const adminClient = createAdminClient();
+  const adminClient = createAdminClient() as any;
   const { data } = await adminClient
     .from("platform_settings")
     .select("value")
     .eq("key", key)
     .maybeSingle();
 
-  return data?.value ?? null;
+  return (data?.value as JsonValue) ?? null;
 }
 
 export async function getPlatformSetting(key: string): Promise<JsonValue | null> {
@@ -98,11 +99,11 @@ export async function setPlatformSetting(
   value: JsonValue,
   actorId: string
 ): Promise<void> {
-  const adminClient = createAdminClient();
+  const adminClient = createAdminClient() as any;
 
   await adminClient.from("platform_settings").upsert({
     key,
-    value: value as Parameters<typeof adminClient.from>[0] extends never ? never : Record<string, unknown>,
+    value,
     updated_by: actorId,
     updated_at: new Date().toISOString(),
   });
@@ -194,7 +195,7 @@ export async function isOrgSuspended(orgId: string): Promise<boolean> {
 }
 
 export async function getAllPlatformSettings(): Promise<Record<string, JsonValue>> {
-  const adminClient = createAdminClient();
+  const adminClient = createAdminClient() as any;
   const { data } = await adminClient
     .from("platform_settings")
     .select("key, value, description, updated_by, updated_at, created_at")
@@ -202,5 +203,5 @@ export async function getAllPlatformSettings(): Promise<Record<string, JsonValue
 
   if (!data) return {};
 
-  return Object.fromEntries(data.map((row) => [row.key, row.value as JsonValue]));
+  return Object.fromEntries(data.map((row: any) => [row.key, row.value as JsonValue]));
 }

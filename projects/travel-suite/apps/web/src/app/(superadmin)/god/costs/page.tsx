@@ -25,6 +25,7 @@ interface OrgRow {
     tier: string;
     mtd_usd: number;
     requests: number;
+    [key: string]: unknown;
 }
 
 interface TrendDay {

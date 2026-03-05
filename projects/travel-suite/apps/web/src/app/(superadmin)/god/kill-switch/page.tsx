@@ -193,6 +193,7 @@ export default function KillSwitchPage() {
             {/* Confirm modal */}
             {pending && (
                 <ConfirmDangerModal
+                    open={true}
                     title={`${pending.newValue ? "Enable" : "Disable"} ${pending.label}?`}
                     message={pending.key === "maintenance_mode" && pending.newValue
                         ? "This will block all admin API calls immediately. Only this superadmin panel will remain accessible."

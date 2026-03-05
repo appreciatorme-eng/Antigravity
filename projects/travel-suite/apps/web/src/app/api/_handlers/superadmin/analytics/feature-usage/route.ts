@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { adminClient } = auth;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = adminClient as any;
     const range = request.nextUrl.searchParams.get("range") || "30d";
     const days = rangeToMs(range);
     const since = daysAgo(days);
@@ -24,14 +26,14 @@ export async function GET(request: NextRequest) {
     try {
         const [trips, tripsPrev, proposals, proposalsPrev, aiSessions, aiPrev, socialPosts, socialPrev] =
             await Promise.all([
-                adminClient.from("trips").select("*", { count: "exact", head: true }).gte("created_at", since),
-                adminClient.from("trips").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                adminClient.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", since),
-                adminClient.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                adminClient.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", since),
-                adminClient.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                adminClient.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", since),
-                adminClient.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("trips").select("*", { count: "exact", head: true }).gte("created_at", since),
+                db.from("trips").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", since),
+                db.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", since),
+                db.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", since),
+                db.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
             ]);
 
         function pct(cur: number, prev: number): number {

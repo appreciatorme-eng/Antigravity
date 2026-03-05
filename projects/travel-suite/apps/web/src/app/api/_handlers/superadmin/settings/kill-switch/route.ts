@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
-import { setPlatformSetting } from "@/lib/platform/settings";
+import { setPlatformSetting, type JsonValue } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
 
 const ALLOWED_KEYS = ["maintenance_mode", "feature_flags", "spend_limits", "org_suspensions"] as const;
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        await setPlatformSetting(body.key, body.value as Record<string, unknown>, userId);
+        await setPlatformSetting(body.key, body.value as JsonValue, userId);
 
         await logPlatformAction(
             userId,

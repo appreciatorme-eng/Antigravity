@@ -16,6 +16,7 @@ interface FeatureStats {
 }
 
 interface TopOrg {
+    [key: string]: unknown;
     org_id: string;
     org_name: string;
     tier: string;
@@ -34,6 +35,7 @@ interface AnalyticsData {
 }
 
 interface DrillRow {
+    [key: string]: unknown;
     org_id: string;
     org_name: string;
     tier: string;
@@ -53,7 +55,7 @@ const FEATURE_CONFIG = [
     { key: "trips" as const, label: "Trips", icon: Map, color: "emerald" as const },
     { key: "proposals" as const, label: "Proposals", icon: FileText, color: "blue" as const },
     { key: "ai_sessions" as const, label: "AI Sessions", icon: Sparkles, color: "purple" as const },
-    { key: "social_posts" as const, label: "Social Posts", icon: Share2, color: "pink" as const },
+    { key: "social_posts" as const, label: "Social Posts", icon: Share2, color: "purple" as const },
 ] as const;
 
 const TIER_LABEL: Record<string, string> = { free: "Free", pro: "Pro", enterprise: "Enterprise" };

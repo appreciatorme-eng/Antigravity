@@ -14,7 +14,8 @@ function getRedisClient(): Redis | null {
     return _redis;
 }
 
-async function checkDatabase(client: Awaited<ReturnType<typeof import("@/lib/auth/require-super-admin").requireSuperAdmin>>["adminClient"] | undefined): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function checkDatabase(client: any): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
     const start = Date.now();
     try {
         if (!client) return { status: "down", latency_ms: -1 };
@@ -61,8 +62,8 @@ export async function GET(request: NextRequest) {
                 .eq("status", "pending"),
         ]);
 
-        const pendingNotifs = (queueResult.data ?? []).filter((r: { status: string }) => r.status === "pending").length;
-        const failedNotifs = (queueResult.data ?? []).filter((r: { status: string }) => r.status === "failed").length;
+        const pendingNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "pending").length;
+        const failedNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "failed").length;
 
         // Check FCM configured
         const fcmConfigured = Boolean(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY);

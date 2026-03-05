@@ -13,6 +13,7 @@ interface B2bReferrer {
     name: string;
     total: number;
     converted: number;
+    [key: string]: unknown;
 }
 
 interface ClientEvent {
@@ -20,6 +21,7 @@ interface ClientEvent {
     status: string;
     created_at: string | null;
     referred_email: string | null;
+    [key: string]: unknown;
 }
 
 interface ReferralData {

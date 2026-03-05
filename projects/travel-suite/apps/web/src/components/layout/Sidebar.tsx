@@ -29,6 +29,7 @@ import {
     Receipt,
     Wallet,
     Hotel,
+    Coins,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
@@ -98,6 +99,7 @@ const SECONDARY_ITEMS: NavItem[] = [
     { icon: Plane, label: "Bookings", href: "/bookings" },
     { icon: Receipt, label: "Invoices", href: "/admin/invoices" },
     { icon: TrendingUp, label: "Revenue", href: "/admin/revenue" },
+    { icon: Coins, label: "Pricing & Profit", href: "/admin/pricing" },
     { icon: Store, label: "Marketplace", href: "/marketplace" },
     { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
     { icon: Calendar, label: "Command Center", href: "/admin/operations" },

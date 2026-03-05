@@ -47,6 +47,13 @@ const routes = createCatchAllHandlers([
   ["whatsapp/normalize-driver-phones", () => import("@/app/api/_handlers/admin/whatsapp/normalize-driver-phones/route")],
   ["workflow/events", () => import("@/app/api/_handlers/admin/workflow/events/route")],
   ["workflow/rules", () => import("@/app/api/_handlers/admin/workflow/rules/route")],
+  ["pricing/dashboard", () => import("@/app/api/_handlers/admin/pricing/dashboard/route")],
+  ["pricing/trips", () => import("@/app/api/_handlers/admin/pricing/trips/route")],
+  ["pricing/trip-costs/:id", () => import("@/app/api/_handlers/admin/pricing/trip-costs/[id]/route")],
+  ["pricing/trip-costs", () => import("@/app/api/_handlers/admin/pricing/trip-costs/route")],
+  ["pricing/overheads/:id", () => import("@/app/api/_handlers/admin/pricing/overheads/[id]/route")],
+  ["pricing/overheads", () => import("@/app/api/_handlers/admin/pricing/overheads/route")],
+  ["pricing/vendor-history", () => import("@/app/api/_handlers/admin/pricing/vendor-history/route")],
 ]);
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

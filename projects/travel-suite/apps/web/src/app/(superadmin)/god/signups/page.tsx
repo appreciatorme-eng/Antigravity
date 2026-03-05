@@ -19,6 +19,7 @@ interface SignupRow {
     org_name: string | null;
     org_tier: string | null;
     created_at: string | null;
+    [key: string]: unknown;
 }
 
 interface SignupsData {
@@ -51,26 +52,26 @@ const COLUMNS: TableColumn<SignupRow>[] = [
     {
         key: "full_name",
         label: "Name",
-        render: (v) => <span className="font-medium text-white">{v ?? "—"}</span>,
+        render: (v) => <span className="font-medium text-white">{String(v ?? "—")}</span>,
     },
-    { key: "email", label: "Email", render: (v) => <span className="text-gray-300 text-sm">{v ?? "—"}</span> },
-    { key: "phone", label: "Phone", render: (v) => <span className="text-gray-400 text-sm">{v ?? "—"}</span> },
+    { key: "email", label: "Email", render: (v) => <span className="text-gray-300 text-sm">{String(v ?? "—")}</span> },
+    { key: "phone", label: "Phone", render: (v) => <span className="text-gray-400 text-sm">{String(v ?? "—")}</span> },
     {
         key: "role",
         label: "Role",
         render: (v) => (
             <span className={`text-xs font-medium uppercase ${roleColors[v as string] ?? "text-gray-400"}`}>
-                {v ?? "—"}
+                {String(v ?? "—")}
             </span>
         ),
     },
-    { key: "org_name", label: "Organization", render: (v) => <span className="text-gray-300">{v ?? "—"}</span> },
+    { key: "org_name", label: "Organization", render: (v) => <span className="text-gray-300">{String(v ?? "—")}</span> },
     {
         key: "org_tier",
         label: "Tier",
         render: (v) => (
             <span className={`text-xs uppercase font-semibold ${tierColors[v as string] ?? "text-gray-400"}`}>
-                {v ?? "free"}
+                {String(v ?? "free")}
             </span>
         ),
     },

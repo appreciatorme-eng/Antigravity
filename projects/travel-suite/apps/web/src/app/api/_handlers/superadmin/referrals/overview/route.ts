@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // GET /api/superadmin/referrals/overview — B2B + client flywheel referral summary.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
 
     try {
+        const db = adminClient as any;
         const [
             b2bResult,
             b2bConvertedResult,
@@ -18,20 +20,20 @@ export async function GET(request: NextRequest) {
             incentivesResult,
         ] = await Promise.all([
             // B2B referrals total
-            adminClient.from("referrals").select("*", { count: "exact", head: true }),
-            adminClient.from("referrals").select("*", { count: "exact", head: true }).eq("status", "converted"),
+            db.from("referrals").select("*", { count: "exact", head: true }),
+            db.from("referrals").select("*", { count: "exact", head: true }).eq("status", "converted"),
             // Client flywheel events
-            adminClient
+            db
                 .from("client_referral_events")
                 .select("id, status, created_at, referrer_id, referred_email")
                 .order("created_at", { ascending: false })
                 .limit(200),
-            adminClient
+            db
                 .from("client_referral_events")
                 .select("*", { count: "exact", head: true })
                 .eq("status", "converted"),
             // Incentives issued
-            adminClient
+            db
                 .from("client_referral_incentives")
                 .select("amount, currency, tds_applicable, created_at")
                 .order("created_at", { ascending: false })
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
         ]);
 
         // B2B top referrers
-        const b2bTopResult = await adminClient
+        const b2bTopResult = await db
             .from("referrals")
             .select("referrer_org_id, organizations!referrals_referrer_org_id_fkey(name), status")
             .limit(500);
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
         const totalClientEvents = (clientEventsResult.data ?? []).length;
         const clientConvertedCount = clientConvertedResult.count ?? 0;
 
-        const recentClientEvents = (clientEventsResult.data ?? []).slice(0, 20).map((e) => ({
+        const recentClientEvents = (clientEventsResult.data ?? []).slice(0, 20).map((e: any) => ({
             id: e.id,
             status: e.status,
             created_at: e.created_at,

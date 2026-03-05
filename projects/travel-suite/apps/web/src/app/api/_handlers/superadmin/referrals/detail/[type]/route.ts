@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // GET /api/superadmin/referrals/detail/:type — paginated referral events by type (b2b|client).
 
 import { NextRequest, NextResponse } from "next/server";
@@ -22,7 +23,7 @@ export async function GET(
 
     try {
         if (type === "b2b") {
-            const result = await adminClient
+            const result = await (adminClient as any)
                 .from("referrals")
                 .select(
                     "id, status, created_at, referrer_org_id, referred_org_id, " +
@@ -33,7 +34,7 @@ export async function GET(
                 .order("created_at", { ascending: false })
                 .range(page * limit, (page + 1) * limit - 1);
 
-            const rows = (result.data ?? []).map((r) => ({
+            const rows = (result.data ?? []).map((r: any) => ({
                 id: r.id,
                 status: r.status,
                 created_at: r.created_at,
@@ -53,7 +54,7 @@ export async function GET(
         }
 
         // Client flywheel
-        const result = await adminClient
+        const result = await (adminClient as any)
             .from("client_referral_events")
             .select(
                 "id, status, created_at, referrer_id, referred_email, " +
@@ -63,7 +64,7 @@ export async function GET(
             .order("created_at", { ascending: false })
             .range(page * limit, (page + 1) * limit - 1);
 
-        const incentivesResult = await adminClient
+        const incentivesResult = await (adminClient as any)
             .from("client_referral_incentives")
             .select("event_id, amount, currency, tds_applicable")
             .limit(2000);
@@ -78,7 +79,7 @@ export async function GET(
             }
         }
 
-        const rows = (result.data ?? []).map((e) => {
+        const rows = (result.data ?? []).map((e: any) => {
             const profile = e.profiles as { full_name?: string; email?: string } | null;
             const incentive = incentiveMap.get(e.id);
             return {

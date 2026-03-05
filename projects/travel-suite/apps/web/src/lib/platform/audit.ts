@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Platform audit logger — writes to platform_audit_log table.
 // All super_admin actions must call this for an immutable audit trail.
 
@@ -19,7 +20,7 @@ export async function logPlatformAction(
   ipAddress?: string
 ): Promise<void> {
   try {
-    const adminClient = createAdminClient();
+    const adminClient = createAdminClient() as any;
     await adminClient.from("platform_audit_log").insert({
       actor_id: actorId,
       action,
@@ -42,7 +43,7 @@ export async function logPlatformActionWithTarget(
   ipAddress?: string
 ): Promise<void> {
   try {
-    const adminClient = createAdminClient();
+    const adminClient = createAdminClient() as any;
     await adminClient.from("platform_audit_log").insert({
       actor_id: actorId,
       action,

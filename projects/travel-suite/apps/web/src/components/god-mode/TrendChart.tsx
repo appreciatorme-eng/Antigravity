@@ -53,7 +53,8 @@ export default function TrendChart({
     const commonProps = {
         data,
         style: CHART_STYLE,
-        onClick: onClickBar ? (payload: Record<string, unknown>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onClick: onClickBar ? (payload: any) => {
             if (payload?.activePayload) {
                 const item = (payload.activePayload as Array<{ payload: Record<string, string | number> }>)[0]?.payload;
                 if (item) onClickBar(item);

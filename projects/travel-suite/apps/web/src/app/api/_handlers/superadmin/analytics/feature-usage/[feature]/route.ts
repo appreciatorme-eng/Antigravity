@@ -34,7 +34,7 @@ export async function GET(
     const since = daysAgo(days);
 
     try {
-        const result = await adminClient
+        const result = await (adminClient as any)
             .from(featureCfg.table)
             .select(`${featureCfg.orgCol}, organizations(name, subscription_tier)`)
             .gte("created_at", since)

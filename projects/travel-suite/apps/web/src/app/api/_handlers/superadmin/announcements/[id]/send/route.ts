@@ -65,9 +65,7 @@ export async function POST(
                     userId: profile.id,
                     title: ann.title as string,
                     body: ann.body as string,
-                    type: "platform_announcement",
-                    data: { announcement_id: id, announcement_type: ann.announcement_type as string },
-                    channels: deliveryChannels,
+                    data: { type: "platform_announcement", announcement_id: id, announcement_type: ann.announcement_type as string },
                 })
             )
         );

@@ -129,7 +129,7 @@ export default function MonitoringPage() {
                                 <p className="text-xs text-amber-500 mt-1">Not configured</p>
                             )}
                         </div>
-                        <StatusDot status={svc.status as HealthStatus} showLabel />
+                        <StatusDot status={svc.status as HealthStatus} label={svc.status} />
                     </div>
                 ))}
                 {loading && !services && Array.from({ length: 6 }).map((_, i) => (
@@ -185,7 +185,7 @@ export default function MonitoringPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-xl font-bold text-amber-400">{queues?.pdf_queue.pending}</span>
-                        <StatusDot status={queueStatus(queues?.pdf_queue.pending ?? 0, 20)} showLabel />
+                        <StatusDot status={queueStatus(queues?.pdf_queue.pending ?? 0, 20)} label="" />
                     </div>
                 </div>
             )}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // GET /api/superadmin/support/tickets — paginated support ticket list with filters.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(10, Number(params.get("limit") || 50)));
 
     try {
-        let query = adminClient
+        const db = adminClient as any;
+        let query = db
             .from("support_tickets")
             .select(
                 "id, title, description, category, priority, status, created_at, updated_at, " +
@@ -34,11 +36,11 @@ export async function GET(request: NextRequest) {
 
         const [result, openCount, inProgressCount] = await Promise.all([
             query,
-            adminClient.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "open"),
-            adminClient.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+            db.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "open"),
+            db.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
         ]);
 
-        const tickets = (result.data ?? []).map((t) => {
+        const tickets = (result.data ?? []).map((t: any) => {
             const profile = t.profiles as {
                 full_name?: string; email?: string; organization_id?: string;
                 organizations?: { name?: string } | null;

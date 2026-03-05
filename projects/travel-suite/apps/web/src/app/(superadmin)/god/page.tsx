@@ -75,7 +75,7 @@ export default function GodCommandCenter() {
         {
             label: "Total Users",
             value: fmt(data.kpis.total_users),
-            trendPct: data.kpis.total_users_change_pct,
+            trend: data.kpis.total_users_change_pct,
             icon: Users,
             color: "blue",
             href: data.hrefs.total_users,
@@ -84,7 +84,7 @@ export default function GodCommandCenter() {
         {
             label: "Active Orgs",
             value: fmt(data.kpis.total_orgs),
-            trendPct: data.kpis.total_orgs_change_pct,
+            trend: data.kpis.total_orgs_change_pct,
             icon: Building2,
             color: "emerald",
             href: data.hrefs.total_orgs,
@@ -92,7 +92,7 @@ export default function GodCommandCenter() {
         {
             label: "Trips This Month",
             value: fmt(data.kpis.trips_this_month),
-            trendPct: data.kpis.trips_this_month_change_pct,
+            trend: data.kpis.trips_this_month_change_pct,
             icon: Map,
             color: "purple",
             href: data.hrefs.trips_this_month,
@@ -100,7 +100,7 @@ export default function GodCommandCenter() {
         {
             label: "MRR Estimate",
             value: fmtUsd(data.kpis.mrr_estimate),
-            trendPct: data.kpis.mrr_change_pct,
+            trend: data.kpis.mrr_change_pct,
             icon: DollarSign,
             color: "amber",
             href: data.hrefs.mrr_estimate,
@@ -108,7 +108,7 @@ export default function GodCommandCenter() {
         {
             label: "API Spend Today",
             value: fmtUsd(data.kpis.api_spend_today_usd),
-            trendPct: data.kpis.spend_change_pct,
+            trend: data.kpis.spend_change_pct,
             icon: Zap,
             color: "red",
             href: data.hrefs.api_spend_today_usd,
@@ -116,9 +116,9 @@ export default function GodCommandCenter() {
         {
             label: "Open Tickets",
             value: String(data.kpis.open_tickets),
-            trendPct: data.kpis.open_tickets_change_pct,
+            trend: data.kpis.open_tickets_change_pct,
             icon: LifeBuoy,
-            color: "pink",
+            color: "purple",
             href: data.hrefs.open_tickets,
         },
     ] : [];
@@ -183,7 +183,7 @@ export default function GodCommandCenter() {
                             series={[{ key: "count", label: "Signups", color: "#f59e0b" }]}
                             type="area"
                             height={200}
-                            onClick={(entry) => {
+                            onClickBar={(entry) => {
                                 if (entry?.date) router.push(`/god/signups?date=${entry.date}`);
                             }}
                         />
@@ -211,7 +211,7 @@ export default function GodCommandCenter() {
                             {systemServices.map((s) => (
                                 <div key={s.label} className="flex items-center justify-between">
                                     <span className="text-sm text-gray-300">{s.label}</span>
-                                    <StatusDot status={s.status} showLabel />
+                                    <StatusDot status={s.status} label="" />
                                 </div>
                             ))}
                         </div>

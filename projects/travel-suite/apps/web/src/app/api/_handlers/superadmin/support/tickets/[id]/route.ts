@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // GET /api/superadmin/support/tickets/:id — full ticket detail with user and org info.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,7 +15,7 @@ export async function GET(
     const { adminClient } = auth;
 
     try {
-        const result = await adminClient
+        const result = await (adminClient as any)
             .from("support_tickets")
             .select(
                 "*, profiles!support_tickets_user_id_fkey(full_name, email, phone, role, " +
