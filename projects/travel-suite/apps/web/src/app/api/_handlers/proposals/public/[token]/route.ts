@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
+import { trackFunnelEvent } from '@/lib/funnel/track';
 const supabaseAdmin = createAdminClient();
 
 type ProposalSummary = {
@@ -30,6 +31,7 @@ type ProposalTemplate = {
 type LoadedProposal = {
   id: string;
   title: string;
+  organization_id: string | null;
   client_id: string | null;
   created_by: string | null;
   total_price: number | null;
@@ -169,6 +171,7 @@ const normalizeProposal = (value: unknown): LoadedProposal => {
   return {
     id: String(proposal.id || ''),
     title: String(proposal.title || ''),
+    organization_id: normalizeText(proposal.organization_id),
     client_id: normalizeText(proposal.client_id),
     created_by: normalizeText(proposal.created_by),
     total_price: asNullableNumber(proposal.total_price),
@@ -187,6 +190,7 @@ async function loadProposalByToken(token: string) {
       `
       id,
       title,
+      organization_id,
       client_id,
       created_by,
       total_price,
@@ -257,6 +261,16 @@ async function buildPublicPayload(shareToken: string) {
     proposal.viewed_at = new Date().toISOString();
     if (proposal.status === 'draft') {
       proposal.status = 'viewed';
+    }
+
+    if (proposal.organization_id) {
+      trackFunnelEvent({
+        supabase: supabaseAdmin,
+        organizationId: proposal.organization_id,
+        eventType: 'proposal_viewed',
+        profileId: proposal.client_id,
+        metadata: { proposal_id: proposal.id },
+      });
     }
   }
 
@@ -649,6 +663,20 @@ export async function POST(
 
       if (approveError) {
         return NextResponse.json({ error: approveError.message }, { status: 400 });
+      }
+
+      if (proposal.organization_id) {
+        trackFunnelEvent({
+          supabase: supabaseAdmin,
+          organizationId: proposal.organization_id,
+          eventType: 'payment_initiated',
+          profileId: proposal.client_id,
+          metadata: {
+            proposal_id: proposal.id,
+            approved_by: approvedBy,
+            request_payment: requestPayment,
+          },
+        });
       }
 
       let paymentRequestQueued = false;

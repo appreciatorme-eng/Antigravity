@@ -20,6 +20,7 @@ import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
+import { trackFunnelEvent } from '@/lib/funnel/track';
 
 interface RazorpayPaymentEntity {
   id: string;
@@ -289,6 +290,30 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
       },
       { context: 'admin' }
     );
+  }
+
+  let orgIdForFunnel = payment.notes?.organization_id || null;
+  if (!orgIdForFunnel && invoiceId) {
+    const supabase = createAdminClient();
+    const { data: invoiceRow } = await supabase
+      .from('invoices')
+      .select('organization_id')
+      .eq('id', invoiceId)
+      .maybeSingle();
+    orgIdForFunnel = invoiceRow?.organization_id || null;
+  }
+
+  if (orgIdForFunnel) {
+    trackFunnelEvent({
+      supabase: createAdminClient(),
+      organizationId: orgIdForFunnel,
+      eventType: 'payment_completed',
+      metadata: {
+        razorpay_payment_id: payment.id,
+        amount_inr: payment.amount / 100,
+        ...(invoiceId ? { invoice_id: invoiceId } : {}),
+      },
+    });
   }
 }
 

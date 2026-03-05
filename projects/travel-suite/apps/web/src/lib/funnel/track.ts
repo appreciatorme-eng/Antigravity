@@ -1,0 +1,44 @@
+// Funnel event tracker — fire-and-forget wrapper for conversion_events inserts.
+// Errors are logged but never propagate; callers are never blocked.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ConversionEventType } from "@/lib/leads/types";
+
+interface TrackFunnelEventOptions {
+  supabase: SupabaseClient;
+  organizationId: string;
+  eventType: ConversionEventType;
+  leadId?: string | null;
+  profileId?: string | null;
+  tripId?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export function trackFunnelEvent({
+  supabase,
+  organizationId,
+  eventType,
+  leadId = null,
+  profileId = null,
+  tripId = null,
+  metadata = {},
+}: TrackFunnelEventOptions): void {
+  (supabase as any)
+    .from("conversion_events")
+    .insert({
+      organization_id: organizationId,
+      event_type: eventType,
+      lead_id: leadId,
+      profile_id: profileId,
+      trip_id: tripId,
+      event_metadata: metadata,
+    })
+    .then(({ error }: { error: unknown }) => {
+      if (error) {
+        console.error(`[funnel] Failed to track ${eventType}:`, error);
+      }
+    })
+    .catch((err: unknown) => {
+      console.error(`[funnel] Exception tracking ${eventType}:`, err);
+    });
+}

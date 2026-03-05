@@ -10,6 +10,7 @@ import {
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import type { Database } from "@/lib/database.types";
 import { fetchWithRetry } from "@/lib/network/retry";
+import { trackFunnelEvent } from "@/lib/funnel/track";
 
 const SendProposalSchema = z.object({
   channels: z
@@ -255,6 +256,16 @@ export async function POST(
       updated_at: nowIso,
     })
     .eq("id", proposalId);
+
+  if (emailSent || whatsappSent) {
+    trackFunnelEvent({
+      supabase: supabaseAdmin,
+      organizationId: admin.organizationId!,
+      eventType: "proposal_sent",
+      profileId: proposal.client_id ?? null,
+      metadata: { proposal_id: proposalId },
+    });
+  }
 
   await supabaseAdmin.from("notification_logs").insert({
     recipient_id: admin.userId,
