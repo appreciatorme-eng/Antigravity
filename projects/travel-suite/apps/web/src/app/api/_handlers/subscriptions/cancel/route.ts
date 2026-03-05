@@ -84,12 +84,12 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/subscriptions/cancel:', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: "Failed to cancel subscription" },
         { status: paymentErrorHttpStatus(error) }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to cancel subscription' },
+      { error: "Failed to cancel subscription" },
       { status: 500 }
     );
   }

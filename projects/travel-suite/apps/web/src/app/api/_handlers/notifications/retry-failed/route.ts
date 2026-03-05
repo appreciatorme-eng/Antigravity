@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
             .select("id");
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error("Error retrying failed notifications:", error);
+            return NextResponse.json({ error: "Failed to retry notifications" }, { status: 500 });
         }
 
         if (adminUserId) {
@@ -72,8 +73,9 @@ export async function POST(request: NextRequest) {
             retried: data?.length || 0,
         });
     } catch (error) {
+        console.error("Error in POST /api/notifications/retry-failed:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to retry notifications" },
             { status: 500 }
         );
     }

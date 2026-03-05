@@ -48,13 +48,12 @@ export async function PATCH(
 
         if (error) {
             console.error("Error updating itinerary:", error);
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to update itinerary" }, { status: 400 });
         }
 
         return NextResponse.json({ itinerary: data });
     } catch (error) {
         console.error("Internal Error updating itinerary:", error);
-        const message = error instanceof Error ? error.message : "Internal Server Error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to update itinerary" }, { status: 500 });
     }
 }

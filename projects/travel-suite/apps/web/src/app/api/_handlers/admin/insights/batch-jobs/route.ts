@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         unavailable_reason: "notification queue schema not available in this environment",
       });
     }
-    return NextResponse.json({ error: error.message || "Failed to list batch jobs" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to list batch jobs" }, { status: 500 });
   }
 
   return NextResponse.json({ jobs: data || [] });
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       );
     }
-    return NextResponse.json({ error: error?.message || "Failed to enqueue job" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to enqueue job" }, { status: 500 });
   }
 
   return NextResponse.json({

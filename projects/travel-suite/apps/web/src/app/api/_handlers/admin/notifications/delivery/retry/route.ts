@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
             .select("id");
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to retry notification delivery" }, { status: 400 });
         }
 
         if (!updatedRows || updatedRows.length === 0) {
@@ -116,9 +116,9 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ ok: true, queue_id: queueId });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to retry notification delivery" },
             { status: 500 }
         );
     }

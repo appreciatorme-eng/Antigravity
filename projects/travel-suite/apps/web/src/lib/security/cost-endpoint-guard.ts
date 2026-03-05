@@ -197,10 +197,11 @@ export async function guardCostEndpoint(
     const response = NextResponse.json(
       {
         error: "Cost guardrails are unavailable",
-        reason: error instanceof Error ? error.message : "spend_metering_backend_unavailable",
+        reason: "spend_metering_backend_unavailable",
       },
       { status: 503 }
     );
+    console.error("[cost-guard] Spend metering unavailable:", error);
 
     return {
       ok: false,
@@ -350,10 +351,11 @@ export async function guardCostEndpoint(
     const response = NextResponse.json(
       {
         error: "Cost guardrails are unavailable",
-        reason: error instanceof Error ? error.message : "spend_reservation_failed",
+        reason: "spend_reservation_failed",
       },
       { status: 503 }
     );
+    console.error("[cost-guard] Spend reservation failed:", error);
 
     return {
       ok: false,

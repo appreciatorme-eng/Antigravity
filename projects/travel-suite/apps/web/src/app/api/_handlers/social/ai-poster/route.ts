@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
 
 export const maxDuration = 60;
 
@@ -25,32 +25,34 @@ const posterSchema = {
 };
 
 export async function POST(req: NextRequest) {
+    const guard = await guardCostEndpoint(req, "ai_poster");
+    if (!guard.ok) return guard.response;
+
     try {
-        const serverClient = await createServerClient();
-        const { data: { user } } = await serverClient.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
         const { prompt } = await req.json();
 
         if (!prompt) {
-            return NextResponse.json({ error: "No prompt provided" }, { status: 400 });
+            return withCostGuardHeaders(
+                NextResponse.json({ error: "No prompt provided" }, { status: 400 }),
+                guard.context
+            );
         }
 
         const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
         if (!geminiApiKey) {
-            return NextResponse.json({
-                destination: "Custom Trip",
-                price: "$1,299",
-                offer: "Limited Time Offer",
-                season: "Special Edition",
-                services: ["Hotels", "Flights", "Tours"],
-                bulletPoints: ["All Inclusive", "Luxury Stay"],
-                suggestedUnsplashQuery: "travel"
-            });
+            return withCostGuardHeaders(
+                NextResponse.json({
+                    destination: "Custom Trip",
+                    price: "$1,299",
+                    offer: "Limited Time Offer",
+                    season: "Special Edition",
+                    services: ["Hotels", "Flights", "Tours"],
+                    bulletPoints: ["All Inclusive", "Luxury Stay"],
+                    suggestedUnsplashQuery: "travel"
+                }),
+                guard.context
+            );
         }
 
         const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -62,17 +64,23 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        const aiPrompt = `Generate travel template details based on this requirement: "${prompt}". 
-    Create a catchy destination/headline, price, offer, and list of services/bullet points. 
+        const aiPrompt = `Generate travel template details based on this requirement: "${prompt}".
+    Create a catchy destination/headline, price, offer, and list of services/bullet points.
     Also suggest a specific Unsplash query (e.g. 'switzerland landscape') that would fit well.`;
 
         const result = await model.generateContent(aiPrompt);
         const response = JSON.parse(result.response.text());
 
-        return NextResponse.json(response);
+        return withCostGuardHeaders(
+            NextResponse.json(response),
+            guard.context
+        );
 
     } catch (error) {
-        console.error("AI Poster Error:", error);
-        return NextResponse.json({ error: "Failed to generate poster" }, { status: 500 });
+        console.error("[ai-poster] Error:", error);
+        return withCostGuardHeaders(
+            NextResponse.json({ error: "Failed to generate poster" }, { status: 500 }),
+            guard.context
+        );
     }
 }

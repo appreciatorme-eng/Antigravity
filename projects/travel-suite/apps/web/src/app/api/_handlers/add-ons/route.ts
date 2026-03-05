@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Error fetching add-ons:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to fetch add-ons" }, { status: 500 });
     }
 
     return NextResponse.json({ addOns });
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Error creating add-on:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create add-on" }, { status: 500 });
     }
 
     return NextResponse.json({ addon }, { status: 201 });

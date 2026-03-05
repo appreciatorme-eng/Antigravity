@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query;
     if (error) {
       logError('Contacts list query failed', error, requestContext);
-      return withRequestId({ error: error.message }, requestId, { status: 500 });
+      return withRequestId({ error: "Failed to process contact" }, requestId, { status: 500 });
     }
 
     const durationMs = Date.now() - startedAt;
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
     Sentry.captureException(error);
     logError('Contacts list crashed', error, requestContext);
     return withRequestId(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: "Failed to process contact" },
       requestId,
       { status: 500 }
     );
@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
     Sentry.captureException(error);
     logError('Contacts import crashed', error, requestContext);
     return withRequestId(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: "Failed to process contact" },
       requestId,
       { status: 500 }
     );

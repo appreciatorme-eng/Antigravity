@@ -68,8 +68,9 @@ export async function GET(req: NextRequest) {
             },
         });
     } catch (error) {
+        console.error("Error in GET /api/location/share:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process location share" },
             { status: 500 }
         );
     }
@@ -134,7 +135,8 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (error || !data) {
-            return NextResponse.json({ error: error?.message || "Failed to create share" }, { status: 500 });
+            console.error("Error creating location share:", error);
+            return NextResponse.json({ error: "Failed to process location share" }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -145,8 +147,9 @@ export async function POST(req: NextRequest) {
             reused: false,
         });
     } catch (error) {
+        console.error("Error in POST /api/location/share:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process location share" },
             { status: 500 }
         );
     }
@@ -204,7 +207,8 @@ export async function DELETE(req: NextRequest) {
 
         const { data, error } = await query.select("id");
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error("Error revoking location share:", error);
+            return NextResponse.json({ error: "Failed to process location share" }, { status: 500 });
         }
 
         await admin.adminClient.from("notification_logs").insert({
@@ -223,8 +227,9 @@ export async function DELETE(req: NextRequest) {
             revoked: data?.length || 0,
         });
     } catch (error) {
+        console.error("Error in DELETE /api/location/share:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process location share" },
             { status: 500 }
         );
     }

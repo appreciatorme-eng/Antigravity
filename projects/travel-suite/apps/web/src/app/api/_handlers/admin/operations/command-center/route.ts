@@ -263,19 +263,19 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (tripsResult.error) {
-    return NextResponse.json({ error: tripsResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch trip data" }, { status: 500 });
   }
 
   if (invoicesResult.error) {
-    return NextResponse.json({ error: invoicesResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch invoice data" }, { status: 500 });
   }
 
   if (proposalsResult.error) {
-    return NextResponse.json({ error: proposalsResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch proposal data" }, { status: 500 });
   }
 
   if (paidInvoicesResult.error) {
-    return NextResponse.json({ error: paidInvoicesResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch payment data" }, { status: 500 });
   }
 
   const followupsResult = await fetchScopedFollowUps({
@@ -286,7 +286,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (followupsResult.error) {
-    return NextResponse.json({ error: followupsResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch follow-up data" }, { status: 500 });
   }
 
   const trips = tripsResult.data || [];
@@ -319,11 +319,11 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (itineraryTitlesResult.error) {
-    return NextResponse.json({ error: itineraryTitlesResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch itinerary data" }, { status: 500 });
   }
 
   if (clientProfilesResult.error) {
-    return NextResponse.json({ error: clientProfilesResult.error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch client data" }, { status: 500 });
   }
 
   const itineraryMap = new Map(

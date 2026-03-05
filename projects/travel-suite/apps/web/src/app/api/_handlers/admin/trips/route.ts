@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
         const { data, error } = await query.order("created_at", { ascending: false });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
         }
 
         const trips = ((data || []) as unknown as TripListRow[]).map((t) => {
@@ -204,8 +204,8 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json({ trips });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
     }
 }
 
@@ -287,7 +287,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (itineraryError || !itineraryData) {
-            return NextResponse.json({ error: itineraryError?.message || "Failed to create itinerary" }, { status: 400 });
+            return NextResponse.json({ error: "Failed to create itinerary" }, { status: 400 });
         }
 
         const { error: tripError, data: tripData } = await admin.adminClient
@@ -304,11 +304,11 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (tripError || !tripData) {
-            return NextResponse.json({ error: tripError?.message || "Failed to create trip" }, { status: 400 });
+            return NextResponse.json({ error: "Failed to create trip" }, { status: 400 });
         }
 
         return NextResponse.json({ success: true, tripId: tripData.id, itineraryId: itineraryData.id });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
     }
 }

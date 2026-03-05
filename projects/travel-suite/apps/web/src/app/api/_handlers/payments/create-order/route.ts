@@ -147,13 +147,13 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: "Failed to create payment order" },
         { status: paymentErrorHttpStatus(error) }
       );
     }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create order' },
+      { error: "Failed to create payment order" },
       { status: 500 }
     );
   }

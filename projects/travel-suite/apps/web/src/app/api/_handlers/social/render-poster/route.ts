@@ -97,8 +97,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Render failed";
     console.error("[render-poster] Error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Poster render failed" }, { status: 500 });
   }
 }

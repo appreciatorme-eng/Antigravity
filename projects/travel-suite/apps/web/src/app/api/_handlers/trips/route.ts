@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
 
             const { data, error } = await query.order("created_at", { ascending: false });
 
-            if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+            if (error) return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
 
             const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
                 const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
@@ -306,7 +306,7 @@ export async function GET(req: NextRequest) {
         const { data, error } = await query.order("created_at", { ascending: false });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
         }
 
         const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
@@ -359,6 +359,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ trips });
     } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+        console.error("Error fetching trips:", error);
+        return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
     }
 }

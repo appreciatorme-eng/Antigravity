@@ -145,11 +145,9 @@ export async function POST(req: NextRequest) {
       guard.context
     );
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Smart poster generation failed";
     console.error("[smart-poster] Error:", err);
     return withCostGuardHeaders(
-      NextResponse.json({ error: message }, { status: 500 }),
+      NextResponse.json({ error: "Smart poster generation failed" }, { status: 500 }),
       guard.context
     );
   }

@@ -87,7 +87,7 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
                 .eq("organization_id", admin.organizationId!);
 
             if (orgUsersError) {
-                return NextResponse.json({ success: false, error: orgUsersError.message }, { status: 500 });
+                return NextResponse.json({ success: false, error: "Cache clear failed" }, { status: 500 });
             }
 
             const orgUserIds = (orgUsers || []).map((row) => row.id).filter(Boolean);
@@ -111,7 +111,7 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
             return NextResponse.json(
                 {
                     success: false,
-                    error: error.message,
+                    error: "Cache clear failed",
                 },
                 { status: 500 }
             );
@@ -127,7 +127,7 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
         return NextResponse.json(
             {
                 success: false,
-                error: err instanceof Error ? err.message : "Unknown error",
+                error: "Cache clear failed",
             },
             { status: 500 }
         );

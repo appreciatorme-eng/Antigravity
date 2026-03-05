@@ -241,7 +241,7 @@ export async function POST(req: Request) {
                 .eq("id", existingProfile.id);
 
             if (profileError) {
-                return NextResponse.json({ error: profileError.message }, { status: 400 });
+                return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
             }
 
             // Ensure the relational "clients" record exists (proposals/trips reference this table).
@@ -257,7 +257,7 @@ export async function POST(req: Request) {
                 );
 
             if (clientUpsertError) {
-                return NextResponse.json({ error: clientUpsertError.message }, { status: 400 });
+                return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
             }
 
             return NextResponse.json({ success: true, userId: existingProfile.id, status: "updated_existing" });
@@ -272,7 +272,7 @@ export async function POST(req: Request) {
         });
 
         if (createError || !newUser?.user) {
-            return NextResponse.json({ error: createError?.message || "Failed to create user" }, { status: 400 });
+            return NextResponse.json({ error: "Failed to create user" }, { status: 400 });
         }
 
         // `auth.admin.createUser()` does not guarantee our `profiles` row exists yet.
@@ -288,7 +288,7 @@ export async function POST(req: Request) {
             );
 
         if (profileError) {
-            return NextResponse.json({ error: profileError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         const { error: clientInsertError } = await supabaseAdmin
@@ -303,12 +303,12 @@ export async function POST(req: Request) {
             );
 
         if (clientInsertError) {
-            return NextResponse.json({ error: clientInsertError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         return NextResponse.json({ success: true, userId: newUser.user.id });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
 }
 
@@ -346,7 +346,7 @@ export async function GET(req: Request) {
             .order("created_at", { ascending: false });
 
         if (profilesError) {
-            return NextResponse.json({ error: profilesError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         const clientsWithTrips = await Promise.all(
@@ -364,8 +364,8 @@ export async function GET(req: Request) {
         );
 
         return NextResponse.json({ clients: clientsWithTrips, scoped_organization_id: scopedOrg.organizationId });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
 }
 
@@ -431,7 +431,7 @@ export async function DELETE(req: Request) {
             .eq("id", clientId);
 
         if (profileDeleteError) {
-            return NextResponse.json({ error: profileDeleteError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(clientId);
@@ -444,12 +444,12 @@ export async function DELETE(req: Request) {
             if (clientSnapshot) {
                 await supabaseAdmin.from("clients").upsert(clientSnapshot);
             }
-            return NextResponse.json({ error: deleteError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
 }
 
@@ -609,7 +609,7 @@ export async function PATCH(req: Request) {
             .eq("id", profileId);
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
         const lifecycleChanged =
@@ -672,7 +672,7 @@ export async function PATCH(req: Request) {
         }
 
         return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
-    } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+    } catch {
+        return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
 }

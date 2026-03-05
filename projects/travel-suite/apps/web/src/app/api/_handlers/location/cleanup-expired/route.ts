@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
             .select("id");
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            console.error("Error cleaning up expired locations:", error);
+            return NextResponse.json({ error: "Failed to clean up expired locations" }, { status: 500 });
         }
 
         if (admin.userId) {
@@ -88,8 +89,9 @@ export async function POST(request: NextRequest) {
             cleaned: data?.length || 0,
         });
     } catch (error) {
+        console.error("Error in POST /api/location/cleanup-expired:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to clean up expired locations" },
             { status: 500 }
         );
     }

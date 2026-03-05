@@ -99,7 +99,7 @@ export async function POST(req: Request) {
                     id: conn.id,
                     status: "failed",
                     platform: conn.platform,
-                    error: err instanceof Error ? err.message : "Unknown token refresh error",
+                    error: "Token refresh failed",
                 });
             }
         }
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         console.error("Error refreshing social tokens:", error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Failed to refresh tokens" },
+            { error: "Token refresh failed" },
             { status: 500 }
         );
     }

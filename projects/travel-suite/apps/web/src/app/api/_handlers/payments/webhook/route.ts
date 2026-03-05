@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: "Webhook processing failed" },
         { status: paymentErrorHttpStatus(error) }
       );
     }

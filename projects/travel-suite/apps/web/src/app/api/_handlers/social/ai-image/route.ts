@@ -68,19 +68,14 @@ async function generateImage(
     config: GenerationConfig,
 ): Promise<string | null> {
     try {
-        const isProModel = model.includes("flux-pro");
         const result = await fal.subscribe(model, {
             input: {
                 prompt,
                 image_size: { width, height },
                 num_images: 1,
                 enable_safety_checker: false,
-                ...(isProModel
-                    ? {}
-                    : {
-                          num_inference_steps: config.numInferenceSteps,
-                          guidance_scale: config.guidanceScale,
-                      }),
+                num_inference_steps: config.numInferenceSteps,
+                guidance_scale: config.guidanceScale,
             },
         });
 
@@ -164,10 +159,9 @@ export async function POST(req: NextRequest) {
             guard.context
         );
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Internal error";
         console.error(`[ai-${mode}] Error:`, err);
         return withCostGuardHeaders(
-            NextResponse.json({ error: message }, { status: 500 }),
+            NextResponse.json({ error: "Image generation failed" }, { status: 500 }),
             guard.context
         );
     }

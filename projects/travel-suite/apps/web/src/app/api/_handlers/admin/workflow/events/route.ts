@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
         if (error) {
             logError("Workflow events query failed", error, requestContext);
-            return withRequestId({ error: error.message }, requestId, { status: 500 });
+            return withRequestId({ error: "Failed to process workflow event" }, requestId, { status: 500 });
         }
 
         const rows = data || [];
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
         Sentry.captureException(error);
         logError("Workflow events crashed", error, requestContext);
         return withRequestId(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process workflow event" },
             requestId,
             { status: 500 }
         );

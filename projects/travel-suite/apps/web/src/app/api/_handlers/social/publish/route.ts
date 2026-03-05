@@ -90,11 +90,11 @@ export async function POST(req: Request) {
                     platformPostUrl
                 });
             } catch (err: unknown) {
-                const errMessage = err instanceof Error ? err.message : "Unknown publish error";
+                console.error(`Failed to publish to ${conn.platform}:`, err);
                 publishResults.push({
                     platform: conn.platform,
                     status: 'failed',
-                    error: errMessage
+                    error: "Failed to publish content"
                 });
             }
         }
@@ -110,7 +110,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, results: publishResults });
     } catch (error: unknown) {
         console.error('Error publishing post:', error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to publish content" }, { status: 500 });
     }
 }

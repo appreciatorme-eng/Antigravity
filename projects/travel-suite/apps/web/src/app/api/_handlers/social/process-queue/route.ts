@@ -137,7 +137,7 @@ export async function POST(req: Request) {
 
                 results.push({ id: item.id, status: "success" });
             } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : "Unknown publish error";
+                const internalMessage = err instanceof Error ? err.message : "Unknown publish error";
                 console.error(`Failed to publish item ${item.id}:`, err);
 
                 const attemptNumber = Number(item.attempts || 0) + 1;
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
                     .from("social_post_queue")
                     .update({
                         status: exhausted ? "failed" : "pending",
-                        error_message: message,
+                        error_message: internalMessage,
                         attempts: attemptNumber,
                         scheduled_for: retryAt || item.scheduled_for,
                         updated_at: new Date().toISOString(),
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
                 results.push({
                     id: item.id,
                     status: exhausted ? "dead_lettered" : "retry_scheduled",
-                    error: message,
+                    error: "Failed to process queue item",
                     retry_at: retryAt,
                 });
             }
@@ -174,7 +174,6 @@ export async function POST(req: Request) {
         });
     } catch (error: unknown) {
         console.error("Error processing social queue:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to process queue item" }, { status: 500 });
     }
 }

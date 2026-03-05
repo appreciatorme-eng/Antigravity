@@ -55,7 +55,7 @@ export async function PUT(
 
     if (error) {
       console.error('Error updating add-on:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to update add-on" }, { status: 500 });
     }
 
     if (!addon) {
@@ -123,7 +123,7 @@ export async function DELETE(
 
     if (error) {
       console.error('Error deleting add-on:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to delete add-on" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

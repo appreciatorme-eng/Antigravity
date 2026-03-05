@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     .limit(300);
 
   if (error) {
-    return NextResponse.json({ error: error.message || "Failed to compute auto requote candidates" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to compute auto requote candidates" }, { status: 500 });
   }
 
   const proposals = data || [];

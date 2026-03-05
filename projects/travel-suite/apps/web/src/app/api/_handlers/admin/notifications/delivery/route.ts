@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
             .range(offset, offset + limit - 1);
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to fetch notification delivery" }, { status: 400 });
         }
 
         const { data: groupedRows, error: groupedError } = await admin.adminClient
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
             .limit(1000);
 
         if (groupedError) {
-            return NextResponse.json({ error: groupedError.message }, { status: 400 });
+            return NextResponse.json({ error: "Failed to fetch notification delivery" }, { status: 400 });
         }
 
         const countsByStatus = (groupedRows || []).reduce<Record<string, number>>((acc, row) => {
@@ -146,9 +146,9 @@ export async function GET(req: NextRequest) {
             },
             scoped_organization_id: scopedOrganization.organizationId,
         });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to fetch notification delivery" },
             { status: 500 }
         );
     }

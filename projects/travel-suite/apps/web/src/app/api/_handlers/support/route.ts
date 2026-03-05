@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
         if (error) {
             console.error("Error creating ticket:", error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: "Failed to create support ticket" }, { status: 500 });
         }
 
         return NextResponse.json(data);
@@ -81,7 +81,7 @@ export async function GET() {
 
         if (error) {
             console.error("Error fetching tickets:", error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: "Failed to fetch support tickets" }, { status: 500 });
         }
 
         return NextResponse.json(data);

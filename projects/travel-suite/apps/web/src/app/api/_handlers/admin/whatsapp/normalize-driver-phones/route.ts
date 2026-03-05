@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const { data: rows, error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to normalize driver phones" }, { status: 500 });
     }
 
     const candidates = (rows || []).filter((row) => !!sanitizePhone(row.phone));
@@ -117,9 +117,9 @@ export async function POST(req: NextRequest) {
       skipped,
       organization_id: organizationId,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to normalize driver phones" },
       { status: 500 },
     );
   }

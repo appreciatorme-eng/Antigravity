@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
             .select("lifecycle_stage,notify_client")
             .eq("organization_id", scopedOrg.organizationId);
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return NextResponse.json({ error: "Failed to process workflow rule" }, { status: 500 });
 
         const dbMap = new Map((data || []).map((row) => [row.lifecycle_stage, row.notify_client]));
         const rules = lifecycleStages.map((stage) => ({
@@ -126,9 +126,9 @@ export async function GET(req: NextRequest) {
         }));
 
         return NextResponse.json({ rules });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process workflow rule" },
             { status: 500 }
         );
     }
@@ -183,12 +183,12 @@ export async function POST(req: NextRequest) {
                 { onConflict: "organization_id,lifecycle_stage" }
             );
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return NextResponse.json({ error: "Failed to process workflow rule" }, { status: 500 });
 
         return NextResponse.json({ ok: true, lifecycle_stage: lifecycleStage, notify_client: notifyClient });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "Failed to process workflow rule" },
             { status: 500 }
         );
     }

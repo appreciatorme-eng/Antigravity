@@ -37,7 +37,7 @@ async function loadPdfImportForAccess(
   if (error) {
     return {
       response: NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: "Failed to process PDF import" },
         { status: 500 },
       ),
     };
@@ -114,11 +114,11 @@ export async function GET(
       success: true,
       pdf_import: loaded.row,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to process PDF import",
       },
       { status: 500 },
     );
@@ -216,7 +216,7 @@ export async function PATCH(
 
         if (error) {
           return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: "Failed to process PDF import" },
             { status: 500 },
           );
         }
@@ -241,7 +241,7 @@ export async function PATCH(
 
         if (error) {
           return NextResponse.json(
-            { success: false, error: error.message },
+            { success: false, error: "Failed to process PDF import" },
             { status: 500 },
           );
         }
@@ -299,11 +299,11 @@ export async function PATCH(
           { status: 400 },
         );
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to process PDF import",
       },
       { status: 500 },
     );
@@ -367,7 +367,7 @@ export async function DELETE(
 
     if (deleteError) {
       return NextResponse.json(
-        { success: false, error: deleteError.message },
+        { success: false, error: "Failed to process PDF import" },
         { status: 500 },
       );
     }
@@ -389,11 +389,11 @@ export async function DELETE(
       success: true,
       message: "PDF import deleted successfully",
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to process PDF import",
       },
       { status: 500 },
     );

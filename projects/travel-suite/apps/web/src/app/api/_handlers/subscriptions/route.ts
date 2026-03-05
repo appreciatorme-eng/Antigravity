@@ -123,7 +123,7 @@ export async function GET() {
     console.error('Error in GET /api/subscriptions:', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: "Subscription operation failed" },
         { status: paymentErrorHttpStatus(error) }
       );
     }
@@ -216,12 +216,12 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/subscriptions:', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        { error: "Subscription operation failed" },
         { status: paymentErrorHttpStatus(error) }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create subscription' },
+      { error: "Subscription operation failed" },
       { status: 500 }
     );
   }

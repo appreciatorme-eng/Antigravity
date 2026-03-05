@@ -7,7 +7,7 @@ import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/obser
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 
 const supabaseAdmin = createAdminClient();
-const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || null;
+const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || null;
 const appSecret = process.env.WHATSAPP_APP_SECRET || null;
 
 function toIsoFromUnixSeconds(value: string): string {

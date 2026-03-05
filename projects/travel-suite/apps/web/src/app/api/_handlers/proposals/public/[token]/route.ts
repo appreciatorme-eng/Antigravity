@@ -405,9 +405,10 @@ export async function GET(
 
     return NextResponse.json(payload);
   } catch (error) {
+    console.error("Error loading public proposal:", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to process proposal',
       },
       { status: 500 }
     );
@@ -730,9 +731,10 @@ export async function POST(
 
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
   } catch (error) {
+    console.error("Error processing public proposal action:", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to process proposal',
       },
       { status: 500 }
     );

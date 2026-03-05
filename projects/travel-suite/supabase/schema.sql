@@ -311,10 +311,16 @@ ALTER TABLE public.shared_itineraries ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_shared_itineraries_code ON public.shared_itineraries(share_code);
 CREATE INDEX IF NOT EXISTS idx_shared_itineraries_status ON public.shared_itineraries(status);
 
--- Anyone with the share code can view (public access via share_code)
-CREATE POLICY "Anyone can view shared itinerary by code" 
-    ON public.shared_itineraries FOR SELECT 
-    USING (true);
+-- Owners can view their own shares (server-side lookups use service-role which bypasses RLS)
+CREATE POLICY "Owners can view own shares"
+    ON public.shared_itineraries FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.itineraries
+            WHERE itineraries.id = shared_itineraries.itinerary_id
+            AND itineraries.user_id = auth.uid()
+        )
+    );
 
 -- Only itinerary owner can create shares
 CREATE POLICY "Owners can create shares" 
