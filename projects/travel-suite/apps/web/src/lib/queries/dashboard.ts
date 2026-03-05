@@ -35,6 +35,7 @@ export interface DashboardStatsResponse {
   stats: DashboardStats;
   activities: DashboardActivity[];
   series: DashboardSeriesPoint[];
+  operatorName: string;
 }
 
 interface ProposalSeriesRow {
@@ -132,7 +133,7 @@ export function useDashboardStats() {
 
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("organization_id")
+        .select("organization_id, full_name")
         .eq("id", session.user.id)
         .single();
 
@@ -296,6 +297,9 @@ export function useDashboardStats() {
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 8);
 
+      const operatorFullName = profile.full_name || session.user.email?.split("@")[0] || "there";
+      const operatorName = operatorFullName.split(" ")[0];
+
       return {
         stats: {
           totalDrivers: Number(driversRes.count || 0),
@@ -308,6 +312,7 @@ export function useDashboardStats() {
         },
         activities,
         series,
+        operatorName,
       };
     },
     staleTime: 5 * 60 * 1000,

@@ -77,8 +77,6 @@ function getISTDateString(): string {
   });
 }
 
-const OPERATOR_NAME = "Rajiv";
-
 export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading: loading } = useDashboardStats();
@@ -202,7 +200,7 @@ export default function DashboardPage() {
           </p>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             Namaste,{" "}
-            <span className="text-primary">{OPERATOR_NAME}! 🙏</span>
+            <span className="text-primary">{data?.operatorName ?? ""}! 🙏</span>
           </h1>
           <p className="text-slate-500 mt-2 font-medium">
             Here&apos;s your travel operations command centre for today.
