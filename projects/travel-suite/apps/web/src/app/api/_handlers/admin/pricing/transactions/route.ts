@@ -15,6 +15,8 @@ type CostRow = {
   pax_count: number;
   cost_amount: number;
   price_amount: number;
+  commission_pct: number;
+  commission_amount: number;
   currency: string;
   notes: string | null;
   created_at: string;
@@ -50,7 +52,7 @@ export async function GET(req: NextRequest) {
 
   let query = db
     .from("trip_service_costs")
-    .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, currency, notes, created_at")
+    .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
     .eq("organization_id", admin.organizationId);
 
   if (category && category !== "all") {
@@ -122,6 +124,8 @@ export async function GET(req: NextRequest) {
       description: cost.description,
       cost_amount: costAmt,
       price_amount: priceAmt,
+      commission_pct: Number(cost.commission_pct || 0),
+      commission_amount: Number(cost.commission_amount || 0),
       profit,
       margin_pct: marginPct,
       currency: cost.currency,
@@ -150,9 +154,10 @@ export async function GET(req: NextRequest) {
   const totalCost = transactions.reduce((s, t) => s + t.cost_amount, 0);
   const totalRevenue = transactions.reduce((s, t) => s + t.price_amount, 0);
   const totalProfit = totalRevenue - totalCost;
+  const totalCommission = transactions.reduce((s, t) => s + t.commission_amount, 0);
 
   return NextResponse.json({
     transactions,
-    summary: { totalCost, totalRevenue, totalProfit, count: transactions.length },
+    summary: { totalCost, totalRevenue, totalProfit, totalCommission, count: transactions.length },
   });
 }

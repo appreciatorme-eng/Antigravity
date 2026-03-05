@@ -29,6 +29,8 @@ export interface TripServiceCost {
   pax_count: number;
   cost_amount: number;
   price_amount: number;
+  commission_pct: number;
+  commission_amount: number;
   currency: string;
   notes: string | null;
   created_by: string | null;
@@ -58,6 +60,9 @@ export interface PricingDashboardKpis {
   marginPct: number;
   tripCount: number;
   avgProfitPerTrip: number;
+  totalCommission: number;
+  totalGst: number;
+  totalTcs: number;
 }
 
 export interface CategoryBreakdown {
@@ -104,6 +109,11 @@ export interface TripWithCosts {
   totalCost: number;
   totalPrice: number;
   profit: number;
+  totalCommission: number;
+  gstPct: number;
+  tcsPct: number;
+  gstAmount: number;
+  tcsAmount: number;
 }
 
 export interface VendorHistoryItem {
@@ -127,6 +137,8 @@ export interface TransactionItem {
   description: string | null;
   cost_amount: number;
   price_amount: number;
+  commission_pct: number;
+  commission_amount: number;
   profit: number;
   margin_pct: number;
   currency: string;
@@ -138,6 +150,7 @@ export interface TransactionSummary {
   totalCost: number;
   totalRevenue: number;
   totalProfit: number;
+  totalCommission: number;
   count: number;
 }
 

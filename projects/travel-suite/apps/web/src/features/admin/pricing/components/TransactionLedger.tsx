@@ -179,6 +179,10 @@ export function TransactionLedger({ onSelectTransaction }: Props) {
               {formatINRShort(summary.totalProfit)}
             </span>
           </span>
+          <span className="text-text-muted hidden sm:inline">·</span>
+          <span className="text-text-muted">
+            Commission: <span className="text-amber-600 font-semibold">{formatINRShort(summary.totalCommission)}</span>
+          </span>
         </div>
       )}
 
@@ -207,7 +211,7 @@ export function TransactionLedger({ onSelectTransaction }: Props) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm min-w-[1050px]">
               <thead className="border-b border-gray-100 bg-gray-50/60">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted w-24">Date</th>
@@ -219,6 +223,7 @@ export function TransactionLedger({ onSelectTransaction }: Props) {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-emerald-600">Revenue</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-violet-600">Profit</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted w-16">Margin</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-amber-600 whitespace-nowrap">Commission</th>
                   <th className="w-8" />
                 </tr>
               </thead>
@@ -276,6 +281,9 @@ export function TransactionLedger({ onSelectTransaction }: Props) {
                         )}>
                           {t.margin_pct}%
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-amber-600 font-medium whitespace-nowrap">
+                        {t.commission_amount > 0 ? formatINR(t.commission_amount) : "—"}
                       </td>
                       <td className="pr-3 py-3">
                         <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary transition-colors" />

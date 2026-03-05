@@ -9,6 +9,8 @@ const UpdateSchema = z.object({
   pax_count: z.number().int().min(1).optional(),
   cost_amount: z.number().min(0).optional(),
   price_amount: z.number().min(0).optional(),
+  commission_pct: z.number().min(0).max(100).optional(),
+  commission_amount: z.number().min(0).optional(),
   notes: z.string().nullable().optional(),
 });
 

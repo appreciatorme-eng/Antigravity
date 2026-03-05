@@ -23,6 +23,7 @@ export function TripCostEditor({
   const [vendorName, setVendorName] = useState("");
   const [costAmount, setCostAmount] = useState("");
   const [priceAmount, setPriceAmount] = useState("");
+  const [commissionPct, setCommissionPct] = useState("0");
   const [paxCount, setPaxCount] = useState("1");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,7 @@ export function TripCostEditor({
           if (data.vendor_name) setVendorName(data.vendor_name);
           if (data.cost_amount != null) setCostAmount(String(data.cost_amount));
           if (data.price_amount != null) setPriceAmount(String(data.price_amount));
+          if (data.commission_pct != null) setCommissionPct(String(data.commission_pct));
           if (data.pax_count != null) setPaxCount(String(data.pax_count));
           if (data.notes) setNotes(data.notes);
         })
@@ -60,16 +62,25 @@ export function TripCostEditor({
     return () => clearTimeout(timer);
   }, [vendorName, category, fetchVendorHistory]);
 
+  const computedCommissionAmount = Math.round(
+    (parseFloat(costAmount) || 0) * (parseFloat(commissionPct) || 0) / 100 * 100
+  ) / 100;
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
     try {
+      const commAmt = Math.round(
+        (parseFloat(costAmount) || 0) * (parseFloat(commissionPct) || 0) / 100 * 100
+      ) / 100;
       const payload = {
         trip_id: tripId,
         category,
         vendor_name: vendorName || null,
         cost_amount: parseFloat(costAmount) || 0,
         price_amount: parseFloat(priceAmount) || 0,
+        commission_pct: parseFloat(commissionPct) || 0,
+        commission_amount: commAmt,
         pax_count: parseInt(paxCount) || 1,
         notes: notes || null,
       };
@@ -94,7 +105,7 @@ export function TripCostEditor({
     } finally {
       setSaving(false);
     }
-  }, [tripId, category, vendorName, costAmount, priceAmount, paxCount, notes, costId, onSaved]);
+  }, [tripId, category, vendorName, costAmount, priceAmount, commissionPct, paxCount, notes, costId, onSaved]);
 
   return (
     <GlassModal
@@ -195,6 +206,32 @@ export function TripCostEditor({
             />
             <p className="text-[10px] text-text-muted mt-1">Charged to client</p>
           </div>
+        </div>
+
+        {/* Commission field */}
+        <div>
+          <label className="block text-sm font-medium text-secondary mb-1.5">
+            Commission % (from vendor)
+          </label>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <input
+                type="number"
+                value={commissionPct}
+                onChange={(e) => setCommissionPct(e.target.value)}
+                placeholder="0"
+                min="0"
+                max="100"
+                step="0.5"
+                className="w-full px-4 py-3 rounded-xl bg-white/80 border border-white/20 text-secondary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 shadow-sm"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">%</span>
+            </div>
+            <div className="px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 font-semibold text-sm whitespace-nowrap min-w-[110px] text-center">
+              = {formatINR(computedCommissionAmount)}
+            </div>
+          </div>
+          <p className="text-[10px] text-text-muted mt-1">Commission earned from vendor on this booking</p>
         </div>
 
         <div>

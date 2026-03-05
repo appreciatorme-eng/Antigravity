@@ -54,6 +54,7 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
   const grandTotalCost = trips.reduce((s, t) => s + t.totalCost, 0);
   const grandTotalPrice = trips.reduce((s, t) => s + t.totalPrice, 0);
   const grandProfit = grandTotalPrice - grandTotalCost;
+  const grandTotalCommission = trips.reduce((s, t) => s + (t.totalCommission || 0), 0);
 
   if (trips.length === 0) {
     return (
@@ -102,6 +103,9 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-violet-600 whitespace-nowrap">
                   Profit
                 </th>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-amber-600 whitespace-nowrap">
+                  Commission
+                </th>
                 <th className="px-3 py-3 w-12" />
               </tr>
               <tr className="bg-gray-50/60">
@@ -119,6 +123,7 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
                     </th>
                   </Fragment>
                 ))}
+                <th />
                 <th />
                 <th />
                 <th />
@@ -201,6 +206,9 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
                   )}>
                     {formatINR(trip.profit)}
                   </td>
+                  <td className="px-3 py-3 text-right text-xs font-bold tabular-nums text-amber-600 whitespace-nowrap">
+                    {(trip.totalCommission || 0) > 0 ? formatINR(trip.totalCommission) : "\u2014"}
+                  </td>
                   <td className="px-3 py-3 text-center whitespace-nowrap">
                     <button
                       className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
@@ -246,6 +254,9 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
                   grandProfit >= 0 ? "text-violet-600" : "text-rose-600"
                 )}>
                   {formatINR(grandProfit)}
+                </td>
+                <td className="px-3 py-3 text-right text-xs tabular-nums text-amber-600">
+                  {grandTotalCommission > 0 ? formatINR(grandTotalCommission) : "\u2014"}
                 </td>
                 <td />
               </tr>

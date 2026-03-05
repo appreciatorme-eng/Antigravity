@@ -10,6 +10,8 @@ const CreateSchema = z.object({
   pax_count: z.number().int().min(1).default(1),
   cost_amount: z.number().min(0).default(0),
   price_amount: z.number().min(0).default(0),
+  commission_pct: z.number().min(0).max(100).default(0),
+  commission_amount: z.number().min(0).default(0),
   currency: z.string().default("INR"),
   notes: z.string().nullable().optional(),
 });

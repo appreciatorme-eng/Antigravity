@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   const { data: monthTrips, error: tripErr } = await db
     .from("trips")
-    .select("id, name, destination, start_date, end_date, status, pax_count, client_id")
+    .select("id, name, destination, start_date, end_date, status, pax_count, client_id, gst_pct, tcs_pct")
     .eq("organization_id", orgId)
     .gte("start_date", monthStart)
     .lt("start_date", nextMonth)
@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
   type CostRow = {
     id: string; trip_id: string; category: string; vendor_name: string | null;
     description: string | null; pax_count: number; cost_amount: number;
-    price_amount: number; currency: string; notes: string | null;
+    price_amount: number; commission_pct: number; commission_amount: number;
+    currency: string; notes: string | null;
     created_by: string | null; created_at: string; updated_at: string;
     organization_id: string;
   };
@@ -89,6 +90,11 @@ export async function GET(req: NextRequest) {
     const tripCosts = costsByTrip.get(t.id) || [];
     const totalCost = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.cost_amount), 0);
     const totalPrice = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.price_amount), 0);
+    const totalCommission = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.commission_amount || 0), 0);
+    const gstPct = Number(t.gst_pct ?? 5);
+    const tcsPct = Number(t.tcs_pct ?? 1);
+    const gstAmount = Math.round(totalPrice * gstPct / 100 * 100) / 100;
+    const tcsAmount = Math.round(totalPrice * tcsPct / 100 * 100) / 100;
     return {
       id: t.id,
       title: t.name || "Untitled",
@@ -102,6 +108,11 @@ export async function GET(req: NextRequest) {
       totalCost,
       totalPrice,
       profit: totalPrice - totalCost,
+      totalCommission,
+      gstPct,
+      tcsPct,
+      gstAmount,
+      tcsAmount,
     };
   });
 

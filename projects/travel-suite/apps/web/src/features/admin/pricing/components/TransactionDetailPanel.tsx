@@ -156,6 +156,15 @@ export function TransactionDetailPanel({ transaction: t, fetchVendorHistory, onE
               {t.margin_pct}%
             </p>
           </div>
+          {t.commission_amount > 0 && (
+            <div className="col-span-2 bg-amber-50 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-amber-600 font-medium">Commission from Vendor</p>
+                <p className="text-[10px] text-amber-500 mt-0.5">{t.commission_pct}% of cost paid</p>
+              </div>
+              <p className="text-base font-bold text-amber-600 tabular-nums">{formatINR(t.commission_amount)}</p>
+            </div>
+          )}
         </div>
       </div>
 

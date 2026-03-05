@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { TransactionItem, TransactionSummary, TransactionFilters } from "./types";
 
-const EMPTY_SUMMARY: TransactionSummary = { totalCost: 0, totalRevenue: 0, totalProfit: 0, count: 0 };
+const EMPTY_SUMMARY: TransactionSummary = { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 };
 
 export function useTransactions(filters: TransactionFilters) {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
