@@ -1,7 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/admin", "/planner"];
+const PROTECTED_PREFIXES = [
+  "/admin",
+  "/god",
+  "/planner",
+  "/trips",
+  "/settings",
+  "/proposals",
+  "/reputation",
+  "/social",
+  "/support",
+];
 
 const isProtectedPath = (pathname: string) =>
   PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -19,8 +29,16 @@ const isOnboardingComplete = (profile: {
   organization_id: string | null;
   role: string | null;
   onboarding_step: number | null;
-} | null) =>
-  !!profile?.organization_id && profile.role === "admin" && Number(profile.onboarding_step || 0) >= 2;
+} | null): boolean => {
+  if (!profile) return false;
+  // super_admin is a platform owner — always has access, no onboarding required
+  if (profile.role === "super_admin") return true;
+  return (
+    !!profile.organization_id &&
+    profile.role === "admin" &&
+    Number(profile.onboarding_step || 0) >= 2
+  );
+};
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({

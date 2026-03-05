@@ -57,6 +57,22 @@ function AuthPageContent() {
                 if (!response.ok) {
                     throw new Error(payload.error || "Failed to sign in");
                 }
+                // Redirect super_admin to /god unless a specific next path was requested
+                if (!requestedNext) {
+                    const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+                    if (loggedInUser) {
+                        const { data: profile } = await supabase
+                            .from("profiles")
+                            .select("role")
+                            .eq("id", loggedInUser.id)
+                            .single();
+                        if (profile?.role === "super_admin") {
+                            router.push("/god");
+                            router.refresh();
+                            return;
+                        }
+                    }
+                }
                 router.push(nextPath);
                 router.refresh();
             }

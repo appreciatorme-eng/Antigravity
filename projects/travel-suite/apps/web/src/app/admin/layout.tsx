@@ -45,7 +45,8 @@ export default function AdminLayout({
                 .eq("id", user.id)
                 .single();
 
-            if (!profile || profile.role !== "admin") {
+            const allowedRoles = ["admin", "super_admin"];
+            if (!profile || !profile.role || !allowedRoles.includes(profile.role)) {
                 setAuthorized(false);
                 setLoading(false);
                 return;
