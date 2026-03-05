@@ -12,6 +12,10 @@
     {
       "path": "/api/notifications/schedule-followups",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/reputation-campaigns",
+      "schedule": "0 3 * * *"
     }
   ]
 }
