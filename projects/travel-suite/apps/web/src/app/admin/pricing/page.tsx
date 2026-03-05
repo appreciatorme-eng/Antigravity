@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3,
+  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -16,6 +16,10 @@ import { MonthlyTripTable } from "@/features/admin/pricing/components/MonthlyTri
 import { OverheadExpensesCard } from "@/features/admin/pricing/components/OverheadExpensesCard";
 import { ProfitTrendChart } from "@/features/admin/pricing/components/ProfitTrendChart";
 import { CategoryBreakdownChart } from "@/features/admin/pricing/components/CategoryBreakdownChart";
+import { TransactionLedger } from "@/features/admin/pricing/components/TransactionLedger";
+import { TransactionDetailPanel } from "@/features/admin/pricing/components/TransactionDetailPanel";
+import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
+import type { TransactionItem } from "@/features/admin/pricing/types";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -26,6 +30,7 @@ const TABS = [
   { id: "monthly", label: "Monthly View", icon: LayoutGrid },
   { id: "overheads", label: "Overheads", icon: Receipt },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "ledger", label: "Ledger", icon: Database },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -43,6 +48,8 @@ export default function PricingPage() {
   const now = useMemo(() => new Date(), []);
   const [month, setMonth] = useState(() => getMonthStr(now));
   const [activeTab, setActiveTab] = useState<TabId>("monthly");
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const monthLabel = getMonthLabel(month);
   const monthStart = `${month}-01`;
@@ -219,6 +226,22 @@ export default function PricingPage() {
           </motion.div>
         )}
 
+        {activeTab === "ledger" && (
+          <motion.div
+            key="ledger"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <TransactionLedger
+              onSelectTransaction={(t) => {
+                setSelectedTransaction(t);
+                setPanelOpen(true);
+              }}
+            />
+          </motion.div>
+        )}
+
         {activeTab === "analytics" && (
           <motion.div
             key="analytics"
@@ -317,6 +340,31 @@ export default function PricingPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Transaction Detail Panel */}
+      <SlideOutPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        title="Transaction Detail"
+        width="lg"
+      >
+        {selectedTransaction && (
+          <TransactionDetailPanel
+            transaction={selectedTransaction}
+            fetchVendorHistory={tripCosts.fetchVendorHistory}
+            onEdited={() => {
+              setPanelOpen(false);
+              tripCosts.reload();
+              dashboard.reload();
+            }}
+            onDeleted={() => {
+              setPanelOpen(false);
+              tripCosts.reload();
+              dashboard.reload();
+            }}
+          />
+        )}
+      </SlideOutPanel>
     </div>
   );
 }

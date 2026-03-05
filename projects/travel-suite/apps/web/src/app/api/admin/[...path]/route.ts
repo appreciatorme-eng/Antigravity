@@ -54,6 +54,7 @@ const routes = createCatchAllHandlers([
   ["pricing/overheads/:id", () => import("@/app/api/_handlers/admin/pricing/overheads/[id]/route")],
   ["pricing/overheads", () => import("@/app/api/_handlers/admin/pricing/overheads/route")],
   ["pricing/vendor-history", () => import("@/app/api/_handlers/admin/pricing/vendor-history/route")],
+  ["pricing/transactions", () => import("@/app/api/_handlers/admin/pricing/transactions/route")],
 ]);
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

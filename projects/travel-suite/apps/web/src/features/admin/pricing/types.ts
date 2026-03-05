@@ -113,3 +113,39 @@ export interface VendorHistoryItem {
   trip_title: string;
   created_at: string;
 }
+
+export interface TransactionItem {
+  id: string;
+  trip_id: string;
+  trip_name: string;
+  destination: string | null;
+  client_name: string | null;
+  start_date: string | null;
+  pax_count: number;
+  category: ServiceCategory;
+  vendor_name: string | null;
+  description: string | null;
+  cost_amount: number;
+  price_amount: number;
+  profit: number;
+  margin_pct: number;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TransactionSummary {
+  totalCost: number;
+  totalRevenue: number;
+  totalProfit: number;
+  count: number;
+}
+
+export type TransactionSort = "date" | "profit" | "cost" | "price";
+
+export interface TransactionFilters {
+  search: string;
+  category: ServiceCategory | "all";
+  vendor: string;
+  sort: TransactionSort;
+}
