@@ -69,6 +69,15 @@ export interface Customer {
   created_at: number;
 }
 
+export interface PaymentLink {
+  id: string;
+  short_url: string;
+  status: string;
+  amount: number;
+  currency: string;
+  description: string | null;
+}
+
 export interface Invoice {
   id: string;
   entity: "invoice";
@@ -224,6 +233,21 @@ export const razorpay = {
       email_notify?: 0 | 1;
     }): Promise<Invoice> {
       return requestRazorpay<Invoice>("/invoices", "POST", options);
+    },
+  },
+
+  paymentLinks: {
+    async create(options: {
+      amount: number;
+      currency?: Currency;
+      description?: string;
+      customer?: { name?: string; email?: string; contact?: string };
+      notify?: { sms?: boolean; email?: boolean };
+      reminder_enable?: boolean;
+      notes?: Record<string, string>;
+      expire_by?: number;
+    }): Promise<PaymentLink> {
+      return requestRazorpay<PaymentLink>("/payment_links", "POST", options);
     },
   },
 

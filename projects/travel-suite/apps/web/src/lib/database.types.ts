@@ -2711,6 +2711,130 @@ export type Database = {
           },
         ]
       }
+      proposal_payment_milestones: {
+        Row: {
+          amount_fixed: number | null
+          amount_percent: number | null
+          created_at: string
+          due_date: string
+          id: string
+          label: string
+          organization_id: string
+          paid_at: string | null
+          plan_id: string
+          proposal_id: string
+          razorpay_payment_link_id: string | null
+          razorpay_payment_link_url: string | null
+          sent_at: string | null
+          sort_order: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_fixed?: number | null
+          amount_percent?: number | null
+          created_at?: string
+          due_date: string
+          id?: string
+          label: string
+          organization_id: string
+          paid_at?: string | null
+          plan_id: string
+          proposal_id: string
+          razorpay_payment_link_id?: string | null
+          razorpay_payment_link_url?: string | null
+          sent_at?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_fixed?: number | null
+          amount_percent?: number | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          label?: string
+          organization_id?: string
+          paid_at?: string | null
+          plan_id?: string
+          proposal_id?: string
+          razorpay_payment_link_id?: string | null
+          razorpay_payment_link_url?: string | null
+          sent_at?: string | null
+          sort_order?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_payment_milestones_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "proposal_payment_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_payment_milestones_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_payment_milestones_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_payment_plans: {
+        Row: {
+          created_at: string
+          deposit_percent: number
+          id: string
+          notes: string | null
+          organization_id: string
+          proposal_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deposit_percent?: number
+          id?: string
+          notes?: string | null
+          organization_id: string
+          proposal_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deposit_percent?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          proposal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_payment_plans_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: true
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposal_payment_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_versions: {
         Row: {
           change_summary: string | null
