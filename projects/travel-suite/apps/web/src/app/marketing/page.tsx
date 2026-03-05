@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
-import { MessageSquare, Send, Stars, ListTodo, Users, ArrowRight, BarChart, MapPin } from "lucide-react";
+import { MessageSquare, Send, Stars, ListTodo, Users, ArrowRight, MapPin } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 
 export default function MarketingPage() {

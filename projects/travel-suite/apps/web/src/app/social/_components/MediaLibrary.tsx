@@ -196,6 +196,7 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {filteredItems.map((item) => (
                         <div key={item.id} className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 shadow-sm hover:shadow-md transition-all">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={item.publicUrl}
                                 alt={item.caption || "Media"}

@@ -56,7 +56,7 @@ export function CalendarCommandCenter() {
     isLoading,
     error,
   } = useCalendarEvents(currentDate.getMonth(), currentDate.getFullYear());
-  const actions = useCalendarActions();
+  useCalendarActions();
 
   // ---- Computed values ----
   const filteredEvents = useMemo(

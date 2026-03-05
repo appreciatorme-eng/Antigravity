@@ -12,6 +12,7 @@ import Link from "next/link";
 import { deriveStage, STAGE_CONFIG } from "./ItineraryFilterBar";
 import { ClientFeedbackPanel } from "./ClientFeedbackPanel";
 import { hasClientActivity } from "./NeedsAttentionQueue";
+import type { ClientComment, ClientPreferences } from "@/types/feedback";
 
 interface PastItineraryCardProps {
     itinerary: {
@@ -28,8 +29,8 @@ interface PastItineraryCardProps {
         share_code?: string | null;
         share_status?: string | null;
         trip_id?: string | null;
-        client_comments?: any[];
-        client_preferences?: any;
+        client_comments?: ClientComment[];
+        client_preferences?: ClientPreferences | null;
         wishlist_items?: string[];
         approved_by?: string | null;
         approved_at?: string | null;
@@ -60,7 +61,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             toast({
                 title: "Failed to assign client",
                 description: error instanceof Error ? error.message : "Unknown error",
-                variant: "destructive" as any,
+                variant: "error",
             });
         }
     };
@@ -74,7 +75,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             toast({
                 title: "Failed to update price",
                 description: error instanceof Error ? error.message : "Unknown error",
-                variant: "destructive" as any,
+                variant: "error",
             });
         }
     };
@@ -93,7 +94,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
     const StageIcon = stageConfig.icon;
     const hasActivity = hasClientActivity(itinerary);
     const comments = itinerary.client_comments ?? [];
-    const unresolvedCount = comments.filter((c: any) => !c.resolved_at).length;
+    const unresolvedCount = comments.filter((c: ClientComment) => !c.resolved_at).length;
     const preferences = itinerary.client_preferences ?? null;
     const wishlist = itinerary.wishlist_items ?? [];
 
@@ -236,7 +237,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="unassigned" className="text-slate-400 text-xs">No Client</SelectItem>
-                                {clients?.map((client: any) => (
+                                {clients?.map((client: { id: string; full_name?: string | null; email?: string | null }) => (
                                     <SelectItem key={client.id} value={client.id} className="text-xs">
                                         {client.full_name || client.email}
                                     </SelectItem>

@@ -4,9 +4,9 @@ import { useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import {
-    Loader2, MapPin, Calendar, Wallet, Sparkles, Plane,
+    MapPin,
     ChevronDown, Cloud, Share2, FolderOpen, ArrowRight,
-    Zap, BookOpen, Users, Star, BadgeCheck,
+    Star,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -28,9 +28,27 @@ import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter, type ItineraryStage } from "./ItineraryFilterBar";
-import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
+import { NeedsAttentionQueue, type ItineraryLike } from "./NeedsAttentionQueue";
 import { PlannerHero } from "./PlannerHero";
-import { cn } from "@/lib/utils";
+import type { ClientComment, ClientPreferences } from "@/types/feedback";
+
+/** Shape returned by the itineraries API and consumed by PastItineraryCard */
+interface PastItineraryItem extends ItineraryLike {
+    trip_title: string;
+    destination: string;
+    duration_days: number;
+    created_at: string;
+    budget: string | null;
+    client_id: string | null;
+    summary?: string | null;
+    interests?: string[] | null;
+    client?: { full_name: string } | null;
+    client_comments?: ClientComment[];
+    client_preferences?: ClientPreferences | null;
+    wishlist_items?: string[];
+    approved_by?: string | null;
+    approved_at?: string | null;
+}
 
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
     ssr: false,
@@ -197,11 +215,11 @@ export default function PlannerPage() {
         if (!pastItineraries) return [];
         let items = [...pastItineraries];
         if (filterStage !== "all") {
-            items = items.filter((itin: any) => matchesFilter(itin, filterStage));
+            items = items.filter((itin: PastItineraryItem) => matchesFilter(itin, filterStage));
         }
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase().trim();
-            items = items.filter((itin: any) => {
+            items = items.filter((itin: PastItineraryItem) => {
                 const title = (itin.trip_title || "").toLowerCase();
                 const dest = (itin.destination || "").toLowerCase();
                 const client = (itin.client?.full_name || "").toLowerCase();
@@ -378,6 +396,7 @@ export default function PlannerPage() {
                                                                                                         </div>
                                                                                                     ) : imgUrl ? (
                                                                                                         <>
+                                                                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                                                                                             <img src={imgUrl} alt={act.title} className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110" loading="lazy" referrerPolicy="no-referrer"
                                                                                                                 onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"; e.currentTarget.onerror = null; }} />
                                                                                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -607,7 +626,7 @@ export default function PlannerPage() {
 
                         {filteredItineraries.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {filteredItineraries.map((itinerary: any) => (
+                                {filteredItineraries.map((itinerary: PastItineraryItem) => (
                                     <PastItineraryCard
                                         key={itinerary.id}
                                         itinerary={itinerary}

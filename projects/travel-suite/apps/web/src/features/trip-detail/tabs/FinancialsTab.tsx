@@ -483,6 +483,7 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
   // Add-on handlers (optimistic local state is not needed since these
   // are informational toggles; the parent or API would persist changes)
   const handleAddOnToggle = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_addOnId: string, _isSelected: boolean) => {
       // Future: call mutation to toggle add-on selection
     },
@@ -490,6 +491,7 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
   );
 
   const handleAddOnQuantityChange = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_addOnId: string, _quantity: number) => {
       // Future: call mutation to update add-on quantity
     },

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Phone,
   MoreVertical,
@@ -17,11 +16,11 @@ import {
   Check,
   CheckCheck,
   Mic,
-  Image,
-  X,
+  Image as ImageIcon,
   Mail,
   AtSign,
 } from 'lucide-react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { CannedResponses } from './CannedResponses';
 import {
@@ -172,11 +171,11 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
 
         {msg.type === 'image' && (
           <div className="mb-1">
-            <div className="w-48 h-32 rounded-lg bg-slate-700 flex items-center justify-center overflow-hidden">
+            <div className="relative w-48 h-32 rounded-lg bg-slate-700 flex items-center justify-center overflow-hidden">
               {msg.imageUrl ? (
-                <img src={msg.imageUrl} alt="shared" className="w-full h-full object-cover" />
+                <Image src={msg.imageUrl} alt={msg.imageCaption || "Shared image"} fill className="object-cover" />
               ) : (
-                <Image className="w-8 h-8 text-slate-500" />
+                <ImageIcon className="w-8 h-8 text-slate-500" />
               )}
             </div>
             {msg.imageCaption && (
@@ -250,10 +249,11 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
 
   useEffect(() => {
     if (externalInput && externalInput.trim()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInputText(externalInput);
       onExternalInputConsumed?.();
     }
-  }, [externalInput]);
+  }, [externalInput, onExternalInputConsumed]);
 
   function handleSend() {
     const text = inputText.trim();

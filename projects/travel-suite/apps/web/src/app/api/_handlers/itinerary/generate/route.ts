@@ -358,7 +358,7 @@ export async function POST(req: NextRequest) {
                     const geocodedItinerary = await geocodeItineraryActivities(itinerary as unknown as ItineraryLike);
 
                     // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
-                    await populateItineraryImages(geocodedItinerary);
+                    await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
 
                     // Extract cache params for consistency
                     const cacheParams = extractCacheParams(prompt, geocodedItinerary);
@@ -633,7 +633,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         const geocodedItinerary = await geocodeItineraryActivities(itinerary);
 
         // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
-        await populateItineraryImages(geocodedItinerary);
+        await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
 
         // CACHE SAVE - Only cache AI-generated itineraries (not fallbacks)
         const isFallbackItinerary = typeof geocodedItinerary.summary === 'string' &&

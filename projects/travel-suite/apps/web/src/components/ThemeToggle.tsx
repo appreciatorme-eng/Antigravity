@@ -15,16 +15,6 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
-  // Load theme from localStorage on mount
-  useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-    updateTheme(initialTheme);
-  }, []);
-
   const updateTheme = (newTheme: 'light' | 'dark') => {
     const root = document.documentElement;
     if (newTheme === 'dark') {
@@ -33,6 +23,18 @@ export function ThemeToggle({ className }: { className?: string }) {
       root.classList.remove('dark');
     }
   };
+
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+     
+    setTheme(initialTheme);
+    updateTheme(initialTheme);
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -90,15 +92,6 @@ export function ThemeToggleButton({ className }: { className?: string }) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-    updateTheme(initialTheme);
-  }, []);
-
   const updateTheme = (newTheme: 'light' | 'dark') => {
     const root = document.documentElement;
     if (newTheme === 'dark') {
@@ -107,6 +100,17 @@ export function ThemeToggleButton({ className }: { className?: string }) {
       root.classList.remove('dark');
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+     
+    setTheme(initialTheme);
+    updateTheme(initialTheme);
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';

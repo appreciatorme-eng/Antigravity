@@ -4,8 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   Download, MessageSquare, Mail, Printer,
-  CheckCircle, Clock, AlertCircle, Building2, User,
-  IndianRupee, FileText,
+  CheckCircle, Clock, AlertCircle, User,
 } from 'lucide-react'
 import { GlassButton } from '@/components/glass/GlassButton'
 import type { GSTInvoiceData } from '@/lib/india/gst'
@@ -228,7 +227,7 @@ function InvoicePrintView({ data }: { data: GSTInvoiceData }) {
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 
-export function GSTInvoice({ invoiceData, onClose, onDownload }: GSTInvoiceProps) {
+export function GSTInvoice({ invoiceData, onDownload }: GSTInvoiceProps) {
   const printRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)

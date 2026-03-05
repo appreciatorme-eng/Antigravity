@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Plus,
   Save,
-  Image as ImageIcon,
   X,
   GripVertical,
   Upload,
@@ -524,7 +523,7 @@ export default function CreateTemplatePage() {
           </button>
         </div>
 
-        {days.map((day, index) => (
+        {days.map((day) => (
           <DayEditor
             key={day.id}
             day={day}

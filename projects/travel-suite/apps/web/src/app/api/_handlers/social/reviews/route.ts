@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -31,9 +31,10 @@ export async function GET(req: Request) {
         }
 
         return NextResponse.json({ reviews });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error fetching social reviews:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
@@ -76,8 +77,9 @@ export async function POST(req: Request) {
         if (error) throw error;
 
         return NextResponse.json({ review });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error creating manual review:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

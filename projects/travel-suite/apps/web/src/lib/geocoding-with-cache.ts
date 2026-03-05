@@ -15,10 +15,6 @@ interface GeocodeResult {
     formattedAddress: string;
 }
 
-interface GeocodeError {
-    error: string;
-}
-
 /**
  * Track cache hit in usage statistics
  */

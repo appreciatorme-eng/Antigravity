@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Layout, Plane, IndianRupee, MessageSquare } from 'lucide-react';
+import { Layout, Plane, IndianRupee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type PlannerTab = 'itinerary' | 'logistics' | 'pricing';

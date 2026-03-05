@@ -165,7 +165,7 @@ function UPITab({ totalAmount, onPay }: { totalAmount: number; onPay: () => void
 // Card Tab
 // ---------------------------------------------------------------------------
 
-function CardTab({ totalAmount, onPay }: { totalAmount: number; onPay: () => void }) {
+function CardTab({ onPay }: { totalAmount: number; onPay: () => void }) {
   const [cardNumber, setCardNumber] = useState('')
   const [expiry, setExpiry] = useState('')
   const [cvv, setCvv] = useState('')
@@ -245,7 +245,7 @@ function CardTab({ totalAmount, onPay }: { totalAmount: number; onPay: () => voi
 
 const BANKS = ['SBI', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Mahindra', 'PNB', 'Bank of Baroda', 'Others']
 
-function NetBankingTab({ totalAmount, onPay }: { totalAmount: number; onPay: () => void }) {
+function NetBankingTab({ onPay }: { totalAmount: number; onPay: () => void }) {
   const [bank, setBank] = useState('')
 
   return (
@@ -348,8 +348,11 @@ export default function RazorpayModal({
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPaymentStatus('idle')
+       
       setPaymentId('')
+       
       setActiveTab('upi')
     }
   }, [isOpen])

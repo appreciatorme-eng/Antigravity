@@ -6,7 +6,6 @@ import {
   X,
   MapPin,
   Users,
-  Calendar,
   Check,
   ChevronRight,
   ChevronLeft,
@@ -618,8 +617,11 @@ export default function LeadToBookingFlow({
   // Re-sync when intent or initial values change (e.g. modal re-opened with new lead)
   useEffect(() => {
     if (!isOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
+     
     setDirection(1);
+     
     setBookingState({
       name: prefilledIntent?.extractedName ?? '',
       phone: initialPhone,
@@ -644,8 +646,6 @@ export default function LeadToBookingFlow({
     setDirection(-1);
     setStep((s) => Math.max(1, s - 1));
   };
-
-  const stepTitles = ['Confirm Lead', 'Review Quote', 'Ready to Book!'];
 
   const slideVariants = {
     enter: (d: number) => ({ x: d * 220, opacity: 0 }),

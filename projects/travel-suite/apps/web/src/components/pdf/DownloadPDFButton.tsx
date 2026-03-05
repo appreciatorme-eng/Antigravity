@@ -5,6 +5,13 @@ import { Loader2, Download } from 'lucide-react';
 import type { ItineraryResult } from '@/types/itinerary';
 import { useToast } from '@/components/ui/toast';
 
+interface JsPDFInstance {
+  internal: { pageSize: { getWidth: () => number; getHeight: () => number } };
+  addImage: (data: string, format: string, x: number, y: number, w: number, h: number) => void;
+  addPage: () => void;
+  save: (name: string) => void;
+}
+
 interface DownloadPDFButtonProps {
   data: ItineraryResult;
   fileName?: string;
@@ -62,7 +69,7 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
         const canvasWidth = img.width;
         const canvasHeight = img.height;
 
-        const pdf = new (jsPDF as any)('p', 'mm', 'a4');
+        const pdf: JsPDFInstance = new (jsPDF as unknown as new (...args: string[]) => JsPDFInstance)('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const pdfHeight = (canvasHeight * pdfWidth) / canvasWidth;

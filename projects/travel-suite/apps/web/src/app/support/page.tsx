@@ -111,7 +111,7 @@ export default function SupportPage() {
                                     <AlertCircle className="w-5 h-5 text-slate-400" />
                                     Submit a Request
                                 </CardTitle>
-                                <CardDescription>Tell us what's happening and we'll help you out.</CardDescription>
+                                <CardDescription>Tell us what&apos;s happening and we&apos;ll help you out.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -270,7 +270,7 @@ export default function SupportPage() {
                                         <CheckCircle2 className="w-8 h-8 text-slate-400" />
                                     </div>
                                     <p className="font-medium text-slate-700">No support tickets found</p>
-                                    <p className="text-sm mt-1 max-w-sm">You haven't submitted any support requests yet. When you do, they will appear here for you to track.</p>
+                                    <p className="text-sm mt-1 max-w-sm">You haven&apos;t submitted any support requests yet. When you do, they will appear here for you to track.</p>
                                 </CardContent>
                             </Card>
                         )}

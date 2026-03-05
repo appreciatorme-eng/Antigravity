@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
-import { Settings, User, Bell, Link2, CreditCard, Shield, Globe, Smartphone, Lock, Eye, Clock, Users, ArrowRight } from 'lucide-react';
+import { User, Bell, Link2, CreditCard, Shield, Globe, Smartphone, Clock, Users, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { WhatsAppConnectModal } from '@/components/whatsapp/WhatsAppConnectModal';

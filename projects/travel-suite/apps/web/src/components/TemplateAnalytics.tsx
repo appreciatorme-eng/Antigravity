@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getTemplateAnalytics, type TemplateAnalytics } from '@/lib/analytics/template-analytics';
 import { Eye, TrendingUp, Calendar, Target, BarChart3 } from 'lucide-react';
 
@@ -23,11 +23,7 @@ export default function TemplateAnalyticsComponent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [templateId, organizationId]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -40,7 +36,12 @@ export default function TemplateAnalyticsComponent({
     }
 
     setLoading(false);
-  };
+  }, [templateId, organizationId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadAnalytics();
+  }, [loadAnalytics]);
 
   if (loading) {
     return (

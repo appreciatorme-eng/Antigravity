@@ -172,8 +172,9 @@ export async function POST(req: Request) {
             processed: results.length,
             results,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error processing social queue:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

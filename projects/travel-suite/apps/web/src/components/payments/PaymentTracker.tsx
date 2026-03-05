@@ -6,7 +6,6 @@ import {
   getPaymentLink,
   recordEvent,
   formatPaymentAmount,
-  getStatusColor,
   isExpired,
   createPaymentLink,
   type PaymentLinkData,
@@ -58,7 +57,6 @@ function formatDate(isoString: string): string {
 
 export default function PaymentTracker({
   token,
-  tripId,
   clientName,
   amount,
   className = '',
@@ -92,6 +90,7 @@ export default function PaymentTracker({
   }, [loadLink])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLink()
     const interval = setInterval(loadLink, 5000)
     return () => clearInterval(interval)
@@ -128,7 +127,6 @@ export default function PaymentTracker({
     ? link.status.charAt(0).toUpperCase() + link.status.slice(1)
     : 'Loading'
 
-  const statusColorClass = link ? getStatusColor(link.status) : 'text-white/40'
 
   const displayAmount = link?.amount ?? amount
   const displayClientName = link?.clientName ?? clientName ?? 'Client'

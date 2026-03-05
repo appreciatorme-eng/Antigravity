@@ -15,10 +15,7 @@ import {
   Home,
   Bell,
   MapPin,
-  Clock,
   User,
-  Star,
-  Check,
   ArrowRight,
 } from 'lucide-react';
 

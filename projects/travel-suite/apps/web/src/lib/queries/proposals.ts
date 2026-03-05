@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
 export const proposalsKeys = {
@@ -39,12 +39,16 @@ export function useProposals(statusFilter: string = 'all') {
             const { data, error } = await query;
             if (error) throw error;
 
-            const formattedProposals = (data || []).map((proposal: any) => ({
-                ...proposal,
-                client_name: proposal.clients?.full_name || 'Unknown Client',
-                client_email: proposal.clients?.email,
-                template_name: proposal.tour_templates?.name,
-            }));
+            const formattedProposals = (data || []).map((proposal) => {
+                const clients = proposal.clients as { full_name?: string; email?: string } | null;
+                const tourTemplates = proposal.tour_templates as { name?: string } | null;
+                return {
+                    ...proposal,
+                    client_name: clients?.full_name || 'Unknown Client',
+                    client_email: clients?.email,
+                    template_name: tourTemplates?.name,
+                };
+            });
 
             const proposalsWithCounts = await Promise.all(
                 formattedProposals.map(async (proposal) => {

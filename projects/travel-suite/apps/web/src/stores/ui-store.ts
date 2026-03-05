@@ -18,9 +18,9 @@ interface UIState {
     modalState: {
         isOpen: boolean;
         type: string | null;
-        data: any | null;
+        data: unknown;
     };
-    openModal: (type: string, data?: any) => void;
+    openModal: (type: string, data?: unknown) => void;
     closeModal: () => void;
 
     language: 'en' | 'hi';

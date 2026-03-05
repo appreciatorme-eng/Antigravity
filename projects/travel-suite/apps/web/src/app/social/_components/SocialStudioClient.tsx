@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
-import { SocialTemplate } from "@/lib/social/types";
+import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { matchDestination } from "@/lib/social/destination-images";
 import { GlassModal } from "@/components/glass/GlassModal";
 
@@ -45,7 +45,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     const [connections, setConnections] = useState({ instagram: false, facebook: false });
 
     // Template data (same initial shape as before)
-    const [templateData, setTemplateData] = useState({
+    const [templateData, setTemplateData] = useState<TemplateDataForRender>({
         companyName: initialOrgData.name || "Agency Name",
         logoUrl: initialOrgData.logo_url || undefined,
         logoWidth: 200,
@@ -84,7 +84,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     const [activeAction, setActiveAction] = useState<ToolbarAction | null>(null);
 
     // Captions state (needed for captions modal)
-    const [captions, setCaptions] = useState<any>(null);
+    const [captions, setCaptions] = useState<Record<string, unknown> | null>(null);
     const [captionTone, setCaptionTone] = useState<CaptionTone>("Luxury");
     const [captionPlatform, setCaptionPlatform] = useState<CaptionPlatform>("instagram");
     const [generatingCaptions, setGeneratingCaptions] = useState(false);
@@ -195,7 +195,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
 
         const images = matchDestination(templateData.destination);
         if (images.length >= 2) {
-            setTemplateData((prev: any) => ({
+            setTemplateData((prev) => ({
                 ...prev,
                 galleryImages: images.map((img) => img.url),
             }));
@@ -210,7 +210,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
 
     // Gallery image change handler for GallerySlotPicker
     const handleGalleryChange = useCallback((images: string[]) => {
-        setTemplateData((prev: any) => ({ ...prev, galleryImages: images }));
+        setTemplateData((prev) => ({ ...prev, galleryImages: images }));
     }, []);
 
     // AI Poster generated — set as poster URL and also update heroImage for preview
@@ -248,10 +248,11 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             {/* Toolbar Actions (replaces 9 tabs) */}
             <ToolbarActions onActionSelect={handleActionSelect} />
 
-            {/* Content Bar (replaces sidebar form) */}
+            {/* Content Bar (replaces sidebar form) — TemplateDataForRender is a superset
+                of ContentBar's local TemplateData; cast through unknown to bridge the gap */}
             <ContentBar
-                templateData={templateData as any}
-                setTemplateData={setTemplateData as any}
+                templateData={templateData as unknown as React.ComponentProps<typeof ContentBar>["templateData"]}
+                setTemplateData={setTemplateData as unknown as React.ComponentProps<typeof ContentBar>["setTemplateData"]}
                 orgPrimaryColor={initialOrgData.primary_color}
                 onImageUpload={handleImageUpload}
             />
@@ -259,7 +260,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             {/* Background / Gallery Picker — conditional on multi-image */}
             {isMultiImage ? (
                 <GallerySlotPicker
-                    galleryImages={(templateData as any).galleryImages || []}
+                    galleryImages={templateData.galleryImages || []}
                     slotCount={imageSlotCount}
                     destination={templateData.destination}
                     onGalleryChange={handleGalleryChange}
@@ -311,12 +312,12 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                         onGenerated={(data) => {
                             setTemplateData(prev => ({
                                 ...prev,
-                                destination: data.destination,
-                                price: data.price,
-                                offer: data.offer,
-                                season: data.season,
-                                services: data.services || prev.services,
-                                bulletPoints: data.bulletPoints || prev.bulletPoints
+                                destination: (data.destination as string) ?? prev.destination,
+                                price: (data.price as string) ?? prev.price,
+                                offer: (data.offer as string) ?? prev.offer,
+                                season: (data.season as string) ?? prev.season,
+                                services: (data.services as string[] | undefined) || prev.services,
+                                bulletPoints: (data.bulletPoints as string[] | undefined) || prev.bulletPoints,
                             }));
                             closeAction();
                             toast.success("Content generated! Templates updated.");

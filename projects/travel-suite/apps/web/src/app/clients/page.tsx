@@ -57,6 +57,7 @@ interface Client {
     referral_source?: string | null;
     source_channel?: string | null;
     trips_count?: number;
+    language_preference?: string | null;
 }
 
 interface FeatureLimitSnapshot {
@@ -68,13 +69,13 @@ interface FeatureLimitSnapshot {
     resetAt: string | null;
 }
 
-function formatFeatureLimitError(payload: any, fallback: string) {
+function formatFeatureLimitError(payload: Record<string, unknown> | null | undefined, fallback: string): string {
     if (payload?.code !== "FEATURE_LIMIT_EXCEEDED") return fallback;
     const limit = Number(payload?.limit || 0);
     const used = Number(payload?.used || 0);
     const feature = String(payload?.feature || "usage");
     if (limit > 0) return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
-    return payload?.error || fallback;
+    return typeof payload?.error === "string" ? payload.error : fallback;
 }
 
 const formatINR = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -342,7 +343,7 @@ export default function ClientsPage() {
             marketingOptIn: client.marketing_opt_in || false,
             referralSource: client.referral_source || "",
             sourceChannel: client.source_channel || "",
-            languagePreference: (client as any).language_preference || "English",
+            languagePreference: client.language_preference || "English",
         });
         setModalOpen(true);
     };
@@ -415,7 +416,6 @@ export default function ClientsPage() {
     // Stats
     const activeCount = clients.filter(c => ["lead", "prospect", "proposal"].includes(c.lifecycle_stage || "lead")).length;
     const vipCount = clients.filter(c => c.client_tag === "vip").length;
-    const closedCount = clients.filter(c => ["past", "review"].includes(c.lifecycle_stage || "")).length;
     const totalLTV = clients.reduce((acc, c) => acc + ((c.trips_count || 1) * (c.budget_max || 85000)), 0);
     const visibleClientLimit = clientLimit && clientLimit.limit !== null ? clientLimit : null;
 

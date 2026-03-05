@@ -11,6 +11,15 @@ import { calendarKeys } from "./useCalendarEvents";
 
 type SupabaseClient = ReturnType<typeof createClient>;
 
+/**
+ * Helper to query a Supabase table that does not yet exist in the generated
+ * database types (e.g. calendar_events). Casts through `unknown` once so
+ * every call site stays free of explicit-any.
+ */
+function untypedFrom(supabase: SupabaseClient, table: string) {
+  return (supabase as unknown as { from: (t: string) => ReturnType<SupabaseClient["from"]> }).from(table);
+}
+
 async function getOrgId(supabase: SupabaseClient): Promise<string> {
   const {
     data: { user },
@@ -267,8 +276,7 @@ export function useCalendarActions() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await (supabase as any)
-        .from("calendar_events")
+      const { data, error } = await untypedFrom(supabase, "calendar_events")
         .insert({
           organization_id: orgId,
           created_by: user.id,
@@ -310,11 +318,10 @@ export function useCalendarActions() {
       ...updates
     }: {
       id: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }) => {
       const supabase = createClient();
-      const { data, error } = await (supabase as any)
-        .from("calendar_events")
+      const { data, error } = await untypedFrom(supabase, "calendar_events")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
@@ -337,8 +344,7 @@ export function useCalendarActions() {
   const deletePersonalEvent = useMutation({
     mutationFn: async (id: string) => {
       const supabase = createClient();
-      const { error } = await (supabase as any)
-        .from("calendar_events")
+      const { error } = await untypedFrom(supabase, "calendar_events")
         .delete()
         .eq("id", id);
 

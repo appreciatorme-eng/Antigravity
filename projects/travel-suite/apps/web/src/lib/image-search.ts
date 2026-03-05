@@ -3,6 +3,19 @@
  * Designed to provide "million-dollar" aesthetics for the premium itinerary templates.
  */
 
+/** Minimal shape the image populator needs -- compatible with ItineraryResult and ItineraryLike. */
+interface ItineraryForImages {
+    destination?: string;
+    days: Array<{
+        activities: Array<{
+            title: string;
+            image?: string;
+            imageUrl?: string;
+        }>;
+    }>;
+    [key: string]: unknown;
+}
+
 // A curated list of stunning scenic fallback images from Unsplash
 const LUXURY_FALLBACKS = [
     "https://images.unsplash.com/photo-1542314831-c6a4d1409322?q=80&w=2560&auto=format&fit=crop", // Luxury Resort pool
@@ -38,7 +51,7 @@ export async function getWikiImage(query: string, titleStr: string): Promise<str
             const data = await res.json();
 
             if (data?.query?.pages) {
-                const pages = Object.values(data.query.pages) as any[];
+                const pages = Object.values(data.query.pages) as Array<{ thumbnail?: { source: string; width: number } }>;
                 if (pages.length > 0 && pages[0].thumbnail?.source) {
                     const imgUrl = pages[0].thumbnail.source;
                     // Filter out very weird portrait SVGs and extremely small icons
@@ -60,10 +73,10 @@ export async function getWikiImage(query: string, titleStr: string): Promise<str
 /**
  * Appends 'imageUrl' to every activity by searching Wikipedia for the real-life location.
  */
-export async function populateItineraryImages(itinerary: any): Promise<any> {
+export async function populateItineraryImages<T extends ItineraryForImages>(itinerary: T): Promise<T> {
     try {
         const destination = itinerary.destination || "destination";
-        let imagePromises: Promise<void>[] = [];
+        const imagePromises: Promise<void>[] = [];
         let activitiesCount = 0;
 
         for (const day of itinerary.days) {

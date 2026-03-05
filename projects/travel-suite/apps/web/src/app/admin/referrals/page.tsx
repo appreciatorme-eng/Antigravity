@@ -158,7 +158,7 @@ export default function ReferralsPage() {
             <Card className="shadow-sm border-slate-200">
                 <CardHeader>
                     <CardTitle className="text-lg">Your Invites</CardTitle>
-                    <CardDescription>Track the status of operators you've referred.</CardDescription>
+                    <CardDescription>Track the status of operators you&apos;ve referred.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (

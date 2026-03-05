@@ -3,13 +3,25 @@
 import { useMemo, useState } from "react";
 import {
     Bell, MessageCircle, Heart, Settings2, Clock, ChevronDown,
-    ChevronUp, MapPin, ArrowRight, AlertTriangle, CheckCircle,
+    ChevronUp, AlertTriangle, CheckCircle,
     Sparkles, Eye, Check, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deriveStage } from "./ItineraryFilterBar";
 import { useFeedbackAction } from "@/lib/queries/itineraries";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
+
+/** Minimal itinerary shape used by hasClientActivity and deriveStage */
+export interface ItineraryLike {
+    id: string;
+    share_code?: string | null;
+    share_status?: string | null;
+    trip_id?: string | null;
+    client_comments?: ClientComment[];
+    client_preferences?: ClientPreferences | null;
+    wishlist_items?: string[];
+    self_service_status?: string | null;
+}
 
 export interface AttentionItem {
     id: string;
@@ -36,7 +48,7 @@ interface EnrichedAttentionItem extends AttentionItem {
 }
 
 /** Check if an itinerary has unresolved client activity requiring operator attention */
-export function hasClientActivity(itinerary: any): boolean {
+export function hasClientActivity(itinerary: ItineraryLike): boolean {
     const comments: ClientComment[] = itinerary.client_comments ?? [];
     const prefs = itinerary.client_preferences;
     const wishlist = itinerary.wishlist_items ?? [];
@@ -117,7 +129,7 @@ function enrichItem(item: AttentionItem): EnrichedAttentionItem {
 }
 
 interface NeedsAttentionQueueProps {
-    itineraries: any[];
+    itineraries: AttentionItem[];
     onOpenItinerary: (id: string) => void;
     openingItineraryId: string | null;
 }

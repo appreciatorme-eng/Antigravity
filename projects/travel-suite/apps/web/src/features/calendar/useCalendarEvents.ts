@@ -29,6 +29,15 @@ export const calendarKeys = {
 
 type SupabaseClient = ReturnType<typeof createClient>;
 
+/**
+ * Helper to query a Supabase table that does not yet exist in the generated
+ * database types (e.g. calendar_events). Casts through `unknown` once so
+ * every call site stays free of explicit-any.
+ */
+function untypedFrom(supabase: SupabaseClient, table: string) {
+  return (supabase as unknown as { from: (t: string) => ReturnType<SupabaseClient["from"]> }).from(table);
+}
+
 async function getOrgId(supabase: SupabaseClient): Promise<string> {
   const {
     data: { user },
@@ -48,6 +57,79 @@ async function getOrgId(supabase: SupabaseClient): Promise<string> {
   }
 
   return profile.organization_id;
+}
+
+// ---------------------------------------------------------------------------
+// Row shapes for joined Supabase queries (avoids `any` in map callbacks)
+// ---------------------------------------------------------------------------
+
+interface TripRow {
+  id: string;
+  client_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string | null;
+  clients: { full_name?: string } | null;
+  itineraries: { trip_title?: string; destination?: string; duration_days?: number } | null;
+}
+
+interface InvoiceRow {
+  id: string;
+  invoice_number: string;
+  due_date: string | null;
+  status: string | null;
+  total_amount: number | null;
+  paid_amount: number | null;
+  balance_amount: number | null;
+  trip_id: string | null;
+  currency: string | null;
+  clients: { full_name?: string } | null;
+}
+
+interface PaymentRow {
+  id: string;
+  invoice_id: string;
+  payment_date: string;
+  amount: number | null;
+  currency: string | null;
+  method: string | null;
+  reference: string | null;
+  status: string | null;
+  invoices: { invoice_number?: string; trip_id?: string; organization_id?: string } | null;
+}
+
+interface ProposalRow {
+  id: string;
+  title: string | null;
+  client_id: string;
+  total_price: number | null;
+  viewed_at: string | null;
+  expires_at: string | null;
+  status: string | null;
+  created_at: string | null;
+  clients: { full_name?: string } | null;
+}
+
+interface SocialPostRow {
+  id: string;
+  caption_instagram: string | null;
+  caption_facebook: string | null;
+  source: string | null;
+  template_id: string | null;
+  status: string | null;
+  created_at: string;
+}
+
+interface ConciergeRow {
+  id: string;
+  message: string;
+  type: string | null;
+  trip_id: string | null;
+  client_id: string;
+  response: string | null;
+  status: string | null;
+  created_at: string | null;
+  clients: { full_name?: string; organization_id?: string } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,13 +153,9 @@ async function fetchTrips(
 
   if (error) throw error;
 
-  return (data ?? []).map((trip: any) => {
-    const client = trip.clients as { full_name?: string } | null;
-    const itinerary = trip.itineraries as {
-      trip_title?: string;
-      destination?: string;
-      duration_days?: number;
-    } | null;
+  return ((data ?? []) as unknown as TripRow[]).map((trip) => {
+    const client = trip.clients;
+    const itinerary = trip.itineraries;
 
     const entityData: TripEventData = {
       type: "trip",
@@ -128,8 +206,8 @@ async function fetchInvoices(
 
   if (error) throw error;
 
-  return (data ?? []).map((invoice: any) => {
-    const client = invoice.clients as { full_name?: string } | null;
+  return ((data ?? []) as unknown as InvoiceRow[]).map((invoice) => {
+    const client = invoice.clients;
 
     const entityData: InvoiceEventData = {
       type: "invoice",
@@ -178,16 +256,13 @@ async function fetchPayments(
   if (error) throw error;
 
   // Client-side filter: only keep rows belonging to the org
-  const orgRows = (data ?? []).filter((row: any) => {
-    const invoice = row.invoices as { organization_id?: string } | null;
-    return invoice?.organization_id === orgId;
+  const allPayments = (data ?? []) as unknown as PaymentRow[];
+  const orgRows = allPayments.filter((row) => {
+    return row.invoices?.organization_id === orgId;
   });
 
-  return orgRows.map((payment: any) => {
-    const invoice = payment.invoices as {
-      invoice_number?: string;
-      trip_id?: string;
-    } | null;
+  return orgRows.map((payment) => {
+    const invoice = payment.invoices;
 
     const invoiceNumber = invoice?.invoice_number ?? "N/A";
 
@@ -236,8 +311,8 @@ async function fetchProposals(
 
   if (error) throw error;
 
-  return (data ?? []).map((proposal: any) => {
-    const client = proposal.clients as { full_name?: string } | null;
+  return ((data ?? []) as unknown as ProposalRow[]).map((proposal) => {
+    const client = proposal.clients;
 
     const entityData: ProposalEventData = {
       type: "proposal",
@@ -285,7 +360,7 @@ async function fetchSocialPosts(
 
   if (error) throw error;
 
-  return (data ?? []).map((post: any) => {
+  return ((data ?? []) as unknown as SocialPostRow[]).map((post) => {
     const caption =
       post.caption_instagram ?? post.caption_facebook ?? null;
     const truncatedCaption = caption
@@ -338,18 +413,18 @@ async function fetchConciergeRequests(
   if (error) throw error;
 
   // Client-side filter: only keep requests from clients in this org
-  const orgRows = (data ?? []).filter((row: any) => {
-    const client = row.clients as { organization_id?: string } | null;
-    return client?.organization_id === orgId;
+  const allRequests = (data ?? []) as unknown as ConciergeRow[];
+  const orgRows = allRequests.filter((row) => {
+    return row.clients?.organization_id === orgId;
   });
 
-  return orgRows.map((request: any) => {
-    const client = request.clients as { full_name?: string } | null;
+  return orgRows.map((request) => {
+    const client = request.clients;
 
     const entityData: ConciergeEventData = {
       type: "concierge",
       message: request.message,
-      requestType: request.type,
+      requestType: request.type ?? "general",
       tripId: request.trip_id ?? null,
       clientId: request.client_id,
       response: request.response ?? null,
@@ -383,8 +458,7 @@ async function fetchPersonalEvents(
   windowStart: string,
   windowEnd: string,
 ): Promise<CalendarEvent[]> {
-  const { data, error } = await (supabase as any)
-    .from("calendar_events")
+  const { data, error } = await untypedFrom(supabase, "calendar_events")
     .select("*")
     .eq("organization_id", orgId)
     .gte("start_time", windowStart)
@@ -392,7 +466,19 @@ async function fetchPersonalEvents(
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
+  type PersonalCategory = "meeting" | "task" | "reminder" | "personal" | "other";
+  interface CalendarEventRow {
+    id: string;
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    start_time: string;
+    end_time?: string | null;
+    all_day?: boolean;
+    category?: PersonalCategory;
+    status?: string;
+  }
+  return ((data ?? []) as unknown as CalendarEventRow[]).map((row) => ({
     id: row.id,
     type: "personal" as const,
     title: row.title,

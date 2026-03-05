@@ -21,6 +21,7 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
             {/* Cinematic Hero */}
             <div className="relative h-screen flex items-center justify-center overflow-hidden">
                 {/* Fallback Hero Image from the first activity */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={itinerary.days?.[0]?.activities?.[0]?.image || itinerary.days?.[0]?.activities?.[0]?.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop"}
                     alt="Destination"
@@ -198,6 +199,7 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                                         {/* Huge Activity Photo */}
                                         <div className="w-full md:w-1/2 relative group">
                                             <div className="aspect-[4/5] md:aspect-square overflow-hidden rounded-3xl shadow-2xl">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={activity.image || activity.imageUrl || "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"}
                                                     alt={activity.title}

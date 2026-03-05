@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import type { FeedbackAction, ClientComment } from '@/types/feedback';
 
+/** Lightweight shape used for optimistic cache updates on the itinerary list. */
+interface ItineraryListItem {
+    id: string;
+    client_comments?: ClientComment[];
+    self_service_status?: string | null;
+    [key: string]: unknown;
+}
+
 export const itinerariesKeys = {
     all: ['itineraries'] as const,
     lists: () => [...itinerariesKeys.all, 'list'] as const,
@@ -79,6 +87,7 @@ function applyFeedbackOptimistic(
         case "unresolve_comment":
             return comments.map((c) => {
                 if (c.id !== action.comment_id) return c;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { resolved_at, resolved_by, ...rest } = c;
                 return rest;
             });
@@ -125,9 +134,9 @@ export function useFeedbackAction() {
             await queryClient.cancelQueries({ queryKey: itinerariesKeys.all });
             const previousData = queryClient.getQueryData(itinerariesKeys.lists());
 
-            queryClient.setQueryData(itinerariesKeys.lists(), (old: any[] | undefined) => {
+            queryClient.setQueryData(itinerariesKeys.lists(), (old: ItineraryListItem[] | undefined) => {
                 if (!old) return old;
-                return old.map((itin: any) => {
+                return old.map((itin) => {
                     if (itin.id !== itineraryId) return itin;
                     const comments: ClientComment[] = itin.client_comments ?? [];
                     const updatedComments = applyFeedbackOptimistic(comments, action as FeedbackAction, "You");

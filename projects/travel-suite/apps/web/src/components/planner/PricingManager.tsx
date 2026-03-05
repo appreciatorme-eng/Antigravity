@@ -6,13 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pricing, PricingAddOn, ItineraryResult } from '@/types/itinerary';
 
+interface AddOnCatalogItem {
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    category: string;
+}
+
 interface PricingManagerProps {
     data: ItineraryResult;
     onChange: (newData: ItineraryResult) => void;
 }
 
 export function PricingManager({ data, onChange }: PricingManagerProps) {
-    const [dbAddOns, setDbAddOns] = useState<any[]>([]);
+    const [dbAddOns, setDbAddOns] = useState<AddOnCatalogItem[]>([]);
 
     useEffect(() => {
         async function load() {
@@ -42,7 +50,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
         onChange({ ...data, pricing: { ...pricing, [field]: val } });
     };
 
-    const addPricingAddOn = (dbAddOn?: any) => {
+    const addPricingAddOn = (dbAddOn?: AddOnCatalogItem) => {
         const pricing = data.pricing || { basePrice: 0, passengerCount: 1, availableAddOns: [] };
         const availableAddOns = pricing.availableAddOns || [];
 
@@ -68,11 +76,11 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
         onChange({ ...data, pricing: { ...pricing, availableAddOns: [...availableAddOns, newAddOn] } });
     };
 
-    const updatePricingAddOn = (idx: number, field: keyof PricingAddOn, val: any) => {
+    const updatePricingAddOn = (idx: number, field: keyof PricingAddOn, val: string | number) => {
         const pricing = data.pricing || { basePrice: 0, passengerCount: 1, availableAddOns: [] };
         const addons = [...(pricing.availableAddOns || [])];
-        if (field === 'price') val = parseFloat(val) || 0;
-        addons[idx] = { ...addons[idx], [field]: val };
+        const resolvedVal = field === 'price' ? (parseFloat(String(val)) || 0) : val;
+        addons[idx] = { ...addons[idx], [field]: resolvedVal };
         onChange({ ...data, pricing: { ...pricing, availableAddOns: addons } });
     };
 
@@ -104,7 +112,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                         <Input
                             type="number"
                             value={data.pricing?.markupPercentage || 0}
-                            onChange={(e) => updatePricing('markupPercentage' as any, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updatePricing('markupPercentage', parseFloat(e.target.value) || 0)}
                             placeholder="10"
                         />
                     </div>
@@ -113,7 +121,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                         <Input
                             type="text"
                             value={formatIndianNumber(data.pricing?.serviceFee || 0)}
-                            onChange={(e) => updatePricing('serviceFee' as any, parseIndianNumber(e.target.value))}
+                            onChange={(e) => updatePricing('serviceFee', parseIndianNumber(e.target.value))}
                             placeholder="500"
                         />
                     </div>

@@ -137,6 +137,7 @@ export async function POST(
                 }
                 updatedComments = existingComments.map((c) => {
                     if (c.id !== action.comment_id) return c;
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const { resolved_at, resolved_by, ...rest } = c;
                     return rest;
                 });

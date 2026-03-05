@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, MapPin, Clock, Users, Star, ChevronDown, ChevronUp,
+  Search, MapPin, Clock, Star, ChevronDown, ChevronUp,
   Copy, Eye, Mountain, Waves, Sun, Compass, TreePine, Camera,
   Zap, Heart,
 } from 'lucide-react'
@@ -14,10 +14,6 @@ import { formatINR } from '@/lib/india/formats'
 
 type TripTier = 'budget' | 'standard' | 'premium' | 'luxury'
 type FilterRegion = 'all' | 'north' | 'south' | 'west' | 'hills' | 'beach' | 'budget' | 'luxury'
-
-interface Attraction {
-  name: string
-}
 
 interface TripTemplate {
   id: string

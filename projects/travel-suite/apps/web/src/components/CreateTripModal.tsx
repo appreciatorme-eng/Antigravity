@@ -397,7 +397,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     durationMs: 4000,
                     variant: "success",
                 });
-            } catch (err) {
+            } catch {
                 toast({
                     title: "Trip created",
                     description: "Trip was created successfully.",

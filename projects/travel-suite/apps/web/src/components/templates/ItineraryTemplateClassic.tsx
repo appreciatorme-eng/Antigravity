@@ -1,8 +1,7 @@
-import type { ItineraryResult, Day, Activity } from "@/types/itinerary";
+import type { Day, Activity } from "@/types/itinerary";
 import { MapPin, Calendar, Wallet, Clock, Plane } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
-import Link from "next/link";
 
 export default function ItineraryTemplateClassic({ itineraryData, organizationName, client }: ItineraryTemplateProps) {
     return (
@@ -150,6 +149,7 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
                                             </div>
                                             {activity.image && (
                                                 <div className="w-full sm:w-32 h-32 sm:h-24 rounded-lg overflow-hidden shrink-0 shadow-sm">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img
                                                         src={activity.image}
                                                         alt={activity.title}

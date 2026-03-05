@@ -14,7 +14,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 
-interface ProposalData {
+export interface ProposalData {
   id: string;
   title: string;
   client_name: string;
@@ -364,6 +364,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         <View style={[styles.header, { borderBottomColor: resolvedPrimaryColor }]}>
           <View style={styles.brandRow}>
             <Text style={[styles.brandName, { color: resolvedPrimaryColor }]}>{organizationName}</Text>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {logoSrc ? <Image src={logoSrc} style={styles.brandLogo} /> : null}
           </View>
 

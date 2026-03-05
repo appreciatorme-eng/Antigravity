@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { itinerariesKeys } from "@/lib/queries/itineraries";
 import Link from "next/link";
 import type { ItineraryResult } from "@/types/itinerary";
+import type { Json } from "@/lib/database.types";
 
 interface SaveItineraryButtonProps {
     itineraryData: ItineraryResult;
@@ -61,24 +62,25 @@ export default function SaveItineraryButton({
                 duration_days: days,
                 budget: budget,
                 interests: interests,
-                raw_data: itineraryData as any,
+                raw_data: itineraryData as unknown as Json,
                 template_id: templateId,
             };
 
             let insertedItinerary: { id: string } | null = null;
             const { data: insertData, error: insertError } = await supabase
                 .from("itineraries")
-                .insert(itineraryRow as any)
+                .insert(itineraryRow)
                 .select("id")
                 .single();
 
             if (insertError) {
                 // If template_id column doesn't exist, retry without it
                 if (insertError.message?.includes("template_id") || insertError.code === "PGRST204") {
-                    const { template_id: _unused, ...rowWithoutTemplate } = itineraryRow;
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { template_id: _templateId, ...rowWithoutTemplate } = itineraryRow;
                     const { data: retryData, error: retryError } = await supabase
                         .from("itineraries")
-                        .insert(rowWithoutTemplate as any)
+                        .insert(rowWithoutTemplate)
                         .select("id")
                         .single();
                     if (retryError) throw retryError;

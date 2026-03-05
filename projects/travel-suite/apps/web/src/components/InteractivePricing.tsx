@@ -9,9 +9,9 @@ interface InteractivePricingProps {
 }
 
 export function InteractivePricing({ pricing }: InteractivePricingProps) {
-    if (!pricing) return null;
-
     const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
+
+    if (!pricing) return null;
 
     const handleToggle = (id: string) => {
         const newSet = new Set(selectedAddOns);

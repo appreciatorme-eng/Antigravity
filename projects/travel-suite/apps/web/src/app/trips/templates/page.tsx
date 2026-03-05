@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Plus, LayoutTemplate, Sparkles } from 'lucide-react'
@@ -11,7 +10,6 @@ import type { TripTemplate } from '@/components/trips/TripTemplates'
 const TEMPLATE_COUNT = 12
 
 export default function TripTemplatesPage() {
-  const [selectedTemplate, setSelectedTemplate] = useState<TripTemplate | null>(null)
 
   const handleTemplateSelect = (template: TripTemplate) => {
     // Navigate to new trip with template pre-filled

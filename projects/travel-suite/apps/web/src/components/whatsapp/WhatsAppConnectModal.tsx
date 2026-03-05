@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { Smartphone, CheckCircle2, MessageCircle, RefreshCw, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, MessageCircle, RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,9 +25,33 @@ export function WhatsAppConnectModal({ isOpen, onClose, onConnected }: WhatsAppC
     const [loading, setLoading] = useState(false);
     const [testingMessage, setTestingMessage] = useState(false);
 
+    const startConnection = useCallback(async () => {
+        try {
+            setLoading(true);
+            // Calling a backend API to initialize the WhatsApp instance and generate a QR code.
+            const res = await fetch("/api/whatsapp/connect", { method: "POST" });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || "Failed to generate QR");
+
+            setQrCodeData(data.qrCode);
+            setInstanceId(data.instanceId);
+            setStep("scanning");
+        } catch {
+            toast({
+                title: "Connection Error",
+                description: "Failed to initialize the WhatsApp gateway.",
+                variant: "error",
+            });
+            onClose();
+        } finally {
+            setLoading(false);
+        }
+    }, [onClose, toast]);
+
     useEffect(() => {
         if (isOpen && step === "initial") {
-            startConnection();
+            void startConnection();
         }
 
         if (!isOpen) {
@@ -39,12 +63,12 @@ export function WhatsAppConnectModal({ isOpen, onClose, onConnected }: WhatsAppC
                 setBusinessProfile(null);
             }, 300);
         }
-    }, [isOpen]);
+    }, [isOpen, step, startConnection]);
 
     useEffect(() => {
         if (step !== "scanning" || !instanceId) return;
 
-        let interval = setInterval(async () => {
+        const interval = setInterval(async () => {
             try {
                 const res = await fetch(`/api/whatsapp/status?instanceId=${instanceId}`);
                 if (!res.ok) return;
@@ -63,30 +87,6 @@ export function WhatsAppConnectModal({ isOpen, onClose, onConnected }: WhatsAppC
 
         return () => clearInterval(interval);
     }, [step, instanceId, onConnected]);
-
-    const startConnection = async () => {
-        try {
-            setLoading(true);
-            // Calling a backend API to initialize the WhatsApp instance and generate a QR code.
-            const res = await fetch("/api/whatsapp/connect", { method: "POST" });
-            const data = await res.json();
-
-            if (!res.ok) throw new Error(data.error || "Failed to generate QR");
-
-            setQrCodeData(data.qrCode);
-            setInstanceId(data.instanceId);
-            setStep("scanning");
-        } catch (error) {
-            toast({
-                title: "Connection Error",
-                description: "Failed to initialize the WhatsApp gateway.",
-                variant: "error",
-            });
-            onClose();
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleTestMessage = async () => {
         try {
@@ -110,7 +110,7 @@ export function WhatsAppConnectModal({ isOpen, onClose, onConnected }: WhatsAppC
                 onClose();
             }, 2000);
 
-        } catch (error) {
+        } catch {
             toast({
                 title: "Message Error",
                 description: "Failed to dispatch the test message.",

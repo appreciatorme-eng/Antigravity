@@ -33,7 +33,14 @@ export async function getSemanticMatch(prompt: string, destination: string, days
 
         // 2. Query Supabase for semantic match.
         // Lower threshold to increase cache reuse and reduce LLM cost.
-        const { data, error } = await (supabase as any).rpc('match_itineraries', {
+        // The 'match_itineraries' RPC is not in the generated Supabase types,
+        // so we cast through unknown to call it with proper params.
+        const rpc = supabase.rpc as unknown as (
+            fn: string,
+            params: Record<string, unknown>
+        ) => Promise<{ data: Array<{ itinerary_data: unknown }> | null; error: { message: string } | null }>;
+
+        const { data, error } = await rpc('match_itineraries', {
             query_embedding: embedding,
             match_threshold: resolveSemanticMatchThreshold(),
             match_count: 1,
@@ -47,7 +54,7 @@ export async function getSemanticMatch(prompt: string, destination: string, days
         }
 
         if (data && Array.isArray(data) && data.length > 0) {
-            return (data as any)[0].itinerary_data;
+            return (data as Array<{ itinerary_data: unknown }>)[0].itinerary_data;
         }
 
         return null;
@@ -57,7 +64,7 @@ export async function getSemanticMatch(prompt: string, destination: string, days
     }
 }
 
-export async function saveSemanticMatch(prompt: string, destination: string, days: number, itineraryData: any) {
+export async function saveSemanticMatch(prompt: string, destination: string, days: number, itineraryData: unknown) {
     if (!openai) {
         return null;
     }
@@ -75,7 +82,12 @@ export async function saveSemanticMatch(prompt: string, destination: string, day
         const embedding = embeddingResponse.data[0].embedding;
 
         // 2. Insert into Supabase
-        const { error } = await (supabase as any).from('itinerary_embeddings').insert({
+        // The 'itinerary_embeddings' table is not in the generated Supabase types.
+        const fromFn = supabase.from as unknown as (
+            table: string
+        ) => { insert: (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
+
+        const { error } = await fromFn('itinerary_embeddings').insert({
             query_text: prompt,
             destination,
             duration_days: days,

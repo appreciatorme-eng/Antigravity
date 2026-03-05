@@ -12,8 +12,6 @@ import {
     ArrowDownLeft,
     RefreshCcw,
     ExternalLink,
-    Search,
-    Filter
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";

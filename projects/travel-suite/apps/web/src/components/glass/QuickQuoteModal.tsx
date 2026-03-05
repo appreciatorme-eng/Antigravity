@@ -3,8 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Calculator, Send, IndianRupee, Calendar, MapPin, Users,
-  ChevronDown, Info, TrendingUp, MessageSquare, AlertCircle,
+  Calculator, Send, Calendar, MapPin, Users,
+  Info, TrendingUp, MessageSquare, AlertCircle,
   Check, Utensils, Car, BedDouble, Compass, Ticket,
 } from 'lucide-react'
 import { GlassModal } from '@/components/glass/GlassModal'
@@ -250,6 +250,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
   // Keep end date >= start date
   useEffect(() => {
     if (new Date(endDate) <= new Date(startDate)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEndDate(addDays(startDate, 7))
     }
   }, [startDate, endDate])

@@ -102,6 +102,8 @@ export interface TemplateDataForRender {
   reviewText?: string;
   reviewerName?: string;
   reviewerTrip?: string;
+  /** Allow additional dynamic properties from content editors */
+  [key: string]: unknown;
 }
 
 export interface PosterRenderInput {

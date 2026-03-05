@@ -5,13 +5,13 @@ import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2,
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { SocialTemplate } from "@/lib/social/types";
+import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     template: SocialTemplate | null;
-    templateData: any;
+    templateData: TemplateDataForRender;
     onDownload: () => void;
     onSaveDraft: (caption: string) => void;
     connections: { instagram: boolean; facebook: boolean };
@@ -49,7 +49,7 @@ export const PublishKitDrawer = ({
         setPublishing(true);
         try {
             const endpoint = publishMode === "now" ? "/api/social/publish" : "/api/social/schedule";
-            const body: any = {
+            const body: Record<string, unknown> = {
                 templateId: template?.id,
                 templateData,
                 caption,

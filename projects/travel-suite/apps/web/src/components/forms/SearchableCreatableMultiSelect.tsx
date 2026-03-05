@@ -160,7 +160,7 @@ export default function SearchableCreatableMultiSelect({
                 className="w-full text-left px-3 py-2 text-sm text-[#2d2010] dark:text-slate-100 hover:bg-[#f8f1e6] dark:hover:bg-slate-800"
                 onClick={() => addValue(query)}
               >
-                Add "{query.trim()}"
+                Add &quot;{query.trim()}&quot;
               </button>
             ) : (
               <div className="px-3 py-2 text-xs text-[#9a8462] dark:text-slate-400">{emptyMessage}</div>

@@ -39,7 +39,7 @@ export default function NotificationSettingsPage() {
             <h3 className="font-semibold text-secondary dark:text-white mb-1">Real-Time Updates</h3>
             <p>
               Notifications are powered by Supabase Realtime and delivered instantly when clients
-              interact with proposals. You'll receive notifications even when Travel Suite is
+              interact with proposals. You&apos;ll receive notifications even when Travel Suite is
               closed or in the background.
             </p>
           </div>
@@ -64,7 +64,7 @@ export default function NotificationSettingsPage() {
           <div>
             <h3 className="font-semibold text-secondary dark:text-white mb-1">Managing Noise</h3>
             <p>
-              We recommend keeping "Proposal Views" disabled to avoid notification fatigue. Focus
+              We recommend keeping &quot;Proposal Views&quot; disabled to avoid notification fatigue. Focus
               on high-value events like comments and approvals. You can always check proposal
               analytics for view data.
             </p>

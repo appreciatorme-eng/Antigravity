@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Clock, DollarSign, Navigation, Info, ArrowUpRight, Plane } from 'lucide-react';
+import { MapPin, Clock, Info, ArrowUpRight, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
@@ -14,6 +14,7 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
 
     useEffect(() => {
         if (!currentBg && heroImage) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCurrentBg(heroImage);
         }
     }, [heroImage, currentBg]);
@@ -166,6 +167,7 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                                             {/* Thumbnail Image inside card */}
                                             {image && (
                                                 <div className="h-48 w-full overflow-hidden">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img
                                                         src={image}
                                                         alt={activity.title}

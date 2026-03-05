@@ -54,7 +54,7 @@ export default function PDFDownloadButton({
       await downloadItineraryPdf({
         itinerary,
         template,
-        branding: clientName ? { clientName } as any : undefined,
+        branding: clientName ? { clientName } : undefined,
         fileName: `${(itinerary.trip_title || 'itinerary').replace(/[^a-zA-Z0-9-_]+/g, '_')}_${template}.pdf`,
       });
     } catch (error) {

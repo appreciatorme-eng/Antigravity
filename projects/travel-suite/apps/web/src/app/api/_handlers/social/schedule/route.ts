@@ -74,8 +74,9 @@ export async function POST(req: Request) {
             .eq('id', postId);
 
         return NextResponse.json({ success: true, count: scheduledItems.length, data: scheduledItems });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error Scheduling Post:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -220,7 +220,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                     </button>
 
                     <p className="text-center text-xs text-white/30 leading-relaxed">
-                      They'll receive an email with a link to join your workspace.
+                      They&apos;ll receive an email with a link to join your workspace.
                       <br />
                       Invite expires in 7 days.
                     </p>
@@ -246,7 +246,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                     <h3 className="text-xl font-semibold text-white">
                       Invite sent to {submittedEmail}!
                     </h3>
-                    <p className="text-white/50 text-sm">They'll receive an email shortly.</p>
+                    <p className="text-white/50 text-sm">They&apos;ll receive an email shortly.</p>
                   </div>
                   <button
                     onClick={handleClose}

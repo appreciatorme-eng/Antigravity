@@ -61,7 +61,6 @@ export async function GET(req: NextRequest) {
     tripAddOns = (data || []) as Array<{ trip_id: string; add_on_id: string | null; status: string | null }>;
   }
 
-  const addOnMap = new Map((addOnRes.data || []).map((row) => [row.id, row]));
   const byTrip = new Map<string, Set<string>>();
   for (const row of tripAddOns) {
     if (!row.trip_id || !row.add_on_id) continue;

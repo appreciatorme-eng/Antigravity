@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Zap, CreditCard, Car, ArrowUpRight, Megaphone, Package } from "lucide-react";
+import { Zap, CreditCard, Car, ArrowUpRight, Megaphone, Package, type LucideIcon } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,15 @@ export function QuickActions() {
     );
 }
 
-function QuickActionLink({ href, icon: Icon, label, description, accent }: any) {
+interface QuickActionLinkProps {
+    href: string;
+    icon: LucideIcon;
+    label: string;
+    description: string;
+    accent: string;
+}
+
+function QuickActionLink({ href, icon: Icon, label, description, accent }: QuickActionLinkProps) {
     return (
         <Link href={href}>
             <GlassCard padding="md" className="group hover:border-primary/50 transition-all border-transparent bg-white dark:bg-slate-800/30">

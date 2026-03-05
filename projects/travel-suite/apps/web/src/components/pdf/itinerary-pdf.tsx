@@ -13,7 +13,7 @@ interface DownloadItineraryPdfParams {
   itinerary: ItineraryResult;
   template?: ItineraryTemplateId;
   fileName?: string;
-  branding?: ItineraryBranding;
+  branding?: Partial<ItineraryBranding>;
 }
 
 export interface ItineraryPdfPreferences {
@@ -121,7 +121,7 @@ const stripActivityImages = (itinerary: ItineraryResult): ItineraryResult => ({
   })),
 });
 
-const normalizeOrganizationRelation = (profile: any) => {
+const normalizeOrganizationRelation = (profile: ProfilePreferencesRow | null): OrganizationPreferencesRow | null => {
   const rawOrg = profile?.organizations;
   return Array.isArray(rawOrg) ? rawOrg[0] || null : rawOrg || null;
 };
@@ -193,8 +193,8 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
         companyName: organization.name || DEFAULT_ITINERARY_BRANDING.companyName,
         logoUrl: organization.logo_url || null,
         primaryColor: organization.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
-        contactEmail: (profile as any)?.email || null,
-        contactPhone: (profile as any)?.phone || null,
+        contactEmail: profile?.email || null,
+        contactPhone: profile?.phone || null,
       },
       defaultTemplate: normalizeItineraryTemplateId(organization.itinerary_template),
     };

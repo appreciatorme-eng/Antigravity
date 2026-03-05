@@ -213,7 +213,7 @@ export function TemplateSwitcher({ currentTemplate, onTemplateChange }: Template
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {TEMPLATE_OPTIONS.map(({ id, label, description, accentColor, Preview }) => {
+        {TEMPLATE_OPTIONS.map(({ id, label, accentColor, Preview }) => {
           const isSelected = currentTemplate === id;
 
           return (

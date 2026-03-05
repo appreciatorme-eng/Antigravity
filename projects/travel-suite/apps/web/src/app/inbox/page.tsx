@@ -332,12 +332,6 @@ function BroadcastTab() {
   );
 }
 
-function getTomorrowDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-}
-
 // ─── TEMPLATES LIST VIEW ──────────────────────────────────────────────────────
 
 function TemplatesListView({ onUseTemplate }: { onUseTemplate?: (t: WhatsAppTemplate) => void }) {

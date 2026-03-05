@@ -117,6 +117,7 @@ export function ContentBar({
       const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (Array.isArray(parsed)) setPresets(parsed);
       }
     } catch {

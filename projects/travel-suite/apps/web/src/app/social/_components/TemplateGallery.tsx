@@ -6,7 +6,7 @@ import { Download, Eye, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smar
 import { Button } from "@/components/ui/button";
 import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
 import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout, CollageGridLayout, TriPanelLayout, PolaroidScatterLayout, WindowGalleryLayout, MosaicStripLayout } from "@/components/social/templates/layouts/LayoutRenderer";
-import { SocialTemplate } from "@/lib/social/types";
+import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -88,7 +88,7 @@ function LazyTemplateCard({ children, previewH, className }: LazyTemplateCardPro
 }
 
 interface Props {
-    templateData: any;
+    templateData: TemplateDataForRender;
     connections?: { instagram: boolean; facebook: boolean };
     onTemplateSelect?: (template: SocialTemplate) => void;
 }

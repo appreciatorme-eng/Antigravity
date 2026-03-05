@@ -219,8 +219,9 @@ export async function POST(req: NextRequest) {
 
         const response = NextResponse.json({ success: true, review });
         return withRateLimitHeaders(response, limiter);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error submitting public review:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

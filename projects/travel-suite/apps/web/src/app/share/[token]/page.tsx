@@ -68,7 +68,26 @@ export default async function SharedTripPage({
         .update({ viewed_at: new Date().toISOString() })
         .eq("id", share.id);
 
-    const itinerary = (share as any).itineraries;
+    const shareRecord = share as unknown as {
+        itineraries: {
+            raw_data: unknown;
+            trip_title?: string;
+            destination?: string;
+            duration_days?: number;
+            budget?: string;
+            interests?: string[];
+            summary?: string;
+            profiles?: {
+                organizations?: { name?: string; logo_url?: string; primary_color?: string } | { name?: string; logo_url?: string; primary_color?: string }[];
+            };
+            clients?: {
+                id: string;
+                profiles: { full_name?: string; email?: string; phone?: string };
+            };
+        } | null;
+        template_id?: string;
+    };
+    const itinerary = shareRecord.itineraries;
     if (!itinerary) {
         notFound();
     }
@@ -79,23 +98,23 @@ export default async function SharedTripPage({
         ...tripData,
         trip_title: tripData?.trip_title || itinerary.trip_title || "Your Itinerary",
         destination: tripData?.destination || itinerary.destination || "",
-        duration_days: tripData?.duration_days || itinerary.duration_days || null,
-        budget: tripData?.budget || itinerary.budget || null,
+        duration_days: tripData?.duration_days || itinerary.duration_days || 0,
+        budget: tripData?.budget || itinerary.budget || undefined,
         interests: tripData?.interests || itinerary.interests || [],
         summary: tripData?.summary || itinerary.summary || "",
     };
 
     // Resolve the organization name for branding
-    const org = (itinerary as any).profiles?.organizations;
+    const org = itinerary.profiles?.organizations;
     const organizationName: string =
         (Array.isArray(org) ? org[0]?.name : org?.name) || "Travel Adventures";
 
     // Resolve the template (default to safari_story — the first premium template)
-    const templateId: string = (share as any).template_id || "safari_story";
+    const templateId: string = shareRecord.template_id || "safari_story";
 
     // Resolve client data
     let clientData: { name: string; email?: string; phone?: string } | null = null;
-    const clientRecord = (itinerary as any).clients;
+    const clientRecord = itinerary.clients;
     if (clientRecord && clientRecord.profiles) {
         clientData = {
             name: clientRecord.profiles.full_name || "Valued Client",

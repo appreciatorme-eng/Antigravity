@@ -217,7 +217,9 @@ export interface WhatsAppTextMessage {
 }
 
 export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessage[] {
-    const body = payload as any;
+    const body = payload as {
+        entry?: Array<{ changes?: Array<{ value?: { messages?: Array<Record<string, unknown>> } }> }>;
+    };
     const entries = body.entry || [];
     const output: WhatsAppImageMessage[] = [];
 
@@ -228,7 +230,7 @@ export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessa
             for (const message of messages) {
                 if (message.type !== "image") continue;
 
-                const image = message.image;
+                const image = message.image as { id?: string; caption?: string; mime_type?: string } | undefined;
                 const from = typeof message.from === "string" ? message.from : "";
                 const messageId = typeof message.id === "string" ? message.id : "";
                 const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";

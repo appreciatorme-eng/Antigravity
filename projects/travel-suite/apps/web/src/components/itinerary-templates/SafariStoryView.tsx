@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Moon, Plane } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Plane } from 'lucide-react';
 
 export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
   // Open the first day by default
@@ -87,7 +87,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
       {itinerary.summary && (
         <div className="max-w-4xl mx-auto px-6 py-16 text-center border-b border-stone-200">
           <p className="text-xl md:text-2xl font-serif text-stone-600 leading-relaxed italic">
-            "{itinerary.summary}"
+            &quot;{itinerary.summary}&quot;
           </p>
           <div className="w-24 h-[1px] bg-stone-300 mx-auto mt-12"></div>
         </div>
@@ -233,6 +233,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
                             {activity.image && (
                               <div className="md:w-1/3 shrink-0">
                                 <div className="aspect-[4/3] w-full overflow-hidden border border-stone-200 bg-stone-100 p-2">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={activity.image}
                                     alt={activity.title}

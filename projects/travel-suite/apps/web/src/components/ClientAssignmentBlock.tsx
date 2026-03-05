@@ -66,11 +66,11 @@ export default function ClientAssignmentBlock({ itineraryId, initialClientId }: 
             const res = await fetch('/api/admin/clients', { headers });
             if (res.ok) {
                 const payload = await res.json();
-                loadedClients = (payload?.clients || []).map((c: any) => ({
-                    id: c.id,
-                    full_name: c.full_name || 'Unknown',
-                    email: c.email || '',
-                    phone: c.phone || '',
+                loadedClients = (payload?.clients || []).map((c: Record<string, unknown>) => ({
+                    id: c.id as string,
+                    full_name: (c.full_name as string) || 'Unknown',
+                    email: (c.email as string) || '',
+                    phone: (c.phone as string) || '',
                 }));
             } else {
                 // Fallback to direct supabase query if not admin
@@ -79,7 +79,7 @@ export default function ClientAssignmentBlock({ itineraryId, initialClientId }: 
                     .select('id, profiles!inner(id, full_name, email)');
 
                 if (data) {
-                    loadedClients = data.map((c: any) => ({
+                    loadedClients = data.map((c) => ({
                         id: c.id,
                         full_name: c.profiles?.full_name || 'Unknown',
                         email: c.profiles?.email || '',

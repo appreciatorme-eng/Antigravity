@@ -1,11 +1,12 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { QRCodeSVG } from "qrcode.react";
-import { SocialTemplate } from "@/lib/social/types";
+import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { ThemeOverlay } from "./ThemeDecorations";
 
 interface LayoutProps {
-    templateData: any;
+    templateData: TemplateDataForRender;
     preset: SocialTemplate;
 }
 
@@ -35,15 +36,18 @@ const getPalette = (preset: { palette?: { accent?: string; overlay?: string } })
 };
 
 // ── Multi-image gallery resolver ────────────────────────────────────────────
-function resolveGalleryImages(templateData: Record<string, unknown>, count: number): string[] {
-    const gallery = (templateData.galleryImages as string[] | undefined) || [];
-    const hero = (templateData.heroImage as string) || "";
+function resolveGalleryImages(templateData: TemplateDataForRender, count: number): string[] {
+    const gallery = templateData.galleryImages || [];
+    const hero = templateData.heroImage || "";
     return Array.from({ length: count }, (_, i) => gallery[i] || hero).filter(Boolean);
 }
 
 // ── Shared dark-blue contact footer with WhatsApp QR ────────────────────────
-const PosterFooter = ({ templateData, absolute = true, accentColor }: { templateData: any; absolute?: boolean; accentColor?: string }) => {
-    const digits = (templateData.contactNumber || "").replace(/\D/g, "");
+const PosterFooter = ({ templateData, absolute = true, accentColor }: { templateData: TemplateDataForRender; absolute?: boolean; accentColor?: string }) => {
+    const contactNumber = templateData.contactNumber || "";
+    const email = templateData.email || "info@yourcompany.com";
+    const website = templateData.website || "www.yourcompany.com";
+    const digits = contactNumber.replace(/\D/g, "");
     const waUrl = digits ? `https://wa.me/${digits}` : "https://wa.me/";
     return (
         <div
@@ -51,9 +55,9 @@ const PosterFooter = ({ templateData, absolute = true, accentColor }: { template
             style={{ background: accentColor || "#1a2d5a", padding: "22px 48px", minHeight: 140, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}
         >
             <div style={{ color: "#ffffff", lineHeight: 2, fontSize: 22 }}>
-                <div>📞 {templateData.contactNumber || "+91 00000 00000"}</div>
-                <div>✉ {templateData.email || "info@yourcompany.com"}</div>
-                <div>🌐 {templateData.website || "www.yourcompany.com"}</div>
+                <div>📞 {contactNumber || "+91 00000 00000"}</div>
+                <div>✉ {email}</div>
+                <div>🌐 {website}</div>
             </div>
             <div style={{ textAlign: "center", color: "#ffffff" }}>
                 <QRCodeSVG value={waUrl} size={84} bgColor={accentColor || "#1a2d5a"} fgColor="#ffffff" />
@@ -1086,7 +1090,7 @@ export const BoldTypographyLayout = ({ templateData }: LayoutProps) => {
 
 // ── CollageGridLayout (4 images) ────────────────────────────────────────────
 // Large left image + 3 stacked right images with gradient text overlay at bottom.
-export function CollageGridLayout({ templateData, preset }: { templateData: Record<string, unknown>; preset: any }) {
+export function CollageGridLayout({ templateData, preset }: LayoutProps) {
     const pal = getPalette(preset);
     const images = resolveGalleryImages(templateData, 4);
     const destination = (templateData.destination as string) || "Exotic Destination";
@@ -1155,7 +1159,7 @@ export function CollageGridLayout({ templateData, preset }: { templateData: Reco
 
 // ── TriPanelLayout (3 images) ───────────────────────────────────────────────
 // Three equal vertical panels at top with a solid dark info panel at bottom.
-export function TriPanelLayout({ templateData, preset }: { templateData: Record<string, unknown>; preset: any }) {
+export function TriPanelLayout({ templateData, preset }: LayoutProps) {
     const pal = getPalette(preset);
     const images = resolveGalleryImages(templateData, 3);
     const destination = (templateData.destination as string) || "Exotic Destination";
@@ -1226,7 +1230,7 @@ export function TriPanelLayout({ templateData, preset }: { templateData: Record<
 
 // ── PolaroidScatterLayout (3 images) ────────────────────────────────────────
 // Dark gradient background with 3 "polaroid"-framed images scattered at angles.
-export function PolaroidScatterLayout({ templateData, preset }: { templateData: Record<string, unknown>; preset: any }) {
+export function PolaroidScatterLayout({ templateData, preset }: LayoutProps) {
     const pal = getPalette(preset);
     const images = resolveGalleryImages(templateData, 3);
     const destination = (templateData.destination as string) || "Exotic Destination";
@@ -1235,7 +1239,7 @@ export function PolaroidScatterLayout({ templateData, preset }: { templateData: 
     const companyName = (templateData.companyName as string) || "";
     const contactNumber = (templateData.contactNumber as string) || "";
 
-    const bgGradient = (preset.palette as any)?.bg || "linear-gradient(135deg, #0f172a, #1e293b)";
+    const bgGradient = preset.palette?.bg || "linear-gradient(135deg, #0f172a, #1e293b)";
 
     const polaroids: { left: string; top: string; rotate: string }[] = [
         { left: "8%", top: "8%", rotate: "-5deg" },
@@ -1309,7 +1313,7 @@ export function PolaroidScatterLayout({ templateData, preset }: { templateData: 
 
 // ── WindowGalleryLayout (3 images) ──────────────────────────────────────────
 // Dark gradient background with 3 rounded "window" images and elegant text below.
-export function WindowGalleryLayout({ templateData, preset }: { templateData: Record<string, unknown>; preset: any }) {
+export function WindowGalleryLayout({ templateData, preset }: LayoutProps) {
     const pal = getPalette(preset);
     const images = resolveGalleryImages(templateData, 3);
     const destination = (templateData.destination as string) || "Exotic Destination";
@@ -1383,7 +1387,7 @@ export function WindowGalleryLayout({ templateData, preset }: { templateData: Re
 
 // ── MosaicStripLayout (5 images) ────────────────────────────────────────────
 // Hero image on top, 4-image strip in the middle, text panel at bottom.
-export function MosaicStripLayout({ templateData, preset }: { templateData: Record<string, unknown>; preset: any }) {
+export function MosaicStripLayout({ templateData, preset }: LayoutProps) {
     const pal = getPalette(preset);
     const images = resolveGalleryImages(templateData, 5);
     const destination = (templateData.destination as string) || "Exotic Destination";
@@ -1468,7 +1472,7 @@ export function MosaicStripLayout({ templateData, preset }: { templateData: Reco
 // ── LayoutRenderer (used by CarouselBuilder / other non-gallery consumers) ──
 interface LayoutRendererProps {
     layout: string;
-    data: any;
+    data: TemplateDataForRender;
 }
 
 export const LayoutRenderer = ({ layout, data }: LayoutRendererProps) => {

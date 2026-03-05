@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, Send, Wand2, Lightbulb } from "lucide-react";
+import { Sparkles, Loader2, Wand2, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 interface Props {
-    onGenerated: (data: any) => void;
+    onGenerated: (data: Record<string, unknown>) => void;
 }
 
 export const MagicPrompter = ({ onGenerated }: Props) => {
@@ -30,7 +30,7 @@ export const MagicPrompter = ({ onGenerated }: Props) => {
             const data = await res.json();
             onGenerated(data);
             toast.success("AI generated content and suggested images!");
-        } catch (error) {
+        } catch {
             toast.error("AI generation failed. Please try again.");
         } finally {
             setLoading(false);

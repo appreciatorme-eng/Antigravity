@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import {
-    Package,
     Download,
     Check,
     Square,
@@ -124,7 +123,6 @@ function triggerDownload(blob: Blob, filename: string): void {
 
 export function BulkExporter({
     templateData,
-    backgrounds,
     selectedBackground,
     onComplete,
 }: BulkExporterProps) {

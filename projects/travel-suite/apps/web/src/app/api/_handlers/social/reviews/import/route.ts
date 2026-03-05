@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function POST(req: Request) {
+export async function POST() {
     try {
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
 
         for (const review of marketplaceReviews) {
             // Check if we already imported this one by looking for a matching comment/reviewer
-            const reviewerName = (review.reviewer_org as any)?.name || 'Marketplace Partner';
+            const reviewerOrg = review.reviewer_org as { name: string } | null;
+            const reviewerName = reviewerOrg?.name || 'Marketplace Partner';
 
             const { data: existing } = await supabase
                 .from('social_reviews')
@@ -68,8 +69,9 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ message: `Successfully imported ${importedCount} reviews` });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error importing reviews:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

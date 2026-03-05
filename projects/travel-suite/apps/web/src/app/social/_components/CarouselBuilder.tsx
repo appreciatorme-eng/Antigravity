@@ -2,21 +2,22 @@
 
 import { useState } from "react";
 import { Plus, Trash2, ChevronLeft, ChevronRight, GripVertical, Save, Sparkles } from "lucide-react";
-import { motion, Reorder, AnimatePresence } from "framer-motion";
+import { Reorder } from "framer-motion";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { Button } from "@/components/ui/button";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { toast } from "sonner";
 import { LayoutRenderer } from "@/components/social/templates/layouts/LayoutRenderer";
+import type { TemplateDataForRender } from "@/lib/social/types";
 
 interface Slide {
     id: string;
     layout: string;
-    data: any;
+    data: TemplateDataForRender;
 }
 
 interface Props {
-    initialData: any;
+    initialData: TemplateDataForRender;
     onSave: (slides: Slide[]) => void;
 }
 
@@ -46,7 +47,7 @@ export const CarouselBuilder = ({ initialData, onSave }: Props) => {
         }
     };
 
-    const updateSlideData = (field: string, value: any) => {
+    const updateSlideData = (field: string, value: string) => {
         const newSlides = [...slides];
         newSlides[activeSlideIndex].data = {
             ...newSlides[activeSlideIndex].data,

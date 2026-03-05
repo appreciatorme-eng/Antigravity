@@ -12,7 +12,7 @@ export interface PushNotification {
   body: string;
   icon?: string;
   badge?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   tag?: string;
   requireInteraction?: boolean;
   actions?: Array<{
@@ -77,7 +77,7 @@ export async function showNotification(notification: PushNotification): Promise<
   }
 
   try {
-    const options: any = {
+    const options: NotificationOptions & { vibrate?: number[]; timestamp?: number; actions?: Array<{ action: string; title: string; icon?: string }> } = {
       body: notification.body,
       icon: notification.icon || '/logo-192.png',
       badge: notification.badge || '/logo-96.png',
@@ -104,7 +104,7 @@ export async function showNotification(notification: PushNotification): Promise<
 
       // Navigate if data contains URL
       if (notification.data?.url) {
-        window.location.href = notification.data.url;
+        window.location.href = notification.data.url as string;
       }
     };
 

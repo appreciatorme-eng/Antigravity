@@ -35,13 +35,13 @@ export async function GET() {
     }
 
     // Fetch share info for all itineraries — now includes feedback data
-    const itineraryIds = (itineraries ?? []).map((i: any) => i.id);
-    let shareMap: Record<string, {
+    const itineraryIds = (itineraries ?? []).map((i: Record<string, unknown>) => i.id as string);
+    const shareMap: Record<string, {
       share_code: string;
       status: string | null;
-      client_comments: any;
-      client_preferences: any;
-      wishlist_items: any;
+      client_comments: unknown;
+      client_preferences: unknown;
+      wishlist_items: unknown;
       viewed_at: string | null;
       approved_at: string | null;
       approved_by: string | null;
@@ -74,7 +74,7 @@ export async function GET() {
     }
 
     // Fetch trip links for all itineraries
-    let tripMap: Record<string, string> = {};
+    const tripMap: Record<string, string> = {};
     if (itineraryIds.length > 0) {
       const { data: trips } = await supabase
         .from("trips")
@@ -91,8 +91,8 @@ export async function GET() {
     }
 
     // Fetch client names for itineraries that have a client_id
-    let clientNameMap: Record<string, string> = {};
-    const clientIds = [...new Set((itineraries ?? []).map((i: any) => i.client_id).filter(Boolean))];
+    const clientNameMap: Record<string, string> = {};
+    const clientIds = [...new Set((itineraries ?? []).map((i: Record<string, unknown>) => i.client_id as string).filter(Boolean))];
     if (clientIds.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -107,14 +107,16 @@ export async function GET() {
     }
 
     // Merge share, trip & client info into itineraries
-    const enriched = (itineraries ?? []).map((itin: any) => {
-      const share = shareMap[itin.id];
+    const enriched = (itineraries ?? []).map((itin: Record<string, unknown>) => {
+      const id = itin.id as string;
+      const clientId = itin.client_id as string | null;
+      const share = shareMap[id];
       return {
         ...itin,
-        client: itin.client_id ? { full_name: clientNameMap[itin.client_id] ?? null } : null,
+        client: clientId ? { full_name: clientNameMap[clientId] ?? null } : null,
         share_code: share?.share_code ?? null,
         share_status: share?.status ?? null,
-        trip_id: tripMap[itin.id] ?? null,
+        trip_id: tripMap[id] ?? null,
         // Client feedback fields
         client_comments: share?.client_comments ?? [],
         client_preferences: share?.client_preferences ?? null,

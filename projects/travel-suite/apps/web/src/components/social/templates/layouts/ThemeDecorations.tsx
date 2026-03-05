@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { SocialTemplate } from "@/lib/social/types";
 
 // ── Theme resolution — maps template ID patterns to visual themes ───────────
 

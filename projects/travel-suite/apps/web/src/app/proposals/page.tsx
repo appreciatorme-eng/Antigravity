@@ -41,16 +41,16 @@ interface Proposal {
   template_id: string | null;
   title: string;
   share_token: string;
-  version: number;
-  status: string;
-  total_price: number;
+  version: number | null;
+  status: string | null;
+  total_price: number | null;
   client_selected_price: number | null;
   expires_at: string | null;
   viewed_at: string | null;
   approved_at: string | null;
   approved_by: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   client_name?: string;
   client_email?: string;
   template_name?: string;
@@ -247,7 +247,7 @@ export default function ProposalsPage() {
         ) : (
           <div className="divide-y divide-gray-50">
             {filteredItems.map((proposal) => {
-              const config = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.draft;
+              const config = STATUS_CONFIG[proposal.status || 'draft'] || STATUS_CONFIG.draft;
               const signatureRecord = signatureMap[proposal.id] ?? null;
 
               return (
@@ -279,11 +279,11 @@ export default function ProposalsPage() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-3.5 h-3.5 text-text-muted" />
-                          <span className="font-bold text-secondary">${proposal.total_price.toLocaleString()}</span>
+                          <span className="font-bold text-secondary">${(proposal.total_price ?? 0).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-text-muted" />
-                          <span>{new Date(proposal.created_at).toLocaleDateString()}</span>
+                          <span>{new Date(proposal.created_at || Date.now()).toLocaleDateString()}</span>
                         </div>
                         {proposal.comments_count ? (
                           <div className="flex items-center gap-1.5 text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 animate-pulse">

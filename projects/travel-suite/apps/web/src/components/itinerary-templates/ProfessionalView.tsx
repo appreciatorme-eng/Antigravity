@@ -33,6 +33,7 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             {logoUrl && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                     src={logoUrl}
                                     alt={organizationName || 'Logo'}
@@ -207,6 +208,7 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                                                     {/* Activity Image */}
                                                     {activity.image && (
                                                         <div className="md:w-80 md:flex-shrink-0 h-48 md:h-auto">
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                                             <img
                                                                 src={activity.image}
                                                                 alt={activity.title}

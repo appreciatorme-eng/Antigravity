@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Copy, Check, MessageSquare, Smartphone, Building2,
-  QrCode, ChevronRight, IndianRupee, Share2, Printer,
+  QrCode, IndianRupee, Share2,
 } from 'lucide-react'
 import { GlassModal } from '@/components/glass/GlassModal'
 import { GlassButton } from '@/components/glass/GlassButton'

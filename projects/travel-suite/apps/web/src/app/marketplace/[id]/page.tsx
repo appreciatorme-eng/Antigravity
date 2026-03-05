@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Star,
-    MapPin,
     Building2,
     ShieldCheck,
     MessageSquare,
@@ -493,7 +492,7 @@ export default function OperatorDetailPage() {
                                                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Verified Partner</div>
                                                 </div>
                                             </div>
-                                            <div className="absolute top-4 right-4 text-8xl text-slate-100 dark:text-slate-800/30 font-serif leading-none italic pointer-events-none -mt-4 group-hover:dark:text-slate-800/50 transition-colors">"</div>
+                                            <div className="absolute top-4 right-4 text-8xl text-slate-100 dark:text-slate-800/30 font-serif leading-none italic pointer-events-none -mt-4 group-hover:dark:text-slate-800/50 transition-colors">&quot;</div>
                                         </GlassCard>
                                     </motion.div>
                                 )) : (

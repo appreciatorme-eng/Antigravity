@@ -86,7 +86,7 @@ export function GlassCard({
         className
       )}
       onClick={onClick}
-      {...(rest as any)}
+      {...(rest as Omit<HTMLMotionProps<"div">, "children">)}
     >
       {children}
     </motion.div>

@@ -14,7 +14,6 @@ import {
   Star,
   Car,
   Calendar,
-  Users,
   IndianRupee,
   Building,
   Phone,

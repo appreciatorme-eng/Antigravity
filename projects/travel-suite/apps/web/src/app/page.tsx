@@ -83,18 +83,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data, isLoading: loading } = useDashboardStats();
 
-  const stats =
-    data?.stats ||
-    ({
-      totalDrivers: 0,
-      totalClients: 0,
-      activeTrips: 0,
-      pendingNotifications: 0,
-      marketplaceViews: 0,
-      marketplaceInquiries: 0,
-      conversionRate: "0.0",
-    } as const);
-
   const activities = data?.activities || [];
 
   const [range, setRange] = useState<TimeRange>("6m");
@@ -217,7 +205,7 @@ export default function DashboardPage() {
             <span className="text-primary">{OPERATOR_NAME}! 🙏</span>
           </h1>
           <p className="text-slate-500 mt-2 font-medium">
-            Here's your travel operations command centre for today.
+            Here&apos;s your travel operations command centre for today.
           </p>
         </div>
 

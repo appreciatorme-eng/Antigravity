@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         }
 
         // Mock publishing path for local/testing environments only.
-        const publishResults: any[] = [];
+        const publishResults: Array<{ platform: string; status: string; platformPostId?: string; platformPostUrl?: string; error?: string }> = [];
 
         for (const conn of connections) {
             try {
@@ -89,11 +89,12 @@ export async function POST(req: Request) {
                     platformPostId,
                     platformPostUrl
                 });
-            } catch (err: any) {
+            } catch (err: unknown) {
+                const errMessage = err instanceof Error ? err.message : "Unknown publish error";
                 publishResults.push({
                     platform: conn.platform,
                     status: 'failed',
-                    error: err.message
+                    error: errMessage
                 });
             }
         }
@@ -107,8 +108,9 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ success: true, results: publishResults });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error publishing post:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

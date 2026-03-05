@@ -1,5 +1,5 @@
-import type { ItineraryResult, Day, Activity } from "@/types/itinerary";
-import { MapPin, Calendar, Clock, Plane, Compass } from "lucide-react";
+import type { Day, Activity } from "@/types/itinerary";
+import { MapPin, Calendar, Plane, Compass } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
 
@@ -9,6 +9,7 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
             {/* Modern Hero Header */}
             <header className="relative bg-stone-900 text-white pb-12 pt-6">
                 <div className="absolute inset-0 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={`https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80`}
                         alt={itineraryData.destination}
@@ -154,6 +155,7 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
                                                     <div className="md:pl-24">
                                                         {activity.image && (
                                                             <div className="w-full h-48 sm:h-56 rounded-xl border border-stone-100 overflow-hidden mb-4 shadow-sm">
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                                 <img
                                                                     src={activity.image}
                                                                     alt={activity.title}

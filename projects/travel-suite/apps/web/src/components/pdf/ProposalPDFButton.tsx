@@ -9,13 +9,13 @@
 import React, { useState } from 'react';
 import { Download, Mail, Loader2 } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
-import { ProposalDocument } from './ProposalDocument';
+import { ProposalDocument, type ProposalData } from './ProposalDocument';
 import { GlassButton } from '../glass/GlassButton';
 import { useToast } from '@/components/ui/toast';
 
 interface ProposalPDFButtonProps {
   proposalId: string;
-  proposalData: any;
+  proposalData: ProposalData;
   clientEmail?: string;
   variant?: 'download' | 'email' | 'both';
   organizationName?: string;

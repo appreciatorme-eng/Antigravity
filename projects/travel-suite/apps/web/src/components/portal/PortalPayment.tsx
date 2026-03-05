@@ -323,7 +323,7 @@ export default function PortalPayment({
                   </button>
                 ) : (
                   <p className="text-xs text-emerald-600 font-medium text-center">
-                    Thank you! We'll verify shortly.
+                    Thank you! We&apos;ll verify shortly.
                   </p>
                 )}
               </div>

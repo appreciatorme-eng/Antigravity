@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Database } from '@/lib/database.types';
 
 export const tripsKeys = {
     all: ['trips'] as const,

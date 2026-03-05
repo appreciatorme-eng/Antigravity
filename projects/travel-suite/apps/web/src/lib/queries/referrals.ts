@@ -41,7 +41,7 @@ export function useReferralData() {
 export function useApplyReferralCode() {
     const queryClient = useQueryClient();
 
-    return useMutation<any, Error, { referralCode: string }>({
+    return useMutation<Record<string, unknown>, Error, { referralCode: string }>({
         mutationFn: async ({ referralCode }) => {
             const res = await fetch("/api/admin/referrals", {
                 method: "POST",

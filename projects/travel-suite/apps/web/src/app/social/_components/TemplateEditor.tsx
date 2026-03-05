@@ -226,7 +226,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                 {/* Smart Result Preview */}
                 {smartResult && (
                     <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        { }
                         <img src={smartResult.image} alt="AI Generated Poster" className="w-full" />
                         <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
                             <button

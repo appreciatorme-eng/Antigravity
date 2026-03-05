@@ -67,16 +67,6 @@ export interface ExtractionResult {
 }
 
 /**
- * Convert PDF to base64 for GPT-4o Vision
- */
-async function pdfToBase64(pdfUrl: string): Promise<string> {
-    const response = await fetch(pdfUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return buffer.toString('base64');
-}
-
-/**
  * Extract tour template data from PDF using GPT-4o Vision
  */
 export async function extractTemplateFromPDF(pdfUrl: string): Promise<ExtractionResult> {

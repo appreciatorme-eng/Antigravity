@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+import tailwindClipPath from "tailwind-clip-path";
 
 const config = {
   darkMode: ["class"],
@@ -101,7 +103,7 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require('tailwind-clip-path')],
+  plugins: [tailwindcssAnimate, tailwindClipPath],
 } satisfies Config;
 
 export default config;

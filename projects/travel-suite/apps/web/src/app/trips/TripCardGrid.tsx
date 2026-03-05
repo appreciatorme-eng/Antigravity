@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Calendar, Wallet, ArrowRight, Trash2, Clock } from "lucide-react";
+import { MapPin, Wallet, ArrowRight, Trash2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,7 @@ interface Trip {
     budget: string | null;
     summary: string | null;
     created_at: string | null;
-    raw_data: any;
+    raw_data: Record<string, unknown> | null;
 }
 
 interface TripCardGridProps {
@@ -27,7 +26,7 @@ interface TripCardGridProps {
 
 function getHeroImage(trip: Trip): string | null {
     try {
-        const days = trip.raw_data?.days as any[];
+        const days = trip.raw_data?.days as Array<{ activities?: Array<{ image?: string }> }> | undefined;
         if (!days) return null;
         for (const day of days) {
             for (const act of day.activities ?? []) {
@@ -107,6 +106,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
                                     {/* Hero image or gradient */}
                                     <div className="h-48 relative overflow-hidden">
                                         {heroImg ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
                                             <img
                                                 src={heroImg}
                                                 alt={trip.destination}

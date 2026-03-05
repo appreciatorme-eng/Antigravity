@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   MapPin,
@@ -213,11 +213,7 @@ export default function PublicProposalPage() {
   const [submittingApproval, setSubmittingApproval] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    void loadProposal();
-  }, [shareToken]);
-
-  async function loadProposal() {
+  const loadProposal = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -261,7 +257,11 @@ export default function PublicProposalPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [shareToken]);
+
+  useEffect(() => {
+    void loadProposal();
+  }, [loadProposal]);
 
   async function performPublicAction(body: Record<string, unknown>) {
     const response = await fetch(`/api/proposals/public/${shareToken}`, {

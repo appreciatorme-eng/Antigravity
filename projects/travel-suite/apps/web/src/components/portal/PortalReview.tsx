@@ -86,7 +86,7 @@ export default function PortalReview({
           {/* Referral */}
           <div className="w-full rounded-xl bg-gray-50 border border-gray-200 p-4 mt-2">
             <p className="text-sm font-semibold text-gray-700 mb-2">
-              Know someone who'd love this trip?
+              Know someone who&apos;d love this trip?
             </p>
             <div className="flex gap-2">
               <input

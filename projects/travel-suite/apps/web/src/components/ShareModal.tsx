@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { X, Link2, Check, Copy, Mail, Share2, MessageCircle, Send } from "lucide-react";
+import { X, Check, Copy, Mail, Share2, MessageCircle, Send } from "lucide-react";
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -124,7 +124,7 @@ export default function ShareModal({ isOpen, onClose, itineraryId, tripTitle, te
 
     const shareViaBoth = () => {
         if (!shareUrl) return;
-        let missing = [];
+        const missing = [];
         if (!client?.email) missing.push("email");
         if (!client?.phone) missing.push("phone number");
 

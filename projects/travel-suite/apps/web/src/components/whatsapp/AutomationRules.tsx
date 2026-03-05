@@ -7,7 +7,6 @@ import {
   Plus,
   Clock,
   CheckCircle2,
-  AlertCircle,
   ChevronRight,
   X,
   Play,

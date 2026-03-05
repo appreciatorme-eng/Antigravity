@@ -7,7 +7,7 @@
 
 'use client';
 
-import { ButtonHTMLAttributes, MouseEvent, forwardRef, useState } from 'react';
+import { MouseEvent, forwardRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { motion, HTMLMotionProps } from 'framer-motion';
@@ -86,7 +86,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
         )}
         disabled={isDisabled}
         onClick={handleClick}
-        {...(props as any)}
+        {...(props as Omit<HTMLMotionProps<"button">, "children">)}
       >
         {(loading || submitting) && <Loader2 className="w-4 h-4 animate-spin" />}
         {children}

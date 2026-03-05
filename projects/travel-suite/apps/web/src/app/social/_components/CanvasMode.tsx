@@ -19,7 +19,7 @@ import {
     Sparkles,
     RotateCcw,
 } from "lucide-react";
-import { SocialTemplate } from "@/lib/social/types";
+import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import {
     CenterLayout,
     ElegantLayout,
@@ -48,11 +48,11 @@ import {
 
 interface CanvasModeProps {
     template: SocialTemplate;
-    templateData: any;
+    templateData: TemplateDataForRender;
     backgrounds: string[];
     selectedBackground: string;
     connections: { instagram: boolean; facebook: boolean };
-    onTemplateDataChange: (updater: (prev: any) => any) => void;
+    onTemplateDataChange: (updater: (prev: TemplateDataForRender) => TemplateDataForRender) => void;
     onBackgroundChange: (url: string) => void;
     onClose: () => void;
     /** When set, the AI-generated poster bypasses template rendering */
@@ -65,7 +65,7 @@ interface CanvasModeProps {
 // Layout helpers (ported from TemplateGallery)
 // ---------------------------------------------------------------------------
 
-function renderLayout(preset: SocialTemplate, templateData: any) {
+function renderLayout(preset: SocialTemplate, templateData: TemplateDataForRender) {
     const p = { templateData, preset };
     switch (preset.layout) {
         case "ElegantLayout":           return <ElegantLayout {...p} />;
@@ -127,7 +127,7 @@ export function CanvasMode({
     const [showPhoneMockup, setShowPhoneMockup] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [hdExporting, setHdExporting] = useState(false);
-    const [showPublishDrawer, setShowPublishDrawer] = useState(false);
+    const [, setShowPublishDrawer] = useState(false);
 
     // Keep background index in sync when selectedBackground changes externally
     useEffect(() => {

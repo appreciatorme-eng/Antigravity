@@ -57,6 +57,7 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
                     {/* Operator Logo (if provided) */}
                     {organizationBranding?.logo_url && (
                         <div className="mb-8 print:mb-6">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={organizationBranding.logo_url}
                                 alt={organizationBranding.name || 'Operator Logo'}
@@ -285,6 +286,7 @@ function ActivityCard({ activity, image, brandColor }: ActivityCardProps) {
             {/* Activity Image (if available) */}
             {image && (
                 <div className="relative h-64 rounded-xl overflow-hidden mb-4 shadow-md">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={image}
                         alt={activity.title}

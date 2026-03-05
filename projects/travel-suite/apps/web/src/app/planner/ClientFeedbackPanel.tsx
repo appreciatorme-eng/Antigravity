@@ -43,9 +43,6 @@ export function ClientFeedbackPanel({
     comments,
     preferences,
     wishlistItems,
-    approvedBy,
-    approvedAt,
-    clientName,
 }: ClientFeedbackPanelProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [replyingTo, setReplyingTo] = useState<string | null>(null);

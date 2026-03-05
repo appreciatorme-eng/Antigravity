@@ -8,8 +8,6 @@ function matchRoute(
   pathParts: string[],
   routes: RouteEntry[]
 ): { loader: () => Promise<HandlerModule>; params: Record<string, string> } | null {
-  const pathStr = pathParts.join("/");
-
   for (const [pattern, loader] of routes) {
     const patternParts = pattern.split("/");
 

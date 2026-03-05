@@ -6,7 +6,7 @@ import {
     Clock, TrendingUp, Zap, FolderOpen, X, Filter, Bell,
     type LucideIcon,
 } from "lucide-react";
-import { hasClientActivity } from "./NeedsAttentionQueue";
+import { hasClientActivity, type ItineraryLike } from "./NeedsAttentionQueue";
 import { cn } from "@/lib/utils";
 
 export type ItineraryStage =
@@ -124,7 +124,7 @@ export function deriveStage(itinerary: {
 }
 
 /** Check if an itinerary matches a filter (supports compound stages + needs_attention) */
-export function matchesFilter(itinerary: any, filter: ItineraryStage): boolean {
+export function matchesFilter(itinerary: ItineraryLike, filter: ItineraryStage): boolean {
     if (filter === "all") return true;
     if (filter === "needs_attention") return hasClientActivity(itinerary);
     const stage = deriveStage(itinerary);
@@ -142,7 +142,7 @@ export function getFilterLabel(filter: ItineraryStage): string {
 }
 
 interface ItineraryFilterBarProps {
-    itineraries: any[];
+    itineraries: ItineraryLike[];
     filterStage: ItineraryStage;
     onFilterChange: (stage: ItineraryStage) => void;
     searchQuery: string;

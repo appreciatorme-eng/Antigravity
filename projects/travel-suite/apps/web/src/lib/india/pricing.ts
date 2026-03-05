@@ -66,7 +66,6 @@ const MEAL_DAILY_COST: Record<string, number> = {
 
 // ─── GUIDE COST PER DAY (INR) ────────────────────────────────────────────────
 const GUIDE_DAILY_COST_ENGLISH = 800
-const GUIDE_DAILY_COST_HINDI   = 600
 
 // Guide is shared cost (not per person); billed once per day, split by group
 // For pricing purposes we include English guide cost as a fixed daily component

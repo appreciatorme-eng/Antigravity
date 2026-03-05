@@ -1,6 +1,5 @@
 import React from 'react';
-import { ChevronRight, MapPin, Clock, DollarSign, Users, Calendar, Plane } from 'lucide-react';
-import { Activity, Day } from '@/types/itinerary';
+import { ChevronRight, MapPin, Clock, DollarSign, Calendar, Plane } from 'lucide-react';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 
@@ -187,6 +186,7 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, cl
                       <div className="flex gap-3">
                         {/* Activity Thumbnail */}
                         {activity.image ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={activity.image}
                             alt={activity.name}

@@ -31,7 +31,9 @@ export default function NotificationSettings() {
 
   useEffect(() => {
     if (isNotificationSupported()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermission(getNotificationPermission());
+       
       setPreferences(getNotificationPreferences());
     }
   }, []);
@@ -79,7 +81,7 @@ export default function NotificationSettings() {
           <div>
             <h3 className="font-semibold text-yellow-900">Notifications Not Supported</h3>
             <p className="text-sm text-yellow-700 mt-1">
-              Your browser doesn't support push notifications. Please use Chrome, Firefox, Safari,
+              Your browser doesn&apos;t support push notifications. Please use Chrome, Firefox, Safari,
               or Edge.
             </p>
           </div>
@@ -140,9 +142,9 @@ export default function NotificationSettings() {
             <p className="text-sm text-red-800">
               <strong>Notifications are blocked.</strong> To enable them:
               <br />
-              1. Click the lock icon in your browser's address bar
+              1. Click the lock icon in your browser&apos;s address bar
               <br />
-              2. Find "Notifications" and change to "Allow"
+              2. Find &quot;Notifications&quot; and change to &quot;Allow&quot;
               <br />
               3. Refresh this page
             </p>

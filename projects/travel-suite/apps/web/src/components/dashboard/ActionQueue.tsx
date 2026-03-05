@@ -172,7 +172,6 @@ function useDebouncedValue(value: string, delayMs: number): string {
 // ---------------------------------------------------------------------------
 
 function AssignDriverPanel({
-  taskId,
   onDismiss,
   onCollapse,
 }: {

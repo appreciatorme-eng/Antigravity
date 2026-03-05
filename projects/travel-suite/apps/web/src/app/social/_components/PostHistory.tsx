@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Instagram, Facebook, Trash2, Download, Send, CheckCircle2, XCircle, Loader2, FileText, RefreshCw } from "lucide-react";
+import { Clock, Trash2, Download, Send, CheckCircle2, XCircle, Loader2, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -14,10 +14,12 @@ interface Post {
     source: string;
     created_at: string;
     rendered_image_url: string | null;
-    template_data: any;
+    template_data: Record<string, unknown> | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+type LucideIconComponent = React.ComponentType<{ className?: string }>;
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIconComponent }> = {
     draft:      { label: "Draft",     color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",    icon: FileText },
     ready:      { label: "Ready",     color: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",      icon: CheckCircle2 },
     scheduled:  { label: "Scheduled", color: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300",  icon: Clock },
@@ -130,6 +132,7 @@ export const PostHistory = () => {
                                 {/* Image or placeholder */}
                                 <div className="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 relative overflow-hidden">
                                     {post.rendered_image_url ? (
+                                        /* eslint-disable-next-line @next/next/no-img-element */
                                         <img
                                             src={post.rendered_image_url}
                                             alt="Post preview"
@@ -139,7 +142,7 @@ export const PostHistory = () => {
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-4 text-center">
                                             <FileText className="w-10 h-10 mb-2 opacity-40" />
                                             <p className="text-xs font-medium opacity-70">
-                                                {post.template_data?.destination || "Draft Post"}
+                                                {(post.template_data?.destination as string) || "Draft Post"}
                                             </p>
                                         </div>
                                     )}
@@ -154,7 +157,7 @@ export const PostHistory = () => {
                                 <div className="p-4 flex-1 flex flex-col gap-3">
                                     <div>
                                         <p className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">
-                                            {post.template_data?.destination || "Untitled Post"}
+                                            {(post.template_data?.destination as string) || "Untitled Post"}
                                         </p>
                                         <p className="text-xs text-slate-400 mt-0.5">
                                             {new Date(post.created_at).toLocaleDateString("en-IN", {
@@ -177,8 +180,8 @@ export const PostHistory = () => {
                                         {post.source === "auto_review" && (
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30">Review</span>
                                         )}
-                                        {post.template_data?.price && (
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30">{post.template_data.price}</span>
+                                        {!!post.template_data?.price && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30">{String(post.template_data.price)}</span>
                                         )}
                                     </div>
 

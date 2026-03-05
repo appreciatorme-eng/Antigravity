@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, Share2, Loader2, Link2 } from "lucide-react";
+import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
+import type { Json } from "@/lib/database.types";
 import { useToast } from "@/components/ui/toast";
 
 interface ShareTripModalProps {
@@ -63,7 +64,7 @@ export default function ShareTripModal({
                         destination: rawItineraryData.destination,
                         summary: rawItineraryData.summary,
                         duration_days: rawItineraryData.duration_days,
-                        raw_data: rawItineraryData as any,
+                        raw_data: rawItineraryData as unknown as Json,
                     })
                     .select("id")
                     .single();
