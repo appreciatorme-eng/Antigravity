@@ -3291,36 +3291,45 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          admin_response: string | null
           category: string
           created_at: string
           description: string
           id: string
           organization_id: string
           priority: string
+          responded_at: string | null
+          responded_by: string | null
           status: string
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          admin_response?: string | null
           category: string
           created_at?: string
           description: string
           id?: string
           organization_id: string
           priority: string
+          responded_at?: string | null
+          responded_by?: string | null
           status?: string
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          admin_response?: string | null
           category?: string
           created_at?: string
           description?: string
           id?: string
           organization_id?: string
           priority?: string
+          responded_at?: string | null
+          responded_by?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -3335,6 +3344,120 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      platform_announcements: {
+        Row: {
+          announcement_type: string
+          body: string
+          created_at: string
+          delivery_channels: string[]
+          id: string
+          recipient_count: number
+          scheduled_at: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          target_org_ids: string[]
+          target_segment: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          announcement_type?: string
+          body: string
+          created_at?: string
+          delivery_channels?: string[]
+          id?: string
+          recipient_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          target_org_ids?: string[]
+          target_segment?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          announcement_type?: string
+          body?: string
+          created_at?: string
+          delivery_channels?: string[]
+          id?: string
+          recipient_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          target_org_ids?: string[]
+          target_segment?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_audit_log: {
+        Row: {
+          action: string
+          actor_id: string
+          category: string
+          created_at: string
+          details: Json
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          category: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
       }
       template_accommodations: {
         Row: {

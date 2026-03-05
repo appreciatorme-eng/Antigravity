@@ -8,6 +8,7 @@ import {
   shouldRecordAuthFailure,
   type AdminRole,
 } from "@/lib/auth/admin-helpers";
+import { isMaintenanceMode, isOrgSuspended } from "@/lib/platform/settings";
 
 type RequestLike = Request & {
   headers: {
@@ -164,6 +165,11 @@ export async function requireAdmin(
 ): Promise<RequireAdminResult> {
   const requireOrganization = options.requireOrganization !== false;
   const adminClient = createAdminClient();
+
+  const route = routePathFromRequest(request);
+  const isPlatformBypassRoute =
+    route.startsWith("/api/superadmin") || route.startsWith("/api/health");
+
   const userId = await getUserIdFromRequest(request, adminClient);
   if (!userId) {
     void recordAdminAuthFailure({
@@ -175,6 +181,19 @@ export async function requireAdmin(
       ok: false,
       response: jsonError("Unauthorized", 401),
     };
+  }
+
+  if (!isPlatformBypassRoute) {
+    const maintenance = await isMaintenanceMode().catch(() => false);
+    if (maintenance) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: "Service is temporarily unavailable. Please try again later." },
+          { status: 503 },
+        ),
+      };
+    }
   }
 
   const { data: profile, error: profileError } = await adminClient
@@ -226,6 +245,23 @@ export async function requireAdmin(
       ok: false,
       response: jsonError("Admin organization not configured", 400),
     };
+  }
+
+  if (!isPlatformBypassRoute && profile.organization_id && parsedRole !== "super_admin") {
+    const suspended = await isOrgSuspended(profile.organization_id).catch(() => false);
+    if (suspended) {
+      void recordAdminAuthFailure({
+        adminClient,
+        request,
+        userId,
+        organizationId: profile.organization_id,
+        reason: "organization_suspended",
+      });
+      return {
+        ok: false,
+        response: jsonError("Your organization has been suspended. Contact support.", 403),
+      };
+    }
   }
 
   return {
