@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { DEMO_ORG_ID } from "@/lib/demo/constants";
 
 export interface DashboardSeriesPoint {
   monthKey: string;
@@ -91,8 +93,23 @@ interface MarketplaceStats {
 
 export const dashboardKeys = {
   all: ["dashboard"] as const,
-  stats: () => [...dashboardKeys.all, "stats"] as const,
+  stats: (isDemoMode?: boolean) => [...dashboardKeys.all, "stats", isDemoMode ? "demo" : "live"] as const,
 };
+
+const DEMO_SERIES: DashboardSeriesPoint[] = [
+  { monthKey: "2025-12", label: "Dec '25", revenue:  320000, bookings: 3,  proposals: 4,  conversions: 3,  conversionRate: 75.0 },
+  { monthKey: "2026-01", label: "Jan '26", revenue:  450000, bookings: 5,  proposals: 7,  conversions: 5,  conversionRate: 71.4 },
+  { monthKey: "2026-02", label: "Feb '26", revenue:  580000, bookings: 7,  proposals: 9,  conversions: 7,  conversionRate: 77.8 },
+  { monthKey: "2026-03", label: "Mar '26", revenue:  620000, bookings: 9,  proposals: 11, conversions: 8,  conversionRate: 72.7 },
+];
+
+const DEMO_ACTIVITIES: DashboardActivity[] = [
+  { id: "da1", type: "trip",         title: "Andaman Island Break",      description: "Trip to Port Blair, Havelock Island",  timestamp: "2026-03-01T07:00:00Z", status: "in_progress" },
+  { id: "da2", type: "trip",         title: "Varanasi Heritage Journey",  description: "Trip to Varanasi, Sarnath",            timestamp: "2026-02-28T10:00:00Z", status: "confirmed" },
+  { id: "da3", type: "notification", title: "Payment Reminder",           description: "WhatsApp reminder sent to Amit Mehta", timestamp: "2026-02-27T14:30:00Z", status: "sent" },
+  { id: "da4", type: "trip",         title: "Leh Ladakh Bike Expedition", description: "Trip to Leh, Nubra Valley, Pangong",   timestamp: "2026-02-25T09:00:00Z", status: "pending" },
+  { id: "da5", type: "inquiry",      title: "Partner Inquiry",            description: "From Thrillophilia India",             timestamp: "2026-02-24T11:00:00Z", status: "new" },
+];
 
 const APPROVED_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed"]);
 const ACTIVE_TRIP_STATUSES = new Set(["active", "in_progress", "planned", "confirmed"]);
@@ -118,9 +135,43 @@ async function fetchMarketplaceStats(accessToken: string): Promise<MarketplaceSt
 }
 
 export function useDashboardStats() {
+  const { isDemoMode } = useDemoMode();
+
   return useQuery<DashboardStatsResponse>({
-    queryKey: dashboardKeys.stats(),
+    queryKey: dashboardKeys.stats(isDemoMode),
     queryFn: async () => {
+      if (isDemoMode) {
+        const supabaseForSession = createClient();
+        const { data: { session: demoSession } } = await supabaseForSession.auth.getSession();
+        const demoHeaders: Record<string, string> = { "X-Demo-Org-Id": DEMO_ORG_ID };
+        if (demoSession?.access_token) {
+          demoHeaders["Authorization"] = `Bearer ${demoSession.access_token}`;
+        }
+        const res = await fetch("/api/admin/dashboard/stats", { headers: demoHeaders });
+        if (!res.ok) throw new Error("Failed to fetch demo dashboard stats");
+        const data = (await res.json()) as {
+          totalDrivers: number;
+          totalClients: number;
+          activeTrips: number;
+          pendingNotifications: number;
+        };
+        return {
+          stats: {
+            totalDrivers: data.totalDrivers,
+            totalClients: data.totalClients,
+            activeTrips: data.activeTrips,
+            pendingNotifications: data.pendingNotifications,
+            marketplaceViews: 142,
+            marketplaceInquiries: 8,
+            conversionRate: "72.7",
+          },
+          activities: DEMO_ACTIVITIES,
+          series: DEMO_SERIES,
+          operatorName: "Avinash",
+        };
+      }
+
+      // ── Live mode: original Supabase-direct path ──────────────────────────
       const supabase = createClient();
 
       const {
