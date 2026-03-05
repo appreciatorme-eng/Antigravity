@@ -2766,6 +2766,8 @@ export type Database = {
           title: string
           total_price: number | null
           updated_at: string | null
+          package_tier: string | null
+          tier_pricing: Json
           version: number | null
           viewed_at: string | null
         }
@@ -2779,9 +2781,11 @@ export type Database = {
           expires_at?: string | null
           id?: string
           organization_id: string
+          package_tier?: string | null
           share_token: string
           status?: string | null
           template_id?: string | null
+          tier_pricing?: Json
           title: string
           total_price?: number | null
           updated_at?: string | null
@@ -2798,9 +2802,11 @@ export type Database = {
           expires_at?: string | null
           id?: string
           organization_id?: string
+          package_tier?: string | null
           share_token?: string
           status?: string | null
           template_id?: string | null
+          tier_pricing?: Json
           title?: string
           total_price?: number | null
           updated_at?: string | null

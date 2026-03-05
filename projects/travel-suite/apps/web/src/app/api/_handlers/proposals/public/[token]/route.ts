@@ -3,6 +3,12 @@ import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanit
 import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import { trackFunnelEvent } from '@/lib/funnel/track';
+import {
+  type ProposalPackageTier,
+  type ProposalTierPricing,
+  parseTierPricing,
+  tierPrice,
+} from '@/lib/proposals/types';
 const supabaseAdmin = createAdminClient();
 
 type ProposalSummary = {
@@ -13,6 +19,8 @@ type ProposalSummary = {
   status: string;
   expires_at: string | null;
   viewed_at: string | null;
+  package_tier: string | null;
+  tier_pricing: ProposalTierPricing;
   template_name?: string;
   destination?: string;
   duration_days?: number;
@@ -39,6 +47,8 @@ type LoadedProposal = {
   status: string | null;
   expires_at: string | null;
   viewed_at: string | null;
+  package_tier: string | null;
+  tier_pricing: unknown;
   tour_templates?: ProposalTemplate;
 };
 
@@ -179,6 +189,8 @@ const normalizeProposal = (value: unknown): LoadedProposal => {
     status: normalizeText(proposal.status),
     expires_at: normalizeText(proposal.expires_at),
     viewed_at: normalizeText(proposal.viewed_at),
+    package_tier: normalizeText(proposal.package_tier),
+    tier_pricing: proposal.tier_pricing ?? {},
     tour_templates: normalizeTemplate(proposal.tour_templates),
   };
 };
@@ -198,6 +210,8 @@ async function loadProposalByToken(token: string) {
       status,
       expires_at,
       viewed_at,
+      package_tier,
+      tier_pricing,
       tour_templates(name, destination, duration_days, description, hero_image_url)
     `
     )
@@ -285,6 +299,8 @@ async function buildPublicPayload(shareToken: string) {
     status: proposal.status || 'draft',
     expires_at: proposal.expires_at || null,
     viewed_at: proposal.viewed_at || null,
+    package_tier: proposal.package_tier || null,
+    tier_pricing: parseTierPricing(proposal.tier_pricing),
     template_name: proposal.tour_templates?.name || undefined,
     destination: proposal.tour_templates?.destination || undefined,
     duration_days: proposal.tour_templates?.duration_days || undefined,
@@ -754,6 +770,50 @@ export async function POST(
         request_payment: requestPayment,
         payment_request_queued: paymentRequestQueued,
         warning: paymentRequestError,
+      });
+    }
+
+    if (action === 'selectTier') {
+      const tierValue = sanitizeText(body.tier, { maxLength: 20 });
+      const validTiers: ProposalPackageTier[] = ['core', 'plus', 'signature'];
+      if (!tierValue || !validTiers.includes(tierValue as ProposalPackageTier)) {
+        return NextResponse.json(
+          { error: 'Invalid tier. Must be core, plus, or signature' },
+          { status: 400 }
+        );
+      }
+
+      if (proposal.status === 'approved' || proposal.status === 'converted') {
+        return NextResponse.json(
+          { error: 'Cannot change tier on an approved or converted proposal' },
+          { status: 400 }
+        );
+      }
+
+      const tier = tierValue as ProposalPackageTier;
+      const pricing = parseTierPricing(proposal.tier_pricing);
+      const price = tierPrice(pricing, tier);
+
+      const updatePayload: { package_tier: string; client_selected_price?: number } = {
+        package_tier: tier,
+      };
+      if (price !== null) {
+        updatePayload.client_selected_price = price;
+      }
+
+      const { error: tierError } = await supabaseAdmin
+        .from('proposals')
+        .update(updatePayload)
+        .eq('id', proposal.id);
+
+      if (tierError) {
+        return NextResponse.json({ error: tierError.message }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        package_tier: tier,
+        client_selected_price: price,
       });
     }
 

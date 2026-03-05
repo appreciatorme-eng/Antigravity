@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getNextInvoiceNumber } from "@/lib/invoices/module";
 
 // Define strict types for the database entities we're working with
 type ProposalDay = {
@@ -223,9 +224,37 @@ export async function POST(
             .update({ status: "converted" })
             .eq("id", proposalId);
 
+        // 7. Auto-create draft invoice linked to the new trip
+        let invoiceId: string | null = null;
+        try {
+            const invoiceNumber = await getNextInvoiceNumber(supabaseAdmin, admin.organizationId);
+            const totalAmount = Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+            const { data: invoiceData } = await supabaseAdmin
+                .from("invoices")
+                .insert({
+                    organization_id: admin.organizationId,
+                    client_id: proposal.client_id || null,
+                    trip_id: tripData.id,
+                    invoice_number: invoiceNumber,
+                    status: "draft",
+                    total_amount: totalAmount,
+                    subtotal_amount: totalAmount,
+                    balance_amount: totalAmount,
+                    tax_amount: 0,
+                })
+                .select("id")
+                .single();
+            if (invoiceData) {
+                invoiceId = invoiceData.id;
+            }
+        } catch (invoiceErr) {
+            console.error("Auto-create invoice failed (non-fatal):", invoiceErr);
+        }
+
         return NextResponse.json({
             success: true,
             tripId: tripData.id,
+            invoiceId,
             message: "Proposal successfully converted to trip"
         });
 
