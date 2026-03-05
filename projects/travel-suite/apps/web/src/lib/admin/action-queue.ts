@@ -2,19 +2,35 @@ import { normalizeStatus, safeTitle, daysUntil } from "@/lib/admin/insights";
 
 export type QueueAction = {
   id: string;
-  type: "proposal" | "invoice" | "trip";
+  type: "proposal" | "invoice" | "trip" | "lead";
   priority: number;
   title: string;
   description: string;
   due_at: string | null;
   href: string;
   reason: string;
+  expected_revenue?: number | null;
 };
+
+interface LeadInput {
+  id: string;
+  full_name: string;
+  stage: string;
+  expected_value: number | null;
+  last_activity_at: string | null;
+  destination: string | null;
+}
 
 interface BuildQueueInput {
   proposals: Array<{ id: string; title: string | null; status: string | null; expires_at: string | null }>;
   invoices: Array<{ id: string; invoice_number: string; status: string; due_date: string | null; balance_amount: number | null }>;
   trips: Array<{ id: string; status: string | null; updated_at: string | null; start_date: string | null }>;
+  leads?: LeadInput[];
+}
+
+function daysSince(isoDate: string | null): number | null {
+  if (!isoDate) return null;
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / (24 * 60 * 60 * 1000));
 }
 
 export function buildRevenueRiskActionQueue(input: BuildQueueInput): QueueAction[] {
@@ -66,6 +82,74 @@ export function buildRevenueRiskActionQueue(input: BuildQueueInput): QueueAction
       href: `/trips/${trip.id}`,
       reason: "stalled_trip",
     });
+  }
+
+  for (const lead of input.leads ?? []) {
+    const elapsed = daysSince(lead.last_activity_at);
+    const stage = normalizeStatus(lead.stage);
+    const name = safeTitle(lead.full_name, "Unknown Lead");
+    const dest = lead.destination ? ` (${lead.destination})` : "";
+    const value = lead.expected_value;
+
+    if (stage === "new" && value !== null && value >= 50000 && (elapsed === null || elapsed >= 1)) {
+      actions.push({
+        id: `lead:${lead.id}:high-value`,
+        type: "lead",
+        priority: 92,
+        title: `High-value lead: ${name}${dest}`,
+        description: "High-value enquiry not yet contacted. Act now before they book elsewhere.",
+        due_at: null,
+        href: `/admin/crm/${lead.id}`,
+        reason: "cold_high_value_lead",
+        expected_revenue: value,
+      });
+      continue;
+    }
+
+    if (["new", "contacted"].includes(stage) && elapsed !== null && elapsed >= 3) {
+      actions.push({
+        id: `lead:${lead.id}:cold`,
+        type: "lead",
+        priority: 85,
+        title: `Cold lead: ${name}${dest}`,
+        description: `No activity for ${elapsed} days. Follow up before this enquiry goes cold.`,
+        due_at: null,
+        href: `/admin/crm/${lead.id}`,
+        reason: "cold_lead",
+        expected_revenue: value,
+      });
+      continue;
+    }
+
+    if (stage === "qualified" && elapsed !== null && elapsed >= 2) {
+      actions.push({
+        id: `lead:${lead.id}:proposal-due`,
+        type: "lead",
+        priority: 88,
+        title: `Send proposal: ${name}${dest}`,
+        description: `Qualified ${elapsed} days ago with no proposal sent. Strike while interest is hot.`,
+        due_at: null,
+        href: `/admin/crm/${lead.id}`,
+        reason: "proposal_overdue_lead",
+        expected_revenue: value,
+      });
+      continue;
+    }
+
+    if (stage === "negotiating" && elapsed !== null && elapsed >= 7) {
+      actions.push({
+        id: `lead:${lead.id}:stuck-negotiation`,
+        type: "lead",
+        priority: 87,
+        title: `Stuck negotiation: ${name}${dest}`,
+        description: `Deal in negotiation for ${elapsed} days. Check in to unblock or close.`,
+        due_at: null,
+        href: `/admin/crm/${lead.id}`,
+        reason: "stuck_negotiation",
+        expected_revenue: value,
+      });
+      continue;
+    }
   }
 
   return actions.sort((a, b) => {
