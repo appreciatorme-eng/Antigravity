@@ -27,8 +27,6 @@ import {
     LifeBuoy,
     Gift,
     Receipt,
-    Wallet,
-    Hotel,
     Coins,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -103,7 +101,6 @@ const SECONDARY_ITEMS: NavItem[] = [
     { icon: Store, label: "Marketplace", href: "/marketplace" },
     { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
     { icon: Calendar, label: "Command Center", href: "/admin/operations" },
-    { icon: Wallet, label: "Cost Guardrails", href: "/admin/cost" },
     { icon: Megaphone, label: "Social Studio", href: "/social" },
     { icon: Star, label: "Reputation", href: "/reputation" },
     { icon: Calendar, label: "Calendar", href: "/calendar" },
