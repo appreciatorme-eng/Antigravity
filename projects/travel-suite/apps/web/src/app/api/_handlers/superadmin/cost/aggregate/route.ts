@@ -2,7 +2,17 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
-import { getRedisClient } from "@/lib/cost/spend-guardrails";
+import { Redis } from "@upstash/redis";
+
+let _redis: Redis | null | undefined;
+function getRedisClient(): Redis | null {
+    if (_redis !== undefined) return _redis;
+    const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+    if (!url || !token) { _redis = null; return null; }
+    _redis = new Redis({ url, token });
+    return _redis;
+}
 
 const CATEGORIES = ["amadeus", "image_search", "ai_image", "ai_poster", "ai_text"] as const;
 type Category = typeof CATEGORIES[number];
