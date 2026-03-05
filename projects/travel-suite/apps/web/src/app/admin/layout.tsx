@@ -13,7 +13,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, Loader2, ShieldAlert } from "lucide-react";
 import AdminShellLayout from "@/components/layout/AdminLayout";
-import { DemoModeProvider } from "@/lib/demo/demo-mode-context";
 
 // Sidebar navigation links - moved to SideBar.tsx but keeping types if needed or just removing
 
@@ -98,10 +97,8 @@ export default function AdminLayout({
     }
 
     return (
-        <DemoModeProvider>
-            <AdminShellLayout>
-                {children}
-            </AdminShellLayout>
-        </DemoModeProvider>
+        <AdminShellLayout>
+            {children}
+        </AdminShellLayout>
     );
 }
