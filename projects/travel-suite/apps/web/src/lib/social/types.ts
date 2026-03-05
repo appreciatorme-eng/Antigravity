@@ -27,7 +27,24 @@ export type LayoutType =
     | "TriPanelLayout"
     | "PolaroidScatterLayout"
     | "WindowGalleryLayout"
-    | "MosaicStripLayout";
+    | "MosaicStripLayout"
+    // Premium composite layouts — multi-region, white/colored canvas
+    | "WaveDividerLayout"
+    | "CircleAccentLayout"
+    | "FloatingCardLayout"
+    | "PremiumCollageLayout"
+    | "BannerRibbonLayout"
+    | "SplitWaveLayout";
+
+/** Premium layout types that use the multi-layer compositor instead of simple photo overlay */
+export const PREMIUM_LAYOUT_TYPES: ReadonlySet<LayoutType> = new Set([
+    "WaveDividerLayout",
+    "CircleAccentLayout",
+    "FloatingCardLayout",
+    "PremiumCollageLayout",
+    "BannerRibbonLayout",
+    "SplitWaveLayout",
+]);
 
 export type TierLevel = "Starter" | "Pro" | "Business" | "Enterprise";
 
@@ -113,6 +130,10 @@ export interface PosterRenderInput {
   aspectRatio: AspectRatio;
   format: "png" | "jpeg" | "webp";
   quality?: number;
+  /** Brand primary color for themed overlays and accent elements */
+  brandColor?: string;
+  /** Secondary accent color for badges, buttons, dividers */
+  accentColor?: string;
 }
 
 export interface PosterRenderOutput {

@@ -17,23 +17,37 @@ const FONT_SPECS: Array<{
   weight: SatoriFont["weight"];
   style: SatoriFont["style"];
 }> = [
+  // Core sans-serif
   { family: "Inter", weight: 400, style: "normal" },
   { family: "Inter", weight: 600, style: "normal" },
   { family: "Inter", weight: 700, style: "normal" },
   { family: "Inter", weight: 900, style: "normal" },
+  // Elegant serif (core)
   { family: "Cormorant Garamond", weight: 400, style: "normal" },
   { family: "Cormorant Garamond", weight: 700, style: "normal" },
+  { family: "Cormorant Garamond", weight: 400, style: "italic" },
+  { family: "Cormorant Garamond", weight: 700, style: "italic" },
+  // Display serif — high-impact headlines
+  { family: "Playfair Display", weight: 700, style: "normal" },
+  { family: "Playfair Display", weight: 900, style: "normal" },
+  // Geometric sans — modern premium feel
+  { family: "Poppins", weight: 600, style: "normal" },
+  { family: "Poppins", weight: 700, style: "normal" },
+  // Bold geometric — strong headings
+  { family: "Montserrat", weight: 700, style: "normal" },
+  { family: "Montserrat", weight: 800, style: "normal" },
 ];
 
 async function fetchGoogleFont(
   family: string,
-  weight: number
+  weight: number,
+  style: "normal" | "italic" = "normal"
 ): Promise<ArrayBuffer> {
-  const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}&display=swap`;
+  const italParam = style === "italic" ? `ital,wght@1,${weight}` : `wght@${weight}`;
+  const cssUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:${italParam}&display=swap`;
 
   const cssResponse = await fetch(cssUrl, {
     headers: {
-      // A desktop user-agent is required so Google returns woff2/truetype URLs
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     },
@@ -41,22 +55,21 @@ async function fetchGoogleFont(
 
   if (!cssResponse.ok) {
     throw new Error(
-      `Failed to fetch font CSS for ${family} ${weight}: ${cssResponse.status}`
+      `Failed to fetch font CSS for ${family} ${weight} ${style}: ${cssResponse.status}`
     );
   }
 
   const css = await cssResponse.text();
 
-  // Extract the font file URL from the @font-face src: url(...) declaration
   const fontUrlMatch = css.match(/src:\s*url\(([^)]+)\)/);
   if (!fontUrlMatch?.[1]) {
-    throw new Error(`Font URL not found in CSS for ${family} ${weight}`);
+    throw new Error(`Font URL not found in CSS for ${family} ${weight} ${style}`);
   }
 
   const fontResponse = await fetch(fontUrlMatch[1]);
   if (!fontResponse.ok) {
     throw new Error(
-      `Failed to fetch font file for ${family} ${weight}: ${fontResponse.status}`
+      `Failed to fetch font file for ${family} ${weight} ${style}: ${fontResponse.status}`
     );
   }
 
@@ -68,7 +81,7 @@ export async function loadPosterFonts(): Promise<SatoriFont[]> {
 
   const results = await Promise.allSettled(
     FONT_SPECS.map(async (spec) => {
-      const data = await fetchGoogleFont(spec.family, spec.weight);
+      const data = await fetchGoogleFont(spec.family, spec.weight, spec.style);
       return {
         name: spec.family,
         data,

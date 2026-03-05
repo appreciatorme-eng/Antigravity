@@ -127,6 +127,8 @@ export async function POST(req: NextRequest) {
       aspectRatio,
       format,
       quality: 95,
+      brandColor: body?.brandColor || template.palette?.accent,
+      accentColor: body?.accentColor,
     });
 
     return withCostGuardHeaders(

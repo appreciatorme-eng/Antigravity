@@ -42,14 +42,14 @@ const CATEGORY_KEYWORDS: Record<TemplateCategory, string[]> = {
 
 // Map styles to preferred layouts
 const STYLE_LAYOUT_PREFERENCE: Record<AiImageStyle, LayoutType[]> = {
-  cinematic: ["GradientHeroLayout", "MagazineCoverLayout", "DuotoneLayout"],
-  editorial: ["MagazineCoverLayout", "SplitLayout", "DuotoneLayout"],
-  luxury: ["ElegantLayout", "MagazineCoverLayout", "CenterLayout"],
-  vibrant: ["BoldTypographyLayout", "DiagonalSplitLayout", "SplitLayout"],
-  tropical: ["GradientHeroLayout", "BoldTypographyLayout", "SplitLayout"],
-  dramatic: ["GradientHeroLayout", "DuotoneLayout", "DiagonalSplitLayout"],
-  heritage: ["ElegantLayout", "CenterLayout", "MagazineCoverLayout"],
-  minimal: ["CenterLayout", "BottomLayout", "ElegantLayout"],
+  cinematic: ["FloatingCardLayout", "GradientHeroLayout", "MagazineCoverLayout", "WaveDividerLayout"],
+  editorial: ["MagazineCoverLayout", "SplitWaveLayout", "PremiumCollageLayout", "DuotoneLayout"],
+  luxury: ["FloatingCardLayout", "CircleAccentLayout", "ElegantLayout", "PremiumCollageLayout"],
+  vibrant: ["BannerRibbonLayout", "BoldTypographyLayout", "WaveDividerLayout", "DiagonalSplitLayout"],
+  tropical: ["WaveDividerLayout", "CircleAccentLayout", "GradientHeroLayout", "BoldTypographyLayout"],
+  dramatic: ["FloatingCardLayout", "GradientHeroLayout", "SplitWaveLayout", "DuotoneLayout"],
+  heritage: ["PremiumCollageLayout", "CircleAccentLayout", "ElegantLayout", "MagazineCoverLayout"],
+  minimal: ["WaveDividerLayout", "CenterLayout", "BottomLayout", "ElegantLayout"],
 };
 
 export function selectBestTemplate(
