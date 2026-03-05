@@ -6,6 +6,7 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 export const maxDuration = 60;
 
 const routes = createCatchAllHandlers([
+  ["me", () => import("@/app/api/_handlers/superadmin/me/route")],
   ["overview", () => import("@/app/api/_handlers/superadmin/overview/route")],
   ["users/signups", () => import("@/app/api/_handlers/superadmin/users/signups/route")],
   ["users/directory", () => import("@/app/api/_handlers/superadmin/users/directory/route")],

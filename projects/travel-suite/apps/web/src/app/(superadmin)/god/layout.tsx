@@ -6,7 +6,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Loader2, ShieldAlert, ChevronLeft } from "lucide-react";
 import GodModeShell from "@/components/god-mode/GodModeShell";
 
@@ -16,33 +15,33 @@ export default function GodModeLayout({ children }: { children: React.ReactNode 
     const [authorized, setAuthorized] = useState(false);
 
     useEffect(() => {
-        const supabase = createClient();
-
         const checkAuth = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                router.push("/auth");
-                return;
-            }
-
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", user.id)
-                .single();
-
-            if (!profile || profile.role !== "super_admin") {
+            try {
+                const res = await fetch("/api/superadmin/me", { credentials: "include" });
+                if (res.status === 401) {
+                    router.push("/auth");
+                    return;
+                }
+                if (!res.ok) {
+                    setAuthorized(false);
+                    setLoading(false);
+                    return;
+                }
+                const data = await res.json() as { role: string };
+                if (data.role !== "super_admin") {
+                    setAuthorized(false);
+                    setLoading(false);
+                    return;
+                }
+                setAuthorized(true);
+                setLoading(false);
+            } catch {
                 setAuthorized(false);
                 setLoading(false);
-                return;
             }
-
-            setAuthorized(true);
-            setLoading(false);
         };
 
-        checkAuth();
+        void checkAuth();
     }, [router]);
 
     if (loading) {
