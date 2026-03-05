@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import type { PricingDashboardData } from "./types";
 
 export function usePricingDashboard(month: string) {
+  const demoFetch = useDemoFetch();
   const [data, setData] = useState<PricingDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export function usePricingDashboard(month: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/pricing/dashboard?month=${month}`);
+      const res = await demoFetch(`/api/admin/pricing/dashboard?month=${month}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
@@ -24,7 +26,7 @@ export function usePricingDashboard(month: string) {
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, demoFetch]);
 
   useEffect(() => {
     void fetchDashboard();

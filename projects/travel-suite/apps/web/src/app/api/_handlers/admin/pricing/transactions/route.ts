@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -42,6 +43,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
   }
 
+  const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
+
   const url = new URL(req.url);
   const search = url.searchParams.get("search")?.trim() || "";
   const category = url.searchParams.get("category")?.trim() || "";
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
   let query = db
     .from("trip_service_costs")
     .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
-    .eq("organization_id", admin.organizationId);
+    .eq("organization_id", orgId);
 
   if (category && category !== "all") {
     query = query.eq("category", category);

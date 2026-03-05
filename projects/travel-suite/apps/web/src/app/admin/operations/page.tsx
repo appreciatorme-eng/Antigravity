@@ -19,6 +19,7 @@ import {
   Receipt,
   FileText,
 } from "lucide-react";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 
 type CommandTab = "command" | "departures" | "revenue";
 
@@ -133,6 +134,7 @@ function formatOutcomeValue(value: number, unit: "hours" | "inr" | "percent"): s
 
 export default function AdminOperationsPage() {
   const supabase = useMemo(() => createClient(), []);
+  const demoFetch = useDemoFetch();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -158,7 +160,7 @@ export default function AdminOperationsPage() {
           throw new Error("Unauthorized");
         }
 
-        const response = await fetch("/api/admin/operations/command-center", {
+        const response = await demoFetch("/api/admin/operations/command-center", {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
@@ -182,7 +184,7 @@ export default function AdminOperationsPage() {
         }
       }
     },
-    [supabase]
+    [supabase, demoFetch]
   );
 
   useEffect(() => {

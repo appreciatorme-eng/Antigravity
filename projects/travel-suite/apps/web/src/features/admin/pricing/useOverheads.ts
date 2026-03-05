@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import type { MonthlyOverheadExpense } from "./types";
 
 export function useOverheads(month: string) {
+  const demoFetch = useDemoFetch();
   const [expenses, setExpenses] = useState<MonthlyOverheadExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export function useOverheads(month: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/pricing/overheads?month=${month}`);
+      const res = await demoFetch(`/api/admin/pricing/overheads?month=${month}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
@@ -24,7 +26,7 @@ export function useOverheads(month: string) {
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, demoFetch]);
 
   useEffect(() => {
     void fetchOverheads();
@@ -33,7 +35,7 @@ export function useOverheads(month: string) {
   const createExpense = useCallback(async (
     data: { month_start: string; category: string; description?: string; amount: number }
   ) => {
-    const res = await fetch("/api/admin/pricing/overheads", {
+    const res = await demoFetch("/api/admin/pricing/overheads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -44,10 +46,10 @@ export function useOverheads(month: string) {
     }
     await fetchOverheads();
     return res.json();
-  }, [fetchOverheads]);
+  }, [fetchOverheads, demoFetch]);
 
   const updateExpense = useCallback(async (id: string, data: Partial<MonthlyOverheadExpense>) => {
-    const res = await fetch(`/api/admin/pricing/overheads/${id}`, {
+    const res = await demoFetch(`/api/admin/pricing/overheads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -58,16 +60,16 @@ export function useOverheads(month: string) {
     }
     await fetchOverheads();
     return res.json();
-  }, [fetchOverheads]);
+  }, [fetchOverheads, demoFetch]);
 
   const deleteExpense = useCallback(async (id: string) => {
-    const res = await fetch(`/api/admin/pricing/overheads/${id}`, { method: "DELETE" });
+    const res = await demoFetch(`/api/admin/pricing/overheads/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `HTTP ${res.status}`);
     }
     await fetchOverheads();
-  }, [fetchOverheads]);
+  }, [fetchOverheads, demoFetch]);
 
   const totalOverhead = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 

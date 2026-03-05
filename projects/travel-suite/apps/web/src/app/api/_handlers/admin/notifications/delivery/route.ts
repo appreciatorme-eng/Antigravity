@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
 
 const DELIVERY_LIST_RATE_LIMIT_MAX = 120;
 const DELIVERY_LIST_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -63,6 +64,11 @@ export async function GET(req: NextRequest) {
             return scopedOrganization.error;
         }
 
+        const demoOverride = resolveDemoOrg(req);
+        const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
+            ? demoOverride.demoOrgId
+            : scopedOrganization.organizationId;
+
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
             limit: DELIVERY_LIST_RATE_LIMIT_MAX,
@@ -91,7 +97,7 @@ export async function GET(req: NextRequest) {
                 "id,queue_id,trip_id,user_id,recipient_phone,recipient_type,channel,provider,provider_message_id,notification_type,status,attempt_number,error_message,metadata,sent_at,failed_at,created_at",
                 { count: "exact" }
             )
-            .eq("organization_id", scopedOrganization.organizationId);
+            .eq("organization_id", effectiveOrgId);
 
         if (status !== "all") {
             query = query.eq("status", status);
@@ -120,7 +126,7 @@ export async function GET(req: NextRequest) {
         const { data: groupedRows, error: groupedError } = await admin.adminClient
             .from("notification_delivery_status")
             .select("status")
-            .eq("organization_id", scopedOrganization.organizationId)
+            .eq("organization_id", effectiveOrgId)
             .order("created_at", { ascending: false })
             .limit(1000);
 
@@ -144,7 +150,7 @@ export async function GET(req: NextRequest) {
             summary: {
                 counts_by_status: countsByStatus,
             },
-            scoped_organization_id: scopedOrganization.organizationId,
+            scoped_organization_id: effectiveOrgId,
         });
     } catch {
         return NextResponse.json(

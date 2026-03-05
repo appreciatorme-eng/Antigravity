@@ -5,6 +5,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
 
 const WORKFLOW_EVENTS_RATE_LIMIT_MAX = 120;
 const WORKFLOW_EVENTS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -54,13 +55,18 @@ export async function GET(req: NextRequest) {
             return withRequestId({ error: "Cannot access another organization scope" }, requestId, { status: 403 });
         }
 
+        const demoOverride = resolveDemoOrg(req);
+        const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
+            ? demoOverride.demoOrgId
+            : scopedOrganizationId;
+
         const limitRaw = Number(searchParams.get("limit") || 30);
         const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 30;
 
         const { data, error } = await admin.adminClient
             .from("workflow_stage_events")
             .select("id,profile_id,from_stage,to_stage,changed_by,created_at,organization_id")
-            .eq("organization_id", scopedOrganizationId)
+            .eq("organization_id", effectiveOrgId)
             .order("created_at", { ascending: false })
             .limit(limit);
 

@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 
 const supabaseAdmin = createAdminClient();
 const CLIENTS_READ_RATE_LIMIT_MAX = 120;
@@ -119,6 +120,9 @@ export async function POST(req: Request) {
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
+
+        const demoBlocked = blockDemoMutation(req);
+        if (demoBlocked) return demoBlocked;
 
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
@@ -324,6 +328,11 @@ export async function GET(req: Request) {
             return scopedOrg.error;
         }
 
+        const demoOverride = resolveDemoOrg(req);
+        const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
+            ? demoOverride.demoOrgId
+            : scopedOrg.organizationId;
+
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
             limit: CLIENTS_READ_RATE_LIMIT_MAX,
@@ -342,7 +351,7 @@ export async function GET(req: Request) {
             .from("profiles")
             .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, phase_notifications_enabled, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
-            .eq("organization_id", scopedOrg.organizationId)
+            .eq("organization_id", effectiveOrgId)
             .order("created_at", { ascending: false });
 
         if (profilesError) {
@@ -363,7 +372,7 @@ export async function GET(req: Request) {
             })
         );
 
-        return NextResponse.json({ clients: clientsWithTrips, scoped_organization_id: scopedOrg.organizationId });
+        return NextResponse.json({ clients: clientsWithTrips, scoped_organization_id: effectiveOrgId });
     } catch {
         return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
@@ -382,6 +391,9 @@ export async function DELETE(req: Request) {
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
+
+        const demoBlocked = blockDemoMutation(req);
+        if (demoBlocked) return demoBlocked;
 
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
@@ -459,6 +471,9 @@ export async function PATCH(req: Request) {
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
+
+        const demoBlocked = blockDemoMutation(req);
+        if (demoBlocked) return demoBlocked;
 
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,

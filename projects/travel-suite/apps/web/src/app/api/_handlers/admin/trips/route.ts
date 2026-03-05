@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 
 const TRIPS_READ_RATE_LIMIT_MAX = 120;
 const TRIPS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -123,6 +124,11 @@ export async function GET(req: NextRequest) {
             return scopedOrg.error;
         }
 
+        const demoOverride = resolveDemoOrg(req);
+        const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
+            ? demoOverride.demoOrgId
+            : scopedOrg.organizationId;
+
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
             limit: TRIPS_READ_RATE_LIMIT_MAX,
@@ -161,7 +167,7 @@ export async function GET(req: NextRequest) {
                     destination
                 )
             `)
-            .eq("organization_id", scopedOrg.organizationId);
+            .eq("organization_id", effectiveOrgId);
 
         if (status !== "all") {
             query = query.eq("status", status);
@@ -215,6 +221,9 @@ export async function POST(req: NextRequest) {
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
+
+        const demoBlocked = blockDemoMutation(req);
+        if (demoBlocked) return demoBlocked;
 
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,

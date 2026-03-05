@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, Command, HelpCircle } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
+import DemoModeToggle from "@/components/demo/DemoModeToggle";
 import { cn } from "@/lib/utils";
 import { useIsFetching } from "@tanstack/react-query";
 
@@ -80,6 +81,11 @@ export default function TopBar({ className }: TopBarProps) {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                    {/* Demo Mode Toggle */}
+                    <DemoModeToggle />
+
+                    <div className="w-px h-6 bg-gray-200 dark:bg-slate-800 mx-0.5" />
+
                     {/* Live Data Pulse */}
                     <div
                         className="flex items-center gap-1.5 px-2 py-1 mr-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 transition-opacity duration-300"

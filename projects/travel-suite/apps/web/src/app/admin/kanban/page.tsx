@@ -8,6 +8,7 @@ import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { useToast } from "@/components/ui/toast";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 
 type LifecycleStage =
     | "lead"
@@ -84,6 +85,7 @@ function getStageLabel(value: string | null | undefined): string {
 export default function AdminKanbanPage() {
     const supabase = createClient();
     const { toast } = useToast();
+    const demoFetch = useDemoFetch();
     const [clients, setClients] = useState<ClientCard[]>([]);
     const [contacts, setContacts] = useState<ContactItem[]>([]);
     const [events, setEvents] = useState<StageEvent[]>([]);
@@ -107,9 +109,9 @@ export default function AdminKanbanPage() {
             }
 
             const [clientsResult, contactsResult, eventsResult] = await Promise.allSettled([
-                fetch("/api/admin/clients", { headers }),
-                fetch("/api/admin/contacts", { headers }),
-                fetch("/api/admin/workflow/events?limit=40", { headers }),
+                demoFetch("/api/admin/clients", { headers }),
+                demoFetch("/api/admin/contacts", { headers }),
+                demoFetch("/api/admin/workflow/events?limit=40", { headers }),
             ]);
 
             if (clientsResult.status !== "fulfilled") {
@@ -150,7 +152,7 @@ export default function AdminKanbanPage() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, [supabase, demoFetch]);
 
     useEffect(() => {
         void fetchData();
@@ -208,7 +210,7 @@ export default function AdminKanbanPage() {
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
+            const response = await demoFetch("/api/admin/clients", {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -240,7 +242,7 @@ export default function AdminKanbanPage() {
         setMovingClientId(client.id);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
+            const response = await demoFetch("/api/admin/clients", {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -280,7 +282,7 @@ export default function AdminKanbanPage() {
         setPromotingContactId(contact.id);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/admin/contacts/${contact.id}/promote`, {
+            const response = await demoFetch(`/api/admin/contacts/${contact.id}/promote`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${session?.access_token || ""}`,
@@ -333,7 +335,7 @@ export default function AdminKanbanPage() {
             }));
 
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/contacts", {
+            const response = await demoFetch("/api/admin/contacts", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -396,7 +398,7 @@ export default function AdminKanbanPage() {
             }
 
             const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/contacts", {
+            const response = await demoFetch("/api/admin/contacts", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

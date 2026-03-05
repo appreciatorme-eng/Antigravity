@@ -6,6 +6,7 @@ import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/obser
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { jsonWithRequestId as withRequestId } from '@/lib/api/response';
+import { resolveDemoOrg, blockDemoMutation } from '@/lib/auth/demo-org-resolver';
 
 type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 const CONTACTS_LIST_RATE_LIMIT_MAX = 120;
@@ -70,6 +71,11 @@ export async function GET(req: NextRequest) {
       return withRequestId({ error: scopedOrg.error }, requestId, { status: scopedOrg.status });
     }
 
+    const demoOverride = resolveDemoOrg(req);
+    const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
+      ? demoOverride.demoOrgId
+      : scopedOrg.organizationId;
+
     const rateLimit = await enforceRateLimit({
       identifier: admin.userId,
       limit: CONTACTS_LIST_RATE_LIMIT_MAX,
@@ -89,7 +95,7 @@ export async function GET(req: NextRequest) {
     let query = admin.adminClient
       .from('crm_contacts')
       .select('id,full_name,email,phone,phone_normalized,source,notes,converted_profile_id,converted_at,created_at')
-      .eq('organization_id', scopedOrg.organizationId)
+      .eq('organization_id', effectiveOrgId)
       .is('converted_profile_id', null)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -142,6 +148,9 @@ export async function POST(req: NextRequest) {
         { status: admin.response.status || 401 },
       );
     }
+
+    const demoBlocked = blockDemoMutation(req);
+    if (demoBlocked) return demoBlocked;
 
     const body = await req.json();
     const scopedOrg = resolveScopedOrganizationId(

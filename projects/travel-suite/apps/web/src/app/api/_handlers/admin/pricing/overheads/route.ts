@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { resolveScopedOrgWithDemo, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -22,6 +23,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
   }
 
+  const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
+
   const url = new URL(req.url);
   const parsed = QuerySchema.safeParse({
     month: url.searchParams.get("month") || undefined,
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db
     .from("monthly_overhead_expenses")
     .select("*")
-    .eq("organization_id", admin.organizationId)
+    .eq("organization_id", orgId)
     .eq("month_start", monthStart)
     .order("category", { ascending: true });
 
@@ -57,6 +60,9 @@ export async function POST(req: NextRequest) {
   if (!admin.organizationId) {
     return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
   }
+
+  const demoBlocked = blockDemoMutation(req);
+  if (demoBlocked) return demoBlocked;
 
   const body = await req.json().catch(() => null);
   if (!body) {

@@ -3,11 +3,13 @@
 // Hook for the pricing transaction ledger — fetches all cost line items with filters.
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import type { TransactionItem, TransactionSummary, TransactionFilters } from "./types";
 
 const EMPTY_SUMMARY: TransactionSummary = { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 };
 
 export function useTransactions(filters: TransactionFilters) {
+  const demoFetch = useDemoFetch();
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [summary, setSummary] = useState<TransactionSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ export function useTransactions(filters: TransactionFilters) {
       if (f.vendor) params.set("vendor", f.vendor);
       if (f.sort) params.set("sort", f.sort);
 
-      const res = await fetch(`/api/admin/pricing/transactions?${params.toString()}`);
+      const res = await demoFetch(`/api/admin/pricing/transactions?${params.toString()}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
@@ -37,7 +39,7 @@ export function useTransactions(filters: TransactionFilters) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [demoFetch]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

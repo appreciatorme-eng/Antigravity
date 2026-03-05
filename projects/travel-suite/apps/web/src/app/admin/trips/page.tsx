@@ -37,6 +37,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassListSkeleton } from "@/components/glass/GlassSkeleton";
 import { cn } from "@/lib/utils";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 
 interface Trip {
     id: string;
@@ -73,12 +74,13 @@ export default function AdminTripsPage() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const supabase = createClient();
+    const demoFetch = useDemoFetch();
 
     const fetchTrips = useCallback(async () => {
         setLoading(true);
 
         const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(`/api/admin/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
+        const response = await demoFetch(`/api/admin/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
             headers: {
                 "Authorization": `Bearer ${session?.access_token}`,
             },
@@ -94,7 +96,7 @@ export default function AdminTripsPage() {
         const payload = await response.json();
         setTrips(payload.trips || []);
         setLoading(false);
-    }, [supabase, statusFilter, searchQuery]);
+    }, [supabase, demoFetch, statusFilter, searchQuery]);
 
     useEffect(() => {
         const timer = setTimeout(() => {

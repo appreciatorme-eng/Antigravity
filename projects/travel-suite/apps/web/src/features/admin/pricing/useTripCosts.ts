@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import type { TripWithCosts, TripServiceCost, VendorHistoryItem } from "./types";
 
 export function useTripCosts(month: string) {
+  const demoFetch = useDemoFetch();
   const [trips, setTrips] = useState<TripWithCosts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export function useTripCosts(month: string) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/pricing/trips?month=${month}`);
+      const res = await demoFetch(`/api/admin/pricing/trips?month=${month}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
@@ -24,7 +26,7 @@ export function useTripCosts(month: string) {
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [month, demoFetch]);
 
   useEffect(() => {
     void fetchTrips();
@@ -33,7 +35,7 @@ export function useTripCosts(month: string) {
   const createCost = useCallback(async (
     data: Omit<TripServiceCost, "id" | "organization_id" | "created_by" | "created_at" | "updated_at">
   ) => {
-    const res = await fetch("/api/admin/pricing/trip-costs", {
+    const res = await demoFetch("/api/admin/pricing/trip-costs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -44,10 +46,10 @@ export function useTripCosts(month: string) {
     }
     await fetchTrips();
     return res.json();
-  }, [fetchTrips]);
+  }, [fetchTrips, demoFetch]);
 
   const updateCost = useCallback(async (id: string, data: Partial<TripServiceCost>) => {
-    const res = await fetch(`/api/admin/pricing/trip-costs/${id}`, {
+    const res = await demoFetch(`/api/admin/pricing/trip-costs/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -58,26 +60,26 @@ export function useTripCosts(month: string) {
     }
     await fetchTrips();
     return res.json();
-  }, [fetchTrips]);
+  }, [fetchTrips, demoFetch]);
 
   const deleteCost = useCallback(async (id: string) => {
-    const res = await fetch(`/api/admin/pricing/trip-costs/${id}`, { method: "DELETE" });
+    const res = await demoFetch(`/api/admin/pricing/trip-costs/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `HTTP ${res.status}`);
     }
     await fetchTrips();
-  }, [fetchTrips]);
+  }, [fetchTrips, demoFetch]);
 
   const fetchVendorHistory = useCallback(async (
     vendorName: string, category: string
   ): Promise<VendorHistoryItem[]> => {
     const params = new URLSearchParams({ vendor: vendorName, category });
-    const res = await fetch(`/api/admin/pricing/vendor-history?${params}`);
+    const res = await demoFetch(`/api/admin/pricing/vendor-history?${params}`);
     if (!res.ok) return [];
     const json = await res.json();
     return json.history || [];
-  }, []);
+  }, [demoFetch]);
 
   return {
     trips, loading, error, reload: fetchTrips,

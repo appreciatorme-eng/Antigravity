@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   const nextMonth = mon === 12
     ? `${year + 1}-01-01`
     : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
-  const orgId = admin.organizationId;
+  const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
   const db = admin.adminClient as any;
 
   const { data: monthTrips } = await db

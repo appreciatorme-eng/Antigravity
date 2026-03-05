@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import Link from "next/link";
 import {
     Car,
@@ -100,6 +101,7 @@ const ADMIN_REVENUE_SERIES: RevenueChartPoint[] = [
 
 export default function AdminDashboard() {
     const supabase = createClient();
+    const demoFetch = useDemoFetch();
     const [stats, setStats] = useState<DashboardStats>({
         totalDrivers: 0,
         totalClients: 0,
@@ -117,31 +119,23 @@ export default function AdminDashboard() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Get driver count
-                const { count: driverCount } = await supabase
-                    .from("profiles")
-                    .select("*", { count: "exact", head: true })
-                    .eq("role", "driver");
+                const { data: { session } } = await supabase.auth.getSession();
+                const authHeaders: Record<string, string> = {};
+                if (session?.access_token) {
+                    authHeaders.Authorization = `Bearer ${session.access_token}`;
+                }
 
-                // Get client count
-                const { count: clientCount } = await supabase
-                    .from("profiles")
-                    .select("*", { count: "exact", head: true })
-                    .eq("role", "client");
+                // Fetch dashboard stats via API (supports demo mode)
+                const statsRes = await demoFetch("/api/admin/dashboard/stats", {
+                    headers: authHeaders,
+                });
 
-                // Get active trips count
-                const { count: tripCount } = await supabase
-                    .from("trips")
-                    .select("*", { count: "exact", head: true })
-                    .in("status", ["confirmed", "in_progress"]);
-
-                // Get notifications
-                const { count: notificationCount } = await supabase
-                    .from("notification_logs")
-                    .select("*", { count: "exact", head: true });
+                let dashStats = { totalDrivers: 0, totalClients: 0, activeTrips: 0, pendingNotifications: 0 };
+                if (statsRes.ok) {
+                    dashStats = await statsRes.json();
+                }
 
                 // Fetch marketplace stats
-                const { data: { session } } = await supabase.auth.getSession();
                 let marketStats = null;
                 if (session?.access_token) {
                     try {
@@ -157,30 +151,35 @@ export default function AdminDashboard() {
                 }
 
                 setStats({
-                    totalDrivers: driverCount || 0,
-                    totalClients: clientCount || 0,
-                    activeTrips: tripCount || 0,
-                    pendingNotifications: notificationCount || 0,
+                    totalDrivers: dashStats.totalDrivers || 0,
+                    totalClients: dashStats.totalClients || 0,
+                    activeTrips: dashStats.activeTrips || 0,
+                    pendingNotifications: dashStats.pendingNotifications || 0,
                     marketplaceViews: marketStats?.views || 0,
                     marketplaceInquiries: marketStats?.inquiries || 0,
                     conversionRate: marketStats?.conversion_rate || "0.0",
                 });
 
-                // Fetch recent activity
-                const { data: recentTrips } = await supabase
-                    .from("trips")
-                    .select("id, status, created_at, itineraries(trip_title, destination)")
-                    .order("created_at", { ascending: false })
-                    .limit(5);
+                // Fetch recent activity via API
+                const [tripsRes, notifsRes] = await Promise.allSettled([
+                    demoFetch("/api/admin/trips?status=all&limit=5", { headers: authHeaders }),
+                    demoFetch("/api/admin/notifications/delivery?limit=5", { headers: authHeaders }),
+                ]);
 
-                const { data: recentNotifications } = await supabase
-                    .from("notification_logs")
-                    .select("id, title, body, sent_at, status")
-                    .order("sent_at", { ascending: false })
-                    .limit(5);
+                const recentTrips: RecentTrip[] = [];
+                if (tripsRes.status === "fulfilled" && tripsRes.value.ok) {
+                    const payload = await tripsRes.value.json();
+                    recentTrips.push(...(payload.trips || []).slice(0, 5));
+                }
+
+                const recentNotifications: RecentNotification[] = [];
+                if (notifsRes.status === "fulfilled" && notifsRes.value.ok) {
+                    const payload = await notifsRes.value.json();
+                    recentNotifications.push(...(payload.notifications || payload.logs || []).slice(0, 5));
+                }
 
                 const formattedActivities: ActivityItem[] = [
-                    ...(recentTrips as RecentTrip[] | null || []).map((trip) => ({
+                    ...recentTrips.map((trip) => ({
                         id: trip.id,
                         type: "trip" as const,
                         title: "Trip Created",
@@ -188,7 +187,7 @@ export default function AdminDashboard() {
                         timestamp: trip.created_at,
                         status: trip.status || "pending",
                     })),
-                    ...(recentNotifications as RecentNotification[] | null || []).map((notif) => ({
+                    ...recentNotifications.map((notif) => ({
                         id: notif.id,
                         type: "notification" as const,
                         title: notif.title || "Notification",
@@ -216,7 +215,7 @@ export default function AdminDashboard() {
         };
 
         void fetchData();
-    }, [supabase]);
+    }, [supabase, demoFetch]);
 
     useEffect(() => {
         let mounted = true;
