@@ -36,6 +36,7 @@ const routes = createCatchAllHandlers([
   ["proposals/:id/payment-plan", () => import("@/app/api/_handlers/admin/proposals/[id]/payment-plan/route")],
   ["proposals/:id/tiers", () => import("@/app/api/_handlers/admin/proposals/[id]/tiers/route")],
   ["referrals", () => import("@/app/api/_handlers/admin/referrals/route")],
+  ["reputation/client-referrals", () => import("@/app/api/_handlers/admin/reputation/client-referrals/route")],
   ["security/diagnostics", () => import("@/app/api/_handlers/admin/security/diagnostics/route")],
   ["social/generate", () => import("@/app/api/_handlers/admin/social/generate/route")],
   ["tour-templates/extract", () => import("@/app/api/_handlers/admin/tour-templates/extract/route")],

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { repFrom } from "@/lib/reputation/db";
+import { firePromoterFollowup } from "@/lib/reputation/referral-flywheel";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { RouteTarget } from "@/lib/reputation/types";
@@ -118,6 +119,18 @@ export async function POST(req: NextRequest) {
         })
         .eq("trip_id", send.trip_id)
         .eq("organization_id", send.organization_id);
+    }
+
+    // For promoters: fire review-request + referral-offer email (non-blocking)
+    if (["google_review", "tripadvisor_review", "makemytrip_review"].includes(routedTo)) {
+      firePromoterFollowup({
+        organizationId: send.organization_id,
+        clientId: send.client_id ?? null,
+        clientName: send.client_name ?? null,
+        clientEmail: send.client_email ?? null,
+        reviewLink,
+        campaignSendId: send.id,
+      }).catch((err) => console.error("[nps/submit] promoter followup failed:", err));
     }
 
     return NextResponse.json({

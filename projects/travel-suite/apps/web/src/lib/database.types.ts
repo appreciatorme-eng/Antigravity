@@ -551,6 +551,90 @@ export type Database = {
           },
         ]
       }
+      client_referral_events: {
+        Row: {
+          converted: boolean
+          converted_at: string | null
+          created_at: string
+          id: string
+          incentive_id: string | null
+          organization_id: string
+          proposal_id: string | null
+          referral_code: string
+          referrer_client_id: string
+          referred_crm_contact_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          incentive_id?: string | null
+          organization_id: string
+          proposal_id?: string | null
+          referral_code: string
+          referrer_client_id: string
+          referred_crm_contact_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          incentive_id?: string | null
+          organization_id?: string
+          proposal_id?: string | null
+          referral_code?: string
+          referrer_client_id?: string
+          referred_crm_contact_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      client_referral_incentives: {
+        Row: {
+          amount_inr: number
+          created_at: string
+          id: string
+          issued_at: string | null
+          notes: string | null
+          organization_id: string
+          referral_code: string
+          referrer_client_id: string
+          status: string
+          tds_applicable: boolean
+          updated_at: string
+        }
+        Insert: {
+          amount_inr?: number
+          created_at?: string
+          id?: string
+          issued_at?: string | null
+          notes?: string | null
+          organization_id: string
+          referral_code: string
+          referrer_client_id: string
+          status?: string
+          tds_applicable?: boolean
+          updated_at?: string
+        }
+        Update: {
+          amount_inr?: number
+          created_at?: string
+          id?: string
+          issued_at?: string | null
+          notes?: string | null
+          organization_id?: string
+          referral_code?: string
+          referrer_client_id?: string
+          status?: string
+          tds_applicable?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversion_events: {
         Row: {
           created_at: string
