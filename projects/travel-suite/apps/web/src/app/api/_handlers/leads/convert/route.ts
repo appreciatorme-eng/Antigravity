@@ -1,68 +1,159 @@
-import { NextRequest } from 'next/server';
-import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
+// Public leads convert endpoint — creates or refreshes a crm_contacts lead record.
+// Called internally from WhatsApp webhook and other inbound channels (no user session).
+// Uses service-role client; rate-limited by IP to prevent abuse.
 
-interface ConvertLeadBody {
-  phone: string;
-  name?: string;
-  destination: string;
-  travelers?: number;
-  duration?: number;
-  tier?: string;
-  totalPrice?: number;
-  message?: string;
-}
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { parseLeadMessage } from "@/lib/leads/intent-parser";
+import { BUDGET_TIERS, type BudgetTier } from "@/lib/leads/types";
+
+const ConvertLeadSchema = z.object({
+  organization_id: z.string().uuid(),
+  phone: z.string().min(5).max(20),
+  name: z.string().min(1).max(200).optional(),
+  destination: z.string().max(200).optional(),
+  travelers: z.number().int().min(1).optional(),
+  duration_days: z.number().int().min(1).optional(),
+  budget_tier: z
+    .enum(BUDGET_TIERS as [BudgetTier, ...BudgetTier[]])
+    .optional(),
+  expected_value: z.number().min(0).optional(),
+  message: z.string().max(10000).optional(),
+  source: z.string().max(100).optional().default("whatsapp"),
+});
 
 export async function POST(request: NextRequest): Promise<Response> {
-  const guard = ensureMockEndpointAllowed('/api/leads/convert:POST')
-  if (guard) return guard
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
-  let body: ConvertLeadBody;
+  const rl = await enforceRateLimit({
+    identifier: ip,
+    limit: 30,
+    windowMs: 60_000,
+    prefix: "int:leads:convert",
+  });
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
+  let rawBody: unknown;
   try {
-    body = (await request.json()) as ConvertLeadBody;
+    rawBody = await request.json();
   } catch {
-    return Response.json(
-      { error: 'Invalid JSON body' },
-      { status: 400 }
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = ConvertLeadSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      { status: 422 }
     );
   }
 
-  const { phone, name, destination, travelers, duration } = body;
+  const input = parsed.data;
+  const supabase = createAdminClient();
 
-  if (!phone || typeof phone !== 'string' || phone.trim() === '') {
-    return Response.json(
-      { error: 'phone and destination required' },
-      { status: 400 }
-    );
+  let intentDestination: string | null = null;
+  let intentBudgetTier: BudgetTier | null = null;
+  let intentTravelers: number | null = null;
+  let intentDurationDays: number | null = null;
+  let intentDepartureMonth: string | null = null;
+
+  if (input.message) {
+    const intent = parseLeadMessage(input.message);
+    intentDestination = intent.destination;
+    intentBudgetTier = intent.budgetTier;
+    intentTravelers = intent.travelers;
+    intentDurationDays = intent.durationDays;
+    intentDepartureMonth = intent.departureMonth;
   }
 
-  if (!destination || typeof destination !== 'string' || destination.trim() === '') {
-    return Response.json(
-      { error: 'phone and destination required' },
-      { status: 400 }
-    );
+  const phoneNormalized = input.phone.replace(/\D/g, "").replace(/^0+/, "");
+
+  const { data: existing } = await supabase
+    .from("crm_contacts")
+    .select("id, converted_profile_id, stage")
+    .eq("organization_id", input.organization_id)
+    .eq("phone_normalized", phoneNormalized)
+    .maybeSingle();
+
+  const destination = input.destination ?? intentDestination ?? null;
+  const budgetTier = input.budget_tier ?? intentBudgetTier ?? null;
+  const travelers = input.travelers ?? intentTravelers ?? null;
+  const durationDays = input.duration_days ?? intentDurationDays ?? null;
+
+  if (existing) {
+    const { data: updated } = await supabase
+      .from("crm_contacts")
+      .update({
+        ...(input.name ? { full_name: input.name } : {}),
+        ...(destination ? { destination } : {}),
+        ...(budgetTier ? { budget_tier: budgetTier } : {}),
+        ...(travelers ? { travelers } : {}),
+        ...(durationDays ? { duration_days: durationDays } : {}),
+        last_activity_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .select("id, converted_profile_id")
+      .single();
+
+    return NextResponse.json({
+      leadId: updated?.id ?? existing.id,
+      clientId: updated?.converted_profile_id ?? existing.converted_profile_id,
+      created: false,
+    });
   }
 
-  const now = Date.now();
-  const clientId = `cl_${now}_${Math.random().toString(36).slice(2, 7)}`;
-  const tripId = `tr_${now}_${Math.random().toString(36).slice(2, 7)}`;
-  const bookingRef = `BK-${new Date().getFullYear()}-${String(
-    Math.floor(Math.random() * 9000) + 1000
-  )}`;
+  const initialNote = input.message
+    ? `Initial message: ${input.message.slice(0, 1000)}`
+    : null;
 
-  const displayName = name?.trim() || phone;
+  const { data: lead, error } = await supabase
+    .from("crm_contacts")
+    .insert({
+      organization_id: input.organization_id,
+      full_name: input.name ?? "Unknown",
+      phone: input.phone,
+      phone_normalized: phoneNormalized,
+      source: input.source,
+      notes: initialNote,
+      stage: "new",
+      destination,
+      budget_tier: budgetTier,
+      travelers,
+      duration_days: durationDays,
+      departure_month: intentDepartureMonth,
+      last_activity_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
-  return Response.json({
-    success: true,
-    clientId,
-    tripId,
-    bookingRef,
-    message: `Booking ${bookingRef} created for ${displayName} — ${destination} trip`,
-    meta: {
-      travelers: travelers ?? null,
-      duration: duration ?? null,
-      tier: body.tier ?? null,
-      totalPrice: body.totalPrice ?? null,
+  if (error) {
+    console.error("[leads/convert] insert error:", error);
+    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+  }
+
+  await supabase.from("conversion_events").insert({
+    organization_id: input.organization_id,
+    lead_id: lead.id,
+    event_type: "lead_created",
+    event_metadata: {
+      source: input.source,
+      destination: lead.destination,
+      budget_tier: lead.budget_tier,
     },
   });
+
+  return NextResponse.json(
+    {
+      leadId: lead.id,
+      clientId: lead.converted_profile_id,
+      created: true,
+    },
+    { status: 201 }
+  );
 }

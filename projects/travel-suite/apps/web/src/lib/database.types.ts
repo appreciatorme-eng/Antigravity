@@ -551,50 +551,116 @@ export type Database = {
           },
         ]
       }
+      conversion_events: {
+        Row: {
+          created_at: string
+          event_metadata: Json
+          event_type: string
+          id: string
+          lead_id: string | null
+          organization_id: string
+          profile_id: string | null
+          trip_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_metadata?: Json
+          event_type: string
+          id?: string
+          lead_id?: string | null
+          organization_id: string
+          profile_id?: string | null
+          trip_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_metadata?: Json
+          event_type?: string
+          id?: string
+          lead_id?: string | null
+          organization_id?: string
+          profile_id?: string | null
+          trip_id?: string | null
+        }
+        Relationships: []
+      }
       crm_contacts: {
         Row: {
+          assigned_to: string | null
+          budget_tier: string | null
+          closed_at: string | null
           converted_at: string | null
           converted_profile_id: string | null
           created_at: string | null
           created_by: string | null
+          departure_month: string | null
+          destination: string | null
+          duration_days: number | null
           email: string | null
+          expected_value: number | null
           full_name: string
           id: string
+          last_activity_at: string | null
+          lost_reason: string | null
           notes: string | null
           organization_id: string
           phone: string | null
           phone_normalized: string | null
           source: string | null
+          stage: string
+          travelers: number | null
           updated_at: string | null
         }
         Insert: {
+          assigned_to?: string | null
+          budget_tier?: string | null
+          closed_at?: string | null
           converted_at?: string | null
           converted_profile_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          departure_month?: string | null
+          destination?: string | null
+          duration_days?: number | null
           email?: string | null
+          expected_value?: number | null
           full_name: string
           id?: string
+          last_activity_at?: string | null
+          lost_reason?: string | null
           notes?: string | null
           organization_id: string
           phone?: string | null
           phone_normalized?: string | null
           source?: string | null
+          stage?: string
+          travelers?: number | null
           updated_at?: string | null
         }
         Update: {
+          assigned_to?: string | null
+          budget_tier?: string | null
+          closed_at?: string | null
           converted_at?: string | null
           converted_profile_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          departure_month?: string | null
+          destination?: string | null
+          duration_days?: number | null
           email?: string | null
+          expected_value?: number | null
           full_name?: string
           id?: string
+          last_activity_at?: string | null
+          lost_reason?: string | null
           notes?: string | null
           organization_id?: string
           phone?: string | null
           phone_normalized?: string | null
           source?: string | null
+          stage?: string
+          travelers?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1247,6 +1313,45 @@ export type Database = {
           itinerary_data?: Json
           query_text?: string
           usage_count?: number | null
+        }
+        Relationships: []
+      }
+      lead_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          from_stage: string | null
+          id: string
+          lead_id: string
+          metadata: Json
+          note: string | null
+          organization_id: string
+          to_stage: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          from_stage?: string | null
+          id?: string
+          lead_id: string
+          metadata?: Json
+          note?: string | null
+          organization_id: string
+          to_stage?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          from_stage?: string | null
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          note?: string | null
+          organization_id?: string
+          to_stage?: string | null
         }
         Relationships: []
       }
@@ -3645,10 +3750,12 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
+          destination: string | null
           driver_id: string | null
           end_date: string | null
           id: string
           itinerary_id: string | null
+          name: string | null
           notes: string | null
           organization_id: string | null
           start_date: string | null
@@ -3658,10 +3765,12 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string | null
+          destination?: string | null
           driver_id?: string | null
           end_date?: string | null
           id?: string
           itinerary_id?: string | null
+          name?: string | null
           notes?: string | null
           organization_id?: string | null
           start_date?: string | null
@@ -3671,10 +3780,12 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string | null
+          destination?: string | null
           driver_id?: string | null
           end_date?: string | null
           id?: string
           itinerary_id?: string | null
+          name?: string | null
           notes?: string | null
           organization_id?: string | null
           start_date?: string | null
