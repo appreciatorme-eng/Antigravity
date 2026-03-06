@@ -70,16 +70,26 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-# Patch WPPConnect library default: autoClose: 60000 → 0 (disabled).
-# The wppconnect-server NEVER forwards autoClose from req.body to create(),
-# so the library always uses its compiled default of 60 s — killing sessions
-# before Chrome finishes loading WhatsApp Web (~79 s on shared-cpu-1x).
+# Patch WPPConnect library defaults in create-config.js:
+#
+# 1. autoClose: 60000 → 0  (disabled)
+#    The server NEVER forwards autoClose from req.body to create(), so the library
+#    always uses its compiled default of 60 s, killing sessions before Chrome
+#    finishes loading WhatsApp Web (~79 s on shared-cpu-1x).
+#
+# 2. whatsappVersion → latest from @wppconnect/wa-version
+#    The hardcoded version (e.g. '2.3000.10305x') is quickly out-of-date.
+#    WhatsApp hard-blocks old versions: QR scans succeed (qrReadSuccess fires)
+#    but device pairing is immediately rejected with "couldn't link device".
+#    Using getLatestVersion() picks the newest alpha accepted by WhatsApp servers.
 RUN node -e "const fs=require('fs'); \
   const p='./node_modules/@wppconnect-team/wppconnect/dist/config/create-config.js'; \
   let c=fs.readFileSync(p,'utf8'); \
   c=c.replace('autoClose: 60000', 'autoClose: 0'); \
+  const latestVer=require('@wppconnect/wa-version').getLatestVersion(); \
+  c=c.replace(/whatsappVersion: '[^']*'/, \"whatsappVersion: '\" + latestVer + \"'\"); \
   fs.writeFileSync(p,c); \
-  console.log('create-config.js patched:', !c.includes('autoClose: 60000'));"
+  console.log('create-config.js patched: autoClose=0, whatsappVersion=' + latestVer);"
 
 # Create dirs WPPConnect writes session/token data to
 RUN mkdir -p userDataDir tokens
