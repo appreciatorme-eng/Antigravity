@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
-import { DEMO_ORG_ID } from "@/lib/demo/constants";
 
 export interface DashboardSeriesPoint {
   monthKey: string;
@@ -141,26 +140,12 @@ export function useDashboardStats() {
     queryKey: dashboardKeys.stats(isDemoMode),
     queryFn: async () => {
       if (isDemoMode) {
-        const supabaseForSession = createClient();
-        const { data: { session: demoSession } } = await supabaseForSession.auth.getSession();
-        const demoHeaders: Record<string, string> = { "X-Demo-Org-Id": DEMO_ORG_ID };
-        if (demoSession?.access_token) {
-          demoHeaders["Authorization"] = `Bearer ${demoSession.access_token}`;
-        }
-        const res = await fetch("/api/admin/dashboard/stats", { headers: demoHeaders });
-        if (!res.ok) throw new Error("Failed to fetch demo dashboard stats");
-        const data = (await res.json()) as {
-          totalDrivers: number;
-          totalClients: number;
-          activeTrips: number;
-          pendingNotifications: number;
-        };
         return {
           stats: {
-            totalDrivers: data.totalDrivers,
-            totalClients: data.totalClients,
-            activeTrips: data.activeTrips,
-            pendingNotifications: data.pendingNotifications,
+            totalDrivers: 4,
+            totalClients: 12,
+            activeTrips: 6,
+            pendingNotifications: 3,
             marketplaceViews: 142,
             marketplaceInquiries: 8,
             conversionRate: "72.7",
