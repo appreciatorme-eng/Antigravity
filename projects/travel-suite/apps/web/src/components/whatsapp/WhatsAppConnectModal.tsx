@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -38,7 +39,8 @@ export function WhatsAppConnectModal({
     const { toast } = useToast();
     const { isDemoMode } = useDemoMode();
     const [step, setStep] = useState<ConnectionStep>("initial");
-    const [instanceId, setInstanceId] = useState<string | null>(null);
+    const [sessionName, setSessionName] = useState<string | null>(null);
+    const [qrBase64, setQrBase64] = useState<string | null>(null);
     const [businessProfile, setBusinessProfile] = useState<{
         number: string;
         name: string;
@@ -49,7 +51,7 @@ export function WhatsAppConnectModal({
     const startDemoConnection = useCallback(async () => {
         setLoading(true);
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        setInstanceId("demo_" + Date.now());
+        setSessionName("demo_" + Date.now());
         setStep("scanning");
         setLoading(false);
     }, []);
@@ -58,11 +60,16 @@ export function WhatsAppConnectModal({
         try {
             setLoading(true);
             const res = await fetch("/api/whatsapp/connect", { method: "POST" });
-            const data = await res.json() as { qrCode?: string; instanceId?: string; error?: string };
+            const data = await res.json() as {
+                sessionName?: string;
+                qrBase64?: string;
+                error?: string;
+            };
 
             if (!res.ok) throw new Error(data.error ?? "Failed to generate QR");
 
-            setInstanceId(data.instanceId ?? null);
+            setSessionName(data.sessionName ?? null);
+            setQrBase64(data.qrBase64 ?? null);
             setStep("scanning");
         } catch {
             setStep("setup_required");
@@ -87,7 +94,8 @@ export function WhatsAppConnectModal({
         if (!isOpen) {
             setTimeout(() => {
                 setStep("initial");
-                setInstanceId(null);
+                setSessionName(null);
+                setQrBase64(null);
                 setBusinessProfile(null);
             }, 300);
         }
@@ -109,14 +117,34 @@ export function WhatsAppConnectModal({
         return () => clearTimeout(timer);
     }, [isDemoMode, step, onConnected]);
 
-    // Real mode: poll the API for connection status
+    // Real mode: refresh QR every 15 s (QR expires in ~60 s)
     useEffect(() => {
-        if (isDemoMode || step !== "scanning" || !instanceId) return;
+        if (isDemoMode || step !== "scanning" || !sessionName) return;
 
         const interval = setInterval(async () => {
             try {
                 const res = await fetch(
-                    `/api/whatsapp/status?instanceId=${instanceId}`
+                    `/api/whatsapp/qr?sessionName=${sessionName}`,
+                );
+                if (!res.ok) return;
+                const data = await res.json() as { qrBase64?: string };
+                if (data.qrBase64) setQrBase64(data.qrBase64);
+            } catch (err) {
+                console.error("Error refreshing WhatsApp QR:", err);
+            }
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, [isDemoMode, step, sessionName]);
+
+    // Real mode: poll the API for connection status every 2 s
+    useEffect(() => {
+        if (isDemoMode || step !== "scanning" || !sessionName) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(
+                    `/api/whatsapp/status?sessionName=${sessionName}`,
                 );
                 if (!res.ok) return;
                 const data = await res.json() as { status: string; number?: string; name?: string };
@@ -136,7 +164,7 @@ export function WhatsAppConnectModal({
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [isDemoMode, step, instanceId, onConnected]);
+    }, [isDemoMode, step, sessionName, onConnected]);
 
     const handleTestMessage = async () => {
         if (isDemoMode) {
@@ -157,8 +185,6 @@ export function WhatsAppConnectModal({
             setTestingMessage(true);
             const res = await fetch("/api/whatsapp/test-message", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ instanceId }),
             });
 
             if (!res.ok) throw new Error("Failed to send test message");
@@ -237,13 +263,28 @@ export function WhatsAppConnectModal({
                                 >
                                     <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center relative group">
                                         <div className="absolute inset-0 bg-gradient-to-tr from-[#25D366]/20 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl -z-10 blur-xl" />
-                                        <QRCodeSVG
-                                            value={DEMO_QR_PAYLOAD}
-                                            size={200}
-                                            level="M"
-                                            includeMargin={false}
-                                            fgColor="#0f172a"
-                                        />
+                                        {isDemoMode ? (
+                                            <QRCodeSVG
+                                                value={DEMO_QR_PAYLOAD}
+                                                size={200}
+                                                level="M"
+                                                includeMargin={false}
+                                                fgColor="#0f172a"
+                                            />
+                                        ) : qrBase64 ? (
+                                            <Image
+                                                src={`data:image/png;base64,${qrBase64}`}
+                                                width={200}
+                                                height={200}
+                                                alt="WhatsApp QR code — scan with your phone"
+                                                className="rounded-sm"
+                                                unoptimized
+                                            />
+                                        ) : (
+                                            <div className="w-[200px] h-[200px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-sm flex items-center justify-center">
+                                                <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-8 space-y-4 w-full px-4">

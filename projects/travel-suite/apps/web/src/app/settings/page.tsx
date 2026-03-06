@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
@@ -28,6 +29,41 @@ export default function SettingsPage() {
     // WhatsApp Connect State
     const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
     const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+    const [whatsAppProfile, setWhatsAppProfile] = useState<{
+        number: string;
+        name: string;
+    } | null>(null);
+
+    // Load real WhatsApp connection status on mount
+    useEffect(() => {
+        const supabase = createClient();
+        void (async () => {
+            const { data } = await supabase
+                .from('whatsapp_connections')
+                .select('status, phone_number, display_name')
+                .eq('status', 'connected')
+                .maybeSingle();
+            if (data) {
+                setIsWhatsAppConnected(true);
+                setWhatsAppProfile({
+                    number: data.phone_number ?? '',
+                    name: data.display_name ?? '',
+                });
+            }
+        })();
+    }, []);
+
+    const handleDisconnectWhatsApp = async () => {
+        try {
+            const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+            if (!res.ok) throw new Error('Disconnect failed');
+            setIsWhatsAppConnected(false);
+            setWhatsAppProfile(null);
+            toast({ title: 'WhatsApp disconnected', variant: 'success' });
+        } catch {
+            toast({ title: 'Failed to disconnect WhatsApp', variant: 'error' });
+        }
+    };
 
     // Other integration state
     const [isGmailConnected, setIsGmailConnected] = useState(false);
@@ -187,21 +223,37 @@ export default function SettingsPage() {
                                                             <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-text-muted leading-relaxed">Use your current WhatsApp number — scan a QR code to link your device. No Meta Business API or approval required.</p>
-                                                </div>
-                                                <GlassButton
-                                                    variant="primary"
-                                                    size="sm"
-                                                    onClick={() => setIsWhatsAppConnectOpen(true)}
-                                                    className={cn(
-                                                        'text-xs shrink-0 font-bold',
-                                                        isWhatsAppConnected
-                                                            ? 'border-[#25D366]/30 text-[#1da650] bg-[#25D366]/10 border'
-                                                            : 'bg-[#25D366] text-white border-transparent hover:bg-[#20bd5a]'
+                                                    {isWhatsAppConnected && whatsAppProfile ? (
+                                                        <p className="text-xs text-[#1da650] font-semibold leading-relaxed">
+                                                            {whatsAppProfile.name} · {whatsAppProfile.number}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-xs text-text-muted leading-relaxed">Use your current WhatsApp number — scan a QR code to link your device. No Meta Business API or approval required.</p>
                                                     )}
-                                                >
-                                                    {isWhatsAppConnected ? 'Manage' : 'Scan QR Code'}
-                                                </GlassButton>
+                                                </div>
+                                                <div className="flex flex-col gap-2 shrink-0">
+                                                    <GlassButton
+                                                        variant="primary"
+                                                        size="sm"
+                                                        onClick={() => setIsWhatsAppConnectOpen(true)}
+                                                        className={cn(
+                                                            'text-xs font-bold',
+                                                            isWhatsAppConnected
+                                                                ? 'border-[#25D366]/30 text-[#1da650] bg-[#25D366]/10 border'
+                                                                : 'bg-[#25D366] text-white border-transparent hover:bg-[#20bd5a]'
+                                                        )}
+                                                    >
+                                                        {isWhatsAppConnected ? 'Manage' : 'Scan QR Code'}
+                                                    </GlassButton>
+                                                    {isWhatsAppConnected && (
+                                                        <button
+                                                            onClick={() => { void handleDisconnectWhatsApp(); }}
+                                                            className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
+                                                        >
+                                                            Disconnect
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Gmail */}

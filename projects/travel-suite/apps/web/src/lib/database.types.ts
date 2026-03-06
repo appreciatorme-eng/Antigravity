@@ -4244,6 +4244,50 @@ export type Database = {
           },
         ]
       }
+      whatsapp_connections: {
+        Row: {
+          id: string
+          organization_id: string
+          session_name: string
+          phone_number: string | null
+          display_name: string | null
+          status: string
+          connected_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          session_name: string
+          phone_number?: string | null
+          display_name?: string | null
+          status?: string
+          connected_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          session_name?: string
+          phone_number?: string | null
+          display_name?: string | null
+          status?: string
+          connected_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_stage_events: {
         Row: {
           changed_by: string | null

@@ -1,34 +1,48 @@
+// GET /api/whatsapp/status?sessionName=org_xxx
+// Returns the current WAHA session status mapped to a simple frontend shape.
 import { NextRequest, NextResponse } from "next/server";
-import { ensureMockEndpointAllowed } from "@/lib/security/mock-endpoint-guard";
+import { createClient } from "@/lib/supabase/server";
+import { getWahaStatus } from "@/lib/whatsapp-waha.server";
 
 export async function GET(req: NextRequest) {
-    const guard = ensureMockEndpointAllowed("/api/whatsapp/status:GET");
-    if (guard) return guard;
-
-    const { searchParams } = new URL(req.url);
-    const instanceId = searchParams.get("instanceId");
-
-    if (!instanceId) {
-        return NextResponse.json({ error: "No instance ID" }, { status: 400 });
-    }
-
     try {
-        const parts = instanceId.split("_");
-        const createdAt = parseInt(parts[1], 10);
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
-        const now = Date.now();
-        const elapsed = now - createdAt;
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-        if (elapsed > 6000) {
+        const sessionName = req.nextUrl.searchParams.get("sessionName");
+        if (!sessionName) {
+            return NextResponse.json(
+                { error: "Missing sessionName" },
+                { status: 400 },
+            );
+        }
+
+        const wahaSession = await getWahaStatus(sessionName);
+
+        if (wahaSession.status === "WORKING" && wahaSession.me) {
             return NextResponse.json({
                 status: "connected",
-                number: "+91 98765 43210",
-                name: "GoBuddy Travel Co.",
+                number: "+" + wahaSession.me.id,
+                name: wahaSession.me.pushName,
             });
         }
 
-        return NextResponse.json({ status: "pending" });
-    } catch {
+        if (
+            wahaSession.status === "SCAN_QR_CODE" ||
+            wahaSession.status === "STARTING"
+        ) {
+            return NextResponse.json({ status: "pending" });
+        }
+
+        return NextResponse.json({ status: "disconnected" });
+    } catch (error) {
+        console.error("[whatsapp/status] error:", error);
         return NextResponse.json({ status: "error" }, { status: 500 });
     }
 }

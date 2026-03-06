@@ -1,14 +1,66 @@
+// POST /api/whatsapp/test-message
+// Sends a test message from the connected session to the operator's own number.
 import { NextResponse } from "next/server";
-import { ensureMockEndpointAllowed } from "@/lib/security/mock-endpoint-guard";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWahaText } from "@/lib/whatsapp-waha.server";
 
 export async function POST() {
-    const guard = ensureMockEndpointAllowed("/api/whatsapp/test-message:POST");
-    if (guard) return guard;
+    try {
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
-    return NextResponse.json({
-        success: true,
-        messageId: "mock-message-id-" + Date.now(),
-    });
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", user.id)
+            .single();
+
+        if (!profile?.organization_id) {
+            return NextResponse.json(
+                { error: "No organization found" },
+                { status: 400 },
+            );
+        }
+
+        const admin = createAdminClient();
+        const { data: connection } = await admin
+            .from("whatsapp_connections")
+            .select("session_name, phone_number, status")
+            .eq("organization_id", profile.organization_id)
+            .single();
+
+        if (
+            !connection ||
+            connection.status !== "connected" ||
+            !connection.phone_number
+        ) {
+            return NextResponse.json(
+                { error: "WhatsApp not connected" },
+                { status: 400 },
+            );
+        }
+
+        const phoneDigits = connection.phone_number.replace(/\D/g, "");
+        await sendWahaText(
+            connection.session_name,
+            phoneDigits,
+            "✅ TravelSuite test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
+        );
+
+        return NextResponse.json({
+            success: true,
+            messageId: "waha_" + Date.now(),
+        });
+    } catch (error) {
+        console.error("[whatsapp/test-message] error:", error);
+        const message = error instanceof Error ? error.message : "Unknown error";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
 }

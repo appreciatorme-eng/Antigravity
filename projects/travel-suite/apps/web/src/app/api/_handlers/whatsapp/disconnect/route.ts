@@ -1,12 +1,10 @@
-// POST /api/whatsapp/connect
-// Creates (or resumes) a WAHA session for the caller's org, returns the QR code.
-// Idempotent: safe to call multiple times — existing sessions are reused.
+// POST /api/whatsapp/disconnect
+// Stops the WAHA session for the caller's org and marks the DB row disconnected.
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-    createWahaSession,
-    getWahaQR,
+    disconnectWahaSession,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
 
@@ -34,27 +32,24 @@ export async function POST() {
             );
         }
 
-        const { organization_id: orgId } = profile;
-        const sessionName = sessionNameFromOrgId(orgId);
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha`;
+        const sessionName = sessionNameFromOrgId(profile.organization_id);
 
-        await createWahaSession(orgId, webhookUrl);
+        await disconnectWahaSession(sessionName);
 
         const admin = createAdminClient();
-        await admin.from("whatsapp_connections").upsert(
-            {
-                organization_id: orgId,
-                session_name: sessionName,
-                status: "connecting",
-            },
-            { onConflict: "organization_id" },
-        );
+        await admin
+            .from("whatsapp_connections")
+            .update({
+                status: "disconnected",
+                phone_number: null,
+                display_name: null,
+                connected_at: null,
+            })
+            .eq("organization_id", profile.organization_id);
 
-        const qrBase64 = await getWahaQR(sessionName);
-
-        return NextResponse.json({ success: true, sessionName, qrBase64 });
+        return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("[whatsapp/connect] error:", error);
+        console.error("[whatsapp/disconnect] error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json({ error: message }, { status: 500 });
     }
