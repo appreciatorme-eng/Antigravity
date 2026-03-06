@@ -12,6 +12,12 @@ import {
     Bell,
     Check,
     Link2,
+    MessageCircle,
+    Mail,
+    MapPin,
+    IndianRupee,
+    Instagram,
+    Linkedin,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -121,6 +127,11 @@ export default function SettingsPage() {
     // WhatsApp Connect State
     const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
     const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+
+    // Other integration state
+    const [isGmailConnected, setIsGmailConnected] = useState(false);
+    const [upiId, setUpiId] = useState('');
+    const [isUpiSaved, setIsUpiSaved] = useState(false);
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -526,49 +537,192 @@ export default function SettingsPage() {
                     <div className="p-6 border-b border-white/10 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Link2 className="w-5 h-5 text-emerald-500" />
-                            <h2 className="font-bold text-secondary dark:text-white">Service Integrations</h2>
+                            <div>
+                                <h2 className="font-bold text-secondary dark:text-white">Service Integrations</h2>
+                                <p className="text-xs text-text-muted mt-0.5">Connect your existing tools. Get the inbox working in minutes — no API approvals needed.</p>
+                            </div>
                         </div>
                         <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full font-semibold border border-primary/20">Premium Add-ons</span>
                     </div>
-                    <div className="p-6 space-y-4">
-                        {[
-                            { name: 'Amadeus Booking API', desc: 'Flight, hotel, and vehicle reservation networking.', status: 'Connected' },
-                            { name: 'Stripe Payments', desc: 'Secure financial routing and proposal checkout.', status: 'Connected' },
-                            { name: 'Google Places & Maps', desc: 'Geospatial mapping and point of interest data.', status: 'Disconnected' },
-                            {
-                                name: 'WhatsApp Web Link',
-                                desc: 'Zero-cost meta bypass using device linking.',
-                                status: isWhatsAppConnected ? 'Connected' : 'Disconnected',
-                                accent: 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20 hover:bg-[#25D366]/20',
-                                action: () => setIsWhatsAppConnectOpen(true)
-                            },
-                        ].map(integration => (
-                            <div key={integration.name} className="flex items-center justify-between p-4 border border-gray-100 dark:border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-gray-50/50 dark:bg-white/5">
-                                <div>
-                                    <h4 className="font-bold text-secondary dark:text-white flex items-center gap-2">
-                                        {integration.name}
-                                        {integration.name === 'WhatsApp Web Link' && (
-                                            <span className="text-[10px] bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Recommended</span>
+                    <div className="p-6 space-y-8">
+
+                        {/* ── Messaging ─────────────────────────────────────── */}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Messaging</p>
+                            <div className="space-y-3">
+                                {/* WhatsApp — Hero */}
+                                <div className="p-5 border-2 border-[#25D366]/30 bg-[#25D366]/5 rounded-2xl flex items-start gap-4">
+                                    <div className="w-11 h-11 rounded-xl bg-[#25D366] flex items-center justify-center shrink-0 shadow-lg shadow-[#25D366]/30">
+                                        <MessageCircle className="w-6 h-6 text-white fill-current" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-bold text-secondary dark:text-white">WhatsApp</h4>
+                                            <span className="text-[9px] bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Recommended</span>
+                                            {isWhatsAppConnected && (
+                                                <span className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-text-muted leading-relaxed">Use your current WhatsApp number — scan a QR code to link your device. No Meta Business API or approval required.</p>
+                                    </div>
+                                    <GlassButton
+                                        type="button"
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => setIsWhatsAppConnectOpen(true)}
+                                        className={cn(
+                                            'text-xs shrink-0 font-bold',
+                                            isWhatsAppConnected
+                                                ? 'border-[#25D366]/30 text-[#1da650] bg-[#25D366]/10 border'
+                                                : 'bg-[#25D366] text-white border-transparent hover:bg-[#20bd5a]'
                                         )}
-                                    </h4>
-                                    <p className="text-xs text-text-muted mt-1">{integration.desc}</p>
+                                    >
+                                        {isWhatsAppConnected ? 'Manage' : 'Scan QR Code'}
+                                    </GlassButton>
                                 </div>
-                                <GlassButton
-                                    type="button"
-                                    variant={integration.status === 'Connected' ? 'outline' : 'primary'}
-                                    size="sm"
-                                    onClick={integration.action}
-                                    className={cn(
-                                        "text-xs transition-colors",
-                                        integration.status === 'Connected'
-                                            ? (integration.name === 'WhatsApp Web Link' ? 'border-[#25D366]/30 text-[#1da650] bg-[#25D366]/10' : 'border-emerald-200 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400')
-                                            : (integration.accent || '')
-                                    )}
-                                >
-                                    {integration.status === 'Connected' ? 'Manage' : 'Link Device'}
-                                </GlassButton>
+
+                                {/* Gmail */}
+                                <div className="p-5 border border-white/10 rounded-2xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-white/5">
+                                    <div className="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                                        <Mail className="w-5 h-5 text-red-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <h4 className="font-bold text-secondary dark:text-white">Gmail</h4>
+                                            {isGmailConnected && (
+                                                <span className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-text-muted">Manage email enquiries and send confirmations directly from the unified inbox.</p>
+                                    </div>
+                                    <GlassButton
+                                        type="button"
+                                        variant={isGmailConnected ? 'outline' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => {
+                                            setIsGmailConnected(true);
+                                            toast({ title: 'Gmail connected', description: 'Email conversations will appear in your inbox.', variant: 'success' });
+                                        }}
+                                        className={cn('text-xs shrink-0', isGmailConnected ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
+                                    >
+                                        {isGmailConnected ? 'Connected ✓' : 'Connect Google'}
+                                    </GlassButton>
+                                </div>
                             </div>
-                        ))}
+                        </div>
+
+                        {/* ── Payments ──────────────────────────────────────── */}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Payments</p>
+                            <div className="p-5 border border-white/10 rounded-2xl bg-white/5">
+                                <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                                        <IndianRupee className="w-5 h-5 text-blue-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <h4 className="font-bold text-secondary dark:text-white">UPI</h4>
+                                            {isUpiSaved && (
+                                                <span className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Saved</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-text-muted">Add your UPI ID to include payment links in WhatsApp messages and proposals.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={upiId}
+                                        onChange={(e) => setUpiId(e.target.value)}
+                                        placeholder="yourname@upi or yourname@bank"
+                                        className="flex-1 bg-white/8 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                    />
+                                    <GlassButton
+                                        type="button"
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (upiId.trim()) {
+                                                setIsUpiSaved(true);
+                                                toast({ title: 'UPI ID saved', description: `Payment links will use ${upiId}`, variant: 'success' });
+                                            }
+                                        }}
+                                        className="text-xs px-5"
+                                    >
+                                        Save
+                                    </GlassButton>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Reviews & Discovery ────────────────────────────── */}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Reviews & Discovery</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                        <Building2 className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">Google Business</h4>
+                                        <p className="text-xs text-text-muted mt-1">Respond to reviews and manage your listing from the dashboard.</p>
+                                    </div>
+                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                </div>
+                                <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                        <MapPin className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">TripAdvisor</h4>
+                                        <p className="text-xs text-text-muted mt-1">Sync your listing and pull review data into the reputation tab.</p>
+                                    </div>
+                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Social Media ──────────────────────────────────── */}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Social Media</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-pink-500/10 flex items-center justify-center">
+                                        <Instagram className="w-4 h-4 text-pink-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">Instagram</h4>
+                                        <p className="text-xs text-text-muted mt-1">Import leads from DMs and comments into the CRM automatically.</p>
+                                    </div>
+                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                </div>
+                                <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                        <Linkedin className="w-4 h-4 text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">LinkedIn</h4>
+                                        <p className="text-xs text-text-muted mt-1">Sync corporate travel enquiries and company contacts.</p>
+                                    </div>
+                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── Maps & Data ────────────────────────────────────── */}
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Maps & Data</p>
+                            <div className="p-4 border border-white/10 rounded-2xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-white/5">
+                                <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                                    <Globe className="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-secondary dark:text-white text-sm">Google Places & Maps</h4>
+                                    <p className="text-xs text-text-muted mt-0.5">Geospatial mapping and point-of-interest data for itinerary building.</p>
+                                </div>
+                                <GlassButton type="button" variant="outline" size="sm" className="text-xs shrink-0">Connect</GlassButton>
+                            </div>
+                        </div>
                     </div>
                 </GlassCard>
 
