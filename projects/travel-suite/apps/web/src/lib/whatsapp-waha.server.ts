@@ -124,9 +124,15 @@ async function generateSessionToken(sessionName: string): Promise<string> {
 /**
  * Create (or resume) a named WPPConnect session for an org.
  * Returns the session Bearer token — caller MUST store it in whatsapp_connections.session_token.
- * Idempotent: safe to call multiple times; existing sessions are reused.
  *
- * Changed from void → Promise<string> to return token for storage.
+ * Strategy: check the live session state first.
+ * - CLOSED / null  → start fresh (close any lingering Chrome first)
+ * - Any other state (UNPAIRED, CONNECTING, CONNECTED) → session is alive; return
+ *   the token without touching it.  Calling logout-session while a QR scan is in
+ *   progress triggers "req.client.logout is not a function" which partially
+ *   destroys the session state, causing "Login with success" in the WPPConnect
+ *   logs but an immediately-Disconnected check-connection — i.e. the phone shows
+ *   "couldn't link device" even though the handshake completed on the server.
  */
 export async function createWahaSession(
     orgId: string,
@@ -135,20 +141,36 @@ export async function createWahaSession(
     const sessionName = sessionNameFromOrgId(orgId);
     const token = await generateSessionToken(sessionName);
 
-    // Always logout first — clears stale Chrome state and saved session data.
-    // Without this, a crashed previous session stays registered in WPPConnect and
-    // start-session returns 400 (already exists), leaving Chrome in a dead state
-    // where qrcode-session never returns a QR.
+    // Check live session state before deciding to restart.
+    let needsStart = true;
     try {
-        await wppFetch(`/api/${sessionName}/logout-session`, token, { method: "POST" });
+        const statusRes = await wppFetch(`/api/${sessionName}/status-session`, token);
+        const body = (await statusRes.json()) as WppStatusResponse;
+        // CLOSED = never started or explicitly closed.
+        // Any other value (UNPAIRED, CONNECTING, CONNECTED …) = alive — leave it.
+        needsStart = !body.status || body.status === "CLOSED";
     } catch {
-        // Session may not exist yet — safe to ignore
+        // 4xx / network error — session doesn't exist yet, needs to be started.
+        needsStart = true;
     }
 
-    await wppFetch(`/api/${sessionName}/start-session`, token, {
-        method: "POST",
-        body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false, autoClose: 0 }),
-    });
+    if (needsStart) {
+        // Soft-close any lingering Chrome process before a fresh start.
+        // close-session is safe to call in any state; logout-session is NOT
+        // (it throws when called while Chrome is in QR state).
+        try {
+            await wppFetch(`/api/${sessionName}/close-session`, token, {
+                method: "POST",
+            });
+        } catch {
+            // Session may not exist yet — safe to ignore.
+        }
+
+        await wppFetch(`/api/${sessionName}/start-session`, token, {
+            method: "POST",
+            body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false, autoClose: 0 }),
+        });
+    }
 
     return token;
 }
@@ -192,15 +214,12 @@ export async function getWahaStatus(
     token: string,
 ): Promise<WahaSession> {
     try {
-        const res = await wppFetch(
-            `/api/${sessionName}/check-connection-session`,
-            token,
-        );
+        // Use status-session (returns {status: string}) rather than
+        // check-connection-session (returns {status: boolean}) — the boolean
+        // form throws when passed to .toLowerCase(), making every call return FAILED.
+        const res = await wppFetch(`/api/${sessionName}/status-session`, token);
         const json = (await res.json()) as WppStatusResponse;
-
-        const rawStatus = (json.status ?? "").toLowerCase();
-        const isConnected = rawStatus === "connected" || rawStatus === "true";
-
+        const isConnected = json.status === "CONNECTED";
         return {
             name: sessionName,
             status: isConnected ? "CONNECTED" : "DISCONNECTED",
