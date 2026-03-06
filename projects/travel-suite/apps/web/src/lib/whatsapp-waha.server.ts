@@ -7,7 +7,7 @@ import "server-only";
 // ---------------------------------------------------------------------------
 
 const WAHA_URL = process.env.WAHA_URL;
-const WAHA_API_KEY = process.env.WAHA_API_KEY;
+const WAHA_API_KEY = process.env.WHATSAPP_API_KEY;
 
 // ---------------------------------------------------------------------------
 // Types
