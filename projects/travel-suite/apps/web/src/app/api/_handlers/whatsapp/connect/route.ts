@@ -37,7 +37,8 @@ export async function POST() {
 
         const { organization_id: orgId } = profile;
         const sessionName = sessionNameFromOrgId(orgId);
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha`;
+        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
+        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha${webhookSecret ? `?secret=${encodeURIComponent(webhookSecret)}` : ""}`;
 
         // Returns WPPConnect Bearer token — must be stored for subsequent calls
         const token = await createWahaSession(orgId, webhookUrl);

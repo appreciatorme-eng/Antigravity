@@ -135,23 +135,20 @@ export async function createWahaSession(
     const sessionName = sessionNameFromOrgId(orgId);
     const token = await generateSessionToken(sessionName);
 
+    // Always logout first — clears stale Chrome state and saved session data.
+    // Without this, a crashed previous session stays registered in WPPConnect and
+    // start-session returns 400 (already exists), leaving Chrome in a dead state
+    // where qrcode-session never returns a QR.
     try {
-        await wppFetch(`/api/${sessionName}/start-session`, token, {
-            method: "POST",
-            body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false, autoClose: 0 }),
-        });
-    } catch (err) {
-        // 400 / 409 / 422 = session already started or exists — treat as success
-        if (
-            err instanceof Error &&
-            (err.message.includes("400") ||
-                err.message.includes("409") ||
-                err.message.includes("422"))
-        ) {
-            return token;
-        }
-        throw err;
+        await wppFetch(`/api/${sessionName}/logout-session`, token, { method: "POST" });
+    } catch {
+        // Session may not exist yet — safe to ignore
     }
+
+    await wppFetch(`/api/${sessionName}/start-session`, token, {
+        method: "POST",
+        body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false, autoClose: 0 }),
+    });
 
     return token;
 }
