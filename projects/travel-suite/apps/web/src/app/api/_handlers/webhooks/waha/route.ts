@@ -1,13 +1,17 @@
 /* ------------------------------------------------------------------
- * WAHA inbound webhook — handles session.status and message events.
+ * WPPConnect inbound webhook — handles onStateChange and onMessage events.
  *
- * POST: Process WAHA events (session lifecycle + incoming messages).
+ * POST: Process WPPConnect events (session lifecycle + incoming messages).
  *
- * Security: HMAC-SHA256 via X-Webhook-Hmac header (no "sha256=" prefix).
- * In dev without WAHA_WEBHOOK_SECRET the check is skipped (logged warning).
+ * Security: shared secret in ?secret= query param (WPPConnect has no HMAC).
+ * Set WPPCONNECT_WEBHOOK_SECRET on Vercel. Skip check if not set (dev only).
+ *
+ * WPPConnect event shape:
+ *   { event: "onStateChange", session: "org_xxx", token: "...", response: "CONNECTED" }
+ *   { event: "onMessage",     session: "org_xxx", token: "...", response: { id, from, body, type } }
  * ------------------------------------------------------------------ */
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac } from "crypto";
 
 import { NextResponse } from "next/server";
 
@@ -18,41 +22,19 @@ import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp
 // Types
 // ---------------------------------------------------------------------------
 
-interface WahaStatusPayload {
-    readonly status: string;
-    readonly me?: {
-        readonly id: string;
-        readonly pushName: string;
-    };
-}
-
-interface WahaMessagePayload {
+interface WppMessageResponse {
     readonly id: string;
     readonly from: string;
     readonly body?: string;
     readonly type?: string;
+    readonly isGroupMsg?: boolean;
 }
 
-interface WahaEvent {
+interface WppEvent {
     readonly event: string;
     readonly session: string;
-    readonly payload: WahaStatusPayload | WahaMessagePayload;
-}
-
-// ---------------------------------------------------------------------------
-// HMAC verification (WAHA sends X-Webhook-Hmac, no "sha256=" prefix)
-// ---------------------------------------------------------------------------
-
-function verifyWahaHmac(
-    rawBody: string,
-    hmacHeader: string,
-    secret: string,
-): boolean {
-    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-    const providedBuffer = Buffer.from(hmacHeader, "utf8");
-    const expectedBuffer = Buffer.from(expected, "utf8");
-    if (providedBuffer.length !== expectedBuffer.length) return false;
-    return timingSafeEqual(providedBuffer, expectedBuffer);
+    readonly token?: string;
+    readonly response: string | WppMessageResponse | unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,65 +49,90 @@ export async function POST(request: Request): Promise<Response> {
         return NextResponse.json({ ok: true });
     }
 
-    const secret = process.env.WAHA_WEBHOOK_SECRET;
-    const hmacHeader = request.headers.get("X-Webhook-Hmac");
-
-    if (secret) {
-        if (!hmacHeader) {
-            console.warn("[webhooks/waha] Missing X-Webhook-Hmac header");
-            return new Response("Unauthorized", { status: 401 });
-        }
-        if (!verifyWahaHmac(rawBody, hmacHeader, secret)) {
-            console.warn("[webhooks/waha] HMAC mismatch — rejecting event");
+    // Secret verification via ?secret= query param (WPPConnect has no built-in HMAC)
+    const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
+    if (webhookSecret) {
+        const url = new URL(request.url);
+        const providedSecret = url.searchParams.get("secret");
+        if (providedSecret !== webhookSecret) {
+            console.warn("[webhooks/waha] Invalid or missing ?secret= param");
             return new Response("Unauthorized", { status: 401 });
         }
     } else {
         console.warn(
-            "[webhooks/waha] WAHA_WEBHOOK_SECRET not set — skipping HMAC verification",
+            "[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not set — skipping verification",
         );
     }
 
-    let event: WahaEvent;
+    let event: WppEvent;
     try {
-        event = JSON.parse(rawBody) as WahaEvent;
+        event = JSON.parse(rawBody) as WppEvent;
     } catch {
         return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
     const admin = createAdminClient();
 
-    if (event.event === "session.status") {
-        const payload = event.payload as WahaStatusPayload;
+    // -----------------------------------------------------------------------
+    // onStateChange — session lifecycle (QR scanned, connected, disconnected)
+    // -----------------------------------------------------------------------
+    if (event.event === "onStateChange") {
+        const state = typeof event.response === "string" ? event.response : "";
 
-        if (payload.status === "WORKING" && payload.me) {
+        if (state === "CONNECTED") {
+            // Mark connected; phone_number is updated via DB poll or future onSession event
             await admin
                 .from("whatsapp_connections")
                 .update({
                     status: "connected",
-                    phone_number: "+" + payload.me.id,
-                    display_name: payload.me.pushName,
                     connected_at: new Date().toISOString(),
                 })
                 .eq("session_name", event.session);
         } else if (
-            payload.status === "STOPPED" ||
-            payload.status === "FAILED"
+            state === "DISCONNECTED" ||
+            state === "UNPAIRED" ||
+            state === "TIMEOUT"
         ) {
             await admin
                 .from("whatsapp_connections")
                 .update({ status: "disconnected" })
                 .eq("session_name", event.session);
         }
-    } else if (event.event === "message") {
-        const payload = event.payload as WahaMessagePayload;
+        // qrReadSuccess / PAIRING / STARTING → leave status as-is (still connecting)
+    }
 
-        if (payload.type !== "chat" || !payload.body) {
+    // -----------------------------------------------------------------------
+    // onSession — fires after QR scan with device info including phone number
+    // -----------------------------------------------------------------------
+    else if (event.event === "onSession") {
+        const resp = event.response as { id?: string; pushName?: string } | null;
+        if (resp?.id) {
+            const rawId = resp.id.replace(/@c\.us$/, "");
+            await admin
+                .from("whatsapp_connections")
+                .update({
+                    status: "connected",
+                    phone_number: "+" + rawId,
+                    display_name: resp.pushName ?? null,
+                    connected_at: new Date().toISOString(),
+                })
+                .eq("session_name", event.session);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // onMessage — incoming WhatsApp message
+    // -----------------------------------------------------------------------
+    else if (event.event === "onMessage") {
+        const payload = event.response as WppMessageResponse;
+
+        if (payload.isGroupMsg || payload.type !== "chat" || !payload.body) {
             return NextResponse.json({ ok: true });
         }
 
         const waId = payload.from.replace(/@c\.us$/, "");
         const senderPhone = "+" + waId;
-        const providerId = "waha_" + payload.id;
+        const providerId = "wpp_" + payload.id;
 
         const { count } = await admin
             .from("whatsapp_webhook_events")

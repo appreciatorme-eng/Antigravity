@@ -3705,6 +3705,7 @@ export type Database = {
           id: string
           organization_id: string
           session_name: string
+          session_token: string | null
           phone_number: string | null
           display_name: string | null
           status: string
@@ -3716,6 +3717,7 @@ export type Database = {
           id?: string
           organization_id: string
           session_name: string
+          session_token?: string | null
           phone_number?: string | null
           display_name?: string | null
           status?: string
@@ -3727,6 +3729,7 @@ export type Database = {
           id?: string
           organization_id?: string
           session_name?: string
+          session_token?: string | null
           phone_number?: string | null
           display_name?: string | null
           status?: string

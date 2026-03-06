@@ -1,5 +1,6 @@
 // POST /api/whatsapp/disconnect
-// Stops the WAHA session for the caller's org and marks the DB row disconnected.
+// Closes the WPPConnect session for the caller's org and marks the DB row disconnected.
+// Fetches session_token from DB for WPPConnect Bearer auth before closing.
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -33,10 +34,17 @@ export async function POST() {
         }
 
         const sessionName = sessionNameFromOrgId(profile.organization_id);
-
-        await disconnectWahaSession(sessionName);
-
         const admin = createAdminClient();
+
+        // Fetch token before updating the row
+        const { data: connection } = await admin
+            .from("whatsapp_connections")
+            .select("session_token")
+            .eq("organization_id", profile.organization_id)
+            .single();
+
+        await disconnectWahaSession(sessionName, connection?.session_token ?? undefined);
+
         await admin
             .from("whatsapp_connections")
             .update({
@@ -44,6 +52,7 @@ export async function POST() {
                 phone_number: null,
                 display_name: null,
                 connected_at: null,
+                session_token: null,
             })
             .eq("organization_id", profile.organization_id);
 

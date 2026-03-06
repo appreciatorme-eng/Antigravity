@@ -1,23 +1,24 @@
-// WAHA (WhatsApp HTTP API) client library — server-only.
-// Wraps all WAHA REST calls; callers never touch fetch directly.
+// WPPConnect (wppconnect-server) client — server-only.
+// Replaced WAHA Core (single-session only) with WPPConnect (unlimited sessions, free).
+// API reference: https://github.com/wppconnect-team/wppconnect-server
 import "server-only";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-const WAHA_URL = process.env.WAHA_URL;
-const WAHA_API_KEY = process.env.WHATSAPP_API_KEY;
+const WPPCONNECT_URL = process.env.WPPCONNECT_URL;
+const WPPCONNECT_SECRET_KEY = process.env.WHATSAPP_API_KEY;
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — exported so route handlers can type-check responses
 // ---------------------------------------------------------------------------
 
 export type WahaStatus =
+    | "CONNECTED"
+    | "DISCONNECTED"
     | "SCAN_QR_CODE"
     | "STARTING"
-    | "WORKING"
-    | "STOPPED"
     | "FAILED";
 
 export interface WahaSession {
@@ -29,10 +30,18 @@ export interface WahaSession {
     };
 }
 
-interface WahaQRResponse {
-    readonly value?: string;
-    readonly mime?: string;
-    readonly data?: string;
+interface WppTokenResponse {
+    readonly status?: string;
+    readonly token?: string;
+}
+
+interface WppQrResponse {
+    readonly qrcode?: string;
+    readonly status?: string;
+}
+
+interface WppStatusResponse {
+    readonly status?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,31 +53,35 @@ export function sessionNameFromOrgId(orgId: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Internal fetch helper
+// Internal fetch helper — attaches Bearer token when provided
 // ---------------------------------------------------------------------------
 
-async function wahaFetch(
+async function wppFetch(
     path: string,
+    token?: string,
     options?: RequestInit,
 ): Promise<Response> {
-    if (!WAHA_URL) throw new Error("WAHA_URL is not configured");
+    if (!WPPCONNECT_URL) throw new Error("WPPCONNECT_URL env var is not configured");
 
-    const base = WAHA_URL.replace(/\/$/, "");
+    const base = WPPCONNECT_URL.replace(/\/$/, "");
     const url = `${base}${path}`;
 
-    const extraHeaders: Record<string, string> = {};
-    if (WAHA_API_KEY) extraHeaders["X-Api-Key"] = WAHA_API_KEY;
-    if (options?.body) extraHeaders["Content-Type"] = "application/json";
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (options?.body) headers["Content-Type"] = "application/json";
 
     const res = await fetch(url, {
         ...options,
-        headers: { ...extraHeaders, ...(options?.headers as Record<string, string> | undefined) },
+        headers: {
+            ...headers,
+            ...(options?.headers as Record<string, string> | undefined),
+        },
     });
 
     if (!res.ok) {
         const text = await res.text().catch(() => "(no body)");
         throw new Error(
-            `WAHA ${options?.method ?? "GET"} ${path} → ${res.status}: ${text}`,
+            `WPPConnect ${options?.method ?? "GET"} ${path} → ${res.status}: ${text}`,
         );
     }
 
@@ -76,52 +89,82 @@ async function wahaFetch(
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Token management
 // ---------------------------------------------------------------------------
 
 /**
- * Create (or restart) a named WAHA session for an org.
- * Idempotent: swallows 422 (session already exists) silently.
- * Configures webhook with HMAC if WAHA_WEBHOOK_SECRET is set.
+ * Generate (or retrieve cached) a WPPConnect session token.
+ * Idempotent: WPPConnect returns the same token for an existing session.
+ */
+async function generateSessionToken(sessionName: string): Promise<string> {
+    if (!WPPCONNECT_SECRET_KEY) {
+        throw new Error("WHATSAPP_API_KEY env var is not configured");
+    }
+
+    const res = await wppFetch(
+        `/api/${sessionName}/${WPPCONNECT_SECRET_KEY}/generate-token`,
+        undefined,
+        { method: "POST" },
+    );
+
+    const json = (await res.json()) as WppTokenResponse;
+    if (!json.token) {
+        throw new Error(
+            `WPPConnect generate-token returned no token: ${JSON.stringify(json)}`,
+        );
+    }
+
+    return json.token;
+}
+
+// ---------------------------------------------------------------------------
+// Public API — same export names as the old WAHA library for easy refactoring
+// ---------------------------------------------------------------------------
+
+/**
+ * Create (or resume) a named WPPConnect session for an org.
+ * Returns the session Bearer token — caller MUST store it in whatsapp_connections.session_token.
+ * Idempotent: safe to call multiple times; existing sessions are reused.
+ *
+ * Changed from void → Promise<string> to return token for storage.
  */
 export async function createWahaSession(
     orgId: string,
     webhookUrl: string,
-): Promise<void> {
+): Promise<string> {
     const sessionName = sessionNameFromOrgId(orgId);
-    const webhookSecret = process.env.WAHA_WEBHOOK_SECRET;
-
-    const webhookConfig = {
-        url: webhookUrl,
-        events: ["session.status", "message"],
-        ...(webhookSecret ? { hmac: { key: webhookSecret } } : {}),
-    };
+    const token = await generateSessionToken(sessionName);
 
     try {
-        await wahaFetch("/api/sessions", {
+        await wppFetch(`/api/${sessionName}/start-session`, token, {
             method: "POST",
-            body: JSON.stringify({
-                name: sessionName,
-                start: true,
-                config: { webhooks: [webhookConfig] },
-            }),
+            body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false }),
         });
     } catch (err) {
-        if (err instanceof Error && err.message.includes("422")) return;
+        // 400 / 409 / 422 = session already started or exists — treat as success
+        if (
+            err instanceof Error &&
+            (err.message.includes("400") ||
+                err.message.includes("409") ||
+                err.message.includes("422"))
+        ) {
+            return token;
+        }
         throw err;
     }
+
+    return token;
 }
 
 /**
- * Fetch the current QR code for a session as a raw base64 PNG string.
- * Returns base64 without the "data:image/png;base64," prefix.
- * Throws if the session is not in SCAN_QR_CODE state.
+ * Fetch the current QR code as a raw base64 PNG string (without data: prefix).
+ * Returns empty string if QR is not yet ready.
  */
-export async function getWahaQR(sessionName: string): Promise<string> {
-    const res = await wahaFetch(`/api/${sessionName}/auth/qr`);
-    const json = (await res.json()) as WahaQRResponse;
+export async function getWahaQR(sessionName: string, token: string): Promise<string> {
+    const res = await wppFetch(`/api/${sessionName}/qrcode-session`, token);
+    const json = (await res.json()) as WppQrResponse;
 
-    const dataUrl = json.data ?? "";
+    const dataUrl = json.qrcode ?? "";
     if (dataUrl.includes(",")) {
         return dataUrl.split(",")[1] ?? "";
     }
@@ -130,13 +173,32 @@ export async function getWahaQR(sessionName: string): Promise<string> {
 }
 
 /**
- * Fetch the current session object from WAHA.
+ * Fetch the current session status mapped to a WahaSession-compatible shape.
+ * CONNECTED / DISCONNECTED are the two main states; FAILED on network error.
+ * During QR phase, WPPConnect reports "Disconnected" — callers should check
+ * the DB row status to distinguish "connecting" from "disconnected".
  */
 export async function getWahaStatus(
     sessionName: string,
+    token: string,
 ): Promise<WahaSession> {
-    const res = await wahaFetch(`/api/sessions/${sessionName}`);
-    return res.json() as Promise<WahaSession>;
+    try {
+        const res = await wppFetch(
+            `/api/${sessionName}/check-connection-session`,
+            token,
+        );
+        const json = (await res.json()) as WppStatusResponse;
+
+        const rawStatus = (json.status ?? "").toLowerCase();
+        const isConnected = rawStatus === "connected" || rawStatus === "true";
+
+        return {
+            name: sessionName,
+            status: isConnected ? "CONNECTED" : "DISCONNECTED",
+        };
+    } catch {
+        return { name: sessionName, status: "FAILED" };
+    }
 }
 
 /**
@@ -145,26 +207,29 @@ export async function getWahaStatus(
  */
 export async function sendWahaText(
     sessionName: string,
+    token: string,
     phoneDigits: string,
     text: string,
 ): Promise<void> {
     const digits = phoneDigits.replace(/\D/g, "");
-    const chatId = `${digits}@c.us`;
+    const phone = `${digits}@c.us`;
 
-    await wahaFetch("/api/sendText", {
+    await wppFetch(`/api/${sessionName}/send-message`, token, {
         method: "POST",
-        body: JSON.stringify({ session: sessionName, chatId, text }),
+        body: JSON.stringify({ phone, isGroup: false, message: text }),
     });
 }
 
 /**
- * Stop a WAHA session. Errors are swallowed — session may already be gone.
+ * Close a WPPConnect session. Errors are swallowed — session may already be gone.
  */
 export async function disconnectWahaSession(
     sessionName: string,
+    token?: string,
 ): Promise<void> {
+    if (!token) return;
     try {
-        await wahaFetch(`/api/sessions/${sessionName}`, { method: "DELETE" });
+        await wppFetch(`/api/${sessionName}/close-session`, token, { method: "POST" });
     } catch {
         // Intentional: safe to ignore — session already gone
     }

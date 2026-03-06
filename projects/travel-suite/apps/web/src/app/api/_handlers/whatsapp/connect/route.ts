@@ -1,6 +1,7 @@
 // POST /api/whatsapp/connect
-// Creates (or resumes) a WAHA session for the caller's org, returns the QR code.
+// Creates (or resumes) a WPPConnect session for the caller's org, returns the QR code.
 // Idempotent: safe to call multiple times — existing sessions are reused.
+// createWahaSession now returns a Bearer token stored in whatsapp_connections.
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -38,7 +39,8 @@ export async function POST() {
         const sessionName = sessionNameFromOrgId(orgId);
         const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha`;
 
-        await createWahaSession(orgId, webhookUrl);
+        // Returns WPPConnect Bearer token — must be stored for subsequent calls
+        const token = await createWahaSession(orgId, webhookUrl);
 
         const admin = createAdminClient();
         await admin.from("whatsapp_connections").upsert(
@@ -46,11 +48,12 @@ export async function POST() {
                 organization_id: orgId,
                 session_name: sessionName,
                 status: "connecting",
+                session_token: token,
             },
             { onConflict: "organization_id" },
         );
 
-        const qrBase64 = await getWahaQR(sessionName);
+        const qrBase64 = await getWahaQR(sessionName, token);
 
         return NextResponse.json({ success: true, sessionName, qrBase64 });
     } catch (error) {

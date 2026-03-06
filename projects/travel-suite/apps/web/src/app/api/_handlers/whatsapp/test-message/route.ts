@@ -1,5 +1,6 @@
 // POST /api/whatsapp/test-message
 // Sends a test message from the connected session to the operator's own number.
+// Fetches session_token from DB — WPPConnect requires Bearer auth for send-message.
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -32,14 +33,15 @@ export async function POST() {
         const admin = createAdminClient();
         const { data: connection } = await admin
             .from("whatsapp_connections")
-            .select("session_name, phone_number, status")
+            .select("session_name, session_token, phone_number, status")
             .eq("organization_id", profile.organization_id)
             .single();
 
         if (
             !connection ||
             connection.status !== "connected" ||
-            !connection.phone_number
+            !connection.phone_number ||
+            !connection.session_token
         ) {
             return NextResponse.json(
                 { error: "WhatsApp not connected" },
@@ -50,13 +52,14 @@ export async function POST() {
         const phoneDigits = connection.phone_number.replace(/\D/g, "");
         await sendWahaText(
             connection.session_name,
+            connection.session_token,
             phoneDigits,
             "✅ TravelSuite test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
         );
 
         return NextResponse.json({
             success: true,
-            messageId: "waha_" + Date.now(),
+            messageId: "wpp_" + Date.now(),
         });
     } catch (error) {
         console.error("[whatsapp/test-message] error:", error);
