@@ -69,6 +69,17 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
+# Patch WPPConnect library default: autoClose: 60000 → 0 (disabled).
+# The wppconnect-server NEVER forwards autoClose from req.body to create(),
+# so the library always uses its compiled default of 60 s — killing sessions
+# before Chrome finishes loading WhatsApp Web (~79 s on shared-cpu-1x).
+RUN node -e "const fs=require('fs'); \
+  const p='./node_modules/@wppconnect-team/wppconnect/dist/config/create-config.js'; \
+  let c=fs.readFileSync(p,'utf8'); \
+  c=c.replace('autoClose: 60000', 'autoClose: 0'); \
+  fs.writeFileSync(p,c); \
+  console.log('create-config.js patched:', !c.includes('autoClose: 60000'));"
+
 # Create dirs WPPConnect writes session/token data to
 RUN mkdir -p userDataDir tokens
 
