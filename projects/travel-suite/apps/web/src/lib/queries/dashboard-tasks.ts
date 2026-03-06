@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { DEMO_TASKS, DEMO_SCHEDULE } from "@/lib/demo/data";
 
 // ---------------------------------------------------------------------------
 // Types matching the API responses
@@ -152,9 +154,15 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 // ---------------------------------------------------------------------------
 
 export function useDashboardTasks() {
+  const { isDemoMode } = useDemoMode();
+
   return useQuery<DashboardTasksResponse, Error, DashboardTasksResponse>({
-    queryKey: dashboardTasksKeys.all,
+    queryKey: [...dashboardTasksKeys.all, isDemoMode ? "demo" : "live"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return { tasks: DEMO_TASKS, completedTasks: [] };
+      }
+
       const headers = await getAuthHeaders();
       const response = await fetch("/api/dashboard/tasks", { headers });
 
@@ -175,9 +183,15 @@ export function useDashboardTasks() {
 // ---------------------------------------------------------------------------
 
 export function useDashboardSchedule() {
+  const { isDemoMode } = useDemoMode();
+
   return useQuery<DashboardScheduleResponse>({
-    queryKey: dashboardTasksKeys.schedule,
+    queryKey: [...dashboardTasksKeys.schedule, isDemoMode ? "demo" : "live"],
     queryFn: async () => {
+      if (isDemoMode) {
+        return { events: DEMO_SCHEDULE, completedCount: 1 };
+      }
+
       const headers = await getAuthHeaders();
       const response = await fetch("/api/dashboard/schedule", { headers });
 

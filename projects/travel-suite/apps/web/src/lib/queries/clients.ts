@@ -1,5 +1,10 @@
+// Client query hooks — useClients returns DEMO_CLIENTS when isDemoMode is on.
+// Cache key includes isDemoMode segment for instant isolation on toggle.
+
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { DEMO_CLIENTS } from '@/lib/demo/data';
 
 export const clientsKeys = {
     all: ['clients'] as const,
@@ -10,9 +15,15 @@ export const clientsKeys = {
 };
 
 export function useClients() {
+    const { isDemoMode } = useDemoMode();
+
     return useQuery({
-        queryKey: clientsKeys.lists(),
+        queryKey: [...clientsKeys.lists(), isDemoMode ? 'demo' : 'live'],
         queryFn: async () => {
+            if (isDemoMode) {
+                return DEMO_CLIENTS;
+            }
+
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
 

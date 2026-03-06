@@ -1,5 +1,10 @@
+// Trip query hooks — useTrips returns DEMO_TRIPS when isDemoMode is on.
+// Cache key includes isDemoMode segment for instant isolation on toggle.
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { DEMO_TRIPS } from '@/lib/demo/data';
 
 export const tripsKeys = {
     all: ['trips'] as const,
@@ -10,9 +15,28 @@ export const tripsKeys = {
 };
 
 export function useTrips(statusFilter: string = 'all', searchQuery: string = '') {
+    const { isDemoMode } = useDemoMode();
+
     return useQuery({
-        queryKey: [...tripsKeys.lists(), { statusFilter, searchQuery }],
+        queryKey: [...tripsKeys.lists(), { statusFilter, searchQuery, mode: isDemoMode ? 'demo' : 'live' }],
         queryFn: async () => {
+            if (isDemoMode) {
+                let results = DEMO_TRIPS;
+                if (statusFilter !== 'all') {
+                    results = results.filter((t) => t.status === statusFilter);
+                }
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    results = results.filter(
+                        (t) =>
+                            (t.itineraries?.trip_title ?? '').toLowerCase().includes(q) ||
+                            t.destination.toLowerCase().includes(q) ||
+                            (t.profiles?.full_name ?? '').toLowerCase().includes(q),
+                    );
+                }
+                return results;
+            }
+
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
 
@@ -51,7 +75,6 @@ export function useTrip(id: string) {
     });
 }
 
-// Example mutation for optimistic updates
 export function useUpdateTripStatus() {
     const queryClient = useQueryClient();
 
@@ -69,17 +92,9 @@ export function useUpdateTripStatus() {
             return data;
         },
         onMutate: async ({ id, status }) => {
-            // Cancel any outgoing refetches so they don't overwrite our optimistic update
-            // await queryClient.cancelQueries({ queryKey: tripsKeys.all });
-
-            // Snapshot the previous value (if needed for rollback)
-            // const previousTrips = queryClient.getQueryData(tripsKeys.lists());
-
-            // Return a context object with the snapshotted value
             return { id, status };
         },
         onSettled: () => {
-            // Invalidate the query to fetch the latest state
             queryClient.invalidateQueries({ queryKey: tripsKeys.all });
         },
     });

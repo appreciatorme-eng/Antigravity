@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import {
   MessageSquare,
   Zap,
@@ -45,20 +46,22 @@ interface BroadcastState {
 
 // ─── BROADCAST TAB ────────────────────────────────────────────────────────────
 
-const TARGET_OPTIONS: Array<{
-  key: BroadcastTarget;
-  label: string;
-  count: number;
-  icon: React.ReactNode;
-  color: string;
-}> = [
-  { key: 'all_clients', label: 'All Clients', count: 248, icon: <Users className="w-4 h-4" />, color: '#6366f1' },
-  { key: 'all_drivers', label: 'All Drivers', count: 32, icon: <Car className="w-4 h-4" />, color: '#f59e0b' },
-  { key: 'active_trips', label: 'Active Trips', count: 14, icon: <CalendarCheck className="w-4 h-4" />, color: '#25D366' },
-  { key: 'custom', label: 'Custom List', count: 0, icon: <List className="w-4 h-4" />, color: '#ec4899' },
-];
-
 function BroadcastTab() {
+  const { isDemoMode } = useDemoMode();
+
+  const TARGET_OPTIONS = useMemo<Array<{
+    key: BroadcastTarget;
+    label: string;
+    count: number;
+    icon: React.ReactNode;
+    color: string;
+  }>>(() => [
+    { key: 'all_clients', label: 'All Clients', count: isDemoMode ? 12 : 0, icon: <Users className="w-4 h-4" />, color: '#6366f1' },
+    { key: 'all_drivers', label: 'All Drivers', count: isDemoMode ? 4 : 0, icon: <Car className="w-4 h-4" />, color: '#f59e0b' },
+    { key: 'active_trips', label: 'Active Trips', count: isDemoMode ? 6 : 0, icon: <CalendarCheck className="w-4 h-4" />, color: '#25D366' },
+    { key: 'custom', label: 'Custom List', count: 0, icon: <List className="w-4 h-4" />, color: '#ec4899' },
+  ], [isDemoMode]);
+
   const [state, setState] = useState<BroadcastState>({
     target: 'all_clients',
     selectedTemplate: null,

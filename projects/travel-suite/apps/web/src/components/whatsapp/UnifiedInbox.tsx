@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import {
   Search,
   X,
@@ -411,8 +412,17 @@ interface UnifiedInboxProps {
 
 export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
   const router = useRouter();
-  const [conversations, setConversations] = useState<ChannelConversation[]>(ALL_MOCK_CONVERSATIONS);
-  const [selectedId, setSelectedId] = useState<string | null>('conv_1');
+  const { isDemoMode } = useDemoMode();
+  const [conversations, setConversations] = useState<ChannelConversation[]>(
+    isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
+    setConversations(isDemoMode ? ALL_MOCK_CONVERSATIONS : []);
+    setSelectedId(isDemoMode ? 'conv_1' : null);
+  }, [isDemoMode]);
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
@@ -625,9 +635,19 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         {/* List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {filteredAndSorted.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 gap-2">
-              <Search className="w-8 h-8 text-slate-700" />
-              <p className="text-xs text-slate-600">No conversations found</p>
+            <div className="flex flex-col items-center justify-center h-40 gap-2 px-4 text-center">
+              <MessageCircle className="w-8 h-8 text-slate-700" />
+              {isDemoMode ? (
+                <p className="text-xs text-slate-600">No conversations match your filter</p>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-400 font-medium">No messages yet</p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Connect your WhatsApp Business account to see messages here.{' '}
+                    <a href="/settings" className="text-[#25D366] underline underline-offset-2">Learn how →</a>
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             filteredAndSorted.map((conv) => (

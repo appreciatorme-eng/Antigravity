@@ -1,5 +1,10 @@
+// Proposal query hooks — useProposals returns DEMO_PROPOSALS when isDemoMode is on.
+// Cache key includes isDemoMode segment for instant isolation on toggle.
+
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { DEMO_PROPOSALS } from '@/lib/demo/data';
 
 export const proposalsKeys = {
     all: ['proposals'] as const,
@@ -10,9 +15,18 @@ export const proposalsKeys = {
 };
 
 export function useProposals(statusFilter: string = 'all') {
+    const { isDemoMode } = useDemoMode();
+
     return useQuery({
-        queryKey: proposalsKeys.list(statusFilter),
+        queryKey: [...proposalsKeys.list(statusFilter), isDemoMode ? 'demo' : 'live'],
         queryFn: async () => {
+            if (isDemoMode) {
+                if (statusFilter === 'all') {
+                    return DEMO_PROPOSALS;
+                }
+                return DEMO_PROPOSALS.filter((p) => p.status === statusFilter);
+            }
+
             const supabase = createClient();
 
             const { data: { user } } = await supabase.auth.getUser();

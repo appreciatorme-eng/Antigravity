@@ -1,5 +1,8 @@
 "use client";
 
+// NotificationBell — shows demo notifications when isDemoMode is ON, empty when OFF.
+// DEMO_NOTIFICATIONS imported from demo data; no live DB reads here.
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +17,8 @@ import {
   CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { DEMO_NOTIFICATIONS } from "@/lib/demo/data";
 
 interface Notification {
   id: string;
@@ -24,54 +29,6 @@ interface Notification {
   read: boolean;
   href: string;
 }
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    type: "lead",
-    title: "New Lead from WhatsApp",
-    description: "Bhai Rajasthan 5 din ka kya rate hai? Family of 4",
-    timeLabel: "5 min ago",
-    read: false,
-    href: "/inbox",
-  },
-  {
-    id: "n2",
-    type: "payment",
-    title: "Payment Received",
-    description: "₹45,000 from Sharma Family — Kerala Trip",
-    timeLabel: "12 min ago",
-    read: false,
-    href: "/admin/billing",
-  },
-  {
-    id: "n3",
-    type: "driver",
-    title: "Driver Location Alert",
-    description: "Suresh is 20 min late for Jaipur pickup",
-    timeLabel: "30 min ago",
-    read: false,
-    href: "/drivers",
-  },
-  {
-    id: "n4",
-    type: "trip",
-    title: "Trip Starting Tomorrow",
-    description: "Mehta Family — Manali Snow Trip (4 pax)",
-    timeLabel: "1 hr ago",
-    read: true,
-    href: "/trips",
-  },
-  {
-    id: "n5",
-    type: "message",
-    title: "Client Message",
-    description: "Mrs. Sharma: Change pickup time to 6:30 AM",
-    timeLabel: "2 hrs ago",
-    read: true,
-    href: "/inbox",
-  },
-];
 
 const TYPE_CONFIG: Record<
   Notification["type"],
@@ -89,9 +46,15 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ className }: NotificationBellProps) {
+  const { isDemoMode } = useDemoMode();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
+    setNotifications(isDemoMode ? (DEMO_NOTIFICATIONS as Notification[]) : []);
+  }, [isDemoMode]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -177,56 +140,64 @@ export function NotificationBell({ className }: NotificationBellProps) {
             </div>
 
             <div className="overflow-y-auto max-h-[380px] divide-y divide-slate-100 dark:divide-slate-800">
-              {notifications.map((notif) => {
-                const config = TYPE_CONFIG[notif.type];
-                const TypeIcon = config.icon;
-                return (
-                  <Link
-                    key={notif.id}
-                    href={notif.href}
-                    onClick={() => handleMarkRead(notif.id)}
-                  >
-                    <div
-                      className={cn(
-                        "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50",
-                        !notif.read && "bg-primary/[0.03]",
-                      )}
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                  <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No notifications yet</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Enable Demo Mode to preview alerts</p>
+                </div>
+              ) : (
+                notifications.map((notif) => {
+                  const config = TYPE_CONFIG[notif.type];
+                  const TypeIcon = config.icon;
+                  return (
+                    <Link
+                      key={notif.id}
+                      href={notif.href}
+                      onClick={() => handleMarkRead(notif.id)}
                     >
                       <div
                         className={cn(
-                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
-                          config.bg,
+                          "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50",
+                          !notif.read && "bg-primary/[0.03]",
                         )}
                       >
-                        <TypeIcon className={cn("w-4 h-4", config.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p
-                            className={cn(
-                              "text-xs font-bold truncate",
-                              notif.read
-                                ? "text-slate-500"
-                                : "text-slate-900 dark:text-white",
-                            )}
-                          >
-                            {notif.title}
-                          </p>
-                          {!notif.read && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                        <div
+                          className={cn(
+                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                            config.bg,
                           )}
+                        >
+                          <TypeIcon className={cn("w-4 h-4", config.color)} />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
-                          {notif.description}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p
+                              className={cn(
+                                "text-xs font-bold truncate",
+                                notif.read
+                                  ? "text-slate-500"
+                                  : "text-slate-900 dark:text-white",
+                              )}
+                            >
+                              {notif.title}
+                            </p>
+                            {!notif.read && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-1">
+                            {notif.description}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0 mt-1">
+                          {notif.timeLabel}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-medium shrink-0 mt-1">
-                        {notif.timeLabel}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
+                    </Link>
+                  );
+                })
+              )}
             </div>
 
             <div className="p-3 border-t border-slate-100 dark:border-slate-800">
