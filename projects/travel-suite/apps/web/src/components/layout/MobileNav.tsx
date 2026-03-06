@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import { MessageCircle, Briefcase, Users, TrendingUp, MoreHorizontal, X, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -102,6 +103,7 @@ function BadgeDot({
 
 export default function MobileNav() {
     const pathname = usePathname();
+    const { isDemoMode } = useDemoMode();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
     // Close drawer on route change
@@ -212,7 +214,7 @@ export default function MobileNav() {
                     {PRIMARY_ITEMS.map((item) => {
                         const isActive = isActivePath(item.href);
                         const Icon = item.icon;
-                        const badgeCount = item.badge ?? 0;
+                        const badgeCount = isDemoMode ? (item.badge ?? 0) : 0;
                         const badgeColor = item.badgeColor ?? "#00d084";
 
                         return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -236,6 +237,7 @@ function NavItemRow({
 export default function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
+    const { isDemoMode } = useDemoMode();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
         () =>
@@ -334,7 +336,7 @@ export default function Sidebar({ className }: SidebarProps) {
                     {PRIMARY_ITEMS.map((item) => (
                         <NavItemRow
                             key={item.href}
-                            item={item}
+                            item={{ ...item, badge: isDemoMode ? (item.badge ?? 0) : 0 }}
                             isActive={isActivePath(item.href)}
                             isCollapsed={isCollapsed}
                         />
