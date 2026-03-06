@@ -117,7 +117,7 @@ export function WhatsAppConnectModal({
         return () => clearTimeout(timer);
     }, [isDemoMode, step, onConnected]);
 
-    // Real mode: refresh QR every 15 s (QR expires in ~60 s)
+    // Real mode: poll for QR every 5 s until received (Chrome needs ~20-30 s to boot)
     useEffect(() => {
         if (isDemoMode || step !== "scanning" || !sessionName) return;
 
@@ -132,7 +132,7 @@ export function WhatsAppConnectModal({
             } catch (err) {
                 console.error("Error refreshing WhatsApp QR:", err);
             }
-        }, 15000);
+        }, 5000);
 
         return () => clearInterval(interval);
     }, [isDemoMode, step, sessionName]);
