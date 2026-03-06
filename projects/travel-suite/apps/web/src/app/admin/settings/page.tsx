@@ -163,10 +163,129 @@ export default function SettingsPage() {
         }
     };
 
-    // Other integration state
+    // Integration connection state
     const [isGmailConnected, setIsGmailConnected] = useState(false);
+    const [isLinkedInConnected, setIsLinkedInConnected] = useState(false);
+    const [isInstagramConnected, setIsInstagramConnected] = useState(false);
+    const [isTripAdvisorConnected, setIsTripAdvisorConnected] = useState(false);
+    const [tripAdvisorName, setTripAdvisorName] = useState('');
+    const [tripAdvisorLocationInput, setTripAdvisorLocationInput] = useState('');
+    const [showTripAdvisorInput, setShowTripAdvisorInput] = useState(false);
+    const [isTripAdvisorConnecting, setIsTripAdvisorConnecting] = useState(false);
+    const [isPlacesEnabled, setIsPlacesEnabled] = useState(false);
+    const [isPlacesActivating, setIsPlacesActivating] = useState(false);
     const [upiId, setUpiId] = useState('');
     const [isUpiSaved, setIsUpiSaved] = useState(false);
+    const [isUpiSaving, setIsUpiSaving] = useState(false);
+
+    // Load all integration statuses on mount (parallel)
+    useEffect(() => {
+        void (async () => {
+            const [{ data: connections }, upiRes, placesRes] = await Promise.all([
+                supabase
+                    .from('social_connections')
+                    .select('platform')
+                    .in('platform', ['google', 'linkedin', 'instagram', 'facebook']),
+                fetch('/api/settings/upi'),
+                fetch('/api/integrations/places'),
+            ]);
+
+            if (connections) {
+                const platforms = new Set(connections.map((c: { platform: string }) => c.platform));
+                setIsGmailConnected(platforms.has('google'));
+                setIsLinkedInConnected(platforms.has('linkedin'));
+                setIsInstagramConnected(platforms.has('instagram') || platforms.has('facebook'));
+            }
+
+            if (upiRes.ok) {
+                const upiData = (await upiRes.json()) as { upiId?: string | null };
+                if (upiData.upiId) {
+                    setUpiId(upiData.upiId);
+                    setIsUpiSaved(true);
+                }
+            }
+
+            if (placesRes.ok) {
+                const placesData = (await placesRes.json()) as { enabled?: boolean };
+                setIsPlacesEnabled(placesData.enabled ?? false);
+            }
+
+            const { data: orgSettings } = await supabase
+                .from('organization_settings')
+                .select('tripadvisor_location_id')
+                .maybeSingle();
+            if (orgSettings?.tripadvisor_location_id) {
+                setIsTripAdvisorConnected(true);
+            }
+        })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleConnectTripAdvisor = async () => {
+        if (!tripAdvisorLocationInput.trim()) return;
+        setIsTripAdvisorConnecting(true);
+        try {
+            const res = await fetch('/api/integrations/tripadvisor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ locationId: tripAdvisorLocationInput.trim() }),
+            });
+            const data = (await res.json()) as { success?: boolean; locationName?: string; error?: string };
+            if (!res.ok || !data.success) {
+                toast({ title: 'TripAdvisor connect failed', description: data.error ?? 'Invalid location ID', variant: 'error' });
+                return;
+            }
+            setIsTripAdvisorConnected(true);
+            setTripAdvisorName(data.locationName ?? '');
+            setShowTripAdvisorInput(false);
+            toast({ title: 'TripAdvisor connected', description: data.locationName ?? '', variant: 'success' });
+        } catch {
+            toast({ title: 'TripAdvisor connect failed', variant: 'error' });
+        } finally {
+            setIsTripAdvisorConnecting(false);
+        }
+    };
+
+    const handleActivatePlaces = async () => {
+        setIsPlacesActivating(true);
+        try {
+            const res = await fetch('/api/integrations/places', { method: 'POST' });
+            if (!res.ok) {
+                const data = (await res.json()) as { error?: string };
+                toast({ title: 'Activation failed', description: data.error ?? 'Could not activate Google Places', variant: 'error' });
+                return;
+            }
+            setIsPlacesEnabled(true);
+            toast({ title: 'Google Places activated', variant: 'success' });
+        } catch {
+            toast({ title: 'Activation failed', variant: 'error' });
+        } finally {
+            setIsPlacesActivating(false);
+        }
+    };
+
+    const handleSaveUpi = async () => {
+        if (!upiId.trim()) return;
+        setIsUpiSaving(true);
+        try {
+            const res = await fetch('/api/settings/upi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ upiId: upiId.trim() }),
+            });
+            const data = (await res.json()) as { success?: boolean; error?: string };
+            if (!res.ok || !data.success) {
+                toast({ title: 'Save failed', description: data.error ?? 'Invalid UPI ID', variant: 'error' });
+                return;
+            }
+            setIsUpiSaved(true);
+            toast({ title: 'UPI ID saved', description: `Payment links will use ${upiId}`, variant: 'success' });
+        } catch {
+            toast({ title: 'Failed to save UPI ID', variant: 'error' });
+        } finally {
+            setIsUpiSaving(false);
+        }
+    };
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -651,10 +770,7 @@ export default function SettingsPage() {
                                         type="button"
                                         variant={isGmailConnected ? 'outline' : 'secondary'}
                                         size="sm"
-                                        onClick={() => {
-                                            setIsGmailConnected(true);
-                                            toast({ title: 'Gmail connected', description: 'Email conversations will appear in your inbox.', variant: 'success' });
-                                        }}
+                                        onClick={() => { if (!isGmailConnected) window.location.href = '/api/social/oauth/google'; }}
                                         className={cn('text-xs shrink-0', isGmailConnected ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
                                     >
                                         {isGmailConnected ? 'Connected ✓' : 'Connect Google'}
@@ -693,15 +809,11 @@ export default function SettingsPage() {
                                         type="button"
                                         variant="primary"
                                         size="sm"
-                                        onClick={() => {
-                                            if (upiId.trim()) {
-                                                setIsUpiSaved(true);
-                                                toast({ title: 'UPI ID saved', description: `Payment links will use ${upiId}`, variant: 'success' });
-                                            }
-                                        }}
+                                        onClick={() => { void handleSaveUpi(); }}
+                                        disabled={isUpiSaving || !upiId.trim()}
                                         className="text-xs px-5"
                                     >
-                                        Save
+                                        {isUpiSaving ? 'Saving…' : 'Save'}
                                     </GlassButton>
                                 </div>
                             </div>
@@ -719,17 +831,62 @@ export default function SettingsPage() {
                                         <h4 className="font-bold text-secondary dark:text-white text-sm">Google Business</h4>
                                         <p className="text-xs text-text-muted mt-1">Respond to reviews and manage your listing from the dashboard.</p>
                                     </div>
-                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                    <GlassButton
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => { window.location.href = '/api/social/oauth/google'; }}
+                                        className="text-xs w-full mt-auto"
+                                    >
+                                        Connect
+                                    </GlassButton>
                                 </div>
                                 <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                                         <MapPin className="w-4 h-4 text-emerald-400" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-secondary dark:text-white text-sm">TripAdvisor</h4>
-                                        <p className="text-xs text-text-muted mt-1">Sync your listing and pull review data into the reputation tab.</p>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">
+                                            TripAdvisor
+                                            {isTripAdvisorConnected && (
+                                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                            )}
+                                        </h4>
+                                        <p className="text-xs text-text-muted mt-1">
+                                            {isTripAdvisorConnected && tripAdvisorName ? tripAdvisorName : 'Sync your listing and pull review data into the reputation tab.'}
+                                        </p>
                                     </div>
-                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                    {!isTripAdvisorConnected && showTripAdvisorInput ? (
+                                        <div className="flex flex-col gap-2">
+                                            <input
+                                                type="text"
+                                                value={tripAdvisorLocationInput}
+                                                onChange={(e) => setTripAdvisorLocationInput(e.target.value)}
+                                                placeholder="Location ID (e.g. 297606)"
+                                                className="w-full bg-white/8 border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                            <GlassButton
+                                                type="button"
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => { void handleConnectTripAdvisor(); }}
+                                                disabled={isTripAdvisorConnecting || !tripAdvisorLocationInput.trim()}
+                                                className="text-xs w-full"
+                                            >
+                                                {isTripAdvisorConnecting ? 'Connecting…' : 'Save Location ID'}
+                                            </GlassButton>
+                                        </div>
+                                    ) : (
+                                        <GlassButton
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => { if (!isTripAdvisorConnected) setShowTripAdvisorInput(true); }}
+                                            className={cn('text-xs w-full mt-auto', isTripAdvisorConnected ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
+                                        >
+                                            {isTripAdvisorConnected ? 'Connected ✓' : 'Connect'}
+                                        </GlassButton>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -743,20 +900,46 @@ export default function SettingsPage() {
                                         <Instagram className="w-4 h-4 text-pink-400" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-secondary dark:text-white text-sm">Instagram</h4>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">
+                                            Instagram
+                                            {isInstagramConnected && (
+                                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                            )}
+                                        </h4>
                                         <p className="text-xs text-text-muted mt-1">Import leads from DMs and comments into the CRM automatically.</p>
                                     </div>
-                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                    <GlassButton
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => { if (!isInstagramConnected) window.location.href = '/api/social/oauth/facebook'; }}
+                                        className={cn('text-xs w-full mt-auto', isInstagramConnected ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
+                                    >
+                                        {isInstagramConnected ? 'Connected ✓' : 'Connect'}
+                                    </GlassButton>
                                 </div>
                                 <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
                                     <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
                                         <Linkedin className="w-4 h-4 text-blue-400" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-secondary dark:text-white text-sm">LinkedIn</h4>
+                                        <h4 className="font-bold text-secondary dark:text-white text-sm">
+                                            LinkedIn
+                                            {isLinkedInConnected && (
+                                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                            )}
+                                        </h4>
                                         <p className="text-xs text-text-muted mt-1">Sync corporate travel enquiries and company contacts.</p>
                                     </div>
-                                    <GlassButton type="button" variant="outline" size="sm" className="text-xs w-full mt-auto">Connect</GlassButton>
+                                    <GlassButton
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => { if (!isLinkedInConnected) window.location.href = '/api/social/oauth/linkedin'; }}
+                                        className={cn('text-xs w-full mt-auto', isLinkedInConnected ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
+                                    >
+                                        {isLinkedInConnected ? 'Connected ✓' : 'Connect'}
+                                    </GlassButton>
                                 </div>
                             </div>
                         </div>
@@ -769,10 +952,24 @@ export default function SettingsPage() {
                                     <Globe className="w-4 h-4 text-blue-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-secondary dark:text-white text-sm">Google Places & Maps</h4>
+                                    <h4 className="font-bold text-secondary dark:text-white text-sm">
+                                        Google Places & Maps
+                                        {isPlacesEnabled && (
+                                            <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Active</span>
+                                        )}
+                                    </h4>
                                     <p className="text-xs text-text-muted mt-0.5">Geospatial mapping and point-of-interest data for itinerary building.</p>
                                 </div>
-                                <GlassButton type="button" variant="outline" size="sm" className="text-xs shrink-0">Connect</GlassButton>
+                                <GlassButton
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { if (!isPlacesEnabled) void handleActivatePlaces(); }}
+                                    disabled={isPlacesActivating || isPlacesEnabled}
+                                    className={cn('text-xs shrink-0', isPlacesEnabled ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : '')}
+                                >
+                                    {isPlacesActivating ? 'Activating…' : isPlacesEnabled ? 'Active ✓' : 'Activate'}
+                                </GlassButton>
                             </div>
                         </div>
                     </div>

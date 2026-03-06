@@ -2133,6 +2133,41 @@ export type Database = {
           },
         ]
       }
+      organization_settings: {
+        Row: {
+          google_places_enabled: boolean
+          organization_id: string
+          tripadvisor_connected_at: string | null
+          tripadvisor_location_id: string | null
+          updated_at: string
+          upi_id: string | null
+        }
+        Insert: {
+          google_places_enabled?: boolean
+          organization_id: string
+          tripadvisor_connected_at?: string | null
+          tripadvisor_location_id?: string | null
+          updated_at?: string
+          upi_id?: string | null
+        }
+        Update: {
+          google_places_enabled?: boolean
+          organization_id?: string
+          tripadvisor_connected_at?: string | null
+          tripadvisor_location_id?: string | null
+          updated_at?: string
+          upi_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_events: {
         Row: {
           amount: number | null
