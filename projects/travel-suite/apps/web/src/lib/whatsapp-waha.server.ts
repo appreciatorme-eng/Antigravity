@@ -138,7 +138,7 @@ export async function createWahaSession(
     try {
         await wppFetch(`/api/${sessionName}/start-session`, token, {
             method: "POST",
-            body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false }),
+            body: JSON.stringify({ webhook: webhookUrl, waitQrCode: false, autoClose: 0 }),
         });
     } catch (err) {
         // 400 / 409 / 422 = session already started or exists — treat as success
