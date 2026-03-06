@@ -281,8 +281,12 @@ export function WhatsAppConnectModal({
                                                 unoptimized
                                             />
                                         ) : (
-                                            <div className="w-[200px] h-[200px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-sm flex items-center justify-center">
-                                                <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+                                            <div className="w-[200px] h-[200px] bg-slate-100 dark:bg-slate-800 rounded-sm flex flex-col items-center justify-center gap-3 px-4 text-center">
+                                                <Loader2 className="w-8 h-8 text-[#25D366] animate-spin shrink-0" />
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                                                    Starting WhatsApp bridge…<br />
+                                                    <span className="text-slate-400 dark:text-slate-500">First load takes ~60–90 s</span>
+                                                </p>
                                             </div>
                                         )}
                                     </div>
