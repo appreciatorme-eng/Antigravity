@@ -5,6 +5,11 @@
 ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_role_check;
 
+-- Normalize any legacy role values that would violate the new constraint
+UPDATE public.profiles
+SET role = 'admin'
+WHERE role NOT IN ('admin', 'super_admin', 'manager', 'driver', 'staff');
+
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_check
   CHECK (role IN ('admin', 'super_admin', 'manager', 'driver', 'staff'));

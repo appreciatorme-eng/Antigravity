@@ -13,18 +13,25 @@ CREATE TABLE IF NOT EXISTS public.organization_settings (
 ALTER TABLE public.organization_settings ENABLE ROW LEVEL SECURITY;
 
 -- Org admins can read their own settings row
-CREATE POLICY "org_settings_select" ON public.organization_settings
-    FOR SELECT USING (is_org_admin(organization_id));
+DO $$ BEGIN
+  CREATE POLICY "org_settings_select" ON public.organization_settings
+      FOR SELECT USING (is_org_admin(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Org admins can insert their own settings row
-CREATE POLICY "org_settings_insert" ON public.organization_settings
-    FOR INSERT WITH CHECK (is_org_admin(organization_id));
+DO $$ BEGIN
+  CREATE POLICY "org_settings_insert" ON public.organization_settings
+      FOR INSERT WITH CHECK (is_org_admin(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Org admins can update their own settings row
-CREATE POLICY "org_settings_update" ON public.organization_settings
-    FOR UPDATE USING (is_org_admin(organization_id));
+DO $$ BEGIN
+  CREATE POLICY "org_settings_update" ON public.organization_settings
+      FOR UPDATE USING (is_org_admin(organization_id));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Auto-update updated_at on every write
+DROP TRIGGER IF EXISTS trg_organization_settings_updated_at ON public.organization_settings;
 CREATE TRIGGER trg_organization_settings_updated_at
     BEFORE UPDATE ON public.organization_settings
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

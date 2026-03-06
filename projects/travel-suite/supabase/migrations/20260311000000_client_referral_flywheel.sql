@@ -33,23 +33,27 @@ CREATE TABLE IF NOT EXISTS public.client_referral_events (
 ALTER TABLE public.client_referral_incentives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.client_referral_events     ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "org_admin_access_referral_incentives"
-  ON public.client_referral_incentives
-  FOR ALL
-  USING (
-    organization_id = (
-      SELECT organization_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "org_admin_access_referral_incentives"
+    ON public.client_referral_incentives
+    FOR ALL
+    USING (
+      organization_id = (
+        SELECT organization_id FROM public.profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "org_admin_access_referral_events"
-  ON public.client_referral_events
-  FOR ALL
-  USING (
-    organization_id = (
-      SELECT organization_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "org_admin_access_referral_events"
+    ON public.client_referral_events
+    FOR ALL
+    USING (
+      organization_id = (
+        SELECT organization_id FROM public.profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_client_referral_incentives_org
   ON public.client_referral_incentives (organization_id, status, created_at DESC);

@@ -13,24 +13,26 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 
 ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "super_admin_all_platform_settings"
-  ON platform_settings
-  FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
+DO $$ BEGIN
+  CREATE POLICY "super_admin_all_platform_settings"
+    ON platform_settings
+    FOR ALL
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
     )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
-    )
-  );
+    WITH CHECK (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Seed default settings
 INSERT INTO platform_settings (key, value, description) VALUES
@@ -79,24 +81,26 @@ CREATE TABLE IF NOT EXISTS platform_announcements (
 
 ALTER TABLE platform_announcements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "super_admin_all_platform_announcements"
-  ON platform_announcements
-  FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
+DO $$ BEGIN
+  CREATE POLICY "super_admin_all_platform_announcements"
+    ON platform_announcements
+    FOR ALL
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
     )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
-    )
-  );
+    WITH CHECK (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_platform_announcements_status
   ON platform_announcements (status, created_at DESC);
@@ -117,24 +121,26 @@ CREATE TABLE IF NOT EXISTS platform_audit_log (
 
 ALTER TABLE platform_audit_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "super_admin_all_platform_audit_log"
-  ON platform_audit_log
-  FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
+DO $$ BEGIN
+  CREATE POLICY "super_admin_all_platform_audit_log"
+    ON platform_audit_log
+    FOR ALL
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
     )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-        AND profiles.role = 'super_admin'
-    )
-  );
+    WITH CHECK (
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid()
+          AND profiles.role = 'super_admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_platform_audit_log_created_at
   ON platform_audit_log (created_at DESC);

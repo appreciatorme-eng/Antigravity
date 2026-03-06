@@ -58,16 +58,18 @@ CREATE INDEX IF NOT EXISTS idx_lead_events_org_created
 
 ALTER TABLE public.lead_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage lead events"
-  ON public.lead_events FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid()
-        AND p.organization_id = lead_events.organization_id
-        AND p.role IN ('admin', 'super_admin', 'manager')
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins manage lead events"
+    ON public.lead_events FOR ALL
+    USING (
+      EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.organization_id = lead_events.organization_id
+          AND p.role IN ('admin', 'super_admin', 'manager')
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─────────────────────────────────────────────────────────────
 -- 3. conversion_events — funnel instrumentation
@@ -101,13 +103,15 @@ CREATE INDEX IF NOT EXISTS idx_conversion_events_lead_id
 
 ALTER TABLE public.conversion_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage conversion events"
-  ON public.conversion_events FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid()
-        AND p.organization_id = conversion_events.organization_id
-        AND p.role IN ('admin', 'super_admin', 'manager')
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "Admins manage conversion events"
+    ON public.conversion_events FOR ALL
+    USING (
+      EXISTS (
+        SELECT 1 FROM public.profiles p
+        WHERE p.id = auth.uid()
+          AND p.organization_id = conversion_events.organization_id
+          AND p.role IN ('admin', 'super_admin', 'manager')
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

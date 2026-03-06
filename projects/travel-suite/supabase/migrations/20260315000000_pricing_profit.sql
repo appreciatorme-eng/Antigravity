@@ -57,64 +57,80 @@ END $$;
 -- RLS: trip_service_costs
 ALTER TABLE trip_service_costs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "trip_service_costs_select" ON trip_service_costs
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "trip_service_costs_select" ON trip_service_costs
+    FOR SELECT USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "trip_service_costs_insert" ON trip_service_costs
-  FOR INSERT WITH CHECK (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "trip_service_costs_insert" ON trip_service_costs
+    FOR INSERT WITH CHECK (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "trip_service_costs_update" ON trip_service_costs
-  FOR UPDATE USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "trip_service_costs_update" ON trip_service_costs
+    FOR UPDATE USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "trip_service_costs_delete" ON trip_service_costs
-  FOR DELETE USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "trip_service_costs_delete" ON trip_service_costs
+    FOR DELETE USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- RLS: monthly_overhead_expenses
 ALTER TABLE monthly_overhead_expenses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "monthly_overhead_expenses_select" ON monthly_overhead_expenses
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "monthly_overhead_expenses_select" ON monthly_overhead_expenses
+    FOR SELECT USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "monthly_overhead_expenses_insert" ON monthly_overhead_expenses
-  FOR INSERT WITH CHECK (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "monthly_overhead_expenses_insert" ON monthly_overhead_expenses
+    FOR INSERT WITH CHECK (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "monthly_overhead_expenses_update" ON monthly_overhead_expenses
-  FOR UPDATE USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "monthly_overhead_expenses_update" ON monthly_overhead_expenses
+    FOR UPDATE USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "monthly_overhead_expenses_delete" ON monthly_overhead_expenses
-  FOR DELETE USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "monthly_overhead_expenses_delete" ON monthly_overhead_expenses
+    FOR DELETE USING (
+      organization_id IN (
+        SELECT organization_id FROM profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- updated_at triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -125,10 +141,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS set_trip_service_costs_updated_at ON trip_service_costs;
 CREATE TRIGGER set_trip_service_costs_updated_at
   BEFORE UPDATE ON trip_service_costs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_monthly_overhead_expenses_updated_at ON monthly_overhead_expenses;
 CREATE TRIGGER set_monthly_overhead_expenses_updated_at
   BEFORE UPDATE ON monthly_overhead_expenses
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

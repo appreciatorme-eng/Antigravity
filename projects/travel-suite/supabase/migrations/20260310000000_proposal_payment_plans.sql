@@ -35,23 +35,27 @@ CREATE TABLE IF NOT EXISTS public.proposal_payment_milestones (
 ALTER TABLE public.proposal_payment_plans    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.proposal_payment_milestones ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "org_admin_access_payment_plans"
-  ON public.proposal_payment_plans
-  FOR ALL
-  USING (
-    organization_id = (
-      SELECT organization_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "org_admin_access_payment_plans"
+    ON public.proposal_payment_plans
+    FOR ALL
+    USING (
+      organization_id = (
+        SELECT organization_id FROM public.profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "org_admin_access_payment_milestones"
-  ON public.proposal_payment_milestones
-  FOR ALL
-  USING (
-    organization_id = (
-      SELECT organization_id FROM public.profiles WHERE id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "org_admin_access_payment_milestones"
+    ON public.proposal_payment_milestones
+    FOR ALL
+    USING (
+      organization_id = (
+        SELECT organization_id FROM public.profiles WHERE id = auth.uid()
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_payment_milestones_plan_id
   ON public.proposal_payment_milestones (plan_id);
