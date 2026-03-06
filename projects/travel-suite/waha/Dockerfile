@@ -26,8 +26,9 @@ RUN npm run build
 RUN node -e "const fs=require('fs'); \
   let c=fs.readFileSync('./dist/config.js','utf8'); \
   c=c.replace(\"secretKey: 'THISISMYSECURETOKEN'\", \"secretKey: (process.env.SECRET_KEY||'THISISMYSECURETOKEN')\"); \
+  c=c.replace('startAllSession: true', 'startAllSession: true, deleteSessionOnLogout: true'); \
   fs.writeFileSync('./dist/config.js',c); \
-  console.log('config.js patched:', c.includes('process.env.SECRET_KEY'));"
+  console.log('config.js patched:', c.includes('process.env.SECRET_KEY') && c.includes('deleteSessionOnLogout'));"
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
 FROM node:22-slim
