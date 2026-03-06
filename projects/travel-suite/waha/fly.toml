@@ -33,5 +33,6 @@ primary_region = "bom"  # Mumbai — lowest latency for Indian operators
     soft_limit = 200
 
 [[vm]]
-  size   = "shared-cpu-1x"
+  size  = "shared-cpu-1x"
   memory = "1gb"   # Handles ~20 concurrent org sessions comfortably
+  count = 1        # Single machine — sessions stored on local disk, HA would split state
