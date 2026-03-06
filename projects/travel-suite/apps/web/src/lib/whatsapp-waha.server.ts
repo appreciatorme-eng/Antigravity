@@ -156,11 +156,23 @@ export async function createWahaSession(
 /**
  * Fetch the current QR code as a raw base64 PNG string (without data: prefix).
  * Returns empty string if QR is not yet ready.
+ *
+ * WPPConnect getQrCode sends a raw PNG binary (Content-Type: image/png) when
+ * the QR is ready, and a JSON status object when the session is still booting.
+ * Callers that assume JSON will get a parse error and silently miss the QR.
  */
 export async function getWahaQR(sessionName: string, token: string): Promise<string> {
     const res = await wppFetch(`/api/${sessionName}/qrcode-session`, token);
-    const json = (await res.json()) as WppQrResponse;
 
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("image/png") || contentType.includes("image/jpeg")) {
+        // QR is ready — response is raw PNG binary, convert to base64
+        const buf = await res.arrayBuffer();
+        return Buffer.from(buf).toString("base64");
+    }
+
+    // Not ready yet — response is a JSON status object
+    const json = (await res.json()) as WppQrResponse;
     const dataUrl = json.qrcode ?? "";
     if (dataUrl.includes(",")) {
         return dataUrl.split(",")[1] ?? "";
