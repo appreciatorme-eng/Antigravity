@@ -33,7 +33,7 @@
 | S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | RESOLVED | `1b7c40e` |
 | S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | RESOLVED | `87d10b9` |
 | P-01 | HIGH | `apps/web/src/app/api/_handlers/notifications/process-queue/route.ts:287-494` | Serialized N+1 queue processing | OPEN | - |
-| P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | OPEN | - |
+| P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | RESOLVED | `063814b` |
 | P-03 | MEDIUM | `ActionPickerModal.tsx` + `CanvasMode.tsx` | Oversized client islands | OPEN | - |
 | E-01 | HIGH | `34 route files` | No try/catch error handling | RESOLVED | `5c469e2` |
 | E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | `87d10b9` |
@@ -48,7 +48,7 @@
 | D-02 | MEDIUM | `apps/mobile/pubspec.yaml` | Major drift: `firebase_core`, `firebase_messaging`, `flutter_local_notifications` | OPEN | - |
 | D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | RESOLVED | `427e7e4` |
 | M-01 | LOW | `apps/mobile/lib/core/config/supabase_config.dart:3-5` | Mobile ships hardcoded Supabase values + localhost fallback | OPEN | - |
-| M-02 | LOW | `apps/agents/api/dependencies.py:30-32` | Unused dev-auth bypass code in tree | OPEN | - |
+| M-02 | LOW | `apps/agents/api/dependencies.py:30-32` | Unused dev-auth bypass code in tree | RESOLVED | `5e4d7e2` |
 | M-03 | LOW | `apps/mobile/lib/features/trips/.../traveler_dashboard.dart:385-387+1948-1950` | Placeholder localhost fallback in mobile | OPEN | - |
 
 ## Fix Log
@@ -69,3 +69,5 @@
 - 2026-03-07 08:35:00 CST - Cleared the remaining `apps/web` `npm audit --audit-level=moderate` failures with a lockfile refresh and re-verified `tsc`, `build`, and `audit`.
 - 2026-03-07 08:55:00 CST - Broke the final planner and WhatsApp UI circular imports by extracting shared planner and WhatsApp types/helpers into standalone modules; `madge` now reports zero cycles.
 - 2026-03-07 09:20:00 CST - Wrapped the 34 remaining unguarded API route handlers in `try/catch` blocks with server-side logging and generic 500 responses; `tsc` and `build` remained green after the bulk update.
+- 2026-03-07 09:30:00 CST - Added a partial index for pending reputation sentiment-analysis jobs to avoid full scans on `reputation_reviews` during batch processing.
+- 2026-03-07 09:35:00 CST - Removed the fail-open agents authentication fallback that returned `dev_user` when Supabase auth configuration was absent; the agents pytest suite still passed.
