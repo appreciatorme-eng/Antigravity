@@ -383,6 +383,7 @@ export default function CreateProposalPage() {
       });
 
       const payload = await response.json().catch(() => ({}));
+      const payloadData = payload?.data ?? null;
       if (!response.ok) {
         const message = formatFeatureLimitError(
           payload,
@@ -406,20 +407,27 @@ export default function CreateProposalPage() {
         return;
       }
 
-      if (payload?.limit) {
+      if (payloadData?.limit) {
         setProposalLimit({
-          allowed: Boolean(payload.limit.allowed),
-          used: Number(payload.limit.used || 0),
-          limit: payload.limit.limit === null ? null : Number(payload.limit.limit || 0),
+          allowed: Boolean(payloadData.limit.allowed),
+          used: Number(payloadData.limit.used || 0),
+          limit:
+            payloadData.limit.limit === null
+              ? null
+              : Number(payloadData.limit.limit || 0),
           remaining:
-            payload.limit.remaining === null ? null : Number(payload.limit.remaining || 0),
-          resetAt: payload.limit.resetAt || null,
-          tier: String(payload.limit.tier || 'free'),
-          upgradePlan: payload.limit.upgradePlan ? String(payload.limit.upgradePlan) : null,
+            payloadData.limit.remaining === null
+              ? null
+              : Number(payloadData.limit.remaining || 0),
+          resetAt: payloadData.limit.resetAt || null,
+          tier: String(payloadData.limit.tier || 'free'),
+          upgradePlan: payloadData.limit.upgradePlan
+            ? String(payloadData.limit.upgradePlan)
+            : null,
         });
       }
 
-      const proposalId = String(payload?.proposalId || '').trim();
+      const proposalId = String(payloadData?.proposalId || '').trim();
       if (!proposalId) {
         setError('Proposal created but no proposal id was returned.');
         return;

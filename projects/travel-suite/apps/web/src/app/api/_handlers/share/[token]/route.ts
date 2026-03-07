@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { apiError, apiSuccess } from '@/lib/api/response';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
@@ -102,7 +103,7 @@ export async function GET(
     const { token: rawToken } = await params;
     const token = sanitizeShareToken(rawToken);
     if (!token) {
-      return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+      return apiError('Invalid share token', 400);
     }
 
     const limiter = await enforceRateLimit({
@@ -113,10 +114,7 @@ export async function GET(
     });
     if (!limiter.success) {
       const retryAfterSeconds = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
-      const response = NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429 }
-      );
+      const response = apiError("Too many requests. Please try again later.", 429);
       response.headers.set("retry-after", String(retryAfterSeconds));
       return withRateLimitHeaders(response, limiter);
     }
@@ -129,16 +127,16 @@ export async function GET(
 
     const share = shareData;
     if (shareError || !share) {
-      return NextResponse.json({ error: 'Share not found' }, { status: 404 });
+      return apiError('Share not found', 404);
     }
 
     if (isExpired(share.expires_at || null)) {
-      return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+      return apiError('Share link has expired', 410);
     }
 
-    return NextResponse.json(buildPublicShareResponse(share as ShareRow));
+    return apiSuccess(buildPublicShareResponse(share as ShareRow));
   } catch {
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    return apiError('Internal Error', 500);
   }
 }
 
@@ -150,7 +148,7 @@ export async function POST(
     const { token: rawToken } = await params;
     const token = sanitizeShareToken(rawToken);
     if (!token) {
-      return NextResponse.json({ error: 'Invalid share token' }, { status: 400 });
+      return apiError('Invalid share token', 400);
     }
 
     const limiter = await enforceRateLimit({
@@ -161,10 +159,7 @@ export async function POST(
     });
     if (!limiter.success) {
       const retryAfterSeconds = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
-      const response = NextResponse.json(
-        { error: "Too many actions. Please try again later." },
-        { status: 429 }
-      );
+      const response = apiError("Too many actions. Please try again later.", 429);
       response.headers.set("retry-after", String(retryAfterSeconds));
       return withRateLimitHeaders(response, limiter);
     }
@@ -172,7 +167,7 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const parsed = ShareActionSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid action payload' }, { status: 400 });
+      return apiError('Invalid action payload', 400);
     }
 
     const { action } = parsed.data;
@@ -197,11 +192,11 @@ export async function POST(
 
     const share = shareData;
     if (shareError || !share) {
-      return NextResponse.json({ error: 'Share not found' }, { status: 404 });
+      return apiError('Share not found', 404);
     }
 
     if (isExpired(share.expires_at || null)) {
-      return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+      return apiError('Share link has expired', 410);
     }
 
     if (action === 'comment') {
@@ -212,7 +207,7 @@ export async function POST(
       });
 
       if (!comment) {
-        return NextResponse.json({ error: 'Comment is required' }, { status: 400 });
+        return apiError('Comment is required', 400);
       }
 
       const existingComments = parseCommentArray(share.client_comments);
@@ -234,15 +229,15 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
-      return NextResponse.json({ success: true, comment: newComment });
+      return apiSuccess({ success: true, comment: newComment });
     }
 
     if (action === 'approve') {
       const name = sanitizeText(parsed.data.name, { maxLength: 120 });
       if (!name) {
-        return NextResponse.json({ error: 'Approver name is required' }, { status: 400 });
+        return apiError('Approver name is required', 400);
       }
 
       const approveUpdatePayload = {
@@ -257,10 +252,10 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
 
-      return NextResponse.json({ success: true });
+      return apiSuccess({ success: true });
     }
 
     if (action === 'save_preferences') {
@@ -277,16 +272,16 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
 
-      return NextResponse.json({ success: true, preferences });
+      return apiSuccess({ success: true, preferences });
     }
 
     if (action === 'add_wishlist') {
       const item = sanitizeText(parsed.data.wishlist_item, { maxLength: 160 });
       if (!item) {
-        return NextResponse.json({ error: 'Wishlist item is required' }, { status: 400 });
+        return apiError('Wishlist item is required', 400);
       }
 
       const existingWishlist = parseStringArray(
@@ -309,16 +304,16 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
 
-      return NextResponse.json({ success: true, wishlist_items: updatedWishlist });
+      return apiSuccess({ success: true, wishlist_items: updatedWishlist });
     }
 
     if (action === 'remove_wishlist') {
       const item = sanitizeText(parsed.data.wishlist_item, { maxLength: 160 });
       if (!item) {
-        return NextResponse.json({ error: 'Wishlist item is required' }, { status: 400 });
+        return apiError('Wishlist item is required', 400);
       }
 
       const existingWishlist = parseStringArray(
@@ -339,10 +334,10 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
 
-      return NextResponse.json({ success: true, wishlist_items: updatedWishlist });
+      return apiSuccess({ success: true, wishlist_items: updatedWishlist });
     }
 
     if (action === 'mark_offline_ready') {
@@ -355,14 +350,14 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 400 });
+        return apiError(updateError.message, 400);
       }
 
-      return NextResponse.json({ success: true, offline_pack_ready: true });
+      return apiSuccess({ success: true, offline_pack_ready: true });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return apiError('Invalid action', 400);
   } catch {
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    return apiError('Internal Error', 500);
   }
 }
