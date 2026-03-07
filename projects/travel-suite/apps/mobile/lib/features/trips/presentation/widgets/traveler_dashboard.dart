@@ -382,10 +382,7 @@ class _TravelerDashboardState extends State<TravelerDashboard> {
       final token = row['share_token']?.toString();
       if (token == null || token.isEmpty) return;
 
-      final baseUrl = SupabaseConfig.apiBaseUrl.contains('your-app.vercel.app')
-          ? 'http://10.0.2.2:3000'
-          : SupabaseConfig.apiBaseUrl;
-      await _openUrl('$baseUrl/live/$token');
+      await _openUrl('${SupabaseConfig.apiBaseUrl}/live/$token');
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1944,12 +1941,8 @@ class _DocumentsCard extends StatelessWidget {
     final id = itineraryId;
     if (id == null || id.isEmpty) return;
 
-    // Fallback for local dev on Android emulator.
-    final base = SupabaseConfig.apiBaseUrl.contains('your-app.vercel.app')
-        ? 'http://10.0.2.2:3000'
-        : SupabaseConfig.apiBaseUrl;
     await launchUrl(
-      Uri.parse('$base/trips/$id'),
+      Uri.parse('${SupabaseConfig.apiBaseUrl}/trips/$id'),
       mode: LaunchMode.externalApplication,
     );
   }
