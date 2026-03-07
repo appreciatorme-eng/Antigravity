@@ -45,7 +45,7 @@
 | C-04 | MEDIUM | `payments:144`, `share/[token]:238`, `notifications:525` | Inconsistent API response envelopes | OPEN | - |
 | D-01 | HIGH | `apps/agents/requirements.txt` | FastAPI/Starlette CVE-2025-54121 + CVE-2025-62727 | OPEN | - |
 | D-02 | MEDIUM | `apps/mobile/pubspec.yaml` | Major drift: `firebase_core`, `firebase_messaging`, `flutter_local_notifications` | OPEN | - |
-| D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | OPEN | - |
+| D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | RESOLVED | pending |
 | M-01 | LOW | `apps/mobile/lib/core/config/supabase_config.dart:3-5` | Mobile ships hardcoded Supabase values + localhost fallback | OPEN | - |
 | M-02 | LOW | `apps/agents/api/dependencies.py:30-32` | Unused dev-auth bypass code in tree | OPEN | - |
 | M-03 | LOW | `apps/mobile/lib/features/trips/.../traveler_dashboard.dart:385-387+1948-1950` | Placeholder localhost fallback in mobile | OPEN | - |
@@ -62,3 +62,4 @@
 - 2026-03-07 01:40:40 CST - Phase 8 sanitized client-facing error output on the client profile page and the flagged proposal, WhatsApp, and notification queue APIs.
 - 2026-03-07 01:40:40 CST - Phase 9 added retry and timeout controls to Google OAuth/userinfo calls and WPPConnect API requests.
 - 2026-03-07 01:40:40 CST - Phase 10 added per-user rate limiting to the highest-risk payment, proposal creation, and WhatsApp connect mutations; broader mutation throttling remains open under C-03.
+- 2026-03-07 01:40:40 CST - Phase 11 moved type-only packages out of runtime dependencies in the web app package manifest.
