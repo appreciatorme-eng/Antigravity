@@ -78,9 +78,10 @@ it("does not expose email or phone fields in the public response", async () => {
     params: Promise.resolve({ token: "valid-token" }),
   });
   const payload = await response.json();
+  const data = payload?.data ?? null;
 
-  expect(payload).not.toHaveProperty("email");
-  expect(payload).not.toHaveProperty("phone");
+  expect(data).not.toHaveProperty("email");
+  expect(data).not.toHaveProperty("phone");
   expect(JSON.stringify(payload)).not.toContain("hidden@example.com");
   expect(JSON.stringify(payload)).not.toContain("+15555550123");
 });
