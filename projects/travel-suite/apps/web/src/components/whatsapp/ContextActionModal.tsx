@@ -17,8 +17,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { ConversationContact } from './MessageThread';
 import { MOCK_TRIPS } from './ActionPickerModal';
+import type { ConversationContact } from './whatsapp.types';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -529,4 +529,3 @@ export function ContextActionModal({
     </AnimatePresence>
   );
 }
-

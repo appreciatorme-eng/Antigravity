@@ -23,11 +23,11 @@ import {
   Plane,
   Train,
 } from 'lucide-react';
-import type { ConversationContact } from './MessageThread';
 import {
   WHATSAPP_TEMPLATES,
   fillTemplate,
 } from '@/lib/whatsapp/india-templates';
+import type { ActionMode, ConversationContact } from './whatsapp.types';
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 
@@ -188,8 +188,6 @@ export const MOCK_DRIVERS: MockDriver[] = [
 ];
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
-
-export type ActionMode = 'itinerary' | 'payment' | 'driver' | 'location';
 
 interface ActionPickerModalProps {
   isOpen: boolean;

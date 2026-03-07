@@ -23,9 +23,9 @@ import {
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { CannedResponses } from './CannedResponses';
+import type { ActionMode, ConversationContact } from './whatsapp.types';
 import {
   ActionPickerModal,
-  type ActionMode,
 } from './ActionPickerModal';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
@@ -52,23 +52,6 @@ export interface Message {
   // document
   docName?: string;
   docSize?: string;
-}
-
-export type ContactType = 'client' | 'driver' | 'lead';
-
-export interface ConversationContact {
-  id: string;
-  name: string;
-  phone: string; // +91 XXXXX XXXXX
-  type: ContactType;
-  avatar?: string; // initials fallback
-  avatarColor?: string;
-  email?: string;
-  lastSeen?: string;
-  isOnline?: boolean;
-  trip?: string;
-  label?: 'lead' | 'payment' | 'location' | 'confirmed';
-  preferredLanguage?: 'en' | 'hi' | 'hinglish';
 }
 
 export interface Conversation {
