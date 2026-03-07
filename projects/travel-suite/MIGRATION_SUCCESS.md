@@ -4,7 +4,7 @@
 
 **Date**: February 20, 2024
 **Method**: Supabase CLI (`supabase db push`)
-**Project**: rtdjmykkgmirxdyfckqi (West US - Oregon)
+**Project**: your-project-ref (region placeholder)
 
 ### Migrations Applied
 

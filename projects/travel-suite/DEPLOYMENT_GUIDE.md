@@ -34,9 +34,9 @@
 
    **Required:**
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://rtdjmykkgmirxdyfckqi.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0ZGpteWtrZ21pcnhkeWZja3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTA5NjgsImV4cCI6MjA4NTk2Njk2OH0.vArwxnMCeyKDxjuY0nlOfmn5N6v20CJ9ZNOT1Q1jSpI
-   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0ZGpteWtrZ21pcnhkeWZja3FpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDM5MDk2OCwiZXhwIjoyMDg1OTY2OTY4fQ.otwvXBNKqELRy5kEscNEcp_D21ZQNk9xuIcj3JnbqVU
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
    NEXT_PUBLIC_APP_URL=https://your-app-name.vercel.app
    ```
 
@@ -169,7 +169,7 @@ const timeout = Promise.race([
 ### Production (.env.production)
 ```bash
 # Required
-NEXT_PUBLIC_SUPABASE_URL=https://rtdjmykkgmirxdyfckqi.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
 NEXT_PUBLIC_APP_URL=https://your-app.vercel.app

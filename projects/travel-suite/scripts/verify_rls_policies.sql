@@ -1,5 +1,5 @@
 -- Travel Suite RLS verification script
--- Run in Supabase SQL Editor (connected to project: rtdjmykkgmirxdyfckqi)
+-- Run in Supabase SQL Editor (connected to your project)
 
 -- 1) Ensure RLS is enabled on critical tables
 with expected_tables as (

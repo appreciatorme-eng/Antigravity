@@ -22,7 +22,7 @@ Updated `apps/web/src/lib/database.types.ts` to match the current Supabase schem
 
 ### 3. Backend Deployment
 - Verified existing migrations.
-- Redeployed `send-notification` Edge Function to Supabase project `rtdjmykkgmirxdyfckqi`.
+- Redeployed `send-notification` Edge Function to the configured Supabase project.
 
 ## Verification
 - `npx next build` passes successfully.

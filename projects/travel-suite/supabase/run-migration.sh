@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# Simple script to apply migration using psql
-# Reads the migration file and executes it
+# Simple script to apply migration using psql.
+# Reads the migration file and executes it against the configured Supabase project.
 
-SUPABASE_URL="https://rtdjmykkgmirxdyfckqi.supabase.co"
-SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0ZGpteWtrZ21pcnhkeWZja3FpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDM5MDk2OCwiZXhwIjoyMDg1OTY2OTY4fQ.otwvXBNKqELRy5kEscNEcp_D21ZQNk9xuIcj3JnbqVU"
+SUPABASE_URL="${SUPABASE_URL:?SUPABASE_URL must be set}"
+SUPABASE_KEY="${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY must be set}"
 
-# Extract the DB host from URL
-DB_HOST="db.rtdjmykkgmirxdyfckqi.supabase.co"
+# Extract the DB host from URL.
+DB_HOST="${SUPABASE_DB_HOST:-$(printf '%s\n' "$SUPABASE_URL" | sed -E 's#^https?://([^.]+)\.supabase\.co/?$#db.\1.supabase.co#')}"
 MIGRATION_FILE="$(dirname "$0")/migrations/20260218000000_itinerary_cache_system.sql"
 
 echo "🚀 Applying Itinerary Cache Migration..."
 echo "========================================"
 echo ""
-echo "Supabase Project: rtdjmykkgmirxdyfckqi"
+echo "Supabase URL: $SUPABASE_URL"
 echo "Migration File: $MIGRATION_FILE"
 echo ""
 
