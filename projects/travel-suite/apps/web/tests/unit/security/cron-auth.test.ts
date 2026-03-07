@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { afterEach, expect, it } from "vitest";
 import { authorizeCronRequest, isCronSecretBearer, isCronSecretHeader } from "../../../src/lib/security/cron-auth";
 
 const envKeys = [
@@ -29,7 +28,7 @@ afterEach(() => {
   resetCronEnv();
 });
 
-test("authorizeCronRequest fails closed when cron credentials are not configured", async () => {
+it("authorizeCronRequest fails closed when cron credentials are not configured", async () => {
   delete process.env.CRON_SECRET;
   delete process.env.NOTIFICATION_CRON_SECRET;
   delete process.env.CRON_SIGNING_SECRET;
@@ -38,12 +37,12 @@ test("authorizeCronRequest fails closed when cron credentials are not configured
   const request = new Request("http://localhost/api/social/process-queue", { method: "POST" });
   const result = await authorizeCronRequest(request);
 
-  assert.equal(result.authorized, false);
-  assert.equal(result.status, 401);
-  assert.equal(result.reason, "Unauthorized cron request");
+  expect(result.authorized).toBe(false);
+  expect(result.status).toBe(401);
+  expect(result.reason).toBe("Unauthorized cron request");
 });
 
-test("authorizeCronRequest accepts configured bearer secret", async () => {
+it("authorizeCronRequest accepts configured bearer secret", async () => {
   process.env.CRON_SECRET = "unit-cron-secret";
   delete process.env.NOTIFICATION_CRON_SECRET;
   delete process.env.CRON_SIGNING_SECRET;
@@ -59,12 +58,12 @@ test("authorizeCronRequest accepts configured bearer secret", async () => {
 
   const result = await authorizeCronRequest(request);
 
-  assert.equal(result.authorized, true);
-  assert.equal(result.status, 200);
-  assert.equal(result.mode, "bearer");
+  expect(result.authorized).toBe(true);
+  expect(result.status).toBe(200);
+  expect(result.mode).toBe("bearer");
 });
 
-test("authorizeCronRequest rejects invalid bearer secret", async () => {
+it("authorizeCronRequest rejects invalid bearer secret", async () => {
   process.env.CRON_SECRET = "unit-cron-secret";
   delete process.env.NOTIFICATION_CRON_SECRET;
 
@@ -78,14 +77,14 @@ test("authorizeCronRequest rejects invalid bearer secret", async () => {
 
   const result = await authorizeCronRequest(request);
 
-  assert.equal(result.authorized, false);
-  assert.equal(result.status, 401);
+  expect(result.authorized).toBe(false);
+  expect(result.status).toBe(401);
 });
 
-test("helpers validate cron bearer and header secrets", () => {
+it("helpers validate cron bearer and header secrets", () => {
   process.env.CRON_SECRET = "unit-secret";
-  assert.equal(isCronSecretBearer("Bearer unit-secret"), true);
-  assert.equal(isCronSecretBearer("Bearer wrong"), false);
-  assert.equal(isCronSecretHeader("unit-secret"), true);
-  assert.equal(isCronSecretHeader("wrong"), false);
+  expect(isCronSecretBearer("Bearer unit-secret")).toBe(true);
+  expect(isCronSecretBearer("Bearer wrong")).toBe(false);
+  expect(isCronSecretHeader("unit-secret")).toBe(true);
+  expect(isCronSecretHeader("wrong")).toBe(false);
 });

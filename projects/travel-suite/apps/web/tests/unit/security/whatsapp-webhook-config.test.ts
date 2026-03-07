@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { afterEach, expect, it } from "vitest";
 import { isUnsignedWebhookAllowed } from "../../../src/lib/security/whatsapp-webhook-config";
 
 const originalNodeEnv = process.env.NODE_ENV;
@@ -19,20 +18,20 @@ afterEach(() => {
   }
 });
 
-test("isUnsignedWebhookAllowed is always false in production", () => {
+it("isUnsignedWebhookAllowed is always false in production", () => {
   process.env.NODE_ENV = "production";
   process.env.WHATSAPP_ALLOW_UNSIGNED_WEBHOOK = "true";
-  assert.equal(isUnsignedWebhookAllowed(), false);
+  expect(isUnsignedWebhookAllowed()).toBe(false);
 });
 
-test("isUnsignedWebhookAllowed allows unsigned payloads only in non-production when enabled", () => {
+it("isUnsignedWebhookAllowed allows unsigned payloads only in non-production when enabled", () => {
   process.env.NODE_ENV = "development";
   process.env.WHATSAPP_ALLOW_UNSIGNED_WEBHOOK = "true";
-  assert.equal(isUnsignedWebhookAllowed(), true);
+  expect(isUnsignedWebhookAllowed()).toBe(true);
 });
 
-test("isUnsignedWebhookAllowed defaults to strict mode in non-production", () => {
+it("isUnsignedWebhookAllowed defaults to strict mode in non-production", () => {
   process.env.NODE_ENV = "development";
   delete process.env.WHATSAPP_ALLOW_UNSIGNED_WEBHOOK;
-  assert.equal(isUnsignedWebhookAllowed(), false);
+  expect(isUnsignedWebhookAllowed()).toBe(false);
 });

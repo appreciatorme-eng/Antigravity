@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { afterEach, expect, it } from "vitest";
 import { passesMutationCsrfGuard } from "../../../src/lib/security/admin-mutation-csrf";
 
 const originalCsrfToken = process.env.ADMIN_MUTATION_CSRF_TOKEN;
@@ -22,38 +21,38 @@ afterEach(() => {
   }
 });
 
-test("passesMutationCsrfGuard allows bearer requests", () => {
+it("passesMutationCsrfGuard allows bearer requests", () => {
   const request = makeRequest({
     authorization: "Bearer token",
   });
-  assert.equal(passesMutationCsrfGuard(request), true);
+  expect(passesMutationCsrfGuard(request)).toBe(true);
 });
 
-test("passesMutationCsrfGuard enforces configured csrf token", () => {
+it("passesMutationCsrfGuard enforces configured csrf token", () => {
   process.env.ADMIN_MUTATION_CSRF_TOKEN = "expected-token";
 
   const validRequest = makeRequest({
     "x-admin-csrf": "expected-token",
   });
-  assert.equal(passesMutationCsrfGuard(validRequest), true);
+  expect(passesMutationCsrfGuard(validRequest)).toBe(true);
 
   const invalidRequest = makeRequest({
     "x-admin-csrf": "wrong-token",
   });
-  assert.equal(passesMutationCsrfGuard(invalidRequest), false);
+  expect(passesMutationCsrfGuard(invalidRequest)).toBe(false);
 });
 
-test("passesMutationCsrfGuard falls back to same-origin check when no csrf token configured", () => {
+it("passesMutationCsrfGuard falls back to same-origin check when no csrf token configured", () => {
   delete process.env.ADMIN_MUTATION_CSRF_TOKEN;
 
   const trustedRequest = makeRequest({
     origin: "http://localhost",
     referer: "http://localhost/admin",
   });
-  assert.equal(passesMutationCsrfGuard(trustedRequest), true);
+  expect(passesMutationCsrfGuard(trustedRequest)).toBe(true);
 
   const untrustedRequest = makeRequest({
     origin: "https://evil.example",
   });
-  assert.equal(passesMutationCsrfGuard(untrustedRequest), false);
+  expect(passesMutationCsrfGuard(untrustedRequest)).toBe(false);
 });
