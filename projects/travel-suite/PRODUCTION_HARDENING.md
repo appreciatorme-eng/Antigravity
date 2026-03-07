@@ -22,10 +22,10 @@
 |---|---|---|---|---|---|
 | S-01 | CRITICAL | `supabase/run-migration.sh:6-7` + `DEPLOYMENT_GUIDE.md:37-39` | Live service-role credential committed | RESOLVED | `6f25f5d` |
 | S-02 | CRITICAL | `apps/web/src/app/api/_handlers/admin/seed-demo/route.ts:60` | Admin seed route has no auth guard | RESOLVED | `6604e37` |
-| S-03 | HIGH | `supabase/migrations/20260214130000_upsell_engine_rpc.sql:9-136+142-332` | `SECURITY DEFINER` trusts caller tenant ID | RESOLVED | pending |
-| S-04 | HIGH | `supabase/migrations/20260214150000_proposal_system.sql:352-406` | Proposal RPC bypasses ownership checks | RESOLVED | pending |
-| S-05 | HIGH | `supabase/migrations/20260214160000_clone_template_deep.sql:2-63` | Template clone RPC bypasses ownership | RESOLVED | pending |
-| S-06 | HIGH | `apps/web/src/app/api/_handlers/webhooks/waha/route.ts:52-65` | Webhook fails open when secret unset | OPEN | - |
+| S-03 | HIGH | `supabase/migrations/20260214130000_upsell_engine_rpc.sql:9-136+142-332` | `SECURITY DEFINER` trusts caller tenant ID | RESOLVED | `364ae9f` |
+| S-04 | HIGH | `supabase/migrations/20260214150000_proposal_system.sql:352-406` | Proposal RPC bypasses ownership checks | RESOLVED | `364ae9f` |
+| S-05 | HIGH | `supabase/migrations/20260214160000_clone_template_deep.sql:2-63` | Template clone RPC bypasses ownership | RESOLVED | `364ae9f` |
+| S-06 | HIGH | `apps/web/src/app/api/_handlers/webhooks/waha/route.ts:52-65` | Webhook fails open when secret unset | RESOLVED | pending |
 | S-07 | HIGH | `apps/web/src/app/share/[token]/page.tsx:13-29+115-123` | Public token page exposes client PII | OPEN | - |
 | S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | OPEN | - |
 | S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | OPEN | - |
@@ -55,3 +55,4 @@
 - 2026-03-07 01:40:40 CST - Phase 1 secret purge in progress; removed committed Supabase credentials and replaced live project references with placeholders or env reads.
 - 2026-03-07 01:40:40 CST - Phase 2 hardened the admin demo seeding endpoint with admin auth, rate limiting, production gating, CSRF validation, and user-safe error handling.
 - 2026-03-07 01:40:40 CST - Phase 3 added tenant ownership assertions for `SECURITY DEFINER` add-on, proposal, and template cloning RPCs in a new Supabase migration.
+- 2026-03-07 01:40:40 CST - Phase 4 made the WAHA webhook fail closed when its shared secret is unset and validated inbound secrets with timing-safe comparison.

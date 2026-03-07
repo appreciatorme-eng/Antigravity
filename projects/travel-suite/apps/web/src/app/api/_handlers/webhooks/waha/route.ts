@@ -3,20 +3,21 @@
  *
  * POST: Process WPPConnect events (session lifecycle + incoming messages).
  *
- * Security: shared secret in ?secret= query param (WPPConnect has no HMAC).
- * Set WPPCONNECT_WEBHOOK_SECRET on Vercel. Skip check if not set (dev only).
+ * Security: shared secret provided via x-webhook-secret header during migration,
+ * with temporary ?secret= query-param compatibility for existing WAHA sessions.
  *
  * WPPConnect event shape:
  *   { event: "onStateChange", session: "org_xxx", token: "...", response: "CONNECTED" }
  *   { event: "onMessage",     session: "org_xxx", token: "...", response: { id, from, body, type } }
  * ------------------------------------------------------------------ */
 
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
+import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,19 +50,29 @@ export async function POST(request: Request): Promise<Response> {
         return NextResponse.json({ ok: true });
     }
 
-    // Secret verification via ?secret= query param (WPPConnect has no built-in HMAC)
-    const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
-    if (webhookSecret) {
-        const url = new URL(request.url);
-        const providedSecret = url.searchParams.get("secret");
-        if (providedSecret !== webhookSecret) {
-            console.warn("[webhooks/waha] Invalid or missing ?secret= param");
-            return new Response("Unauthorized", { status: 401 });
+    const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret) {
+        if (!isUnsignedWebhookAllowed()) {
+            console.error("[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not configured");
+            return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
         }
     } else {
-        console.warn(
-            "[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not set — skipping verification",
-        );
+        const url = new URL(request.url);
+        const providedSecret =
+            request.headers.get("x-webhook-secret")?.trim() ??
+            url.searchParams.get("secret")?.trim() ??
+            null;
+
+        const providedBuffer = Buffer.from(providedSecret ?? "", "utf8");
+        const expectedBuffer = Buffer.from(webhookSecret, "utf8");
+
+        if (
+            providedBuffer.length !== expectedBuffer.length ||
+            !timingSafeEqual(providedBuffer, expectedBuffer)
+        ) {
+            console.warn("[webhooks/waha] Invalid or missing webhook secret");
+            return new Response("Unauthorized", { status: 401 });
+        }
     }
 
     let event: WppEvent;
