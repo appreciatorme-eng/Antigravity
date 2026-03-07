@@ -28,8 +28,7 @@ async def verify_user(authorization: Optional[str] = Header(None)) -> Optional[s
     token = authorization.split(" ")[1]
 
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        # If Supabase not configured, accept any token (dev mode)
-        return "dev_user"
+        raise HTTPException(status_code=503, detail="Authentication service is not configured")
 
     # Verify token with Supabase
     async with httpx.AsyncClient() as client:
