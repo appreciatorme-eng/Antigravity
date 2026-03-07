@@ -418,11 +418,28 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
   );
   const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
+  const [isLoadingConvs, setIsLoadingConvs] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
-    setConversations(isDemoMode ? ALL_MOCK_CONVERSATIONS : []);
-    setSelectedId(isDemoMode ? 'conv_1' : null);
+    if (isDemoMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
+      setConversations(ALL_MOCK_CONVERSATIONS);
+      setSelectedId('conv_1');
+      return;
+    }
+    // Real mode — fetch live conversations from the DB
+    setIsLoadingConvs(true);
+    fetch('/api/whatsapp/conversations')
+      .then((r) => r.json())
+      .then((data: { conversations?: ChannelConversation[] }) => {
+        const convs = data.conversations ?? [];
+        setConversations(convs);
+        if (convs.length > 0 && !selectedId) setSelectedId(convs[0]!.id);
+      })
+      .catch(() => { /* silently keep empty state on fetch failure */ })
+      .finally(() => setIsLoadingConvs(false));
+  // Only re-run when demo mode changes; we don't want selectedId as a dep
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoMode]);
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
@@ -638,7 +655,12 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {filteredAndSorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 px-4 py-8 text-center">
-              {isDemoMode ? (
+              {isLoadingConvs ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-[#25D366]/30 border-t-[#25D366] rounded-full animate-spin" />
+                  <p className="text-xs text-slate-600">Loading conversations…</p>
+                </>
+              ) : isDemoMode ? (
                 <>
                   <MessageCircle className="w-7 h-7 text-slate-700" />
                   <p className="text-xs text-slate-600">No conversations match your filter</p>

@@ -152,7 +152,12 @@ export async function POST(request: Request): Promise<Response> {
             wa_id: waId,
             event_type: "text",
             payload_hash: payloadHash,
-            metadata: { session: event.session },
+            processing_status: "received",
+            metadata: {
+                session: event.session,
+                body_preview: payload.body.slice(0, 500),
+                direction: "in",
+            },
         });
 
         await handleWhatsAppMessage(waId, payload.body, senderPhone).catch(
