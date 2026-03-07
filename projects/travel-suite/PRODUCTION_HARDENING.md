@@ -20,8 +20,8 @@
 ## Issue Registry
 | ID | Severity | File:Line | Issue | Status | Fix Commit |
 |---|---|---|---|---|---|
-| S-01 | CRITICAL | `supabase/run-migration.sh:6-7` + `DEPLOYMENT_GUIDE.md:37-39` | Live service-role credential committed | RESOLVED | pending |
-| S-02 | CRITICAL | `apps/web/src/app/api/_handlers/admin/seed-demo/route.ts:60` | Admin seed route has no auth guard | OPEN | - |
+| S-01 | CRITICAL | `supabase/run-migration.sh:6-7` + `DEPLOYMENT_GUIDE.md:37-39` | Live service-role credential committed | RESOLVED | `6f25f5d` |
+| S-02 | CRITICAL | `apps/web/src/app/api/_handlers/admin/seed-demo/route.ts:60` | Admin seed route has no auth guard | RESOLVED | pending |
 | S-03 | HIGH | `supabase/migrations/20260214130000_upsell_engine_rpc.sql:9-136+142-332` | `SECURITY DEFINER` trusts caller tenant ID | OPEN | - |
 | S-04 | HIGH | `supabase/migrations/20260214150000_proposal_system.sql:352-406` | Proposal RPC bypasses ownership checks | OPEN | - |
 | S-05 | HIGH | `supabase/migrations/20260214160000_clone_template_deep.sql:2-63` | Template clone RPC bypasses ownership | OPEN | - |
@@ -53,3 +53,4 @@
 ## Fix Log
 - 2026-03-07 01:40:40 CST - Initialized tracker from audit baseline.
 - 2026-03-07 01:40:40 CST - Phase 1 secret purge in progress; removed committed Supabase credentials and replaced live project references with placeholders or env reads.
+- 2026-03-07 01:40:40 CST - Phase 2 hardened the admin demo seeding endpoint with admin auth, rate limiting, production gating, CSRF validation, and user-safe error handling.
