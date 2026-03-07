@@ -25,8 +25,8 @@
 | S-03 | HIGH | `supabase/migrations/20260214130000_upsell_engine_rpc.sql:9-136+142-332` | `SECURITY DEFINER` trusts caller tenant ID | RESOLVED | `364ae9f` |
 | S-04 | HIGH | `supabase/migrations/20260214150000_proposal_system.sql:352-406` | Proposal RPC bypasses ownership checks | RESOLVED | `364ae9f` |
 | S-05 | HIGH | `supabase/migrations/20260214160000_clone_template_deep.sql:2-63` | Template clone RPC bypasses ownership | RESOLVED | `364ae9f` |
-| S-06 | HIGH | `apps/web/src/app/api/_handlers/webhooks/waha/route.ts:52-65` | Webhook fails open when secret unset | RESOLVED | pending |
-| S-07 | HIGH | `apps/web/src/app/share/[token]/page.tsx:13-29+115-123` | Public token page exposes client PII | OPEN | - |
+| S-06 | HIGH | `apps/web/src/app/api/_handlers/webhooks/waha/route.ts:52-65` | Webhook fails open when secret unset | RESOLVED | `702b7be` |
+| S-07 | HIGH | `apps/web/src/app/share/[token]/page.tsx:13-29+115-123` | Public token page exposes client PII | RESOLVED | pending |
 | S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | OPEN | - |
 | S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | OPEN | - |
 | S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | OPEN | - |
@@ -56,3 +56,4 @@
 - 2026-03-07 01:40:40 CST - Phase 2 hardened the admin demo seeding endpoint with admin auth, rate limiting, production gating, CSRF validation, and user-safe error handling.
 - 2026-03-07 01:40:40 CST - Phase 3 added tenant ownership assertions for `SECURITY DEFINER` add-on, proposal, and template cloning RPCs in a new Supabase migration.
 - 2026-03-07 01:40:40 CST - Phase 4 made the WAHA webhook fail closed when its shared secret is unset and validated inbound secrets with timing-safe comparison.
+- 2026-03-07 01:40:40 CST - Phase 5 removed client email and phone from the public share page query and render path.
