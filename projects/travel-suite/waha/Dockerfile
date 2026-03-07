@@ -91,12 +91,20 @@ RUN node -e "const fs=require('fs'); \
   fs.writeFileSync(p,c); \
   console.log('create-config.js patched: autoClose=0, whatsappVersion=' + latestVer);"
 
-# Create dirs WPPConnect writes session/token data to
-RUN mkdir -p userDataDir tokens
+# Placeholder dirs; at runtime these are replaced by symlinks to the
+# persistent /waha_data volume so session tokens survive machine restarts.
+RUN mkdir -p /app/tokens /app/userDataDir
 
 EXPOSE 21465
 
 # Disable Chromium sandboxing inside Docker (no elevated privs available)
 ENV PUPPETEER_ARGS="--no-sandbox --disable-setuid-sandbox"
 
-CMD ["npm", "start"]
+# Entrypoint: wire persistent volume → app dirs, then start WPPConnect.
+# /waha_data is the Fly.io volume mount; tokens and userDataDir live there.
+CMD ["sh", "-c", "\
+  mkdir -p /waha_data/tokens /waha_data/userDataDir && \
+  rm -rf /app/tokens /app/userDataDir && \
+  ln -s /waha_data/tokens    /app/tokens && \
+  ln -s /waha_data/userDataDir /app/userDataDir && \
+  npm start"]

@@ -33,6 +33,13 @@ primary_region = "bom"  # Mumbai — lowest latency for Indian operators
     soft_limit = 200
 
 [[vm]]
-  size  = "shared-cpu-1x"
-  memory = "1gb"   # Handles ~20 concurrent org sessions comfortably
-  count = 1        # Single machine — sessions stored on local disk, HA would split state
+  size   = "shared-cpu-1x"
+  memory = "2gb"   # 2GB: Chromium needs ~400MB headroom during WhatsApp sync
+  count  = 1       # Single machine — sessions stored on persistent volume
+
+# Persistent volume — survives machine restarts and redeployments.
+# Mounted at /waha_data; entrypoint symlinks /app/tokens → /waha_data/tokens
+# and /app/userDataDir → /waha_data/userDataDir so WPPConnect sees them normally.
+[[mounts]]
+  source      = "waha_data"
+  destination = "/waha_data"
