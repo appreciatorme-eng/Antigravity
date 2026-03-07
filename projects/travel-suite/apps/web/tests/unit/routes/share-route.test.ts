@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const enforceRateLimitMock = vi.fn();
 const createAdminClientMock = vi.fn();
