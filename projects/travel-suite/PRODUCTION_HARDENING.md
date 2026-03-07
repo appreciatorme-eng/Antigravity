@@ -36,7 +36,7 @@
 | P-03 | MEDIUM | `ActionPickerModal.tsx` + `CanvasMode.tsx` | Oversized client islands | OPEN | - |
 | E-01 | HIGH | `22 route files` | No try/catch error handling | OPEN | - |
 | E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | pending |
-| E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | OPEN | - |
+| E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | RESOLVED | pending |
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
 | T-02 | HIGH | `SQL migrations/RPCs` | Zero test coverage | OPEN | - |
 | C-01 | MEDIUM | `TemplateGallery.tsx:22-23+595` | Hardcoded `USER_TIER=\"Enterprise\"` | OPEN | - |
@@ -60,3 +60,4 @@
 - 2026-03-07 01:40:40 CST - Phase 6 moved Facebook OAuth secrets into POST bodies and shifted WPPConnect webhook authentication from URL query parameters to an outbound header patch in the sidecar build.
 - 2026-03-07 01:40:40 CST - Phase 7 upgraded URL import SSRF protection to resolve DNS and reject private or loopback destinations after resolution.
 - 2026-03-07 01:40:40 CST - Phase 8 sanitized client-facing error output on the client profile page and the flagged proposal, WhatsApp, and notification queue APIs.
+- 2026-03-07 01:40:40 CST - Phase 9 added retry and timeout controls to Google OAuth/userinfo calls and WPPConnect API requests.

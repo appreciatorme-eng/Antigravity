@@ -2,6 +2,7 @@
 // Replaced WAHA Core (single-session only) with WPPConnect (unlimited sessions, free).
 // API reference: https://github.com/wppconnect-team/wppconnect-server
 import "server-only";
+import { fetchWithRetry } from "@/lib/network/retry";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -70,12 +71,17 @@ async function wppFetch(
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (options?.body) headers["Content-Type"] = "application/json";
 
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
         ...options,
         headers: {
             ...headers,
             ...(options?.headers as Record<string, string> | undefined),
         },
+        cache: "no-store",
+    }, {
+        retries: 2,
+        timeoutMs: 9000,
+        baseDelayMs: 300,
     });
 
     if (!res.ok) {
