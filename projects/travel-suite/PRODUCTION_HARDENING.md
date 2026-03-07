@@ -40,16 +40,16 @@
 | E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | RESOLVED | `e49b30e` |
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
 | T-02 | HIGH | `SQL migrations/RPCs` | Zero test coverage | OPEN | - |
-| C-01 | MEDIUM | `TemplateGallery.tsx:22-23+595` | Hardcoded `USER_TIER=\"Enterprise\"` | OPEN | - |
+| C-01 | MEDIUM | `TemplateGallery.tsx:22-23+595` | Hardcoded `USER_TIER=\"Enterprise\"` | RESOLVED | `ee38129` |
 | C-02 | MEDIUM | `ItineraryFilterBar.tsx:9`, `NeedsAttentionQueue.tsx:10`, etc. | Circular dependencies in planner/WhatsApp UI | RESOLVED | `00ecc1b` |
 | C-03 | MEDIUM | `payments/create-order`, `whatsapp/connect`, `proposals/create` | 88 authed mutation routes without rate limiting | OPEN | - |
 | C-04 | MEDIUM | `payments:144`, `share/[token]:238`, `notifications:525` | Inconsistent API response envelopes | OPEN | - |
 | D-01 | HIGH | `apps/agents/requirements.txt` | FastAPI/Starlette CVE-2025-54121 + CVE-2025-62727 | RESOLVED | `455928b` |
 | D-02 | MEDIUM | `apps/mobile/pubspec.yaml` | Major drift: `firebase_core`, `firebase_messaging`, `flutter_local_notifications` | OPEN | - |
 | D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | RESOLVED | `427e7e4` |
-| M-01 | LOW | `apps/mobile/lib/core/config/supabase_config.dart:3-5` | Mobile ships hardcoded Supabase values + localhost fallback | OPEN | - |
+| M-01 | LOW | `apps/mobile/lib/core/config/supabase_config.dart:3-5` | Mobile ships hardcoded Supabase values + localhost fallback | RESOLVED | `e51d0dd` |
 | M-02 | LOW | `apps/agents/api/dependencies.py:30-32` | Unused dev-auth bypass code in tree | RESOLVED | `5e4d7e2` |
-| M-03 | LOW | `apps/mobile/lib/features/trips/.../traveler_dashboard.dart:385-387+1948-1950` | Placeholder localhost fallback in mobile | OPEN | - |
+| M-03 | LOW | `apps/mobile/lib/features/trips/.../traveler_dashboard.dart:385-387+1948-1950` | Placeholder localhost fallback in mobile | RESOLVED | `e51d0dd` |
 
 ## Fix Log
 - 2026-03-07 01:40:40 CST - Initialized tracker from audit baseline.
@@ -71,3 +71,5 @@
 - 2026-03-07 09:20:00 CST - Wrapped the 34 remaining unguarded API route handlers in `try/catch` blocks with server-side logging and generic 500 responses; `tsc` and `build` remained green after the bulk update.
 - 2026-03-07 09:30:00 CST - Added a partial index for pending reputation sentiment-analysis jobs to avoid full scans on `reputation_reviews` during batch processing.
 - 2026-03-07 09:35:00 CST - Removed the fail-open agents authentication fallback that returned `dev_user` when Supabase auth configuration was absent; the agents pytest suite still passed.
+- 2026-03-07 09:45:00 CST - Replaced the hardcoded Social Studio `Enterprise` tier override with the organization's actual `subscription_tier` from the server-rendered social page payload.
+- 2026-03-07 10:00:00 CST - Hardened the mobile app startup config to require compile-time Supabase and web API values and removed the Android emulator localhost fallback from traveler dashboard web links; `flutter analyze` still surfaced broader existing warnings and `flutter test` still failed on a pre-existing theme assertion, so `D-02` remains open.
