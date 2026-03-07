@@ -4,7 +4,6 @@ import { fetchWithRetry } from '@/lib/network/retry';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_API_BASE = 'https://www.googleapis.com';
-const GMB_API_BASE = 'https://mybusinessaccountmanagement.googleapis.com/v1';
 
 export interface GoogleTokens {
     access_token: string;

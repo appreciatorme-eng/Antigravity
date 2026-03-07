@@ -53,11 +53,11 @@ export async function GET(
       return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
     }
 
-    const tierPricing = parseTierPricing((proposal as any).tier_pricing);
+    const tierPricing = parseTierPricing(proposal.tier_pricing);
 
     return NextResponse.json({
       proposal_id: proposalId,
-      package_tier: (proposal as any).package_tier ?? null,
+      package_tier: proposal.package_tier ?? null,
       tier_pricing: tierPricing,
       base_price: proposal.total_price ?? null,
       tiers: PROPOSAL_PACKAGE_TIERS.map((t) => ({
@@ -141,8 +141,8 @@ export async function PATCH(
 
     return NextResponse.json({
       proposal_id: proposalId,
-      package_tier: (updated as any).package_tier ?? null,
-      tier_pricing: parseTierPricing((updated as any).tier_pricing),
+      package_tier: updated.package_tier ?? null,
+      tier_pricing: parseTierPricing(updated.tier_pricing),
       client_selected_price: updated.client_selected_price ?? null,
     });
   } catch (error) {

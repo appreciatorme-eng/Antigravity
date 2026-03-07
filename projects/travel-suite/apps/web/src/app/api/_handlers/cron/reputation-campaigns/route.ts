@@ -18,6 +18,18 @@ import {
 } from "@/lib/security/cron-auth";
 import { triggerCampaignSendsForOrg } from "@/lib/reputation/campaign-trigger";
 
+type QueryErrorLike = { message: string } | null;
+
+type UntypedBuilder = {
+  select: (columns: string) => UntypedBuilder;
+  eq: (column: string, value: unknown) => UntypedBuilder;
+  in: (column: string, values: readonly string[]) => UntypedBuilder;
+};
+
+type UntypedSupabase = {
+  from: (relation: string) => UntypedBuilder;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -35,13 +47,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const { data: activeCampaigns, error: campaignsError } = await (
-      supabase as any
-    )
+    const rawSupabase = supabase as unknown as UntypedSupabase;
+    const { data: activeCampaigns, error: campaignsError } = await ((rawSupabase
       .from("reputation_review_campaigns")
       .select("organization_id")
       .eq("status", "active")
-      .in("trigger_event", ["trip_completed", "trip_day_2"]);
+      .in("trigger_event", ["trip_completed", "trip_day_2"])) as unknown as Promise<{
+      data: Array<{ organization_id: string }> | null;
+      error: QueryErrorLike;
+    }>);
 
     if (campaignsError) {
       throw campaignsError;
@@ -58,9 +72,7 @@ export async function POST(request: NextRequest) {
 
     const orgIds: string[] = [
       ...new Set(
-        (activeCampaigns as Array<{ organization_id: string }>).map(
-          (c) => c.organization_id
-        )
+        activeCampaigns.map((campaign) => campaign.organization_id)
       ),
     ];
 

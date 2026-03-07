@@ -382,8 +382,7 @@ async function prepareMultiImageCanvas(
 function buildGradientOverlay(
   type: LayoutConfig["overlayGradient"],
   width: number,
-  height: number,
-  _brandColor?: string
+  height: number
 ): SatoriNode {
   if (type === "none") return null;
 
@@ -743,12 +742,11 @@ function buildFooterBlock(data: TemplateDataForRender, config: LayoutConfig, wid
 function buildPosterJsx(
   data: TemplateDataForRender,
   config: LayoutConfig,
-  dims: { width: number; height: number },
-  brandColor?: string
+  dims: { width: number; height: number }
 ): SatoriNode {
   const children: SatoriNode[] = [];
 
-  const gradient = buildGradientOverlay(config.overlayGradient, dims.width, dims.height, brandColor);
+  const gradient = buildGradientOverlay(config.overlayGradient, dims.width, dims.height);
   if (gradient) children.push(gradient);
 
   const header = buildHeaderBlock(data, config);
@@ -807,7 +805,7 @@ function buildPremiumTextJsx(
     case "SplitWaveLayout":
       return buildSplitWaveText(data, w, h);
     default:
-      return buildPosterJsx(data, LAYOUT_CONFIGS[layoutType] ?? LAYOUT_CONFIGS.CenterLayout, dims, brandColor);
+      return buildPosterJsx(data, LAYOUT_CONFIGS[layoutType] ?? LAYOUT_CONFIGS.CenterLayout, dims);
   }
 }
 
@@ -1593,7 +1591,7 @@ export async function renderPoster(
     }
 
     const layoutConfig = LAYOUT_CONFIGS[input.layoutType] ?? LAYOUT_CONFIGS.CenterLayout;
-    jsx = buildPosterJsx(input.templateData, layoutConfig, dims, input.brandColor);
+    jsx = buildPosterJsx(input.templateData, layoutConfig, dims);
   }
 
   // Satori renders JSX to SVG

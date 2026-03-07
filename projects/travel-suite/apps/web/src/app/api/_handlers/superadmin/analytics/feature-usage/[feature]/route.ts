@@ -3,7 +3,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
-type FeatureTable = { table: string; orgCol: string };
+type FeatureTableName =
+    | "trips"
+    | "proposals"
+    | "assistant_sessions"
+    | "social_posts";
+
+type FeatureTable = {
+    table: FeatureTableName;
+    orgCol: "organization_id";
+};
+
+type FeatureUsageRow = {
+    organization_id: string;
+    created_at: string;
+    organizations?: { name?: string | null; subscription_tier?: string | null } | null;
+};
+
+type UntypedBuilder = {
+    select: (columns: string) => UntypedBuilder;
+    gte: (column: string, value: string) => UntypedBuilder;
+    limit: (count: number) => UntypedBuilder;
+};
+
+type UntypedAdminClient = {
+    from: (relation: string) => UntypedBuilder;
+};
+
 const FEATURE_MAP: Record<string, FeatureTable> = {
     trips: { table: "trips", orgCol: "organization_id" },
     proposals: { table: "proposals", orgCol: "organization_id" },
@@ -34,19 +60,20 @@ export async function GET(
     const since = daysAgo(days);
 
     try {
-        const result = await (adminClient as any)
+        const rawAdminClient = adminClient as unknown as UntypedAdminClient;
+        const result = await ((rawAdminClient
             .from(featureCfg.table)
-            .select(`${featureCfg.orgCol}, organizations(name, subscription_tier)`)
+            .select(`${featureCfg.orgCol}, organizations(name, subscription_tier), created_at`)
             .gte("created_at", since)
-            .limit(5000);
+            .limit(5000)) as unknown as Promise<{ data: FeatureUsageRow[] | null }>);
 
         const orgCounts: Record<string, { name: string; tier: string; count: number; last_used: string }> = {};
         let total = 0;
 
-        for (const row of (result.data ?? [])) {
-            const orgId = (row as Record<string, unknown>)[featureCfg.orgCol] as string;
-            const org = (row as Record<string, unknown>).organizations as { name?: string; subscription_tier?: string } | null;
-            const created = ((row as Record<string, unknown>).created_at as string) ?? "";
+        for (const row of (result.data ?? []) as FeatureUsageRow[]) {
+            const orgId = row[featureCfg.orgCol] as string;
+            const org = row.organizations ?? null;
+            const created = row.created_at ?? "";
             if (!orgCounts[orgId]) {
                 orgCounts[orgId] = { name: org?.name ?? orgId, tier: org?.subscription_tier ?? "free", count: 0, last_used: created };
             }

@@ -2,7 +2,7 @@
 // Creates (or resumes) a WPPConnect session for the caller's org, returns the QR code.
 // Idempotent: safe to call multiple times — existing sessions are reused.
 // createWahaSession now returns a Bearer token stored in whatsapp_connections.
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -15,7 +15,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 const WHATSAPP_CONNECT_RATE_LIMIT_MAX = 5;
 const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
     try {
         const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
         const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();

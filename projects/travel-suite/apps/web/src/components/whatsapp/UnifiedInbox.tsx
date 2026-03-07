@@ -422,7 +422,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
   useEffect(() => {
     if (isDemoMode) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
       setConversations(ALL_MOCK_CONVERSATIONS);
       setSelectedId('conv_1');
       return;

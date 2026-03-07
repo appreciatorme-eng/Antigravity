@@ -7,7 +7,7 @@ import {
     Sparkles, Eye, Check, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deriveStage, hasClientActivity } from "./planner.types";
+import { hasClientActivity } from "./planner.types";
 import { useFeedbackAction } from "@/lib/queries/itineraries";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 
