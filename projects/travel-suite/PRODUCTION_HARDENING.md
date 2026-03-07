@@ -27,9 +27,9 @@
 | S-05 | HIGH | `supabase/migrations/20260214160000_clone_template_deep.sql:2-63` | Template clone RPC bypasses ownership | RESOLVED | `364ae9f` |
 | S-06 | HIGH | `apps/web/src/app/api/_handlers/webhooks/waha/route.ts:52-65` | Webhook fails open when secret unset | RESOLVED | `702b7be` |
 | S-07 | HIGH | `apps/web/src/app/share/[token]/page.tsx:13-29+115-123` | Public token page exposes client PII | RESOLVED | `2066743` |
-| S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | RESOLVED | pending |
-| S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | RESOLVED | pending |
-| S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | OPEN | - |
+| S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | RESOLVED | `a0c7f18` |
+| S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | RESOLVED | `a0c7f18` |
+| S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | RESOLVED | pending |
 | S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | OPEN | - |
 | P-01 | HIGH | `apps/web/src/app/api/_handlers/notifications/process-queue/route.ts:287-494` | Serialized N+1 queue processing | OPEN | - |
 | P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | OPEN | - |
@@ -58,3 +58,4 @@
 - 2026-03-07 01:40:40 CST - Phase 4 made the WAHA webhook fail closed when its shared secret is unset and validated inbound secrets with timing-safe comparison.
 - 2026-03-07 01:40:40 CST - Phase 5 removed client email and phone from the public share page query and render path.
 - 2026-03-07 01:40:40 CST - Phase 6 moved Facebook OAuth secrets into POST bodies and shifted WPPConnect webhook authentication from URL query parameters to an outbound header patch in the sidecar build.
+- 2026-03-07 01:40:40 CST - Phase 7 upgraded URL import SSRF protection to resolve DNS and reject private or loopback destinations after resolution.
