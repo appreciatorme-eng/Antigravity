@@ -37,6 +37,7 @@ interface Props {
         phone: string | null;
         email?: string | null;
         website?: string | null;
+        subscription_tier?: string | null;
     }
 }
 
@@ -282,6 +283,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             <TemplateGallery
                 templateData={templateData}
                 connections={connections}
+                userTier={initialOrgData.subscription_tier ?? "free"}
                 onTemplateSelect={handleTemplateSelect}
             />
 

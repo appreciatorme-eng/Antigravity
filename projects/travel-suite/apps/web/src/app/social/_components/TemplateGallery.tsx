@@ -19,8 +19,14 @@ const RATIO_DIMS: Record<string, { w: number; h: number; label: string }> = {
     story:    { w: 1080, h: 1920, label: "Story" },
 };
 
-// TODO: pull from billing context in production
-const USER_TIER = "Enterprise";
+function toTemplateTier(userTier: string | null | undefined): string {
+    if (!userTier) return "Starter";
+    const normalized = userTier.toLowerCase();
+    if (normalized === "enterprise") return "Enterprise";
+    if (normalized === "business" || normalized === "premium") return "Business";
+    if (normalized === "pro") return "Pro";
+    return "Starter";
+}
 
 // localStorage keys
 const FAVORITES_KEY = "social-studio-favorites";
@@ -90,10 +96,16 @@ function LazyTemplateCard({ children, previewH, className }: LazyTemplateCardPro
 interface Props {
     templateData: TemplateDataForRender;
     connections?: { instagram: boolean; facebook: boolean };
+    userTier?: string | null;
     onTemplateSelect?: (template: SocialTemplate) => void;
 }
 
-export const TemplateGallery = ({ templateData, connections = { instagram: false, facebook: false }, onTemplateSelect }: Props) => {
+export const TemplateGallery = ({
+    templateData,
+    connections = { instagram: false, facebook: false },
+    userTier,
+    onTemplateSelect,
+}: Props) => {
     const [activeCategory, setActiveCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [aspectRatio, setAspectRatio] = useState<"square" | "portrait" | "story">("square");
@@ -149,6 +161,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
 
     const upcomingFestivals = getUpcomingFestivals();
     const dims = RATIO_DIMS[aspectRatio];
+    const templateUserTier = useMemo(() => toTemplateTier(userTier), [userTier]);
 
     // Filtered template list
     let PRESET_TEMPLATES: SocialTemplate[];
@@ -592,7 +605,7 @@ export const TemplateGallery = ({ templateData, connections = { instagram: false
             {/* ── Template Grid ───────────────────────────────────────────── */}
             <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
                 {PRESET_TEMPLATES.map((preset, idx) => {
-                    const locked = !canAccessTemplate(preset.tier, USER_TIER);
+                    const locked = !canAccessTemplate(preset.tier, templateUserTier);
                     const isLoading = downloading === preset.id;
                     const isFavorited = favorites.has(preset.id);
 

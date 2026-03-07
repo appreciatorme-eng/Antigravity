@@ -22,17 +22,19 @@ export default async function SocialStudioPage() {
     logo_url: string | null;
     primary_color: string | null;
     phone: string | null;
+    subscription_tier: string | null;
   } = {
     name: "Travel Agency",
     logo_url: null,
     primary_color: null,
-    phone: profile?.phone || null
+    phone: profile?.phone || null,
+    subscription_tier: null,
   };
 
   if (profile?.organization_id) {
     const { data: org } = await supabase
       .from('organizations')
-      .select('name, logo_url, primary_color')
+      .select('name, logo_url, primary_color, subscription_tier')
       .eq('id', profile.organization_id)
       .single();
 
@@ -41,7 +43,8 @@ export default async function SocialStudioPage() {
         name: org.name,
         logo_url: org.logo_url,
         primary_color: org.primary_color || null,
-        phone: profile?.phone || null
+        phone: profile?.phone || null,
+        subscription_tier: org.subscription_tier || null,
       };
     }
   }
