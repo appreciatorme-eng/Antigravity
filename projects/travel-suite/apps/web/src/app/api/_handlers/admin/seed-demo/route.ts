@@ -8,6 +8,10 @@ import { DEMO_ORG_ID } from "@/lib/demo/constants";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import {
+  hasValidSeedDemoCronSecret,
+  isSeedDemoBlockedInProduction,
+} from "./guards";
 
 const DEMO_ADMIN_ID   = "d0000000-0000-4000-8000-000000000002";
 const DEMO_CLIENT_IDS = [
@@ -62,7 +66,12 @@ function uuid() {
 }
 
 export async function POST(request: NextRequest) {
-  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED_IN_PROD !== "true") {
+  if (
+    isSeedDemoBlockedInProduction(
+      process.env.NODE_ENV,
+      process.env.ALLOW_SEED_IN_PROD
+    )
+  ) {
     return NextResponse.json({ error: "Not available in production" }, { status: 403 });
   }
 
@@ -90,7 +99,7 @@ export async function POST(request: NextRequest) {
 
   const expectedCronSecret = process.env.ADMIN_CRON_SECRET?.trim();
   const providedCronSecret = request.headers.get("x-cron-secret")?.trim();
-  if (expectedCronSecret && providedCronSecret !== expectedCronSecret) {
+  if (!hasValidSeedDemoCronSecret(expectedCronSecret, providedCronSecret)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

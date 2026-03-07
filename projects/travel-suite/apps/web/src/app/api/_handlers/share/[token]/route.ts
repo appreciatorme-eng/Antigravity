@@ -5,6 +5,13 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Json } from '@/lib/database.types';
+import {
+  buildPublicShareResponse,
+  parseCommentArray,
+  parseStringArray,
+  type SharePreferences,
+  type ShareRow,
+} from './public-share';
 
 const supabaseAdmin = createAdminClient();
 
@@ -43,40 +50,6 @@ const SHARE_WRITE_RATE_LIMIT_WINDOW_MS = Number(
   process.env.PUBLIC_SHARE_WRITE_RATE_LIMIT_WINDOW_MS || 15 * 60_000
 );
 
-type ShareComment = {
-  id: string;
-  author: string;
-  comment: string;
-  created_at: string;
-  resolved_at?: string;
-  resolved_by?: string;
-  operator_reply?: string;
-  operator_reply_at?: string;
-};
-
-type SharePreferences = {
-  budget_preference?: string;
-  pace?: string;
-  room_preference?: string;
-  must_have?: string[];
-  avoid?: string[];
-  notes?: string;
-};
-
-type ShareRow = {
-  id: string;
-  itinerary_id: string | null;
-  client_comments: Json;
-  expires_at: string | null;
-  status: string;
-  approved_by: string | null;
-  approved_at: string | null;
-  client_preferences?: Json;
-  wishlist_items?: Json;
-  self_service_status?: string | null;
-  offline_pack_ready?: boolean | null;
-};
-
 function sanitizeShareToken(value: unknown): string | null {
   const token = sanitizeText(value, { maxLength: 200 });
   if (!token) return null;
@@ -107,71 +80,6 @@ function isExpired(expiresAt: string | null): boolean {
   const parsed = new Date(expiresAt);
   if (!Number.isFinite(parsed.getTime())) return false;
   return parsed.getTime() < Date.now();
-}
-
-function parseCommentArray(value: Json | null | undefined): ShareComment[] {
-  if (!Array.isArray(value)) return [];
-
-  const comments: ShareComment[] = [];
-  for (const entry of value) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
-
-    const record = entry as Record<string, unknown>;
-    const id = sanitizeText(record.id, { maxLength: 120 }) || randomUUID();
-    const author = sanitizeText(record.author, { maxLength: 120 }) || 'Guest';
-    const comment = sanitizeText(record.comment, {
-      maxLength: 2000,
-      preserveNewlines: true,
-    });
-    const createdAt =
-      sanitizeText(record.created_at, { maxLength: 80 }) || new Date().toISOString();
-
-    if (!comment) continue;
-
-    const resolved_at = sanitizeText(record.resolved_at, { maxLength: 80 }) || undefined;
-    const resolved_by = sanitizeText(record.resolved_by, { maxLength: 120 }) || undefined;
-    const operator_reply = sanitizeText(record.operator_reply, { maxLength: 2000, preserveNewlines: true }) || undefined;
-    const operator_reply_at = sanitizeText(record.operator_reply_at, { maxLength: 80 }) || undefined;
-
-    comments.push({
-      id,
-      author,
-      comment,
-      created_at: createdAt,
-      ...(resolved_at && { resolved_at }),
-      ...(resolved_by && { resolved_by }),
-      ...(operator_reply && { operator_reply }),
-      ...(operator_reply_at && { operator_reply_at }),
-    });
-  }
-
-  return comments;
-}
-
-function parseStringArray(value: Json | null | undefined, maxLength: number, maxItems: number): string[] {
-  if (!Array.isArray(value)) return [];
-  const unique = new Map<string, string>();
-  for (const entry of value) {
-    const sanitized = sanitizeText(entry, { maxLength });
-    if (!sanitized) continue;
-    const key = sanitized.toLowerCase();
-    if (!unique.has(key)) unique.set(key, sanitized);
-    if (unique.size >= maxItems) break;
-  }
-  return Array.from(unique.values());
-}
-
-function parsePreferences(value: Json | null | undefined): SharePreferences {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  const record = value as Record<string, unknown>;
-  return {
-    budget_preference: sanitizeText(record.budget_preference, { maxLength: 40 }) || undefined,
-    pace: sanitizeText(record.pace, { maxLength: 40 }) || undefined,
-    room_preference: sanitizeText(record.room_preference, { maxLength: 120 }) || undefined,
-    must_have: parseStringArray(record.must_have as Json, 80, 20),
-    avoid: parseStringArray(record.avoid as Json, 80, 20),
-    notes: sanitizeText(record.notes, { maxLength: 1000, preserveNewlines: true }) || undefined,
-  };
 }
 
 function sanitizePreferences(input: z.infer<typeof ShareActionSchema>['preferences']): SharePreferences {
@@ -228,28 +136,7 @@ export async function GET(
       return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
     }
 
-    const comments = parseCommentArray(share.client_comments);
-    const preferences = parsePreferences((share as { client_preferences?: Json }).client_preferences);
-    const wishlistItems = parseStringArray(
-      (share as { wishlist_items?: Json }).wishlist_items,
-      160,
-      50
-    );
-    return NextResponse.json({
-      status: share.status || 'viewed',
-      approved_by: share.approved_by || null,
-      approved_at: share.approved_at || null,
-      comments,
-      preferences,
-      wishlist_items: wishlistItems,
-      self_service_status:
-        sanitizeText((share as { self_service_status?: unknown }).self_service_status, {
-          maxLength: 24,
-        }) || 'active',
-      offline_pack_ready:
-        (share as { offline_pack_ready?: unknown }).offline_pack_ready === true,
-      expires_at: share.expires_at || null,
-    });
+    return NextResponse.json(buildPublicShareResponse(share as ShareRow));
   } catch {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }

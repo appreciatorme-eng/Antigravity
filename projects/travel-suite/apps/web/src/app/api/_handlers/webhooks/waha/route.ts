@@ -11,13 +11,14 @@
  *   { event: "onMessage",     session: "org_xxx", token: "...", response: { id, from, body, type } }
  * ------------------------------------------------------------------ */
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac } from "crypto";
 
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
+import { validateWahaWebhookSecret } from "./secret";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,28 +52,19 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
-    if (!webhookSecret) {
-        if (!isUnsignedWebhookAllowed()) {
+    const validation = validateWahaWebhookSecret({
+        requestUrl: request.url,
+        configuredSecret: webhookSecret,
+        allowUnsigned: isUnsignedWebhookAllowed(),
+        providedHeaderSecret: request.headers.get("x-webhook-secret"),
+    });
+    if (!validation.ok) {
+        if (validation.status === 503) {
             console.error("[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not configured");
-            return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
-        }
-    } else {
-        const url = new URL(request.url);
-        const providedSecret =
-            request.headers.get("x-webhook-secret")?.trim() ??
-            url.searchParams.get("secret")?.trim() ??
-            null;
-
-        const providedBuffer = Buffer.from(providedSecret ?? "", "utf8");
-        const expectedBuffer = Buffer.from(webhookSecret, "utf8");
-
-        if (
-            providedBuffer.length !== expectedBuffer.length ||
-            !timingSafeEqual(providedBuffer, expectedBuffer)
-        ) {
+        } else {
             console.warn("[webhooks/waha] Invalid or missing webhook secret");
-            return new Response("Unauthorized", { status: 401 });
         }
+        return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
     let event: WppEvent;
