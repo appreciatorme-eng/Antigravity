@@ -36,62 +36,70 @@ function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) 
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  const parsed = LoginSchema.safeParse(body);
+  try {
+    const body = await request.json().catch(() => null);
+    const parsed = LoginSchema.safeParse(body);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request body", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request body", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
-  const email = sanitizeEmail(parsed.data.email);
-  const password = parsed.data.password;
-  if (!email) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-  }
+    const email = sanitizeEmail(parsed.data.email);
+    const password = parsed.data.password;
+    if (!email) {
+      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    }
 
-  const rateLimit = await enforceRateLimit({
-    identifier: `${getRequestIp(request)}:${email}`,
-    limit: RATE_LIMIT_MAX,
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    prefix: "auth:password-login",
-  });
-  if (!rateLimit.success) {
-    const retryAfterSeconds = Math.max(
-      1,
-      Math.ceil((rateLimit.reset - Date.now()) / 1000)
-    );
-    const response = NextResponse.json(
-      { error: "Too many login attempts. Please try again later." },
-      { status: 429 }
-    );
-    response.headers.set("retry-after", String(retryAfterSeconds));
+    const rateLimit = await enforceRateLimit({
+      identifier: `${getRequestIp(request)}:${email}`,
+      limit: RATE_LIMIT_MAX,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+      prefix: "auth:password-login",
+    });
+    if (!rateLimit.success) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((rateLimit.reset - Date.now()) / 1000)
+      );
+      const response = NextResponse.json(
+        { error: "Too many login attempts. Please try again later." },
+        { status: 429 }
+      );
+      response.headers.set("retry-after", String(retryAfterSeconds));
+      return withRateLimitHeaders(response, rateLimit);
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.user) {
+      const response = NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+      return withRateLimitHeaders(response, rateLimit);
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: data.user.id,
+        email: data.user.email || email,
+      },
+    });
+
     return withRateLimitHeaders(response, rateLimit);
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error || !data.user) {
-    const response = NextResponse.json(
-      { error: "Invalid email or password" },
-      { status: 401 }
+  } catch (error) {
+    console.error("[/api/auth/password-login:POST] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
     );
-    return withRateLimitHeaders(response, rateLimit);
   }
-
-  const response = NextResponse.json({
-    success: true,
-    user: {
-      id: data.user.id,
-      email: data.user.email || email,
-    },
-  });
-
-  return withRateLimitHeaders(response, rateLimit);
 }

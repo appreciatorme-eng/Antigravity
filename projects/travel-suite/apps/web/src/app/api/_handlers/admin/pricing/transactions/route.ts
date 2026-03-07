@@ -37,130 +37,138 @@ type ClientRow = { id: string; name: string | null };
 const VALID_SORTS = new Set(["date", "profit", "cost", "price"]);
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req);
-  if (!admin.ok) return admin.response;
-  if (!admin.organizationId) {
-    return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-  }
-
-  const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
-
-  const url = new URL(req.url);
-  const search = url.searchParams.get("search")?.trim() || "";
-  const category = url.searchParams.get("category")?.trim() || "";
-  const vendor = url.searchParams.get("vendor")?.trim() || "";
-  const sort = VALID_SORTS.has(url.searchParams.get("sort") || "") ? url.searchParams.get("sort")! : "date";
-
-  const db = admin.adminClient as any;
-
-  let query = db
-    .from("trip_service_costs")
-    .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
-    .eq("organization_id", orgId);
-
-  if (category && category !== "all") {
-    query = query.eq("category", category);
-  }
-
-  if (vendor) {
-    query = query.ilike("vendor_name", `%${vendor}%`);
-  }
-
-  const orderColumn = sort === "cost" ? "cost_amount" : sort === "price" ? "price_amount" : "created_at";
-  query = query.order(orderColumn, { ascending: false });
-
-  const { data: costs, error: costsError } = await query;
-  if (costsError) {
-    return NextResponse.json({ error: costsError.message }, { status: 500 });
-  }
-
-  const costRows = (costs || []) as CostRow[];
-
-  const tripIds = [...new Set(costRows.map((c) => c.trip_id))];
-  if (tripIds.length === 0) {
-    return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, count: 0 } });
-  }
-
-  const { data: trips } = await db
-    .from("trips")
-    .select("id, name, destination, start_date, pax_count, client_id")
-    .in("id", tripIds);
-
-  const tripMap = new Map<string, TripRow>();
-  for (const t of (trips || []) as TripRow[]) {
-    tripMap.set(t.id, t);
-  }
-
-  const clientIds = [...new Set(
-    (trips || []).map((t: TripRow) => t.client_id).filter(Boolean) as string[]
-  )];
-
-  const clientMap = new Map<string, string>();
-  if (clientIds.length > 0) {
-    const { data: clientsData } = await admin.adminClient
-      .from("clients")
-      .select("id, name")
-      .in("id", clientIds);
-    for (const c of (clientsData || []) as unknown as ClientRow[]) {
-      if (c.name) clientMap.set(c.id, c.name);
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
     }
-  }
 
-  let transactions = costRows.map((cost) => {
-    const trip = tripMap.get(cost.trip_id);
-    const clientName = trip?.client_id ? (clientMap.get(trip.client_id) ?? null) : null;
-    const costAmt = Number(cost.cost_amount);
-    const priceAmt = Number(cost.price_amount);
-    const profit = priceAmt - costAmt;
-    const marginPct = priceAmt > 0 ? Math.round((profit / priceAmt) * 100) : 0;
+    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
 
-    return {
-      id: cost.id,
-      trip_id: cost.trip_id,
-      trip_name: trip?.name || "Unknown Trip",
-      destination: trip?.destination ?? null,
-      client_name: clientName,
-      start_date: trip?.start_date ?? null,
-      pax_count: trip?.pax_count ?? cost.pax_count ?? 1,
-      category: cost.category,
-      vendor_name: cost.vendor_name,
-      description: cost.description,
-      cost_amount: costAmt,
-      price_amount: priceAmt,
-      commission_pct: Number(cost.commission_pct || 0),
-      commission_amount: Number(cost.commission_amount || 0),
-      profit,
-      margin_pct: marginPct,
-      currency: cost.currency,
-      notes: cost.notes,
-      created_at: cost.created_at,
-    };
-  });
+    const url = new URL(req.url);
+    const search = url.searchParams.get("search")?.trim() || "";
+    const category = url.searchParams.get("category")?.trim() || "";
+    const vendor = url.searchParams.get("vendor")?.trim() || "";
+    const sort = VALID_SORTS.has(url.searchParams.get("sort") || "") ? url.searchParams.get("sort")! : "date";
 
-  if (search) {
-    const q = search.toLowerCase();
-    transactions = transactions.filter(
-      (t) =>
-        t.trip_name.toLowerCase().includes(q) ||
-        (t.destination ?? "").toLowerCase().includes(q) ||
-        (t.vendor_name ?? "").toLowerCase().includes(q) ||
-        (t.description ?? "").toLowerCase().includes(q) ||
-        (t.client_name ?? "").toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
+    const db = admin.adminClient as any;
+
+    let query = db
+      .from("trip_service_costs")
+      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
+      .eq("organization_id", orgId);
+
+    if (category && category !== "all") {
+      query = query.eq("category", category);
+    }
+
+    if (vendor) {
+      query = query.ilike("vendor_name", `%${vendor}%`);
+    }
+
+    const orderColumn = sort === "cost" ? "cost_amount" : sort === "price" ? "price_amount" : "created_at";
+    query = query.order(orderColumn, { ascending: false });
+
+    const { data: costs, error: costsError } = await query;
+    if (costsError) {
+      return NextResponse.json({ error: costsError.message }, { status: 500 });
+    }
+
+    const costRows = (costs || []) as CostRow[];
+
+    const tripIds = [...new Set(costRows.map((c) => c.trip_id))];
+    if (tripIds.length === 0) {
+      return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, count: 0 } });
+    }
+
+    const { data: trips } = await db
+      .from("trips")
+      .select("id, name, destination, start_date, pax_count, client_id")
+      .in("id", tripIds);
+
+    const tripMap = new Map<string, TripRow>();
+    for (const t of (trips || []) as TripRow[]) {
+      tripMap.set(t.id, t);
+    }
+
+    const clientIds = [...new Set(
+      (trips || []).map((t: TripRow) => t.client_id).filter(Boolean) as string[]
+    )];
+
+    const clientMap = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const { data: clientsData } = await admin.adminClient
+        .from("clients")
+        .select("id, name")
+        .in("id", clientIds);
+      for (const c of (clientsData || []) as unknown as ClientRow[]) {
+        if (c.name) clientMap.set(c.id, c.name);
+      }
+    }
+
+    let transactions = costRows.map((cost) => {
+      const trip = tripMap.get(cost.trip_id);
+      const clientName = trip?.client_id ? (clientMap.get(trip.client_id) ?? null) : null;
+      const costAmt = Number(cost.cost_amount);
+      const priceAmt = Number(cost.price_amount);
+      const profit = priceAmt - costAmt;
+      const marginPct = priceAmt > 0 ? Math.round((profit / priceAmt) * 100) : 0;
+
+      return {
+        id: cost.id,
+        trip_id: cost.trip_id,
+        trip_name: trip?.name || "Unknown Trip",
+        destination: trip?.destination ?? null,
+        client_name: clientName,
+        start_date: trip?.start_date ?? null,
+        pax_count: trip?.pax_count ?? cost.pax_count ?? 1,
+        category: cost.category,
+        vendor_name: cost.vendor_name,
+        description: cost.description,
+        cost_amount: costAmt,
+        price_amount: priceAmt,
+        commission_pct: Number(cost.commission_pct || 0),
+        commission_amount: Number(cost.commission_amount || 0),
+        profit,
+        margin_pct: marginPct,
+        currency: cost.currency,
+        notes: cost.notes,
+        created_at: cost.created_at,
+      };
+    });
+
+    if (search) {
+      const q = search.toLowerCase();
+      transactions = transactions.filter(
+        (t) =>
+          t.trip_name.toLowerCase().includes(q) ||
+          (t.destination ?? "").toLowerCase().includes(q) ||
+          (t.vendor_name ?? "").toLowerCase().includes(q) ||
+          (t.description ?? "").toLowerCase().includes(q) ||
+          (t.client_name ?? "").toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q)
+      );
+    }
+
+    if (sort === "profit") {
+      transactions.sort((a, b) => b.profit - a.profit);
+    }
+
+    const totalCost = transactions.reduce((s, t) => s + t.cost_amount, 0);
+    const totalRevenue = transactions.reduce((s, t) => s + t.price_amount, 0);
+    const totalProfit = totalRevenue - totalCost;
+    const totalCommission = transactions.reduce((s, t) => s + t.commission_amount, 0);
+
+    return NextResponse.json({
+      transactions,
+      summary: { totalCost, totalRevenue, totalProfit, totalCommission, count: transactions.length },
+    });
+  } catch (error) {
+    console.error("[/api/admin/pricing/transactions:GET] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
     );
   }
-
-  if (sort === "profit") {
-    transactions.sort((a, b) => b.profit - a.profit);
-  }
-
-  const totalCost = transactions.reduce((s, t) => s + t.cost_amount, 0);
-  const totalRevenue = transactions.reduce((s, t) => s + t.price_amount, 0);
-  const totalProfit = totalRevenue - totalCost;
-  const totalCommission = transactions.reduce((s, t) => s + t.commission_amount, 0);
-
-  return NextResponse.json({
-    transactions,
-    summary: { totalCost, totalRevenue, totalProfit, totalCommission, count: transactions.length },
-  });
 }

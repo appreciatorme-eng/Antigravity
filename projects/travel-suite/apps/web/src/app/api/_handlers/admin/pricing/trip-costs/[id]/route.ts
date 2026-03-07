@@ -22,83 +22,107 @@ function extractId(req: NextRequest): string {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req);
-  if (!admin.ok) return admin.response;
-  if (!admin.organizationId) {
-    return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-  }
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
 
-  const id = extractId(req);
-  const db = admin.adminClient as any;
-  const { data, error } = await db
-    .from("trip_service_costs")
-    .select("*")
-    .eq("id", id)
-    .eq("organization_id", admin.organizationId)
-    .single();
+    const id = extractId(req);
+    const db = admin.adminClient as any;
+    const { data, error } = await db
+      .from("trip_service_costs")
+      .select("*")
+      .eq("id", id)
+      .eq("organization_id", admin.organizationId)
+      .single();
 
-  if (error || !data) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (error || !data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("[/api/admin/pricing/trip-costs/[id]:GET] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
+    );
   }
-  return NextResponse.json(data);
 }
 
 export async function PATCH(req: NextRequest) {
-  const admin = await requireAdmin(req);
-  if (!admin.ok) return admin.response;
-  if (!admin.organizationId) {
-    return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-  }
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
 
-  const id = extractId(req);
-  const body = await req.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const id = extractId(req);
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-  const parsed = UpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      { status: 400 }
+    const parsed = UpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const db = admin.adminClient as any;
+    const { data, error } = await db
+      .from("trip_service_costs")
+      .update({ ...parsed.data, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("organization_id", admin.organizationId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json(
+        { error: error?.message || "Not found" },
+        { status: error ? 500 : 404 }
+      );
+    }
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("[/api/admin/pricing/trip-costs/[id]:PATCH] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
     );
   }
-
-  const db = admin.adminClient as any;
-  const { data, error } = await db
-    .from("trip_service_costs")
-    .update({ ...parsed.data, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("organization_id", admin.organizationId)
-    .select()
-    .single();
-
-  if (error || !data) {
-    return NextResponse.json(
-      { error: error?.message || "Not found" },
-      { status: error ? 500 : 404 }
-    );
-  }
-  return NextResponse.json(data);
 }
 
 export async function DELETE(req: NextRequest) {
-  const admin = await requireAdmin(req);
-  if (!admin.ok) return admin.response;
-  if (!admin.organizationId) {
-    return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-  }
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
 
-  const id = extractId(req);
-  const db = admin.adminClient as any;
-  const { error } = await db
-    .from("trip_service_costs")
-    .delete()
-    .eq("id", id)
-    .eq("organization_id", admin.organizationId);
+    const id = extractId(req);
+    const db = admin.adminClient as any;
+    const { error } = await db
+      .from("trip_service_costs")
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", admin.organizationId);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[/api/admin/pricing/trip-costs/[id]:DELETE] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ success: true });
 }
