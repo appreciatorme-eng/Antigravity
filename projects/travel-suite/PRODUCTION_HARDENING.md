@@ -35,7 +35,7 @@
 | P-01 | HIGH | `apps/web/src/app/api/_handlers/notifications/process-queue/route.ts:287-494` | Serialized N+1 queue processing | OPEN | - |
 | P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | OPEN | - |
 | P-03 | MEDIUM | `ActionPickerModal.tsx` + `CanvasMode.tsx` | Oversized client islands | OPEN | - |
-| E-01 | HIGH | `22 route files` | No try/catch error handling | OPEN | - |
+| E-01 | HIGH | `34 route files` | No try/catch error handling | RESOLVED | `5c469e2` |
 | E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | `87d10b9` |
 | E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | RESOLVED | `e49b30e` |
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
@@ -68,3 +68,4 @@
 - 2026-03-07 08:10:00 CST - Branch consolidation audit confirmed `codex/production-hardening` already contains all hardening commits from the remote remediation branches; no additional merge/cherry-pick was required.
 - 2026-03-07 08:35:00 CST - Cleared the remaining `apps/web` `npm audit --audit-level=moderate` failures with a lockfile refresh and re-verified `tsc`, `build`, and `audit`.
 - 2026-03-07 08:55:00 CST - Broke the final planner and WhatsApp UI circular imports by extracting shared planner and WhatsApp types/helpers into standalone modules; `madge` now reports zero cycles.
+- 2026-03-07 09:20:00 CST - Wrapped the 34 remaining unguarded API route handlers in `try/catch` blocks with server-side logging and generic 500 responses; `tsc` and `build` remained green after the bulk update.
