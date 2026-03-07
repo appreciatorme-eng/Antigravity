@@ -30,12 +30,12 @@
 | S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | RESOLVED | `a0c7f18` |
 | S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | RESOLVED | `a0c7f18` |
 | S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | RESOLVED | pending |
-| S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | OPEN | - |
+| S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | RESOLVED | pending |
 | P-01 | HIGH | `apps/web/src/app/api/_handlers/notifications/process-queue/route.ts:287-494` | Serialized N+1 queue processing | OPEN | - |
 | P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | OPEN | - |
 | P-03 | MEDIUM | `ActionPickerModal.tsx` + `CanvasMode.tsx` | Oversized client islands | OPEN | - |
 | E-01 | HIGH | `22 route files` | No try/catch error handling | OPEN | - |
-| E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | OPEN | - |
+| E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | pending |
 | E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | OPEN | - |
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
 | T-02 | HIGH | `SQL migrations/RPCs` | Zero test coverage | OPEN | - |
@@ -59,3 +59,4 @@
 - 2026-03-07 01:40:40 CST - Phase 5 removed client email and phone from the public share page query and render path.
 - 2026-03-07 01:40:40 CST - Phase 6 moved Facebook OAuth secrets into POST bodies and shifted WPPConnect webhook authentication from URL query parameters to an outbound header patch in the sidecar build.
 - 2026-03-07 01:40:40 CST - Phase 7 upgraded URL import SSRF protection to resolve DNS and reject private or loopback destinations after resolution.
+- 2026-03-07 01:40:40 CST - Phase 8 sanitized client-facing error output on the client profile page and the flagged proposal, WhatsApp, and notification queue APIs.

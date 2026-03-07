@@ -67,7 +67,9 @@ export async function POST() {
         return NextResponse.json({ success: true, sessionName, qrBase64 });
     } catch (error) {
         console.error("[whatsapp/connect] error:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json(
+            { error: "An unexpected error occurred. Please try again." },
+            { status: 500 },
+        );
     }
 }

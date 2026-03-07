@@ -537,7 +537,7 @@ export async function POST(request: NextRequest) {
         });
 
         return withRequestId(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: "An unexpected error occurred. Please try again." },
             requestId,
             { status: 500 }
         );

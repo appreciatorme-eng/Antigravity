@@ -27,13 +27,18 @@ export default function ClientProfileError({
                 <p className="text-sm text-text-muted font-medium mb-4">
                     There was an error loading this client profile. This can happen if the client no longer exists or there&apos;s a temporary issue.
                 </p>
-                <details className="text-left mb-6 bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-slate-700">
-                    <summary className="text-xs font-bold text-text-muted cursor-pointer">Show error details</summary>
-                    <pre className="text-[11px] text-rose-600 dark:text-rose-400 mt-2 whitespace-pre-wrap break-all font-mono leading-relaxed">
-                        {error.message || "Unknown error"}
-                        {error.digest && `\nDigest: ${error.digest}`}
-                    </pre>
-                </details>
+                {process.env.NODE_ENV === "development" ? (
+                    <details className="text-left mb-6 bg-gray-50 dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-slate-700">
+                        <summary className="text-xs font-bold text-text-muted cursor-pointer">Show error details</summary>
+                        <pre className="text-[11px] text-rose-600 dark:text-rose-400 mt-2 whitespace-pre-wrap break-all font-mono leading-relaxed">
+                            {error.message || "Unknown error"}
+                        </pre>
+                    </details>
+                ) : (
+                    <p className="text-sm text-text-muted font-medium mb-6">
+                        Something went wrong. Please try again or contact support if the problem persists.
+                    </p>
+                )}
                 <div className="flex items-center justify-center gap-3">
                     <button
                         onClick={() => reset()}
