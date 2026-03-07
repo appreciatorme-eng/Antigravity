@@ -13,6 +13,10 @@ import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
+
+const CREATE_ORDER_RATE_LIMIT_MAX = 10;
+const CREATE_ORDER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +41,19 @@ export async function POST(request: NextRequest) {
 
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: user.id,
+      limit: CREATE_ORDER_RATE_LIMIT_MAX,
+      windowMs: CREATE_ORDER_RATE_LIMIT_WINDOW_MS,
+      prefix: 'api:payments:create-order',
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Too many payment order requests. Please retry later.' },
+        { status: 429 }
+      );
     }
 
     // Get user's organization

@@ -2,7 +2,7 @@
 // Creates (or resumes) a WPPConnect session for the caller's org, returns the QR code.
 // Idempotent: safe to call multiple times — existing sessions are reused.
 // createWahaSession now returns a Bearer token stored in whatsapp_connections.
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -10,8 +10,12 @@ import {
     getWahaQR,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
-export async function POST() {
+const WHATSAPP_CONNECT_RATE_LIMIT_MAX = 5;
+const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+export async function POST(_request: NextRequest) {
     try {
         const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
         const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -29,6 +33,19 @@ export async function POST() {
 
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: user.id,
+            limit: WHATSAPP_CONNECT_RATE_LIMIT_MAX,
+            windowMs: WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:whatsapp:connect",
+        });
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: "Too many WhatsApp connect requests. Please retry later." },
+                { status: 429 },
+            );
         }
 
         const { data: profile } = await supabase

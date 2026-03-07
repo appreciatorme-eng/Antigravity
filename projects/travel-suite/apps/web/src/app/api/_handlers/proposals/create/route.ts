@@ -3,6 +3,10 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import type { Database } from "@/lib/database.types";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
+const PROPOSAL_CREATE_RATE_LIMIT_MAX = 20;
+const PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 const ProposalCreateSchema = z.object({
   templateId: z.string().uuid(),
@@ -46,6 +50,19 @@ export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: PROPOSAL_CREATE_RATE_LIMIT_MAX,
+      windowMs: PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:proposals:create",
+    });
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many proposal creation requests. Please retry later." },
+        { status: 429 }
+      );
+    }
 
     if (!admin.organizationId) {
       return NextResponse.json(

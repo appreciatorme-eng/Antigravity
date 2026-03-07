@@ -61,3 +61,4 @@
 - 2026-03-07 01:40:40 CST - Phase 7 upgraded URL import SSRF protection to resolve DNS and reject private or loopback destinations after resolution.
 - 2026-03-07 01:40:40 CST - Phase 8 sanitized client-facing error output on the client profile page and the flagged proposal, WhatsApp, and notification queue APIs.
 - 2026-03-07 01:40:40 CST - Phase 9 added retry and timeout controls to Google OAuth/userinfo calls and WPPConnect API requests.
+- 2026-03-07 01:40:40 CST - Phase 10 added per-user rate limiting to the highest-risk payment, proposal creation, and WhatsApp connect mutations; broader mutation throttling remains open under C-03.
