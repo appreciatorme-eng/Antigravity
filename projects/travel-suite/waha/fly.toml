@@ -4,7 +4,7 @@
 # Deploy:  cd waha && fly deploy
 # Logs:    fly logs --app travel-suite-waha
 # Status:  fly status --app travel-suite-waha
-# Secrets: fly secrets set SECRET_KEY=<value> --app travel-suite-waha
+# Secrets: fly secrets set SECRET_KEY=<value> WPPCONNECT_WEBHOOK_SECRET=<value> --app travel-suite-waha
 
 app = "travel-suite-waha"
 primary_region = "bom"  # Mumbai — lowest latency for Indian operators

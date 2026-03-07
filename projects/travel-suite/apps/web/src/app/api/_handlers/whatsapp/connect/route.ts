@@ -13,6 +13,15 @@ import {
 
 export async function POST() {
     try {
+        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+        if (!webhookSecret) {
+            return NextResponse.json({ error: "Webhook secret is not configured" }, { status: 503 });
+        }
+        if (!appUrl) {
+            return NextResponse.json({ error: "App URL is not configured" }, { status: 503 });
+        }
+
         const supabase = await createClient();
         const {
             data: { user },
@@ -37,8 +46,7 @@ export async function POST() {
 
         const { organization_id: orgId } = profile;
         const sessionName = sessionNameFromOrgId(orgId);
-        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha${webhookSecret ? `?secret=${encodeURIComponent(webhookSecret)}` : ""}`;
+        const webhookUrl = `${appUrl}/api/webhooks/waha`;
 
         // Returns WPPConnect Bearer token — must be stored for subsequent calls
         const token = await createWahaSession(orgId, webhookUrl);
