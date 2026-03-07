@@ -1,4 +1,5 @@
 # Production Hardening Log
+**Branch**: `codex/production-hardening`
 **Started**: 2026-03-07 01:40:40 CST
 **Baseline Score**: 35/100
 **Target**: All dimensions >= 8/10 | Production Ready: YES
@@ -29,23 +30,23 @@
 | S-07 | HIGH | `apps/web/src/app/share/[token]/page.tsx:13-29+115-123` | Public token page exposes client PII | RESOLVED | `2066743` |
 | S-08 | MEDIUM | `apps/web/src/app/api/_handlers/social/oauth/callback/route.ts:45` | OAuth secret in query string | RESOLVED | `a0c7f18` |
 | S-09 | MEDIUM | `apps/web/src/app/api/_handlers/whatsapp/connect/route.ts:41` | WAHA webhook secret in query string | RESOLVED | `a0c7f18` |
-| S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | RESOLVED | pending |
-| S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | RESOLVED | pending |
+| S-10 | MEDIUM | `apps/web/src/app/api/_handlers/itinerary/import/url/route.ts:8` | SSRF check does not resolve DNS | RESOLVED | `1b7c40e` |
+| S-11 | LOW | `apps/web/src/app/clients/[id]/error.tsx:30` | Error page leaks internal `error.message` | RESOLVED | `87d10b9` |
 | P-01 | HIGH | `apps/web/src/app/api/_handlers/notifications/process-queue/route.ts:287-494` | Serialized N+1 queue processing | OPEN | - |
 | P-02 | MEDIUM | `apps/web/src/app/api/_handlers/reputation/ai/batch-analyze/route.ts:157` | Missing index on `sentiment_score IS NULL` | OPEN | - |
 | P-03 | MEDIUM | `ActionPickerModal.tsx` + `CanvasMode.tsx` | Oversized client islands | OPEN | - |
 | E-01 | HIGH | `22 route files` | No try/catch error handling | OPEN | - |
-| E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | pending |
-| E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | RESOLVED | pending |
+| E-02 | MEDIUM | `proposals/create:214`, `whatsapp/connect:60`, `notifications/process-queue:531` | Raw error messages exposed to client | RESOLVED | `87d10b9` |
+| E-03 | MEDIUM | `google.server.ts:41`, `whatsapp-waha.server.ts:73` | External calls missing timeout/retry | RESOLVED | `e49b30e` |
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
 | T-02 | HIGH | `SQL migrations/RPCs` | Zero test coverage | OPEN | - |
 | C-01 | MEDIUM | `TemplateGallery.tsx:22-23+595` | Hardcoded `USER_TIER=\"Enterprise\"` | OPEN | - |
 | C-02 | MEDIUM | `ItineraryFilterBar.tsx:9`, `NeedsAttentionQueue.tsx:10`, etc. | Circular dependencies in planner/WhatsApp UI | OPEN | - |
 | C-03 | MEDIUM | `payments/create-order`, `whatsapp/connect`, `proposals/create` | 88 authed mutation routes without rate limiting | OPEN | - |
 | C-04 | MEDIUM | `payments:144`, `share/[token]:238`, `notifications:525` | Inconsistent API response envelopes | OPEN | - |
-| D-01 | HIGH | `apps/agents/requirements.txt` | FastAPI/Starlette CVE-2025-54121 + CVE-2025-62727 | RESOLVED | pending |
+| D-01 | HIGH | `apps/agents/requirements.txt` | FastAPI/Starlette CVE-2025-54121 + CVE-2025-62727 | RESOLVED | `455928b` |
 | D-02 | MEDIUM | `apps/mobile/pubspec.yaml` | Major drift: `firebase_core`, `firebase_messaging`, `flutter_local_notifications` | OPEN | - |
-| D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | RESOLVED | pending |
+| D-03 | LOW | `apps/web/package.json:34-36` | Type-only packages in runtime dependencies | RESOLVED | `427e7e4` |
 | M-01 | LOW | `apps/mobile/lib/core/config/supabase_config.dart:3-5` | Mobile ships hardcoded Supabase values + localhost fallback | OPEN | - |
 | M-02 | LOW | `apps/agents/api/dependencies.py:30-32` | Unused dev-auth bypass code in tree | OPEN | - |
 | M-03 | LOW | `apps/mobile/lib/features/trips/.../traveler_dashboard.dart:385-387+1948-1950` | Placeholder localhost fallback in mobile | OPEN | - |
@@ -64,3 +65,4 @@
 - 2026-03-07 01:40:40 CST - Phase 10 added per-user rate limiting to the highest-risk payment, proposal creation, and WhatsApp connect mutations; broader mutation throttling remains open under C-03.
 - 2026-03-07 01:40:40 CST - Phase 11 moved type-only packages out of runtime dependencies in the web app package manifest.
 - 2026-03-07 01:40:40 CST - Phase 12 bumped the agents FastAPI/Starlette pins to current secure versions and re-ran the agents pytest suite successfully.
+- 2026-03-07 08:10:00 CST - Branch consolidation audit confirmed `codex/production-hardening` already contains all hardening commits from the remote remediation branches; no additional merge/cherry-pick was required.
