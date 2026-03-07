@@ -41,7 +41,7 @@
 | T-01 | HIGH | `Multiple critical paths` | 10-15% coverage - needs 80% | OPEN | - |
 | T-02 | HIGH | `SQL migrations/RPCs` | Zero test coverage | OPEN | - |
 | C-01 | MEDIUM | `TemplateGallery.tsx:22-23+595` | Hardcoded `USER_TIER=\"Enterprise\"` | OPEN | - |
-| C-02 | MEDIUM | `ItineraryFilterBar.tsx:9`, `NeedsAttentionQueue.tsx:10`, etc. | Circular dependencies in planner/WhatsApp UI | OPEN | - |
+| C-02 | MEDIUM | `ItineraryFilterBar.tsx:9`, `NeedsAttentionQueue.tsx:10`, etc. | Circular dependencies in planner/WhatsApp UI | RESOLVED | `00ecc1b` |
 | C-03 | MEDIUM | `payments/create-order`, `whatsapp/connect`, `proposals/create` | 88 authed mutation routes without rate limiting | OPEN | - |
 | C-04 | MEDIUM | `payments:144`, `share/[token]:238`, `notifications:525` | Inconsistent API response envelopes | OPEN | - |
 | D-01 | HIGH | `apps/agents/requirements.txt` | FastAPI/Starlette CVE-2025-54121 + CVE-2025-62727 | RESOLVED | `455928b` |
@@ -66,3 +66,5 @@
 - 2026-03-07 01:40:40 CST - Phase 11 moved type-only packages out of runtime dependencies in the web app package manifest.
 - 2026-03-07 01:40:40 CST - Phase 12 bumped the agents FastAPI/Starlette pins to current secure versions and re-ran the agents pytest suite successfully.
 - 2026-03-07 08:10:00 CST - Branch consolidation audit confirmed `codex/production-hardening` already contains all hardening commits from the remote remediation branches; no additional merge/cherry-pick was required.
+- 2026-03-07 08:35:00 CST - Cleared the remaining `apps/web` `npm audit --audit-level=moderate` failures with a lockfile refresh and re-verified `tsc`, `build`, and `audit`.
+- 2026-03-07 08:55:00 CST - Broke the final planner and WhatsApp UI circular imports by extracting shared planner and WhatsApp types/helpers into standalone modules; `madge` now reports zero cycles.
