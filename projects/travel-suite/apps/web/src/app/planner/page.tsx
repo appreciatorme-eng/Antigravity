@@ -27,10 +27,11 @@ import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
 import { PastItineraryCard } from "./PastItineraryCard";
-import { ItineraryFilterBar, matchesFilter, type ItineraryStage } from "./ItineraryFilterBar";
-import { NeedsAttentionQueue, type ItineraryLike } from "./NeedsAttentionQueue";
+import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
+import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
 import { PlannerHero } from "./PlannerHero";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
+import type { ItineraryLike, ItineraryStage } from "./planner.types";
 
 /** Shape returned by the itineraries API and consumed by PastItineraryCard */
 interface PastItineraryItem extends ItineraryLike {

@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import type { Database } from "@/lib/database.types";
+import { apiError, apiSuccess } from "@/lib/api/response";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
+const PROPOSAL_CREATE_RATE_LIMIT_MAX = 20;
+const PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 const ProposalCreateSchema = z.object({
   templateId: z.string().uuid(),
@@ -25,9 +30,10 @@ type ActiveAddOn = {
 function featureLimitExceededResponse(
   limitStatus: Awaited<ReturnType<typeof getFeatureLimitStatus>>
 ) {
-  return NextResponse.json(
+  return apiError(
+    `You've reached your ${limitStatus.limit} ${limitStatus.label} on the ${limitStatus.tier} plan.`,
+    402,
     {
-      error: `You've reached your ${limitStatus.limit} ${limitStatus.label} on the ${limitStatus.tier} plan.`,
       code: "FEATURE_LIMIT_EXCEEDED",
       feature: limitStatus.feature,
       tier: limitStatus.tier,
@@ -37,8 +43,7 @@ function featureLimitExceededResponse(
       reset_at: limitStatus.resetAt,
       upgrade_plan: limitStatus.upgradePlan,
       billing_path: "/admin/billing",
-    },
-    { status: 402 }
+    }
   );
 }
 
@@ -47,20 +52,26 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
 
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: PROPOSAL_CREATE_RATE_LIMIT_MAX,
+      windowMs: PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:proposals:create",
+    });
+    if (!rateLimit.success) {
+      return apiError("Too many proposal creation requests. Please retry later.", 429);
+    }
+
     if (!admin.organizationId) {
-      return NextResponse.json(
-        { error: "Admin organization not configured" },
-        { status: 400 }
-      );
+      return apiError("Admin organization not configured", 400);
     }
 
     const body = await req.json();
     const parsed = ProposalCreateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid proposal create payload", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return apiError("Invalid proposal create payload", 400, {
+        details: parsed.error.flatten(),
+      });
     }
 
     const {
@@ -79,10 +90,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!template || template.organization_id !== admin.organizationId) {
-      return NextResponse.json(
-        { error: "Template not found in your organization" },
-        { status: 404 }
-      );
+      return apiError("Template not found in your organization", 404);
     }
 
     const { data: clientProfile } = await admin.adminClient
@@ -92,10 +100,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!clientProfile || clientProfile.organization_id !== admin.organizationId) {
-      return NextResponse.json(
-        { error: "Client not found in your organization" },
-        { status: 404 }
-      );
+      return apiError("Client not found in your organization", 404);
     }
 
     const proposalLimitStatus = await getFeatureLimitStatus(
@@ -118,10 +123,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (cloneError || !proposalId) {
-      return NextResponse.json(
-        { error: cloneError?.message || "Failed to create proposal" },
-        { status: 400 }
-      );
+      return apiError(cloneError?.message || "Failed to create proposal", 400);
     }
 
     const { data: activeAddOns } = await admin.adminClient
@@ -206,16 +208,12 @@ export async function POST(req: NextRequest) {
       "proposals"
     );
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       proposalId,
       limit: refreshedLimitStatus,
     });
   } catch (error) {
     console.error("Error in POST /api/admin/proposals/create:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create proposal" },
-      { status: 500 }
-    );
+    return apiError("An unexpected error occurred. Please try again.", 500);
   }
 }

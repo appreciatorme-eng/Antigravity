@@ -6,12 +6,13 @@ import {
     Clock, TrendingUp, Zap, FolderOpen, X, Filter, Bell,
     type LucideIcon,
 } from "lucide-react";
-import { hasClientActivity, type ItineraryLike } from "./NeedsAttentionQueue";
+import {
+    hasClientActivity,
+    type ItineraryLike,
+    type ItineraryStage,
+    deriveStage,
+} from "./planner.types";
 import { cn } from "@/lib/utils";
-
-export type ItineraryStage =
-    | "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "converted"
-    | "active_leads" | "won" | "needs_attention";
 
 /** Compound stages that map to multiple individual stages */
 const COMPOUND_STAGES: Record<string, string[]> = {
@@ -109,19 +110,6 @@ const FILTER_TABS: { value: ItineraryStage; label: string; icon?: LucideIcon }[]
     { value: "approved", label: "Approved", icon: CheckCircle },
     { value: "converted", label: "Trips", icon: Briefcase },
 ];
-
-export function deriveStage(itinerary: {
-    share_code?: string | null;
-    share_status?: string | null;
-    trip_id?: string | null;
-}): string {
-    if (itinerary.trip_id) return "converted";
-    if (itinerary.share_status === "approved") return "approved";
-    if (itinerary.share_status === "commented") return "feedback";
-    if (itinerary.share_status === "viewed") return "viewed";
-    if (itinerary.share_code) return "shared";
-    return "draft";
-}
 
 /** Check if an itinerary matches a filter (supports compound stages + needs_attention) */
 export function matchesFilter(itinerary: ItineraryLike, filter: ItineraryStage): boolean {

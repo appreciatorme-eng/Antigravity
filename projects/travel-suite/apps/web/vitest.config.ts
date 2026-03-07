@@ -1,0 +1,38 @@
+import { fileURLToPath } from "node:url";
+
+import { defineConfig } from "vitest/config";
+
+const srcDir = fileURLToPath(new URL("./src", import.meta.url));
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": srcDir,
+    },
+  },
+  test: {
+    environment: "node",
+    globals: true,
+    include: ["tests/unit/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      all: true,
+      include: [
+        "src/lib/auth/admin-helpers.ts",
+        "src/lib/api/response.ts",
+        "src/lib/security/admin-mutation-csrf.ts",
+        "src/lib/security/cron-auth.ts",
+        "src/lib/security/rate-limit.ts",
+        "src/lib/security/whatsapp-webhook-config.ts",
+        "src/app/api/_handlers/admin/seed-demo/guards.ts",
+        "src/app/api/_handlers/webhooks/waha/secret.ts",
+        "src/app/api/_handlers/share/[token]/public-share.ts",
+        "src/app/api/_handlers/notifications/process-queue/batch.ts",
+      ],
+      reporter: ["text", "json-summary"],
+      thresholds: {
+        lines: 80,
+      },
+    },
+  },
+});

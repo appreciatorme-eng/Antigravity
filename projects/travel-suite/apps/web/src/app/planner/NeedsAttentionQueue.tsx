@@ -7,21 +7,9 @@ import {
     Sparkles, Eye, Check, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deriveStage } from "./ItineraryFilterBar";
+import { hasClientActivity } from "./planner.types";
 import { useFeedbackAction } from "@/lib/queries/itineraries";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
-
-/** Minimal itinerary shape used by hasClientActivity and deriveStage */
-export interface ItineraryLike {
-    id: string;
-    share_code?: string | null;
-    share_status?: string | null;
-    trip_id?: string | null;
-    client_comments?: ClientComment[];
-    client_preferences?: ClientPreferences | null;
-    wishlist_items?: string[];
-    self_service_status?: string | null;
-}
 
 export interface AttentionItem {
     id: string;
@@ -45,27 +33,6 @@ interface EnrichedAttentionItem extends AttentionItem {
     latestActivityAt: Date;
     activitySummary: string[];
     timeAgo: string;
-}
-
-/** Check if an itinerary has unresolved client activity requiring operator attention */
-export function hasClientActivity(itinerary: ItineraryLike): boolean {
-    const comments: ClientComment[] = itinerary.client_comments ?? [];
-    const prefs = itinerary.client_preferences;
-    const wishlist = itinerary.wishlist_items ?? [];
-    const selfService = itinerary.self_service_status;
-    const stage = deriveStage(itinerary);
-
-    // Only unresolved comments need attention
-    const unresolvedComments = comments.filter((c) => !c.resolved_at);
-    if (unresolvedComments.length > 0 && stage !== "converted") return true;
-    // Has preference updates
-    if (prefs && Object.keys(prefs).length > 0 && stage !== "converted") return true;
-    // Has wishlist items
-    if (wishlist.length > 0 && stage !== "converted") return true;
-    // Self-service has been updated (but 'resolved' no longer triggers)
-    if (selfService === "updated") return true;
-
-    return false;
 }
 
 function getTimeAgo(date: Date): string {

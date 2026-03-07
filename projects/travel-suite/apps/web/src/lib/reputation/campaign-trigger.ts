@@ -29,21 +29,42 @@ interface ClientRow {
   email: string | null;
 }
 
+type QueryErrorLike = { message: string } | null;
+
+type UntypedBuilder = {
+  select: (columns: string) => UntypedBuilder;
+  eq: (column: string, value: unknown) => UntypedBuilder;
+  in: (column: string, values: readonly string[]) => UntypedBuilder;
+  limit: (count: number) => UntypedBuilder;
+  maybeSingle: () => Promise<{ data: unknown; error: QueryErrorLike }>;
+  single: () => Promise<{ data: unknown; error: QueryErrorLike }>;
+  insert: (values: unknown) => UntypedBuilder;
+  update: (values: unknown) => UntypedBuilder;
+};
+
+type UntypedSupabase = {
+  from: (relation: string) => UntypedBuilder;
+};
+
 export async function triggerCampaignSendsForOrg(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<CampaignTriggerResult> {
   const errors: string[] = [];
   let sendsCreated = 0;
+  const rawSupabase = supabase as unknown as UntypedSupabase;
 
-  const { data: campaigns, error: campaignsError } = await (supabase as any)
+  const { data: campaigns, error: campaignsError } = await ((rawSupabase
     .from("reputation_review_campaigns")
     .select(
       "id, name, trigger_delay_hours, channel_sequence, whatsapp_template_name, email_template_name"
     )
     .eq("organization_id", organizationId)
     .eq("status", "active")
-    .in("trigger_event", ["trip_completed", "trip_day_2"]);
+    .in("trigger_event", ["trip_completed", "trip_day_2"])) as unknown as Promise<{
+    data: CampaignRow[] | null;
+    error: QueryErrorLike;
+  }>);
 
   if (campaignsError) {
     errors.push(
@@ -56,7 +77,7 @@ export async function triggerCampaignSendsForOrg(
     return { sends_created: 0, errors };
   }
 
-  for (const campaign of campaigns as CampaignRow[]) {
+  for (const campaign of campaigns) {
     const delayHours = campaign.trigger_delay_hours ?? 24;
     const cutoffTime = new Date(
       Date.now() - delayHours * 60 * 60 * 1000
@@ -83,13 +104,16 @@ export async function triggerCampaignSendsForOrg(
     }
 
     for (const trip of trips as TripRow[]) {
-      const { data: existingSend } = await (supabase as any)
+      const { data: existingSend } = await ((rawSupabase
         .from("reputation_campaign_sends")
         .select("id")
         .eq("campaign_id", campaign.id)
         .eq("trip_id", trip.id)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle()) as unknown as Promise<{
+        data: { id: string } | null;
+        error: QueryErrorLike;
+      }>);
 
       if (existingSend) {
         continue;
@@ -100,7 +124,7 @@ export async function triggerCampaignSendsForOrg(
       let clientEmail: string | null = null;
 
       if (trip.client_id) {
-        const { data: client } = await (supabase as any)
+        const { data: client } = await supabase
           .from("clients")
           .select("name, phone, email")
           .eq("id", trip.client_id)
@@ -120,7 +144,7 @@ export async function triggerCampaignSendsForOrg(
       ).toISOString();
       const npsLink = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/reputation/nps/${npsToken}`;
 
-      const { data: send, error: sendError } = await (supabase as any)
+      const { data: send, error: sendError } = await ((rawSupabase
         .from("reputation_campaign_sends")
         .insert({
           organization_id: organizationId,
@@ -136,12 +160,15 @@ export async function triggerCampaignSendsForOrg(
           review_link_clicked: false,
           review_submitted: false,
         })
-        .select()
-        .single();
+        .select("id")
+        .single()) as unknown as Promise<{
+        data: { id: string } | null;
+        error: QueryErrorLike;
+      }>);
 
-      if (sendError) {
+      if (sendError || !send) {
         errors.push(
-          `Send creation failed (campaign ${campaign.id} / trip ${trip.id}): ${sendError.message}`
+          `Send creation failed (campaign ${campaign.id} / trip ${trip.id}): ${sendError?.message ?? "unknown error"}`
         );
         continue;
       }
@@ -156,7 +183,7 @@ export async function triggerCampaignSendsForOrg(
       let notificationQueued = false;
 
       if (clientPhone && channelSequence.includes("whatsapp")) {
-        const { error: waError } = await (supabase as any)
+        const { error: waError } = await supabase
           .from("notification_queue")
           .insert({
             organization_id: organizationId,
@@ -179,7 +206,7 @@ export async function triggerCampaignSendsForOrg(
       }
 
       if (clientEmail && channelSequence.includes("email")) {
-        const { error: emailError } = await (supabase as any)
+        const { error: emailError } = await supabase
           .from("notification_queue")
           .insert({
             organization_id: organizationId,
@@ -202,7 +229,7 @@ export async function triggerCampaignSendsForOrg(
       }
 
       if (notificationQueued) {
-        await (supabase as any)
+        await rawSupabase
           .from("reputation_campaign_sends")
           .update({ status: "sent", sent_at: new Date().toISOString() })
           .eq("id", send.id);

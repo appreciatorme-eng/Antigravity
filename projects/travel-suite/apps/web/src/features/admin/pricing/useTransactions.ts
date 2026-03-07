@@ -50,7 +50,7 @@ export function useTransactions(filters: TransactionFilters) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [filters.search, filters.category, filters.vendor, filters.sort, fetchTransactions]);
+  }, [filters, fetchTransactions]);
 
   const reload = useCallback(() => {
     void fetchTransactions(filters);

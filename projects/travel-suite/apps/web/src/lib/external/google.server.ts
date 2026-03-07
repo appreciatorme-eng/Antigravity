@@ -1,9 +1,9 @@
 // Google OAuth + Gmail + Business API client — server-side only
 // Handles token exchange, refresh, and scoped API calls
+import { fetchWithRetry } from '@/lib/network/retry';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_API_BASE = 'https://www.googleapis.com';
-const GMB_API_BASE = 'https://mybusinessaccountmanagement.googleapis.com/v1';
 
 export interface GoogleTokens {
     access_token: string;
@@ -38,10 +38,15 @@ export async function exchangeGoogleCode(
         grant_type: 'authorization_code',
     });
 
-    const res = await fetch(GOOGLE_TOKEN_URL, {
+    const res = await fetchWithRetry(GOOGLE_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
+        cache: 'no-store',
+    }, {
+        retries: 2,
+        timeoutMs: 5000,
+        baseDelayMs: 250,
     });
 
     if (!res.ok) {
@@ -66,10 +71,15 @@ export async function refreshGoogleToken(refreshToken: string): Promise<string> 
         grant_type: 'refresh_token',
     });
 
-    const res = await fetch(GOOGLE_TOKEN_URL, {
+    const res = await fetchWithRetry(GOOGLE_TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
+        cache: 'no-store',
+    }, {
+        retries: 2,
+        timeoutMs: 5000,
+        baseDelayMs: 250,
     });
 
     if (!res.ok) {
@@ -85,8 +95,13 @@ export async function refreshGoogleToken(refreshToken: string): Promise<string> 
 }
 
 export async function getGoogleUserInfo(accessToken: string): Promise<GoogleUserInfo> {
-    const res = await fetch(`${GOOGLE_API_BASE}/oauth2/v3/userinfo`, {
+    const res = await fetchWithRetry(`${GOOGLE_API_BASE}/oauth2/v3/userinfo`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+    }, {
+        retries: 2,
+        timeoutMs: 5000,
+        baseDelayMs: 250,
     });
 
     if (!res.ok) {

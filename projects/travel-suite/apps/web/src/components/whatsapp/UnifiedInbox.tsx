@@ -23,9 +23,9 @@ import { toast } from 'sonner';
 import {
   MessageThread,
   type Conversation,
-  type ConversationContact,
   type Message,
 } from './MessageThread';
+import type { ActionMode, ConversationContact } from './whatsapp.types';
 import {
   type ChannelConversation,
   type ChannelType,
@@ -33,7 +33,7 @@ import {
   MOCK_CLIENT_DETAILS,
   MOCK_DRIVER_DETAILS,
 } from './inbox-mock-data';
-import { ActionPickerModal, type ActionMode } from './ActionPickerModal';
+import { ActionPickerModal } from './ActionPickerModal';
 import { ContextActionModal, type ContextActionType } from './ContextActionModal';
 import { WhatsAppConnectModal } from './WhatsAppConnectModal';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
@@ -422,7 +422,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
   useEffect(() => {
     if (isDemoMode) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
       setConversations(ALL_MOCK_CONVERSATIONS);
       setSelectedId('conv_1');
       return;

@@ -10,9 +10,22 @@ import {
     getWahaQR,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+
+const WHATSAPP_CONNECT_RATE_LIMIT_MAX = 5;
+const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST() {
     try {
+        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+        if (!webhookSecret) {
+            return NextResponse.json({ error: "Webhook secret is not configured" }, { status: 503 });
+        }
+        if (!appUrl) {
+            return NextResponse.json({ error: "App URL is not configured" }, { status: 503 });
+        }
+
         const supabase = await createClient();
         const {
             data: { user },
@@ -20,6 +33,19 @@ export async function POST() {
 
         if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const rateLimit = await enforceRateLimit({
+            identifier: user.id,
+            limit: WHATSAPP_CONNECT_RATE_LIMIT_MAX,
+            windowMs: WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:whatsapp:connect",
+        });
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: "Too many WhatsApp connect requests. Please retry later." },
+                { status: 429 },
+            );
         }
 
         const { data: profile } = await supabase
@@ -37,8 +63,7 @@ export async function POST() {
 
         const { organization_id: orgId } = profile;
         const sessionName = sessionNameFromOrgId(orgId);
-        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/waha${webhookSecret ? `?secret=${encodeURIComponent(webhookSecret)}` : ""}`;
+        const webhookUrl = `${appUrl}/api/webhooks/waha`;
 
         // Returns WPPConnect Bearer token — must be stored for subsequent calls
         const token = await createWahaSession(orgId, webhookUrl);
@@ -59,7 +84,9 @@ export async function POST() {
         return NextResponse.json({ success: true, sessionName, qrBase64 });
     } catch (error) {
         console.error("[whatsapp/connect] error:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json(
+            { error: "An unexpected error occurred. Please try again." },
+            { status: 500 },
+        );
     }
 }

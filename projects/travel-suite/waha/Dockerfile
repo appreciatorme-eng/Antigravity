@@ -18,6 +18,16 @@ RUN git clone --depth=1 https://github.com/wppconnect-team/wppconnect-server.git
 # Use npm install — repo has no package-lock.json
 RUN npm install --legacy-peer-deps
 
+# Patch webhook delivery so WPPConnect sends the shared secret as a header
+# instead of leaking it in the webhook URL.
+RUN node -e "const fs=require('fs'); \
+  const p='./src/util/functions.ts'; \
+  let c=fs.readFileSync(p,'utf8'); \
+  c=c.replace(/\\.post\\(webhook, data\\)/, \".post(webhook, data, process.env.WPPCONNECT_WEBHOOK_SECRET ? { headers: { 'x-webhook-secret': process.env.WPPCONNECT_WEBHOOK_SECRET } } : undefined)\"); \
+  if(!c.includes(\"x-webhook-secret\")) throw new Error('webhook header patch failed'); \
+  fs.writeFileSync(p,c); \
+  console.log('functions.ts patched with x-webhook-secret header support');"
+
 # Compile TypeScript → dist/
 RUN npm run build
 

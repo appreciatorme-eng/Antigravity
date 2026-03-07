@@ -1,3 +1,6 @@
+import dns from 'node:dns/promises';
+import net from 'node:net';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
@@ -5,16 +8,56 @@ import * as cheerio from 'cheerio';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy_key' });
 
+function isPrivateIp(address: string): boolean {
+    const normalized = address.trim().toLowerCase();
+    const version = net.isIP(normalized);
+
+    if (version === 4) {
+        if (normalized === '0.0.0.0') return true;
+        if (normalized.startsWith('127.')) return true;
+        if (normalized.startsWith('10.')) return true;
+        if (normalized.startsWith('192.168.')) return true;
+        if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
+        return false;
+    }
+
+    if (version === 6) {
+        if (normalized === '::1') return true;
+        if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+        if (normalized.startsWith('fe80:')) return true;
+        if (normalized.startsWith('::ffff:127.')) return true;
+        if (normalized.startsWith('::ffff:10.')) return true;
+        if (normalized.startsWith('::ffff:192.168.')) return true;
+        if (/^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
+        return false;
+    }
+
+    return true;
+}
+
 function isPrivateOrLocalHost(hostname: string): boolean {
     const normalized = hostname.trim().toLowerCase();
     if (!normalized) return true;
     if (normalized === 'localhost' || normalized.endsWith('.local')) return true;
-    if (normalized === '::1') return true;
-    if (normalized.startsWith('127.')) return true;
-    if (normalized.startsWith('10.')) return true;
-    if (normalized.startsWith('192.168.')) return true;
-    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
+    if (net.isIP(normalized) !== 0) return isPrivateIp(normalized);
     return false;
+}
+
+async function isSafePublicUrl(target: URL): Promise<boolean> {
+    if (isPrivateOrLocalHost(target.hostname)) {
+        return false;
+    }
+
+    try {
+        const resolved = await dns.lookup(target.hostname, { all: true, verbatim: true });
+        if (resolved.length === 0) {
+            return false;
+        }
+
+        return resolved.every((entry) => !isPrivateIp(entry.address));
+    } catch {
+        return false;
+    }
 }
 
 const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS. 
@@ -79,8 +122,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Only http/https URLs are supported' }, { status: 400 });
         }
 
-        if (isPrivateOrLocalHost(parsedUrl.hostname)) {
-            return NextResponse.json({ error: 'Local or private network URLs are not allowed' }, { status: 400 });
+        if (!(await isSafePublicUrl(parsedUrl))) {
+            return NextResponse.json({ error: 'URL not allowed' }, { status: 422 });
         }
 
         console.log(`\n🔍 Scraping URL import: ${url}`);

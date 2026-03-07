@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // seed-demo.mjs — one-shot idempotent demo org seeder.
 // Run from apps/web directory (needs @supabase/supabase-js in node_modules).
-// Usage: SUPABASE_SERVICE_ROLE_KEY=... node seed-demo.mjs
+// Usage: SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node seed-demo.mjs
 
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://rtdjmykkgmirxdyfckqi.supabase.co";
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+if (!SUPABASE_URL) { console.error("Missing SUPABASE_URL"); process.exit(1); }
 if (!SERVICE_ROLE_KEY) { console.error("Missing SUPABASE_SERVICE_ROLE_KEY"); process.exit(1); }
 
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {

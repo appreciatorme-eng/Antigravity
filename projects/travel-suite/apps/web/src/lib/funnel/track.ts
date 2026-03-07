@@ -23,9 +23,8 @@ export function trackFunnelEvent({
   tripId = null,
   metadata = {},
 }: TrackFunnelEventOptions): void {
-  (supabase as any)
-    .from("conversion_events")
-    .insert({
+  void Promise.resolve(
+    supabase.from("conversion_events").insert({
       organization_id: organizationId,
       event_type: eventType,
       lead_id: leadId,
@@ -33,7 +32,8 @@ export function trackFunnelEvent({
       trip_id: tripId,
       event_metadata: metadata,
     })
-    .then(({ error }: { error: unknown }) => {
+  )
+    .then(({ error }) => {
       if (error) {
         console.error(`[funnel] Failed to track ${eventType}:`, error);
       }

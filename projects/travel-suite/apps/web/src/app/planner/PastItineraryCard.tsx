@@ -9,9 +9,9 @@ import { MapPin, Clock, DollarSign, Check, Share2, ExternalLink, Globe, Users, C
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { deriveStage, STAGE_CONFIG } from "./ItineraryFilterBar";
+import { STAGE_CONFIG } from "./ItineraryFilterBar";
 import { ClientFeedbackPanel } from "./ClientFeedbackPanel";
-import { hasClientActivity } from "./NeedsAttentionQueue";
+import { deriveStage, hasClientActivity } from "./planner.types";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 
 interface PastItineraryCardProps {

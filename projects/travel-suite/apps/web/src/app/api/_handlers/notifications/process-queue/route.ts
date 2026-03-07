@@ -4,7 +4,10 @@ import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import {
+    apiErrorWithRequestId,
+    apiSuccessWithRequestId,
+} from "@/lib/api/response";
 import {
     renderTemplate,
     renderWhatsAppTemplate,
@@ -19,6 +22,7 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 import type { Json } from "@/lib/database.types";
+import { processInBatches } from "./batch";
 
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createAdminClient();
@@ -40,6 +44,7 @@ interface QueueItem {
 const DEFAULT_MAX_ATTEMPTS = Number(process.env.NOTIFICATION_QUEUE_MAX_ATTEMPTS || "5");
 const BASE_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_BASE_MINUTES || "5");
 const MAX_BACKOFF_MINUTES = Number(process.env.NOTIFICATION_QUEUE_BACKOFF_MAX_MINUTES || "60");
+const NOTIFICATION_BATCH_SIZE = 10;
 
 function parseMsEnv(value: string | undefined, fallbackMs: number): number {
     const parsed = Number(value);
@@ -236,6 +241,228 @@ async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<stri
     return insertedShare?.share_token || null;
 }
 
+type QueueProcessOutcome = "sent" | "failed" | "skipped";
+
+async function processQueueRow(params: {
+    row: QueueItem;
+    requestUrl: string;
+    requestContext: Record<string, unknown>;
+}): Promise<QueueProcessOutcome> {
+    const { row, requestUrl, requestContext } = params;
+
+    const { data: claimedRows } = await supabaseAdmin
+        .from("notification_queue")
+        .update({ status: "processing", last_attempt_at: new Date().toISOString() })
+        .eq("id", row.id)
+        .eq("status", "pending")
+        .select("id");
+
+    if (!claimedRows || claimedRows.length === 0) {
+        return "skipped";
+    }
+
+    const attempts = Number(row.attempts || 0) + 1;
+    const organizationId = await resolveOrganizationIdForQueueItem(row);
+    const payload = toRecord(row.payload);
+    const templateKey = getStringPayloadValue(payload, "template_key");
+    const templateVars =
+        ((payload.template_vars as TemplateVars | undefined) || {}) as TemplateVars;
+    let title = getStringPayloadValue(payload, "title") || "Trip Notification";
+    let body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
+
+    if (templateKey) {
+        const rendered = renderTemplate(templateKey as NotificationTemplateKey, templateVars);
+        title = rendered.title;
+        body = rendered.body;
+    }
+
+    if (row.notification_type === "pickup_reminder") {
+        const token = await resolveLiveLinkForQueueItem(row, payload);
+        if (token) {
+            const { origin } = new URL(requestUrl);
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
+            const liveUrl = `${appUrl.replace(/\/$/, "")}/live/${token}`;
+            body = `${body}\n\nTrack live location:\n${liveUrl}`;
+            templateVars.live_link = liveUrl;
+        }
+    }
+
+    let whatsappSuccess = false;
+    let pushSuccess = false;
+    const channelErrors: string[] = [];
+
+    if (row.recipient_phone) {
+        let waResult;
+        if (templateKey) {
+            const waTemplate = renderWhatsAppTemplate(
+                templateKey as NotificationTemplateKey,
+                templateVars
+            );
+            if (waTemplate) {
+                waResult = await sendWhatsAppTemplate(
+                    row.recipient_phone,
+                    waTemplate.name,
+                    waTemplate.bodyParams,
+                    waTemplate.languageCode
+                );
+            } else {
+                const message = `${title}\n\n${body}`;
+                waResult = await sendWhatsAppText(row.recipient_phone, message);
+            }
+        } else {
+            const message = `${title}\n\n${body}`;
+            waResult = await sendWhatsAppText(row.recipient_phone, message);
+        }
+        whatsappSuccess = waResult.success;
+        if (!waResult.success && waResult.error) {
+            channelErrors.push(`whatsapp: ${waResult.error}`);
+        }
+
+        await trackDeliveryStatus({
+            organizationId,
+            item: row,
+            channel: "whatsapp",
+            provider: "meta_whatsapp_cloud",
+            status: waResult.success ? "sent" : "failed",
+            attemptNumber: attempts,
+            errorMessage: waResult.success ? null : waResult.error || null,
+            metadata: {
+                template_key: templateKey || null,
+            },
+        });
+
+        await supabaseAdmin.from("notification_logs").insert({
+            trip_id: row.trip_id,
+            recipient_id: row.user_id,
+            recipient_phone: row.recipient_phone,
+            recipient_type: row.recipient_type || "client",
+            notification_type: row.notification_type || "general",
+            title,
+            body,
+            status: waResult.success ? "sent" : "failed",
+            error_message: waResult.success ? null : waResult.error,
+            sent_at: new Date().toISOString(),
+        });
+    } else {
+        await trackDeliveryStatus({
+            organizationId,
+            item: row,
+            channel: "whatsapp",
+            provider: "meta_whatsapp_cloud",
+            status: "skipped",
+            attemptNumber: attempts,
+            errorMessage: "Recipient phone is missing",
+        });
+    }
+
+    if (row.user_id) {
+        const pushResult = await sendNotificationToUser({
+            userId: row.user_id,
+            title,
+            body,
+            data: {
+                type: row.notification_type || "general",
+                tripId: row.trip_id || undefined,
+                dayNumber: Number(payload.day_number || 0) || undefined,
+            },
+        });
+        pushSuccess = pushResult.success;
+        if (!pushResult.success && pushResult.error) {
+            channelErrors.push(`push: ${pushResult.error}`);
+        }
+
+        await trackDeliveryStatus({
+            organizationId,
+            item: row,
+            channel: "push",
+            provider: "firebase_fcm",
+            status: pushResult.success ? "sent" : "failed",
+            attemptNumber: attempts,
+            errorMessage: pushResult.success ? null : pushResult.error || null,
+        });
+    } else {
+        await trackDeliveryStatus({
+            organizationId,
+            item: row,
+            channel: "push",
+            provider: "firebase_fcm",
+            status: "skipped",
+            attemptNumber: attempts,
+            errorMessage: "Recipient user_id is missing",
+        });
+    }
+
+    const isSuccess = whatsappSuccess || pushSuccess;
+    if (isSuccess) {
+        await supabaseAdmin
+            .from("notification_queue")
+            .update({
+                status: "sent",
+                attempts,
+                processed_at: new Date().toISOString(),
+                error_message: null,
+            })
+            .eq("id", row.id);
+        return "sent";
+    }
+
+    const reason = channelErrors.join(" | ") || "All channels failed";
+    logEvent("warn", "Queue item delivery failed on all channels", {
+        ...requestContext,
+        queue_id: row.id,
+        trip_id: row.trip_id,
+        attempts,
+        reason,
+    });
+
+    if (attempts >= DEFAULT_MAX_ATTEMPTS) {
+        await moveToDeadLetter({
+            item: row,
+            organizationId,
+            attempts,
+            reason,
+            failedChannels: channelErrors,
+        });
+
+        await supabaseAdmin
+            .from("notification_queue")
+            .update({
+                status: "failed",
+                attempts,
+                processed_at: new Date().toISOString(),
+                error_message: reason,
+            })
+            .eq("id", row.id);
+    } else {
+        const retryInMinutes = calculateNextRetryDelayMinutes(attempts);
+        await supabaseAdmin
+            .from("notification_queue")
+            .update({
+                status: "pending",
+                attempts,
+                scheduled_for: addMinutes(new Date(), retryInMinutes),
+                error_message: reason,
+            })
+            .eq("id", row.id);
+
+        await trackDeliveryStatus({
+            organizationId,
+            item: row,
+            channel: "email",
+            provider: "queue_retry_policy",
+            status: "retrying",
+            attemptNumber: attempts,
+            errorMessage: `Retry scheduled in ${retryInMinutes} minute(s): ${reason}`,
+            metadata: {
+                retry_in_minutes: retryInMinutes,
+                max_attempts: DEFAULT_MAX_ATTEMPTS,
+            },
+        });
+    }
+
+    return "failed";
+}
+
 export async function POST(request: NextRequest) {
     const startedAt = Date.now();
     const requestId = getRequestId(request);
@@ -264,7 +491,7 @@ export async function POST(request: NextRequest) {
                 reason: cronAuth.reason,
                 status: cronAuth.status,
             });
-            return withRequestId({ error: cronAuth.reason }, requestId, { status: cronAuth.status });
+            return apiErrorWithRequestId(cronAuth.reason, requestId, cronAuth.status);
         }
 
         const { data: dueRows, error: dueError } = await supabaseAdmin
@@ -277,221 +504,35 @@ export async function POST(request: NextRequest) {
 
         if (dueError) {
             logError("Notification queue fetch failed", dueError, requestContext);
-            return withRequestId({ error: dueError.message }, requestId, { status: 500 });
+            return apiErrorWithRequestId(dueError.message, requestId, 500);
         }
 
         const rows = (dueRows || []) as QueueItem[];
-        let sent = 0;
-        let failed = 0;
-
-        for (const row of rows) {
-            const { data: claimedRows } = await supabaseAdmin
-                .from("notification_queue")
-                .update({ status: "processing", last_attempt_at: new Date().toISOString() })
-                .eq("id", row.id)
-                .eq("status", "pending")
-                .select("id");
-
-            if (!claimedRows || claimedRows.length === 0) {
-                continue;
-            }
-
-            const attempts = Number(row.attempts || 0) + 1;
-            const organizationId = await resolveOrganizationIdForQueueItem(row);
-            const payload = toRecord(row.payload);
-            const templateKey = getStringPayloadValue(payload, "template_key");
-            const templateVars = ((payload.template_vars as TemplateVars | undefined) || {}) as TemplateVars;
-            let title = getStringPayloadValue(payload, "title") || "Trip Notification";
-            let body = getStringPayloadValue(payload, "body") || "You have an update for your trip.";
-
-            if (templateKey) {
-                const rendered = renderTemplate(templateKey as NotificationTemplateKey, templateVars);
-                title = rendered.title;
-                body = rendered.body;
-            }
-
-            if (row.notification_type === "pickup_reminder") {
-                const token = await resolveLiveLinkForQueueItem(row, payload);
-                if (token) {
-                    const { origin } = new URL(request.url);
-                    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
-                    const liveUrl = `${appUrl.replace(/\/$/, "")}/live/${token}`;
-                    body = `${body}\n\nTrack live location:\n${liveUrl}`;
-                    templateVars.live_link = liveUrl;
-                }
-            }
-
-            let whatsappSuccess = false;
-            let pushSuccess = false;
-            const channelErrors: string[] = [];
-
-            if (row.recipient_phone) {
-                let waResult;
-                if (templateKey) {
-                    const waTemplate = renderWhatsAppTemplate(templateKey as NotificationTemplateKey, templateVars);
-                    if (waTemplate) {
-                        waResult = await sendWhatsAppTemplate(
-                            row.recipient_phone,
-                            waTemplate.name,
-                            waTemplate.bodyParams,
-                            waTemplate.languageCode
-                        );
-                    } else {
-                        const message = `${title}\n\n${body}`;
-                        waResult = await sendWhatsAppText(row.recipient_phone, message);
-                    }
-                } else {
-                    const message = `${title}\n\n${body}`;
-                    waResult = await sendWhatsAppText(row.recipient_phone, message);
-                }
-                whatsappSuccess = waResult.success;
-                if (!waResult.success && waResult.error) {
-                    channelErrors.push(`whatsapp: ${waResult.error}`);
-                }
-
-                await trackDeliveryStatus({
-                    organizationId,
-                    item: row,
-                    channel: "whatsapp",
-                    provider: "meta_whatsapp_cloud",
-                    status: waResult.success ? "sent" : "failed",
-                    attemptNumber: attempts,
-                    errorMessage: waResult.success ? null : waResult.error || null,
-                    metadata: {
-                        template_key: templateKey || null,
-                    },
-                });
-
-                await supabaseAdmin.from("notification_logs").insert({
-                    trip_id: row.trip_id,
-                    recipient_id: row.user_id,
-                    recipient_phone: row.recipient_phone,
-                    recipient_type: row.recipient_type || "client",
-                    notification_type: row.notification_type || "general",
-                    title,
-                    body,
-                    status: waResult.success ? "sent" : "failed",
-                    error_message: waResult.success ? null : waResult.error,
-                    sent_at: new Date().toISOString(),
-                });
-            } else {
-                await trackDeliveryStatus({
-                    organizationId,
-                    item: row,
-                    channel: "whatsapp",
-                    provider: "meta_whatsapp_cloud",
-                    status: "skipped",
-                    attemptNumber: attempts,
-                    errorMessage: "Recipient phone is missing",
-                });
-            }
-
-            if (row.user_id) {
-                const pushResult = await sendNotificationToUser({
-                    userId: row.user_id,
-                    title,
-                    body,
-                    data: {
-                        type: row.notification_type || "general",
-                        tripId: row.trip_id || undefined,
-                        dayNumber: Number(payload.day_number || 0) || undefined,
-                    },
-                });
-                pushSuccess = pushResult.success;
-                if (!pushResult.success && pushResult.error) {
-                    channelErrors.push(`push: ${pushResult.error}`);
-                }
-
-                await trackDeliveryStatus({
-                    organizationId,
-                    item: row,
-                    channel: "push",
-                    provider: "firebase_fcm",
-                    status: pushResult.success ? "sent" : "failed",
-                    attemptNumber: attempts,
-                    errorMessage: pushResult.success ? null : pushResult.error || null,
-                });
-            } else {
-                await trackDeliveryStatus({
-                    organizationId,
-                    item: row,
-                    channel: "push",
-                    provider: "firebase_fcm",
-                    status: "skipped",
-                    attemptNumber: attempts,
-                    errorMessage: "Recipient user_id is missing",
-                });
-            }
-
-            const isSuccess = whatsappSuccess || pushSuccess;
-            if (isSuccess) {
-                sent += 1;
-                await supabaseAdmin
-                    .from("notification_queue")
-                    .update({
-                        status: "sent",
-                        attempts,
-                        processed_at: new Date().toISOString(),
-                        error_message: null,
-                    })
-                    .eq("id", row.id);
-            } else {
-                failed += 1;
-                const reason = channelErrors.join(" | ") || "All channels failed";
-                logEvent("warn", "Queue item delivery failed on all channels", {
+        const results = await processInBatches({
+            items: rows,
+            batchSize: NOTIFICATION_BATCH_SIZE,
+            worker: (row) =>
+                processQueueRow({
+                    row,
+                    requestUrl: request.url,
+                    requestContext,
+                }),
+            onItemError: ({ item, error, index }) => {
+                logError("Notification queue item crashed", error, {
                     ...requestContext,
-                    queue_id: row.id,
-                    trip_id: row.trip_id,
-                    attempts,
-                    reason,
+                    queue_id: item.id,
+                    row_index: index,
                 });
+            },
+        });
 
-                if (attempts >= DEFAULT_MAX_ATTEMPTS) {
-                    await moveToDeadLetter({
-                        item: row,
-                        organizationId,
-                        attempts,
-                        reason,
-                        failedChannels: channelErrors,
-                    });
-
-                    await supabaseAdmin
-                        .from("notification_queue")
-                        .update({
-                            status: "failed",
-                            attempts,
-                            processed_at: new Date().toISOString(),
-                            error_message: reason,
-                        })
-                        .eq("id", row.id);
-                } else {
-                    const retryInMinutes = calculateNextRetryDelayMinutes(attempts);
-                    await supabaseAdmin
-                        .from("notification_queue")
-                        .update({
-                            status: "pending",
-                            attempts,
-                            scheduled_for: addMinutes(new Date(), retryInMinutes),
-                            error_message: reason,
-                        })
-                        .eq("id", row.id);
-
-                    await trackDeliveryStatus({
-                        organizationId,
-                        item: row,
-                        channel: "email",
-                        provider: "queue_retry_policy",
-                        status: "retrying",
-                        attemptNumber: attempts,
-                        errorMessage: `Retry scheduled in ${retryInMinutes} minute(s): ${reason}`,
-                        metadata: {
-                            retry_in_minutes: retryInMinutes,
-                            max_attempts: DEFAULT_MAX_ATTEMPTS,
-                        },
-                    });
-                }
-            }
-        }
+        const sent = results.filter(
+            (result) => result.status === "fulfilled" && result.value === "sent"
+        ).length;
+        const failed = results.filter((result) => {
+            if (result.status === "rejected") return true;
+            return result.value === "failed";
+        }).length;
 
         if (adminUserId) {
             await supabaseAdmin.from("notification_logs").insert({
@@ -522,12 +563,14 @@ export async function POST(request: NextRequest) {
             durationMs,
         });
 
-        return withRequestId({
-            ok: true,
-            processed: rows.length,
-            sent,
-            failed,
-        }, requestId);
+        return apiSuccessWithRequestId(
+            {
+                processed: rows.length,
+                sent,
+                failed,
+            },
+            requestId
+        );
     } catch (error) {
         Sentry.captureException(error);
         logError("Notification queue run crashed", error, requestContext);
@@ -536,20 +579,20 @@ export async function POST(request: NextRequest) {
             error: error instanceof Error ? error.message : "Unknown error",
         });
 
-        return withRequestId(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+        return apiErrorWithRequestId(
+            "An unexpected error occurred. Please try again.",
             requestId,
-            { status: 500 }
+            500
         );
     }
 }
 
 export async function GET(request: NextRequest) {
     const requestId = getRequestId(request);
-    const response = withRequestId(
-        { error: "Method Not Allowed. Use POST for queue processing." },
+    const response = apiErrorWithRequestId(
+        "Method Not Allowed. Use POST for queue processing.",
         requestId,
-        { status: 405 }
+        405
     );
     response.headers.set("allow", "POST");
     return response;

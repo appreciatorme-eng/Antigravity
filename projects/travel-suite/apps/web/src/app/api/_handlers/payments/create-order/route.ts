@@ -5,7 +5,7 @@
  * - POST /api/payments/create-order - Create Razorpay order for checkout
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -13,17 +13,19 @@ import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
+import { apiError, apiSuccess } from '@/lib/api/response';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
+
+const CREATE_ORDER_RATE_LIMIT_MAX = 10;
+const CREATE_ORDER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   try {
     if (!isPaymentsIntegrationEnabled()) {
-      return NextResponse.json(
-        {
-          success: false,
-          disabled: true,
-          error: getIntegrationDisabledMessage('payments'),
-        },
-        { status: 503 }
+      return apiError(
+        getIntegrationDisabledMessage('payments'),
+        503,
+        { disabled: true }
       );
     }
 
@@ -36,7 +38,17 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: user.id,
+      limit: CREATE_ORDER_RATE_LIMIT_MAX,
+      windowMs: CREATE_ORDER_RATE_LIMIT_WINDOW_MS,
+      prefix: 'api:payments:create-order',
+    });
+    if (!rateLimit.success) {
+      return apiError('Too many payment order requests. Please retry later.', 429);
     }
 
     // Get user's organization
@@ -47,13 +59,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     // Parse request body
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== 'object') {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+      return apiError('Invalid request body', 400);
     }
 
     const amount = Number((body as { amount?: unknown }).amount);
@@ -79,17 +91,11 @@ export async function POST(request: NextRequest) {
 
     // Validate amount
     if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Valid amount is required' },
-        { status: 400 }
-      );
+      return apiError('Valid amount is required', 400);
     }
 
     if (invoice_id && subscription_id) {
-      return NextResponse.json(
-        { error: 'Provide either invoice_id or subscription_id, not both' },
-        { status: 400 }
-      );
+      return apiError('Provide either invoice_id or subscription_id, not both', 400);
     }
 
     if (invoice_id) {
@@ -101,18 +107,14 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (invoiceError || !invoice) {
-        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+        return apiError('Invoice not found', 404);
       }
 
       const invoiceTotal = Number(invoice.total_amount || 0);
       if (!allowPartial && invoiceTotal > 0 && amount < invoiceTotal) {
-        return NextResponse.json(
-          {
-            error: 'Amount is below invoice total',
-            min_amount: invoiceTotal,
-          },
-          { status: 400 }
-        );
+        return apiError('Amount is below invoice total', 400, {
+          min_amount: invoiceTotal,
+        });
       }
     }
 
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (subscriptionError || !subscription) {
-        return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+        return apiError('Subscription not found', 404);
       }
     }
 
@@ -141,20 +143,14 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    return NextResponse.json({ order });
+    return apiSuccess({ order });
   } catch (error) {
     console.error('Error in POST /api/payments/create-order:', error);
 
     if (error instanceof PaymentServiceError) {
-      return NextResponse.json(
-        { error: "Failed to create payment order" },
-        { status: paymentErrorHttpStatus(error) }
-      );
+      return apiError("Failed to create payment order", paymentErrorHttpStatus(error));
     }
 
-    return NextResponse.json(
-      { error: "Failed to create payment order" },
-      { status: 500 }
-    );
+    return apiError("Failed to create payment order", 500);
   }
 }

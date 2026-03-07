@@ -56,8 +56,6 @@ export async function POST(
         const profilesResult = await profilesQuery.limit(5000);
         const recipients = profilesResult.data ?? [];
 
-        const deliveryChannels = (ann.delivery_channels as string[]) ?? ["in_app"];
-
         // Send notifications (fire-and-forget, don't await all)
         const results = await Promise.allSettled(
             recipients.map((profile: { id: string }) =>

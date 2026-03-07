@@ -102,7 +102,7 @@ async function computeTdsFlag(
 }
 
 export async function firePromoterFollowup(input: PromoterFollowupInput): Promise<void> {
-  const { organizationId, clientId, clientName, clientEmail, reviewLink } = input;
+  const { clientId, clientName, clientEmail, reviewLink } = input;
 
   if (!clientEmail) return;
 

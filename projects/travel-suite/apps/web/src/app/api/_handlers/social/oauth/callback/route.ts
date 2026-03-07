@@ -26,6 +26,16 @@ function redirectWithSuccess(req: Request) {
     return NextResponse.redirect(new URL('/social?success=oauth_complete', req.url));
 }
 
+async function exchangeFacebookToken(params: Record<string, string>): Promise<Response> {
+    return fetch('https://graph.facebook.com/v20.0/oauth/access_token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(params),
+    });
+}
+
 async function handleFacebookCallback(req: Request, code: string, userId: string): Promise<Response> {
     if (!META_APP_ID || !META_APP_SECRET) {
         return redirectWithError(req, 'oauth_not_configured');
@@ -42,9 +52,12 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
         return redirectWithError(req, 'no_organization');
     }
 
-    const tokenRes = await fetch(
-        `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&client_secret=${META_APP_SECRET}&code=${code}`
-    );
+    const tokenRes = await exchangeFacebookToken({
+        client_id: META_APP_ID,
+        redirect_uri: META_REDIRECT_URI,
+        client_secret: META_APP_SECRET,
+        code,
+    });
 
     if (!tokenRes.ok) {
         console.error('FB token error:', await tokenRes.text());
@@ -57,9 +70,12 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
         return redirectWithError(req, 'oauth_token_missing');
     }
 
-    const longTokenRes = await fetch(
-        `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${META_APP_ID}&client_secret=${META_APP_SECRET}&fb_exchange_token=${shortLivedToken}`
-    );
+    const longTokenRes = await exchangeFacebookToken({
+        grant_type: 'fb_exchange_token',
+        client_id: META_APP_ID,
+        client_secret: META_APP_SECRET,
+        fb_exchange_token: shortLivedToken,
+    });
 
     const longTokenData = (await longTokenRes.json()) as { access_token?: string };
     const longLivedToken = longTokenData.access_token || shortLivedToken;

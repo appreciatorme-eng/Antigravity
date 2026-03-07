@@ -3,8 +3,8 @@
  *
  * POST: Process WPPConnect events (session lifecycle + incoming messages).
  *
- * Security: shared secret in ?secret= query param (WPPConnect has no HMAC).
- * Set WPPCONNECT_WEBHOOK_SECRET on Vercel. Skip check if not set (dev only).
+ * Security: shared secret provided via x-webhook-secret header during migration,
+ * with temporary ?secret= query-param compatibility for existing WAHA sessions.
  *
  * WPPConnect event shape:
  *   { event: "onStateChange", session: "org_xxx", token: "...", response: "CONNECTED" }
@@ -17,6 +17,8 @@ import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
+import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
+import { validateWahaWebhookSecret } from "./secret";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,19 +51,20 @@ export async function POST(request: Request): Promise<Response> {
         return NextResponse.json({ ok: true });
     }
 
-    // Secret verification via ?secret= query param (WPPConnect has no built-in HMAC)
-    const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET;
-    if (webhookSecret) {
-        const url = new URL(request.url);
-        const providedSecret = url.searchParams.get("secret");
-        if (providedSecret !== webhookSecret) {
-            console.warn("[webhooks/waha] Invalid or missing ?secret= param");
-            return new Response("Unauthorized", { status: 401 });
+    const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
+    const validation = validateWahaWebhookSecret({
+        requestUrl: request.url,
+        configuredSecret: webhookSecret,
+        allowUnsigned: isUnsignedWebhookAllowed(),
+        providedHeaderSecret: request.headers.get("x-webhook-secret"),
+    });
+    if (!validation.ok) {
+        if (validation.status === 503) {
+            console.error("[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not configured");
+        } else {
+            console.warn("[webhooks/waha] Invalid or missing webhook secret");
         }
-    } else {
-        console.warn(
-            "[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not set — skipping verification",
-        );
+        return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
     let event: WppEvent;

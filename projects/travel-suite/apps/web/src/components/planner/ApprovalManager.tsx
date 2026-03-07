@@ -86,7 +86,8 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
   const loadStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/share/${token}`);
-      const data = await response.json();
+      const payload = await response.json();
+      const data = payload?.data ?? null;
       if (data.status) {
         setStatus(data.status);
         setComments(Array.isArray(data.comments) ? data.comments : []);
@@ -155,13 +156,14 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         headers: { "Content-Type": "application/json" },
         body: payloadBody,
       });
-      const data = await response.json().catch(() => ({}));
+      const payload = await response.json().catch(() => ({}));
+      const data = payload?.data ?? null;
       if (response.status === 202 && data?.offlineQueued) {
         await refreshQueueStatus();
         return data;
       }
       if (!response.ok) {
-        throw new Error(data?.error || "Request failed");
+        throw new Error(payload?.error || "Request failed");
       }
       await refreshQueueStatus();
       return data;

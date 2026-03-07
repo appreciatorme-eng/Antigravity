@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { afterEach, test } from "node:test";
+import { afterEach, expect, it } from "vitest";
 import {
   normalizeBearerToken,
   parseRole,
@@ -12,53 +11,43 @@ afterEach(() => {
   Math.random = originalMathRandom;
 });
 
-test("normalizeBearerToken returns token for valid bearer auth header", () => {
+it("normalizeBearerToken returns token for valid bearer auth header", () => {
   const token = normalizeBearerToken("Bearer abc-123");
-  assert.equal(token, "abc-123");
+  expect(token).toBe("abc-123");
 });
 
-test("normalizeBearerToken rejects malformed headers", () => {
-  assert.equal(normalizeBearerToken(null), null);
-  assert.equal(normalizeBearerToken("Basic abc"), null);
-  assert.equal(normalizeBearerToken("Bearer   "), null);
+it("normalizeBearerToken rejects malformed headers", () => {
+  expect(normalizeBearerToken(null)).toBeNull();
+  expect(normalizeBearerToken("Basic abc")).toBeNull();
+  expect(normalizeBearerToken("Bearer   ")).toBeNull();
 });
 
-test("parseRole only accepts admin and super_admin roles", () => {
-  assert.equal(parseRole("admin"), "admin");
-  assert.equal(parseRole("SUPER_ADMIN"), "super_admin");
-  assert.equal(parseRole("user"), null);
-  assert.equal(parseRole(null), null);
+it("parseRole only accepts admin and super_admin roles", () => {
+  expect(parseRole("admin")).toBe("admin");
+  expect(parseRole("SUPER_ADMIN")).toBe("super_admin");
+  expect(parseRole("user")).toBeNull();
+  expect(parseRole(null)).toBeNull();
 });
 
-test("shouldRecordAuthFailure always records for identified users", () => {
+it("shouldRecordAuthFailure always records for identified users", () => {
   Math.random = () => 0.99;
-  assert.equal(
+  expect(
     shouldRecordAuthFailure({
       userId: "00000000-0000-0000-0000-000000000001",
       reason: "missing_or_invalid_auth",
-    }),
-    true
-  );
+    })
+  ).toBe(true);
 });
 
-test("shouldRecordAuthFailure samples anonymous missing-auth events", () => {
+it("shouldRecordAuthFailure samples anonymous missing-auth events", () => {
   Math.random = () => 0.19;
-  assert.equal(
-    shouldRecordAuthFailure({ reason: "missing_or_invalid_auth" }),
-    true
-  );
+  expect(shouldRecordAuthFailure({ reason: "missing_or_invalid_auth" })).toBe(true);
 
   Math.random = () => 0.21;
-  assert.equal(
-    shouldRecordAuthFailure({ reason: "missing_or_invalid_auth" }),
-    false
-  );
+  expect(shouldRecordAuthFailure({ reason: "missing_or_invalid_auth" })).toBe(false);
 });
 
-test("shouldRecordAuthFailure records all non-missing-auth reasons", () => {
+it("shouldRecordAuthFailure records all non-missing-auth reasons", () => {
   Math.random = () => 0.99;
-  assert.equal(
-    shouldRecordAuthFailure({ reason: "role_not_admin" }),
-    true
-  );
+  expect(shouldRecordAuthFailure({ reason: "role_not_admin" })).toBe(true);
 });
