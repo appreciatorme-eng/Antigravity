@@ -8,10 +8,10 @@ Branch: codex/sprint-4-and-audit
 | SP4-03 | Calendar Availability | "Block Dates" panel in calendar/page.tsx               | ✅ DONE    |        |
 | SP4-04 | Calendar Availability | Proposal create: guard against blocked dates           | ✅ DONE    |        |
 | SP4-05 | Calendar Availability | Blocked dates shown as unavailable in calendar UI      | ✅ DONE    |        |
-| SP4-06 | Portal Real DB       | GET /api/portal/[token] — real trip/proposal lookup    | ⏳ PENDING |        |
-| SP4-07 | Portal Real DB       | portal/[token]/page.tsx fetches from DB not mock       | ⏳ PENDING |        |
-| SP4-08 | Portal Real DB       | 404 page for invalid/expired tokens                    | ⏳ PENDING |        |
-| SP4-09 | Portal Real DB       | Payment tracker in portal shows real payment_links row | ⏳ PENDING |        |
+| SP4-06 | Portal Real DB       | GET /api/portal/[token] — real trip/proposal lookup    | ✅ DONE    |        |
+| SP4-07 | Portal Real DB       | portal/[token]/page.tsx fetches from DB not mock       | ✅ DONE    |        |
+| SP4-08 | Portal Real DB       | 404 page for invalid/expired tokens                    | ✅ DONE    |        |
+| SP4-09 | Portal Real DB       | Payment tracker in portal shows real payment_links row | ✅ DONE    |        |
 | SP4-10 | WhatsApp AI Chatbot  | Inbound waha webhook pipes to channel-adapters/whatsapp| ⏳ PENDING |        |
 | SP4-11 | WhatsApp AI Chatbot  | chatbot-flow.ts: state machine (new/qualifying/proposal)| ⏳ PENDING |        |
 | SP4-12 | WhatsApp AI Chatbot  | Conversation state persisted in whatsapp_sessions table | ⏳ PENDING |        |
