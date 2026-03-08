@@ -22,8 +22,8 @@ Last updated: auto-updated after each commit
 | PI-11 | 🔴 NOW  | app/settings/team/page.tsx:11,97                 | Team data mocked, CRUD is local useState           | ✅ DONE     | 5129828 |
 | PI-12 | 🔴 NOW  | app/settings/marketplace/page.tsx:48,175         | Entirely mock, edit icon has no onClick            | ✅ DONE     | 5129828 |
 | PI-13 | 🔴 NOW  | app/admin/page.tsx:93                            | Revenue series hardcoded static array              | ✅ DONE     | b5c298c |
-| PI-14 | 🟡 SOON | components/layout/Sidebar.tsx:49                 | Nav badge counts are fake/static                   | ⏳ PENDING  |        |
-| PI-15 | 🟡 SOON | components/layout/MobileNav.tsx:11               | Mirrors same mock count approach                   | ⏳ PENDING  |        |
+| PI-14 | 🟡 SOON | components/layout/Sidebar.tsx:49                 | Nav badge counts are fake/static                   | ✅ DONE     | 9a4ee9d |
+| PI-15 | 🟡 SOON | components/layout/MobileNav.tsx:11               | Mirrors same mock count approach                   | ✅ DONE     | 9a4ee9d |
 | PI-16 | 🟡 SOON | app/inbox/page.tsx:94                            | Broadcast send uses setTimeout simulation          | ⏳ PENDING  |        |
 | PI-17 | 🟡 SOON | app/portal/[token]/page.tsx:10                   | Traveler portal loads mock data, not real DB       | ⏳ PENDING  |        |
 | PI-18 | 🟡 SOON | components/payments/RazorpayModal.tsx:56,318     | Fake QR generation, simulated success/failure      | ⏳ PENDING  |        |
