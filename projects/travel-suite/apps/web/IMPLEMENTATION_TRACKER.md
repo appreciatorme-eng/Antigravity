@@ -21,10 +21,10 @@ Scope: projects/travel-suite/apps/web
 | IM-14 | Operator Scorecard | Generate monthly operator KPI payload and persistence | ✅ DONE | 1dafb98 |
 | IM-15 | Operator Scorecard | Render operator scorecard PDF and email via Resend | ✅ DONE | 1dafb98 |
 | IM-16 | Operator Scorecard | Add scheduled delivery path for monthly scorecards | ✅ DONE | 1dafb98 |
-| IM-17 | Embeddings | Inventory and replace OpenAI embedding generation paths | ⏳ PENDING | |
-| IM-18 | Embeddings | Add v2 embedding storage/query path using Supabase pgvector | ⏳ PENDING | |
-| IM-19 | Embeddings | Cut semantic-cache and itinerary retrieval over to v2 | ⏳ PENDING | |
-| IM-20 | Security | Verify and preserve public-share safe payload without PII | ⏳ PENDING | |
+| IM-17 | Embeddings | Inventory and replace OpenAI embedding generation paths | ✅ DONE | f3c5601 |
+| IM-18 | Embeddings | Add v2 embedding storage/query path using Supabase pgvector | ✅ DONE | f3c5601 |
+| IM-19 | Embeddings | Cut semantic-cache and itinerary retrieval over to v2 | ✅ DONE | f3c5601 |
+| IM-20 | Security | Verify and preserve public-share safe payload without PII | ✅ DONE | f3c5601 |
 | IM-21 | Docs | Publish 12 critical missing documentation pages/sections | ⏳ PENDING | |
 | IM-22 | QA | Publish 10 user-flow testing scenarios with SQL verification | ⏳ PENDING | |
 | IM-23 | Planning | Publish P0→P3 priority matrix with effort estimates | ⏳ PENDING | |
