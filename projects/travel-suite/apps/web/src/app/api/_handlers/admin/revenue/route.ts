@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/lib/database.types";
-import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
+import { buildRevenueSeries } from "@/lib/admin/dashboard-metrics";
+import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
-
-type RevenueSeriesPoint = {
-  monthKey: string;
-  label: string;
-  revenue: number;
-  bookings: number;
-  conversionRate: number;
-};
 
 type PaymentLinkRevenueRow = Pick<
   Database["public"]["Tables"]["payment_links"]["Row"],
@@ -27,7 +20,6 @@ type TripRevenueRow = Pick<
   "created_at" | "status"
 >;
 
-const APPROVED_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
 const CLOSED_PROPOSAL_STATUSES = new Set([
   "approved",
   "accepted",
@@ -53,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     const db = admin.adminClient;
-    const yearAgoIso = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+    const range = resolveAdminDateRange(req.nextUrl.searchParams, "90d");
 
     const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult] = await Promise.all([
       db
@@ -61,17 +53,20 @@ export async function GET(req: NextRequest) {
         .select("amount_paise, paid_at")
         .eq("organization_id", organizationId)
         .eq("status", "paid")
-        .gte("paid_at", yearAgoIso),
+        .gte("paid_at", range.fromISO)
+        .lt("paid_at", range.toExclusiveISO),
       db
         .from("proposals")
         .select("created_at, status")
         .eq("organization_id", organizationId)
-        .gte("created_at", yearAgoIso),
+        .gte("created_at", range.fromISO)
+        .lt("created_at", range.toExclusiveISO),
       db
         .from("trips")
         .select("created_at, status")
         .eq("organization_id", organizationId)
-        .gte("created_at", yearAgoIso),
+        .gte("created_at", range.fromISO)
+        .lt("created_at", range.toExclusiveISO),
       db
         .from("profiles")
         .select("id", { count: "exact", head: true })
@@ -87,58 +82,7 @@ export async function GET(req: NextRequest) {
     const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
     const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
     const tripRows = (tripsResult.data || []) as TripRevenueRow[];
-
-    const monthKeys = getLastMonthKeys(12);
-    const monthMap = new Map<string, RevenueSeriesPoint>(
-      monthKeys.map((monthKey) => [
-        monthKey,
-        {
-          monthKey,
-          label: monthLabel(monthKey),
-          revenue: 0,
-          bookings: 0,
-          conversionRate: 0,
-        },
-      ]),
-    );
-    const proposalCounts = new Map<string, number>();
-    const proposalApprovals = new Map<string, number>();
-
-    for (const link of paymentLinkRows) {
-      const monthKey = monthKeyFromDate(link.paid_at);
-      if (!monthKey) continue;
-      const monthPoint = monthMap.get(monthKey);
-      if (!monthPoint) continue;
-      monthPoint.revenue += Number(link.amount_paise || 0) / 100;
-    }
-
-    for (const trip of tripRows) {
-      if (!BOOKING_TRIP_STATUSES.has((trip.status || "").toLowerCase())) continue;
-      const monthKey = monthKeyFromDate(trip.created_at);
-      if (!monthKey) continue;
-      const monthPoint = monthMap.get(monthKey);
-      if (!monthPoint) continue;
-      monthPoint.bookings += 1;
-    }
-
-    for (const proposal of proposalRows) {
-      const monthKey = monthKeyFromDate(proposal.created_at);
-      if (!monthKey) continue;
-      proposalCounts.set(monthKey, (proposalCounts.get(monthKey) || 0) + 1);
-      if (APPROVED_PROPOSAL_STATUSES.has((proposal.status || "").toLowerCase())) {
-        proposalApprovals.set(monthKey, (proposalApprovals.get(monthKey) || 0) + 1);
-      }
-    }
-
-    const series = monthKeys.map((monthKey) => {
-      const monthPoint = monthMap.get(monthKey)!;
-      const proposals = proposalCounts.get(monthKey) || 0;
-      const approvals = proposalApprovals.get(monthKey) || 0;
-      return {
-        ...monthPoint,
-        conversionRate: proposals > 0 ? Number(((approvals / proposals) * 100).toFixed(1)) : 0,
-      };
-    });
+    const series = buildRevenueSeries(range, paymentLinkRows, proposalRows, tripRows);
 
     const recoveredRevenue = Number(
       paymentLinkRows.reduce((sum, row) => sum + Number(row.amount_paise || 0), 0) / 100,
@@ -159,6 +103,11 @@ export async function GET(req: NextRequest) {
         activeOperators: activeOperatorsResult.count ?? 0,
         totalBookings,
         pendingProposals,
+      },
+      range: {
+        from: range.from,
+        to: range.to,
+        label: range.label,
       },
     });
   } catch (error) {

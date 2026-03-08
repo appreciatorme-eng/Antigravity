@@ -16,6 +16,7 @@ import type { PaymentMethod } from '@/lib/payments/payment-service';
 import { sendPaymentReceipt } from '@/lib/email/notifications';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
 import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
+import { buildInvoiceDownloadUrl } from '@/lib/invoices/public-link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
 import {
@@ -132,6 +133,7 @@ function logWebhookHandlerEvent(
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
   const requestContext = getRequestContext(request, requestId);
+  const requestOrigin = request.nextUrl.origin;
 
   try {
     if (!isPaymentsIntegrationEnabled()) {
@@ -204,7 +206,7 @@ export async function POST(request: NextRequest) {
     // Handle different event types
     switch (eventType) {
       case 'payment.captured':
-        await handlePaymentCaptured(payload, requestContext);
+        await handlePaymentCaptured(payload, requestContext, requestOrigin);
         break;
 
       case 'payment.failed':
@@ -264,7 +266,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
+async function handlePaymentCaptured(
+  payload: RazorpayWebhookPayload,
+  requestContext: WebhookLogContext,
+  requestOrigin: string,
+) {
   const payment = getPaymentEntity(payload);
   if (!payment) {
     logWebhookHandlerEvent('warn', 'payment.captured missing payment entity', requestContext, {
@@ -329,7 +335,7 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
           paidAt: paidAtLabel,
           operatorName: organization?.name || 'Antigravity Travel',
           gstLabel: '5% GST (HSN 998551)',
-          invoiceUrl: null,
+          invoiceUrl: buildInvoiceDownloadUrl(requestOrigin, invoiceId, payment.id),
         });
       }
     }

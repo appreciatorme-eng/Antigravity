@@ -12,6 +12,7 @@ const routes = createCatchAllHandlers([
   ["auth/password-login", () => import("@/app/api/_handlers/auth/password-login/route")],
   ["bookings/flights/search", () => import("@/app/api/_handlers/bookings/flights/search/route")],
   ["bookings/hotels/search", () => import("@/app/api/_handlers/bookings/hotels/search/route")],
+  ["bookings/:id/invoice", () => import("@/app/api/_handlers/bookings/[id]/invoice/route")],
   ["bookings/locations/search", () => import("@/app/api/_handlers/bookings/locations/search/route")],
   ["billing/contact-sales", () => import("@/app/api/_handlers/billing/contact-sales/route")],
   ["billing/subscription", () => import("@/app/api/_handlers/billing/subscription/route")],

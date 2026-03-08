@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import Link from "next/link";
@@ -33,8 +33,20 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import { GlassSelect } from "@/components/glass/GlassInput";
 import RevenueChart, { type RevenueChartPoint } from "@/components/analytics/RevenueChart";
+import { DateRangePicker } from "@/features/admin/dashboard/DateRangePicker";
+import { FunnelWidget } from "@/features/admin/dashboard/FunnelWidget";
+import { TopCustomersWidget } from "@/features/admin/dashboard/TopCustomersWidget";
+import { TopDestinationsWidget } from "@/features/admin/dashboard/TopDestinationsWidget";
+import type {
+    AdminDestinationMetric,
+    AdminFunnelStage,
+    AdminLtvCustomer,
+} from "@/features/admin/dashboard/types";
+import {
+    createPresetRange,
+    type AdminDateRangeSelection,
+} from "@/lib/admin/date-range";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -104,12 +116,6 @@ interface RevenueSnapshot {
     };
 }
 
-const RANGE_TO_MONTHS = {
-    "3m": 3,
-    "6m": 6,
-    "1y": 12,
-} as const;
-
 export default function AdminDashboard() {
     const supabase = createClient();
     const demoFetch = useDemoFetch();
@@ -127,9 +133,20 @@ export default function AdminDashboard() {
     });
     const [activities, setActivities] = useState<ActivityItem[]>([]);
     const [revenueSeries, setRevenueSeries] = useState<RevenueChartPoint[]>([]);
-    const [revenueRange, setRevenueRange] = useState<keyof typeof RANGE_TO_MONTHS>("6m");
+    const [dateRange, setDateRange] = useState<AdminDateRangeSelection>(() => createPresetRange("30d"));
+    const [funnelStages, setFunnelStages] = useState<AdminFunnelStage[]>([]);
+    const [topCustomers, setTopCustomers] = useState<AdminLtvCustomer[]>([]);
+    const [topDestinations, setTopDestinations] = useState<AdminDestinationMetric[]>([]);
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<HealthResponse | null>(null);
+    const rangeQuery = useMemo(() => {
+        const searchParams = new URLSearchParams({
+            preset: dateRange.preset,
+            from: dateRange.from,
+            to: dateRange.to,
+        });
+        return searchParams.toString();
+    }, [dateRange]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -142,11 +159,11 @@ export default function AdminDashboard() {
                 }
 
                 // Fetch dashboard stats via API (supports demo mode)
-                const [statsRes, revenueRes, marketRes] = await Promise.allSettled([
+                const [statsRes, revenueRes, marketRes, funnelRes, ltvRes, destinationsRes] = await Promise.allSettled([
                     demoFetch("/api/admin/dashboard/stats", {
                         headers: authHeaders,
                     }),
-                    demoFetch("/api/admin/revenue", {
+                    demoFetch(`/api/admin/revenue?${rangeQuery}`, {
                         headers: authHeaders,
                     }),
                     session?.access_token
@@ -154,6 +171,15 @@ export default function AdminDashboard() {
                             headers: { Authorization: `Bearer ${session.access_token}` },
                         })
                         : Promise.resolve(null),
+                    demoFetch(`/api/admin/funnel?${rangeQuery}`, {
+                        headers: authHeaders,
+                    }),
+                    demoFetch(`/api/admin/ltv?${rangeQuery}`, {
+                        headers: authHeaders,
+                    }),
+                    demoFetch(`/api/admin/destinations?${rangeQuery}`, {
+                        headers: authHeaders,
+                    }),
                 ]);
 
                 let dashStats = { totalClients: 0, pendingNotifications: 0 };
@@ -172,7 +198,8 @@ export default function AdminDashboard() {
                     },
                 };
                 if (revenueRes.status === "fulfilled" && revenueRes.value.ok) {
-                    revenueSnapshot = await revenueRes.value.json();
+                    const payload = await revenueRes.value.json();
+                    revenueSnapshot = payload?.data ?? payload;
                 }
 
                 let marketStats = null;
@@ -183,6 +210,30 @@ export default function AdminDashboard() {
                 }
 
                 setRevenueSeries(revenueSnapshot.series || []);
+                if (funnelRes.status === "fulfilled" && funnelRes.value.ok) {
+                    const payload = await funnelRes.value.json();
+                    const funnelPayload = payload?.data ?? payload;
+                    setFunnelStages(funnelPayload?.stages || []);
+                } else {
+                    setFunnelStages([]);
+                }
+
+                if (ltvRes.status === "fulfilled" && ltvRes.value.ok) {
+                    const payload = await ltvRes.value.json();
+                    const ltvPayload = payload?.data ?? payload;
+                    setTopCustomers(ltvPayload?.customers || []);
+                } else {
+                    setTopCustomers([]);
+                }
+
+                if (destinationsRes.status === "fulfilled" && destinationsRes.value.ok) {
+                    const payload = await destinationsRes.value.json();
+                    const destinationsPayload = payload?.data ?? payload;
+                    setTopDestinations(destinationsPayload?.destinations || []);
+                } else {
+                    setTopDestinations([]);
+                }
+
                 setStats({
                     activeOperators: revenueSnapshot.totals.activeOperators || 0,
                     totalClients: dashStats.totalClients || 0,
@@ -251,7 +302,7 @@ export default function AdminDashboard() {
         };
 
         void fetchData();
-    }, [supabase, demoFetch]);
+    }, [demoFetch, rangeQuery, supabase]);
 
     useEffect(() => {
         let mounted = true;
@@ -303,8 +354,6 @@ export default function AdminDashboard() {
             notation: "compact",
             maximumFractionDigits: 1,
         }).format(value);
-
-    const visibleRevenueSeries = revenueSeries.slice(-RANGE_TO_MONTHS[revenueRange]);
 
     const statCards = [
         {
@@ -467,7 +516,7 @@ export default function AdminDashboard() {
                                 <TrendingUp className="w-4 h-4 text-primary" />
                                 <h2 className="text-2xl font-serif text-secondary dark:text-white tracking-tight">Financial Trajectory</h2>
                             </div>
-                            <p className="text-sm text-text-muted font-medium">Monthly revenue and booking conversion metrics.</p>
+                            <p className="text-sm text-text-muted font-medium">Revenue, approvals, and booking movement across the selected date range.</p>
                         </div>
                         <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
@@ -478,21 +527,13 @@ export default function AdminDashboard() {
                                 <div className="w-3 h-3 rounded-full bg-secondary" />
                                 <span className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-widest">Trips</span>
                             </div>
-                            <GlassSelect
-                                value={revenueRange}
-                                onChange={(event) => setRevenueRange(event.target.value as keyof typeof RANGE_TO_MONTHS)}
-                                className="w-32 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest"
-                                options={[
-                                    { value: '3m', label: 'Last 90 Days' },
-                                    { value: '6m', label: 'Last 180 Days' },
-                                    { value: '1y', label: 'Fiscal Year' }
-                                ]}
-                            />
                         </div>
                     </div>
 
+                    <DateRangePicker value={dateRange} onChange={setDateRange} />
+
                     <div className="w-full aspect-[21/9]">
-                        <RevenueChart data={visibleRevenueSeries} metric="revenue" loading={loading} />
+                        <RevenueChart data={revenueSeries} metric="revenue" loading={loading} />
                     </div>
                 </GlassCard>
 
@@ -619,6 +660,12 @@ export default function AdminDashboard() {
                         </div>
                     </GlassCard>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.25fr_0.9fr_0.85fr]">
+                <FunnelWidget stages={funnelStages} loading={loading} />
+                <TopCustomersWidget customers={topCustomers} loading={loading} />
+                <TopDestinationsWidget destinations={topDestinations} loading={loading} />
             </div>
 
             {/* Activity Feed */}
