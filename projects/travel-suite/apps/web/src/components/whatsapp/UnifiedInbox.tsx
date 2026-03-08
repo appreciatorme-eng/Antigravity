@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAnalytics } from '@/lib/analytics/events';
 import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { createClient } from '@/lib/supabase/client';
 import {
   Search,
   X,
@@ -39,6 +40,9 @@ import {
 import { ActionPickerModal } from './ActionPickerModal';
 import { ContextActionModal, type ContextActionType } from './ContextActionModal';
 import { WhatsAppConnectModal } from './WhatsAppConnectModal';
+import { ErrorSection } from '@/components/ui/ErrorSection';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { InboxSkeleton } from '@/components/ui/skeletons/InboxSkeleton';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useSmartReplySuggestions } from './useSmartReplySuggestions';
@@ -420,48 +424,98 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   const router = useRouter();
   const analytics = useAnalytics();
   const { isDemoMode } = useDemoMode();
+  const supabase = useMemo(() => createClient(), []);
   const { timezone } = useUserTimezone();
   const [conversations, setConversations] = useState<ChannelConversation[]>(
     isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
   );
   const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
   const [isLoadingConvs, setIsLoadingConvs] = useState(false);
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [whatsAppStatus, setWhatsAppStatus] = useState<'connected' | 'pending' | 'disconnected' | 'error'>(
     isDemoMode ? 'connected' : 'disconnected',
   );
   const [whatsAppHealthError, setWhatsAppHealthError] = useState<string | null>(null);
+
+  const loadLiveConversations = useCallback(async () => {
+    setIsLoadingConvs(true);
+    setConversationsError(null);
+    try {
+      const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
+      const data = (await response.json().catch(() => ({}))) as {
+        conversations?: ChannelConversation[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load conversations');
+      }
+
+      const convs = data.conversations ?? [];
+      setConversations(convs);
+      setSelectedId((current) => current || convs[0]?.id || null);
+    } catch (error) {
+      setConversationsError(
+        error instanceof Error ? error.message : 'Unable to load conversations right now.',
+      );
+    } finally {
+      setIsLoadingConvs(false);
+    }
+  }, []);
+
+  const loadWhatsAppHealth = useCallback(async () => {
+    try {
+      const response = await fetch('/api/whatsapp/health', { cache: 'no-store' });
+      const data = (await response.json().catch(() => ({}))) as {
+        connected?: boolean;
+        error?: string | null;
+      };
+      setWhatsAppStatus(data.connected ? 'connected' : 'disconnected');
+      setWhatsAppHealthError(data.error ?? null);
+    } catch {
+      setWhatsAppStatus('error');
+      setWhatsAppHealthError('Unable to reach WhatsApp right now.');
+    }
+  }, []);
 
   useEffect(() => {
     if (isDemoMode) {
       setConversations(ALL_MOCK_CONVERSATIONS);
       setSelectedId('conv_1');
       setWhatsAppStatus('connected');
+      setConversationsError(null);
       return;
     }
-    setIsLoadingConvs(true);
-    fetch('/api/whatsapp/conversations')
-      .then((r) => r.json())
-      .then((data: { conversations?: ChannelConversation[] }) => {
-        const convs = data.conversations ?? [];
-        setConversations(convs);
-        if (convs.length > 0 && !selectedId) setSelectedId(convs[0]!.id);
-      })
-      .catch(() => { /* silently keep empty state on fetch failure */ })
-      .finally(() => setIsLoadingConvs(false));
+    void loadLiveConversations();
+    void loadWhatsAppHealth();
+  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth]);
 
-    fetch('/api/whatsapp/health')
-      .then((r) => r.json())
-      .then((data: { connected?: boolean; error?: string | null }) => {
-        setWhatsAppStatus(data.connected ? 'connected' : 'disconnected');
-        setWhatsAppHealthError(data.error ?? null);
-      })
-      .catch(() => {
-        setWhatsAppStatus('error');
-        setWhatsAppHealthError('Unable to reach WhatsApp right now.');
-      });
-  // Only re-run when demo mode changes; we don't want selectedId as a dep
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoMode]);
+  useEffect(() => {
+    if (isDemoMode) return;
+
+    const channel = supabase
+      .channel('inbox-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'whatsapp_webhook_events' },
+        () => {
+          void loadLiveConversations();
+          void loadWhatsAppHealth();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'whatsapp_connections' },
+        () => {
+          void loadWhatsAppHealth();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth, supabase]);
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
@@ -660,6 +714,10 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     { key: 'unread', label: 'Unread', count: totalUnread },
   ];
 
+  if (isLoadingConvs && !isDemoMode && conversations.length === 0) {
+    return <InboxSkeleton />;
+  }
+
   return (
     <div className="relative flex h-full overflow-hidden">
       {!isDemoMode && whatsAppStatus !== 'connected' && (
@@ -779,46 +837,36 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
         {/* List */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {filteredAndSorted.length === 0 ? (
+          <ErrorSection label="Inbox conversation list">
+            {isLoadingConvs && conversations.length === 0 ? null : filteredAndSorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 px-4 py-8 text-center">
-              {isLoadingConvs ? (
+              {isDemoMode ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-[#25D366]/30 border-t-[#25D366] rounded-full animate-spin" />
-                  <p className="text-xs text-slate-600">Loading conversations…</p>
+                  <EmptyState
+                    icon="💬"
+                    title="No conversations match your filter"
+                    description="Try a different search or switch back to all channels."
+                  />
                 </>
-              ) : isDemoMode ? (
-                <>
-                  <MessageCircle className="w-7 h-7 text-slate-700" />
-                  <p className="text-xs text-slate-600">No conversations match your filter</p>
-                </>
+              ) : conversationsError ? (
+                <EmptyState
+                  icon="⚠️"
+                  title="Inbox unavailable"
+                  description={conversationsError}
+                  action={{ label: 'Retry', onClick: () => { void loadLiveConversations(); } }}
+                  className="py-8"
+                />
               ) : (
-                <>
-                  <div className="w-12 h-12 rounded-2xl bg-[#25D366]/15 flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-[#25D366]" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-300">Connect WhatsApp</p>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      Link your existing number by scanning a QR code. No Meta API needed.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setIsWaConnectOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] text-xs font-bold hover:bg-[#25D366]/25 transition-colors"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Scan QR to Link WhatsApp
-                  </button>
-                  <div className="w-full pt-2 border-t border-white/8">
-                    <a
-                      href="/settings?tab=integrations"
-                      className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-400 transition-colors"
-                    >
-                      <Mail className="w-3 h-3" />
-                      Set up Gmail or other channels →
-                    </a>
-                  </div>
-                </>
+                <EmptyState
+                  icon="💬"
+                  title="No conversations yet"
+                  description="Connect WhatsApp or wait for the first inbound message to turn this inbox live."
+                  action={{
+                    label: 'Scan QR to Link WhatsApp',
+                    onClick: () => setIsWaConnectOpen(true),
+                  }}
+                  className="py-8"
+                />
               )}
             </div>
           ) : (
@@ -830,7 +878,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
                 onClick={() => handleSelect(conv.id)}
               />
             ))
-          )}
+            )}
+          </ErrorSection>
         </div>
       </div>
 
@@ -884,19 +933,21 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             </button>
           </div>
         )}
-        <MessageThread
-          conversation={selectedConversation}
-          channel={selectedChannel}
-          onSendMessage={handleSendMessage}
-          externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
-          onExternalInputConsumed={onClearPendingTemplate}
-          smartReplies={smartReplySuggestions}
-          smartRepliesLoading={smartReplyLoading}
-          onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
-          onRefreshSmartReplies={() => {
-            void refreshSmartReplySuggestions();
-          }}
-        />
+        <ErrorSection label="Inbox message thread">
+          <MessageThread
+            conversation={selectedConversation}
+            channel={selectedChannel}
+            onSendMessage={handleSendMessage}
+            externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
+            onExternalInputConsumed={onClearPendingTemplate}
+            smartReplies={smartReplySuggestions}
+            smartRepliesLoading={smartReplyLoading}
+            onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
+            onRefreshSmartReplies={() => {
+              void refreshSmartReplySuggestions();
+            }}
+          />
+        </ErrorSection>
       </div>
 
       {/* ── RIGHT: Context Panel ─────────────────────────────────────────── */}
@@ -906,7 +957,9 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         }`}
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
-        <ContextPanel conversation={selectedConversation} onContextAction={handleContextAction} />
+        <ErrorSection label="Inbox context panel">
+          <ContextPanel conversation={selectedConversation} onContextAction={handleContextAction} />
+        </ErrorSection>
       </div>
 
       {/* ── Context Panel → ActionPickerModal (Driver / Payment) ─────────── */}

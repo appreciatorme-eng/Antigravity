@@ -17,6 +17,7 @@ import { PricingCard } from "@/components/billing/PricingCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassModal } from "@/components/glass/GlassModal";
+import { ErrorSection } from "@/components/ui/ErrorSection";
 import { useToast } from "@/components/ui/toast";
 import { TIERS, type TierName } from "@/lib/billing/tiers";
 
@@ -399,21 +400,23 @@ export function BillingPageClient() {
           </span>
         </motion.div>
 
-        <motion.div
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {TIER_ORDER.map((tierName) => (
-            <PricingCard
-              key={tierName}
-              tier={TIERS[tierName]}
-              billing={billing}
-              currentTier={currentTier}
-              onSelect={() => void handleSelectTier(tierName)}
-            />
-          ))}
-        </motion.div>
+        <ErrorSection label="Billing plan widget">
+          <motion.div
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {TIER_ORDER.map((tierName) => (
+              <PricingCard
+                key={tierName}
+                tier={TIERS[tierName]}
+                billing={billing}
+                currentTier={currentTier}
+                onSelect={() => void handleSelectTier(tierName)}
+              />
+            ))}
+          </motion.div>
+        </ErrorSection>
 
         <div className="mt-12 text-center">
           <div className="inline-flex items-center gap-2 text-white/35">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
 export interface NavCounts {
@@ -20,6 +21,7 @@ const EMPTY_COUNTS: NavCounts = {
 export function useNavCounts() {
   const { isDemoMode, demoOrgId } = useDemoMode();
   const [counts, setCounts] = useState<NavCounts>(EMPTY_COUNTS);
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     let isDisposed = false;
@@ -61,16 +63,52 @@ export function useNavCounts() {
     };
 
     void loadCounts();
-    const intervalId = window.setInterval(() => {
-      void loadCounts();
-    }, 60_000);
+
+    if (isDemoMode) {
+      return () => {
+        isDisposed = true;
+        controller.abort();
+      };
+    }
+
+    const channel = supabase
+      .channel("nav-counts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_webhook_events" },
+        () => {
+          void loadCounts();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "proposals" },
+        () => {
+          void loadCounts();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trips" },
+        () => {
+          void loadCounts();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reputation_reviews" },
+        () => {
+          void loadCounts();
+        },
+      )
+      .subscribe();
 
     return () => {
       isDisposed = true;
       controller.abort();
-      window.clearInterval(intervalId);
+      void supabase.removeChannel(channel);
     };
-  }, [demoOrgId, isDemoMode]);
+  }, [demoOrgId, isDemoMode, supabase]);
 
   return counts;
 }

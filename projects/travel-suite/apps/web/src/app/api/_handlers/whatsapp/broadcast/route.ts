@@ -29,9 +29,14 @@ type BroadcastRecipient = {
   phone: string;
 };
 
+type BroadcastContact = BroadcastRecipient & {
+  lastSeenAt: string | null;
+};
+
 const broadcastSchema = z.object({
   target: z.enum(["all_clients", "all_drivers", "active_trips", "custom"]),
   message: z.string().trim().min(1).max(4096),
+  recipients: z.array(z.string().trim().min(10).max(20)).max(200).optional(),
 });
 
 const ACTIVE_TRIP_STATUSES = [
@@ -63,6 +68,29 @@ function dedupeRecipients(recipients: BroadcastRecipient[]) {
   }
 
   return Array.from(unique.values());
+}
+
+function dedupeContacts(recipients: BroadcastContact[]) {
+  const unique = new Map<string, BroadcastContact>();
+
+  for (const recipient of recipients) {
+    const digits = normalizeDigits(recipient.phone);
+    if (!digits) continue;
+
+    const existing = unique.get(digits);
+    if (!existing || new Date(existing.lastSeenAt || 0) < new Date(recipient.lastSeenAt || 0)) {
+      unique.set(digits, {
+        ...recipient,
+        phone: digits,
+      });
+    }
+  }
+
+  return Array.from(unique.values()).sort((left, right) => {
+    const leftTime = new Date(left.lastSeenAt || 0).getTime();
+    const rightTime = new Date(right.lastSeenAt || 0).getTime();
+    return rightTime - leftTime;
+  });
 }
 
 async function resolveBroadcastContext() {
@@ -229,6 +257,55 @@ async function loadActiveTripRecipients(
   );
 }
 
+async function loadBroadcastContacts(
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+) {
+  const connectionResult = await admin
+    .from("whatsapp_connections")
+    .select("session_name")
+    .eq("organization_id", organizationId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (connectionResult.error) {
+    throw connectionResult.error;
+  }
+
+  const sessionName = connectionResult.data?.session_name;
+  if (!sessionName) return [] as BroadcastContact[];
+
+  const { data, error } = await admin
+    .from("whatsapp_webhook_events")
+    .select("wa_id, metadata, received_at")
+    .filter("metadata->>session", "eq", sessionName)
+    .not("wa_id", "is", null)
+    .order("received_at", { ascending: false })
+    .limit(300);
+
+  if (error) {
+    throw error;
+  }
+
+  return dedupeContacts(
+    (data || []).map((row) => {
+      const metadata = (row.metadata || {}) as Record<string, string | undefined>;
+      return {
+        id: row.wa_id || crypto.randomUUID(),
+        name:
+          metadata.recipient_name ||
+          metadata.pushName ||
+          metadata.name ||
+          row.wa_id ||
+          "WhatsApp contact",
+        phone: row.wa_id || "",
+        lastSeenAt: row.received_at || null,
+      };
+    }),
+  );
+}
+
 async function resolveRecipients(
   admin: ReturnType<typeof createAdminClient>,
   organizationId: string,
@@ -256,10 +333,11 @@ export async function GET() {
       return context.response;
     }
 
-    const [allClients, allDrivers, activeTrips] = await Promise.all([
+    const [allClients, allDrivers, activeTrips, contacts] = await Promise.all([
       resolveRecipients(context.admin, context.organizationId, "all_clients"),
       resolveRecipients(context.admin, context.organizationId, "all_drivers"),
       resolveRecipients(context.admin, context.organizationId, "active_trips"),
+      loadBroadcastContacts(context.admin, context.organizationId),
     ]);
 
     return apiSuccess({
@@ -267,8 +345,9 @@ export async function GET() {
         all_clients: allClients.length,
         all_drivers: allDrivers.length,
         active_trips: activeTrips.length,
-        custom: 0,
+        custom: contacts.length,
       },
+      contacts,
       connectionStatus: context.connection?.status || "disconnected",
       canSend:
         Boolean(context.connection?.session_name) &&
@@ -307,15 +386,24 @@ export async function POST(request: Request) {
       });
     }
 
-    if (parsed.data.target === "custom") {
-      return apiError("Custom lists are not available yet. Choose a saved audience.", 400);
-    }
+    const recipients =
+      parsed.data.target === "custom"
+        ? dedupeRecipients(
+            (parsed.data.recipients || []).map((phone) => ({
+              id: phone,
+              name: phone,
+              phone,
+            })),
+          )
+        : await resolveRecipients(
+            context.admin,
+            context.organizationId,
+            parsed.data.target,
+          );
 
-    const recipients = await resolveRecipients(
-      context.admin,
-      context.organizationId,
-      parsed.data.target,
-    );
+    if (parsed.data.target === "custom" && recipients.length === 0) {
+      return apiError("Select at least one broadcast recipient", 400);
+    }
 
     if (recipients.length === 0) {
       return apiError("No recipients found for this broadcast audience", 404);

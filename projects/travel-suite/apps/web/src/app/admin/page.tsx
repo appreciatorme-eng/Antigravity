@@ -34,6 +34,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import RevenueChart, { type RevenueChartPoint } from "@/components/analytics/RevenueChart";
+import { ErrorSection } from "@/components/ui/ErrorSection";
 import { DateRangePicker } from "@/features/admin/dashboard/DateRangePicker";
 import { FunnelWidget } from "@/features/admin/dashboard/FunnelWidget";
 import { TopCustomersWidget } from "@/features/admin/dashboard/TopCustomersWidget";
@@ -509,6 +510,7 @@ export default function AdminDashboard() {
             {/* Main Intelligence Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Performance Analytics */}
+                <ErrorSection label="Admin revenue chart">
                 <GlassCard className="lg:col-span-2" padding="xl">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
                         <div>
@@ -536,6 +538,7 @@ export default function AdminDashboard() {
                         <RevenueChart data={revenueSeries} metric="revenue" loading={loading} />
                     </div>
                 </GlassCard>
+                </ErrorSection>
 
                 {/* Tactical Quick Actions */}
                 <div className="space-y-6">
@@ -663,9 +666,15 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.25fr_0.9fr_0.85fr]">
-                <FunnelWidget stages={funnelStages} loading={loading} />
-                <TopCustomersWidget customers={topCustomers} loading={loading} />
-                <TopDestinationsWidget destinations={topDestinations} loading={loading} />
+                <ErrorSection label="Admin conversion funnel">
+                    <FunnelWidget stages={funnelStages} loading={loading} />
+                </ErrorSection>
+                <ErrorSection label="Top customers">
+                    <TopCustomersWidget customers={topCustomers} loading={loading} />
+                </ErrorSection>
+                <ErrorSection label="Top destinations">
+                    <TopDestinationsWidget destinations={topDestinations} loading={loading} />
+                </ErrorSection>
             </div>
 
             {/* Activity Feed */}

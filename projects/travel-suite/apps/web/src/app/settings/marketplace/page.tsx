@@ -8,6 +8,8 @@ import { GlassBadge } from '@/components/glass/GlassBadge'
 import { GlassButton } from '@/components/glass/GlassButton'
 import { GlassCard } from '@/components/glass/GlassCard'
 import { GlassInput, GlassTextarea } from '@/components/glass/GlassInput'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { DashboardSkeleton } from '@/components/ui/skeletons/DashboardSkeleton'
 import { useMarketplacePresence } from './useMarketplacePresence'
 
 export default function MarketplaceSettingsPage() {
@@ -35,9 +37,7 @@ export default function MarketplaceSettingsPage() {
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto pb-12">
-        <GlassCard className="p-8 text-center text-slate-600 dark:text-white/70">
-          Loading marketplace presence…
-        </GlassCard>
+        <DashboardSkeleton />
       </div>
     )
   }
@@ -188,30 +188,42 @@ export default function MarketplaceSettingsPage() {
             <TrendingUp className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent visibility</h2>
           </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-white/50">Recent views</p>
-            {stats.recentViews.length > 0 ? (
-              stats.recentViews.map((name) => (
-                <div key={`view-${name}`} className="rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-white/80">
-                  {name}
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-600 dark:text-white/60">No profile views yet.</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-white/50">Recent inquiries</p>
-            {stats.recentInquiries.length > 0 ? (
-              stats.recentInquiries.map((name) => (
-                <div key={`inquiry-${name}`} className="rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-white/80">
-                  {name}
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-600 dark:text-white/60">No inquiries yet.</p>
-            )}
-          </div>
+          {stats.recentViews.length === 0 && stats.recentInquiries.length === 0 ? (
+            <EmptyState
+              icon="🔌"
+              title="No integrations connected"
+              description="Connect marketplace channels and complete your listing to start seeing visibility data here."
+              action={{ label: 'Browse Integrations', href: '/settings/marketplace' }}
+              className="py-10"
+            />
+          ) : (
+            <>
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-white/50">Recent views</p>
+                {stats.recentViews.length > 0 ? (
+                  stats.recentViews.map((name) => (
+                    <div key={`view-${name}`} className="rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-white/80">
+                      {name}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-600 dark:text-white/60">No profile views yet.</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-white/50">Recent inquiries</p>
+                {stats.recentInquiries.length > 0 ? (
+                  stats.recentInquiries.map((name) => (
+                    <div key={`inquiry-${name}`} className="rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-white/80">
+                      {name}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-600 dark:text-white/60">No inquiries yet.</p>
+                )}
+              </div>
+            </>
+          )}
         </GlassCard>
       </div>
 

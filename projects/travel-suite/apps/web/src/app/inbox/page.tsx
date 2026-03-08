@@ -35,6 +35,13 @@ type PageTab = 'inbox' | 'automations' | 'templates' | 'broadcast';
 
 type BroadcastTarget = 'all_clients' | 'all_drivers' | 'active_trips' | 'custom';
 
+interface BroadcastContact {
+  id: string;
+  name: string;
+  phone: string;
+  lastSeenAt: string | null;
+}
+
 interface BroadcastState {
   target: BroadcastTarget;
   selectedTemplate: WhatsAppTemplate | null;
@@ -47,6 +54,9 @@ interface BroadcastState {
 // ─── BROADCAST TAB ────────────────────────────────────────────────────────────
 
 function BroadcastTab() {
+  const [contacts, setContacts] = useState<BroadcastContact[]>([]);
+  const [recipientSearch, setRecipientSearch] = useState('');
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [audienceCounts, setAudienceCounts] = useState<Record<BroadcastTarget, number>>({
     all_clients: 0,
     all_drivers: 0,
@@ -73,6 +83,7 @@ function BroadcastTab() {
           | {
               data?: {
                 counts?: Partial<Record<BroadcastTarget, number>>;
+                contacts?: BroadcastContact[];
                 canSend?: boolean;
                 connectionStatus?: string;
               };
@@ -90,8 +101,9 @@ function BroadcastTab() {
           all_clients: payload.data.counts?.all_clients ?? 0,
           all_drivers: payload.data.counts?.all_drivers ?? 0,
           active_trips: payload.data.counts?.active_trips ?? 0,
-          custom: 0,
+          custom: payload.data.counts?.custom ?? 0,
         });
+        setContacts(payload.data.contacts ?? []);
         setBroadcastReady(Boolean(payload.data.canSend));
         setAudienceError(
           payload.data.canSend
@@ -152,10 +164,10 @@ function BroadcastTab() {
     {
       key: 'custom',
       label: 'Custom List',
-      count: 0,
+      count: audienceCounts.custom,
       icon: <List className="w-4 h-4" />,
       color: '#ec4899',
-      helper: 'Custom uploads arrive in the next pass',
+      helper: `${audienceCounts.custom} recent WhatsApp contacts`,
     },
   ], [audienceCounts]);
 
@@ -172,6 +184,13 @@ function BroadcastTab() {
   const [sending, setSending] = useState(false);
 
   const targetOption = TARGET_OPTIONS.find((t) => t.key === state.target)!;
+  const filteredContacts = useMemo(() => {
+    const query = recipientSearch.trim().toLowerCase();
+    if (!query) return contacts;
+    return contacts.filter((contact) =>
+      contact.name.toLowerCase().includes(query) || contact.phone.includes(query),
+    );
+  }, [contacts, recipientSearch]);
 
   function getTomorrowDate() {
     const d = new Date();
@@ -190,8 +209,8 @@ function BroadcastTab() {
 
   async function handleSendNow() {
     if (!state.selectedTemplate && !state.customMessage.trim()) return;
-    if (state.target === 'custom') {
-      setSendError('Custom lists are not available yet. Choose a saved audience.');
+    if (state.target === 'custom' && selectedRecipients.length === 0) {
+      setSendError('Select at least one recipient before sending.');
       return;
     }
 
@@ -208,6 +227,7 @@ function BroadcastTab() {
         body: JSON.stringify({
           target: state.target,
           message: messagePreview,
+          recipients: state.target === 'custom' ? selectedRecipients : undefined,
         }),
       });
 
@@ -236,8 +256,7 @@ function BroadcastTab() {
   const isCustomTarget = state.target === 'custom';
   const canSendNow =
     Boolean(messagePreview?.trim()) &&
-    !isCustomTarget &&
-    targetOption.count > 0 &&
+    (isCustomTarget ? selectedRecipients.length > 0 : targetOption.count > 0) &&
     broadcastReady;
 
   return (
@@ -292,6 +311,86 @@ function BroadcastTab() {
             ))}
           </div>
         </div>
+
+        {isCustomTarget ? (
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Custom recipients
+                </p>
+                <p className="text-xs text-slate-400">
+                  Select the exact contacts who should receive this message.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecipients(filteredContacts.map((contact) => contact.phone))}
+                  className="text-xs font-semibold text-[#25D366]"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecipients([])}
+                  className="text-xs font-semibold text-slate-400"
+                >
+                  Deselect all
+                </button>
+              </div>
+            </div>
+
+            <input
+              value={recipientSearch}
+              onChange={(event) => setRecipientSearch(event.target.value)}
+              placeholder="Search contacts by name or phone..."
+              className="w-full rounded-xl border border-white/15 bg-white/8 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#25D366]/40"
+            />
+
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {filteredContacts.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-slate-500">
+                  No contacts available for manual selection yet.
+                </p>
+              ) : (
+                filteredContacts.map((contact) => {
+                  const checked = selectedRecipients.includes(contact.phone);
+                  return (
+                    <label
+                      key={contact.phone}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition-colors ${
+                        checked
+                          ? 'border-[#25D366]/35 bg-[#25D366]/10'
+                          : 'border-white/10 bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setSelectedRecipients((current) =>
+                            event.target.checked
+                              ? [...current, contact.phone]
+                              : current.filter((phone) => phone !== contact.phone),
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-white/20 bg-white/10 text-[#25D366] focus:ring-[#25D366]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{contact.name}</p>
+                        <p className="text-xs text-slate-400">{contact.phone}</p>
+                      </div>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              {selectedRecipients.length} recipient{selectedRecipients.length === 1 ? '' : 's'} selected
+            </p>
+          </div>
+        ) : null}
 
         {/* Message / Template */}
         <div>
@@ -382,7 +481,7 @@ function BroadcastTab() {
           {messagePreview && (
             <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
               <span className="text-[#25D366]">✓</span>
-              Message ready — will be sent to <strong className="text-slate-300">{targetOption.count || '—'} contacts</strong>
+              Message ready — will be sent to <strong className="text-slate-300">{isCustomTarget ? selectedRecipients.length : targetOption.count || '—'} contacts</strong>
             </div>
           )}
         </div>

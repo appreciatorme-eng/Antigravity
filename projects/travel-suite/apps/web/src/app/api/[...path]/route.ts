@@ -78,6 +78,7 @@ const routes = createCatchAllHandlers([
   ["proposals/:id/convert", () => import("@/app/api/_handlers/proposals/[id]/convert/route")],
   ["proposals/:id/pdf", () => import("@/app/api/_handlers/proposals/[id]/pdf/route")],
   ["proposals/:id/send", () => import("@/app/api/_handlers/proposals/[id]/send/route")],
+  ["proposals/bulk", () => import("@/app/api/_handlers/proposals/bulk/route")],
   ["proposals/create", () => import("@/app/api/_handlers/proposals/create/route")],
   ["proposals/public/:token", () => import("@/app/api/_handlers/proposals/public/[token]/route")],
   ["proposals/send-pdf", () => import("@/app/api/_handlers/proposals/send-pdf/route")],
