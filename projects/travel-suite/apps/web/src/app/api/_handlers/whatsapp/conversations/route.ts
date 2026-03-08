@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 
+import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
@@ -59,6 +60,9 @@ export async function GET(): Promise<Response> {
       }
 
       const orgId = profile.organization_id as string;
+      const userTimezone = resolveAppTimezone(
+        typeof user.user_metadata?.timezone === "string" ? user.user_metadata.timezone : null
+      );
       const sessionName = sessionNameFromOrgId(orgId);
       const admin = createAdminClient();
 
@@ -127,11 +131,7 @@ export async function GET(): Promise<Response> {
               type: "text" as const,
               direction: (ev.metadata?.direction ?? "in") as "in" | "out",
               body: ev.metadata?.body_preview ?? "",
-              timestamp: new Date(ev.received_at).toLocaleTimeString("en-IN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-              }),
+              timestamp: formatLocalTime(ev.received_at, userTimezone),
               status: "delivered" as const,
           }));
 

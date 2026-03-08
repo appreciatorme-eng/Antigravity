@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import {
   Search,
@@ -38,6 +39,7 @@ import { ActionPickerModal } from './ActionPickerModal';
 import { ContextActionModal, type ContextActionType } from './ContextActionModal';
 import { WhatsAppConnectModal } from './WhatsAppConnectModal';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -415,6 +417,7 @@ interface UnifiedInboxProps {
 export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
   const router = useRouter();
   const { isDemoMode } = useDemoMode();
+  const { timezone } = useUserTimezone();
   const [conversations, setConversations] = useState<ChannelConversation[]>(
     isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
   );
@@ -512,11 +515,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             direction: 'out',
             body: message,
             subject,
-            timestamp: new Date().toLocaleTimeString('en-IN', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true,
-            }),
+            timestamp: formatLocalTime(new Date(), timezone),
             status: 'sent',
           };
           return { ...c, messages: [...c.messages, localMsg] };
@@ -539,11 +538,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       direction: 'out',
       body: message,
       subject,
-      timestamp: new Date().toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
+      timestamp: formatLocalTime(new Date(), timezone),
       status: 'pending',
     };
 

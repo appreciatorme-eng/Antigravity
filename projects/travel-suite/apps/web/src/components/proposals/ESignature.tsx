@@ -9,6 +9,8 @@ import {
   type TouchEvent,
 } from 'react';
 import { CheckCircle, Trash2, Download, PenLine } from 'lucide-react';
+import { formatLocalDateTime } from '@/lib/date/tz';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 
 interface ESignatureProps {
   proposalId: string;
@@ -24,19 +26,12 @@ interface Point {
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 150;
 
-function getTimestampIST(): string {
-  return new Date().toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  }) + ' IST';
+function getTimestampLabel(timezone: string): string {
+  return `${formatLocalDateTime(new Date(), timezone)} (${timezone})`;
 }
 
 export default function ESignature({ proposalId: _proposalId, clientName, onSigned }: ESignatureProps) {
+  const { timezone } = useUserTimezone();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawing, setHasDrawing] = useState(false);
@@ -175,7 +170,7 @@ export default function ESignature({ proposalId: _proposalId, clientName, onSign
       return;
     }
 
-    const timestamp = getTimestampIST();
+    const timestamp = getTimestampLabel(timezone);
     const downloadStamp = new Date().toISOString().replace(/[:.]/g, "-");
     setSignatureDataUrl(dataUrl);
     setSignedAt(timestamp);

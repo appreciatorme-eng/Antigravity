@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
 import { useProposals } from '@/lib/queries/proposals';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -32,6 +33,7 @@ import { GlassConfirmModal } from '@/components/glass/GlassModal';
 import { GlassListSkeleton } from '@/components/glass/GlassSkeleton';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import ESignature from '@/components/proposals/ESignature';
 
 interface Proposal {
@@ -74,9 +76,8 @@ const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon
   rejected: { label: 'Rejected', variant: 'danger', icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
 };
 
-function formatSignedAt(isoString: string): string {
-  return new Date(isoString).toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
+function formatSignedAt(isoString: string, timezone: string): string {
+  return formatLocalDateTime(isoString, timezone, {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -87,6 +88,7 @@ function formatSignedAt(isoString: string): string {
 
 export default function ProposalsPage() {
   const { toast } = useToast();
+  const { timezone } = useUserTimezone();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<Proposal | null>(null);
@@ -268,7 +270,7 @@ export default function ProposalsPage() {
                         {signatureRecord ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
                             <CheckCircle className="w-3 h-3" />
-                            Signed — {formatSignedAt(signatureRecord.signedAt)}
+                            Signed — {formatSignedAt(signatureRecord.signedAt, timezone)}
                           </span>
                         ) : null}
                       </div>
@@ -283,7 +285,7 @@ export default function ProposalsPage() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-text-muted" />
-                          <span>{new Date(proposal.created_at || Date.now()).toLocaleDateString()}</span>
+                          <span>{formatLocalDate(proposal.created_at || Date.now(), timezone)}</span>
                         </div>
                         {proposal.comments_count ? (
                           <div className="flex items-center gap-1.5 text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100 animate-pulse">
