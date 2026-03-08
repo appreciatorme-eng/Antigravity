@@ -28,10 +28,10 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-23 | 6     | Real-time UX          | Error boundaries on every page section             | ✅ DONE    | 8fdf7ce |
 | S3-24 | 6     | Real-time UX          | Empty state illustrations for all zero-data pages  | ✅ DONE    | 8fdf7ce |
 | S3-25 | 6     | Real-time UX          | Bulk operations: approve proposals, select broadcast| ✅ DONE    | 8fdf7ce |
-| S3-26 | 7     | Performance           | next/image for all <img> tags                      | ⏳ PENDING |        |
-| S3-27 | 7     | Performance           | next/font for all font loads                       | ⏳ PENDING |        |
-| S3-28 | 7     | Performance           | Bundle analyzer — fix top 3 heaviest deps          | ⏳ PENDING |        |
-| S3-29 | 7     | Performance           | unstable_cache on heavy read routes                | ⏳ PENDING |        |
+| S3-26 | 7     | Performance           | next/image for all <img> tags                      | ✅ DONE    | f278715 |
+| S3-27 | 7     | Performance           | next/font for all font loads                       | ✅ DONE    | f278715 |
+| S3-28 | 7     | Performance           | Bundle analyzer — fix top 3 heaviest deps          | ✅ DONE    | f278715 |
+| S3-29 | 7     | Performance           | unstable_cache on heavy read routes                | ✅ DONE    | f278715 |
 | S3-30 | 8     | Accessibility         | WCAG 2.1 AA — contrast, alt text, form labels      | ⏳ PENDING |        |
 | S3-31 | 8     | Accessibility         | Keyboard nav on all dropdowns and menus            | ⏳ PENDING |        |
 | S3-32 | 8     | Accessibility         | Focus trap in GlassModal + Escape to close         | ⏳ PENDING |        |
