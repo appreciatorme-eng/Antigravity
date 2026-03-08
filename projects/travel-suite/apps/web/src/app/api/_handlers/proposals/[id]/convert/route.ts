@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendBookingConfirmation } from "@/lib/email/notifications";
 import { getNextInvoiceNumber } from "@/lib/invoices/module";
 
 // Define strict types for the database entities we're working with
@@ -249,6 +250,58 @@ export async function POST(
             }
         } catch (invoiceErr) {
             console.error("Auto-create invoice failed (non-fatal):", invoiceErr);
+        }
+
+        const [{ data: travelerProfile }, { data: operatorProfile }, { data: organization }] = await Promise.all([
+            supabaseAdmin
+                .from("profiles")
+                .select("full_name, email")
+                .eq("id", proposal.client_id)
+                .maybeSingle(),
+            supabaseAdmin
+                .from("profiles")
+                .select("full_name, email")
+                .eq("id", admin.userId)
+                .maybeSingle(),
+            supabaseAdmin
+                .from("organizations")
+                .select("name")
+                .eq("id", admin.organizationId)
+                .maybeSingle(),
+        ]);
+
+        const tripUrl = proposal.share_token
+            ? `${new URL(req.url).origin}/portal/${proposal.share_token}`
+            : null;
+        const operatorName = operatorProfile?.full_name || organization?.name || "Antigravity Travel";
+        const operatorEmail = operatorProfile?.email || null;
+
+        if (travelerProfile?.email) {
+            void sendBookingConfirmation({
+                to: travelerProfile.email,
+                recipientName: travelerProfile.full_name || "Traveler",
+                destination,
+                startDate: startDate.toISOString().split("T")[0],
+                endDate: endDate.toISOString().split("T")[0],
+                totalPaid: null,
+                operatorName,
+                operatorEmail,
+                tripUrl,
+            });
+        }
+
+        if (operatorEmail) {
+            void sendBookingConfirmation({
+                to: operatorEmail,
+                recipientName: operatorName,
+                destination,
+                startDate: startDate.toISOString().split("T")[0],
+                endDate: endDate.toISOString().split("T")[0],
+                totalPaid: null,
+                operatorName,
+                operatorEmail,
+                tripUrl: `${new URL(req.url).origin}/admin/trips/${tripData.id}`,
+            });
         }
 
         return NextResponse.json({

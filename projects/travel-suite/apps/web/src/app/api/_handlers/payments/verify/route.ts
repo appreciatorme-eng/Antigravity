@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { sendPaymentReceipt } from "@/lib/email/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getPaymentLinkByToken,
@@ -62,6 +63,26 @@ export async function POST(request: NextRequest) {
         .from("proposals")
         .update({ status: "converted" })
         .eq("id", updatedLink.proposalId);
+    }
+
+    if (updatedLink.clientEmail) {
+      const paidAt = updatedLink.paidAt || new Date().toISOString();
+      const paidAtLabel = new Intl.DateTimeFormat("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(paidAt));
+
+      void sendPaymentReceipt({
+        to: updatedLink.clientEmail,
+        recipientName: updatedLink.clientName || "Traveler",
+        amountLabel: `₹${Math.round(updatedLink.amount / 100).toLocaleString("en-IN")}`,
+        paymentId: parsed.data.razorpay_payment_id,
+        bookingReference: updatedLink.proposalTitle || updatedLink.token,
+        paidAt: paidAtLabel,
+        operatorName: updatedLink.organizationName || "Antigravity Travel",
+        gstLabel: "5% GST (HSN 998551)",
+        invoiceUrl: null,
+      });
     }
 
     return apiSuccess({

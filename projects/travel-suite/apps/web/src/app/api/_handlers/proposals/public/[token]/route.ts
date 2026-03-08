@@ -3,6 +3,10 @@ import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanit
 import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
+import {
+  sendProposalApprovedNotification,
+  sendProposalRejectedNotification,
+} from "@/lib/email/notifications";
 import { trackFunnelEvent } from '@/lib/funnel/track';
 import {
   type ProposalPackageTier,
@@ -16,6 +20,53 @@ import {
 } from "@/lib/payments/payment-links.server";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
 const supabaseAdmin = createAdminClient();
+
+async function loadOperatorContact(organizationId: string | null, createdBy: string | null) {
+  if (createdBy) {
+    const { data: operatorProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", createdBy)
+      .maybeSingle();
+
+    if (operatorProfile?.email) {
+      return {
+        email: sanitizeEmail(operatorProfile.email),
+        name: sanitizeText(operatorProfile.full_name, { maxLength: 120 }) || "Operator",
+      };
+    }
+  }
+
+  if (!organizationId) {
+    return null;
+  }
+
+  const { data: organization } = await supabaseAdmin
+    .from("organizations")
+    .select("name, owner_id")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (!organization?.owner_id) {
+    return null;
+  }
+
+  const { data: ownerProfile } = await supabaseAdmin
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", organization.owner_id)
+    .maybeSingle();
+
+  return ownerProfile?.email
+    ? {
+        email: sanitizeEmail(ownerProfile.email),
+        name:
+          sanitizeText(ownerProfile.full_name, { maxLength: 120 }) ||
+          sanitizeText(organization.name, { maxLength: 120 }) ||
+          "Operator",
+      }
+    : null;
+}
 
 type ProposalSummary = {
   id: string;
@@ -705,6 +756,7 @@ export async function POST(
       let paymentRequestError: string | undefined;
       let paymentLinkUrl: string | null = null;
       let paymentLinkToken: string | null = null;
+      let approvedTravelerName: string | null = null;
       if (requestPayment) {
         const nowIso = new Date().toISOString();
         let operatorUserId: string | null = null;
@@ -737,6 +789,8 @@ export async function POST(
             clientEmail = clientEmail || sanitizeEmail(clientProfile.email);
           }
         }
+
+        approvedTravelerName = clientName;
 
         const quotedAmount = Math.round(
           (proposal.client_selected_price ?? proposal.total_price ?? 0) * 100
@@ -817,6 +871,18 @@ export async function POST(
         },
       });
 
+      const operatorContact = await loadOperatorContact(proposal.organization_id, proposal.created_by);
+      if (operatorContact?.email) {
+        const travelerName = approvedTravelerName || approvedBy;
+        void sendProposalApprovedNotification({
+          to: operatorContact.email,
+          operatorName: operatorContact.name,
+          travelerName,
+          proposalTitle: proposal.title,
+          paymentUrl: paymentLinkUrl,
+        });
+      }
+
       return NextResponse.json({
         success: true,
         status: 'approved',
@@ -825,6 +891,37 @@ export async function POST(
         payment_link_url: paymentLinkUrl,
         payment_link_token: paymentLinkToken,
         warning: paymentRequestError,
+      });
+    }
+
+    if (action === 'reject') {
+      const rejectedBy = sanitizeText(body.rejectedBy, { maxLength: 120 }) || 'Traveler';
+
+      const { error: rejectError } = await supabaseAdmin
+        .from('proposals')
+        .update({
+          status: 'rejected',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', proposal.id);
+
+      if (rejectError) {
+        return NextResponse.json({ error: rejectError.message }, { status: 400 });
+      }
+
+      const operatorContact = await loadOperatorContact(proposal.organization_id, proposal.created_by);
+      if (operatorContact?.email) {
+        void sendProposalRejectedNotification({
+          to: operatorContact.email,
+          operatorName: operatorContact.name,
+          travelerName: rejectedBy,
+          proposalTitle: proposal.title,
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        status: 'rejected',
       });
     }
 

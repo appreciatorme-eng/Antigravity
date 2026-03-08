@@ -7,9 +7,9 @@ import {
   isEmailIntegrationEnabled,
   isWhatsAppIntegrationEnabled,
 } from "@/lib/integrations";
+import { sendProposalSentNotification } from "@/lib/email/notifications";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import type { Database } from "@/lib/database.types";
-import { fetchWithRetry } from "@/lib/network/retry";
 import { trackFunnelEvent } from "@/lib/funnel/track";
 
 const SendProposalSchema = z.object({
@@ -34,6 +34,10 @@ type ProposalRecipientProfile = {
 };
 
 type ProposalSendRow = Database["public"]["Tables"]["proposals"]["Row"] & {
+  tour_templates:
+    | { destination: string | null }
+    | { destination: string | null }[]
+    | null;
   clients:
     | { profiles: ProposalRecipientProfile | ProposalRecipientProfile[] | null }
     | { profiles: ProposalRecipientProfile | ProposalRecipientProfile[] | null }[]
@@ -46,52 +50,33 @@ function makeShareUrl(request: NextRequest, shareToken: string) {
 }
 
 async function sendProposalEmail(
-  toEmail: string,
-  subject: string,
-  html: string
+  params: {
+    toEmail: string;
+    travelerName: string;
+    proposalTitle: string;
+    destination?: string | null;
+    priceLabel?: string | null;
+    proposalUrl: string;
+  }
 ): Promise<{ success: boolean; error?: string }> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const senderEmail =
-    process.env.PROPOSAL_FROM_EMAIL ||
-    process.env.WELCOME_FROM_EMAIL ||
-    process.env.RESEND_FROM_EMAIL;
-
-  if (!resendApiKey || !senderEmail) {
+  if (!isEmailIntegrationEnabled()) {
     return {
       success: false,
-      error: "Email provider not configured (RESEND_API_KEY / sender email missing)",
+      error: getIntegrationDisabledMessage("email"),
     };
   }
 
   try {
-    const response = await fetchWithRetry(
-      "https://api.resend.com/emails",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: senderEmail,
-          to: [toEmail],
-          subject,
-          html,
-        }),
-      },
-      {
-        retries: 2,
-        timeoutMs: 8000,
-        baseDelayMs: 300,
-      }
-    );
+    const sent = await sendProposalSentNotification({
+      to: params.toEmail,
+      travelerName: params.travelerName,
+      proposalTitle: params.proposalTitle,
+      destination: params.destination,
+      priceLabel: params.priceLabel,
+      proposalUrl: params.proposalUrl,
+    });
 
-    if (response.ok) {
-      return { success: true };
-    }
-
-    const body = await response.text().catch(() => "");
-    return { success: false, error: body || `Email send failed (${response.status})` };
+    return sent ? { success: true } : { success: false, error: "Email send failed" };
   } catch (error: unknown) {
     return {
       success: false,
@@ -146,6 +131,11 @@ export async function POST(
       share_token,
       expires_at,
       organization_id,
+      total_price,
+      client_selected_price,
+      tour_templates (
+        destination
+      ),
       clients (
         profiles (
           full_name,
@@ -195,22 +185,21 @@ export async function POST(
     } else if (!recipientEmail) {
       errors.push("Client email is missing");
     } else {
-      const emailSubject = `Your travel proposal: ${sanitizeText(proposal.title, { maxLength: 140 })}`;
-      const emailHtml = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6;">
-          <h2>Hello ${recipientName},</h2>
-          <p>Your travel proposal is ready for review.</p>
-          <p><strong>${sanitizeText(proposal.title, { maxLength: 160 })}</strong></p>
-          <p>
-            <a href="${shareUrl}" style="display:inline-block;padding:10px 16px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">
-              Open Proposal
-            </a>
-          </p>
-          <p style="color:#475569">Link: <a href="${shareUrl}">${shareUrl}</a></p>
-        </div>
-      `;
+      const destination = normalizeRelation(proposal.tour_templates)?.destination || null;
+      const quoteAmount = proposal.client_selected_price ?? proposal.total_price;
+      const priceLabel =
+        typeof quoteAmount === "number" && Number.isFinite(quoteAmount)
+          ? `₹${Math.round(quoteAmount).toLocaleString("en-IN")}`
+          : null;
 
-      const result = await sendProposalEmail(recipientEmail, emailSubject, emailHtml);
+      const result = await sendProposalEmail({
+        toEmail: recipientEmail,
+        travelerName: recipientName,
+        proposalTitle: sanitizeText(proposal.title, { maxLength: 160 }) || "Travel proposal",
+        destination,
+        priceLabel,
+        proposalUrl: shareUrl,
+      });
       if (result.success) {
         emailSent = true;
       } else {

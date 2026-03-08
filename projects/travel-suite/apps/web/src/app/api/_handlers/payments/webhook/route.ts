@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
+import { sendPaymentReceipt } from '@/lib/email/notifications';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
 import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -291,6 +292,47 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
       },
       { context: 'admin' }
     );
+
+    const supabase = createAdminClient();
+    const { data: invoiceRow } = await supabase
+      .from('invoices')
+      .select('invoice_number, client_id, organization_id')
+      .eq('id', invoiceId)
+      .maybeSingle();
+
+    if (invoiceRow?.client_id) {
+      const [{ data: clientProfile }, { data: organization }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', invoiceRow.client_id)
+          .maybeSingle(),
+        supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', invoiceRow.organization_id)
+          .maybeSingle(),
+      ]);
+
+      if (clientProfile?.email) {
+        const paidAtLabel = new Intl.DateTimeFormat('en-IN', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date());
+
+        void sendPaymentReceipt({
+          to: clientProfile.email,
+          recipientName: clientProfile.full_name || 'Traveler',
+          amountLabel: `₹${(payment.amount / 100).toLocaleString('en-IN')}`,
+          paymentId: payment.id,
+          bookingReference: invoiceRow.invoice_number || invoiceId,
+          paidAt: paidAtLabel,
+          operatorName: organization?.name || 'Antigravity Travel',
+          gstLabel: '5% GST (HSN 998551)',
+          invoiceUrl: null,
+        });
+      }
+    }
   }
 
   let orgIdForFunnel = payment.notes?.organization_id || null;

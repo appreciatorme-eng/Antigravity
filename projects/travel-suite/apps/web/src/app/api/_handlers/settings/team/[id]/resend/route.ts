@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { sendTeamInviteNotification } from "@/lib/email/notifications";
 import { canManageRole } from "@/lib/team/roles";
 import {
   mapProfileRoleToTeamRole,
@@ -70,6 +71,14 @@ export async function POST(
       console.error("[settings/team/:id/resend] inviteUserByEmail failed:", inviteResponse.error);
       return apiError("Failed to resend invite", 500);
     }
+
+    void sendTeamInviteNotification({
+      to: targetMember.email,
+      organizationName: context.organization.name,
+      inviterName: context.actorProfile.full_name || context.organization.name,
+      role: teamRole,
+      inviteUrl: redirectTo,
+    });
 
     return apiSuccess({ id: targetMember.id, resent: true });
   } catch (error) {

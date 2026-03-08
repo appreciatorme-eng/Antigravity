@@ -7,10 +7,10 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   react: ReactElement;
-}): Promise<void> {
+}): Promise<boolean> {
   if (!resend) {
     console.error("[email] RESEND_API_KEY is not configured");
-    return;
+    return false;
   }
 
   try {
@@ -21,10 +21,12 @@ export async function sendEmail(params: {
       subject: params.subject,
       html,
     });
+    return true;
   } catch (error) {
     console.error("[email] Failed to send:", error);
     Sentry.captureException(error, {
       extra: { to: params.to, subject: params.subject },
     });
+    return false;
   }
 }
