@@ -19,8 +19,8 @@ Last updated: auto-updated after each commit
 | PI-08 | 🔴 NOW  | app/api/_handlers/social/publish/route.ts:74     | Returns fake publish IDs in mock mode              | ✅ DONE     | 820c076 |
 | PI-09 | 🔴 NOW  | app/reputation/_components/ReputationDashboard.tsx:32,95,350 | Fed entirely by MOCK_* data, save = console.log    | ✅ DONE     | fc11fa7 |
 | PI-10 | 🔴 NOW  | app/api/_handlers/reputation/dashboard/route.ts  | avgResponseTimeHours: 12 hardcoded placeholder     | ✅ DONE     | fc11fa7 |
-| PI-11 | 🔴 NOW  | app/settings/team/page.tsx:11,97                 | Team data mocked, CRUD is local useState           | ⏳ PENDING  |        |
-| PI-12 | 🔴 NOW  | app/settings/marketplace/page.tsx:48,175         | Entirely mock, edit icon has no onClick            | ⏳ PENDING  |        |
+| PI-11 | 🔴 NOW  | app/settings/team/page.tsx:11,97                 | Team data mocked, CRUD is local useState           | ✅ DONE     | 5129828 |
+| PI-12 | 🔴 NOW  | app/settings/marketplace/page.tsx:48,175         | Entirely mock, edit icon has no onClick            | ✅ DONE     | 5129828 |
 | PI-13 | 🔴 NOW  | app/admin/page.tsx:93                            | Revenue series hardcoded static array              | ⏳ PENDING  |        |
 | PI-14 | 🟡 SOON | components/layout/Sidebar.tsx:49                 | Nav badge counts are fake/static                   | ⏳ PENDING  |        |
 | PI-15 | 🟡 SOON | components/layout/MobileNav.tsx:11               | Mirrors same mock count approach                   | ⏳ PENDING  |        |
