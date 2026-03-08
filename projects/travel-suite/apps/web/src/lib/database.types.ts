@@ -1450,6 +1450,9 @@ export type Database = {
           destination: string
           duration_days: number
           embedding: string
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           itinerary_data: Json
           query_text: string
@@ -1459,7 +1462,10 @@ export type Database = {
           created_at?: string | null
           destination: string
           duration_days: number
-          embedding: string
+          embedding?: string
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           itinerary_data: Json
           query_text: string
@@ -1470,6 +1476,9 @@ export type Database = {
           destination?: string
           duration_days?: number
           embedding?: string
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           itinerary_data?: Json
           query_text?: string
@@ -2710,6 +2719,9 @@ export type Database = {
           content: string
           created_at: string | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           metadata: Json | null
           source_file: string | null
@@ -2720,6 +2732,9 @@ export type Database = {
           content: string
           created_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           metadata?: Json | null
           source_file?: string | null
@@ -2730,6 +2745,9 @@ export type Database = {
           content?: string
           created_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           metadata?: Json | null
           source_file?: string | null
@@ -3832,6 +3850,9 @@ export type Database = {
           description: string | null
           display_order: number | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           image_url: string | null
           is_optional: boolean | null
@@ -3847,6 +3868,9 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
@@ -3862,6 +3886,9 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
@@ -4112,6 +4139,9 @@ export type Database = {
           destination: string | null
           duration_days: number | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           embedding_updated_at: string | null
           hero_image_url: string | null
           id: string
@@ -4134,6 +4164,9 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
@@ -4156,6 +4189,9 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
@@ -5093,6 +5129,23 @@ export type Database = {
           similarity: number
         }[]
       }
+      match_itineraries_v2: {
+        Args: {
+          filter_days: number
+          filter_destination: string
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          destination: string
+          duration_days: number
+          id: string
+          itinerary_data: Json
+          query_text: string
+          similarity: number
+        }[]
+      }
       save_itinerary_to_cache: {
         Args: {
           p_budget: string
@@ -5105,6 +5158,28 @@ export type Database = {
         Returns: string
       }
       search_similar_templates_with_quality: {
+        Args: {
+          p_exclude_organization_id?: string
+          p_match_count?: number
+          p_match_threshold?: number
+          p_max_days?: number
+          p_min_days?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          base_price: number
+          combined_rank: number
+          destination: string
+          duration_days: number
+          name: string
+          organization_id: string
+          quality_score: number
+          similarity: number
+          template_id: string
+          usage_count: number
+        }[]
+      }
+      search_similar_templates_with_quality_v2: {
         Args: {
           p_exclude_organization_id?: string
           p_match_count?: number

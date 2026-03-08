@@ -3,15 +3,16 @@ import "server-only";
 /* ------------------------------------------------------------------
  * Semantic Response Cache -- embedding-based fuzzy cache layer.
  *
- * Uses OpenAI text-embedding-3-small to find semantically similar
+ * Uses Gemini embeddings to find semantically similar
  * cached responses at cosine similarity >= 0.92. Stored in Redis as
  * a ring buffer of up to MAX_ENTRIES entries per organisation.
  *
- * Sits between the exact-match cache and the OpenAI chat call.
+ * Sits between the exact-match cache and the primary model chat call.
  * Never throws -- all errors are caught and logged.
  * ------------------------------------------------------------------ */
 
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+import { generateSemanticEmbeddingV2 } from "@/lib/embeddings-v2";
 import type { OrchestratorResponse } from "./types";
 import { shouldSkipCache } from "./response-cache";
 
@@ -26,10 +27,6 @@ interface SemanticCacheEntry {
   readonly createdAt: string;
 }
 
-interface EmbeddingResponse {
-  readonly data: readonly [{ readonly embedding: readonly number[] }];
-}
-
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -38,9 +35,6 @@ const SEMANTIC_KEY_PREFIX = "assistant:semcache";
 const SEMANTIC_TTL_SECONDS = 3600;
 const SIMILARITY_THRESHOLD = 0.92;
 const MAX_ENTRIES = 50;
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
-
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
@@ -94,36 +88,14 @@ function buildSemanticKey(orgId: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch an embedding vector from OpenAI text-embedding-3-small.
+ * Fetch an embedding vector from the shared Gemini embedding helper.
  * Returns null on any error so callers can gracefully skip caching.
  */
 async function getEmbedding(
   text: string,
-  apiKey: string,
 ): Promise<readonly number[] | null> {
   try {
-    const response = await fetch(OPENAI_EMBEDDINGS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: EMBEDDING_MODEL,
-        input: text,
-      }),
-    });
-
-    if (!response.ok) {
-      console.error(
-        "Semantic cache embedding request failed:",
-        response.status,
-      );
-      return null;
-    }
-
-    const body = (await response.json()) as EmbeddingResponse;
-    return body.data[0].embedding;
+    return await generateSemanticEmbeddingV2(text);
   } catch (error: unknown) {
     console.error("Semantic cache embedding error:", error);
     return null;
@@ -141,7 +113,6 @@ async function getEmbedding(
 export async function getSemanticCachedResponse(
   orgId: string,
   message: string,
-  apiKey: string,
 ): Promise<OrchestratorResponse | null> {
   try {
     if (shouldSkipCache(message)) {
@@ -155,7 +126,7 @@ export async function getSemanticCachedResponse(
       return null;
     }
 
-    const embedding = await getEmbedding(message, apiKey);
+    const embedding = await getEmbedding(message);
 
     if (!embedding) {
       return null;
@@ -191,7 +162,6 @@ export async function setSemanticCachedResponse(
   orgId: string,
   message: string,
   response: OrchestratorResponse,
-  apiKey: string,
 ): Promise<void> {
   try {
     if (shouldSkipCache(message)) {
@@ -202,7 +172,7 @@ export async function setSemanticCachedResponse(
       return;
     }
 
-    const embedding = await getEmbedding(message, apiKey);
+    const embedding = await getEmbedding(message);
 
     if (!embedding) {
       return;

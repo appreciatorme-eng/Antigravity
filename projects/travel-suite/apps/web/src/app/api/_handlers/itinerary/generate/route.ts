@@ -4,6 +4,7 @@ import { z } from 'zod';
 import Groq from "groq-sdk";
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 import { getSemanticMatch, saveSemanticMatch } from '@/lib/semantic-cache';
+import { isEmbeddingV2Configured } from '@/lib/embeddings-v2';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 import { populateItineraryImages } from '@/lib/image-search';
@@ -723,7 +724,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         }
 
         // Save to semantic pgvector cache asynchronously
-        if (process.env.OPENAI_API_KEY && !isFallbackItinerary) {
+        if (isEmbeddingV2Configured() && !isFallbackItinerary) {
             saveSemanticMatch(prompt, destination, days, geocodedItinerary)
                 .catch(e => console.error(e));
         }
