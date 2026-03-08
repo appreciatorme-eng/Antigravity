@@ -19,10 +19,10 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-14 | 4     | AI Intelligence       | Review response AI draft generator                 | ✅ DONE    | 6171717 |
 | S3-15 | 4     | AI Intelligence       | Proposal pricing recommender (historical data)     | ✅ DONE    | 6171717 |
 | S3-16 | 4     | AI Intelligence       | Payment reminder via Supabase pg_cron + Edge Fn    | ✅ DONE    | 6171717 |
-| S3-17 | 5     | Business Intelligence | Conversion funnel widget (proposals→bookings→paid) | ⏳ PENDING |        |
-| S3-18 | 5     | Business Intelligence | GST calculation + invoice PDF generator            | ⏳ PENDING |        |
-| S3-19 | 5     | Business Intelligence | Date-range filters on all admin charts             | ⏳ PENDING |        |
-| S3-20 | 5     | Business Intelligence | Customer LTV + top destinations report             | ⏳ PENDING |        |
+| S3-17 | 5     | Business Intelligence | Conversion funnel widget (proposals→bookings→paid) | ✅ DONE    | c834b8f |
+| S3-18 | 5     | Business Intelligence | GST calculation + invoice PDF generator            | ✅ DONE    | c834b8f |
+| S3-19 | 5     | Business Intelligence | Date-range filters on all admin charts             | ✅ DONE    | c834b8f |
+| S3-20 | 5     | Business Intelligence | Customer LTV + top destinations report             | ✅ DONE    | c834b8f |
 | S3-21 | 6     | Real-time UX          | Supabase Realtime for inbox + nav badge counts     | ⏳ PENDING |        |
 | S3-22 | 6     | Real-time UX          | Loading skeletons on all data-fetching pages       | ⏳ PENDING |        |
 | S3-23 | 6     | Real-time UX          | Error boundaries on every page section             | ⏳ PENDING |        |
