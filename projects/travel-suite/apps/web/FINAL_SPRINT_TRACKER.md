@@ -11,10 +11,10 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-06 | 2     | Observability         | PostHog — page views + conversion funnel events    | ✅ DONE    | c2fce50 |
 | S3-07 | 2     | Observability         | Razorpay webhook HMAC verification                 | ✅ DONE    | c2fce50 |
 | S3-08 | 2     | Observability         | DB indexes on all FK + high-traffic filter columns | ✅ DONE    | c2fce50 |
-| S3-09 | 3     | Email Notifications   | Booking confirmation (operator + traveler)         | ⏳ PENDING |        |
-| S3-10 | 3     | Email Notifications   | Proposal sent / approved / rejected emails         | ⏳ PENDING |        |
-| S3-11 | 3     | Email Notifications   | Payment received receipt email                     | ⏳ PENDING |        |
-| S3-12 | 3     | Email Notifications   | Team invite branded email                          | ⏳ PENDING |        |
+| S3-09 | 3     | Email Notifications   | Booking confirmation (operator + traveler)         | ✅ DONE    | 095e971 |
+| S3-10 | 3     | Email Notifications   | Proposal sent / approved / rejected emails         | ✅ DONE    | 095e971 |
+| S3-11 | 3     | Email Notifications   | Payment received receipt email                     | ✅ DONE    | 095e971 |
+| S3-12 | 3     | Email Notifications   | Team invite branded email                          | ✅ DONE    | 095e971 |
 | S3-13 | 4     | AI Intelligence       | Inbox smart reply suggestions (Gemini)             | ⏳ PENDING |        |
 | S3-14 | 4     | AI Intelligence       | Review response AI draft generator                 | ⏳ PENDING |        |
 | S3-15 | 4     | AI Intelligence       | Proposal pricing recommender (historical data)     | ⏳ PENDING |        |
