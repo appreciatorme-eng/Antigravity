@@ -23,11 +23,11 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-18 | 5     | Business Intelligence | GST calculation + invoice PDF generator            | ✅ DONE    | c834b8f |
 | S3-19 | 5     | Business Intelligence | Date-range filters on all admin charts             | ✅ DONE    | c834b8f |
 | S3-20 | 5     | Business Intelligence | Customer LTV + top destinations report             | ✅ DONE    | c834b8f |
-| S3-21 | 6     | Real-time UX          | Supabase Realtime for inbox + nav badge counts     | ⏳ PENDING |        |
-| S3-22 | 6     | Real-time UX          | Loading skeletons on all data-fetching pages       | ⏳ PENDING |        |
-| S3-23 | 6     | Real-time UX          | Error boundaries on every page section             | ⏳ PENDING |        |
-| S3-24 | 6     | Real-time UX          | Empty state illustrations for all zero-data pages  | ⏳ PENDING |        |
-| S3-25 | 6     | Real-time UX          | Bulk operations: approve proposals, select broadcast| ⏳ PENDING |        |
+| S3-21 | 6     | Real-time UX          | Supabase Realtime for inbox + nav badge counts     | ✅ DONE    | 8fdf7ce |
+| S3-22 | 6     | Real-time UX          | Loading skeletons on all data-fetching pages       | ✅ DONE    | 8fdf7ce |
+| S3-23 | 6     | Real-time UX          | Error boundaries on every page section             | ✅ DONE    | 8fdf7ce |
+| S3-24 | 6     | Real-time UX          | Empty state illustrations for all zero-data pages  | ✅ DONE    | 8fdf7ce |
+| S3-25 | 6     | Real-time UX          | Bulk operations: approve proposals, select broadcast| ✅ DONE    | 8fdf7ce |
 | S3-26 | 7     | Performance           | next/image for all <img> tags                      | ⏳ PENDING |        |
 | S3-27 | 7     | Performance           | next/font for all font loads                       | ⏳ PENDING |        |
 | S3-28 | 7     | Performance           | Bundle analyzer — fix top 3 heaviest deps          | ⏳ PENDING |        |
