@@ -102,10 +102,6 @@ export async function POST(req: Request) {
                 }
 
                 const platform = item.platform;
-                const pageId = item.social_connections.platform_page_id;
-
-                console.log(`[Cron] Processing social publish to ${platform} for page ${pageId}`);
-
                 if (!mockPublishingEnabled) {
                     throw new Error("Social publishing provider is not configured");
                 }

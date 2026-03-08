@@ -106,7 +106,6 @@ async function buildFallbackItinerary(prompt: string, days: number) {
         if (geocoded) {
             const [lng, lat] = geocoded; // getCityCenter returns [lng, lat]
             cityCoordinates = { lat, lng };
-            console.log(`📍 Fallback itinerary using geocoded coords for ${destination}: ${lat}, ${lng}`);
         }
     } catch (err) {
         console.error('Geocoding failed for fallback, using default coords:', err);
@@ -170,9 +169,6 @@ async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<Iti
         const destination = typeof itinerary.destination === 'string' ? itinerary.destination : '';
         const cityProximity = await getCityCenter(destination);
 
-        let geocodedCount = 0;
-        let skippedCount = 0;
-
         const itineraryDays = Array.isArray(itinerary.days) ? itinerary.days : [];
 
         for (const day of itineraryDays) {
@@ -189,7 +185,6 @@ async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<Iti
                     Math.abs(existingLat) <= 90 &&
                     Math.abs(existingLng) <= 180
                 ) {
-                    skippedCount++;
                     continue;
                 }
 
@@ -202,13 +197,11 @@ async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<Iti
 
                     if (result) {
                         activity.coordinates = result.coordinates;
-                        geocodedCount++;
                     }
                 }
             }
         }
 
-        console.log(`📍 Geocoding: ${geocodedCount} locations geocoded, ${skippedCount} already had coordinates`);
         return itinerary;
     } catch (error) {
         console.error('Geocoding error (non-blocking):', error);
@@ -286,15 +279,10 @@ export async function POST(req: NextRequest) {
             );
 
             if (!isFallback && hasValidCoordinates) {
-                console.log(`✅ [TIER 1: CACHE HIT] ${destination}, ${days} days - API call avoided!`);
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
                 return NextResponse.json(cachedItinerary);
-            } else {
-                console.log(`⚠️ [TIER 1: CACHE INVALID] ${destination} - ${isFallback ? 'is fallback itinerary' : 'has old NY coordinates'} - regenerating`);
             }
         }
-
-        console.log(`❌ [TIER 1: DB CACHE MISS] ${destination}, ${days} days - trying Redis cache...`);
 
         // REDIS CACHE LOOKUP - Check if we have this itinerary cached in fast memory forever
         const promptHash = Buffer.from(prompt).toString('base64').substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
@@ -314,7 +302,6 @@ export async function POST(req: NextRequest) {
                 redisStore = Redis.fromEnv();
                 const cachedRedis = await redisStore.get(redisCacheKey);
                 if (cachedRedis) {
-                    console.log(`✅ [TIER 0: REDIS HIT] Fastest possible response!`);
                     void trackOrgAiUsage(user.id, "cache_hit", 0);
                     return NextResponse.json(typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis);
                 }
@@ -322,23 +309,16 @@ export async function POST(req: NextRequest) {
         } catch {
             console.warn("Redis fallback missed / connection issue");
         }
-
-        console.log(`❌ [TIER 0: REDIS MISS] ${destination} - trying Semantic Cache...`);
-
         // TIER 0.5: SEMANTIC CACHE (Vector Match)
         try {
             const semanticMatch = await getSemanticMatch(prompt, destination, days);
             if (semanticMatch) {
-                console.log(`✅ [TIER 0.5: SEMANTIC CACHE HIT] exact itinerary match saved API cost!`);
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
                 return NextResponse.json(semanticMatch);
             }
         } catch (e) {
             console.error('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
         }
-
-        console.log(`❌ [TIER 0.5: SEMANTIC MISS] ${destination} - trying RAG templates...`);
-
         // TIER 2: RAG TEMPLATE SEARCH (Unified Knowledge Base)
         try {
             const templates = await searchTemplates({
@@ -349,8 +329,6 @@ export async function POST(req: NextRequest) {
             });
 
             if (templates && templates.length > 0) {
-                console.log(`✅ [TIER 2: RAG HIT] Found ${templates.length} matching templates (top similarity: ${Number(templates[0].similarity).toFixed(2)})`);
-
                 const itinerary = await assembleItinerary(templates, { destination, days });
 
                 if (itinerary) {
@@ -373,8 +351,6 @@ export async function POST(req: NextRequest) {
                     );
 
                     if (cacheId) {
-                        console.log(`💾 RAG itinerary cached (ID: ${cacheId})`);
-
                         // Save attribution tracking
                         if (geocodedItinerary.base_template_id) {
                             await saveAttributionTracking(
@@ -392,10 +368,8 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            console.log(`❌ [TIER 2: RAG MISS] No matching templates found - falling back to Gemini AI...`);
         } catch (ragError) {
             console.error('[TIER 2: RAG ERROR] RAG system error (non-blocking):', ragError);
-            console.log('Falling back to Gemini AI generation...');
         }
 
         // TIER 3: AI GENERATION — try Groq first, then Gemini, then fallback
@@ -411,9 +385,6 @@ export async function POST(req: NextRequest) {
         }
 
         if (lowCostMode) {
-            console.log(
-                `💸 [LOW COST MODE] Heavy model generation skipped for user=${user.id}, org=${usageSnapshot.organizationId || "none"}, overCap=${usageSnapshot.overCap}`
-            );
             const fallback = await buildFallbackItinerary(prompt, days);
             if (usageSnapshot.overCap) {
                 fallback.summary =
@@ -520,7 +491,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
             // ROUTER: Try Groq first (cheaper & faster) — use for ALL queries when key is present
             if (groqApiKey) {
-                console.log(`⚡ [MODEL ROUTER: GROQ] Routing to Llama-3-8b via Groq...`);
                 try {
                     const groq = new Groq({ apiKey: groqApiKey });
                     const chatCompletion = await groq.chat.completions.create({
@@ -537,7 +507,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                     itinerary = JSON.parse(responseContent) as ItineraryLike;
                     aiGenerated = true;
                     aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GROQ_USD, 0.006);
-                    console.log(`✅ [GROQ] Successfully generated itinerary.`);
                 } catch (groqError) {
                     console.error(`❌ [GROQ] Failed:`, groqError);
                     // Fall through to Gemini below
@@ -546,7 +515,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
             // If Groq didn't produce a result, try Gemini
             if (!itinerary && geminiApiKey) {
-                console.log(`🧠 [MODEL ROUTER: GEMINI] Routing to Gemini 2.5-flash...`);
                 const genAI = new GoogleGenerativeAI(geminiApiKey);
                 const model = genAI.getGenerativeModel({
                     model: "gemini-2.0-flash",
@@ -560,7 +528,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 itinerary = JSON.parse(responseText.trim()) as ItineraryLike;
                 aiGenerated = true;
                 aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GEMINI_FLASH_USD, 0.012);
-                console.log(`✅ [GEMINI] Successfully generated itinerary.`);
             }
 
             // If all AI providers failed, use fallback
@@ -645,7 +612,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 try {
                     // Cache infinitely, Upstash allows max limit to naturally evict LRU items
                     await redisStore.set(redisCacheKey, JSON.stringify(geocodedItinerary));
-                    console.log(`💾 Memorized Itinerary to Redis: ${redisCacheKey}`);
                 } catch {
                     console.error("Failed to memorize to Redis");
                 }
@@ -659,15 +625,9 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 cacheParams.budget,
                 cacheParams.interests,
                 geocodedItinerary
-            ).then(cacheId => {
-                if (cacheId) {
-                    console.log(`💾 Itinerary cached successfully in Postgres (ID: ${cacheId}) for ${cacheParams.destination}`);
-                }
-            }).catch(err => {
+            ).catch(err => {
                 console.error('Cache save failed (non-blocking):', err);
             });
-        } else {
-            console.log('⚠️ Skipping cache save for fallback itinerary');
         }
 
         if (aiGenerated && !isFallbackItinerary) {
@@ -679,7 +639,6 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         // Save to semantic pgvector cache asynchronously
         if (process.env.OPENAI_API_KEY && !isFallbackItinerary) {
             saveSemanticMatch(prompt, destination, days, geocodedItinerary)
-                .then(() => console.log('✅ [TIER 0.5: SEMANTIC CACHE STORED]'))
                 .catch(e => console.error(e));
         }
 

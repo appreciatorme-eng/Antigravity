@@ -126,8 +126,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'URL not allowed' }, { status: 422 });
         }
 
-        console.log(`\n🔍 Scraping URL import: ${url}`);
-
         // 1. Fetch & parse HTML
         const response = await fetch(url, {
             headers: {
@@ -155,8 +153,6 @@ export async function POST(req: Request) {
 
         const truncatedText = rawText.slice(0, 20000);
 
-        console.log(`   🧠 Sending ${truncatedText.length} chars to Groq...`);
-
         // 2. Pass to Llama3 Groq
         const chatCompletion = await groq.chat.completions.create({
             messages: [
@@ -171,8 +167,6 @@ export async function POST(req: Request) {
 
         const itineraryText = chatCompletion.choices[0]?.message?.content || "";
         const itineraryJson = JSON.parse(itineraryText);
-
-        console.log(`   ✅ Extracted: "${itineraryJson.trip_title}"`);
 
         return NextResponse.json({
             success: true,
