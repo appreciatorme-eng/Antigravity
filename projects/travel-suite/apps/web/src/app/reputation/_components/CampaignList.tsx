@@ -7,6 +7,7 @@ import { CAMPAIGN_TYPE_LABELS } from "@/lib/reputation/constants";
 
 interface CampaignListProps {
   campaigns: ReputationReviewCampaign[];
+  onChanged?: () => Promise<void> | void;
 }
 
 const STATUS_STYLES: Record<
@@ -80,7 +81,7 @@ function FunnelBar({
   );
 }
 
-export default function CampaignList({ campaigns }: CampaignListProps) {
+export default function CampaignList({ campaigns, onChanged }: CampaignListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -99,11 +100,15 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
         return;
       }
       setSelectedId(null);
+      if (onChanged) {
+        await onChanged();
+        return;
+      }
       router.refresh();
     } catch (error) {
       console.error("Error updating campaign status:", error);
     }
-  }, [router]);
+  }, [onChanged, router]);
 
   if (campaigns.length === 0) {
     return (
@@ -277,4 +282,3 @@ function ActionButton({
     </button>
   );
 }
-

@@ -60,6 +60,9 @@ export async function GET(req: Request) {
         rating: s.overall_rating,
         reviewCount: s.total_review_count,
         healthScore: s.health_score,
+        positive: Number(s.positive_count ?? 0),
+        neutral: Number(s.neutral_count ?? 0),
+        negative: Number(s.negative_count ?? 0),
       }));
 
       return NextResponse.json({ trends });
@@ -87,15 +90,34 @@ export async function GET(req: Request) {
     // Group reviews by date
     const dateMap = new Map<
       string,
-      { ratings: number[]; count: number }
+      {
+        ratings: number[];
+        count: number;
+        positive: number;
+        neutral: number;
+        negative: number;
+      }
     >();
 
     for (const review of reviews ?? []) {
       const dateKey = review.review_date.split("T")[0];
-      const entry = dateMap.get(dateKey) ?? { ratings: [], count: 0 };
+      const entry = dateMap.get(dateKey) ?? {
+        ratings: [],
+        count: 0,
+        positive: 0,
+        neutral: 0,
+        negative: 0,
+      };
+      const sentiment = review.sentiment_label;
+
       dateMap.set(dateKey, {
         ratings: [...entry.ratings, review.rating],
         count: entry.count + 1,
+        positive: entry.positive + (sentiment === "positive" ? 1 : 0),
+        neutral:
+          entry.neutral +
+          (sentiment !== "positive" && sentiment !== "negative" ? 1 : 0),
+        negative: entry.negative + (sentiment === "negative" ? 1 : 0),
       });
     }
 
@@ -115,6 +137,9 @@ export async function GET(req: Request) {
           rating: avgRating,
           reviewCount: data.count,
           healthScore: 0, // Cannot compute full health score without response data
+          positive: data.positive,
+          neutral: data.neutral,
+          negative: data.negative,
         };
       }
     );

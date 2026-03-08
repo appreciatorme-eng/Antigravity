@@ -236,7 +236,7 @@ export interface ReputationWidget {
 export interface ReputationHealthScoreFactors {
   avgRating: number;
   responseRate: number;
-  avgResponseTimeHours: number;
+  avgResponseTimeHours: number | null;
   reviewVelocity: number;
   sentimentRatio: number;
 }
@@ -269,6 +269,9 @@ export interface TrendDataPoint {
   rating: number;
   reviewCount: number;
   healthScore: number;
+  positive?: number;
+  neutral?: number;
+  negative?: number;
 }
 
 export interface ReviewsListParams {

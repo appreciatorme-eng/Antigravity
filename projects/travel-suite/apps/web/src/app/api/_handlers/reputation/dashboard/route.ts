@@ -57,11 +57,35 @@ export async function GET() {
         : 0;
 
     // Response rate
-    const respondedCount = reviews.filter(
+    const respondedReviews = reviews.filter(
       (r) => r.response_status === "responded"
-    ).length;
+    );
+    const respondedCount = respondedReviews.length;
     const responseRate =
       totalReviews > 0 ? Math.round((respondedCount / totalReviews) * 100) : 0;
+
+    const responseTimes = respondedReviews
+      .map((review) => {
+        if (!review.response_posted_at || !review.review_date) return null;
+
+        const reviewedAt = new Date(review.review_date);
+        const respondedAt = new Date(review.response_posted_at);
+        const deltaHours =
+          (respondedAt.getTime() - reviewedAt.getTime()) / (1000 * 60 * 60);
+
+        return Number.isFinite(deltaHours) && deltaHours >= 0 ? deltaHours : null;
+      })
+      .filter((value): value is number => value !== null);
+
+    const avgResponseTimeHours =
+      responseTimes.length > 0
+        ? Number(
+            (
+              responseTimes.reduce((total, hours) => total + hours, 0) /
+              responseTimes.length
+            ).toFixed(2)
+          )
+        : null;
 
     // Platform breakdown
     const platformMap = new Map<
@@ -128,7 +152,7 @@ export async function GET() {
     const healthFactors: ReputationHealthScoreFactors = {
       avgRating: overallRating,
       responseRate,
-      avgResponseTimeHours: 12, // default placeholder until response time tracking is implemented
+      avgResponseTimeHours,
       reviewVelocity: recentMonthReviews.length,
       sentimentRatio,
     };

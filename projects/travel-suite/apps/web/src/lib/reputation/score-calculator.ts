@@ -23,7 +23,8 @@ function responseRateScore(rate: number): number {
   return 20;
 }
 
-function responseTimeScore(avgHours: number): number {
+function responseTimeScore(avgHours: number | null): number {
+  if (avgHours === null) return 50;
   if (avgHours <= 2) return 100;
   if (avgHours <= 6) return 85;
   if (avgHours <= 12) return 65;

@@ -144,3 +144,128 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const widgetId =
+      typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
+
+    const theme: WidgetTheme | undefined =
+      body.theme === undefined
+        ? undefined
+        : VALID_THEMES.includes(body.theme)
+          ? body.theme
+          : null;
+
+    if (body.widget_type !== undefined && !VALID_WIDGET_TYPES.includes(body.widget_type)) {
+      return NextResponse.json(
+        { error: `widget_type must be one of: ${VALID_WIDGET_TYPES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    if (theme === null) {
+      return NextResponse.json(
+        { error: `theme must be one of: ${VALID_THEMES.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const updateData = {
+      ...(typeof body.name === "string" ? { name: body.name.trim() } : {}),
+      ...(body.widget_type ? { widget_type: body.widget_type } : {}),
+      ...(theme ? { theme } : {}),
+      ...(typeof body.accent_color === "string"
+        ? { accent_color: body.accent_color || "#00d084" }
+        : {}),
+      ...(typeof body.background_color === "string"
+        ? { background_color: body.background_color || null }
+        : {}),
+      ...(typeof body.text_color === "string"
+        ? { text_color: body.text_color || null }
+        : {}),
+      ...(body.border_radius !== undefined
+        ? {
+            border_radius: Math.max(0, Math.min(32, Number(body.border_radius) || 12)),
+          }
+        : {}),
+      ...(body.min_rating_to_show !== undefined
+        ? {
+            min_rating_to_show: Math.max(
+              1,
+              Math.min(5, Number(body.min_rating_to_show) || 4)
+            ),
+          }
+        : {}),
+      ...(body.max_reviews !== undefined
+        ? {
+            max_reviews: Math.max(1, Math.min(50, Number(body.max_reviews) || 10)),
+          }
+        : {}),
+      ...(Array.isArray(body.platforms_filter)
+        ? { platforms_filter: body.platforms_filter }
+        : {}),
+      ...(Array.isArray(body.destinations_filter)
+        ? { destinations_filter: body.destinations_filter }
+        : {}),
+      ...(body.show_branding !== undefined
+        ? { show_branding: body.show_branding !== false }
+        : {}),
+      ...(typeof body.custom_header === "string"
+        ? { custom_header: body.custom_header || null }
+        : {}),
+      ...(typeof body.custom_footer === "string"
+        ? { custom_footer: body.custom_footer || null }
+        : {}),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (Object.keys(updateData).length === 1) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any)
+      .from("reputation_widgets")
+      .update(updateData)
+      .eq("organization_id", profile.organization_id);
+
+    query = widgetId ? query.eq("id", widgetId) : query.eq("is_active", true);
+
+    const { data: widget, error } = await query.select().maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!widget) {
+      return NextResponse.json({ error: "Widget not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ widget });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("Error updating widget:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

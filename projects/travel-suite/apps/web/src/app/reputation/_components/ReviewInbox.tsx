@@ -336,6 +336,26 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
     }
   };
 
+  const handleSaveResponse = async (id: string, text: string) => {
+    const response = await fetch(`/api/reputation/reviews/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        response_status: "responded",
+        response_text: text,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to save response");
+    }
+
+    await fetchReviews();
+    setIsResponsePanelOpen(false);
+    setSelectedReview(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* Search + Add */}
@@ -480,11 +500,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
           setIsResponsePanelOpen(false);
           setSelectedReview(null);
         }}
-        onSave={(id, text) => {
-          console.log("Response saved:", id, text);
-          setIsResponsePanelOpen(false);
-          setSelectedReview(null);
-        }}
+        onSave={handleSaveResponse}
       />
     </div>
   );
