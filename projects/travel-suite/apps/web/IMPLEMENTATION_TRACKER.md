@@ -12,9 +12,9 @@ Scope: projects/travel-suite/apps/web
 | IM-05 | Reviews → Marketing | Persist review marketing assets and lifecycle state | ✅ DONE | 3aa71d1 |
 | IM-06 | Reviews → Marketing | Generate branded testimonial/review cards from real reviews | ✅ DONE | 3aa71d1 |
 | IM-07 | Reviews → Marketing | Push review assets into the social scheduling workflow | ✅ DONE | 3aa71d1 |
-| IM-08 | Shared Cache | Add shared itinerary cache table and promotion rules | ⏳ PENDING | |
-| IM-09 | Shared Cache | Route itinerary generation through org cache + shared cache | ⏳ PENDING | |
-| IM-10 | Shared Cache | Track shared cache hit-rate and cache source analytics | ⏳ PENDING | |
+| IM-08 | Shared Cache | Add shared itinerary cache table and promotion rules | ✅ DONE | pending |
+| IM-09 | Shared Cache | Route itinerary generation through org cache + shared cache | ✅ DONE | pending |
+| IM-10 | Shared Cache | Track shared cache hit-rate and cache source analytics | ✅ DONE | pending |
 | IM-11 | Marketplace Monetization | Add paid marketplace listing tiers and subscription state | ⏳ PENDING | |
 | IM-12 | Marketplace Monetization | Add operator UI to purchase/manage featured listings | ⏳ PENDING | |
 | IM-13 | Marketplace Monetization | Apply paid ranking boost in marketplace discovery | ⏳ PENDING | |

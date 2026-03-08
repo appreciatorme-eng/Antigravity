@@ -3,6 +3,7 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 export const maxDuration = 60;
 
 const routes = createCatchAllHandlers([
+  ["cache-metrics", () => import("@/app/api/_handlers/admin/cache-metrics/route")],
   ["clear-cache", () => import("@/app/api/_handlers/admin/clear-cache/route")],
   ["clients", () => import("@/app/api/_handlers/admin/clients/route")],
   ["contacts/:id/promote", () => import("@/app/api/_handlers/admin/contacts/[id]/promote/route")],
