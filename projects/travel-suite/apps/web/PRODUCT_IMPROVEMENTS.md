@@ -27,5 +27,5 @@ Last updated: auto-updated after each commit
 | PI-16 | 🟡 SOON | app/inbox/page.tsx:94                            | Broadcast send uses setTimeout simulation          | ✅ DONE     | 12ca7c3 |
 | PI-17 | 🟡 SOON | app/portal/[token]/page.tsx:10                   | Traveler portal loads mock data, not real DB       | ✅ DONE     | 12ca7c3 |
 | PI-18 | 🟡 SOON | components/payments/RazorpayModal.tsx:56,318     | Fake QR generation, simulated success/failure      | ✅ DONE     | 076fa42 |
-| PI-19 | 🔵 LATER| app/api/_handlers/reputation/                    | No real review-platform aggregation endpoint       | ⏳ PENDING  |        |
+| PI-19 | 🔵 LATER| app/api/_handlers/reputation/                    | No real review-platform aggregation endpoint       | ✅ DONE     | df89725 |
 | PI-20 | 🔵 LATER| Global timezone handling                         | No TZ-aware date rendering strategy                | ⏳ PENDING  |        |
