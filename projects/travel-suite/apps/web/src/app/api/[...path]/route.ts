@@ -55,6 +55,7 @@ const routes = createCatchAllHandlers([
   ["marketplace/options", () => import("@/app/api/_handlers/marketplace/options/route")],
   ["marketplace/stats", () => import("@/app/api/_handlers/marketplace/stats/route")],
   ["marketplace", () => import("@/app/api/_handlers/marketplace/route")],
+  ["nav/counts", () => import("@/app/api/_handlers/nav/counts/route")],
   ["notifications/client-landed", () => import("@/app/api/_handlers/notifications/client-landed/route")],
   ["notifications/process-queue", () => import("@/app/api/_handlers/notifications/process-queue/route")],
   ["notifications/retry-failed", () => import("@/app/api/_handlers/notifications/retry-failed/route")],

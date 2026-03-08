@@ -3,21 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { useDemoMode } from "@/lib/demo/demo-mode-context";
-import { MessageCircle, Briefcase, Users, TrendingUp, MoreHorizontal, X, Home } from "lucide-react";
+import {
+    MessageCircle,
+    Briefcase,
+    Users,
+    FileText,
+    MoreHorizontal,
+    X,
+    Home,
+    Plane,
+    Receipt,
+    Coins,
+    Store,
+    Sparkles,
+    Compass,
+    Calendar,
+    Truck,
+    Map,
+    LifeBuoy,
+    Gift,
+    Settings,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavCounts } from "@/components/layout/useNavCounts";
 import { cn } from "@/lib/utils";
-
-// Mock notification counts — replace with real store values later
-const MOCK_WHATSAPP_UNREAD = 3;
-const MOCK_DRIVER_UNASSIGNED = 2;
-const MOCK_NEW_LEADS_TODAY = 1;
 
 interface PrimaryNavItem {
     icon: React.ElementType;
     label: string;
     href: string;
     badge?: number;
+    badgeKey?: keyof ReturnType<typeof useNavCounts>;
     badgeColor?: string;
     isMore?: boolean;
 }
@@ -32,53 +48,52 @@ const PRIMARY_ITEMS: PrimaryNavItem[] = [
         icon: MessageCircle,
         label: "Inbox",
         href: "/inbox",
-        badge: MOCK_WHATSAPP_UNREAD,
+        badgeKey: "inboxUnread",
         badgeColor: "#25D366",
     },
     {
         icon: Briefcase,
         label: "Trips",
         href: "/trips",
-        badge: MOCK_DRIVER_UNASSIGNED,
+        badgeKey: "bookingsToday",
         badgeColor: "#f97316",
     },
     {
         icon: Users,
         label: "Clients",
         href: "/clients",
-        badge: MOCK_NEW_LEADS_TODAY,
+        badgeKey: "reviewsNeedingResponse",
         badgeColor: "#3b82f6",
     },
     {
-        icon: TrendingUp,
-        label: "Revenue",
-        href: "/admin/revenue",
+        icon: FileText,
+        label: "Proposals",
+        href: "/proposals",
+        badgeKey: "proposalsPending",
+        badgeColor: "#8b5cf6",
     },
 ];
 
 interface SecondaryDrawerItem {
-    emoji: string;
+    icon: React.ElementType;
     label: string;
     href: string;
 }
 
 const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
-    { emoji: "✈️", label: "Bookings", href: "/bookings" },
-    { emoji: "🧾", label: "Invoices", href: "/admin/invoices" },
-    { emoji: "💰", label: "Pricing", href: "/admin/pricing" },
-    { emoji: "🏪", label: "Marketplace", href: "/marketplace" },
-    { emoji: "✨", label: "AI Insights", href: "/admin/insights" },
-    { emoji: "📝", label: "Proposals", href: "/proposals" },
-    { emoji: "🧭", label: "Command", href: "/admin/operations" },
-    { emoji: "💵", label: "Cost", href: "/admin/cost" },
-    { emoji: "📣", label: "Social Studio", href: "/social" },
-    { emoji: "📅", label: "Calendar", href: "/calendar" },
-    { emoji: "🚗", label: "Drivers", href: "/drivers" },
-    { emoji: "🗺️", label: "Planner", href: "/planner" },
-    { emoji: "✈️", label: "Add-ons", href: "/add-ons" },
-    { emoji: "🛟", label: "Support", href: "/support" },
-    { emoji: "🎁", label: "Refer & Earn", href: "/admin/referrals" },
-    { emoji: "⚙️", label: "Settings", href: "/admin/settings" },
+    { icon: Plane, label: "Bookings", href: "/bookings" },
+    { icon: Receipt, label: "Invoices", href: "/admin/invoices" },
+    { icon: Coins, label: "Pricing", href: "/admin/pricing" },
+    { icon: Store, label: "Marketplace", href: "/marketplace" },
+    { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
+    { icon: Compass, label: "Command", href: "/admin/operations" },
+    { icon: Calendar, label: "Calendar", href: "/calendar" },
+    { icon: Truck, label: "Drivers", href: "/drivers" },
+    { icon: Map, label: "Planner", href: "/planner" },
+    { icon: Map, label: "Add-ons", href: "/add-ons" },
+    { icon: LifeBuoy, label: "Support", href: "/support" },
+    { icon: Gift, label: "Refer & Earn", href: "/admin/referrals" },
+    { icon: Settings, label: "Settings", href: "/admin/settings" },
 ];
 
 function BadgeDot({
@@ -103,7 +118,7 @@ function BadgeDot({
 
 export default function MobileNav() {
     const pathname = usePathname();
-    const { isDemoMode } = useDemoMode();
+    const counts = useNavCounts();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
     // Close drawer on route change
@@ -174,6 +189,7 @@ export default function MobileNav() {
                             <div className="grid grid-cols-4 gap-3">
                                 {SECONDARY_ITEMS.map((item) => {
                                     const isActive = isActivePath(item.href);
+                                    const Icon = item.icon;
                                     return (
                                         <Link
                                             key={item.href}
@@ -183,11 +199,16 @@ export default function MobileNav() {
                                                 isActive
                                                     ? "bg-primary/10 dark:bg-primary/15"
                                                     : "hover:bg-slate-100 dark:hover:bg-slate-800/70"
-                                            )}
+                                                )}
                                         >
-                                            <span className="text-2xl leading-none" role="img">
-                                                {item.emoji}
-                                            </span>
+                                            <Icon
+                                                className={cn(
+                                                    "w-5 h-5",
+                                                    isActive
+                                                        ? "text-primary"
+                                                        : "text-slate-500 dark:text-slate-400"
+                                                )}
+                                            />
                                             <span
                                                 className={cn(
                                                     "text-[10px] font-semibold text-center leading-tight",
@@ -214,7 +235,7 @@ export default function MobileNav() {
                     {PRIMARY_ITEMS.map((item) => {
                         const isActive = isActivePath(item.href);
                         const Icon = item.icon;
-                        const badgeCount = isDemoMode ? (item.badge ?? 0) : 0;
+                        const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
                         const badgeColor = item.badgeColor ?? "#00d084";
 
                         return (
