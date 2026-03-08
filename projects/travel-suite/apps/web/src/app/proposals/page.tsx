@@ -264,11 +264,13 @@ export default function ProposalsPage() {
           </div>
         </GlassCard>
 
-        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-gray-100 shadow-sm" role="tablist" aria-label="Proposal status filter">
           {['all', 'draft', 'sent', 'approved'].map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
+              role="tab"
+              aria-selected={filterStatus === s}
               className={cn(
                 "px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize",
                 filterStatus === s

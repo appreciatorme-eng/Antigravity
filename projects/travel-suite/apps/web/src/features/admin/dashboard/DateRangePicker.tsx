@@ -30,6 +30,19 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [draftFrom, setDraftFrom] = useState(value.from);
   const [draftTo, setDraftTo] = useState(value.to);
 
+  const focusAdjacentPreset = (currentValue: string, direction: -1 | 1) => {
+    const values = [...PRESETS.map((preset) => preset.value), "custom"];
+    const currentIndex = values.indexOf(currentValue);
+    if (currentIndex === -1) return;
+
+    const nextIndex = (currentIndex + direction + values.length) % values.length;
+    const nextValue = values[nextIndex];
+    const nextButton = document.querySelector<HTMLButtonElement>(
+      `[data-date-preset="${nextValue}"]`,
+    );
+    nextButton?.focus();
+  };
+
   const selectedRange = useMemo<DateRange | undefined>(() => {
     if (!draftFrom || !draftTo) return undefined;
     return {
@@ -48,16 +61,29 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Select admin date range">
         {PRESETS.map((preset) => (
           <GlassButton
             key={preset.value}
+            data-date-preset={preset.value}
             variant={value.preset === preset.value ? "primary" : "ghost"}
             size="sm"
             className="h-9 rounded-xl px-3"
+            aria-pressed={value.preset === preset.value}
             onClick={() => {
               onChange(createPresetRange(preset.value));
               setCustomOpen(false);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight") {
+                event.preventDefault();
+                focusAdjacentPreset(preset.value, 1);
+              }
+
+              if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                focusAdjacentPreset(preset.value, -1);
+              }
             }}
           >
             <span className="text-[10px] font-black uppercase tracking-widest">{preset.label}</span>
@@ -65,10 +91,23 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         ))}
 
         <GlassButton
+          data-date-preset="custom"
           variant={value.preset === "custom" || customOpen ? "primary" : "ghost"}
           size="sm"
           className="h-9 rounded-xl px-3 gap-2"
+          aria-pressed={value.preset === "custom" || customOpen}
           onClick={() => setCustomOpen((current) => !current)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              focusAdjacentPreset("custom", 1);
+            }
+
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              focusAdjacentPreset("custom", -1);
+            }
+          }}
         >
           <CalendarRange className="h-4 w-4" />
           <span className="text-[10px] font-black uppercase tracking-widest">Custom</span>

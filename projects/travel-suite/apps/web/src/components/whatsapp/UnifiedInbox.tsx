@@ -768,7 +768,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         </div>
 
         {/* Channel filter */}
-        <div className="shrink-0 flex gap-1 px-3 py-2 border-b border-white/10">
+        <div className="shrink-0 flex gap-1 px-3 py-2 border-b border-white/10" role="tablist" aria-label="Conversation channel filter">
           {([
             { key: 'all' as ChannelFilter, label: 'All', icon: null },
             { key: 'whatsapp' as ChannelFilter, label: 'WhatsApp', icon: <MessageCircle className="w-3 h-3" /> },
@@ -777,6 +777,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             <button
               key={key}
               onClick={() => setChannelFilter(key)}
+              role="tab"
+              aria-selected={channelFilter === key}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
                 channelFilter === key
                   ? key === 'email'
@@ -792,11 +794,13 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         </div>
 
         {/* Filter tabs */}
-        <div className="shrink-0 flex gap-1 px-3 py-2 overflow-x-auto border-b border-white/10">
+        <div className="shrink-0 flex gap-1 px-3 py-2 overflow-x-auto border-b border-white/10" role="tablist" aria-label="Conversation type filter">
           {FILTER_TABS.map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setFilterTab(key)}
+              role="tab"
+              aria-selected={filterTab === key}
               className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
                 filterTab === key
                   ? 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30'
@@ -819,7 +823,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
         {/* Sort row */}
         <div className="shrink-0 flex items-center justify-between px-3 py-1.5">
-          <p className="text-[10px] text-slate-600 font-medium">{filteredAndSorted.length} conversations</p>
+          <p className="text-[10px] text-slate-300 font-medium">{filteredAndSorted.length} conversations</p>
           <div className="flex gap-1">
             {(['recent', 'unread', 'priority'] as SortMode[]).map((s) => (
               <button

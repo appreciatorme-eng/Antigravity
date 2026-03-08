@@ -136,7 +136,7 @@ export default function PaymentTracker({
   if (!token) {
     return (
       <div className={`bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 ${className}`}>
-        <p className="text-white/40 text-sm text-center py-4">No payment token provided.</p>
+        <p className="text-white/70 text-sm text-center py-4">No payment token provided.</p>
       </div>
     )
   }
@@ -171,7 +171,7 @@ export default function PaymentTracker({
           title="Refresh status"
         >
           <RefreshCw
-            className={`w-3.5 h-3.5 text-white/60 transition-transform duration-500 ${
+            className={`w-3.5 h-3.5 text-white/75 transition-transform duration-500 ${
               spin ? 'animate-spin' : ''
             }`}
           />
@@ -188,7 +188,7 @@ export default function PaymentTracker({
               {formatPaymentAmount(displayAmount)}
             </p>
           )}
-          <p className="text-white/40 text-xs mt-1">{formatDate(paidEvent.timestamp)}</p>
+          <p className="text-white/70 text-xs mt-1">{formatDate(paidEvent.timestamp)}</p>
         </div>
       )}
 
@@ -197,7 +197,7 @@ export default function PaymentTracker({
         <div className="mb-5 rounded-xl bg-red-400/10 border border-red-400/20 p-4 text-center">
           <AlertCircle className="w-6 h-6 text-red-400 mx-auto mb-2" />
           <p className="text-red-400 font-bold text-sm">Link Expired</p>
-          <p className="text-white/40 text-xs mt-1 mb-3">This payment link has expired.</p>
+          <p className="text-white/70 text-xs mt-1 mb-3">This payment link has expired.</p>
           <button
             type="button"
             onClick={() => {
@@ -229,7 +229,7 @@ export default function PaymentTracker({
       {link?.status !== 'paid' && link?.status !== 'expired' && displayAmount && (
         <div className="mb-5 text-center">
           <p className="text-white text-2xl font-bold">{formatPaymentAmount(displayAmount)}</p>
-          <p className="text-white/40 text-xs mt-0.5">Due from {displayClientName}</p>
+          <p className="text-white/70 text-xs mt-0.5">Due from {displayClientName}</p>
         </div>
       )}
 
@@ -283,7 +283,7 @@ export default function PaymentTracker({
                   {step.label}
                 </p>
                 {ts && (
-                  <p className="text-[11px] text-white/40 mt-0.5">{formatDate(ts)}</p>
+                  <p className="text-[11px] text-white/70 mt-0.5">{formatDate(ts)}</p>
                 )}
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function PaymentTracker({
 
       {/* Last viewed / footer */}
       <div className="mt-3 pt-3 border-t border-white/10">
-        <p className="text-[11px] text-white/40">
+        <p className="text-[11px] text-white/70">
           {lastViewedEvent
             ? `Last viewed: ${timeAgo(lastViewedEvent.timestamp)}`
             : 'Not yet opened'}

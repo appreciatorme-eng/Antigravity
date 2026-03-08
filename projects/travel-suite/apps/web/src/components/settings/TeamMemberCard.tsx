@@ -113,9 +113,9 @@ export default function TeamMemberCard({
         {/* Name / email */}
         <div className="flex-1 min-w-0">
           <p className="text-white font-semibold truncate">{member.name}</p>
-          <p className="text-white/50 text-xs truncate">{member.email}</p>
+          <p className="text-white/75 text-xs truncate">{member.email}</p>
           {member.phone && (
-            <p className="text-white/40 text-xs mt-0.5">{member.phone}</p>
+            <p className="text-white/70 text-xs mt-0.5">{member.phone}</p>
           )}
         </div>
 
@@ -136,7 +136,7 @@ export default function TeamMemberCard({
           {roleDef.label}
         </span>
 
-        <div className="flex items-center gap-3 text-xs text-white/50">
+        <div className="flex items-center gap-3 text-xs text-white/75">
           <span>{member.tripsManaged} trips</span>
           <span>·</span>
           <span>Last active: {member.lastActive}</span>
@@ -163,6 +163,7 @@ export default function TeamMemberCard({
                 value={member.role}
                 disabled={busyAction === 'role'}
                 onChange={(e) => void handleRoleChange(e.target.value)}
+                aria-label={`Change role for ${member.name}`}
                 className="w-full bg-white/5 border border-white/10 text-white rounded-lg p-2 text-xs focus:outline-none focus:border-[#00d084]/50 cursor-pointer"
               >
                 {roleOptions.map((r) => (

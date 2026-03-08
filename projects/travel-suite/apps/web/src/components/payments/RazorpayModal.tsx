@@ -255,7 +255,7 @@ export default function RazorpayModal({
                   Razorpay
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-white">{tripName}</h3>
-                <p className="mt-1 text-sm text-white/60">
+                <p className="mt-1 text-sm text-white/75">
                   {description || `Secure payment request for ${clientName}`}
                 </p>
               </div>
@@ -270,7 +270,7 @@ export default function RazorpayModal({
             <div className="grid gap-3 sm:grid-cols-3">
               {summaryRows.map((row) => (
                 <div key={row.label} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-white/40">{row.label}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/70">{row.label}</p>
                   <p className="mt-1 text-sm font-medium text-white">{row.value}</p>
                 </div>
               ))}

@@ -165,7 +165,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
         <h1 className="text-3xl font-bold text-white">
           {link.proposalTitle || link.description || "Travel payment"}
         </h1>
-        <p className="text-sm text-white/60">
+        <p className="text-sm text-white/75">
           {link.organizationName
             ? `Hosted by ${link.organizationName}`
             : "Pay this booking securely through Razorpay."}
@@ -174,7 +174,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
 
       <div className="grid gap-4 rounded-2xl border border-white/10 bg-[#081220]/70 p-5 sm:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-white/40">Amount due</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-white/70">Amount due</p>
           <p className="mt-1 text-3xl font-semibold text-white">
             {formatPaymentAmount(link.amount)}
           </p>

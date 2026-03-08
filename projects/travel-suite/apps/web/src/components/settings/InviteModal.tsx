@@ -129,7 +129,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                     <h2 className="text-lg font-semibold text-white">Invite Team Member</h2>
                     <button
                       onClick={handleClose}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -138,7 +138,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                   <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Full Name */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-white/75 uppercase tracking-wider">
                         Full Name
                       </label>
                       <input
@@ -153,7 +153,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
 
                     {/* Email */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-white/75 uppercase tracking-wider">
                         Email Address
                       </label>
                       <input
@@ -168,7 +168,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
 
                     {/* Role Selector — 2×2 grid */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-white/75 uppercase tracking-wider">
                         Role
                       </label>
                       <div className="grid grid-cols-2 gap-2">
@@ -189,7 +189,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                               <p className={`text-sm font-semibold ${def.color}`}>
                                 {def.label}
                               </p>
-                              <p className="text-white/40 text-xs mt-0.5 leading-snug">
+                              <p className="text-white/70 text-xs mt-0.5 leading-snug">
                                 {def.description}
                               </p>
                               <p className="text-white/30 text-xs mt-1">
@@ -216,7 +216,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
 
                     {/* Phone (optional) */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-white/75 uppercase tracking-wider">
                         Phone Number{' '}
                         <span className="text-white/30 normal-case font-normal">(optional)</span>
                       </label>
