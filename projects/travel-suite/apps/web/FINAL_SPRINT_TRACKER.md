@@ -15,10 +15,10 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-10 | 3     | Email Notifications   | Proposal sent / approved / rejected emails         | ✅ DONE    | 095e971 |
 | S3-11 | 3     | Email Notifications   | Payment received receipt email                     | ✅ DONE    | 095e971 |
 | S3-12 | 3     | Email Notifications   | Team invite branded email                          | ✅ DONE    | 095e971 |
-| S3-13 | 4     | AI Intelligence       | Inbox smart reply suggestions (Gemini)             | ⏳ PENDING |        |
-| S3-14 | 4     | AI Intelligence       | Review response AI draft generator                 | ⏳ PENDING |        |
-| S3-15 | 4     | AI Intelligence       | Proposal pricing recommender (historical data)     | ⏳ PENDING |        |
-| S3-16 | 4     | AI Intelligence       | Payment reminder via Supabase pg_cron + Edge Fn    | ⏳ PENDING |        |
+| S3-13 | 4     | AI Intelligence       | Inbox smart reply suggestions (Gemini)             | ✅ DONE    | 6171717 |
+| S3-14 | 4     | AI Intelligence       | Review response AI draft generator                 | ✅ DONE    | 6171717 |
+| S3-15 | 4     | AI Intelligence       | Proposal pricing recommender (historical data)     | ✅ DONE    | 6171717 |
+| S3-16 | 4     | AI Intelligence       | Payment reminder via Supabase pg_cron + Edge Fn    | ✅ DONE    | 6171717 |
 | S3-17 | 5     | Business Intelligence | Conversion funnel widget (proposals→bookings→paid) | ⏳ PENDING |        |
 | S3-18 | 5     | Business Intelligence | GST calculation + invoice PDF generator            | ⏳ PENDING |        |
 | S3-19 | 5     | Business Intelligence | Date-range filters on all admin charts             | ⏳ PENDING |        |
