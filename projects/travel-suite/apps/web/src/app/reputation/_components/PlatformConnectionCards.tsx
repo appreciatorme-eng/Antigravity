@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wifi,
@@ -19,6 +19,7 @@ import type {
 
 interface PlatformConnectionCardsProps {
   connections: ReputationPlatformConnection[];
+  onConnectionsChanged?: () => Promise<void> | void;
 }
 
 interface PlatformInfo {
@@ -56,6 +57,7 @@ interface ConnectFormData {
 
 export default function PlatformConnectionCards({
   connections,
+  onConnectionsChanged,
 }: PlatformConnectionCardsProps) {
   const [connectingPlatform, setConnectingPlatform] =
     useState<ConnectionPlatform | null>(null);
@@ -64,9 +66,15 @@ export default function PlatformConnectionCards({
     platform_account_name: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [localConnections, setLocalConnections] =
     useState<ReputationPlatformConnection[]>(connections);
+
+  useEffect(() => {
+    setLocalConnections(connections);
+  }, [connections]);
 
   const connectedMap = new Map<ConnectionPlatform, ReputationPlatformConnection>();
   for (const conn of localConnections) {
@@ -81,6 +89,7 @@ export default function PlatformConnectionCards({
 
     setIsSubmitting(true);
     setError(null);
+    setNotice(null);
 
     try {
       const res = await fetch("/api/reputation/connections", {
@@ -101,8 +110,10 @@ export default function PlatformConnectionCards({
       }
 
       setLocalConnections((prev) => [...prev, data.connection]);
+      await onConnectionsChanged?.();
       setConnectingPlatform(null);
       setFormData({ platform_account_id: "", platform_account_name: "" });
+      setNotice("Platform connected successfully.");
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -112,6 +123,8 @@ export default function PlatformConnectionCards({
 
   const handleDisconnect = async (connectionId: string) => {
     try {
+      setError(null);
+      setNotice(null);
       const res = await fetch(
         `/api/reputation/connections?id=${connectionId}`,
         { method: "DELETE" }
@@ -124,17 +137,80 @@ export default function PlatformConnectionCards({
       }
 
       setLocalConnections((prev) => prev.filter((c) => c.id !== connectionId));
+      await onConnectionsChanged?.();
+      setNotice("Platform disconnected.");
     } catch {
       setError("Network error. Please try again.");
     }
   };
 
+  const handleSync = async (connectionId: string) => {
+    setSyncingConnectionId(connectionId);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const res = await fetch("/api/reputation/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        inserted?: number;
+        updated?: number;
+        lastSyncedAt?: string;
+      };
+
+      if (!res.ok) {
+        setError(data.error || "Failed to sync reviews");
+        return;
+      }
+
+      setLocalConnections((prev) =>
+        prev.map((connection) =>
+          connection.id === connectionId
+            ? {
+                ...connection,
+                last_synced_at: data.lastSyncedAt || new Date().toISOString(),
+                sync_error: null,
+              }
+            : connection
+        )
+      );
+
+      await onConnectionsChanged?.();
+      setNotice(
+        `Review sync complete. ${data.inserted ?? 0} imported, ${data.updated ?? 0} refreshed.`,
+      );
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSyncingConnectionId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {notice && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          {notice}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLATFORMS.map((platform) => {
           const connection = connectedMap.get(platform.id);
           const isConnected = !!connection;
+          const isGoogleBusiness = platform.id === "google_business";
+          const isSyncing = syncingConnectionId === connection?.id;
 
           return (
             <motion.div
@@ -199,19 +275,40 @@ export default function PlatformConnectionCards({
               {/* Actions */}
               <div className="mt-auto pt-2">
                 {isConnected ? (
-                  <button
-                    onClick={() => handleDisconnect(connection.id)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Disconnect
-                  </button>
+                  <div className="space-y-2">
+                    {isGoogleBusiness ? (
+                      <button
+                        onClick={() => {
+                          void handleSync(connection.id);
+                        }}
+                        disabled={isSyncing}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-white bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                        {isSyncing ? "Syncing..." : "Sync Reviews"}
+                      </button>
+                    ) : (
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
+                        Automatic review sync for this platform is coming soon.
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        void handleDisconnect(connection.id);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Disconnect
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => {
                       setConnectingPlatform(platform.id);
                       setFormData({ platform_account_id: "", platform_account_name: "" });
                       setError(null);
+                      setNotice(null);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 border border-gray-200 transition-colors"
                   >
@@ -248,12 +345,6 @@ export default function PlatformConnectionCards({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-
-              {error && (
-                <div className="mb-3 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div>

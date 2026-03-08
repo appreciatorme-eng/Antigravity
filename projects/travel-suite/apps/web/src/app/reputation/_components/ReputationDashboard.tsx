@@ -416,12 +416,14 @@ function SettingsTab({
   widget,
   onSaveBrandVoice,
   onSaveWidget,
+  onConnectionsChanged,
 }: {
   connections: ReturnType<typeof useReputationDashboardData>["connections"];
   brandVoice: ReputationBrandVoice | null;
   widget: ReputationWidget | null;
   onSaveBrandVoice: (input: Partial<ReputationBrandVoice>) => Promise<void>;
   onSaveWidget: (input: WidgetConfig) => Promise<void>;
+  onConnectionsChanged: () => Promise<void>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const connectionsKey = connections.map((connection) => connection.id).join(":") || "empty";
@@ -438,7 +440,11 @@ function SettingsTab({
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Platform Connections</h2>
-        <PlatformConnectionCards key={connectionsKey} connections={connections} />
+        <PlatformConnectionCards
+          key={connectionsKey}
+          connections={connections}
+          onConnectionsChanged={onConnectionsChanged}
+        />
       </section>
 
       <section>
@@ -616,6 +622,7 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
               connections={connections}
               brandVoice={brandVoice}
               widget={currentWidget}
+              onConnectionsChanged={refresh}
               onSaveBrandVoice={async (input) => {
                 await saveBrandVoice(input);
               }}
