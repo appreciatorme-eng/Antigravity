@@ -10,6 +10,7 @@ import { GlassCard } from '@/components/glass/GlassCard'
 import { GlassInput, GlassTextarea } from '@/components/glass/GlassInput'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { DashboardSkeleton } from '@/components/ui/skeletons/DashboardSkeleton'
+import { MarketplaceListingPlans } from './MarketplaceListingPlans'
 import { useMarketplacePresence } from './useMarketplacePresence'
 
 export default function MarketplaceSettingsPage() {
@@ -25,6 +26,7 @@ export default function MarketplaceSettingsPage() {
     saveChanges,
     requestVerification,
     refresh,
+    listingState,
   } = useMarketplacePresence()
   const [galleryUrl, setGalleryUrl] = useState('')
   const [serviceName, setServiceName] = useState('')
@@ -121,6 +123,12 @@ export default function MarketplaceSettingsPage() {
           </p>
         </GlassCard>
       </div>
+
+      <MarketplaceListingPlans
+        listingState={listingState}
+        organizationName={organization?.name}
+        onRefresh={refresh}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <GlassCard className="xl:col-span-2 space-y-6">

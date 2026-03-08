@@ -1608,12 +1608,16 @@ export type Database = {
       }
       marketplace_profiles: {
         Row: {
+          boost_score: number | null
           compliance_documents: Json | null
           created_at: string | null
           description: string | null
+          featured_until: string | null
           gallery_urls: Json | null
           id: string
+          is_featured: boolean
           is_verified: boolean | null
+          listing_tier: string
           listing_quality_score: number | null
           margin_rate: number | null
           organization_id: string
@@ -1628,12 +1632,16 @@ export type Database = {
           verified_at: string | null
         }
         Insert: {
+          boost_score?: number | null
           compliance_documents?: Json | null
           created_at?: string | null
           description?: string | null
+          featured_until?: string | null
           gallery_urls?: Json | null
           id?: string
+          is_featured?: boolean
           is_verified?: boolean | null
+          listing_tier?: string
           listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id: string
@@ -1648,12 +1656,16 @@ export type Database = {
           verified_at?: string | null
         }
         Update: {
+          boost_score?: number | null
           compliance_documents?: Json | null
           created_at?: string | null
           description?: string | null
+          featured_until?: string | null
           gallery_urls?: Json | null
           id?: string
+          is_featured?: boolean
           is_verified?: boolean | null
+          listing_tier?: string
           listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id?: string
@@ -1672,6 +1684,85 @@ export type Database = {
             foreignKeyName: "marketplace_profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listing_subscriptions: {
+        Row: {
+          amount_paise: number
+          boost_score: number
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          current_period_end: string | null
+          id: string
+          marketplace_profile_id: string | null
+          organization_id: string
+          plan_id: string
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          boost_score?: number
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          marketplace_profile_id?: string | null
+          organization_id: string
+          plan_id: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          boost_score?: number
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          marketplace_profile_id?: string | null
+          organization_id?: string
+          plan_id?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_marketplace_profile_id_fkey"
+            columns: ["marketplace_profile_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },

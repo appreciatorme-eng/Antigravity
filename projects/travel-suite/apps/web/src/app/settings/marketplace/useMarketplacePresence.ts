@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import type {
+  MarketplaceListingPlan,
+  MarketplaceListingPlanId,
+} from "@/lib/marketplace-listing-plans";
 
 type RateCardItem = {
   id: string;
@@ -27,6 +31,14 @@ type MarketplaceFormState = {
   rate_card: RateCardItem[];
   compliance_documents: ComplianceDocument[];
 };
+
+type MarketplaceListingSubscription = {
+  id: string;
+  plan_id: MarketplaceListingPlanId;
+  status: string;
+  current_period_end: string | null;
+  amount_paise: number;
+} | null;
 
 type MarketplaceSettingsResponse = {
   data: {
@@ -55,6 +67,19 @@ type MarketplaceStatsResponse = {
 type MarketplaceOptionsResponse = {
   service_regions?: string[];
   specialties?: string[];
+};
+
+type MarketplaceListingSubscriptionResponse = {
+  data: {
+    currentSubscription: MarketplaceListingSubscription;
+    currentTier: MarketplaceListingPlanId;
+    currentBoostScore: number;
+    isFeatured: boolean;
+    featuredUntil: string | null;
+    checkoutEnabled: boolean;
+    plans: MarketplaceListingPlan[];
+  } | null;
+  error: string | null;
 };
 
 const DEFAULT_FORM_STATE: MarketplaceFormState = {
@@ -86,6 +111,9 @@ export function useMarketplacePresence() {
     serviceRegions: [] as string[],
     specialties: [] as string[],
   });
+  const [listingState, setListingState] = useState<NonNullable<
+    MarketplaceListingSubscriptionResponse["data"]
+  > | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -96,15 +124,23 @@ export function useMarketplacePresence() {
       setError(null);
 
       try {
-        const [settingsResponse, statsResponse, optionsResponse] = await Promise.all([
+        const [
+          settingsResponse,
+          statsResponse,
+          optionsResponse,
+          listingSubscriptionResponse,
+        ] = await Promise.all([
           fetch("/api/settings/marketplace", { cache: "no-store" }),
           fetch("/api/marketplace/stats", { cache: "no-store" }),
           fetch("/api/marketplace/options", { cache: "no-store" }),
+          fetch("/api/marketplace/listing-subscription", { cache: "no-store" }),
         ]);
 
         const settingsPayload = (await settingsResponse.json()) as MarketplaceSettingsResponse;
         const statsPayload = (await statsResponse.json()) as MarketplaceStatsResponse;
         const optionsPayload = (await optionsResponse.json()) as MarketplaceOptionsResponse;
+        const listingSubscriptionPayload =
+          (await listingSubscriptionResponse.json()) as MarketplaceListingSubscriptionResponse;
 
         if (!settingsResponse.ok || !settingsPayload.data) {
           throw new Error(settingsPayload.error || "Failed to load marketplace presence");
@@ -137,6 +173,7 @@ export function useMarketplacePresence() {
           serviceRegions: optionsPayload.service_regions ?? [],
           specialties: optionsPayload.specialties ?? [],
         });
+        setListingState(listingSubscriptionPayload.data);
       } catch (loadError) {
         if (cancelled) return;
         setError(
@@ -208,6 +245,7 @@ export function useMarketplacePresence() {
     stats,
     options,
     refresh,
+    listingState,
     saveChanges: () => save(false),
     requestVerification: () => save(true),
   };
