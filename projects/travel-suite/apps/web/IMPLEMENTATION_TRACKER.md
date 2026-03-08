@@ -28,7 +28,7 @@ Scope: projects/travel-suite/apps/web
 | IM-21 | Docs | Publish 12 critical missing documentation pages/sections | ✅ DONE | 4f37e48 |
 | IM-22 | QA | Publish 10 user-flow testing scenarios with SQL verification | ✅ DONE | 7732654 |
 | IM-23 | Planning | Publish P0→P3 priority matrix with effort estimates | ✅ DONE | a124f82 |
-| IM-24 | Verification | Run final gauntlet and close tracker | ✅ DONE | pending |
+| IM-24 | Verification | Run final gauntlet and close tracker | ✅ DONE | 3d59460 |
 
 ## Summary
 - Requested initiatives: WhatsApp-to-proposal, review-to-marketing, shared itinerary cache, marketplace monetization, monthly operator scorecard, embedding migration, documentation, QA scenarios, and priority matrix.
