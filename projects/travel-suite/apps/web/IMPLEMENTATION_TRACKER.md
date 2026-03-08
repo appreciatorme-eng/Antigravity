@@ -18,9 +18,9 @@ Scope: projects/travel-suite/apps/web
 | IM-11 | Marketplace Monetization | Add paid marketplace listing tiers and subscription state | ✅ DONE | 42ba2df |
 | IM-12 | Marketplace Monetization | Add operator UI to purchase/manage featured listings | ✅ DONE | 42ba2df |
 | IM-13 | Marketplace Monetization | Apply paid ranking boost in marketplace discovery | ✅ DONE | 42ba2df |
-| IM-14 | Operator Scorecard | Generate monthly operator KPI payload and persistence | ⏳ PENDING | |
-| IM-15 | Operator Scorecard | Render operator scorecard PDF and email via Resend | ⏳ PENDING | |
-| IM-16 | Operator Scorecard | Add scheduled delivery path for monthly scorecards | ⏳ PENDING | |
+| IM-14 | Operator Scorecard | Generate monthly operator KPI payload and persistence | ✅ DONE | 1dafb98 |
+| IM-15 | Operator Scorecard | Render operator scorecard PDF and email via Resend | ✅ DONE | 1dafb98 |
+| IM-16 | Operator Scorecard | Add scheduled delivery path for monthly scorecards | ✅ DONE | 1dafb98 |
 | IM-17 | Embeddings | Inventory and replace OpenAI embedding generation paths | ⏳ PENDING | |
 | IM-18 | Embeddings | Add v2 embedding storage/query path using Supabase pgvector | ⏳ PENDING | |
 | IM-19 | Embeddings | Cut semantic-cache and itinerary retrieval over to v2 | ⏳ PENDING | |
