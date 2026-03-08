@@ -17,7 +17,7 @@ Branch: codex/sprint-4-and-audit
 | SP4-12 | WhatsApp AI Chatbot  | Conversation state persisted in whatsapp_sessions table | ✅ DONE    |        |
 | SP4-13 | WhatsApp AI Chatbot  | Auto-reply cap: max 5 AI replies, then hand off to human| ✅ DONE    |        |
 | SP4-14 | WhatsApp AI Chatbot  | Human takeover banner in inbox when AI is active       | ✅ DONE    |        |
-| SP4-15 | Traveler PWA         | public/manifest.json with correct icons + theme_color  | ⏳ PENDING |        |
-| SP4-16 | Traveler PWA         | public/sw.js: cache portal shell + offline fallback    | ⏳ PENDING |        |
-| SP4-17 | Traveler PWA         | layout.tsx: manifest link + SW registration            | ⏳ PENDING |        |
-| SP4-18 | Traveler PWA         | Portal: "Add to Home Screen" install prompt banner     | ⏳ PENDING |        |
+| SP4-15 | Traveler PWA         | public/manifest.json with correct icons + theme_color  | ✅ DONE    |        |
+| SP4-16 | Traveler PWA         | public/sw.js: cache portal shell + offline fallback    | ✅ DONE    |        |
+| SP4-17 | Traveler PWA         | layout.tsx: manifest link + SW registration            | ✅ DONE    |        |
+| SP4-18 | Traveler PWA         | Portal: "Add to Home Screen" install prompt banner     | ✅ DONE    |        |

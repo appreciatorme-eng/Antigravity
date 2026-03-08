@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import PortalItinerary, { type ItineraryDay } from '@/components/portal/PortalItinerary';
+import { PortalInstallPrompt } from '@/components/portal/PortalInstallPrompt';
 import PortalPayment from '@/components/portal/PortalPayment';
 import PortalReview from '@/components/portal/PortalReview';
 import type { PaymentLinkData } from '@/lib/payments/payment-links';
@@ -453,6 +454,7 @@ export default function PortalPage() {
       )}
 
       <div className="h-4" />
+      <PortalInstallPrompt />
     </div>
   );
 }

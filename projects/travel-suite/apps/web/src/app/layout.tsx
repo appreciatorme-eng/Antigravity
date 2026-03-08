@@ -5,6 +5,7 @@ import "./globals.css";
 import "@/styles/print.css";
 import AppProviders from "@/components/providers/AppProviders";
 import AppShell from "@/components/layout/AppShell";
+import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,10 +27,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icons/icon-192.svg", type: "image/svg+xml" },
-      { url: "/icons/icon-512.svg", type: "image/svg+xml" },
+      { url: "/icons/pwa-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/pwa-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/pwa-192.png", sizes: "192x192", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#00d084",
+  themeColor: "#6366f1",
 };
 
 export default function RootLayout({
@@ -51,11 +52,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#00d084" />
+        <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="TourOS" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
       </head>
       <body
         className={`${inter.variable} ${cormorant.variable} antialiased font-sans bg-white dark:bg-[#0a1628] text-slate-900 dark:text-slate-100`}
@@ -65,17 +66,7 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
           </Suspense>
         </AppProviders>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
-                });
-              }
-            `,
-          }}
-        />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
