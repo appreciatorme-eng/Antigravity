@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorSection } from "@/components/ui/ErrorSection";
 import { ReviewSkeleton } from "@/components/ui/skeletons/ReviewSkeleton";
 import { PLATFORM_LABELS } from "@/lib/reputation/constants";
+import { toast } from "sonner";
 import { ReviewCard } from "./ReviewCard";
 import { ReviewResponsePanel } from "./ReviewResponsePanel";
 
@@ -241,6 +242,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const [selectedReview, setSelectedReview] = useState<ReputationReview | null>(null);
   const [isResponsePanelOpen, setIsResponsePanelOpen] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [busyAssetReviewIds, setBusyAssetReviewIds] = useState<Record<string, "generate" | "schedule">>({});
 
   const limit = 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -361,6 +363,69 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
     setSelectedReview(null);
   };
 
+  const updateAssetBusyState = (reviewId: string, state?: "generate" | "schedule") => {
+    setBusyAssetReviewIds((prev) => {
+      if (!state) {
+        const next = { ...prev };
+        delete next[reviewId];
+        return next;
+      }
+
+      return { ...prev, [reviewId]: state };
+    });
+  };
+
+  const handleGenerateMarketingAsset = async (reviewId: string) => {
+    try {
+      updateAssetBusyState(reviewId, "generate");
+      const response = await fetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate" }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "Failed to generate marketing asset");
+      }
+
+      toast.success("Review marketing asset generated");
+      await fetchReviews();
+    } catch (error) {
+      console.error("Error generating marketing asset:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate marketing asset");
+    } finally {
+      updateAssetBusyState(reviewId);
+    }
+  };
+
+  const handleScheduleMarketingAsset = async (reviewId: string) => {
+    try {
+      updateAssetBusyState(reviewId, "schedule");
+      const response = await fetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "schedule",
+          platforms: ["instagram"],
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "Failed to schedule marketing asset");
+      }
+
+      toast.success("Review asset sent to the social review queue");
+      await fetchReviews();
+    } catch (error) {
+      console.error("Error scheduling marketing asset:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to schedule marketing asset");
+    } finally {
+      updateAssetBusyState(reviewId);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Search + Add */}
@@ -467,6 +532,10 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
                     setSelectedReview(review);
                     setIsResponsePanelOpen(true);
                   }}
+                  onGenerateAsset={handleGenerateMarketingAsset}
+                  onScheduleAsset={handleScheduleMarketingAsset}
+                  isGeneratingAsset={busyAssetReviewIds[review.id] === "generate"}
+                  isSchedulingAsset={busyAssetReviewIds[review.id] === "schedule"}
                 />
               ))}
             </motion.div>

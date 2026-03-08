@@ -80,8 +80,54 @@ export async function GET(req: Request) {
       throw error;
     }
 
+    const reviewIds = (reviews ?? []).map((review: { id: string }) => review.id);
+    let assetMap = new Map<
+      string,
+      {
+        id: string;
+        lifecycle_state: string;
+        social_post_id: string;
+        image_url: string | null;
+      }
+    >();
+
+    if (reviewIds.length > 0) {
+      const { data: assets, error: assetError } = await supabase
+        .from("review_marketing_assets")
+        .select("id, review_id, lifecycle_state, social_post_id, image_url")
+        .eq("organization_id", profile.organization_id)
+        .in("review_id", reviewIds);
+
+      if (assetError) {
+        throw assetError;
+      }
+
+      assetMap = new Map(
+        (assets ?? []).map((asset) => [
+          asset.review_id,
+          {
+            id: asset.id,
+            lifecycle_state: asset.lifecycle_state,
+            social_post_id: asset.social_post_id,
+            image_url: asset.image_url,
+          },
+        ])
+      );
+    }
+
+    const reviewsWithAssets = (reviews ?? []).map((review: { id: string }) => {
+      const asset = assetMap.get(review.id);
+      return {
+        ...review,
+        marketing_asset_id: asset?.id ?? null,
+        marketing_asset_state: asset?.lifecycle_state ?? null,
+        marketing_social_post_id: asset?.social_post_id ?? null,
+        marketing_image_url: asset?.image_url ?? null,
+      };
+    });
+
     return NextResponse.json({
-      reviews: reviews ?? [],
+      reviews: reviewsWithAssets,
       total: count ?? 0,
       page,
       limit,

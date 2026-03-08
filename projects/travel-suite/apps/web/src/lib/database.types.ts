@@ -228,6 +228,83 @@ export type Database = {
           },
         ]
       }
+      review_marketing_assets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          last_queued_at: string | null
+          lifecycle_state: string
+          organization_id: string
+          platform_targets: Json
+          quote_excerpt: string | null
+          review_id: string
+          social_post_id: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          last_queued_at?: string | null
+          lifecycle_state?: string
+          organization_id: string
+          platform_targets?: Json
+          quote_excerpt?: string | null
+          review_id: string
+          social_post_id: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          last_queued_at?: string | null
+          lifecycle_state?: string
+          organization_id?: string
+          platform_targets?: Json
+          quote_excerpt?: string | null
+          review_id?: string
+          social_post_id?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_marketing_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reputation_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_social_post_id_fkey"
+            columns: ["social_post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_reviews: {
         Row: {
           comment: string | null
