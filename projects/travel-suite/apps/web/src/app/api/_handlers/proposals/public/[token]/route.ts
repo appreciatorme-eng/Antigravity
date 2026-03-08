@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
+import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
 import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import {
   sendProposalApprovedNotification,
@@ -164,6 +165,12 @@ const PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX = Number(
 );
 const PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_WINDOW_MS = Number(
   process.env.PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_WINDOW_MS || 15 * 60_000
+);
+const PUBLIC_PROPOSAL_READ_RATE_LIMIT_MAX = Number(
+  process.env.PUBLIC_PROPOSAL_READ_RATE_LIMIT_MAX || "30"
+);
+const PUBLIC_PROPOSAL_READ_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_PROPOSAL_READ_RATE_LIMIT_WINDOW_MS || 60_000
 );
 
 function getRequestIp(request: Request): string {
@@ -474,7 +481,7 @@ async function buildPublicPayload(shareToken: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
@@ -482,6 +489,17 @@ export async function GET(
     const token = sanitizeShareToken(rawToken);
     if (!token) {
       return NextResponse.json({ error: 'Invalid proposal token' }, { status: 400 });
+    }
+
+    const rateLimitResponse = await enforcePublicRouteRateLimit(request, {
+      identifier: token,
+      limit: PUBLIC_PROPOSAL_READ_RATE_LIMIT_MAX,
+      windowMs: PUBLIC_PROPOSAL_READ_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:proposal:read",
+      message: "Too many requests. Please try again later.",
+    });
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const payload = await buildPublicPayload(token);
