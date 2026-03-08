@@ -19,6 +19,7 @@ const routes = createCatchAllHandlers([
   ["cron/assistant-alerts", () => import("@/app/api/_handlers/cron/assistant-alerts/route")],
   ["cron/assistant-briefing", () => import("@/app/api/_handlers/cron/assistant-briefing/route")],
   ["cron/assistant-digest", () => import("@/app/api/_handlers/cron/assistant-digest/route")],
+  ["cron/operator-scorecards", () => import("@/app/api/_handlers/cron/operator-scorecards/route")],
   ["cron/reputation-campaigns", () => import("@/app/api/_handlers/cron/reputation-campaigns/route")],
   ["currency", () => import("@/app/api/_handlers/currency/route")],
   ["dashboard/schedule", () => import("@/app/api/_handlers/dashboard/schedule/route")],

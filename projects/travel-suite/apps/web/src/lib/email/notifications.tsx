@@ -1,10 +1,11 @@
 import { BookingConfirmationEmail } from "@/emails/BookingConfirmation";
+import { OperatorScorecardEmail } from "@/emails/OperatorScorecard";
 import { PaymentReceiptEmail } from "@/emails/PaymentReceipt";
 import { ProposalApprovedEmail } from "@/emails/ProposalApproved";
 import { ProposalRejectedEmail } from "@/emails/ProposalRejected";
 import { ProposalSentEmail } from "@/emails/ProposalSent";
 import { TeamInviteEmail } from "@/emails/TeamInvite";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, type EmailAttachment } from "@/lib/email/send";
 
 export function formatInr(amountPaise: number) {
   return `₹${Math.round(amountPaise / 100).toLocaleString("en-IN")}`;
@@ -99,5 +100,42 @@ export async function sendTeamInviteNotification(params: {
     to: params.to,
     subject: `You're invited to join ${params.organizationName} on Antigravity Travel`,
     react: <TeamInviteEmail {...params} />,
+  });
+}
+
+export async function sendOperatorScorecardNotification(params: {
+  to: string;
+  recipientName: string;
+  organizationName: string;
+  monthLabel: string;
+  dashboardUrl: string;
+  score: number;
+  status: "leading" | "steady" | "at_risk";
+  highlights: string[];
+  actions: string[];
+  revenueLabel: string;
+  approvalRateLabel: string;
+  attachment: EmailAttachment;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `${params.organizationName} scorecard — ${params.monthLabel}`,
+    react: (
+      <OperatorScorecardEmail
+        recipientName={params.recipientName}
+        organizationName={params.organizationName}
+        monthLabel={params.monthLabel}
+        dashboardUrl={params.dashboardUrl}
+        revenueLabel={params.revenueLabel}
+        approvalRateLabel={params.approvalRateLabel}
+        scorecard={{
+          score: params.score,
+          status: params.status,
+          highlights: params.highlights,
+          actions: params.actions,
+        }}
+      />
+    ),
+    attachments: [params.attachment],
   });
 }
