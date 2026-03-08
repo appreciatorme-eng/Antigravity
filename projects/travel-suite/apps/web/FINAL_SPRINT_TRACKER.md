@@ -32,9 +32,9 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-27 | 7     | Performance           | next/font for all font loads                       | ✅ DONE    | f278715 |
 | S3-28 | 7     | Performance           | Bundle analyzer — fix top 3 heaviest deps          | ✅ DONE    | f278715 |
 | S3-29 | 7     | Performance           | unstable_cache on heavy read routes                | ✅ DONE    | f278715 |
-| S3-30 | 8     | Accessibility         | WCAG 2.1 AA — contrast, alt text, form labels      | ⏳ PENDING |        |
-| S3-31 | 8     | Accessibility         | Keyboard nav on all dropdowns and menus            | ⏳ PENDING |        |
-| S3-32 | 8     | Accessibility         | Focus trap in GlassModal + Escape to close         | ⏳ PENDING |        |
+| S3-30 | 8     | Accessibility         | WCAG 2.1 AA — contrast, alt text, form labels      | ✅ DONE    | 17a6a4b |
+| S3-31 | 8     | Accessibility         | Keyboard nav on all dropdowns and menus            | ✅ DONE    | 17a6a4b |
+| S3-32 | 8     | Accessibility         | Focus trap in GlassModal + Escape to close         | ✅ DONE    | 17a6a4b |
 | S3-33 | 9     | Security Round 2      | RLS audit — all tables from previous sprint        | ⏳ PENDING |        |
 | S3-34 | 9     | Security Round 2      | CSP headers in next.config.js                      | ⏳ PENDING |        |
 | S3-35 | 9     | Security Round 2      | Rate limiting on all public/unauthenticated routes | ⏳ PENDING |        |
