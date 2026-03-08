@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
 import {
@@ -315,6 +316,18 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
       },
     });
   }
+
+  void captureServerAnalyticsEvent({
+    event: 'payment_completed',
+    distinctId: orgIdForFunnel || payment.id,
+    properties: {
+      organization_id: orgIdForFunnel,
+      payment_id: payment.id,
+      order_id: payment.order_id,
+      amount_inr: payment.amount / 100,
+      method: payment.method,
+    },
+  });
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

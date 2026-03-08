@@ -26,6 +26,7 @@ import { LogisticsManager } from "@/components/planner/LogisticsManager";
 import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
+import { useAnalytics } from "@/lib/analytics/events";
 import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
 import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
@@ -59,6 +60,7 @@ const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
 export default function PlannerPage() {
     const supabase = createClient();
     const { toast } = useToast();
+    const analytics = useAnalytics();
     const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(5);
@@ -202,6 +204,7 @@ export default function PlannerPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to generate");
             setResult(data);
+            analytics.itineraryGenerated(data.destination || prompt);
             fetchImagesForItinerary(data);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed to generate itinerary. Try again.");

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAnalytics } from '@/lib/analytics/events';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -72,6 +73,7 @@ function formatFeatureLimitError(payload: any, fallback: string) { // eslint-dis
 export default function CreateProposalPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const analytics = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -432,6 +434,8 @@ export default function CreateProposalPage() {
         setError('Proposal created but no proposal id was returned.');
         return;
       }
+
+      analytics.proposalCreated(proposalId, Number(payloadData?.amount || 0));
 
       if (sendEmail) {
         const sendResponse = await fetch(`/api/proposals/${proposalId}/send`, {

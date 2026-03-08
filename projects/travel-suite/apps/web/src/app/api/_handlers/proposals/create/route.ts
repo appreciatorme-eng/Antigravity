@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import type { Database } from "@/lib/database.types";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { captureServerAnalyticsEvent } from "@/lib/analytics/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const PROPOSAL_CREATE_RATE_LIMIT_MAX = 20;
@@ -208,8 +209,19 @@ export async function POST(req: NextRequest) {
       "proposals"
     );
 
+    void captureServerAnalyticsEvent({
+      event: "proposal_created",
+      distinctId: admin.userId,
+      properties: {
+        proposal_id: proposalId,
+        organization_id: admin.organizationId,
+        amount: Number(newPrice || 0),
+      },
+    });
+
     return apiSuccess({
       proposalId,
+      amount: Number(newPrice || 0),
       limit: refreshedLimitStatus,
     });
   } catch (error) {

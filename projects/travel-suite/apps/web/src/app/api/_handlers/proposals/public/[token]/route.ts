@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
+import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import { trackFunnelEvent } from '@/lib/funnel/track';
 import {
   type ProposalPackageTier,
@@ -804,6 +805,17 @@ export async function POST(
           }
         }
       }
+
+      void captureServerAnalyticsEvent({
+        event: 'proposal_approved',
+        distinctId: proposal.client_id || proposal.id,
+        properties: {
+          proposal_id: proposal.id,
+          organization_id: proposal.organization_id,
+          approved_by: approvedBy,
+          request_payment: requestPayment,
+        },
+      });
 
       return NextResponse.json({
         success: true,
