@@ -497,7 +497,7 @@ export async function handleMessage(
   }
 
   // 7.5. Semantic cache: fuzzy match for near-identical queries
-  const semanticCached = await getSemanticCachedResponse(ctx.organizationId, trimmedMessage, openaiKey);
+  const semanticCached = await getSemanticCachedResponse(ctx.organizationId, trimmedMessage);
   if (semanticCached !== null) {
     void incrementUsage(ctx, { isCacheHit: true });
     return semanticCached;
@@ -573,7 +573,7 @@ export async function handleMessage(
         ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
       };
       void setCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
-      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, textResponse, openaiKey);
+      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
       void incrementUsage(ctx);
       return textResponse;
     }
@@ -621,7 +621,7 @@ export async function handleMessage(
         actionProposal: pendingProposal,
       };
       void setCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
-      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse, openaiKey);
+      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
       void incrementUsage(ctx);
       return proposalResponse;
     }
@@ -640,7 +640,7 @@ export async function handleMessage(
     ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
   };
   void setCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
-  void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse, openaiKey);
+  void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
   void incrementUsage(ctx);
   return exhaustedResponse;
 }

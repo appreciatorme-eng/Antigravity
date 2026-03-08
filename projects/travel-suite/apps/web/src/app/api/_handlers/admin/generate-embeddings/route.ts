@@ -27,7 +27,7 @@ async function auditAdminAction(
 }
 
 /**
- * Admin endpoint to generate embeddings for all tour templates
+ * Admin endpoint to generate v2 embeddings for all tour templates
  *
  * This should be run once after applying the RAG migration to embed existing templates.
  * It can also be run periodically to re-generate embeddings after template updates.
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     await auditAdminAction(
       admin,
       "Generate embeddings triggered",
-      `Admin ${admin.userId} triggered template embedding regeneration.`
+      `Admin ${admin.userId} triggered template embedding regeneration for Gemini v2 vectors.`
     );
 
     const result = await embedAllTemplates();
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     await auditAdminAction(
       admin,
       "Generate embeddings completed",
-      `Processed ${result.processed} templates with ${result.errors.length} errors.`
+      `Processed ${result.processed} templates with ${result.errors.length} errors using ${result.model}.`
     );
 
     return NextResponse.json({
@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
       templatesProcessed: result.processed,
       templatesWithErrors: result.errors.length,
       errors: result.errors,
-      message: `Successfully processed ${result.processed} templates. ${result.errors.length} errors encountered.`,
+      embeddingModel: result.model,
+      embeddingVersion: result.version,
+      message: `Successfully processed ${result.processed} templates with ${result.model}. ${result.errors.length} errors encountered.`,
     });
   } catch (error) {
     console.error("Batch embedding generation failed:", error);
@@ -83,31 +85,31 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * GET endpoint to check embedding generation status
+ * GET endpoint to check v2 embedding generation status
  */
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req, { requireOrganization: false });
   if (!admin.ok) return admin.response;
 
   try {
-    // Count templates with and without embeddings
+    // Count templates with and without v2 embeddings
     const { count: total } = await admin.adminClient.from("tour_templates").select("*", { count: "exact", head: true });
 
     const { count: withEmbeddings } = await admin.adminClient
       .from("tour_templates")
       .select("*", { count: "exact", head: true })
-      .not("embedding", "is", null);
+      .not("embedding_v2", "is", null);
 
     await auditAdminAction(
       admin,
       "Generate embeddings status viewed",
-      `Admin ${admin.userId} viewed embedding coverage status.`
+      `Admin ${admin.userId} viewed Gemini v2 embedding coverage status.`
     );
 
     return NextResponse.json({
       totalTemplates: total || 0,
-      withEmbeddings: withEmbeddings || 0,
-      withoutEmbeddings: (total || 0) - (withEmbeddings || 0),
+      withEmbeddingsV2: withEmbeddings || 0,
+      withoutEmbeddingsV2: (total || 0) - (withEmbeddings || 0),
       percentageComplete: total ? Math.round(((withEmbeddings || 0) / total) * 100) : 0,
     });
   } catch (error) {

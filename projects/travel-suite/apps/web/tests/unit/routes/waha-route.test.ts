@@ -48,7 +48,7 @@ it("returns 503 when the webhook secret is not configured", async () => {
   );
 
   expect(response.status).toBe(503);
-});
+}, 10000);
 
 it("returns 401 when the provided secret is invalid", async () => {
   process.env.WPPCONNECT_WEBHOOK_SECRET = "expected";

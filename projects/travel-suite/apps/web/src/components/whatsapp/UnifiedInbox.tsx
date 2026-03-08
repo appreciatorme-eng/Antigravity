@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   MessageCircle,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -523,6 +524,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [isRefreshingProposalDraft, setIsRefreshingProposalDraft] = useState(false);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -576,6 +578,34 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       );
     } finally {
       setIsTakingOverChatbot(false);
+    }
+  }
+
+  function handleOpenProposalDraft(draftId: string) {
+    router.push(`/proposals/create?whatsappDraft=${encodeURIComponent(draftId)}`);
+  }
+
+  async function handleRefreshProposalDraft(draftId: string) {
+    setIsRefreshingProposalDraft(true);
+    try {
+      const response = await fetch(`/api/whatsapp/proposal-drafts/${draftId}`, {
+        method: 'POST',
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        data?: { draft?: { id?: string } };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.data?.draft?.id) {
+        throw new Error(payload.error || 'Failed to refresh proposal draft');
+      }
+
+      toast.success('Proposal draft refreshed from the latest chat context');
+      handleOpenProposalDraft(payload.data.draft.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to refresh proposal draft');
+    } finally {
+      setIsRefreshingProposalDraft(false);
     }
   }
 
@@ -996,20 +1026,47 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
                   </p>
                   <p className="mt-1 text-xs leading-5 text-violet-100/80">
                     {activeChatbotSession.state === 'proposal_ready'
-                      ? `The assistant gathered trip details and is waiting for a human follow-up. ${activeChatbotSession.aiReplyCount} AI replies sent.`
+                      ? `The assistant gathered trip details and is waiting for a human follow-up. ${activeChatbotSession.aiReplyCount} AI replies sent.${activeChatbotSession.proposalDraftId ? ' A proposal draft is ready to review.' : ''}`
                       : `${activeChatbotSession.aiReplyCount} AI replies sent so far. Take over to stop further automated replies.`}
                   </p>
                 </div>
-                <GlassButton
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  loading={isTakingOverChatbot}
-                  className="shrink-0 border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
-                  onClick={() => handleTakeOverChatbot(activeChatbotSession)}
-                >
-                  Take Over
-                </GlassButton>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  {activeChatbotSession.proposalDraftId ? (
+                    <div className="flex items-center gap-2">
+                      <GlassButton
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
+                        onClick={() => handleOpenProposalDraft(activeChatbotSession.proposalDraftId ?? '')}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        Open Draft
+                      </GlassButton>
+                      <GlassButton
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        loading={isRefreshingProposalDraft}
+                        className="border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
+                        onClick={() => handleRefreshProposalDraft(activeChatbotSession.proposalDraftId ?? '')}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Regenerate
+                      </GlassButton>
+                    </div>
+                  ) : null}
+                  <GlassButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    loading={isTakingOverChatbot}
+                    className="shrink-0 border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
+                    onClick={() => handleTakeOverChatbot(activeChatbotSession)}
+                  >
+                    Take Over
+                  </GlassButton>
+                </div>
               </div>
             </GlassCard>
           </div>

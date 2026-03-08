@@ -3,10 +3,14 @@
  * Uses vector search to find matching templates and assembles them into custom itineraries
  */
 
-import { generateEmbedding } from './embeddings';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 import type { ItineraryResult } from '@/types/itinerary';
+import {
+    generateQueryEmbeddingV2,
+    isEmbeddingV2Configured,
+    toVectorLiteral,
+} from '@/lib/embeddings-v2';
 
 let cachedOpenAiClient: OpenAI | null | undefined;
 
@@ -88,26 +92,33 @@ export async function searchTemplates(
         ...(request.interests || [])
     ].filter(Boolean).join(' ');
 
-    const queryEmbedding = await generateEmbedding(queryText);
+    const queryEmbedding = await generateQueryEmbeddingV2(queryText);
 
     if (queryEmbedding.length === 0) {
-        console.log('⚠️ Embeddings not available - skipping RAG search');
+        console.log('⚠️ Gemini embeddings not available - skipping RAG search');
         return null;
     }
 
-    // Search similar templates across ALL public templates (unified sharing)
-    const { data: matchRows, error } = await supabase.rpc('search_similar_templates_with_quality', {
-        p_query_embedding: `[${queryEmbedding.join(',')}]`,
+    if (!isEmbeddingV2Configured()) {
+        return null;
+    }
+
+    const rpc = supabase.rpc as unknown as (
+        fn: string,
+        params: Record<string, unknown>
+    ) => Promise<{ data: RAGTemplateMatch[] | null; error: { message: string } | null }>;
+
+    const { data: matches, error } = await rpc('search_similar_templates_with_quality_v2', {
+        p_query_embedding: toVectorLiteral(queryEmbedding),
         p_match_threshold: 0.7,
         p_match_count: 5,
         p_min_days: Math.max(1, request.days - 2),
         p_max_days: request.days + 2,
         ...(request.requestingOrgId && { p_exclude_organization_id: request.requestingOrgId })
     });
-    const matches = (matchRows as RAGTemplateMatch[] | null) ?? null;
 
     if (error) {
-        console.error('Template search error:', error);
+        console.error('Template v2 search error:', error);
         return null;
     }
 

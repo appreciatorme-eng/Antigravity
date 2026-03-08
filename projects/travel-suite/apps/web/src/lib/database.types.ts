@@ -228,6 +228,83 @@ export type Database = {
           },
         ]
       }
+      review_marketing_assets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          last_queued_at: string | null
+          lifecycle_state: string
+          organization_id: string
+          platform_targets: Json
+          quote_excerpt: string | null
+          review_id: string
+          social_post_id: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          last_queued_at?: string | null
+          lifecycle_state?: string
+          organization_id: string
+          platform_targets?: Json
+          quote_excerpt?: string | null
+          review_id: string
+          social_post_id: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          last_queued_at?: string | null
+          lifecycle_state?: string
+          organization_id?: string
+          platform_targets?: Json
+          quote_excerpt?: string | null
+          review_id?: string
+          social_post_id?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_marketing_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "reputation_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_marketing_assets_social_post_id_fkey"
+            columns: ["social_post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_reviews: {
         Row: {
           comment: string | null
@@ -1373,6 +1450,9 @@ export type Database = {
           destination: string
           duration_days: number
           embedding: string
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           itinerary_data: Json
           query_text: string
@@ -1382,7 +1462,10 @@ export type Database = {
           created_at?: string | null
           destination: string
           duration_days: number
-          embedding: string
+          embedding?: string
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           itinerary_data: Json
           query_text: string
@@ -1393,6 +1476,9 @@ export type Database = {
           destination?: string
           duration_days?: number
           embedding?: string
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           itinerary_data?: Json
           query_text?: string
@@ -1531,12 +1617,16 @@ export type Database = {
       }
       marketplace_profiles: {
         Row: {
+          boost_score: number | null
           compliance_documents: Json | null
           created_at: string | null
           description: string | null
+          featured_until: string | null
           gallery_urls: Json | null
           id: string
+          is_featured: boolean
           is_verified: boolean | null
+          listing_tier: string
           listing_quality_score: number | null
           margin_rate: number | null
           organization_id: string
@@ -1551,12 +1641,16 @@ export type Database = {
           verified_at: string | null
         }
         Insert: {
+          boost_score?: number | null
           compliance_documents?: Json | null
           created_at?: string | null
           description?: string | null
+          featured_until?: string | null
           gallery_urls?: Json | null
           id?: string
+          is_featured?: boolean
           is_verified?: boolean | null
+          listing_tier?: string
           listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id: string
@@ -1571,12 +1665,16 @@ export type Database = {
           verified_at?: string | null
         }
         Update: {
+          boost_score?: number | null
           compliance_documents?: Json | null
           created_at?: string | null
           description?: string | null
+          featured_until?: string | null
           gallery_urls?: Json | null
           id?: string
+          is_featured?: boolean
           is_verified?: boolean | null
+          listing_tier?: string
           listing_quality_score?: number | null
           margin_rate?: number | null
           organization_id?: string
@@ -1595,6 +1693,85 @@ export type Database = {
             foreignKeyName: "marketplace_profiles_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_listing_subscriptions: {
+        Row: {
+          amount_paise: number
+          boost_score: number
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          current_period_end: string | null
+          id: string
+          marketplace_profile_id: string | null
+          organization_id: string
+          plan_id: string
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paise: number
+          boost_score?: number
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          marketplace_profile_id?: string | null
+          organization_id: string
+          plan_id: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paise?: number
+          boost_score?: number
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          marketplace_profile_id?: string | null
+          organization_id?: string
+          plan_id?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_marketplace_profile_id_fkey"
+            columns: ["marketplace_profile_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listing_subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2542,6 +2719,9 @@ export type Database = {
           content: string
           created_at: string | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           metadata: Json | null
           source_file: string | null
@@ -2552,6 +2732,9 @@ export type Database = {
           content: string
           created_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           metadata?: Json | null
           source_file?: string | null
@@ -2562,6 +2745,9 @@ export type Database = {
           content?: string
           created_at?: string | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           metadata?: Json | null
           source_file?: string | null
@@ -3664,6 +3850,9 @@ export type Database = {
           description: string | null
           display_order: number | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           id: string
           image_url: string | null
           is_optional: boolean | null
@@ -3679,6 +3868,9 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
@@ -3694,6 +3886,9 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           id?: string
           image_url?: string | null
           is_optional?: boolean | null
@@ -3944,6 +4139,9 @@ export type Database = {
           destination: string | null
           duration_days: number | null
           embedding: string | null
+          embedding_model: string | null
+          embedding_v2: string | null
+          embedding_version: number | null
           embedding_updated_at: string | null
           hero_image_url: string | null
           id: string
@@ -3966,6 +4164,9 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
@@ -3988,6 +4189,9 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           embedding?: string | null
+          embedding_model?: string | null
+          embedding_v2?: string | null
+          embedding_version?: number | null
           embedding_updated_at?: string | null
           hero_image_url?: string | null
           id?: string
@@ -4494,6 +4698,101 @@ export type Database = {
           },
         ]
       }
+      whatsapp_proposal_drafts: {
+        Row: {
+          budget_inr: number | null
+          chatbot_session_id: string
+          client_id: string | null
+          created_at: string
+          destination: string | null
+          group_size: number | null
+          id: string
+          organization_id: string
+          source_context: Json
+          status: string
+          template_id: string | null
+          title: string
+          travel_dates: string | null
+          traveler_email: string | null
+          traveler_name: string | null
+          traveler_phone: string
+          trip_end_date: string | null
+          trip_start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_inr?: number | null
+          chatbot_session_id: string
+          client_id?: string | null
+          created_at?: string
+          destination?: string | null
+          group_size?: number | null
+          id?: string
+          organization_id: string
+          source_context?: Json
+          status?: string
+          template_id?: string | null
+          title: string
+          travel_dates?: string | null
+          traveler_email?: string | null
+          traveler_name?: string | null
+          traveler_phone: string
+          trip_end_date?: string | null
+          trip_start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_inr?: number | null
+          chatbot_session_id?: string
+          client_id?: string | null
+          created_at?: string
+          destination?: string | null
+          group_size?: number | null
+          id?: string
+          organization_id?: string
+          source_context?: Json
+          status?: string
+          template_id?: string | null
+          title?: string
+          travel_dates?: string | null
+          traveler_email?: string | null
+          traveler_name?: string | null
+          traveler_phone?: string
+          trip_end_date?: string | null
+          trip_start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_chatbot_session_id_fkey"
+            columns: ["chatbot_session_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_chatbot_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "tour_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_stage_events: {
         Row: {
           changed_by: string | null
@@ -4830,6 +5129,23 @@ export type Database = {
           similarity: number
         }[]
       }
+      match_itineraries_v2: {
+        Args: {
+          filter_days: number
+          filter_destination: string
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          destination: string
+          duration_days: number
+          id: string
+          itinerary_data: Json
+          query_text: string
+          similarity: number
+        }[]
+      }
       save_itinerary_to_cache: {
         Args: {
           p_budget: string
@@ -4842,6 +5158,28 @@ export type Database = {
         Returns: string
       }
       search_similar_templates_with_quality: {
+        Args: {
+          p_exclude_organization_id?: string
+          p_match_count?: number
+          p_match_threshold?: number
+          p_max_days?: number
+          p_min_days?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          base_price: number
+          combined_rank: number
+          destination: string
+          duration_days: number
+          name: string
+          organization_id: string
+          quality_score: number
+          similarity: number
+          template_id: string
+          usage_count: number
+        }[]
+      }
+      search_similar_templates_with_quality_v2: {
         Args: {
           p_exclude_organization_id?: string
           p_match_count?: number

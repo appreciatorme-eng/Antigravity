@@ -18,6 +18,7 @@ const routes = createCatchAllHandlers([
   ["nps/submit", () => import("@/app/api/_handlers/reputation/nps/submit/route")],
   ["nps/:token", () => import("@/app/api/_handlers/reputation/nps/[token]/route")],
   ["sync", () => import("@/app/api/_handlers/reputation/sync/route")],
+  ["reviews/:id/marketing-asset", () => import("@/app/api/_handlers/reputation/reviews/[id]/marketing-asset/route")],
   ["reviews/:id", () => import("@/app/api/_handlers/reputation/reviews/[id]/route")],
   ["reviews", () => import("@/app/api/_handlers/reputation/reviews/route")],
   ["widget/config", () => import("@/app/api/_handlers/reputation/widget/config/route")],

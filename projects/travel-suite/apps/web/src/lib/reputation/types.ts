@@ -75,6 +75,10 @@ export interface ReputationReview {
   is_verified_client: boolean;
   requires_attention: boolean;
   attention_reason: string | null;
+  marketing_asset_id?: string | null;
+  marketing_asset_state?: string | null;
+  marketing_social_post_id?: string | null;
+  marketing_image_url?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -3,10 +3,17 @@ import { render } from "@react-email/render";
 import type { ReactElement } from "react";
 import { FROM_ADDRESS, FROM_NAME, resend } from "@/lib/email/resend";
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+}
+
 export async function sendEmail(params: {
   to: string;
   subject: string;
   react: ReactElement;
+  attachments?: EmailAttachment[];
 }): Promise<boolean> {
   if (!resend) {
     console.error("[email] RESEND_API_KEY is not configured");
@@ -20,6 +27,11 @@ export async function sendEmail(params: {
       to: [params.to],
       subject: params.subject,
       html,
+      attachments: params.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.content,
+        contentType: attachment.contentType,
+      })),
     });
     return true;
   } catch (error) {

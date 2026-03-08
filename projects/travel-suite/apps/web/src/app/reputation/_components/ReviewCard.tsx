@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronUp,
   BadgeCheck,
+  ImagePlus,
+  CalendarClock,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ReputationReview } from "@/lib/reputation/types";
@@ -20,6 +22,10 @@ interface ReviewCardProps {
   review: ReputationReview;
   onFlag?: (id: string) => void;
   onRespond?: (id: string) => void;
+  onGenerateAsset?: (id: string) => void;
+  onScheduleAsset?: (id: string) => void;
+  isGeneratingAsset?: boolean;
+  isSchedulingAsset?: boolean;
 }
 
 function timeAgo(dateStr: string): string {
@@ -66,7 +72,15 @@ function ResponseStatusBadge({ status }: { status: string }) {
   );
 }
 
-export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
+export function ReviewCard({
+  review,
+  onFlag,
+  onRespond,
+  onGenerateAsset,
+  onScheduleAsset,
+  isGeneratingAsset = false,
+  isSchedulingAsset = false,
+}: ReviewCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const platformColor =
@@ -85,6 +99,14 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
 
   const tags = [review.destination, review.trip_type].filter(Boolean);
   const topics: string[] = review.ai_topics ?? [];
+  const canCreateMarketingAsset =
+    review.rating >= 4 && Boolean(review.comment?.trim());
+  const marketingLabel =
+    review.marketing_asset_state === "queued_for_review" ||
+    review.marketing_asset_state === "scheduled" ||
+    review.marketing_asset_state === "published"
+      ? "Refresh Asset"
+      : "Generate Asset";
 
   return (
     <motion.div
@@ -210,7 +232,7 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
 
       {/* Footer Actions */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onFlag && (
             <button
               onClick={() => onFlag(review.id)}
@@ -227,6 +249,26 @@ export function ReviewCard({ review, onFlag, onRespond }: ReviewCardProps) {
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Respond
+            </button>
+          )}
+          {canCreateMarketingAsset && onGenerateAsset && (
+            <button
+              onClick={() => onGenerateAsset(review.id)}
+              disabled={isGeneratingAsset}
+              className="text-xs text-gray-400 hover:text-violet-600 disabled:opacity-50 flex items-center gap-1 transition-colors"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              {isGeneratingAsset ? "Generating..." : marketingLabel}
+            </button>
+          )}
+          {canCreateMarketingAsset && onScheduleAsset && (
+            <button
+              onClick={() => onScheduleAsset(review.id)}
+              disabled={isSchedulingAsset}
+              className="text-xs text-gray-400 hover:text-emerald-600 disabled:opacity-50 flex items-center gap-1 transition-colors"
+            >
+              <CalendarClock className="w-3.5 h-3.5" />
+              {isSchedulingAsset ? "Scheduling..." : "Schedule Post"}
             </button>
           )}
         </div>

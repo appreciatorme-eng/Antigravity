@@ -4,10 +4,16 @@ import { z } from 'zod';
 import Groq from "groq-sdk";
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
 import { getSemanticMatch, saveSemanticMatch } from '@/lib/semantic-cache';
+import { isEmbeddingV2Configured } from '@/lib/embeddings-v2';
 import { searchTemplates, assembleItinerary, saveAttributionTracking } from '@/lib/rag-itinerary';
 import { geocodeLocation, getCityCenter } from '@/lib/geocoding-with-cache';
 import { populateItineraryImages } from '@/lib/image-search';
 import { getOrgAiUsageSnapshot, trackOrgAiUsage } from '@/lib/ai/cost-guardrails';
+import {
+    getSharedCachedItinerary,
+    promoteSharedItineraryCache,
+    trackSharedCacheSourceEvent,
+} from "@/lib/shared-itinerary-cache";
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { createClient as createServerClient } from "@/lib/supabase/server";
@@ -248,10 +254,22 @@ export async function POST(req: NextRequest) {
     const { prompt, days } = parsed.data;
     const usageSnapshot = await getOrgAiUsageSnapshot(user.id);
     const lowCostMode = FORCE_LOW_COST_MODE || usageSnapshot.overCap;
+    const { data: operatorProfile } = await serverClient
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", user.id)
+        .single();
+    const organizationId = operatorProfile?.organization_id ?? null;
 
     try {
         // Extract destination early for cache lookup
         const destination = extractDestination(prompt);
+        const sharedCacheLookup = {
+            prompt,
+            destination,
+            days,
+            organizationId,
+        };
 
         // CACHE LOOKUP - Check if we have this itinerary cached
         const cachedItinerary = await getCachedItinerary(
@@ -280,7 +298,17 @@ export async function POST(req: NextRequest) {
 
             if (!isFallback && hasValidCoordinates) {
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
-                return NextResponse.json(cachedItinerary);
+                void trackSharedCacheSourceEvent({
+                    eventType: "hit",
+                    cacheSource: "org_exact",
+                    organizationId,
+                    destinationKey: destination.toLowerCase(),
+                    durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                });
+                return NextResponse.json({
+                    ...cachedItinerary,
+                    cache_source: "org_exact",
+                });
             }
         }
 
@@ -303,18 +331,54 @@ export async function POST(req: NextRequest) {
                 const cachedRedis = await redisStore.get(redisCacheKey);
                 if (cachedRedis) {
                     void trackOrgAiUsage(user.id, "cache_hit", 0);
-                    return NextResponse.json(typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis);
+                    void trackSharedCacheSourceEvent({
+                        eventType: "hit",
+                        cacheSource: "redis_exact",
+                        organizationId,
+                        destinationKey: destination.toLowerCase(),
+                        durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                    });
+                    const redisPayload =
+                        typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis;
+                    return NextResponse.json({
+                        ...(redisPayload as Record<string, unknown>),
+                        cache_source: "redis_exact",
+                    });
                 }
             }
         } catch {
             console.warn("Redis fallback missed / connection issue");
+        }
+        // TIER 0.75: SHARED CACHE (Cross-org exact or canonical hit)
+        try {
+            const sharedMatch = await getSharedCachedItinerary(sharedCacheLookup);
+            if (sharedMatch?.itinerary) {
+                void trackOrgAiUsage(user.id, "cache_hit", 0);
+                return NextResponse.json({
+                    ...(sharedMatch.itinerary as Record<string, unknown>),
+                    cache_source: sharedMatch.source,
+                    shared_cache_id: sharedMatch.cacheId,
+                });
+            }
+        } catch (e) {
+            console.error('[TIER 0.75: SHARED CACHE ERROR]', e);
         }
         // TIER 0.5: SEMANTIC CACHE (Vector Match)
         try {
             const semanticMatch = await getSemanticMatch(prompt, destination, days);
             if (semanticMatch) {
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
-                return NextResponse.json(semanticMatch);
+                void trackSharedCacheSourceEvent({
+                    eventType: "hit",
+                    cacheSource: "semantic",
+                    organizationId,
+                    destinationKey: destination.toLowerCase(),
+                    durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                });
+                return NextResponse.json({
+                    ...(semanticMatch as Record<string, unknown>),
+                    cache_source: "semantic",
+                });
             }
         } catch (e) {
             console.error('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
@@ -364,7 +428,23 @@ export async function POST(req: NextRequest) {
                     }
 
                     void trackOrgAiUsage(user.id, "rag_hit", 0);
-                    return NextResponse.json(geocodedItinerary);
+                    void trackSharedCacheSourceEvent({
+                        eventType: "hit",
+                        cacheSource: "rag",
+                        organizationId,
+                        destinationKey: destination.toLowerCase(),
+                        durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                    });
+                    void promoteSharedItineraryCache({
+                        ...sharedCacheLookup,
+                        itineraryData: geocodedItinerary,
+                        sourceType: "rag",
+                        createdBy: user.id,
+                    });
+                    return NextResponse.json({
+                        ...geocodedItinerary,
+                        cache_source: "rag",
+                    });
                 }
             }
 
@@ -628,6 +708,13 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
             ).catch(err => {
                 console.error('Cache save failed (non-blocking):', err);
             });
+
+            void promoteSharedItineraryCache({
+                ...sharedCacheLookup,
+                itineraryData: geocodedItinerary,
+                sourceType: "generated",
+                createdBy: user.id,
+            });
         }
 
         if (aiGenerated && !isFallbackItinerary) {
@@ -637,12 +724,23 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         }
 
         // Save to semantic pgvector cache asynchronously
-        if (process.env.OPENAI_API_KEY && !isFallbackItinerary) {
+        if (isEmbeddingV2Configured() && !isFallbackItinerary) {
             saveSemanticMatch(prompt, destination, days, geocodedItinerary)
                 .catch(e => console.error(e));
         }
 
-        return NextResponse.json(geocodedItinerary);
+        void trackSharedCacheSourceEvent({
+            eventType: "hit",
+            cacheSource: aiGenerated && !isFallbackItinerary ? "ai" : "org_exact",
+            organizationId,
+            destinationKey: destination.toLowerCase(),
+            durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+        });
+
+        return NextResponse.json({
+            ...geocodedItinerary,
+            cache_source: aiGenerated && !isFallbackItinerary ? "ai" : "fallback",
+        });
 
     } catch (error) {
         console.error("AI Generation Error:", error);

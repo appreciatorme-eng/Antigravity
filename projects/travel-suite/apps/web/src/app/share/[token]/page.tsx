@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SHARED_ITINERARY_PUBLIC_SELECT } from "@/lib/share/public-trip";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
 
 export default async function SharedTripPage({
@@ -17,15 +18,7 @@ export default async function SharedTripPage({
     // Do not resolve traveler contact information from a bearer share token.
     const { data: share, error: shareError } = await supabaseAdmin
         .from("shared_itineraries")
-        .select(`
-            *,
-            itineraries (
-                *,
-                profiles!itineraries_user_id_fkey (
-                    organizations!profiles_organization_id_fkey ( name, logo_url, primary_color )
-                )
-            )
-        `)
+        .select(SHARED_ITINERARY_PUBLIC_SELECT)
         .eq("share_code", token)
         .single();
 

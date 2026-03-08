@@ -27,10 +27,14 @@ type MarketplaceOrganizationJoin = {
 } | null;
 
 type MarketplaceProfileRow = {
+    boost_score: unknown;
     description: string | null;
+    featured_until: unknown;
     service_regions: unknown;
     specialties: unknown;
     gallery_urls: unknown;
+    is_featured: unknown;
+    listing_tier: string | null;
     rate_card: unknown;
     compliance_documents: unknown;
     margin_rate: unknown;
@@ -277,6 +281,11 @@ export async function GET(req: NextRequest) {
             const normalizedMarginRate = sanitizeMarginRate(item.margin_rate);
             const normalizedUpdatedAt = sanitizeText(item.updated_at, { maxLength: 80 }) || null;
             const isVerified = item.is_verified === true;
+            const isFeatured = item.is_featured === true;
+            const featuredUntil = sanitizeText(item.featured_until, { maxLength: 80 }) || null;
+            const boostScore = Number.isFinite(Number(item.boost_score))
+                ? Number(item.boost_score)
+                : 0;
 
             const profileCompleteness =
                 (sanitizeText(item.description, { maxLength: 4000, preserveNewlines: true }) ? 20 : 0) +
@@ -292,16 +301,28 @@ export async function GET(req: NextRequest) {
                 100,
                 Math.round(profileCompleteness + ratingScore + reviewVolumeScore + verificationScore)
             );
+            const qualityFloorMet =
+                discoveryScore >= 55 ||
+                (avgRating >= 4 && ratings.length >= 3) ||
+                (isVerified && profileCompleteness >= 50);
+            const featureStillActive =
+                isFeatured && featuredUntil !== null && Date.parse(featuredUntil) > Date.now();
+            const marketplaceRankScore =
+                discoveryScore + (qualityFloorMet && featureStillActive ? boostScore : 0);
 
             return {
                 ...item,
+                boost_score: boostScore,
                 description: sanitizeText(item.description, { maxLength: 4000, preserveNewlines: true }),
+                featured_until: featuredUntil,
                 service_regions: normalizedServiceRegions,
                 specialties: normalizedSpecialties,
                 gallery_urls: normalizedGalleryUrls,
                 margin_rate: normalizedMarginRate,
                 updated_at: normalizedUpdatedAt,
+                is_featured: featureStillActive,
                 is_verified: isVerified,
+                listing_tier: sanitizeText(item.listing_tier, { maxLength: 40 }) || "free",
                 rate_card: normalizedRateCard,
                 compliance_documents: normalizedComplianceDocuments,
                 organization_name: sanitizeText(item.organization?.name, { maxLength: 160 }),
@@ -310,6 +331,8 @@ export async function GET(req: NextRequest) {
                 review_count: ratings.length,
                 verification_status: sanitizeVerificationStatus(item.verification_status) || "none",
                 discovery_score: discoveryScore,
+                marketplace_rank_score: marketplaceRankScore,
+                quality_floor_met: qualityFloorMet,
             };
         });
 
@@ -340,7 +363,7 @@ export async function GET(req: NextRequest) {
                 return aMargin - bMargin;
             }
             if (sort === "discovery") {
-                return Number(b.discovery_score || 0) - Number(a.discovery_score || 0);
+                return Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
             }
 
             // Default: verified partners first, then best discovery score, then freshness.
@@ -348,7 +371,8 @@ export async function GET(req: NextRequest) {
             const bVerified = b.is_verified ? 1 : 0;
             if (bVerified !== aVerified) return bVerified - aVerified;
 
-            const scoreDiff = Number(b.discovery_score || 0) - Number(a.discovery_score || 0);
+            const scoreDiff =
+                Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
             if (scoreDiff !== 0) return scoreDiff;
 
             const aTime = Date.parse(String(a.updated_at || "")) || 0;
