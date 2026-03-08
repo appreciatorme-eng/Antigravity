@@ -15,9 +15,9 @@ Scope: projects/travel-suite/apps/web
 | IM-08 | Shared Cache | Add shared itinerary cache table and promotion rules | ✅ DONE | bc7fe51 |
 | IM-09 | Shared Cache | Route itinerary generation through org cache + shared cache | ✅ DONE | bc7fe51 |
 | IM-10 | Shared Cache | Track shared cache hit-rate and cache source analytics | ✅ DONE | bc7fe51 |
-| IM-11 | Marketplace Monetization | Add paid marketplace listing tiers and subscription state | ⏳ PENDING | |
-| IM-12 | Marketplace Monetization | Add operator UI to purchase/manage featured listings | ⏳ PENDING | |
-| IM-13 | Marketplace Monetization | Apply paid ranking boost in marketplace discovery | ⏳ PENDING | |
+| IM-11 | Marketplace Monetization | Add paid marketplace listing tiers and subscription state | ✅ DONE | 42ba2df |
+| IM-12 | Marketplace Monetization | Add operator UI to purchase/manage featured listings | ✅ DONE | 42ba2df |
+| IM-13 | Marketplace Monetization | Apply paid ranking boost in marketplace discovery | ✅ DONE | 42ba2df |
 | IM-14 | Operator Scorecard | Generate monthly operator KPI payload and persistence | ⏳ PENDING | |
 | IM-15 | Operator Scorecard | Render operator scorecard PDF and email via Resend | ⏳ PENDING | |
 | IM-16 | Operator Scorecard | Add scheduled delivery path for monthly scorecards | ⏳ PENDING | |
