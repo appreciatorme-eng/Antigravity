@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ interface CalendarHeaderProps {
   onViewModeChange: (mode: CalendarViewMode) => void;
   onFiltersChange: (filters: CalendarFiltersState) => void;
   onAddEvent: () => void;
+  onBlockDates: () => void;
 }
 
 function getDateDisplay(date: Date, mode: CalendarViewMode): string {
@@ -64,6 +65,7 @@ export function CalendarHeader({
   onViewModeChange,
   onFiltersChange,
   onAddEvent,
+  onBlockDates,
 }: CalendarHeaderProps) {
   return (
     <GlassCard padding="lg" className="space-y-4">
@@ -103,6 +105,16 @@ export function CalendarHeader({
           >
             <Plus className="w-4 h-4" />
             Add Event
+          </GlassButton>
+
+          <GlassButton
+            variant="outline"
+            size="sm"
+            onClick={onBlockDates}
+            className="gap-1.5"
+          >
+            <Ban className="w-4 h-4" />
+            Block Dates
           </GlassButton>
         </div>
 

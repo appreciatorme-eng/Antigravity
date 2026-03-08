@@ -3,11 +3,11 @@ Branch: codex/sprint-4-and-audit
 
 | ID     | Feature              | Item                                                   | Status     | Commit |
 |--------|----------------------|--------------------------------------------------------|------------|--------|
-| SP4-01 | Calendar Availability | Migration: operator_unavailability table + RLS         | ⏳ PENDING |        |
-| SP4-02 | Calendar Availability | GET/POST /api/availability route                       | ⏳ PENDING |        |
-| SP4-03 | Calendar Availability | "Block Dates" panel in calendar/page.tsx               | ⏳ PENDING |        |
-| SP4-04 | Calendar Availability | Proposal create: guard against blocked dates           | ⏳ PENDING |        |
-| SP4-05 | Calendar Availability | Blocked dates shown as unavailable in calendar UI      | ⏳ PENDING |        |
+| SP4-01 | Calendar Availability | Migration: operator_unavailability table + RLS         | ✅ DONE    |        |
+| SP4-02 | Calendar Availability | GET/POST /api/availability route                       | ✅ DONE    |        |
+| SP4-03 | Calendar Availability | "Block Dates" panel in calendar/page.tsx               | ✅ DONE    |        |
+| SP4-04 | Calendar Availability | Proposal create: guard against blocked dates           | ✅ DONE    |        |
+| SP4-05 | Calendar Availability | Blocked dates shown as unavailable in calendar UI      | ✅ DONE    |        |
 | SP4-06 | Portal Real DB       | GET /api/portal/[token] — real trip/proposal lookup    | ⏳ PENDING |        |
 | SP4-07 | Portal Real DB       | portal/[token]/page.tsx fetches from DB not mock       | ⏳ PENDING |        |
 | SP4-08 | Portal Real DB       | 404 page for invalid/expired tokens                    | ⏳ PENDING |        |

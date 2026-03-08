@@ -7,6 +7,11 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { TimeGridEvent } from "./TimeGridEvent";
 import { AllDayEventsBar } from "./AllDayEventsBar";
 import {
+  formatBlockedRange,
+  getBlockedSlotsForDay,
+  type OperatorUnavailability,
+} from "./availability";
+import {
   DAY_START_HOUR,
   DAY_END_HOUR,
   HOUR_HEIGHT_PX,
@@ -23,6 +28,7 @@ import type { CalendarEvent } from "./types";
 
 interface DayViewProps {
   events: CalendarEvent[];
+  blockedSlots: OperatorUnavailability[];
   currentDate: Date;
   onEventClick: (event: CalendarEvent) => void;
   onTimeSlotClick: (date: Date, hour: number) => void;
@@ -33,6 +39,7 @@ const GUTTER_WIDTH = 64;
 
 export function DayView({
   events,
+  blockedSlots,
   currentDate,
   onEventClick,
   onTimeSlotClick,
@@ -42,6 +49,8 @@ export function DayView({
   const month = currentDate.getMonth();
   const day = currentDate.getDate();
   const today = isToday(year, month, day);
+  const dayBlockedSlots = getBlockedSlotsForDay(blockedSlots, year, month, day);
+  const isBlocked = dayBlockedSlots.length > 0;
 
   // Partition into all-day vs timed events
   const { allDay, timed } = useMemo(
@@ -88,8 +97,10 @@ export function DayView({
       <div
         className={cn(
           "px-6 py-3 border-b border-gray-200 dark:border-gray-700",
+          isBlocked && "bg-red-500/[0.06]",
           today && "bg-primary/[0.05]",
         )}
+        title={isBlocked ? dayBlockedSlots.map((slot) => formatBlockedRange(slot)).join("\n") : undefined}
       >
         <div className="flex items-center gap-3">
           <div
@@ -111,6 +122,11 @@ export function DayView({
                 Today
               </p>
             )}
+            {isBlocked && (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">
+                Unavailable
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -125,6 +141,16 @@ export function DayView({
         style={{ maxHeight: "calc(100vh - 340px)" }}
       >
         <div className="relative" style={{ height: `${GRID_HEIGHT}px` }}>
+          {isBlocked && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 rounded-b-2xl border border-red-500/15"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(-45deg, rgba(239,68,68,0.08), rgba(239,68,68,0.08) 8px, rgba(239,68,68,0.015) 8px, rgba(239,68,68,0.015) 16px)",
+              }}
+            />
+          )}
           {/* Hour rows */}
           {HOURS.map((hour) => {
             const topPx = (hour - DAY_START_HOUR) * HOUR_HEIGHT_PX;

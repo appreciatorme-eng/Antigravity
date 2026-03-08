@@ -5,6 +5,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useAnalytics } from '@/lib/analytics/events';
 import { useRouter } from 'next/navigation';
 import {
+  getOverlappingAvailability,
+  type OperatorUnavailability,
+} from '@/features/calendar/availability';
+import {
   ArrowLeft,
   Send,
   Loader2,
@@ -96,6 +100,11 @@ export default function CreateProposalPage() {
   const [proposalTitle, setProposalTitle] = useState('');
   const [expirationDays, setExpirationDays] = useState(14);
   const [sendEmail, setSendEmail] = useState(true);
+  const [tripStartDate, setTripStartDate] = useState('');
+  const [tripEndDate, setTripEndDate] = useState('');
+  const [availabilityConflicts, setAvailabilityConflicts] = useState<OperatorUnavailability[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityOverrideAccepted, setAvailabilityOverrideAccepted] = useState(false);
 
   // Data
   const [clients, setClients] = useState<Client[]>([]);
@@ -265,6 +274,53 @@ export default function CreateProposalPage() {
     return () => controller.abort();
   }, [selectedTemplateId, templates]);
 
+  useEffect(() => {
+    if (!tripStartDate || !tripEndDate) {
+      setAvailabilityConflicts([]);
+      setAvailabilityLoading(false);
+      setAvailabilityOverrideAccepted(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      from: tripStartDate,
+      to: tripEndDate,
+    });
+
+    setAvailabilityLoading(true);
+    setAvailabilityOverrideAccepted(false);
+
+    fetch(`/api/availability?${params.toString()}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((response) =>
+        response.json().then((payload) => ({ ok: response.ok, payload })),
+      )
+      .then(({ ok, payload }) => {
+        if (!ok) {
+          throw new Error(payload?.error || 'Failed to check availability');
+        }
+        const rows = Array.isArray(payload?.data)
+          ? (payload.data as OperatorUnavailability[])
+          : [];
+        setAvailabilityConflicts(
+          getOverlappingAvailability(rows, tripStartDate, tripEndDate),
+        );
+      })
+      .catch((fetchError) => {
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          return;
+        }
+        console.error('Availability check failed:', fetchError);
+        setAvailabilityConflicts([]);
+      })
+      .finally(() => setAvailabilityLoading(false));
+
+    return () => controller.abort();
+  }, [tripStartDate, tripEndDate]);
+
   async function loadProposalLimit(headers?: Record<string, string>) {
     try {
       const limitsResp = await fetch('/api/subscriptions/limits', {
@@ -387,6 +443,23 @@ export default function CreateProposalPage() {
       toast({
         title: 'Selection required',
         description: 'Please select both a client and a template.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    if (
+      tripStartDate &&
+      tripEndDate &&
+      availabilityConflicts.length > 0 &&
+      !availabilityOverrideAccepted
+    ) {
+      const message =
+        'These dates overlap with a blocked period. Unblock them or continue with an explicit override.';
+      setError(message);
+      toast({
+        title: 'Blocked dates detected',
+        description: message,
         variant: 'warning',
       });
       return;
@@ -872,6 +945,82 @@ export default function CreateProposalPage() {
                 </div>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="proposal-start-date"
+                  className="block text-sm font-medium text-[#6f5b3e] mb-2"
+                >
+                  Trip start date
+                </label>
+                <input
+                  id="proposal-start-date"
+                  type="date"
+                  value={tripStartDate}
+                  onChange={(e) => setTripStartDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="proposal-end-date"
+                  className="block text-sm font-medium text-[#6f5b3e] mb-2"
+                >
+                  Trip end date
+                </label>
+                <input
+                  id="proposal-end-date"
+                  type="date"
+                  min={tripStartDate || undefined}
+                  value={tripEndDate}
+                  onChange={(e) => setTripEndDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+                />
+              </div>
+            </div>
+
+            {availabilityLoading && (
+              <p className="text-sm text-[#6f5b3e]">Checking operator availability…</p>
+            )}
+
+            {!availabilityLoading &&
+              tripStartDate &&
+              tripEndDate &&
+              availabilityConflicts.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">
+                    You are marked unavailable during part of this trip.
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-amber-800">
+                    {availabilityConflicts.map((slot) => (
+                      <li key={slot.id}>
+                        {(slot.reason || 'Unavailable')} · {slot.startDate} to {slot.endDate}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/calendar"
+                      className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
+                    >
+                      Unblock dates
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setAvailabilityOverrideAccepted(true)}
+                      className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
+                    >
+                      Continue anyway
+                    </button>
+                    {availabilityOverrideAccepted && (
+                      <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                        Override acknowledged
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
             {selectedTemplate && (pricingSuggestionLoading || pricingSuggestion) && (
               <GlassCard

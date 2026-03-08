@@ -5,16 +5,24 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { DayCell } from "./DayCell";
 import { DAY_NAMES } from "./constants";
 import { getMonthDays, getEventsForDay, computeEventLanes, getWeeksInMonth } from "./utils";
+import { getBlockedSlotsForDay, type OperatorUnavailability } from "./availability";
 import type { CalendarEvent } from "./types";
 
 interface MonthViewProps {
   events: CalendarEvent[];
+  blockedSlots: OperatorUnavailability[];
   currentDate: Date;
   onDayClick: (day: { year: number; month: number; day: number }) => void;
   onEventClick: (event: CalendarEvent) => void;
 }
 
-export function MonthView({ events, currentDate, onDayClick, onEventClick }: MonthViewProps) {
+export function MonthView({
+  events,
+  blockedSlots,
+  currentDate,
+  onDayClick,
+  onEventClick,
+}: MonthViewProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -55,6 +63,9 @@ export function MonthView({ events, currentDate, onDayClick, onEventClick }: Mon
               const end = new Date(e.endDate);
               return start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth() && start.getDate() === end.getDate();
             });
+            const blockedForDay = day
+              ? getBlockedSlotsForDay(blockedSlots, year, month, day)
+              : [];
 
             return (
               <DayCell
@@ -63,6 +74,7 @@ export function MonthView({ events, currentDate, onDayClick, onEventClick }: Mon
                 year={year}
                 month={month}
                 events={singleDayEvents}
+                blockedSlots={blockedForDay}
                 totalEventCount={dayEvents.length}
                 onDayClick={onDayClick}
                 onEventClick={onEventClick}

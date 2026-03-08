@@ -4,6 +4,7 @@ import { useMemo, useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { TimeGridEvent } from "./TimeGridEvent";
+import { getBlockedSlotsForDay, type OperatorUnavailability } from "./availability";
 import {
   DAY_START_HOUR,
   DAY_END_HOUR,
@@ -22,6 +23,7 @@ import type { CalendarEvent } from "./types";
 interface WeekTimeGridProps {
   weekDates: Date[];
   events: CalendarEvent[];
+  blockedSlots: OperatorUnavailability[];
   onEventClick: (event: CalendarEvent) => void;
   onTimeSlotClick: (date: Date, hour: number) => void;
 }
@@ -32,6 +34,7 @@ const GUTTER_WIDTH = 56;
 export function WeekTimeGrid({
   weekDates,
   events,
+  blockedSlots,
   onEventClick,
   onTimeSlotClick,
 }: WeekTimeGridProps) {
@@ -136,16 +139,34 @@ export function WeekTimeGrid({
           {weekDates.map((date, dayIdx) => {
             const isTodayCol = dayIdx === todayIndex;
             const dayColEvents = dayColumns[dayIdx];
+            const dayBlocked =
+              getBlockedSlotsForDay(
+                blockedSlots,
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+              ).length > 0;
 
             return (
               <div
                 key={date.toISOString()}
                 className={cn(
                   "relative border-r border-gray-200 dark:border-gray-700 last:border-r-0",
+                  dayBlocked && "bg-red-500/[0.05]",
                   isTodayCol && "bg-primary/[0.02]",
                 )}
                 style={{ minHeight: `${GRID_HEIGHT}px` }}
               >
+                {dayBlocked && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 border-x border-red-500/20"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(-45deg, rgba(239,68,68,0.08), rgba(239,68,68,0.08) 8px, rgba(239,68,68,0.015) 8px, rgba(239,68,68,0.015) 16px)",
+                    }}
+                  />
+                )}
                 {/* Click targets for each hour */}
                 {HOURS.map((hour) => {
                   const topPx = (hour - DAY_START_HOUR) * HOUR_HEIGHT_PX;
