@@ -3,10 +3,10 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 
 | ID    | Phase | Area                  | Item                                               | Status     | Commit |
 |-------|-------|-----------------------|----------------------------------------------------|------------|--------|
-| S3-01 | 1     | Env Wiring            | Razorpay live keys guard + end-to-end test         | ⏳ PENDING |        |
-| S3-02 | 1     | Env Wiring            | WPPConnect health check + reconnect banner         | ⏳ PENDING |        |
-| S3-03 | 1     | Env Wiring            | Google Places API → wire review sync               | ⏳ PENDING |        |
-| S3-04 | 1     | Env Wiring            | Resend email — install + base template             | ⏳ PENDING |        |
+| S3-01 | 1     | Env Wiring            | Razorpay live keys guard + end-to-end test         | ✅ DONE    | 675d120 |
+| S3-02 | 1     | Env Wiring            | WPPConnect health check + reconnect banner         | ✅ DONE    | 675d120 |
+| S3-03 | 1     | Env Wiring            | Google Places API → wire review sync               | ✅ DONE    | 675d120 |
+| S3-04 | 1     | Env Wiring            | Resend email — install + base template             | ✅ DONE    | 675d120 |
 | S3-05 | 2     | Observability         | Sentry — runtime errors + error boundaries         | ⏳ PENDING |        |
 | S3-06 | 2     | Observability         | PostHog — page views + conversion funnel events    | ⏳ PENDING |        |
 | S3-07 | 2     | Observability         | Razorpay webhook HMAC verification                 | ⏳ PENDING |        |
