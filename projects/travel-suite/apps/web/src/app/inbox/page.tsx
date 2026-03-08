@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import {
   MessageSquare,
   Zap,
@@ -28,6 +27,7 @@ import {
   type TemplateCategory,
   type WhatsAppTemplate,
 } from '@/lib/whatsapp/india-templates';
+import { useNavCounts } from '@/components/layout/useNavCounts';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +47,75 @@ interface BroadcastState {
 // ─── BROADCAST TAB ────────────────────────────────────────────────────────────
 
 function BroadcastTab() {
-  const { isDemoMode } = useDemoMode();
+  const [audienceCounts, setAudienceCounts] = useState<Record<BroadcastTarget, number>>({
+    all_clients: 0,
+    all_drivers: 0,
+    active_trips: 0,
+    custom: 0,
+  });
+  const [broadcastReady, setBroadcastReady] = useState(false);
+  const [audiencesLoading, setAudiencesLoading] = useState(true);
+  const [audienceError, setAudienceError] = useState<string | null>(null);
+  const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendSummary, setSendSummary] = useState<{ sent: number; failed: number } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAudiences = async () => {
+      try {
+        setAudiencesLoading(true);
+        const response = await fetch('/api/whatsapp/broadcast', {
+          cache: 'no-store',
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              data?: {
+                counts?: Partial<Record<BroadcastTarget, number>>;
+                canSend?: boolean;
+                connectionStatus?: string;
+              };
+              error?: string;
+            }
+          | null;
+
+        if (!response.ok || !payload?.data) {
+          throw new Error(payload?.error || 'Unable to load WhatsApp audiences');
+        }
+
+        if (!isMounted) return;
+
+        setAudienceCounts({
+          all_clients: payload.data.counts?.all_clients ?? 0,
+          all_drivers: payload.data.counts?.all_drivers ?? 0,
+          active_trips: payload.data.counts?.active_trips ?? 0,
+          custom: 0,
+        });
+        setBroadcastReady(Boolean(payload.data.canSend));
+        setAudienceError(
+          payload.data.canSend
+            ? null
+            : 'WhatsApp is not connected. Reconnect the session in Settings before sending a broadcast.',
+        );
+      } catch (error) {
+        console.error('[inbox/broadcast] Failed to load audiences', error);
+        if (!isMounted) return;
+        setAudienceError(
+          error instanceof Error ? error.message : 'Unable to load WhatsApp audiences',
+        );
+      } finally {
+        if (isMounted) {
+          setAudiencesLoading(false);
+        }
+      }
+    };
+
+    void loadAudiences();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const TARGET_OPTIONS = useMemo<Array<{
     key: BroadcastTarget;
@@ -55,12 +123,41 @@ function BroadcastTab() {
     count: number;
     icon: React.ReactNode;
     color: string;
+    helper: string;
   }>>(() => [
-    { key: 'all_clients', label: 'All Clients', count: isDemoMode ? 12 : 0, icon: <Users className="w-4 h-4" />, color: '#6366f1' },
-    { key: 'all_drivers', label: 'All Drivers', count: isDemoMode ? 4 : 0, icon: <Car className="w-4 h-4" />, color: '#f59e0b' },
-    { key: 'active_trips', label: 'Active Trips', count: isDemoMode ? 6 : 0, icon: <CalendarCheck className="w-4 h-4" />, color: '#25D366' },
-    { key: 'custom', label: 'Custom List', count: 0, icon: <List className="w-4 h-4" />, color: '#ec4899' },
-  ], [isDemoMode]);
+    {
+      key: 'all_clients',
+      label: 'All Clients',
+      count: audienceCounts.all_clients,
+      icon: <Users className="w-4 h-4" />,
+      color: '#6366f1',
+      helper: `${audienceCounts.all_clients} saved client contacts`,
+    },
+    {
+      key: 'all_drivers',
+      label: 'All Drivers',
+      count: audienceCounts.all_drivers,
+      icon: <Car className="w-4 h-4" />,
+      color: '#f59e0b',
+      helper: `${audienceCounts.all_drivers} connected driver contacts`,
+    },
+    {
+      key: 'active_trips',
+      label: 'Active Trips',
+      count: audienceCounts.active_trips,
+      icon: <CalendarCheck className="w-4 h-4" />,
+      color: '#25D366',
+      helper: `${audienceCounts.active_trips} travelers on active trips`,
+    },
+    {
+      key: 'custom',
+      label: 'Custom List',
+      count: 0,
+      icon: <List className="w-4 h-4" />,
+      color: '#ec4899',
+      helper: 'Custom uploads arrive in the next pass',
+    },
+  ], [audienceCounts]);
 
   const [state, setState] = useState<BroadcastState>({
     target: 'all_clients',
@@ -91,17 +188,57 @@ function BroadcastTab() {
     }));
   }
 
-  function handleSendNow() {
+  async function handleSendNow() {
     if (!state.selectedTemplate && !state.customMessage.trim()) return;
+    if (state.target === 'custom') {
+      setSendError('Custom lists are not available yet. Choose a saved audience.');
+      return;
+    }
+
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    setSendError(null);
+    setScheduleMessage(null);
+
+    try {
+      const response = await fetch('/api/whatsapp/broadcast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target: state.target,
+          message: messagePreview,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { data?: { sent: number; failed: number }; error?: string }
+        | null;
+
+      if (!response.ok || !payload?.data) {
+        throw new Error(payload?.error || 'Failed to send broadcast');
+      }
+
+      setSendSummary({
+        sent: payload.data.sent,
+        failed: payload.data.failed,
+      });
       setSent(true);
-      setTimeout(() => setSent(false), 3000);
-    }, 1500);
+      window.setTimeout(() => setSent(false), 3000);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Failed to send broadcast');
+    } finally {
+      setSending(false);
+    }
   }
 
   const messagePreview = state.selectedTemplate?.body ?? state.customMessage;
+  const isCustomTarget = state.target === 'custom';
+  const canSendNow =
+    Boolean(messagePreview?.trim()) &&
+    !isCustomTarget &&
+    targetOption.count > 0 &&
+    broadcastReady;
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -113,6 +250,12 @@ function BroadcastTab() {
             Send a WhatsApp message to multiple contacts at once
           </p>
         </div>
+
+        {audienceError && (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+            {audienceError}
+          </div>
+        )}
 
         {/* Target Selection */}
         <div>
@@ -138,12 +281,9 @@ function BroadcastTab() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">{opt.label}</p>
-                  {opt.key !== 'custom' && (
-                    <p className="text-xs text-slate-400">{opt.count} contacts</p>
-                  )}
-                  {opt.key === 'custom' && (
-                    <p className="text-xs text-slate-400">Upload CSV / select manually</p>
-                  )}
+                  <p className="text-xs text-slate-400">
+                    {audiencesLoading ? 'Loading audience...' : opt.helper}
+                  </p>
                 </div>
                 {state.target === opt.key && (
                   <Check className="w-4 h-4 text-[#25D366] ml-auto shrink-0" />
@@ -291,7 +431,7 @@ function BroadcastTab() {
         <div className="flex gap-3">
           <button
             onClick={handleSendNow}
-            disabled={(!state.selectedTemplate && !state.customMessage.trim()) || sending}
+            disabled={!canSendNow || sending}
             className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#1FAF54] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
           >
             {sending ? (
@@ -307,6 +447,7 @@ function BroadcastTab() {
               if (!state.scheduledDate) {
                 setState((s) => ({ ...s, scheduledDate: getTomorrowDate(), scheduledTime: '07:00', scheduled: true }));
               }
+              setScheduleMessage('Broadcast scheduling is not live yet. Use Send Now for immediate delivery.');
             }}
             disabled={!state.selectedTemplate && !state.customMessage.trim()}
             className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl border border-white/20 bg-white/8 hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors"
@@ -315,6 +456,13 @@ function BroadcastTab() {
             Schedule
           </button>
         </div>
+
+        {scheduleMessage && (
+          <p className="text-xs text-slate-400">{scheduleMessage}</p>
+        )}
+        {sendError && (
+          <p className="text-xs text-red-300">{sendError}</p>
+        )}
 
         {/* Success toast */}
         <AnimatePresence>
@@ -326,7 +474,7 @@ function BroadcastTab() {
               className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-3 rounded-xl bg-[#25D366] text-white text-sm font-semibold shadow-xl z-50"
             >
               <Check className="w-4 h-4" />
-              Broadcast sent to {targetOption.count} contacts!
+              Broadcast sent to {sendSummary?.sent ?? 0} contacts{sendSummary?.failed ? ` (${sendSummary.failed} failed)` : ''}.
             </motion.div>
           )}
         </AnimatePresence>
@@ -490,8 +638,6 @@ function TemplatesListView({ onUseTemplate }: { onUseTemplate?: (t: WhatsAppTemp
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 
-const UNREAD_COUNT = 7;
-
 const PAGE_TABS: Array<{ key: PageTab; label: string; icon: React.ReactNode }> = [
   { key: 'inbox', label: 'Inbox', icon: <MessageSquare className="w-3.5 h-3.5" /> },
   { key: 'automations', label: 'Automations', icon: <Zap className="w-3.5 h-3.5" /> },
@@ -502,6 +648,8 @@ const PAGE_TABS: Array<{ key: PageTab; label: string; icon: React.ReactNode }> =
 export default function InboxPage() {
   const [activeTab, setActiveTab] = useState<PageTab>('inbox');
   const [pendingTemplate, setPendingTemplate] = useState<WhatsAppTemplate | null>(null);
+  const counts = useNavCounts();
+  const unreadCount = counts.inboxUnread;
 
   function handleUseTemplate(template: WhatsAppTemplate) {
     setPendingTemplate(template);
@@ -510,7 +658,7 @@ export default function InboxPage() {
 
   return (
     <div
-      className="flex flex-col h-screen overflow-hidden"
+      className="flex flex-col min-h-[100dvh] overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0d1f38 100%)' }}
     >
       {/* ── Page Header ──────────────────────────────────────────────────── */}
@@ -529,12 +677,12 @@ export default function InboxPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-black text-white">Inbox</h1>
-              {UNREAD_COUNT > 0 && (
+              {unreadCount > 0 && (
                 <span
                   className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-[10px] font-black shadow-md"
                   style={{ background: 'linear-gradient(135deg, #25D366, #3b82f6)' }}
                 >
-                  {UNREAD_COUNT}
+                  {unreadCount}
                 </span>
               )}
             </div>
@@ -572,9 +720,9 @@ export default function InboxPage() {
           >
             {icon}
             {label}
-            {key === 'inbox' && UNREAD_COUNT > 0 && (
+            {key === 'inbox' && unreadCount > 0 && (
               <span className="w-4 h-4 rounded-full bg-[#25D366] text-white text-[9px] font-black flex items-center justify-center">
-                {UNREAD_COUNT}
+                {unreadCount}
               </span>
             )}
             {activeTab === key && (
