@@ -36,6 +36,8 @@ interface TripStatusSidebarProps {
   activeDay: number;
   reminderStatusByDay: Record<number, ReminderDayStatus>;
   latestDriverLocation: DriverLocationSnapshot | null;
+  onDeleteTrip: () => void;
+  deletingTrip: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +93,8 @@ export function TripStatusSidebar({
   activeDay,
   reminderStatusByDay,
   latestDriverLocation,
+  onDeleteTrip,
+  deletingTrip,
 }: TripStatusSidebarProps) {
   const activeDayReminders = reminderStatusByDay[activeDay];
   const reminderSentCount = activeDayReminders?.sent ?? 0;
@@ -173,12 +177,14 @@ export function TripStatusSidebar({
         </GlassButton>
 
         <GlassButton
+          onClick={onDeleteTrip}
+          disabled={deletingTrip}
           variant="outline"
           fullWidth
           className="border-rose-300 text-rose-600 hover:bg-rose-500 hover:text-white hover:border-rose-500"
         >
           <Trash className="w-4 h-4" />
-          Delete Trip
+          {deletingTrip ? "Deleting..." : "Delete Trip"}
         </GlassButton>
       </div>
     </div>

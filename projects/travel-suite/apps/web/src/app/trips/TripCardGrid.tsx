@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Wallet, ArrowRight, Trash2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -54,7 +53,6 @@ function gradientFor(id: string) {
 }
 
 export default function TripCardGrid({ trips }: TripCardGridProps) {
-    const supabase = createClient();
     const [items, setItems] = useState<Trip[]>(trips);
     const [deleting, setDeleting] = useState<string | null>(null);
     const { toast } = useToast();
@@ -68,17 +66,20 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
         if (!confirm("Delete this trip? All trip data will be permanently removed.")) return;
 
         setDeleting(tripId);
-        const { error } = await supabase.from("itineraries").delete().eq("id", tripId);
-        if (!error) {
+        const response = await fetch(`/api/trips/${tripId}`, {
+            method: "DELETE",
+        });
+
+        if (response.ok) {
             setItems((prev) => prev.filter((t) => t.id !== tripId));
             toast({
                 title: "Trip Deleted",
-                description: "The itinerary has been successfully removed.",
+                description: "The trip has been successfully removed.",
             });
         } else {
             toast({
                 title: "Operation Failed",
-                description: "Failed to delete trip. Please check your permissions.",
+                description: "Failed to delete trip. Please try again.",
                 variant: "error",
             });
         }

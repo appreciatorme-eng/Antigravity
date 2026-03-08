@@ -35,6 +35,8 @@ interface ItineraryTabProps {
   reminderStatusByDay: Record<number, ReminderDayStatus>;
   latestDriverLocation: DriverLocationSnapshot | null;
   busyDriversByDay: Record<number, string[]>;
+  onDeleteTrip: () => void;
+  deletingTrip: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +122,8 @@ export function ItineraryTab({
   reminderStatusByDay,
   latestDriverLocation,
   busyDriversByDay,
+  onDeleteTrip,
+  deletingTrip,
 }: ItineraryTabProps) {
   const activeDayData = getActiveDayData(itineraryDays, activeDay);
 
@@ -176,6 +180,8 @@ export function ItineraryTab({
             activeDay={activeDay}
             reminderStatusByDay={reminderStatusByDay}
             latestDriverLocation={latestDriverLocation}
+            onDeleteTrip={onDeleteTrip}
+            deletingTrip={deletingTrip}
           />
         </div>
       </div>
