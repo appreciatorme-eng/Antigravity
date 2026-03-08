@@ -5,10 +5,10 @@ Scope: projects/travel-suite/apps/web
 
 | ID | Segment | Item | Status | Commit |
 |---|---|---|---|---|
-| IM-01 | Tracker | Create implementation tracker for requested initiatives | ⏳ PENDING | |
-| IM-02 | WhatsApp → Proposal | Extract structured lead context from WhatsApp chatbot sessions | ⏳ PENDING | |
-| IM-03 | WhatsApp → Proposal | Auto-create proposal draft from qualified chat context | ⏳ PENDING | |
-| IM-04 | WhatsApp → Proposal | Inbox CTA to open/regenerate AI-created draft proposal | ⏳ PENDING | |
+| IM-01 | Tracker | Create implementation tracker for requested initiatives | ✅ DONE | 90c74c9 |
+| IM-02 | WhatsApp → Proposal | Extract structured lead context from WhatsApp chatbot sessions | ✅ DONE | ad0511c |
+| IM-03 | WhatsApp → Proposal | Auto-create proposal draft from qualified chat context | ✅ DONE | ad0511c |
+| IM-04 | WhatsApp → Proposal | Inbox CTA to open/regenerate AI-created draft proposal | ✅ DONE | ad0511c |
 | IM-05 | Reviews → Marketing | Persist review marketing assets and lifecycle state | ⏳ PENDING | |
 | IM-06 | Reviews → Marketing | Generate branded testimonial/review cards from real reviews | ⏳ PENDING | |
 | IM-07 | Reviews → Marketing | Push review assets into the social scheduling workflow | ⏳ PENDING | |
