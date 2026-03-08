@@ -14,7 +14,7 @@ Last updated: auto-updated after each commit
 | PI-03 | 🔴 NOW  | app/api/_handlers/payments/create-order/         | Payment link not server-persisted to DB            | ✅ DONE     | 507d6d5 |
 | PI-04 | 🔴 NOW  | app/api/_handlers/proposals/public/[token]/      | Proposal approval queues notification, not payment | ✅ DONE     | 507d6d5 |
 | PI-05 | 🔴 NOW  | app/billing/page.tsx:86-95                       | Hardcoded tier, alert()/mailto checkout (dead)     | ✅ DONE     | 8e8705d |
-| PI-06 | 🔴 NOW  | components/whatsapp/UnifiedInbox.tsx:490         | Thread send is local-only, no real WPPConnect send | ⏳ PENDING  |        |
+| PI-06 | 🔴 NOW  | components/whatsapp/UnifiedInbox.tsx:490         | Thread send is local-only, no real WPPConnect send | ✅ DONE     | e27f918 |
 | PI-07 | 🔴 NOW  | app/social/_components/canvas/CanvasMode.tsx:47  | Publish CTA is toast("coming soon")                | ⏳ PENDING  |        |
 | PI-08 | 🔴 NOW  | app/api/_handlers/social/publish/route.ts:74     | Returns fake publish IDs in mock mode              | ⏳ PENDING  |        |
 | PI-09 | 🔴 NOW  | app/reputation/_components/ReputationDashboard.tsx:32,95,350 | Fed entirely by MOCK_* data, save = console.log    | ⏳ PENDING  |        |
