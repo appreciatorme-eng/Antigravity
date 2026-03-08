@@ -18,6 +18,7 @@ import {
   ExternalLink,
   CheckCircle2,
   MessageCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -419,14 +420,17 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   );
   const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
   const [isLoadingConvs, setIsLoadingConvs] = useState(false);
+  const [whatsAppStatus, setWhatsAppStatus] = useState<'connected' | 'pending' | 'disconnected' | 'error'>(
+    isDemoMode ? 'connected' : 'disconnected',
+  );
 
   useEffect(() => {
     if (isDemoMode) {
       setConversations(ALL_MOCK_CONVERSATIONS);
       setSelectedId('conv_1');
+      setWhatsAppStatus('connected');
       return;
     }
-    // Real mode — fetch live conversations from the DB
     setIsLoadingConvs(true);
     fetch('/api/whatsapp/conversations')
       .then((r) => r.json())
@@ -437,6 +441,13 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       })
       .catch(() => { /* silently keep empty state on fetch failure */ })
       .finally(() => setIsLoadingConvs(false));
+
+    fetch('/api/whatsapp/status')
+      .then((r) => r.json())
+      .then((data: { status?: 'connected' | 'pending' | 'disconnected' | 'error' }) => {
+        setWhatsAppStatus(data.status ?? 'disconnected');
+      })
+      .catch(() => setWhatsAppStatus('error'));
   // Only re-run when demo mode changes; we don't want selectedId as a dep
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoMode]);
@@ -487,23 +498,101 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     return list;
   }, [conversations, channelFilter, filterTab, search, sortMode]);
 
-  function handleSendMessage(convId: string, message: string, subject?: string) {
+  async function handleSendMessage(convId: string, message: string, subject?: string) {
+    const conversation = conversations.find((item) => item.id === convId);
+    if (!conversation) return false;
+
+    if (conversation.channel !== 'whatsapp') {
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== convId) return c;
+          const localMsg: Message = {
+            id: `m_${Date.now()}`,
+            type: 'text',
+            direction: 'out',
+            body: message,
+            subject,
+            timestamp: new Date().toLocaleTimeString('en-IN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            }),
+            status: 'sent',
+          };
+          return { ...c, messages: [...c.messages, localMsg] };
+        }),
+      );
+      onSendMessage?.(convId, message);
+      return true;
+    }
+
+    if (whatsAppStatus !== 'connected') {
+      toast.error('WhatsApp is not connected. Link it from Settings before replying.');
+      setWhatsAppStatus('disconnected');
+      return false;
+    }
+
+    const optimisticId = `pending_${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      type: 'text',
+      direction: 'out',
+      body: message,
+      subject,
+      timestamp: new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      status: 'pending',
+    };
+
     setConversations((prev) =>
-      prev.map((c) => {
-        if (c.id !== convId) return c;
-        const newMsg: Message = {
-          id: `m_${Date.now()}`,
-          type: 'text',
-          direction: 'out',
-          body: message,
-          subject,
-          timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
-          status: 'sent',
-        };
-        return { ...c, messages: [...c.messages, newMsg] };
-      })
+      prev.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, optimisticMessage] } : c)),
     );
-    onSendMessage?.(convId, message);
+
+    try {
+      const response = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: conversation.contact.phone,
+          message,
+          subject,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.data?.message) {
+        throw new Error(payload?.error || 'Failed to send WhatsApp message');
+      }
+
+      const sentMessage = payload.data.message as Message;
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: c.messages.map((msg) => (msg.id === optimisticId ? sentMessage : msg)),
+              }
+            : c,
+        ),
+      );
+      setWhatsAppStatus('connected');
+      onSendMessage?.(convId, message);
+      return true;
+    } catch (error) {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? { ...c, messages: c.messages.filter((msg) => msg.id !== optimisticId) }
+            : c,
+        ),
+      );
+      setWhatsAppStatus('disconnected');
+      toast.error(error instanceof Error ? error.message : 'Failed to send WhatsApp reply');
+      return false;
+    }
   }
 
   function handleSelect(id: string) {
@@ -715,6 +804,29 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             'radial-gradient(ellipse at top, rgba(37,211,102,0.04) 0%, rgba(10,22,40,0.5) 60%)',
         }}
       >
+        {!isDemoMode && selectedChannel === 'whatsapp' && whatsAppStatus !== 'connected' && (
+          <div className="shrink-0 flex items-center justify-between gap-4 border-b border-amber-400/20 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+              <div>
+                <p className="text-sm font-semibold text-amber-200">
+                  {whatsAppStatus === 'pending'
+                    ? 'Finish linking WhatsApp to send replies'
+                    : 'WhatsApp is not connected'}
+                </p>
+                <p className="text-xs text-amber-100/75">
+                  Thread replies will stay local until the session is connected.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/settings?tab=integrations"
+              className="shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-300/10"
+            >
+              Open settings
+            </a>
+          </div>
+        )}
         {pendingTemplate && (
           <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-[#25D366]/10 border-b border-[#25D366]/20">
             <span className="text-base shrink-0">{pendingTemplate.emoji ?? '📋'}</span>
@@ -757,15 +869,18 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           contact={selectedConversation.contact}
           channel={selectedChannel}
           onSend={(msg, subject) => {
-            handleSendMessage(selectedConversation.id, msg, subject);
-            const labels: Record<ActionMode, string> = {
-              itinerary: 'Itinerary',
-              payment: 'Payment request',
-              driver: 'Driver details',
-              location: 'Location request',
-            };
-            toast.success(`${labels[ctxActionModal]} sent to ${selectedConversation.contact.name} ✓`);
-            setCtxActionModal(null);
+            return handleSendMessage(selectedConversation.id, msg, subject).then((sent) => {
+              if (sent) {
+                const labels: Record<ActionMode, string> = {
+                  itinerary: 'Itinerary',
+                  payment: 'Payment request',
+                  driver: 'Driver details',
+                  location: 'Location request',
+                };
+                toast.success(`${labels[ctxActionModal]} sent to ${selectedConversation.contact.name}`);
+              }
+              return sent;
+            });
           }}
           onClose={() => setCtxActionModal(null)}
         />
@@ -780,8 +895,12 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           contact={selectedConversation.contact}
           channel={selectedChannel}
           onSendMessage={(msg, subject) => {
-            handleSendMessage(selectedConversation.id, msg, subject);
-            setContextModal(null);
+            return handleSendMessage(selectedConversation.id, msg, subject).then((sent) => {
+              if (sent) {
+                setContextModal(null);
+              }
+              return sent;
+            });
           }}
           onClose={() => setContextModal(null)}
         />

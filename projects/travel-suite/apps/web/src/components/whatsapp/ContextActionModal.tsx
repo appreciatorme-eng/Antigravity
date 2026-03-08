@@ -30,7 +30,7 @@ interface ContextActionModalProps {
   tripName?: string;
   contact: ConversationContact;
   channel: 'whatsapp' | 'email';
-  onSendMessage?: (message: string, subject?: string) => void;
+  onSendMessage?: (message: string, subject?: string) => boolean | void | Promise<boolean | void>;
   onClose: () => void;
 }
 
@@ -464,9 +464,12 @@ export function ContextActionModal({
 }: ContextActionModalProps) {
   const config = MODAL_CONFIG[type];
 
-  function handleSend(message: string, subject?: string) {
-    onSendMessage?.(message, subject);
-    toast.success(`Quote sent to ${contact.name} ✓`);
+  async function handleSend(message: string, subject?: string) {
+    const result = await onSendMessage?.(message, subject);
+    if (result === false) {
+      return;
+    }
+    toast.success(`${config.title} sent to ${contact.name}`);
     onClose();
   }
 
