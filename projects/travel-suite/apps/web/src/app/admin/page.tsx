@@ -38,9 +38,12 @@ import RevenueChart, { type RevenueChartPoint } from "@/components/analytics/Rev
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
-    totalDrivers: number;
+    activeOperators: number;
     totalClients: number;
-    activeTrips: number;
+    totalBookings: number;
+    pendingProposals: number;
+    recoveredRevenue: number;
+    paidLinks: number;
     pendingNotifications: number;
     marketplaceViews?: number;
     marketplaceInquiries?: number;
@@ -90,28 +93,41 @@ interface HealthResponse {
     };
 }
 
-const ADMIN_REVENUE_SERIES: RevenueChartPoint[] = [
-    { monthKey: "2025-08", label: "Aug", revenue: 86000, bookings: 9, conversionRate: 38 },
-    { monthKey: "2025-09", label: "Sep", revenue: 92000, bookings: 11, conversionRate: 41 },
-    { monthKey: "2025-10", label: "Oct", revenue: 105000, bookings: 12, conversionRate: 44 },
-    { monthKey: "2025-11", label: "Nov", revenue: 98000, bookings: 10, conversionRate: 37 },
-    { monthKey: "2025-12", label: "Dec", revenue: 117000, bookings: 14, conversionRate: 46 },
-    { monthKey: "2026-01", label: "Jan", revenue: 126000, bookings: 15, conversionRate: 48 },
-];
+interface RevenueSnapshot {
+    series: RevenueChartPoint[];
+    totals: {
+        recoveredRevenue: number;
+        paidLinks: number;
+        activeOperators: number;
+        totalBookings: number;
+        pendingProposals: number;
+    };
+}
+
+const RANGE_TO_MONTHS = {
+    "3m": 3,
+    "6m": 6,
+    "1y": 12,
+} as const;
 
 export default function AdminDashboard() {
     const supabase = createClient();
     const demoFetch = useDemoFetch();
     const [stats, setStats] = useState<DashboardStats>({
-        totalDrivers: 0,
+        activeOperators: 0,
         totalClients: 0,
-        activeTrips: 0,
+        totalBookings: 0,
+        pendingProposals: 0,
+        recoveredRevenue: 0,
+        paidLinks: 0,
         pendingNotifications: 0,
         marketplaceViews: 0,
         marketplaceInquiries: 0,
         conversionRate: "0.0",
     });
     const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [revenueSeries, setRevenueSeries] = useState<RevenueChartPoint[]>([]);
+    const [revenueRange, setRevenueRange] = useState<keyof typeof RANGE_TO_MONTHS>("6m");
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<HealthResponse | null>(null);
 
@@ -126,34 +142,54 @@ export default function AdminDashboard() {
                 }
 
                 // Fetch dashboard stats via API (supports demo mode)
-                const statsRes = await demoFetch("/api/admin/dashboard/stats", {
-                    headers: authHeaders,
-                });
+                const [statsRes, revenueRes, marketRes] = await Promise.allSettled([
+                    demoFetch("/api/admin/dashboard/stats", {
+                        headers: authHeaders,
+                    }),
+                    demoFetch("/api/admin/revenue", {
+                        headers: authHeaders,
+                    }),
+                    session?.access_token
+                        ? fetch("/api/marketplace/stats", {
+                            headers: { Authorization: `Bearer ${session.access_token}` },
+                        })
+                        : Promise.resolve(null),
+                ]);
 
-                let dashStats = { totalDrivers: 0, totalClients: 0, activeTrips: 0, pendingNotifications: 0 };
-                if (statsRes.ok) {
-                    dashStats = await statsRes.json();
+                let dashStats = { totalClients: 0, pendingNotifications: 0 };
+                if (statsRes.status === "fulfilled" && statsRes.value.ok) {
+                    dashStats = await statsRes.value.json();
                 }
 
-                // Fetch marketplace stats
+                let revenueSnapshot: RevenueSnapshot = {
+                    series: [],
+                    totals: {
+                        recoveredRevenue: 0,
+                        paidLinks: 0,
+                        activeOperators: 0,
+                        totalBookings: 0,
+                        pendingProposals: 0,
+                    },
+                };
+                if (revenueRes.status === "fulfilled" && revenueRes.value.ok) {
+                    revenueSnapshot = await revenueRes.value.json();
+                }
+
                 let marketStats = null;
-                if (session?.access_token) {
-                    try {
-                        const marketRes = await fetch("/api/marketplace/stats", {
-                            headers: { "Authorization": `Bearer ${session.access_token}` }
-                        });
-                        if (marketRes.ok) {
-                            marketStats = await marketRes.json();
-                        }
-                    } catch (e) {
-                        console.error("Marketplace stats fetch failed", e);
-                    }
+                if (marketRes.status === "fulfilled" && marketRes.value?.ok) {
+                    marketStats = await marketRes.value.json();
+                } else if (marketRes.status === "rejected") {
+                    console.error("Marketplace stats fetch failed", marketRes.reason);
                 }
 
+                setRevenueSeries(revenueSnapshot.series || []);
                 setStats({
-                    totalDrivers: dashStats.totalDrivers || 0,
+                    activeOperators: revenueSnapshot.totals.activeOperators || 0,
                     totalClients: dashStats.totalClients || 0,
-                    activeTrips: dashStats.activeTrips || 0,
+                    totalBookings: revenueSnapshot.totals.totalBookings || 0,
+                    pendingProposals: revenueSnapshot.totals.pendingProposals || 0,
+                    recoveredRevenue: revenueSnapshot.totals.recoveredRevenue || 0,
+                    paidLinks: revenueSnapshot.totals.paidLinks || 0,
                     pendingNotifications: dashStats.pendingNotifications || 0,
                     marketplaceViews: marketStats?.views || 0,
                     marketplaceInquiries: marketStats?.inquiries || 0,
@@ -195,12 +231,12 @@ export default function AdminDashboard() {
                         timestamp: notif.sent_at || new Date().toISOString(),
                         status: notif.status || "sent",
                     })),
-                    ...(marketStats?.recent_inquiries || []).map((inq: { id?: string; created_at?: string; organizations?: { name?: string } }) => ({
-                        id: inq.id || Math.random().toString(),
+                    ...(marketStats?.recent_inquiries || []).map((inq: { id?: string; created_at?: string; organizations?: { name?: string } }, index: number) => ({
+                        id: inq.id || `inq-${inq.created_at || "unknown"}-${inq.organizations?.name || "partner"}-${index}`,
                         type: "inquiry" as const,
                         title: "Partner Inquiry",
                         description: `From ${inq.organizations?.name || "Unknown Partner"}`,
-                        timestamp: inq.created_at,
+                        timestamp: inq.created_at || new Date().toISOString(),
                         status: "new",
                     })),
                 ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -260,16 +296,38 @@ export default function AdminDashboard() {
         return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
     };
 
+    const formatCompactCurrency = (value: number) =>
+        new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            notation: "compact",
+            maximumFractionDigits: 1,
+        }).format(value);
+
+    const visibleRevenueSeries = revenueSeries.slice(-RANGE_TO_MONTHS[revenueRange]);
+
     const statCards = [
         {
-            label: "Active Drivers",
-            value: stats.totalDrivers,
+            label: "Recovered Revenue",
+            value: loading ? "---" : formatCompactCurrency(stats.recoveredRevenue),
+            trend: stats.paidLinks > 0 ? `${stats.paidLinks} paid links` : "",
+            trendUp: true,
+            icon: TrendingUp,
+            color: "text-emerald-600",
+            iconBg: "bg-emerald-100/50",
+            description: "Revenue recovered from verified payment links",
+            href: "/admin/invoices",
+        },
+        {
+            label: "Active Operators",
+            value: stats.activeOperators,
             trend: "",
             trendUp: true,
-            icon: Car,
+            icon: Activity,
             color: "text-indigo-600",
             iconBg: "bg-indigo-100/50",
-            description: "Active drivers in the field"
+            description: "Internal team members currently scoped to this org",
+            href: "/settings/team",
         },
         {
             label: "Client Directory",
@@ -279,28 +337,30 @@ export default function AdminDashboard() {
             icon: Users,
             color: "text-violet-600",
             iconBg: "bg-violet-100/50",
-            description: "Total registered clients"
+            description: "Total registered clients",
+            href: "/admin/clients",
         },
         {
-            label: "Active Trips",
-            value: stats.activeTrips,
+            label: "Total Bookings",
+            value: stats.totalBookings,
             trend: "",
             trendUp: true,
             icon: MapPin,
-            color: "text-emerald-600",
-            iconBg: "bg-emerald-100/50",
-            description: "Trips currently in progress"
-        },
-        {
-            label: "Marketplace Activity",
-            value: stats.marketplaceViews + " / " + stats.marketplaceInquiries,
-            trend: (stats.conversionRate || "0.0") + "% CR",
-            trendUp: true,
-            icon: Activity,
             color: "text-blue-600",
             iconBg: "bg-blue-100/50",
-            description: "Profile views & inquiries",
-            href: "/admin/marketplace/analytics"
+            description: "Trips that reached a booking state in the last 12 months",
+            href: "/trips"
+        },
+        {
+            label: "Pending Proposals",
+            value: stats.pendingProposals,
+            trend: stats.pendingNotifications > 0 ? `${stats.pendingNotifications} alerts pending` : "",
+            trendUp: true,
+            icon: MessageSquare,
+            color: "text-amber-600",
+            iconBg: "bg-amber-100/60",
+            description: "Open proposals still awaiting a client decision",
+            href: "/proposals"
         },
     ];
 
@@ -338,7 +398,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Strategic Stats Matrix */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-8">
                 {statCards.map((stat, idx) => (
                     <Link key={idx} href={stat.href || "#"} className={cn("group block", !stat.href && "cursor-default")}>
                         <GlassCard
@@ -374,9 +434,11 @@ export default function AdminDashboard() {
                                     </h3>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-4xl font-black text-secondary dark:text-white tabular-nums">
-                                            {loading ? "---" : stat.value}
+                                            {stat.value}
                                         </span>
-                                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Units</span>
+                                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                            {typeof stat.value === "number" ? "Units" : "INR"}
+                                        </span>
                                     </div>
                                 </div>
 
@@ -417,8 +479,8 @@ export default function AdminDashboard() {
                                 <span className="text-[10px] font-black text-secondary dark:text-white uppercase tracking-widest">Trips</span>
                             </div>
                             <GlassSelect
-                                value="6m"
-                                onChange={() => { }}
+                                value={revenueRange}
+                                onChange={(event) => setRevenueRange(event.target.value as keyof typeof RANGE_TO_MONTHS)}
                                 className="w-32 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest"
                                 options={[
                                     { value: '3m', label: 'Last 90 Days' },
@@ -430,7 +492,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="w-full aspect-[21/9]">
-                        <RevenueChart data={ADMIN_REVENUE_SERIES} metric="revenue" />
+                        <RevenueChart data={visibleRevenueSeries} metric="revenue" loading={loading} />
                     </div>
                 </GlassCard>
 
