@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
+import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
 
 const APPROVED_STATUSES = ["approved", "accepted", "confirmed", "converted"];
 
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
 
     const range = resolveAdminDateRange(request.nextUrl.searchParams);
     const db = admin.adminClient;
+    const sessionName = sessionNameFromOrgId(organizationId);
 
     const [
       inquiriesResult,
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       db
         .from("whatsapp_webhook_events")
         .select("id", { count: "exact", head: true })
-        .filter("metadata->>session", "eq", organizationId)
+        .filter("metadata->>session", "eq", sessionName)
         .eq("event_type", "text")
         .filter("metadata->>direction", "eq", "in")
         .gte("received_at", range.fromISO)

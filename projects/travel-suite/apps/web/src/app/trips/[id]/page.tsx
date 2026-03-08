@@ -43,6 +43,7 @@ export default function TripDetailPage() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationTitle, setNotificationTitle] = useState("Trip Update");
   const [notificationBody, setNotificationBody] = useState("");
+  const [deletingTrip, setDeletingTrip] = useState(false);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
@@ -86,6 +87,34 @@ export default function TripDetailPage() {
 
   const handleNotify = () => setNotificationOpen(true);
 
+  const handleDeleteTrip = async () => {
+    if (deletingTrip || !confirm("Delete this trip? All trip data will be permanently removed.")) {
+      return;
+    }
+
+    setDeletingTrip(true);
+    try {
+      const response = await fetch(`/api/trips/${tripId}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("Failed to delete trip");
+      }
+      toast({
+        title: "Trip deleted",
+        description: "The trip has been removed.",
+        variant: "success",
+      });
+      router.push("/trips");
+    } catch {
+      toast({
+        title: "Delete failed",
+        description: "Unable to delete this trip right now.",
+        variant: "error",
+      });
+    } finally {
+      setDeletingTrip(false);
+    }
+  };
+
   // --- Loading / error states ---
   if (isLoading) {
     return (
@@ -124,6 +153,8 @@ export default function TripDetailPage() {
             reminderStatusByDay={data?.reminderStatusByDay ?? {}}
             latestDriverLocation={data?.latestDriverLocation ?? null}
             busyDriversByDay={data?.busyDriversByDay ?? {}}
+            onDeleteTrip={handleDeleteTrip}
+            deletingTrip={deletingTrip}
           />
         );
       case "financials":

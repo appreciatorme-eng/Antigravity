@@ -62,8 +62,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
         }
 
-        console.log(`\n🔍 Scraping PDF import: ${file.name}`);
-
         // Extract raw buffer from file upload
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -80,8 +78,6 @@ export async function POST(req: Request) {
 
         const truncatedText = rawText.slice(0, 20000);
 
-        console.log(`   🧠 Sending ${truncatedText.length} chars to Groq...`);
-
         // Pass to Llama3 Groq
         const chatCompletion = await groq.chat.completions.create({
             messages: [
@@ -96,8 +92,6 @@ export async function POST(req: Request) {
 
         const itineraryText = chatCompletion.choices[0]?.message?.content || "";
         const itineraryJson = JSON.parse(itineraryText);
-
-        console.log(`   ✅ Extracted: "${itineraryJson.trip_title}"`);
 
         return NextResponse.json({
             success: true,

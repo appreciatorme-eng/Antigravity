@@ -1,59 +1,84 @@
-// Service Worker for TourOS PWA
-// Caches app shell for offline access
-// Special: trip detail pages cached for drivers in low-signal zones
+const CACHE_NAME = 'trip-portal-v2';
+const APP_SHELL = ['/', '/offline', '/manifest.json'];
 
-const CACHE_NAME = 'touros-v1'
-const APP_SHELL = [
-  '/',
-  '/trips',
-  '/inbox',
-  '/offline',
-]
-
-// Install: cache app shell
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
-  )
-  self.skipWaiting()
-})
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
+});
 
-// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
-  )
-  self.clients.claim()
-})
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+    ),
+  );
+  self.clients.claim();
+});
 
-// Fetch: network first, fallback to cache, fallback to offline page
+function isApiRequest(request) {
+  return request.url.includes('/api/');
+}
+
+function isPortalPage(request) {
+  return request.mode === 'navigate' && request.url.includes('/portal/');
+}
+
+function isStaticAsset(request) {
+  return (
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    request.destination === 'font' ||
+    request.destination === 'image'
+  );
+}
+
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return
+  if (event.request.method !== 'GET') return;
+
+  if (isApiRequest(event.request)) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/offline')),
+    );
+    return;
+  }
+
+  if (isStaticAsset(event.request)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          }
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  if (isPortalPage(event.request)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/offline'))),
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
-      .then(response => {
-        // Cache successful responses for trip pages (for drivers offline)
-        if (response.ok && event.request.url.includes('/trips/')) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone))
+      .then((response) => {
+        if (response.ok) {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
         }
-        return response
+        return response;
       })
-      .catch(() =>
-        caches.match(event.request).then(cached =>
-          cached || caches.match('/offline') || new Response('Offline', { status: 503 })
-        )
-      )
-  )
-})
-
-// Background sync for when driver comes back online
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-location') {
-    // Location updates queued while offline will sync here
-    event.waitUntil(Promise.resolve())
-  }
-})
+      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/offline'))),
+  );
+});

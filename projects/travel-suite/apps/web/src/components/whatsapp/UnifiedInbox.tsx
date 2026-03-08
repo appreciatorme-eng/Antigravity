@@ -6,6 +6,8 @@ import { useAnalytics } from '@/lib/analytics/events';
 import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { createClient } from '@/lib/supabase/client';
+import { GlassButton } from '@/components/glass/GlassButton';
+import { GlassCard } from '@/components/glass/GlassCard';
 import {
   Search,
   X,
@@ -29,7 +31,7 @@ import {
   type Conversation,
   type Message,
 } from './MessageThread';
-import type { ActionMode, ConversationContact } from './whatsapp.types';
+import type { ActionMode, ChatbotSessionSummary, ConversationContact } from './whatsapp.types';
 import {
   type ChannelConversation,
   type ChannelType,
@@ -436,6 +438,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     isDemoMode ? 'connected' : 'disconnected',
   );
   const [whatsAppHealthError, setWhatsAppHealthError] = useState<string | null>(null);
+  const [isTakingOverChatbot, setIsTakingOverChatbot] = useState(false);
 
   const loadLiveConversations = useCallback(async () => {
     setIsLoadingConvs(true);
@@ -523,6 +526,13 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
+  const activeChatbotSession =
+    selectedConversation?.channel === 'whatsapp' ? selectedConversation.chatbotSession ?? null : null;
+  const showChatbotBanner =
+    !isDemoMode &&
+    activeChatbotSession?.state !== undefined &&
+    activeChatbotSession.state !== 'handed_off' &&
+    activeChatbotSession.aiReplyCount > 0;
   const {
     suggestions: smartReplySuggestions,
     loading: smartReplyLoading,
@@ -534,6 +544,40 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   );
 
   const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);
+
+  async function handleTakeOverChatbot(session: ChatbotSessionSummary) {
+    setIsTakingOverChatbot(true);
+    try {
+      const response = await fetch(`/api/whatsapp/chatbot-sessions/${session.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: 'handed_off' }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        data?: { session?: ChatbotSessionSummary };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.data?.session) {
+        throw new Error(payload.error || 'Failed to hand conversation to a human');
+      }
+
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          conversation.id === selectedId
+            ? { ...conversation, chatbotSession: payload.data?.session ?? null }
+            : conversation,
+        ),
+      );
+      toast.success('AI handoff disabled for this conversation');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to take over this conversation',
+      );
+    } finally {
+      setIsTakingOverChatbot(false);
+    }
+  }
 
   const filteredAndSorted = useMemo(() => {
     let list = conversations;
@@ -937,6 +981,39 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             </button>
           </div>
         )}
+        {showChatbotBanner && activeChatbotSession ? (
+          <div className="shrink-0 px-4 py-3 border-b border-white/10">
+            <GlassCard
+              padding="md"
+              rounded="lg"
+              opacity="low"
+              className="border border-violet-400/30 bg-violet-500/10"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-violet-100">
+                    🤖 AI is handling this conversation
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-violet-100/80">
+                    {activeChatbotSession.state === 'proposal_ready'
+                      ? `The assistant gathered trip details and is waiting for a human follow-up. ${activeChatbotSession.aiReplyCount} AI replies sent.`
+                      : `${activeChatbotSession.aiReplyCount} AI replies sent so far. Take over to stop further automated replies.`}
+                  </p>
+                </div>
+                <GlassButton
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  loading={isTakingOverChatbot}
+                  className="shrink-0 border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
+                  onClick={() => handleTakeOverChatbot(activeChatbotSession)}
+                >
+                  Take Over
+                </GlassButton>
+              </div>
+            </GlassCard>
+          </div>
+        ) : null}
         <ErrorSection label="Inbox message thread">
           <MessageThread
             conversation={selectedConversation}

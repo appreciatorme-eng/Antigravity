@@ -354,3 +354,93 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
     }
 }
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id?: string }> }) {
+    try {
+        const auth = await requireTripReader(req);
+        if ("error" in auth) return auth.error;
+
+        if (!auth.isStaff) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const { id: tripId } = await params;
+        if (!tripId || tripId === "undefined") {
+            return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+        }
+
+        const uuidRegex = /^[0-9a-fA-F-]{36}$/;
+        if (!uuidRegex.test(tripId)) {
+            return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
+        }
+
+        let tripLookup = supabaseAdmin
+            .from("trips")
+            .select("id, organization_id, itinerary_id")
+            .eq("id", tripId);
+
+        if (auth.role !== "super_admin") {
+            if (!auth.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            tripLookup = tripLookup.eq("organization_id", auth.organizationId);
+        }
+
+        const { data: trip, error: tripError } = await tripLookup.maybeSingle();
+        if (tripError || !trip) {
+            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+        }
+
+        const cleanupTargets = [
+            "trip_driver_assignments",
+            "trip_accommodations",
+            "driver_locations",
+            "trip_location_shares",
+            "travel_documents",
+            "notification_queue",
+            "notification_logs",
+        ] as const;
+
+        const cleanupResults = await Promise.all(
+            cleanupTargets.map(async (table) => {
+                const { error } = await supabaseAdmin.from(table).delete().eq("trip_id", tripId);
+                return { table, error };
+            }),
+        );
+
+        const cleanupFailure = cleanupResults.find((result) => result.error);
+        if (cleanupFailure?.error) {
+            return NextResponse.json(
+                { error: `Failed to clean up ${cleanupFailure.table}` },
+                { status: 500 },
+            );
+        }
+
+        const { error: deleteTripError } = await supabaseAdmin
+            .from("trips")
+            .delete()
+            .eq("id", tripId);
+
+        if (deleteTripError) {
+            return NextResponse.json({ error: "Failed to delete trip" }, { status: 500 });
+        }
+
+        if (trip.itinerary_id) {
+            const { count: remainingTrips } = await supabaseAdmin
+                .from("trips")
+                .select("id", { count: "exact", head: true })
+                .eq("itinerary_id", trip.itinerary_id);
+
+            if ((remainingTrips || 0) === 0) {
+                await supabaseAdmin
+                    .from("itineraries")
+                    .delete()
+                    .eq("id", trip.itinerary_id);
+            }
+        }
+
+        return NextResponse.json({ success: true });
+    } catch {
+        return NextResponse.json({ error: "Failed to delete trip" }, { status: 500 });
+    }
+}

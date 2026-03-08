@@ -1,8 +1,8 @@
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
+import { createAdminClient } from "@/lib/supabase/admin";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
 
 export default async function SharedTripPage({
@@ -10,20 +10,17 @@ export default async function SharedTripPage({
 }: {
     params: Promise<{ token: string }>;
 }) {
-    const supabaseAdmin = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-        process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-    );
+    const supabaseAdmin = createAdminClient();
     const { token } = await params;
 
-    // Fetch the shared record AND the org info (for branding)
+    // Fetch only the safe public share payload needed to render the itinerary.
+    // Do not resolve traveler contact information from a bearer share token.
     const { data: share, error: shareError } = await supabaseAdmin
         .from("shared_itineraries")
         .select(`
             *,
             itineraries (
                 *,
-                clients ( id, profiles ( full_name ) ),
                 profiles!itineraries_user_id_fkey (
                     organizations!profiles_organization_id_fkey ( name, logo_url, primary_color )
                 )
@@ -80,10 +77,6 @@ export default async function SharedTripPage({
             profiles?: {
                 organizations?: { name?: string; logo_url?: string; primary_color?: string } | { name?: string; logo_url?: string; primary_color?: string }[];
             };
-            clients?: {
-                id: string;
-                profiles: { full_name?: string };
-            };
         } | null;
         template_id?: string;
     };
@@ -112,15 +105,6 @@ export default async function SharedTripPage({
     // Resolve the template (default to safari_story — the first premium template)
     const templateId: string = shareRecord.template_id || "safari_story";
 
-    // Resolve client data
-    let clientData: { name: string } | null = null;
-    const clientRecord = itinerary.clients;
-    if (clientRecord && clientRecord.profiles) {
-        clientData = {
-            name: clientRecord.profiles.full_name || "Valued Client",
-        };
-    }
-
     // Delegate rendering to a client component — all template components use "use client"
     // and cannot be dynamically resolved inside a server component.
     return (
@@ -129,7 +113,7 @@ export default async function SharedTripPage({
             templateId={templateId}
             itinerary={fullTripData}
             organizationName={organizationName}
-            client={clientData}
+            client={null}
         />
     );
 }

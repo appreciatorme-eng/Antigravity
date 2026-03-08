@@ -130,11 +130,6 @@ export async function POST(req: NextRequest) {
         const model = selectModel(guard.context.tier, mode);
         const config = getGenerationConfig(mode, model);
 
-        const logPrefix = mode === "poster" ? "[ai-poster]" : "[ai-image]";
-        console.log(
-            `${logPrefix} Generating: model=${model}, steps=${config.numInferenceSteps}, guidance=${config.guidanceScale}, ${width}x${height}`
-        );
-
         const results = await Promise.allSettled(
             Array.from({ length: count }, () =>
                 generateImage(model, prompt, width, height, config)

@@ -2,6 +2,15 @@ export type ActionMode = "itinerary" | "payment" | "driver" | "location";
 
 export type ContactType = "client" | "driver" | "lead";
 
+export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
+
+export interface ChatbotSessionSummary {
+  id: string;
+  state: ChatbotState;
+  aiReplyCount: number;
+  updatedAt: string;
+}
+
 export interface ConversationContact {
   id: string;
   name: string;

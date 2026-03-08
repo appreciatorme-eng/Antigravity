@@ -43,6 +43,11 @@ export default function PortalPayment({
   const paidPct = safeTotalAmount > 0 ? Math.round((safePaidAmount / safeTotalAmount) * 100) : 0;
   const fullyPaid = safeDueAmount <= 0;
   const paymentUrl = paymentLink?.paymentUrl || null;
+  const paymentStatusLabel = paymentLink
+    ? paymentLink.status.replace(/_/g, ' ')
+    : fullyPaid
+      ? 'paid'
+      : 'pending';
 
   async function handleCopyLink() {
     if (!paymentUrl) return;
@@ -110,6 +115,24 @@ export default function PortalPayment({
             >
               {formatINR(safeDueAmount)}
             </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                Latest checkout status
+              </p>
+              <p className="text-sm font-semibold text-gray-800 capitalize">
+                {paymentStatusLabel}
+              </p>
+            </div>
+            {paymentLink?.createdAt && (
+              <p className="text-xs text-gray-500 text-right">
+                Issued {new Date(paymentLink.createdAt).toLocaleString('en-IN')}
+              </p>
+            )}
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getChatbotSessionsForPhones } from "@/lib/whatsapp/chatbot-flow";
 import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,10 @@ interface ContactProfile {
     readonly full_name: string | null;
     readonly phone_normalized: string | null;
     readonly role: string | null;
+}
+
+function phoneCandidates(waId: string): string[] {
+    return Array.from(new Set([waId, `+${waId}`]));
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +99,7 @@ export async function GET(): Promise<Response> {
 
       // Look up contact profiles for all unique wa_ids
       const waIds = Array.from(grouped.keys());
-      const phones = waIds.map((id) => "+" + id);
+      const phones = Array.from(new Set(waIds.flatMap((id) => phoneCandidates(id))));
 
       const { data: profiles } = await admin
           .from("profiles")
@@ -108,12 +113,18 @@ export async function GET(): Promise<Response> {
           }
       }
 
+      const chatbotSessions = await getChatbotSessionsForPhones(
+        orgId,
+        waIds.map((waId) => `+${waId}`),
+      );
+
       // Build ChannelConversation array (one entry per unique wa_id)
       const conversations = waIds.map((waId, idx) => {
           // Reverse so messages render oldest → newest in the thread view
           const evs = (grouped.get(waId) ?? []).slice().reverse();
           const phone = "+" + waId;
-          const contactProfile = profileMap.get(phone);
+          const contactProfile = profileMap.get(phone) ?? profileMap.get(waId);
+          const chatbotSession = chatbotSessions.get(phone) ?? null;
 
           // Determine contact type from profile role
           let contactType: "client" | "driver" | "lead" = "lead";
@@ -141,6 +152,7 @@ export async function GET(): Promise<Response> {
           return {
               id: `wpp_${waId}_${idx}`,
               channel: "whatsapp" as const,
+              chatbotSession,
               contact: {
                   id: contactProfile?.id ?? `unknown_${waId}`,
                   name: contactProfile?.full_name ?? displayPhone,

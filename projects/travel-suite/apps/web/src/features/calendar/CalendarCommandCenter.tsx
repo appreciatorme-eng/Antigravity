@@ -13,7 +13,9 @@ import { DayView } from "./DayView";
 import { DayDrawer } from "./DayDrawer";
 import { EventDetailModal } from "./EventDetailModal";
 import { AddEventModal } from "./AddEventModal";
+import { BlockDatesModal } from "./BlockDatesModal";
 import { useCalendarEvents } from "./useCalendarEvents";
+import { useCalendarAvailability } from "./useCalendarAvailability";
 import { useCalendarActions } from "./useCalendarActions";
 import { ALL_EVENT_TYPES } from "./constants";
 import { getEventsForDay } from "./utils";
@@ -45,6 +47,7 @@ export function CalendarCommandCenter() {
     null,
   );
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showBlockDates, setShowBlockDates] = useState(false);
   const [addEventDefaults, setAddEventDefaults] = useState<{
     date: Date;
     hour: number | null;
@@ -56,6 +59,10 @@ export function CalendarCommandCenter() {
     isLoading,
     error,
   } = useCalendarEvents(currentDate.getMonth(), currentDate.getFullYear());
+  const {
+    data: blockedSlots = [],
+    refetch: refetchBlockedSlots,
+  } = useCalendarAvailability(currentDate.getMonth(), currentDate.getFullYear());
   useCalendarActions();
 
   // ---- Computed values ----
@@ -188,6 +195,7 @@ export function CalendarCommandCenter() {
           setAddEventDefaults({ date: currentDate, hour: null });
           setShowAddEvent(true);
         }}
+        onBlockDates={() => setShowBlockDates(true)}
       />
 
       {/* Calendar Grid */}
@@ -206,6 +214,7 @@ export function CalendarCommandCenter() {
           ) : viewMode === "month" ? (
             <MonthView
               events={filteredEvents}
+              blockedSlots={blockedSlots}
               currentDate={currentDate}
               onDayClick={setSelectedDay}
               onEventClick={setSelectedEvent}
@@ -213,6 +222,7 @@ export function CalendarCommandCenter() {
           ) : viewMode === "day" ? (
             <DayView
               events={filteredEvents}
+              blockedSlots={blockedSlots}
               currentDate={currentDate}
               onEventClick={setSelectedEvent}
               onTimeSlotClick={handleTimeSlotClick}
@@ -220,6 +230,7 @@ export function CalendarCommandCenter() {
           ) : (
             <WeekView
               events={filteredEvents}
+              blockedSlots={blockedSlots}
               currentDate={currentDate}
               onDayClick={setSelectedDay}
               onEventClick={setSelectedEvent}
@@ -259,6 +270,20 @@ export function CalendarCommandCenter() {
             onClose={() => {
               setShowAddEvent(false);
               setAddEventDefaults(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showBlockDates && (
+          <BlockDatesModal
+            isOpen={showBlockDates}
+            blockedSlots={blockedSlots}
+            initialDate={currentDate}
+            onClose={() => setShowBlockDates(false)}
+            onChanged={async () => {
+              await refetchBlockedSlots();
             }}
           />
         )}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import {
+  AlertTriangle,
   Calendar,
   Car,
   CheckCircle,
@@ -14,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import PortalItinerary, { type ItineraryDay } from '@/components/portal/PortalItinerary';
+import { PortalInstallPrompt } from '@/components/portal/PortalInstallPrompt';
 import PortalPayment from '@/components/portal/PortalPayment';
 import PortalReview from '@/components/portal/PortalReview';
 import type { PaymentLinkData } from '@/lib/payments/payment-links';
@@ -83,6 +85,7 @@ export default function PortalPage() {
   const [portal, setPortal] = useState<PortalPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -91,6 +94,7 @@ export default function PortalPage() {
       try {
         setLoading(true);
         setError(null);
+        setErrorStatus(null);
 
         const response = await fetch(`/api/portal/${token}`, {
           cache: 'no-store',
@@ -102,6 +106,7 @@ export default function PortalPage() {
         if (!response.ok || !payload?.data) {
           if (!isMounted) return;
           setError(payload?.error || 'The trip portal could not be loaded.');
+          setErrorStatus(response.status);
           setPortal(null);
           return;
         }
@@ -113,6 +118,7 @@ export default function PortalPage() {
         console.error('[portal] Failed to load portal data', loadError);
         if (isMounted) {
           setError('The trip portal could not be loaded.');
+          setErrorStatus(500);
           setPortal(null);
         }
       } finally {
@@ -184,12 +190,28 @@ export default function PortalPage() {
   }
 
   if (error || !portal) {
+    const title =
+      errorStatus === 404
+        ? 'Portal not found'
+        : errorStatus === 410
+          ? 'This trip link has expired'
+          : 'Portal unavailable';
+    const description =
+      errorStatus === 404
+        ? 'This portal link is invalid. Ask your travel operator to resend the latest trip link.'
+        : errorStatus === 410
+          ? 'This trip link has expired. Contact your travel operator for a fresh link before trying again.'
+          : error || 'The trip portal could not be loaded. Contact your travel operator for a fresh link.';
+
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
         <div className="rounded-3xl border border-red-200 bg-white shadow-sm p-10 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal unavailable</h1>
-          <p className="text-sm text-gray-600">
-            {error || 'The trip portal could not be loaded. Contact your travel operator for a fresh link.'}
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+            <AlertTriangle className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+          <p className="text-sm text-gray-600 max-w-xl mx-auto">
+            {description}
           </p>
         </div>
       </div>
@@ -283,6 +305,15 @@ export default function PortalPage() {
                 icon: Users,
               },
               { label: 'Trip Starts', value: formatDisplayDate(portal.trip.startDate), icon: Calendar },
+              {
+                label: 'Payment status',
+                value: portal.payment.paymentLink
+                  ? portal.payment.paymentLink.status.replace('_', ' ')
+                  : portal.payment.dueAmount > 0
+                    ? 'Awaiting link'
+                    : 'Paid',
+                icon: CheckCircle,
+              },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-gray-50 border border-gray-100 p-3">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -423,6 +454,7 @@ export default function PortalPage() {
       )}
 
       <div className="h-4" />
+      <PortalInstallPrompt />
     </div>
   );
 }
