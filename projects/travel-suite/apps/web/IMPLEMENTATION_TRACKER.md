@@ -25,7 +25,7 @@ Scope: projects/travel-suite/apps/web
 | IM-18 | Embeddings | Add v2 embedding storage/query path using Supabase pgvector | ✅ DONE | f3c5601 |
 | IM-19 | Embeddings | Cut semantic-cache and itinerary retrieval over to v2 | ✅ DONE | f3c5601 |
 | IM-20 | Security | Verify and preserve public-share safe payload without PII | ✅ DONE | f3c5601 |
-| IM-21 | Docs | Publish 12 critical missing documentation pages/sections | ⏳ PENDING | |
+| IM-21 | Docs | Publish 12 critical missing documentation pages/sections | ✅ DONE | 4f37e48 |
 | IM-22 | QA | Publish 10 user-flow testing scenarios with SQL verification | ⏳ PENDING | |
 | IM-23 | Planning | Publish P0→P3 priority matrix with effort estimates | ⏳ PENDING | |
 | IM-24 | Verification | Run final gauntlet and close tracker | ⏳ PENDING | |
