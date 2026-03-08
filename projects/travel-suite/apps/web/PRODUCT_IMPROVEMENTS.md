@@ -9,11 +9,11 @@ Last updated: auto-updated after each commit
 
 | ID   | Priority | File(s)                                           | Issue                                              | Status      | Commit |
 |------|----------|---------------------------------------------------|----------------------------------------------------|-------------|--------|
-| PI-01 | 🔴 NOW  | lib/payments/link-tracker.ts:31,57               | Math.random() token + localStorage ledger          | ✅ DONE     | pending |
-| PI-02 | 🔴 NOW  | components/payments/PaymentLinkButton.tsx:62,99  | Local-only link creation, +919999999999 placeholder| ✅ DONE     | pending |
-| PI-03 | 🔴 NOW  | app/api/_handlers/payments/create-order/         | Payment link not server-persisted to DB            | ✅ DONE     | pending |
-| PI-04 | 🔴 NOW  | app/api/_handlers/proposals/public/[token]/      | Proposal approval queues notification, not payment | ✅ DONE     | pending |
-| PI-05 | 🔴 NOW  | app/billing/page.tsx:86-95                       | Hardcoded tier, alert()/mailto checkout (dead)     | ⏳ PENDING  |        |
+| PI-01 | 🔴 NOW  | lib/payments/link-tracker.ts:31,57               | Math.random() token + localStorage ledger          | ✅ DONE     | 507d6d5 |
+| PI-02 | 🔴 NOW  | components/payments/PaymentLinkButton.tsx:62,99  | Local-only link creation, +919999999999 placeholder| ✅ DONE     | 507d6d5 |
+| PI-03 | 🔴 NOW  | app/api/_handlers/payments/create-order/         | Payment link not server-persisted to DB            | ✅ DONE     | 507d6d5 |
+| PI-04 | 🔴 NOW  | app/api/_handlers/proposals/public/[token]/      | Proposal approval queues notification, not payment | ✅ DONE     | 507d6d5 |
+| PI-05 | 🔴 NOW  | app/billing/page.tsx:86-95                       | Hardcoded tier, alert()/mailto checkout (dead)     | ✅ DONE     | 8e8705d |
 | PI-06 | 🔴 NOW  | components/whatsapp/UnifiedInbox.tsx:490         | Thread send is local-only, no real WPPConnect send | ⏳ PENDING  |        |
 | PI-07 | 🔴 NOW  | app/social/_components/canvas/CanvasMode.tsx:47  | Publish CTA is toast("coming soon")                | ⏳ PENDING  |        |
 | PI-08 | 🔴 NOW  | app/api/_handlers/social/publish/route.ts:74     | Returns fake publish IDs in mock mode              | ⏳ PENDING  |        |
