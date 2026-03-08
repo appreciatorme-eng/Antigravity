@@ -21,7 +21,7 @@ Last updated: auto-updated after each commit
 | PI-10 | 🔴 NOW  | app/api/_handlers/reputation/dashboard/route.ts  | avgResponseTimeHours: 12 hardcoded placeholder     | ✅ DONE     | fc11fa7 |
 | PI-11 | 🔴 NOW  | app/settings/team/page.tsx:11,97                 | Team data mocked, CRUD is local useState           | ✅ DONE     | 5129828 |
 | PI-12 | 🔴 NOW  | app/settings/marketplace/page.tsx:48,175         | Entirely mock, edit icon has no onClick            | ✅ DONE     | 5129828 |
-| PI-13 | 🔴 NOW  | app/admin/page.tsx:93                            | Revenue series hardcoded static array              | ⏳ PENDING  |        |
+| PI-13 | 🔴 NOW  | app/admin/page.tsx:93                            | Revenue series hardcoded static array              | ✅ DONE     | b5c298c |
 | PI-14 | 🟡 SOON | components/layout/Sidebar.tsx:49                 | Nav badge counts are fake/static                   | ⏳ PENDING  |        |
 | PI-15 | 🟡 SOON | components/layout/MobileNav.tsx:11               | Mirrors same mock count approach                   | ⏳ PENDING  |        |
 | PI-16 | 🟡 SOON | app/inbox/page.tsx:94                            | Broadcast send uses setTimeout simulation          | ⏳ PENDING  |        |
