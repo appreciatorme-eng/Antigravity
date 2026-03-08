@@ -9,6 +9,7 @@ import { razorpay } from './razorpay';
 import type { Order } from './razorpay';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { env } from '@/lib/config/env';
 import { logError } from '@/lib/observability/logger';
 import {
   PaymentServiceError,
@@ -757,7 +758,7 @@ export class PaymentService {
    * Verify payment signature from webhook
    */
   verifyWebhookSignature(body: string, signature: string): boolean {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const webhookSecret = env.razorpay.webhookSecret;
     if (!webhookSecret) {
       throw new PaymentServiceError({
         code: 'payments_config_error',

@@ -426,6 +426,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   const [whatsAppStatus, setWhatsAppStatus] = useState<'connected' | 'pending' | 'disconnected' | 'error'>(
     isDemoMode ? 'connected' : 'disconnected',
   );
+  const [whatsAppHealthError, setWhatsAppHealthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isDemoMode) {
@@ -445,12 +446,16 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       .catch(() => { /* silently keep empty state on fetch failure */ })
       .finally(() => setIsLoadingConvs(false));
 
-    fetch('/api/whatsapp/status')
+    fetch('/api/whatsapp/health')
       .then((r) => r.json())
-      .then((data: { status?: 'connected' | 'pending' | 'disconnected' | 'error' }) => {
-        setWhatsAppStatus(data.status ?? 'disconnected');
+      .then((data: { connected?: boolean; error?: string | null }) => {
+        setWhatsAppStatus(data.connected ? 'connected' : 'disconnected');
+        setWhatsAppHealthError(data.error ?? null);
       })
-      .catch(() => setWhatsAppStatus('error'));
+      .catch(() => {
+        setWhatsAppStatus('error');
+        setWhatsAppHealthError('Unable to reach WhatsApp right now.');
+      });
   // Only re-run when demo mode changes; we don't want selectedId as a dep
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoMode]);
@@ -642,10 +647,34 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   ];
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="relative flex h-full overflow-hidden">
+      {!isDemoMode && whatsAppStatus !== 'connected' && (
+        <div className="absolute inset-x-4 top-4 z-20 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 backdrop-blur">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+            <div>
+              <p className="text-sm font-semibold text-amber-100">WhatsApp disconnected</p>
+              <p className="text-xs text-amber-100/75">
+                {whatsAppHealthError || 'Reconnect your session in Settings to resume live replies.'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              router.push('/settings');
+            }}
+            className="shrink-0 rounded-xl border border-amber-200/20 bg-amber-100/10 px-3 py-2 text-xs font-semibold text-amber-50 transition hover:bg-amber-100/20 active:scale-[0.98]"
+          >
+            Reconnect
+          </button>
+        </div>
+      )}
       {/* ── LEFT: Conversation List ──────────────────────────────────────── */}
       <div
-        className="w-[280px] shrink-0 flex flex-col border-r border-white/10 overflow-hidden"
+        className={`w-[280px] shrink-0 flex flex-col border-r border-white/10 overflow-hidden ${
+          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
+        }`}
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
         {/* Search */}
@@ -793,7 +822,9 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
       {/* ── MIDDLE: Message Thread ───────────────────────────────────────── */}
       <div
-        className="flex-1 flex flex-col overflow-hidden"
+        className={`flex-1 flex flex-col overflow-hidden ${
+          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
+        }`}
         style={{
           background:
             'radial-gradient(ellipse at top, rgba(37,211,102,0.04) 0%, rgba(10,22,40,0.5) 60%)',
@@ -850,7 +881,9 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
       {/* ── RIGHT: Context Panel ─────────────────────────────────────────── */}
       <div
-        className="w-[240px] shrink-0 border-l border-white/10 overflow-hidden flex flex-col"
+        className={`w-[240px] shrink-0 border-l border-white/10 overflow-hidden flex flex-col ${
+          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
+        }`}
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
         <ContextPanel conversation={selectedConversation} onContextAction={handleContextAction} />

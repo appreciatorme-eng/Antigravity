@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { env } from "@/lib/config/env";
 import { fetchWithRetry } from "@/lib/network/retry";
 
 type Currency = "INR" | "USD";
@@ -99,8 +100,8 @@ export interface Invoice {
 }
 
 function getRazorpayCredentials() {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = env.razorpay.keyId;
+  const keySecret = env.razorpay.keySecret;
 
   if (!keyId || !keySecret) {
     throw new Error("RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be configured");
@@ -147,7 +148,7 @@ async function requestRazorpay<T>(
 }
 
 function validateWebhookSignature(body: string, signature: string, secret?: string) {
-  const webhookSecret = secret || process.env.RAZORPAY_WEBHOOK_SECRET;
+  const webhookSecret = secret || env.razorpay.webhookSecret;
   if (!webhookSecret) {
     throw new Error("RAZORPAY_WEBHOOK_SECRET must be configured");
   }
