@@ -17,8 +17,8 @@ Last updated: auto-updated after each commit
 | PI-06 | 🔴 NOW  | components/whatsapp/UnifiedInbox.tsx:490         | Thread send is local-only, no real WPPConnect send | ✅ DONE     | e27f918 |
 | PI-07 | 🔴 NOW  | app/social/_components/canvas/CanvasMode.tsx:47  | Publish CTA is toast("coming soon")                | ✅ DONE     | 820c076 |
 | PI-08 | 🔴 NOW  | app/api/_handlers/social/publish/route.ts:74     | Returns fake publish IDs in mock mode              | ✅ DONE     | 820c076 |
-| PI-09 | 🔴 NOW  | app/reputation/_components/ReputationDashboard.tsx:32,95,350 | Fed entirely by MOCK_* data, save = console.log    | ⏳ PENDING  |        |
-| PI-10 | 🔴 NOW  | app/api/_handlers/reputation/dashboard/route.ts  | avgResponseTimeHours: 12 hardcoded placeholder     | ⏳ PENDING  |        |
+| PI-09 | 🔴 NOW  | app/reputation/_components/ReputationDashboard.tsx:32,95,350 | Fed entirely by MOCK_* data, save = console.log    | ✅ DONE     | fc11fa7 |
+| PI-10 | 🔴 NOW  | app/api/_handlers/reputation/dashboard/route.ts  | avgResponseTimeHours: 12 hardcoded placeholder     | ✅ DONE     | fc11fa7 |
 | PI-11 | 🔴 NOW  | app/settings/team/page.tsx:11,97                 | Team data mocked, CRUD is local useState           | ⏳ PENDING  |        |
 | PI-12 | 🔴 NOW  | app/settings/marketplace/page.tsx:48,175         | Entirely mock, edit icon has no onClick            | ⏳ PENDING  |        |
 | PI-13 | 🔴 NOW  | app/admin/page.tsx:93                            | Revenue series hardcoded static array              | ⏳ PENDING  |        |
