@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
+import { AppImage } from "@/components/ui/AppImage";
 import { Wand2, Sparkles, Image as ImageLucide } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -74,7 +74,7 @@ export const PosterExtractor = ({ onExtracted, extracting }: Props) => {
             <GlassCard className="p-8 border-dashed border-2 border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 relative overflow-hidden transition-colors">
                 {extractorFile && (
                     <div className="absolute inset-0 z-0">
-                        <img src={extractorFile} alt="Target" className="w-full h-full object-cover opacity-10 blur-sm pointer-events-none" />
+                        <AppImage src={extractorFile} alt="Target" className="w-full h-full object-cover opacity-10 blur-sm pointer-events-none" fill sizes="100vw" />
                     </div>
                 )}
 
@@ -82,7 +82,7 @@ export const PosterExtractor = ({ onExtracted, extracting }: Props) => {
                     <div className="flex flex-col items-center justify-center py-12 space-y-6 relative z-10 w-full animate-fade-in-up">
                         {extractorFile ? (
                             <div className="w-48 h-64 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl overflow-hidden border-4 border-white transition-opacity hover:opacity-95">
-                                <img src={extractorFile} alt="Original" className="w-full h-full object-cover" />
+                                <AppImage src={extractorFile} alt="Original" className="w-full h-full object-cover" fill sizes="192px" />
                             </div>
                         ) : (
                             <div className="w-20 h-20 bg-white dark:bg-slate-800 shadow-sm rounded-2xl flex items-center justify-center border border-slate-100 dark:border-slate-700">

@@ -1,9 +1,9 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassInput } from "@/components/glass/GlassInput";
+import { AppImage } from "@/components/ui/AppImage";
 import { Palette, Upload, Sparkles, ToggleLeft, ToggleRight, Wand2, ImageIcon, Camera, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generateBrandPalette, type BrandPalette } from "@/lib/social/color-utils";
@@ -227,7 +227,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                 {smartResult && (
                     <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 overflow-hidden">
                         { }
-                        <img src={smartResult.image} alt="AI Generated Poster" className="w-full" />
+                        <AppImage src={smartResult.image} alt="AI Generated Poster" className="w-full" width={960} height={540} sizes="(max-width: 1024px) 100vw, 960px" />
                         <div className="p-3 bg-white dark:bg-slate-900 flex gap-2">
                             <button
                                 onClick={() => {
@@ -404,7 +404,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                                                     className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
                                                     onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
                                                 >
-                                                    <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
+                                                    <AppImage src={img.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="Background result" fill sizes="(max-width: 768px) 50vw, 320px" />
                                                     <div className="absolute inset-0 border-2 border-transparent group-hover:border-indigo-500 rounded-lg pointer-events-none transition-colors" />
                                                 </div>
                                             ))}
@@ -458,10 +458,12 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
                                                     className="aspect-video relative rounded-lg overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition-shadow bg-slate-100"
                                                     onClick={() => setTemplateData({ ...templateData, heroImage: img.url })}
                                                 >
-                                                    <img
+                                                    <AppImage
                                                         src={img.url}
                                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                         alt={`AI generated ${i + 1}`}
+                                                        fill
+                                                        sizes="(max-width: 768px) 50vw, 320px"
                                                     />
                                                     <div className="absolute inset-0 border-2 border-transparent group-hover:border-purple-500 rounded-lg pointer-events-none transition-colors" />
                                                     <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/50 rounded text-[8px] text-white font-bold backdrop-blur-sm">

@@ -79,6 +79,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.1.6",
     "@playwright/test": "^1.42.0",
     "@tailwindcss/postcss": "^4",
     "@types/jsdom": "^27.0.0",

@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
 import { sendPaymentReceipt } from '@/lib/email/notifications';
@@ -376,6 +377,9 @@ async function handlePaymentCaptured(
       method: payment.method,
     },
   });
+
+  revalidateTag('revenue', 'max');
+  revalidateTag('nav-counts', 'max');
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -420,6 +424,8 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestConte
     payment.error_description || 'Payment failed',
     { context: 'admin' }
   );
+
+  revalidateTag('nav-counts', 'max');
 }
 
 async function handleSubscriptionCharged(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

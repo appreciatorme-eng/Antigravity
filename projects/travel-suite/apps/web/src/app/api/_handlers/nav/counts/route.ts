@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
@@ -18,38 +19,9 @@ const CLOSED_PROPOSAL_STATUSES = new Set([
   "cancelled",
 ]);
 
-export async function GET(request: Request) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    const { isDemoMode, demoOrgId } = resolveDemoOrg(request);
-    const organizationId = isDemoMode ? demoOrgId : profile?.organization_id;
-
-    if (!organizationId) {
-      return NextResponse.json({
-        inboxUnread: 0,
-        proposalsPending: 0,
-        bookingsToday: 0,
-        reviewsNeedingResponse: 0,
-      });
-    }
-
+const getCachedNavCounts = unstable_cache(
+  async (organizationId: string, sessionName: string, today: string) => {
     const admin = createAdminClient();
-    const sessionName = sessionNameFromOrgId(organizationId);
-    const today = new Date().toISOString().slice(0, 10);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation_reviews is present in the live schema but not in generated admin typings yet
     const reputationAdmin = admin as any;
@@ -89,12 +61,51 @@ export async function GET(request: Request) {
       return !CLOSED_PROPOSAL_STATUSES.has(status);
     }).length;
 
-    return NextResponse.json({
+    return {
       inboxUnread: inboxUnreadResult.count ?? 0,
       proposalsPending,
       bookingsToday: bookingsTodayResult.count ?? 0,
       reviewsNeedingResponse: reviewsResult.count ?? 0,
-    });
+    };
+  },
+  ["nav-counts"],
+  { revalidate: 60, tags: ["nav-counts"] },
+);
+
+export async function GET(request: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    const { isDemoMode, demoOrgId } = resolveDemoOrg(request);
+    const organizationId = isDemoMode ? demoOrgId : profile?.organization_id;
+
+    if (!organizationId) {
+      return NextResponse.json({
+        inboxUnread: 0,
+        proposalsPending: 0,
+        bookingsToday: 0,
+        reviewsNeedingResponse: 0,
+      });
+    }
+
+    const sessionName = sessionNameFromOrgId(organizationId);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const counts = await getCachedNavCounts(organizationId, sessionName, today);
+    return NextResponse.json(counts);
   } catch (error) {
     console.error("[/api/nav/counts:GET] Unhandled error:", error);
     return NextResponse.json(

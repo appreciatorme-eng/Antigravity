@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { QRCodeSVG } from "qrcode.react";
+import { AppImage } from "@/components/ui/AppImage";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { ThemeOverlay } from "./ThemeDecorations";
 
@@ -76,7 +76,7 @@ export const CenterLayout = ({ templateData, preset }: LayoutProps) => {
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
-            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
         )}
 
         {/* Gradient overlay layer 1: bottom fade */}
@@ -101,7 +101,7 @@ export const CenterLayout = ({ templateData, preset }: LayoutProps) => {
         {/* Logo centered at top */}
         {templateData.logoUrl && (
             <div style={{ position: "absolute", top: 48, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 280), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 280), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             </div>
         )}
 
@@ -163,7 +163,7 @@ export const ElegantLayout = ({ templateData, preset }: LayoutProps) => {
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
-            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
         )}
 
         {/* Dark overlay concentrated where text sits */}
@@ -185,7 +185,7 @@ export const ElegantLayout = ({ templateData, preset }: LayoutProps) => {
             {/* Logo top-left inside frame */}
             {templateData.logoUrl && (
                 <div style={{ position: "absolute", top: 50, left: 60 }}>
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 200), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 200), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
                 </div>
             )}
 
@@ -259,7 +259,7 @@ export const SplitLayout = ({ templateData, preset }: LayoutProps) => {
 
                 {/* Logo */}
                 {templateData.logoUrl ? (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 28 }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 28 }} alt="logo" />
                 ) : (
                     <div style={{ fontSize: 26, fontWeight: 800, color: "white", letterSpacing: "0.05em", marginBottom: 28, opacity: 0.9 }}>
                         {templateData.companyName}
@@ -317,7 +317,7 @@ export const SplitLayout = ({ templateData, preset }: LayoutProps) => {
             {/* Hero image right side (55%) with gradient blend */}
             <div style={{ position: "relative", width: "55%", height: "100%" }}>
                 {templateData.heroImage ? (
-                    <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                    <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                 ) : (
                     <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)" }} />
                 )}
@@ -339,7 +339,7 @@ export const BottomLayout = ({ templateData, preset }: LayoutProps) => {
     <div className="w-full h-full relative overflow-hidden" style={{ display: "flex", flexDirection: "column", fontFamily: "Inter, sans-serif", width: "100%", height: "100%" }}>
         {/* Hero image background */}
         {templateData.heroImage && (
-            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="" />
         )}
 
         {/* Subtle top gradient for logo readability */}
@@ -351,7 +351,7 @@ export const BottomLayout = ({ templateData, preset }: LayoutProps) => {
         {/* Logo centered at top */}
         {templateData.logoUrl && (
             <div style={{ position: "absolute", top: 40, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 240), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 240), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             </div>
         )}
 
@@ -412,7 +412,7 @@ export const ReviewLayout = ({ templateData, preset }: LayoutProps) => {
     <div className="w-full h-full bg-white flex flex-col items-center justify-center p-24 text-center relative overflow-hidden text-slate-800">
         {/* Hero image as subtle background */}
         {templateData.heroImage && (
-            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.06 }} alt="" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.06 }} alt="" />
         )}
         <div className="relative z-10 w-full max-w-5xl mx-auto space-y-16">
             <div className="flex justify-center gap-2">
@@ -428,7 +428,7 @@ export const ReviewLayout = ({ templateData, preset }: LayoutProps) => {
             </div>
             <div className="pt-16 flex justify-center items-center gap-12">
                 {templateData.logoUrl ? (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 180), height: "auto", objectFit: "contain" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 180, 180), height: "auto", objectFit: "contain" }} alt="logo" />
                 ) : (
                     <p className="text-3xl font-bold" style={{ color: palette.accent }}>{templateData.companyName}</p>
                 )}
@@ -446,7 +446,7 @@ export const CarouselSlideLayout = ({ templateData, preset }: LayoutProps) => {
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", fontFamily: "Georgia, serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#faf6f0" }}>
         {/* Hero image as faded background texture */}
         {templateData.heroImage && (
-            <img src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.12, filter: "sepia(40%)" }} alt="" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.12, filter: "sepia(40%)" }} alt="" />
         )}
 
         {/* Vintage paper texture overlay */}
@@ -469,7 +469,7 @@ export const CarouselSlideLayout = ({ templateData, preset }: LayoutProps) => {
         {/* Logo at top */}
         {templateData.logoUrl && (
             <div style={{ position: "absolute", top: 64, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 10 }}>
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 200), height: "auto", objectFit: "contain", opacity: 0.7 }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 200), height: "auto", objectFit: "contain", opacity: 0.7 }} alt="logo" />
             </div>
         )}
 
@@ -539,7 +539,7 @@ export const ServiceShowcaseLayout = ({ templateData }: LayoutProps) => {
             {/* ── Logo / Company header ── */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 32, flexShrink: 0 }}>
                 {templateData.logoUrl ? (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 240), height: 72, objectFit: "contain" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 200, 240), height: 72, objectFit: "contain" }} alt="logo" />
                 ) : (
                     <div style={{ fontSize: 44, fontWeight: 900, color: "#1a2d5a", letterSpacing: 1 }}>
                         {templateData.companyName}
@@ -606,10 +606,12 @@ export const ServiceShowcaseLayout = ({ templateData }: LayoutProps) => {
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: 0 }}>
                 {templateData.heroImage && (
                     <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
-                        <img
+                        <AppImage
                             src={templateData.heroImage}
                             style={{ height: 180, objectFit: "contain", filter: "drop-shadow(0 12px 28px rgba(0,0,0,0.18))" }}
                             alt="hero"
+                            width={320}
+                            height={180}
                         />
                     </div>
                 )}
@@ -635,7 +637,7 @@ export const HeroServicesLayout = ({ templateData }: LayoutProps) => {
             {/* ── Header: Logo + Company ── */}
             <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "24px 50px", flexShrink: 0 }}>
                 {templateData.logoUrl ? (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: 60, objectFit: "contain" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: 60, objectFit: "contain" }} alt="logo" />
                 ) : null}
                 <div>
                     <div style={{ fontSize: 34, fontWeight: 900, color: "#1a3a6b" }}>{templateData.companyName}</div>
@@ -662,7 +664,7 @@ export const HeroServicesLayout = ({ templateData }: LayoutProps) => {
             {/* ── Hero image ── */}
             {templateData.heroImage && (
                 <div style={{ marginTop: 16, flexShrink: 0 }}>
-                    <img
+                    <AppImage
                         src={templateData.heroImage}
                         style={{ width: "100%", height: 320, objectFit: "cover" }}
                         alt="destination"
@@ -713,7 +715,7 @@ export const InfoSplitLayout = ({ templateData }: LayoutProps) => {
                 {/* Right panel: hero image */}
                 {templateData.heroImage && (
                     <div style={{ position: "absolute", right: 0, top: 0, width: "44%", height: "100%" }}>
-                        <img
+                        <AppImage
                             src={templateData.heroImage}
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                             alt="destination"
@@ -725,7 +727,7 @@ export const InfoSplitLayout = ({ templateData }: LayoutProps) => {
                 {/* Left panel */}
                 <div style={{ position: "relative", zIndex: 2, width: "60%", padding: "34px 50px" }}>
                     {templateData.logoUrl ? (
-                        <img
+                        <AppImage
                             src={templateData.logoUrl}
                             style={{ width: Math.min(templateData.logoWidth || 160, 200), height: 60, objectFit: "contain", marginBottom: 18, filter: "brightness(0) invert(1)" }}
                             alt="logo"
@@ -791,7 +793,7 @@ export const GradientHeroLayout = ({ templateData }: LayoutProps) => (
     <div className="w-full h-full relative overflow-hidden" style={{ fontFamily: "Arial, sans-serif" }}>
         {/* Full-bleed hero */}
         {templateData.heroImage ? (
-            <img src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
         ) : (
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0e7490 100%)" }} />
         )}
@@ -803,7 +805,7 @@ export const GradientHeroLayout = ({ templateData }: LayoutProps) => (
         {/* Logo top-left */}
         {templateData.logoUrl && (
             <div style={{ position: "absolute", top: 40, left: 50, zIndex: 10 }}>
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 200), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 200), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             </div>
         )}
 
@@ -853,7 +855,7 @@ export const DiagonalSplitLayout = ({ templateData }: LayoutProps) => {
             {/* Hero image on right diagonal */}
             {templateData.heroImage ? (
                 <div style={{ position: "absolute", top: 0, right: 0, width: "60%", height: "100%", clipPath: "polygon(25% 0, 100% 0, 100% 100%, 0% 100%)" }}>
-                    <img src={templateData.heroImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
+                    <AppImage src={templateData.heroImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, #1a2d5a 0%, transparent 40%)" }} />
                 </div>
             ) : (
@@ -863,7 +865,7 @@ export const DiagonalSplitLayout = ({ templateData }: LayoutProps) => {
             {/* Left content */}
             <div style={{ position: "relative", zIndex: 2, width: "55%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 60px 60px 60px" }}>
                 {templateData.logoUrl && (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: "auto", objectFit: "contain", marginBottom: 24, filter: "brightness(0) invert(1)" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 160, 180), height: "auto", objectFit: "contain", marginBottom: 24, filter: "brightness(0) invert(1)" }} alt="logo" />
                 )}
                 {templateData.season && (
                     <div style={{ fontSize: 22, color: "#60a5fa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 10 }}>
@@ -914,7 +916,7 @@ export const MagazineCoverLayout = ({ templateData }: LayoutProps) => (
     <div className="w-full h-full relative overflow-hidden" style={{ fontFamily: "Georgia, serif" }}>
         {/* Full cover image */}
         {templateData.heroImage ? (
-            <img src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} alt="hero" />
         ) : (
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)" }} />
         )}
@@ -924,7 +926,7 @@ export const MagazineCoverLayout = ({ templateData }: LayoutProps) => (
         {/* Top bar: logo + company */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "36px 50px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
             {templateData.logoUrl ? (
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
             ) : (
                 <div style={{ fontSize: 30, fontWeight: 700, color: "white", letterSpacing: "0.1em" }}>{templateData.companyName}</div>
             )}
@@ -977,7 +979,7 @@ export const DuotoneLayout = ({ templateData }: LayoutProps) => (
     <div className="w-full h-full relative overflow-hidden" style={{ fontFamily: "Arial, sans-serif" }}>
         {/* Hero with duotone effect (using mix-blend-mode layers) */}
         {templateData.heroImage ? (
-            <img src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) contrast(1.1)" }} alt="hero" />
+            <AppImage src={templateData.heroImage} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%) contrast(1.1)" }} alt="hero" />
         ) : (
             <div style={{ position: "absolute", inset: 0, background: "#1e293b" }} />
         )}
@@ -988,7 +990,7 @@ export const DuotoneLayout = ({ templateData }: LayoutProps) => (
         {/* Large typography */}
         <div style={{ position: "absolute", top: 50, left: 50, right: 50, zIndex: 10 }}>
             {templateData.logoUrl && (
-                <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 20 }} alt="logo" />
+                <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 20 }} alt="logo" />
             )}
             {templateData.season && (
                 <div style={{ display: "inline-block", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(4px)", padding: "6px 20px", borderRadius: 8, fontSize: 20, color: "white", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
@@ -1029,14 +1031,14 @@ export const BoldTypographyLayout = ({ templateData }: LayoutProps) => {
             {/* Subtle hero image as texture */}
             {templateData.heroImage && (
                 <div style={{ position: "absolute", top: 0, right: 0, width: "50%", height: "60%", opacity: 0.12 }}>
-                    <img src={templateData.heroImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                    <AppImage src={templateData.heroImage} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                 </div>
             )}
 
             {/* Header */}
             <div style={{ padding: "40px 60px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, position: "relative", zIndex: 2 }}>
                 {templateData.logoUrl ? (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 160), height: "auto", objectFit: "contain" }} alt="logo" />
                 ) : (
                     <div style={{ fontSize: 28, fontWeight: 900, color: "#1a2d5a", letterSpacing: 1 }}>{templateData.companyName}</div>
                 )}
@@ -1108,7 +1110,7 @@ export function CollageGridLayout({ templateData, preset }: LayoutProps) {
                 {/* Left column — 65% */}
                 <div style={{ width: "65%", height: "100%", position: "relative" }}>
                     {images[0] && (
-                        <img src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <AppImage src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     )}
                 </div>
 
@@ -1117,7 +1119,7 @@ export function CollageGridLayout({ templateData, preset }: LayoutProps) {
                     {[1, 2, 3].map((idx) => (
                         <div key={idx} style={{ flex: 1, position: "relative", overflow: "hidden" }}>
                             {images[idx] && (
-                                <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             )}
                         </div>
                     ))}
@@ -1178,7 +1180,7 @@ export function TriPanelLayout({ templateData, preset }: LayoutProps) {
                 {[0, 1, 2].map((idx) => (
                     <div key={idx} style={{ flex: 1, position: "relative", overflow: "hidden" }}>
                         {images[idx] && (
-                            <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         )}
                     </div>
                 ))}
@@ -1271,7 +1273,7 @@ export function PolaroidScatterLayout({ templateData, preset }: LayoutProps) {
                             zIndex: idx + 1,
                         }}
                     >
-                        <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 2 }} />
+                        <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 2 }} />
                     </div>
                 ) : null
             ))}
@@ -1335,7 +1337,7 @@ export function WindowGalleryLayout({ templateData, preset }: LayoutProps) {
                 {[0, 1, 2].map((idx) => (
                     <div key={idx} style={{ width: "28%", aspectRatio: "3 / 4", borderRadius: 16, overflow: "hidden", border: "3px solid rgba(255,255,255,0.3)", boxShadow: `0 8px 32px rgba(0,0,0,0.4)` }}>
                         {images[idx] ? (
-                            <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.05)" }} />
                         )}
@@ -1404,7 +1406,7 @@ export function MosaicStripLayout({ templateData, preset }: LayoutProps) {
             {/* Hero image — top 50% */}
             <div style={{ height: "50%", position: "relative", flexShrink: 0, overflow: "hidden" }}>
                 {images[0] ? (
-                    <img src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1e293b, #334155)" }} />
                 )}
@@ -1417,7 +1419,7 @@ export function MosaicStripLayout({ templateData, preset }: LayoutProps) {
                 {[1, 2, 3, 4].map((idx) => (
                     <div key={idx} style={{ flex: 1, position: "relative", overflow: "hidden" }}>
                         {images[idx] ? (
-                            <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             <div style={{ width: "100%", height: "100%", background: "rgba(30,41,59,0.8)" }} />
                         )}
@@ -1486,7 +1488,7 @@ export function WaveDividerLayout({ templateData, preset }: LayoutProps) {
             {/* Hero photo — top 58% */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "58%", overflow: "hidden" }}>
                 {templateData.heroImage ? (
-                    <img src={templateData.heroImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={templateData.heroImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #0891b2, #06b6d4)" }} />
                 )}
@@ -1497,7 +1499,7 @@ export function WaveDividerLayout({ templateData, preset }: LayoutProps) {
                 {/* Logo on photo */}
                 {templateData.logoUrl && (
                     <div style={{ position: "absolute", top: 28, right: 44 }}>
-                        <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 120, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                        <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 120, 160), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
                     </div>
                 )}
                 {/* Wave SVG mask at bottom */}
@@ -1567,7 +1569,7 @@ export function CircleAccentLayout({ templateData, preset }: LayoutProps) {
             {/* Hero photo — top 50% with wave bottom */}
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", overflow: "hidden" }}>
                 {images[0] ? (
-                    <img src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #d97706, #f59e0b)" }} />
                 )}
@@ -1581,7 +1583,7 @@ export function CircleAccentLayout({ templateData, preset }: LayoutProps) {
                 {[1, 2, 3].map((idx) => (
                     <div key={idx} style={{ width: 160, height: 160, borderRadius: 9999, overflow: "hidden", border: "4px solid white", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
                         {images[idx] ? (
-                            <img src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[idx]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             <div style={{ width: "100%", height: "100%", background: "#e2e8f0" }} />
                         )}
@@ -1620,7 +1622,7 @@ export function FloatingCardLayout({ templateData, preset }: LayoutProps) {
         <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", fontFamily: "Inter, sans-serif" }}>
             {/* Full-bleed hero */}
             {templateData.heroImage ? (
-                <img src={templateData.heroImage} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                <AppImage src={templateData.heroImage} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
                 <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "linear-gradient(135deg, #0f172a, #1e293b)" }} />
             )}
@@ -1632,7 +1634,7 @@ export function FloatingCardLayout({ templateData, preset }: LayoutProps) {
             {/* Logo top-right */}
             {templateData.logoUrl && (
                 <div style={{ position: "absolute", top: 36, right: 40, zIndex: 10 }}>
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} alt="logo" />
                 </div>
             )}
 
@@ -1685,7 +1687,7 @@ export function PremiumCollageLayout({ templateData, preset }: LayoutProps) {
                 {/* Main large photo — 60% */}
                 <div style={{ flex: 6, borderRadius: 16, overflow: "hidden" }}>
                     {images[0] ? (
-                        <img src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <AppImage src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                         <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />
                     )}
@@ -1694,14 +1696,14 @@ export function PremiumCollageLayout({ templateData, preset }: LayoutProps) {
                 <div style={{ flex: 4, display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ flex: 1, borderRadius: 12, overflow: "hidden" }}>
                         {images[1] ? (
-                            <img src={images[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />
                         )}
                     </div>
                     <div style={{ flex: 1, borderRadius: 12, overflow: "hidden" }}>
                         {images[2] ? (
-                            <img src={images[2]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <AppImage src={images[2]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         ) : (
                             <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />
                         )}
@@ -1712,7 +1714,7 @@ export function PremiumCollageLayout({ templateData, preset }: LayoutProps) {
             {/* Wide bottom photo — 18% */}
             <div style={{ position: "absolute", top: "56%", left: "4%", right: "4%", height: "16%", borderRadius: 12, overflow: "hidden" }}>
                 {images[3] ? (
-                    <img src={images[3]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={images[3]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "rgba(255,255,255,0.1)" }} />
                 )}
@@ -1751,7 +1753,7 @@ export function BannerRibbonLayout({ templateData, preset }: LayoutProps) {
             {/* Top photo strip — 28% */}
             <div style={{ height: "28%", position: "relative", overflow: "hidden", flexShrink: 0 }}>
                 {images[0] ? (
-                    <img src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={images[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1e293b, #334155)" }} />
                 )}
@@ -1760,7 +1762,7 @@ export function BannerRibbonLayout({ templateData, preset }: LayoutProps) {
             {/* Gradient banner — middle 44% */}
             <div style={{ flex: 1, background: `linear-gradient(90deg, ${pal.accent}, #f97316)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 48px", textAlign: "center" }}>
                 {templateData.logoUrl && (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 16 }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 16 }} alt="logo" />
                 )}
                 <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, color: "white", textShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
                     {destination}
@@ -1781,7 +1783,7 @@ export function BannerRibbonLayout({ templateData, preset }: LayoutProps) {
             {/* Bottom photo strip — 28% */}
             <div style={{ height: "28%", position: "relative", overflow: "hidden", flexShrink: 0 }}>
                 {images[1] ? (
-                    <img src={images[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={images[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #334155, #1e293b)" }} />
                 )}
@@ -1810,7 +1812,7 @@ export function SplitWaveLayout({ templateData, preset }: LayoutProps) {
             {/* Photo left side — diagonal cut */}
             <div style={{ position: "absolute", top: 0, left: 0, width: "55%", height: "100%", clipPath: "polygon(0 0, 100% 0, 80% 100%, 0 100%)", overflow: "hidden" }}>
                 {templateData.heroImage ? (
-                    <img src={templateData.heroImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <AppImage src={templateData.heroImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                     <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1e293b, #334155)" }} />
                 )}
@@ -1819,7 +1821,7 @@ export function SplitWaveLayout({ templateData, preset }: LayoutProps) {
             {/* Right content panel */}
             <div style={{ position: "absolute", top: 0, right: 0, width: "50%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "60px 48px 60px 32px", zIndex: 5 }}>
                 {templateData.logoUrl && (
-                    <img src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 24 }} alt="logo" />
+                    <AppImage src={templateData.logoUrl} style={{ width: Math.min(templateData.logoWidth || 140, 180), height: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", marginBottom: 24 }} alt="logo" />
                 )}
                 {season && (
                     <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "0.3em", textTransform: "uppercase" as const, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>

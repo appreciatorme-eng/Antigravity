@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -327,6 +328,8 @@ export async function POST(request: Request) {
         });
       }
     }
+
+    revalidateTag("reputation", "max");
 
     return NextResponse.json({
       synced: inserted + updated,

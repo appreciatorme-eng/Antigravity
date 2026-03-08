@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import type { Database } from "@/lib/database.types";
 import { buildRevenueSeries } from "@/lib/admin/dashboard-metrics";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type PaymentLinkRevenueRow = Pick<
   Database["public"]["Tables"]["payment_links"]["Row"],
@@ -31,21 +33,17 @@ const CLOSED_PROPOSAL_STATUSES = new Set([
 ]);
 const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
 
-export async function GET(req: NextRequest) {
-  try {
-    const admin = await requireAdmin(req);
-    if (!admin.ok) return admin.response;
-    if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-    }
-
-    const organizationId = resolveScopedOrgWithDemo(req, admin.organizationId);
-    if (!organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
-    }
-
-    const db = admin.adminClient;
-    const range = resolveAdminDateRange(req.nextUrl.searchParams, "90d");
+const getCachedRevenueSnapshot = unstable_cache(
+  async (
+    organizationId: string,
+    fromISO: string,
+    toExclusiveISO: string,
+    fromDateISO: string,
+    toDateISO: string,
+    label: string,
+    granularity: "day" | "month",
+  ) => {
+    const db = createAdminClient();
 
     const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult] = await Promise.all([
       db
@@ -53,20 +51,20 @@ export async function GET(req: NextRequest) {
         .select("amount_paise, paid_at")
         .eq("organization_id", organizationId)
         .eq("status", "paid")
-        .gte("paid_at", range.fromISO)
-        .lt("paid_at", range.toExclusiveISO),
+        .gte("paid_at", fromISO)
+        .lt("paid_at", toExclusiveISO),
       db
         .from("proposals")
         .select("created_at, status")
         .eq("organization_id", organizationId)
-        .gte("created_at", range.fromISO)
-        .lt("created_at", range.toExclusiveISO),
+        .gte("created_at", fromISO)
+        .lt("created_at", toExclusiveISO),
       db
         .from("trips")
         .select("created_at, status")
         .eq("organization_id", organizationId)
-        .gte("created_at", range.fromISO)
-        .lt("created_at", range.toExclusiveISO),
+        .gte("created_at", fromISO)
+        .lt("created_at", toExclusiveISO),
       db
         .from("profiles")
         .select("id", { count: "exact", head: true })
@@ -78,6 +76,23 @@ export async function GET(req: NextRequest) {
     if (proposalsResult.error) throw proposalsResult.error;
     if (tripsResult.error) throw tripsResult.error;
     if (activeOperatorsResult.error) throw activeOperatorsResult.error;
+
+    const range = {
+      preset: "custom",
+      from: fromDateISO.slice(0, 10),
+      to: toDateISO.slice(0, 10),
+      fromDate: new Date(fromDateISO),
+      toDate: new Date(toDateISO),
+      fromISO,
+      toISO: toDateISO,
+      toExclusiveISO,
+      dayCount: Math.max(
+        1,
+        Math.round((new Date(toDateISO).getTime() - new Date(fromDateISO).getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      ),
+      label,
+      granularity,
+    } as const;
 
     const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
     const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
@@ -95,7 +110,7 @@ export async function GET(req: NextRequest) {
       return !CLOSED_PROPOSAL_STATUSES.has(status);
     }).length;
 
-    return NextResponse.json({
+    return {
       series,
       totals: {
         recoveredRevenue,
@@ -105,11 +120,41 @@ export async function GET(req: NextRequest) {
         pendingProposals,
       },
       range: {
-        from: range.from,
-        to: range.to,
-        label: range.label,
+        from: fromDateISO.slice(0, 10),
+        to: toDateISO.slice(0, 10),
+        label,
       },
-    });
+    };
+  },
+  ["admin-revenue"],
+  { revalidate: 600, tags: ["revenue"] },
+);
+
+export async function GET(req: NextRequest) {
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
+
+    const organizationId = resolveScopedOrgWithDemo(req, admin.organizationId);
+    if (!organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
+
+    const range = resolveAdminDateRange(req.nextUrl.searchParams, "90d");
+    const response = await getCachedRevenueSnapshot(
+      organizationId,
+      range.fromISO,
+      range.toExclusiveISO,
+      range.fromDate.toISOString(),
+      range.toDate.toISOString(),
+      range.label,
+      range.granularity,
+    );
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[/api/admin/revenue:GET] Unhandled error:", error);
     return NextResponse.json(

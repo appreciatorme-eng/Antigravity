@@ -1,6 +1,10 @@
 import path from "node:path";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const projectRoot = path.resolve(import.meta.dirname);
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.unsplash.com",
@@ -63,4 +67,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
