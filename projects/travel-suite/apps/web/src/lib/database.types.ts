@@ -4494,6 +4494,101 @@ export type Database = {
           },
         ]
       }
+      whatsapp_proposal_drafts: {
+        Row: {
+          budget_inr: number | null
+          chatbot_session_id: string
+          client_id: string | null
+          created_at: string
+          destination: string | null
+          group_size: number | null
+          id: string
+          organization_id: string
+          source_context: Json
+          status: string
+          template_id: string | null
+          title: string
+          travel_dates: string | null
+          traveler_email: string | null
+          traveler_name: string | null
+          traveler_phone: string
+          trip_end_date: string | null
+          trip_start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          budget_inr?: number | null
+          chatbot_session_id: string
+          client_id?: string | null
+          created_at?: string
+          destination?: string | null
+          group_size?: number | null
+          id?: string
+          organization_id: string
+          source_context?: Json
+          status?: string
+          template_id?: string | null
+          title: string
+          travel_dates?: string | null
+          traveler_email?: string | null
+          traveler_name?: string | null
+          traveler_phone: string
+          trip_end_date?: string | null
+          trip_start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budget_inr?: number | null
+          chatbot_session_id?: string
+          client_id?: string | null
+          created_at?: string
+          destination?: string | null
+          group_size?: number | null
+          id?: string
+          organization_id?: string
+          source_context?: Json
+          status?: string
+          template_id?: string | null
+          title?: string
+          travel_dates?: string | null
+          traveler_email?: string | null
+          traveler_name?: string | null
+          traveler_phone?: string
+          trip_end_date?: string | null
+          trip_start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_chatbot_session_id_fkey"
+            columns: ["chatbot_session_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_chatbot_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_proposal_drafts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "tour_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_stage_events: {
         Row: {
           changed_by: string | null

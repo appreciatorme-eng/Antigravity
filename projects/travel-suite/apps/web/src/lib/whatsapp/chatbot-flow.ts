@@ -5,9 +5,10 @@ import crypto from "node:crypto";
 import { z } from "zod";
 
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
-import type { Database } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 import { isFeatureEnabled } from "@/lib/platform/settings";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { upsertWhatsAppProposalDraftFromCollected, getProposalDraftSummariesForSessions } from "@/lib/whatsapp/proposal-drafts.server";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
 
 export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
@@ -17,6 +18,8 @@ export type ChatbotSessionSummary = {
   state: ChatbotState;
   aiReplyCount: number;
   updatedAt: string;
+  proposalDraftId?: string | null;
+  proposalDraftStatus?: string | null;
 };
 
 type ChatbotSessionRow = Database["public"]["Tables"]["whatsapp_chatbot_sessions"]["Row"];
@@ -339,6 +342,11 @@ export async function getChatbotSessionsForPhones(
     throw error;
   }
 
+  const draftSummaries = await getProposalDraftSummariesForSessions(
+    organizationId,
+    (data || []).map((row) => row.id),
+  );
+
   return new Map(
     (data || []).map((row) => [
       row.phone,
@@ -347,6 +355,8 @@ export async function getChatbotSessionsForPhones(
         state: row.state as ChatbotState,
         aiReplyCount: row.ai_reply_count,
         updatedAt: row.updated_at,
+        proposalDraftId: draftSummaries.get(row.id)?.id ?? null,
+        proposalDraftStatus: draftSummaries.get(row.id)?.status ?? null,
       },
     ]),
   );
@@ -479,6 +489,20 @@ export async function processChatbotMessage(
       updated_at: now,
     })
     .eq("id", session.id);
+
+  if (nextState === "proposal_ready") {
+    try {
+      await upsertWhatsAppProposalDraftFromCollected({
+        organizationId: args.organizationId,
+        chatbotSessionId: session.id,
+        travelerPhone: args.phone,
+        collected: mergedCollected,
+        sourceContext: nextContext as Json,
+      });
+    } catch (proposalDraftError) {
+      console.error("[whatsapp/chatbot-flow] failed to create proposal draft:", proposalDraftError);
+    }
+  }
 
   return {
     reply,

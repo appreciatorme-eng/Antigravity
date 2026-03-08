@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAnalytics } from '@/lib/analytics/events';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getOverlappingAvailability,
   type OperatorUnavailability,
@@ -71,6 +71,23 @@ interface PricingSuggestion {
   sampleSize: number;
 }
 
+interface WhatsAppProposalDraft {
+  id: string;
+  clientId: string | null;
+  templateId: string | null;
+  travelerName: string | null;
+  travelerPhone: string;
+  travelerEmail: string | null;
+  destination: string | null;
+  travelDates: string | null;
+  tripStartDate: string | null;
+  tripEndDate: string | null;
+  groupSize: number | null;
+  budgetInr: number | null;
+  title: string;
+  status: string;
+}
+
 function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
   if (payload?.code !== 'FEATURE_LIMIT_EXCEEDED') {
     return fallback;
@@ -87,12 +104,17 @@ function formatFeatureLimitError(payload: any, fallback: string) { // eslint-dis
 
 export default function CreateProposalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const analytics = useAnalytics();
+  const whatsappDraftId = searchParams.get('whatsappDraft');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientsError, setClientsError] = useState<string | null>(null);
+  const [loadingWhatsAppDraft, setLoadingWhatsAppDraft] = useState(false);
+  const [whatsappDraft, setWhatsAppDraft] = useState<WhatsAppProposalDraft | null>(null);
+  const appliedWhatsAppDraftRef = useRef<string | null>(null);
 
   // Form state
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -233,6 +255,88 @@ export default function CreateProposalPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!whatsappDraftId) {
+      setWhatsAppDraft(null);
+      appliedWhatsAppDraftRef.current = null;
+      return;
+    }
+
+    const controller = new AbortController();
+    setLoadingWhatsAppDraft(true);
+
+    fetch(`/api/whatsapp/proposal-drafts/${encodeURIComponent(whatsappDraftId)}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((response) =>
+        response.json().then((payload) => ({ ok: response.ok, payload })),
+      )
+      .then(({ ok, payload }) => {
+        if (!ok || !payload?.data?.draft) {
+          throw new Error(payload?.error || 'Failed to load WhatsApp proposal draft');
+        }
+        setWhatsAppDraft(payload.data.draft as WhatsAppProposalDraft);
+      })
+      .catch((draftError) => {
+        if (draftError instanceof Error && draftError.name === 'AbortError') {
+          return;
+        }
+        setWhatsAppDraft(null);
+        setError(
+          draftError instanceof Error
+            ? draftError.message
+            : 'Failed to load WhatsApp proposal draft',
+        );
+      })
+      .finally(() => setLoadingWhatsAppDraft(false));
+
+    return () => controller.abort();
+  }, [whatsappDraftId]);
+
+  useEffect(() => {
+    if (!whatsappDraft || appliedWhatsAppDraftRef.current === whatsappDraft.id) {
+      return;
+    }
+
+    if (whatsappDraft.clientId) {
+      setSelectedClientId(whatsappDraft.clientId);
+    }
+    if (whatsappDraft.templateId) {
+      setSelectedTemplateId((current) => current || whatsappDraft.templateId || '');
+    }
+    if (whatsappDraft.title) {
+      setProposalTitle((current) => current || whatsappDraft.title);
+    }
+    if (whatsappDraft.tripStartDate) {
+      setTripStartDate((current) => current || whatsappDraft.tripStartDate || '');
+    }
+    if (whatsappDraft.tripEndDate) {
+      setTripEndDate((current) => current || whatsappDraft.tripEndDate || '');
+    }
+
+    setNewClient((current) => ({
+      full_name: current.full_name || whatsappDraft.travelerName || '',
+      email: current.email || whatsappDraft.travelerEmail || '',
+      phone: current.phone || whatsappDraft.travelerPhone || '',
+    }));
+
+    appliedWhatsAppDraftRef.current = whatsappDraft.id;
+  }, [whatsappDraft]);
+
+  useEffect(() => {
+    if (!whatsappDraft?.clientId) {
+      return;
+    }
+
+    const draftClient = clients.find((client) => client.id === whatsappDraft.clientId);
+    if (!draftClient) {
+      return;
+    }
+
+    setClientQuery((current) => current || getClientLabel(draftClient));
+  }, [clients, whatsappDraft?.clientId]);
 
   useEffect(() => {
     const template = templates.find((item) => item.id === selectedTemplateId);
@@ -684,6 +788,47 @@ export default function CreateProposalPage() {
             Open Billing
           </Link>
         </div>
+      )}
+
+      {loadingWhatsAppDraft && (
+        <GlassCard padding="md" rounded="xl" opacity="high" className="border-[#eadfcd] bg-[#fffdf8]">
+          <p className="text-sm text-[#6f5b3e]">Loading WhatsApp lead context…</p>
+        </GlassCard>
+      )}
+
+      {whatsappDraft && (
+        <GlassCard padding="md" rounded="xl" opacity="high" className="border-[#eadfcd] bg-[#fffdf8]">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <GlassBadge variant="secondary">Prefilled from WhatsApp</GlassBadge>
+                <span className="text-xs uppercase tracking-wide text-[#6f5b3e]">
+                  Draft status: {whatsappDraft.status}
+                </span>
+              </div>
+              <p className="mt-2 text-sm font-semibold text-[#1b140a]">{whatsappDraft.title}</p>
+              <p className="mt-1 text-sm text-[#6f5b3e]">
+                {[
+                  whatsappDraft.destination,
+                  whatsappDraft.travelDates,
+                  whatsappDraft.groupSize ? `${whatsappDraft.groupSize} travellers` : null,
+                  whatsappDraft.budgetInr
+                    ? `Budget ₹${whatsappDraft.budgetInr.toLocaleString('en-IN')}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' • ')}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#6f5b3e]">
+              <p className="font-medium text-[#1b140a]">
+                {whatsappDraft.travelerName || 'WhatsApp lead'}
+              </p>
+              <p>{whatsappDraft.travelerPhone}</p>
+              {whatsappDraft.travelerEmail ? <p>{whatsappDraft.travelerEmail}</p> : null}
+            </div>
+          </div>
+        </GlassCard>
       )}
 
       {/* Client Selection */}

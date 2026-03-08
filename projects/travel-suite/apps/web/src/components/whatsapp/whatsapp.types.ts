@@ -9,6 +9,8 @@ export interface ChatbotSessionSummary {
   state: ChatbotState;
   aiReplyCount: number;
   updatedAt: string;
+  proposalDraftId?: string | null;
+  proposalDraftStatus?: string | null;
 }
 
 export interface ConversationContact {
