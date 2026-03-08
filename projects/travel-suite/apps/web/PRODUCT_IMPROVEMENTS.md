@@ -29,3 +29,25 @@ Last updated: auto-updated after each commit
 | PI-18 | 🟡 SOON | components/payments/RazorpayModal.tsx:56,318     | Fake QR generation, simulated success/failure      | ✅ DONE     | 076fa42 |
 | PI-19 | 🔵 LATER| app/api/_handlers/reputation/                    | No real review-platform aggregation endpoint       | ✅ DONE     | df89725 |
 | PI-20 | 🔵 LATER| Global timezone handling                         | No TZ-aware date rendering strategy                | ✅ DONE     | 8fd1ea8 |
+
+## Sprint Summary
+- Items completed: 20/20
+- Commits:
+  - `159ad17` tracker initialized
+  - `507d6d5` PI-01 through PI-04 payments foundation
+  - `8e8705d` PI-05 billing page
+  - `e27f918` PI-06 inbox outbound send
+  - `820c076` PI-07 through PI-08 social publish flow
+  - `fc11fa7` PI-09 through PI-10 reputation dashboard
+  - `5129828` PI-11 through PI-12 team and marketplace settings
+  - `b5c298c` PI-13 admin revenue
+  - `9a4ee9d` PI-14 through PI-15 nav badge counts
+  - `12ca7c3` PI-16 through PI-17 broadcast and traveler portal
+  - `076fa42` PI-18 real Razorpay checkout
+  - `df89725` PI-19 review sync
+  - `8fd1ea8` PI-20 timezone strategy
+  - `444a001`, `44f1614`, `3855cdc`, `40e429e`, `5f33151`, `c3fb941`, `5201de8`, `0f874ff`, `63303f7`, `95ca852`, `8c18109` tracker updates
+- Final score estimate: ~85/100
+- Remaining tech debt:
+  - Timezone preference is stored in Supabase auth user metadata plus local storage for web scope delivery; move it into a shared profile record if mobile and backend services need the same source of truth.
+  - Social publish currently uses the honest schedule-for-review path unless a real platform connection is available; direct provider posting can be layered on without changing the UI contract.
