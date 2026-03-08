@@ -262,7 +262,7 @@ export function CanvasEditorPanel({
             className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
             <Send className="w-4 h-4" />
-            Publish
+            Queue Review
           </button>
         </div>
       </div>
