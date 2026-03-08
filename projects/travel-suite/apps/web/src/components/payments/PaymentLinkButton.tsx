@@ -13,8 +13,12 @@ import {
 import PaymentTracker from './PaymentTracker'
 
 interface PaymentLinkButtonProps {
-  tripId: string
+  proposalId?: string
+  bookingId?: string
+  clientId?: string
   clientName: string
+  clientPhone?: string | null
+  clientEmail?: string | null
   amount: number // paise
   description?: string
   onLinkCreated?: (token: string) => void
@@ -32,8 +36,12 @@ function timeAgo(isoString: string): string {
 }
 
 export default function PaymentLinkButton({
-  tripId,
+  proposalId,
+  bookingId,
+  clientId,
   clientName,
+  clientPhone,
+  clientEmail,
   amount,
   description = 'Trip payment',
   onLinkCreated,
@@ -42,27 +50,34 @@ export default function PaymentLinkButton({
   const [link, setLink] = useState<PaymentLinkData | null>(null)
   const [copied, setCopied] = useState(false)
   const [showTracker, setShowTracker] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const refreshLink = useCallback(() => {
+  const refreshLink = useCallback(async () => {
     if (!link?.token) return
-    const fresh = getPaymentLink(link.token)
+    const fresh = await getPaymentLink(link.token)
     if (fresh) setLink(fresh)
   }, [link?.token])
 
   useEffect(() => {
     if (state !== 'created') return
-    const interval = setInterval(refreshLink, 5000)
+    const interval = setInterval(() => {
+      void refreshLink()
+    }, 5000)
     return () => clearInterval(interval)
   }, [state, refreshLink])
 
-  function handleCreate() {
+  async function handleCreate() {
     setState('creating')
-    // Small delay for UX feel
-    setTimeout(() => {
-      const newLink = createPaymentLink({
-        tripId,
+    setShareError(null)
+    try {
+      const newLink = await createPaymentLink({
+        proposalId,
+        bookingId,
+        clientId,
         clientName,
+        clientPhone: clientPhone || undefined,
+        clientEmail: clientEmail || undefined,
         amount,
         currency: 'INR',
         description,
@@ -70,12 +85,17 @@ export default function PaymentLinkButton({
       setLink(newLink)
       setState('created')
       onLinkCreated?.(newLink.token)
-    }, 700)
+    } catch (error) {
+      console.error('[PaymentLinkButton] create failed:', error)
+      setState('idle')
+      setShareError(error instanceof Error ? error.message : 'Failed to create payment link')
+    }
   }
 
   function getPortalUrl(token: string): string {
-    if (typeof window === 'undefined') return `/portal/${token}?pay=1`
-    return `${window.location.origin}/portal/${token}?pay=1`
+    if (link?.paymentUrl) return link.paymentUrl
+    if (typeof window === 'undefined') return `/pay/${token}`
+    return `${window.location.origin}/pay/${token}`
   }
 
   function handleCopyLink() {
@@ -88,6 +108,12 @@ export default function PaymentLinkButton({
 
   function handleWhatsApp() {
     if (!link) return
+    const sharePhone = link.clientPhone || clientPhone
+    if (!sharePhone) {
+      setShareError('Add the client WhatsApp number before sharing this payment link.')
+      return
+    }
+
     const url = getPortalUrl(link.token)
     const msg = encodeURIComponent(
       `Hi ${clientName}! 🙏\n\nHere is your secure payment link for your trip:\n\n` +
@@ -96,8 +122,8 @@ export default function PaymentLinkButton({
         `The link is valid for 7 days. Please complete the payment at your earliest convenience.\n\n` +
         `Thank you!`
     )
-    // Placeholder number — replace with real operator number in production
-    window.open(`https://wa.me/+919999999999?text=${msg}`, '_blank')
+    const digits = sharePhone.replace(/\D/g, '')
+    window.open(`https://wa.me/${digits}?text=${msg}`, '_blank')
   }
 
   // Status badge
@@ -142,14 +168,19 @@ export default function PaymentLinkButton({
     <div className="relative">
       {/* Idle state */}
       {state === 'idle' && (
-        <button
-          type="button"
-          onClick={handleCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors backdrop-blur-sm"
-        >
-          <span>💳</span>
-          Create Payment Link
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              void handleCreate()
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors backdrop-blur-sm"
+          >
+            <span>💳</span>
+            Create Payment Link
+          </button>
+          {shareError && <p className="text-xs text-red-300">{shareError}</p>}
+        </div>
       )}
 
       {/* Creating state */}
@@ -199,6 +230,7 @@ export default function PaymentLinkButton({
 
           {/* Status badge */}
           {renderStatusBadge()}
+          {shareError && <p className="text-xs text-red-300">{shareError}</p>}
         </div>
       )}
 

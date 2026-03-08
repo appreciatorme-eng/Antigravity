@@ -2181,6 +2181,7 @@ export type Database = {
           invoice_id: string | null
           metadata: Json | null
           organization_id: string | null
+          payment_link_id: string | null
           status: string | null
           subscription_id: string | null
         }
@@ -2196,6 +2197,7 @@ export type Database = {
           invoice_id?: string | null
           metadata?: Json | null
           organization_id?: string | null
+          payment_link_id?: string | null
           status?: string | null
           subscription_id?: string | null
         }
@@ -2211,6 +2213,7 @@ export type Database = {
           invoice_id?: string | null
           metadata?: Json | null
           organization_id?: string | null
+          payment_link_id?: string | null
           status?: string | null
           subscription_id?: string | null
         }
@@ -2230,10 +2233,125 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_events_payment_link_id_fkey"
+            columns: ["payment_link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_events_subscription_id_fkey"
             columns: ["subscription_id"]
             isOneToOne: false
             referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_links: {
+        Row: {
+          amount_paise: number
+          booking_id: string | null
+          client_email: string | null
+          client_id: string | null
+          client_name: string | null
+          client_phone: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          organization_id: string
+          paid_at: string | null
+          proposal_id: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          status: string
+          token: string
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          amount_paise: number
+          booking_id?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          organization_id: string
+          paid_at?: string | null
+          proposal_id?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          amount_paise?: number
+          booking_id?: string | null
+          client_email?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          organization_id?: string
+          paid_at?: string | null
+          proposal_id?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_links_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
         ]

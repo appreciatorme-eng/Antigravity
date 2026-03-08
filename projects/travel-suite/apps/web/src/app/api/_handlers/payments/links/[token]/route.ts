@@ -8,10 +8,6 @@ import {
 } from "@/lib/payments/payment-links.server";
 
 const tokenSchema = z.string().min(8).max(200);
-const eventSchema = z.object({
-  event: z.enum(["created", "sent", "viewed", "reminder_sent", "paid", "expired", "cancelled"]),
-  metadata: z.record(z.string(), z.string()).optional(),
-});
 
 export async function GET(
   request: NextRequest,
@@ -30,10 +26,10 @@ export async function GET(
       return apiError("Payment link not found", 404);
     }
 
-    return apiSuccess(link);
+    return apiSuccess({ link });
   } catch (error) {
-    console.error("[payments/track/:token] load failed:", error);
-    return apiError("Failed to load payment status", 500);
+    console.error("[payments/links/:token] load failed:", error);
+    return apiError("Failed to load payment link", 500);
   }
 }
 
@@ -49,17 +45,25 @@ export async function POST(
     }
 
     const body = await request.json().catch(() => null);
-    const parsedBody = eventSchema.safeParse(body);
-    if (!parsedBody.success) {
-      return apiError("Invalid payment tracking payload", 400);
+    const event = typeof body?.event === "string" ? body.event : "";
+    const metadata =
+      body?.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? Object.fromEntries(
+            Object.entries(body.metadata as Record<string, unknown>).flatMap(([key, value]) =>
+              typeof value === "string" && value.trim() ? [[key, value]] : [],
+            ),
+          )
+        : undefined;
+
+    if (event !== "viewed" && event !== "sent" && event !== "reminder_sent" && event !== "expired") {
+      return apiError("Unsupported payment link event", 400);
     }
 
     const admin = createAdminClient();
     const link = await recordPaymentLinkEvent(admin, {
       token: parsedToken.data,
-      event: parsedBody.data.event,
-      metadata: parsedBody.data.metadata,
-      razorpayPaymentId: parsedBody.data.metadata?.razorpay_payment_id || null,
+      event,
+      metadata,
       baseUrl: new URL(request.url).origin,
     });
 
@@ -67,9 +71,9 @@ export async function POST(
       return apiError("Payment link not found", 404);
     }
 
-    return apiSuccess(link);
+    return apiSuccess({ link });
   } catch (error) {
-    console.error("[payments/track/:token] update failed:", error);
-    return apiError("Failed to update payment status", 500);
+    console.error("[payments/links/:token] event failed:", error);
+    return apiError("Failed to update payment link", 500);
   }
 }
