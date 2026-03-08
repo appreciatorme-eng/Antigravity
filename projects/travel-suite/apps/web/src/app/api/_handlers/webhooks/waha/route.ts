@@ -17,6 +17,13 @@ import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
+import {
+    findInternalWhatsAppProfile,
+    hasRecentHumanReply,
+    isWhatsAppChatbotEnabled,
+    processChatbotMessage,
+    sendChatbotReply,
+} from "@/lib/whatsapp/chatbot-flow";
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 import { validateWahaWebhookSecret } from "./secret";
 
@@ -163,11 +170,80 @@ export async function POST(request: Request): Promise<Response> {
             },
         });
 
-        await handleWhatsAppMessage(waId, payload.body, senderPhone).catch(
-            (err) => {
-                console.error("[webhooks/waha] message processing error:", err);
+        const { data: connection } = await admin
+            .from("whatsapp_connections")
+            .select("organization_id, session_name, session_token")
+            .eq("session_name", event.session)
+            .maybeSingle();
+
+        if (!connection?.organization_id) {
+            return NextResponse.json({ ok: true });
+        }
+
+        const organizationId = connection.organization_id as string;
+        const internalProfile = await findInternalWhatsAppProfile(
+            organizationId,
+            senderPhone,
+        ).catch((error) => {
+            console.error("[webhooks/waha] failed to resolve whatsapp profile:", error);
+            return null;
+        });
+
+        const isInternalOperator =
+            internalProfile?.role === "admin" || internalProfile?.role === "super_admin";
+
+        if (isInternalOperator) {
+            await handleWhatsAppMessage(waId, payload.body, senderPhone).catch(
+                (err) => {
+                    console.error("[webhooks/waha] message processing error:", err);
+                },
+            );
+            return NextResponse.json({ ok: true });
+        }
+
+        const chatbotEnabled = await isWhatsAppChatbotEnabled().catch((error) => {
+            console.error("[webhooks/waha] failed to resolve chatbot flag:", error);
+            return false;
+        });
+
+        if (!chatbotEnabled || !connection.session_token) {
+            return NextResponse.json({ ok: true });
+        }
+
+        const recentHumanReply = await hasRecentHumanReply(event.session, waId).catch(
+            (error) => {
+                console.error("[webhooks/waha] failed to inspect recent human reply:", error);
+                return true;
             },
         );
+
+        if (recentHumanReply) {
+            return NextResponse.json({ ok: true });
+        }
+
+        const chatbotResult = await processChatbotMessage({
+            phone: senderPhone,
+            incomingMessage: payload.body,
+            organizationId,
+        }).catch((error) => {
+            console.error("[webhooks/waha] chatbot processing error:", error);
+            return null;
+        });
+
+        if (!chatbotResult?.reply) {
+            return NextResponse.json({ ok: true });
+        }
+
+        await sendChatbotReply({
+            organizationId,
+            sessionName: event.session,
+            sessionToken: connection.session_token,
+            waId,
+            chatbotSessionId: chatbotResult.sessionId,
+            reply: chatbotResult.reply,
+        }).catch((error) => {
+            console.error("[webhooks/waha] failed to send chatbot reply:", error);
+        });
     }
 
     return NextResponse.json({ ok: true });

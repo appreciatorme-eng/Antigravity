@@ -12,11 +12,11 @@ Branch: codex/sprint-4-and-audit
 | SP4-07 | Portal Real DB       | portal/[token]/page.tsx fetches from DB not mock       | ✅ DONE    |        |
 | SP4-08 | Portal Real DB       | 404 page for invalid/expired tokens                    | ✅ DONE    |        |
 | SP4-09 | Portal Real DB       | Payment tracker in portal shows real payment_links row | ✅ DONE    |        |
-| SP4-10 | WhatsApp AI Chatbot  | Inbound waha webhook pipes to channel-adapters/whatsapp| ⏳ PENDING |        |
-| SP4-11 | WhatsApp AI Chatbot  | chatbot-flow.ts: state machine (new/qualifying/proposal)| ⏳ PENDING |        |
-| SP4-12 | WhatsApp AI Chatbot  | Conversation state persisted in whatsapp_sessions table | ⏳ PENDING |        |
-| SP4-13 | WhatsApp AI Chatbot  | Auto-reply cap: max 5 AI replies, then hand off to human| ⏳ PENDING |        |
-| SP4-14 | WhatsApp AI Chatbot  | Human takeover banner in inbox when AI is active       | ⏳ PENDING |        |
+| SP4-10 | WhatsApp AI Chatbot  | Inbound waha webhook pipes to channel-adapters/whatsapp| ✅ DONE    |        |
+| SP4-11 | WhatsApp AI Chatbot  | chatbot-flow.ts: state machine (new/qualifying/proposal)| ✅ DONE    |        |
+| SP4-12 | WhatsApp AI Chatbot  | Conversation state persisted in whatsapp_sessions table | ✅ DONE    |        |
+| SP4-13 | WhatsApp AI Chatbot  | Auto-reply cap: max 5 AI replies, then hand off to human| ✅ DONE    |        |
+| SP4-14 | WhatsApp AI Chatbot  | Human takeover banner in inbox when AI is active       | ✅ DONE    |        |
 | SP4-15 | Traveler PWA         | public/manifest.json with correct icons + theme_color  | ⏳ PENDING |        |
 | SP4-16 | Traveler PWA         | public/sw.js: cache portal shell + offline fallback    | ⏳ PENDING |        |
 | SP4-17 | Traveler PWA         | layout.tsx: manifest link + SW registration            | ⏳ PENDING |        |

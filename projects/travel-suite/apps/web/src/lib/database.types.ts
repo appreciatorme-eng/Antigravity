@@ -4444,6 +4444,56 @@ export type Database = {
           },
         ]
       }
+      whatsapp_chatbot_sessions: {
+        Row: {
+          ai_reply_count: number
+          context: Json
+          created_at: string
+          handed_off_at: string | null
+          id: string
+          last_ai_reply_at: string | null
+          last_message_at: string | null
+          organization_id: string
+          phone: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          ai_reply_count?: number
+          context?: Json
+          created_at?: string
+          handed_off_at?: string | null
+          id?: string
+          last_ai_reply_at?: string | null
+          last_message_at?: string | null
+          organization_id: string
+          phone: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_reply_count?: number
+          context?: Json
+          created_at?: string
+          handed_off_at?: string | null
+          id?: string
+          last_ai_reply_at?: string | null
+          last_message_at?: string | null
+          organization_id?: string
+          phone?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_chatbot_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_stage_events: {
         Row: {
           changed_by: string | null

@@ -2,11 +2,13 @@
 // Names and trip references aligned with DEMO_CLIENTS and DEMO_TRIPS.
 
 import type { Conversation } from './MessageThread';
+import type { ChatbotSessionSummary } from './whatsapp.types';
 
 export type ChannelType = 'whatsapp' | 'email';
 
 export interface ChannelConversation extends Conversation {
   channel: ChannelType;
+  chatbotSession?: ChatbotSessionSummary | null;
 }
 
 // ─── WHATSAPP CONVERSATIONS ──────────────────────────────────────────────────
@@ -59,6 +61,12 @@ const WHATSAPP_CONVERSATIONS: ChannelConversation[] = [
   {
     id: 'conv_3',
     channel: 'whatsapp',
+    chatbotSession: {
+      id: 'chatbot_demo_lead',
+      state: 'qualifying',
+      aiReplyCount: 2,
+      updatedAt: new Date().toISOString(),
+    },
     unreadCount: 1,
     contact: {
       id: 'l1',
