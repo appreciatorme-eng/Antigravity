@@ -35,6 +35,6 @@ Branch: codex/final-sprint | Base score: ~85/100 | Target: 96/100
 | S3-30 | 8     | Accessibility         | WCAG 2.1 AA — contrast, alt text, form labels      | ✅ DONE    | 17a6a4b |
 | S3-31 | 8     | Accessibility         | Keyboard nav on all dropdowns and menus            | ✅ DONE    | 17a6a4b |
 | S3-32 | 8     | Accessibility         | Focus trap in GlassModal + Escape to close         | ✅ DONE    | 17a6a4b |
-| S3-33 | 9     | Security Round 2      | RLS audit — all tables from previous sprint        | ⏳ PENDING |        |
-| S3-34 | 9     | Security Round 2      | CSP headers in next.config.js                      | ⏳ PENDING |        |
-| S3-35 | 9     | Security Round 2      | Rate limiting on all public/unauthenticated routes | ⏳ PENDING |        |
+| S3-33 | 9     | Security Round 2      | RLS audit — all tables from previous sprint        | ✅ DONE    | 24353ef |
+| S3-34 | 9     | Security Round 2      | CSP headers in next.config.js                      | ✅ DONE    | 24353ef |
+| S3-35 | 9     | Security Round 2      | Rate limiting on all public/unauthenticated routes | ✅ DONE    | 24353ef |
