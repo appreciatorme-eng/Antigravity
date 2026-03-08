@@ -3,6 +3,9 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 export const maxDuration = 300;
 
 const routes = createCatchAllHandlers([
+  ["ai/draft-review-response", () => import("@/app/api/_handlers/ai/draft-review-response/route")],
+  ["ai/pricing-suggestion", () => import("@/app/api/_handlers/ai/pricing-suggestion/route")],
+  ["ai/suggest-reply", () => import("@/app/api/_handlers/ai/suggest-reply/route")],
   ["add-ons/stats", () => import("@/app/api/_handlers/add-ons/stats/route")],
   ["add-ons/:id", () => import("@/app/api/_handlers/add-ons/[id]/route")],
   ["add-ons", () => import("@/app/api/_handlers/add-ons/route")],

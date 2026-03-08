@@ -7,6 +7,7 @@ import {
   Paperclip,
   Smile,
   Send,
+  RefreshCw,
   MapPin,
   FileText,
   CreditCard,
@@ -220,9 +221,23 @@ interface MessageThreadProps {
   ) => boolean | void | Promise<boolean | void>;
   externalInput?: string;
   onExternalInputConsumed?: () => void;
+  smartReplies?: string[];
+  smartRepliesLoading?: boolean;
+  onUseSmartReply?: (suggestion: string) => void;
+  onRefreshSmartReplies?: () => void;
 }
 
-export function MessageThread({ conversation, channel = 'whatsapp', onSendMessage, externalInput, onExternalInputConsumed }: MessageThreadProps) {
+export function MessageThread({
+  conversation,
+  channel = 'whatsapp',
+  onSendMessage,
+  externalInput,
+  onExternalInputConsumed,
+  smartReplies = [],
+  smartRepliesLoading = false,
+  onUseSmartReply,
+  onRefreshSmartReplies,
+}: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [showCanned, setShowCanned] = useState(false);
@@ -260,6 +275,11 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
   function handleCannedSelect(msg: string) {
     setInputText(msg);
     setShowCanned(false);
+  }
+
+  function handleUseSuggestion(suggestion: string) {
+    setInputText(suggestion);
+    onUseSmartReply?.(suggestion);
   }
 
   function handleModalSend(message: string, subject?: string) {
@@ -393,6 +413,44 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
 
       {/* Input Area */}
       <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/10">
+        {!isEmail && (smartRepliesLoading || smartReplies.length > 0) && (
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Smart Replies
+              </p>
+              <button
+                type="button"
+                onClick={onRefreshSmartReplies}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <RefreshCw className={`h-3 w-3 ${smartRepliesLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {smartRepliesLoading
+                ? Array.from({ length: 3 }, (_, index) => (
+                    <div
+                      key={`smart-reply-skeleton-${index}`}
+                      className="h-9 w-32 animate-pulse rounded-full bg-white/10"
+                    />
+                  ))
+                : smartReplies.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => handleUseSuggestion(suggestion)}
+                      className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-left text-xs font-medium text-slate-200 transition-all hover:border-[#25D366]/40 hover:bg-[#25D366]/10 hover:text-white"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+            </div>
+          </div>
+        )}
+
         {isEmail ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">

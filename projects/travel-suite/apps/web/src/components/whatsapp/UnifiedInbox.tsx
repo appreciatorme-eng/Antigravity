@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAnalytics } from '@/lib/analytics/events';
 import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import {
@@ -40,6 +41,7 @@ import { ContextActionModal, type ContextActionType } from './ContextActionModal
 import { WhatsAppConnectModal } from './WhatsAppConnectModal';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
+import { useSmartReplySuggestions } from './useSmartReplySuggestions';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -416,6 +418,7 @@ interface UnifiedInboxProps {
 
 export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
   const router = useRouter();
+  const analytics = useAnalytics();
   const { isDemoMode } = useDemoMode();
   const { timezone } = useUserTimezone();
   const [conversations, setConversations] = useState<ChannelConversation[]>(
@@ -466,6 +469,15 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
+  const {
+    suggestions: smartReplySuggestions,
+    loading: smartReplyLoading,
+    clear: clearSmartReplySuggestions,
+    refresh: refreshSmartReplySuggestions,
+  } = useSmartReplySuggestions(
+    selectedConversation,
+    !isDemoMode && selectedChannel === 'whatsapp',
+  );
 
   const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);
 
@@ -579,6 +591,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         ),
       );
       setWhatsAppStatus('connected');
+      analytics.whatsappSent('thread');
+      clearSmartReplySuggestions();
       onSendMessage?.(convId, message);
       return true;
     } catch (error) {
@@ -876,6 +890,12 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           onSendMessage={handleSendMessage}
           externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
           onExternalInputConsumed={onClearPendingTemplate}
+          smartReplies={smartReplySuggestions}
+          smartRepliesLoading={smartReplyLoading}
+          onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
+          onRefreshSmartReplies={() => {
+            void refreshSmartReplySuggestions();
+          }}
         />
       </div>
 

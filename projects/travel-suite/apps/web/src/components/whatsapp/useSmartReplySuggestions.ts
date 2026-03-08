@@ -1,0 +1,122 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Conversation } from "./MessageThread";
+
+type SmartReplyPayload = {
+  lastMessages: Array<{
+    role: "traveler" | "agent" | "system";
+    content: string;
+  }>;
+  threadContext?: string;
+};
+
+function buildPayload(conversation: Conversation): SmartReplyPayload | null {
+  const lastMessages = conversation.messages
+    .filter((message) => Boolean(message.body?.trim()))
+    .slice(-6)
+    .map((message) => ({
+      role:
+        message.type === "system"
+          ? ("system" as const)
+          : message.direction === "in"
+            ? ("traveler" as const)
+            : ("agent" as const),
+      content: message.body!.trim(),
+    }));
+
+  if (lastMessages.length === 0) {
+    return null;
+  }
+
+  const threadContext = [
+    conversation.contact.name ? `Traveler: ${conversation.contact.name}` : null,
+    conversation.contact.trip ? `Trip: ${conversation.contact.trip}` : null,
+    conversation.contact.label ? `Label: ${conversation.contact.label}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  return {
+    lastMessages,
+    threadContext: threadContext || undefined,
+  };
+}
+
+export function useSmartReplySuggestions(
+  conversation: Conversation | null,
+  enabled: boolean,
+) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const refreshKey = useMemo(() => {
+    if (!enabled || !conversation) return null;
+    const lastMessage = conversation.messages[conversation.messages.length - 1];
+    return [
+      conversation.id,
+      conversation.messages.length,
+      lastMessage?.timestamp || "",
+      lastMessage?.body || "",
+    ].join(":");
+  }, [conversation, enabled]);
+
+  const clear = useCallback(() => {
+    setSuggestions([]);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!enabled || !conversation) {
+      setSuggestions([]);
+      return;
+    }
+
+    const payload = buildPayload(conversation);
+    if (!payload) {
+      setSuggestions([]);
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/ai/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to load reply suggestions");
+      }
+
+      setSuggestions(Array.isArray(result?.data?.suggestions) ? result.data.suggestions : []);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [conversation, enabled]);
+
+  useEffect(() => {
+    void refresh();
+    return () => abortRef.current?.abort();
+  }, [refreshKey, refresh]);
+
+  return {
+    suggestions,
+    loading,
+    clear,
+    refresh,
+  };
+}
+
