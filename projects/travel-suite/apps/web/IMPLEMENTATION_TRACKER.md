@@ -9,9 +9,9 @@ Scope: projects/travel-suite/apps/web
 | IM-02 | WhatsApp → Proposal | Extract structured lead context from WhatsApp chatbot sessions | ✅ DONE | ad0511c |
 | IM-03 | WhatsApp → Proposal | Auto-create proposal draft from qualified chat context | ✅ DONE | ad0511c |
 | IM-04 | WhatsApp → Proposal | Inbox CTA to open/regenerate AI-created draft proposal | ✅ DONE | ad0511c |
-| IM-05 | Reviews → Marketing | Persist review marketing assets and lifecycle state | ✅ DONE | pending |
-| IM-06 | Reviews → Marketing | Generate branded testimonial/review cards from real reviews | ✅ DONE | pending |
-| IM-07 | Reviews → Marketing | Push review assets into the social scheduling workflow | ✅ DONE | pending |
+| IM-05 | Reviews → Marketing | Persist review marketing assets and lifecycle state | ✅ DONE | 3aa71d1 |
+| IM-06 | Reviews → Marketing | Generate branded testimonial/review cards from real reviews | ✅ DONE | 3aa71d1 |
+| IM-07 | Reviews → Marketing | Push review assets into the social scheduling workflow | ✅ DONE | 3aa71d1 |
 | IM-08 | Shared Cache | Add shared itinerary cache table and promotion rules | ⏳ PENDING | |
 | IM-09 | Shared Cache | Route itinerary generation through org cache + shared cache | ⏳ PENDING | |
 | IM-10 | Shared Cache | Track shared cache hit-rate and cache source analytics | ⏳ PENDING | |
