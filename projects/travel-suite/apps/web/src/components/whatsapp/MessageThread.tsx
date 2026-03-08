@@ -213,7 +213,11 @@ function AutoLabelChip({ label }: { label: ConversationContact['label'] }) {
 interface MessageThreadProps {
   conversation: Conversation | null;
   channel?: 'whatsapp' | 'email';
-  onSendMessage?: (conversationId: string, message: string, subject?: string) => void;
+  onSendMessage?: (
+    conversationId: string,
+    message: string,
+    subject?: string
+  ) => boolean | void | Promise<boolean | void>;
   externalInput?: string;
   onExternalInputConsumed?: () => void;
 }
@@ -241,7 +245,7 @@ export function MessageThread({ conversation, channel = 'whatsapp', onSendMessag
   function handleSend() {
     const text = inputText.trim();
     if (!text || !conversation) return;
-    onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined);
+    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined);
     setInputText('');
     if (isEmail) setEmailSubject('');
   }

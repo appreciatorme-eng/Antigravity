@@ -70,9 +70,11 @@ export function ActionPickerModal({
 }: ActionPickerModalProps) {
   const config = ACTION_CONFIG[mode];
 
-  function handleSend(message: string, subject?: string) {
-    onSend(message, subject);
-    onClose();
+  async function handleSend(message: string, subject?: string) {
+    const result = await onSend(message, subject);
+    if (result !== false) {
+      onClose();
+    }
   }
 
   return (

@@ -17,6 +17,7 @@ import { HotelSearch } from "@/components/bookings/HotelSearch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { FlightDetails, HotelDetails } from "@/types/itinerary";
 
 interface ItineraryOption {
@@ -35,6 +36,7 @@ function readBookingTabFromSearch(search: string): BookingTab {
 }
 
 export default function BookingsPage() {
+    const { timezone } = useUserTimezone();
     const router = useRouter();
     const pathname = usePathname();
     const [itineraries, setItineraries] = useState<ItineraryOption[]>([]);
@@ -265,7 +267,7 @@ export default function BookingsPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-6 md:p-8">
-                                    <FlightSearch onSelect={handleFlightSelect} />
+                                    <FlightSearch onSelect={handleFlightSelect} timezone={timezone} />
                                 </CardContent>
                             </Card>
                         </TabsContent>

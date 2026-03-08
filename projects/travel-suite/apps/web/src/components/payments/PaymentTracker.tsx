@@ -65,13 +65,13 @@ export default function PaymentTracker({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [spin, setSpin] = useState(false)
 
-  const loadLink = useCallback(() => {
+  const loadLink = useCallback(async () => {
     if (!token) return
-    const data = getPaymentLink(token)
+    const data = await getPaymentLink(token)
     if (data) {
       // Auto-mark expired if needed
       if (isExpired(data) && data.status !== 'paid' && data.status !== 'expired') {
-        recordEvent(token, { type: 'expired', timestamp: new Date().toISOString() })
+        void recordEvent(token, { type: 'expired', timestamp: new Date().toISOString() })
         setLink({ ...data, status: 'expired' })
       } else {
         setLink(data)
@@ -82,7 +82,7 @@ export default function PaymentTracker({
   const handleRefresh = useCallback(() => {
     setSpin(true)
     setIsRefreshing(true)
-    loadLink()
+    void loadLink()
     setTimeout(() => {
       setIsRefreshing(false)
       setSpin(false)
@@ -91,8 +91,10 @@ export default function PaymentTracker({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadLink()
-    const interval = setInterval(loadLink, 5000)
+    void loadLink()
+    const interval = setInterval(() => {
+      void loadLink()
+    }, 5000)
     return () => clearInterval(interval)
   }, [loadLink])
 
@@ -200,14 +202,21 @@ export default function PaymentTracker({
             type="button"
             onClick={() => {
               if (!link) return
-              const newLink = createPaymentLink({
-                tripId: link.tripId,
-                clientName: link.clientName,
+              void createPaymentLink({
+                proposalId: link.proposalId || undefined,
+                bookingId: link.bookingId || undefined,
+                clientId: link.clientId || undefined,
+                clientName: link.clientName || undefined,
+                clientPhone: link.clientPhone || undefined,
+                clientEmail: link.clientEmail || undefined,
                 amount: link.amount,
                 currency: 'INR',
-                description: link.description,
+                description: link.description || 'Trip payment',
+              }).then((newLink) => {
+                setLink(newLink)
+              }).catch((error) => {
+                console.error('[PaymentTracker] regenerate failed:', error)
               })
-              setLink(newLink)
             }}
             className="text-xs bg-[#00d084] hover:bg-[#00b873] text-black font-semibold px-4 py-2 rounded-xl transition-colors"
           >

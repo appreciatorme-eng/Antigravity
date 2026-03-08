@@ -1,0 +1,43 @@
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getPaymentLinkByToken } from "@/lib/payments/payment-links.server";
+import { PaymentCheckoutClient } from "./PaymentCheckoutClient";
+
+async function getOriginFromHeaders() {
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+  const protocol = headerStore.get("x-forwarded-proto") || "https";
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_APP_URL || undefined;
+  }
+
+  return `${protocol}://${host}`;
+}
+
+export default async function PayPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = await params;
+  const admin = createAdminClient();
+  const link = await getPaymentLinkByToken(admin, token, await getOriginFromHeaders());
+
+  if (!link) {
+    notFound();
+  }
+
+  return (
+    <main
+      className="min-h-screen px-4 py-12"
+      style={{
+        background:
+          "radial-gradient(circle at top, rgba(0,208,132,0.18), transparent 28%), linear-gradient(180deg, #08111f 0%, #0b1728 100%)",
+      }}
+    >
+      <PaymentCheckoutClient initialLink={link} />
+    </main>
+  );
+}

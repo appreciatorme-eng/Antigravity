@@ -1,75 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Users, UserCheck, TrendingUp, Plus } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { TeamRole } from '@/lib/team/roles'
-import TeamMemberCard, { TeamMember } from '@/components/settings/TeamMemberCard'
+import { useMemo, useState } from 'react'
+import { ArrowLeft, Plus, TrendingUp, UserCheck, Users } from 'lucide-react'
+import { GlassButton } from '@/components/glass/GlassButton'
+import { GlassCard } from '@/components/glass/GlassCard'
+import { GlassBadge } from '@/components/glass/GlassBadge'
 import InviteModal from '@/components/settings/InviteModal'
-
-const MOCK_TEAM: TeamMember[] = [
-  {
-    id: '1',
-    name: 'Rajesh Sharma',
-    email: 'rajesh@tourfirm.in',
-    role: 'owner' as TeamRole,
-    phone: '+91 98765 43210',
-    avatar: null,
-    status: 'active',
-    joinedAt: '2024-01-15',
-    lastActive: '2 minutes ago',
-    tripsManaged: 47,
-  },
-  {
-    id: '2',
-    name: 'Priya Nair',
-    email: 'priya@tourfirm.in',
-    role: 'manager' as TeamRole,
-    phone: '+91 87654 32109',
-    avatar: null,
-    status: 'active',
-    joinedAt: '2024-03-20',
-    lastActive: '1 hour ago',
-    tripsManaged: 31,
-  },
-  {
-    id: '3',
-    name: 'Amit Kumar',
-    email: 'amit@tourfirm.in',
-    role: 'agent' as TeamRole,
-    phone: '+91 76543 21098',
-    avatar: null,
-    status: 'active',
-    joinedAt: '2024-06-10',
-    lastActive: '3 hours ago',
-    tripsManaged: 18,
-  },
-  {
-    id: '4',
-    name: 'Suresh Driver',
-    email: 'suresh@tourfirm.in',
-    role: 'driver' as TeamRole,
-    phone: '+91 65432 10987',
-    avatar: null,
-    status: 'active',
-    joinedAt: '2024-08-05',
-    lastActive: 'Yesterday',
-    tripsManaged: 92,
-  },
-  {
-    id: '5',
-    name: 'Meena Singh',
-    email: 'meena@tourfirm.in',
-    role: 'agent' as TeamRole,
-    phone: '+91 54321 09876',
-    avatar: null,
-    status: 'pending',
-    joinedAt: '2026-02-25',
-    lastActive: 'Invited',
-    tripsManaged: 0,
-  },
-]
+import TeamMemberCard from '@/components/settings/TeamMemberCard'
+import type { TeamRole } from '@/lib/team/roles'
+import { useTeamMembers } from './useTeamMembers'
 
 type FilterTab = 'all' | TeamRole
 
@@ -81,176 +21,178 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: 'driver', label: 'Driver' },
 ]
 
-const CURRENT_USER_ROLE: TeamRole = 'owner'
-
 export default function TeamPage() {
-  const [team, setTeam] = useState<TeamMember[]>(MOCK_TEAM)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [showInvite, setShowInvite] = useState(false)
+  const {
+    members,
+    stats,
+    currentUserRole,
+    organizationName,
+    viewerCanManageTeam,
+    loading,
+    error,
+    refresh,
+    inviteMember,
+    updateMemberRole,
+    removeMember,
+    resendInvite,
+  } = useTeamMembers()
 
-  const filtered =
-    filter === 'all' ? team : team.filter((m) => m.role === filter)
+  const filteredMembers = useMemo(
+    () => (filter === 'all' ? members : members.filter((member) => member.role === filter)),
+    [filter, members]
+  )
 
-  const activeCount = team.filter((m) => m.status === 'active').length
-  const tripsThisMonth = 23
-
-  const handleRoleChange = (memberId: string, newRole: TeamRole) => {
-    setTeam((prev) =>
-      prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+        <GlassCard className="p-8 text-center text-slate-600 dark:text-slate-300">
+          Loading team workspace…
+        </GlassCard>
+      </div>
     )
-  }
-
-  const handleRemove = (memberId: string) => {
-    setTeam((prev) => prev.filter((m) => m.id !== memberId))
-  }
-
-  const handleInvite = (email: string, role: TeamRole, name: string) => {
-    const newMember: TeamMember = {
-      id: String(Date.now()),
-      name,
-      email,
-      role,
-      phone: '',
-      avatar: null,
-      status: 'pending',
-      joinedAt: new Date().toISOString().slice(0, 10),
-      lastActive: 'Invited',
-      tripsManaged: 0,
-    }
-    setTeam((prev) => [...prev, newMember])
   }
 
   return (
     <>
-      <div className="min-h-screen bg-[#0a1628] p-6 text-white">
-        <div className="max-w-5xl mx-auto space-y-8">
-
-          {/* Back link */}
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Settings
-          </Link>
-
-          {/* Page header */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-semibold text-white">Team Members</h1>
-              <span className="bg-white/10 text-white/70 text-sm font-semibold px-3 py-1 rounded-full">
-                {team.length}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowInvite(true)}
-              className="flex items-center gap-2 bg-[#00d084] hover:bg-[#00b873] text-black font-semibold rounded-xl px-5 py-2.5 transition-colors"
+      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="space-y-2">
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 dark:text-white/60 dark:hover:text-white transition-colors"
             >
+              <ArrowLeft className="w-4 h-4" />
+              Back to settings
+            </Link>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">Team Workspace</h1>
+              <GlassBadge variant="info">{organizationName}</GlassBadge>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-white/60">
+              Manage operators, drivers, and invite-only access from real workspace membership data.
+            </p>
+          </div>
+
+          {viewerCanManageTeam ? (
+            <GlassButton onClick={() => setShowInvite(true)} className="rounded-2xl">
               <Plus className="w-4 h-4" />
               Invite Member
-            </button>
-          </div>
+            </GlassButton>
+          ) : null}
+        </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              {
-                icon: Users,
-                label: 'Total Members',
-                value: team.length,
-                color: 'text-blue-400',
-                bg: 'bg-blue-400/10',
-              },
-              {
-                icon: UserCheck,
-                label: 'Active Now',
-                value: activeCount,
-                color: 'text-[#00d084]',
-                bg: 'bg-[#00d084]/10',
-              },
-              {
-                icon: TrendingUp,
-                label: 'Trips This Month',
-                value: tripsThisMonth,
-                color: 'text-purple-400',
-                bg: 'bg-purple-400/10',
-              },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center gap-4"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <GlassCard className="flex items-center gap-4 border-slate-200/60 dark:border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.totalMembers}</p>
+              <p className="text-sm text-slate-600 dark:text-white/60">Total members</p>
+            </div>
+          </GlassCard>
+          <GlassCard className="flex items-center gap-4 border-slate-200/60 dark:border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.activeMembers}</p>
+              <p className="text-sm text-slate-600 dark:text-white/60">Active members</p>
+            </div>
+          </GlassCard>
+          <GlassCard className="flex items-center gap-4 border-slate-200/60 dark:border-white/10">
+            <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-500 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.tripsThisMonth}</p>
+              <p className="text-sm text-slate-600 dark:text-white/60">Trips this month</p>
+            </div>
+          </GlassCard>
+        </div>
+
+        {error ? (
+          <GlassCard className="space-y-4 border-amber-200 bg-amber-50/70 dark:border-amber-500/20 dark:bg-amber-500/10">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Could not load team data</h2>
+              <p className="text-sm text-slate-700 dark:text-white/70">{error}</p>
+            </div>
+            <GlassButton variant="secondary" onClick={refresh}>
+              Retry
+            </GlassButton>
+          </GlassCard>
+        ) : null}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {FILTER_TABS.map((tab) => {
+            const isActive = filter === tab.id
+            const count =
+              tab.id === 'all'
+                ? members.length
+                : members.filter((member) => member.role === tab.id).length
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm transition-colors ${
+                  isActive
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white/70 text-slate-700 border-slate-200 hover:border-slate-300 dark:bg-white/5 dark:text-white/70 dark:border-white/10 dark:hover:border-white/20'
+                }`}
               >
-                <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center shrink-0`}>
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  <p className="text-white/50 text-sm">{stat.label}</p>
-                </div>
-              </motion.div>
+                <span>{tab.label}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-black/15 text-white' : 'bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-white/60'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {filteredMembers.length === 0 ? (
+          <GlassCard className="space-y-4 border-dashed border-slate-300 dark:border-white/10 text-center">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">No team members in this view</h2>
+              <p className="text-sm text-slate-600 dark:text-white/60">
+                Switch filters or invite a new teammate to get this workspace staffed.
+              </p>
+            </div>
+            {viewerCanManageTeam ? (
+              <div className="flex justify-center">
+                <GlassButton onClick={() => setShowInvite(true)}>
+                  <Plus className="w-4 h-4" />
+                  Invite your first member
+                </GlassButton>
+              </div>
+            ) : null}
+          </GlassCard>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {filteredMembers.map((member, index) => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                currentUserRole={currentUserRole}
+                index={index}
+                onRoleChange={updateMemberRole}
+                onRemove={(memberId) => removeMember(memberId, member.name)}
+                onResendInvite={(memberId) => resendInvite(memberId, member.name)}
+              />
             ))}
           </div>
-
-          {/* Filter tabs */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {FILTER_TABS.map((tab) => {
-              const isActive = filter === tab.id
-              const count =
-                tab.id === 'all'
-                  ? team.length
-                  : team.filter((m) => m.role === tab.id).length
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilter(tab.id)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    isActive
-                      ? 'bg-[#00d084] text-black'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
-                  }`}
-                >
-                  {tab.label}
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      isActive ? 'bg-black/20 text-black' : 'bg-white/10 text-white/50'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Member grid */}
-          {filtered.length === 0 ? (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center text-white/40">
-              No members in this role.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filtered.map((member, i) => (
-                <TeamMemberCard
-                  key={member.id}
-                  member={member}
-                  currentUserRole={CURRENT_USER_ROLE}
-                  onRoleChange={handleRoleChange}
-                  onRemove={handleRemove}
-                  index={i}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <InviteModal
         isOpen={showInvite}
         onClose={() => setShowInvite(false)}
-        onInvite={handleInvite}
+        onInvite={async (payload) => {
+          await inviteMember(payload)
+          setShowInvite(false)
+        }}
       />
     </>
   )

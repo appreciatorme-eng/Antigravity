@@ -9,6 +9,11 @@ import {
   parseTierPricing,
   tierPrice,
 } from '@/lib/proposals/types';
+import {
+  createPaymentLinkRecord,
+  recordPaymentLinkEvent,
+} from "@/lib/payments/payment-links.server";
+import { sendWahaText } from "@/lib/whatsapp-waha.server";
 const supabaseAdmin = createAdminClient();
 
 type ProposalSummary = {
@@ -697,10 +702,10 @@ export async function POST(
 
       let paymentRequestQueued = false;
       let paymentRequestError: string | undefined;
+      let paymentLinkUrl: string | null = null;
+      let paymentLinkToken: string | null = null;
       if (requestPayment) {
         const nowIso = new Date().toISOString();
-        let operatorEmail: string | null = null;
-        let operatorPhone: string | null = null;
         let operatorUserId: string | null = null;
         let clientName: string | null = null;
         let clientPhone: string | null = null;
@@ -709,15 +714,12 @@ export async function POST(
         if (proposal.created_by) {
           const { data: operatorProfile } = await supabaseAdmin
             .from('profiles')
-            .select('id, email, phone, phone_whatsapp')
+            .select('id')
             .eq('id', proposal.created_by)
             .maybeSingle();
 
           if (operatorProfile) {
             operatorUserId = sanitizeIdentifier(operatorProfile.id);
-            operatorEmail = sanitizeEmail(operatorProfile.email);
-            operatorPhone =
-              sanitizePhone(operatorProfile.phone_whatsapp) || sanitizePhone(operatorProfile.phone);
           }
         }
 
@@ -735,32 +737,71 @@ export async function POST(
           }
         }
 
-        const { error: queueError } = await supabaseAdmin.from('notification_queue').insert({
-          notification_type: 'proposal_payment_request',
-          status: 'pending',
-          scheduled_for: nowIso,
-          user_id: operatorUserId,
-          recipient_type: 'admin',
-          recipient_email: operatorEmail,
-          recipient_phone: operatorPhone,
-          channel_preference: operatorPhone ? 'whatsapp_first' : 'email_only',
-          payload: {
-            title: 'Client requested payment link',
-            body: `Proposal "${proposal.title}" was approved by ${approvedBy}.`,
-            proposal_id: proposal.id,
-            proposal_title: proposal.title,
-            approved_by: approvedBy,
-            approved_email: approvedEmail || null,
-            client_name: clientName,
-            client_email: clientEmail || null,
-            client_phone: clientPhone,
-          },
-        });
+        const quotedAmount = Math.round(
+          (proposal.client_selected_price ?? proposal.total_price ?? 0) * 100
+        );
 
-        if (queueError) {
-          paymentRequestError = queueError.message;
+        if (!proposal.organization_id || !operatorUserId || quotedAmount <= 0) {
+          paymentRequestError =
+            'Unable to create a payment link for this proposal yet. Please contact the operator.';
         } else {
-          paymentRequestQueued = true;
+          try {
+            const { link } = await createPaymentLinkRecord(supabaseAdmin, {
+              organizationId: proposal.organization_id,
+              createdBy: operatorUserId,
+              proposalId: proposal.id,
+              clientId: proposal.client_id || undefined,
+              clientName: clientName || approvedBy,
+              clientPhone: clientPhone || undefined,
+              clientEmail: clientEmail || undefined,
+              amount: quotedAmount,
+              currency: 'INR',
+              description: `${proposal.title} payment`,
+              baseUrl: new URL(request.url).origin,
+            });
+
+            paymentLinkUrl = link.paymentUrl;
+            paymentLinkToken = link.token;
+            paymentRequestQueued = true;
+
+            if (clientPhone) {
+              const { data: connection } = await supabaseAdmin
+                .from("whatsapp_connections")
+                .select("session_name, session_token, status")
+                .eq("organization_id", proposal.organization_id)
+                .maybeSingle();
+
+              if (
+                connection?.status === "connected" &&
+                connection.session_name &&
+                connection.session_token
+              ) {
+                const travelerName = clientName || approvedBy;
+                const amountLabel = `₹${(quotedAmount / 100).toLocaleString("en-IN")}`;
+                await sendWahaText(
+                  connection.session_name,
+                  connection.session_token,
+                  clientPhone,
+                  `Hi ${travelerName}, your proposal "${proposal.title}" has been approved.\n\nPay securely here: ${link.paymentUrl}\nAmount due: ${amountLabel}\n\nIf you need help before paying, reply to this message.`,
+                );
+
+                await recordPaymentLinkEvent(supabaseAdmin, {
+                  token: link.token,
+                  event: "sent",
+                  baseUrl: new URL(request.url).origin,
+                  metadata: {
+                    channel: "whatsapp",
+                    sent_at: nowIso,
+                  },
+                });
+              }
+            }
+          } catch (paymentError) {
+            paymentRequestError =
+              paymentError instanceof Error
+                ? paymentError.message
+                : "Failed to create payment link";
+          }
         }
       }
 
@@ -769,6 +810,8 @@ export async function POST(
         status: 'approved',
         request_payment: requestPayment,
         payment_request_queued: paymentRequestQueued,
+        payment_link_url: paymentLinkUrl,
+        payment_link_token: paymentLinkToken,
         warning: paymentRequestError,
       });
     }

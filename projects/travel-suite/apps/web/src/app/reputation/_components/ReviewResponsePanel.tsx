@@ -20,7 +20,7 @@ interface ReviewResponsePanelProps {
   review: ReputationReview | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (reviewId: string, response: string) => void;
+  onSave: (reviewId: string, response: string) => Promise<void> | void;
 }
 
 type PanelMode = "edit" | "preview";
@@ -114,8 +114,12 @@ export function ReviewResponsePanel({
   const handleSave = useCallback(async () => {
     if (!review || !activeResponse.trim()) return;
     setSaving(true);
+    setError(null);
     try {
-      onSave(review.id, activeResponse.trim());
+      await onSave(review.id, activeResponse.trim());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save response";
+      setError(message);
     } finally {
       setSaving(false);
     }

@@ -71,7 +71,10 @@ export const SocialAnalytics = () => {
       setStats({
         totalPosts: posts?.length || 0,
         publishedCount: queue?.filter((item) => item.status === "sent").length || 0,
-        scheduledCount: queue?.filter((item) => item.status === "pending").length || 0,
+        scheduledCount:
+          queue?.filter((item) =>
+            item.status === "pending" || item.status === "pending_review"
+          ).length || 0,
         whatsappImages: whatsappCount || 0,
         platformBreakdown: breakdown,
       });

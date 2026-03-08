@@ -5,7 +5,7 @@ export type ActionPickerChannel = "whatsapp" | "email";
 export type ActionPickerSendHandler = (
   message: string,
   subject?: string
-) => void;
+) => boolean | void | Promise<boolean | void>;
 
 export interface ActionPickerProps {
   contact: ConversationContact;

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { CanvasEditorPanel } from "./CanvasEditorPanel";
 import { CanvasFooter } from "./CanvasFooter";
+import { CanvasPublishModal } from "./CanvasPublishModal";
 import { CanvasPreviewPane } from "./CanvasPreviewPane";
 import { renderBg, renderLayout } from "./layout-preview";
 import type { CanvasModeProps } from "./types";
@@ -32,6 +33,7 @@ export function CanvasMode({
     Math.max(0, backgrounds.indexOf(selectedBackground))
   );
   const [showPhoneMockup, setShowPhoneMockup] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [hdExporting, setHdExporting] = useState(false);
 
@@ -44,7 +46,7 @@ export function CanvasMode({
 
   useEffect(() => {
     const handlePublish = () => {
-      toast("Publish flow coming soon!");
+      setShowPublishModal(true);
     };
 
     window.addEventListener(
@@ -284,6 +286,14 @@ export function CanvasMode({
       </div>
 
       <CanvasFooter onClose={onClose} onSaveDraft={handleSaveDraft} />
+
+      <CanvasPublishModal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        template={template}
+        templateData={templateData}
+        connections={connections}
+      />
 
       <div
         id={`canvas-export-${template.id}`}

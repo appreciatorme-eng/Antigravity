@@ -1,299 +1,94 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, CreditCard, Smartphone, Building2, Lock, CheckCircle, XCircle, Download, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  LockKeyhole,
+} from 'lucide-react'
+import { GlassButton } from '@/components/glass/GlassButton'
+import { GlassCard } from '@/components/glass/GlassCard'
+import { GlassModal } from '@/components/glass/GlassModal'
+import { formatPaymentAmount } from '@/lib/payments/payment-links'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void
+    }
+  }
+}
 
-interface RazorpayModalProps {
+interface PaymentVerificationPayload {
+  data?: {
+    link?: {
+      status?: string
+      paidAt?: string | null
+    }
+    verified?: boolean
+  }
+  error?: string | null
+}
+
+export interface RazorpayModalProps {
   isOpen: boolean
   onClose: () => void
-  amount: number
+  amount: number // paise
   clientName: string
   tripName: string
   description?: string
+  organizationName?: string | null
+  clientEmail?: string | null
+  clientPhone?: string | null
+  linkToken?: string | null
+  razorpayOrderId?: string | null
   onSuccess?: (paymentId: string) => void
 }
 
-type TabKey = 'upi' | 'card' | 'netbanking'
-type PaymentStatus = 'idle' | 'processing' | 'success' | 'failure'
+type ModalStatus = 'idle' | 'launching' | 'verifying' | 'success' | 'error'
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+async function loadRazorpayCheckoutScript(): Promise<void> {
+  if (typeof window === 'undefined') return
+  if (window.Razorpay) return
 
-const GST_RATE = 0.18
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+    )
 
-function formatINR(amount: number): string {
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener(
+        'error',
+        () => reject(new Error('Failed to load Razorpay checkout')),
+        { once: true },
+      )
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Razorpay checkout'))
+    document.body.appendChild(script)
+  })
 }
 
-function randomPaymentId(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = 'pay_'
-  for (let i = 0; i < 14; i++) result += chars[Math.floor(Math.random() * chars.length)]
-  return result
+function formatTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
-
-function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 16)
-  return digits.replace(/(.{4})/g, '$1 ').trim()
-}
-
-function formatExpiry(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 4)
-  if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`
-  return digits
-}
-
-// ---------------------------------------------------------------------------
-// QR visual (SVG placeholder)
-// ---------------------------------------------------------------------------
-
-function QRCodePlaceholder() {
-  return (
-    <div className="flex flex-col items-center gap-3 py-4">
-      <div className="w-40 h-40 bg-white rounded-xl p-2 flex items-center justify-center">
-        {/* Minimal QR pattern using SVG rectangles */}
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          {/* Finder patterns */}
-          <rect x="5" y="5" width="30" height="30" fill="black" rx="2" />
-          <rect x="8" y="8" width="24" height="24" fill="white" />
-          <rect x="12" y="12" width="16" height="16" fill="black" />
-          <rect x="65" y="5" width="30" height="30" fill="black" rx="2" />
-          <rect x="68" y="8" width="24" height="24" fill="white" />
-          <rect x="72" y="12" width="16" height="16" fill="black" />
-          <rect x="5" y="65" width="30" height="30" fill="black" rx="2" />
-          <rect x="8" y="68" width="24" height="24" fill="white" />
-          <rect x="12" y="72" width="16" height="16" fill="black" />
-          {/* Data modules (simplified pattern) */}
-          {[40, 45, 50, 55, 60].map(x =>
-            [5, 10, 15, 20, 25, 30, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90].map(y => (
-              Math.random() > 0.5 ? <rect key={`${x}-${y}`} x={x} y={y} width="4" height="4" fill="black" /> : null
-            ))
-          )}
-          {[5, 10, 15, 20, 25, 30, 70, 75, 80, 85, 90, 95].map(x =>
-            [40, 45, 50, 55, 60, 65].map(y => (
-              Math.random() > 0.5 ? <rect key={`d${x}-${y}`} x={x} y={y} width="4" height="4" fill="black" /> : null
-            ))
-          )}
-        </svg>
-      </div>
-      <p className="text-xs text-white/50 text-center">
-        Scan with any UPI app<br />
-        <span className="text-white/30">PhonePe &bull; Google Pay &bull; Paytm &bull; BHIM</span>
-      </p>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// UPI Tab
-// ---------------------------------------------------------------------------
-
-function UPITab({ totalAmount, onPay }: { totalAmount: number; onPay: () => void }) {
-  const [upiId, setUpiId] = useState('')
-  const [showQR, setShowQR] = useState(false)
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <button
-          onClick={() => setShowQR(false)}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
-            !showQR ? 'bg-[#2563EB]/20 border-[#2563EB] text-blue-300' : 'bg-white/5 border-white/10 text-white/60'
-          }`}
-        >
-          <Smartphone className="w-4 h-4 inline mr-1.5" />
-          Enter UPI ID
-        </button>
-        <button
-          onClick={() => setShowQR(true)}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
-            showQR ? 'bg-[#2563EB]/20 border-[#2563EB] text-blue-300' : 'bg-white/5 border-white/10 text-white/60'
-          }`}
-        >
-          Scan QR
-        </button>
-      </div>
-
-      {showQR ? (
-        <QRCodePlaceholder />
-      ) : (
-        <>
-          <div>
-            <label className="block text-xs text-white/50 mb-1.5">UPI ID</label>
-            <input
-              type="text"
-              value={upiId}
-              onChange={e => setUpiId(e.target.value)}
-              placeholder="e.g. 9876543210@paytm"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['@paytm', '@gpay', '@ybl', '@okaxis', '@upi'].map(suffix => (
-              <button
-                key={suffix}
-                onClick={() => {
-                  const digits = upiId.replace(/@.*/, '')
-                  setUpiId(digits + suffix)
-                }}
-                className="px-2.5 py-1 rounded-full text-xs border border-white/10 text-white/50 hover:border-white/30 hover:text-white/80 transition bg-white/5"
-              >
-                {suffix}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      <button
-        onClick={onPay}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-[#2563EB] text-white hover:bg-[#2563EB]/90 transition-all"
-      >
-        Pay &#8377;{formatINR(totalAmount)}
-      </button>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Card Tab
-// ---------------------------------------------------------------------------
-
-function CardTab({ onPay }: { totalAmount: number; onPay: () => void }) {
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvv, setCvv] = useState('')
-  const [nameOnCard, setNameOnCard] = useState('')
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-xs text-white/50 mb-1.5">Card Number</label>
-        <div className="relative">
-          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <input
-            type="text"
-            value={cardNumber}
-            onChange={e => setCardNumber(formatCardNumber(e.target.value))}
-            placeholder="XXXX XXXX XXXX XXXX"
-            maxLength={19}
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/30 font-mono focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">Expiry (MM/YY)</label>
-          <input
-            type="text"
-            value={expiry}
-            onChange={e => setExpiry(formatExpiry(e.target.value))}
-            placeholder="MM/YY"
-            maxLength={5}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 font-mono focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">CVV</label>
-          <input
-            type="password"
-            value={cvv}
-            onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder="&bull;&bull;&bull;"
-            maxLength={4}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 font-mono focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs text-white/50 mb-1.5">Name on Card</label>
-        <input
-          type="text"
-          value={nameOnCard}
-          onChange={e => setNameOnCard(e.target.value)}
-          placeholder="RAHUL SHARMA"
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition uppercase"
-        />
-      </div>
-
-      <button
-        onClick={onPay}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-[#2563EB] text-white hover:bg-[#2563EB]/90 transition-all"
-      >
-        Pay Securely
-      </button>
-
-      <div className="flex items-center justify-center gap-1.5 text-xs text-white/40">
-        <Lock className="w-3.5 h-3.5" />
-        256-bit encrypted &bull; PCI DSS Compliant
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Net Banking Tab
-// ---------------------------------------------------------------------------
-
-const BANKS = ['SBI', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Mahindra', 'PNB', 'Bank of Baroda', 'Others']
-
-function NetBankingTab({ onPay }: { totalAmount: number; onPay: () => void }) {
-  const [bank, setBank] = useState('')
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-xs text-white/50 mb-1.5">Select Your Bank</label>
-        <select
-          value={bank}
-          onChange={e => setBank(e.target.value)}
-          className="w-full bg-[#0d1f35] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#2563EB]/60 focus:ring-1 focus:ring-[#2563EB]/30 transition appearance-none"
-        >
-          <option value="" disabled>-- Choose bank --</option>
-          {BANKS.map(b => (
-            <option key={b} value={b} className="bg-[#0d1f35]">{b}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {BANKS.slice(0, 6).map(b => (
-          <button
-            key={b}
-            onClick={() => setBank(b)}
-            className={`py-2 px-1 rounded-lg text-xs font-medium border transition text-center ${
-              bank === b
-                ? 'bg-[#2563EB]/20 border-[#2563EB] text-blue-300'
-                : 'bg-white/5 border-white/10 text-white/60 hover:border-white/25'
-            }`}
-          >
-            {b.replace(' Bank', '').replace(' Mahindra', '')}
-          </button>
-        ))}
-      </div>
-
-      <button
-        onClick={onPay}
-        disabled={!bank}
-        className="w-full py-3 rounded-xl font-semibold text-sm bg-[#2563EB] text-white hover:bg-[#2563EB]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-      >
-        Proceed to Bank
-      </button>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 export default function RazorpayModal({
   isOpen,
@@ -302,272 +97,281 @@ export default function RazorpayModal({
   clientName,
   tripName,
   description,
+  organizationName,
+  clientEmail,
+  clientPhone,
+  linkToken,
+  razorpayOrderId,
   onSuccess,
 }: RazorpayModalProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('upi')
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('idle')
-  const [paymentId, setPaymentId] = useState('')
-  const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [status, setStatus] = useState<ModalStatus>('idle')
+  const [error, setError] = useState<string | null>(null)
+  const [paymentId, setPaymentId] = useState<string | null>(null)
+  const [paidAt, setPaidAt] = useState<string | null>(null)
 
-  const gstAmount = Math.round(amount * GST_RATE)
-  const totalAmount = amount + gstAmount
+  const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+  const isConfigured = Boolean(razorpayKey)
+  const isCheckoutReady = Boolean(isConfigured && linkToken && razorpayOrderId)
 
-  // Simulate mock email based on client name
-  const mockEmail = `${clientName.toLowerCase().replace(/\s+/g, '.')}@example.com`
-
-  function handlePay() {
-    setPaymentStatus('processing')
-    setTimeout(() => {
-      // 20% failure rate for demo
-      const failed = Math.random() < 0.2
-      if (failed) {
-        setPaymentStatus('failure')
-      } else {
-        const pid = randomPaymentId()
-        setPaymentId(pid)
-        setPaymentStatus('success')
-        onSuccess?.(pid)
-        autoCloseTimer.current = setTimeout(() => {
-          onClose()
-        }, 4000)
-      }
-    }, 2000)
-  }
-
-  function handleReset() {
-    setPaymentStatus('idle')
-    setPaymentId('')
-  }
+  const summaryRows = useMemo(
+    () => [
+      { label: 'Traveler', value: clientName },
+      { label: 'Trip', value: tripName },
+      { label: 'Amount due', value: formatPaymentAmount(amount) },
+    ],
+    [amount, clientName, tripName],
+  )
 
   useEffect(() => {
-    return () => {
-      if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current)
-    }
-  }, [])
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPaymentStatus('idle')
-       
-      setPaymentId('')
-       
-      setActiveTab('upi')
-    }
+    if (!isOpen) return
+    setStatus('idle')
+    setError(null)
+    setPaymentId(null)
+    setPaidAt(null)
   }, [isOpen])
 
-  if (!isOpen) return null
+  async function handleLaunchCheckout() {
+    if (!linkToken || !razorpayOrderId) {
+      setStatus('error')
+      setError('This payment request is missing its Razorpay order. Generate a fresh payment link.')
+      return
+    }
 
-  const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: 'upi',        label: 'UPI',         icon: <Smartphone className="w-4 h-4" /> },
-    { key: 'card',       label: 'Cards',        icon: <CreditCard className="w-4 h-4" /> },
-    { key: 'netbanking', label: 'Net Banking',  icon: <Building2 className="w-4 h-4" /> },
-  ]
+    if (!razorpayKey) {
+      setStatus('error')
+      setError('Payment gateway is not configured yet. Please contact the operator.')
+      return
+    }
+
+    setStatus('launching')
+    setError(null)
+
+    try {
+      await loadRazorpayCheckoutScript()
+      if (!window.Razorpay) {
+        throw new Error('Razorpay checkout is unavailable')
+      }
+
+      const checkout = new window.Razorpay({
+        key: razorpayKey,
+        amount,
+        currency: 'INR',
+        name: organizationName || 'Travel Suite',
+        description: description || tripName,
+        order_id: razorpayOrderId,
+        prefill: {
+          name: clientName || undefined,
+          email: clientEmail || undefined,
+          contact: clientPhone?.replace(/\D/g, '') || undefined,
+        },
+        theme: {
+          color: '#00d084',
+        },
+        modal: {
+          ondismiss: () => {
+            setStatus('idle')
+          },
+        },
+        handler: async (response: Record<string, unknown>) => {
+          setStatus('verifying')
+
+          try {
+            const verifyResponse = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                token: linkToken,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            })
+
+            const payload = (await verifyResponse.json().catch(() => null)) as
+              | PaymentVerificationPayload
+              | null
+
+            if (!verifyResponse.ok || !payload?.data?.verified) {
+              throw new Error(payload?.error || 'Payment verification failed')
+            }
+
+            const nextPaymentId =
+              typeof response.razorpay_payment_id === 'string'
+                ? response.razorpay_payment_id
+                : null
+
+            setPaymentId(nextPaymentId)
+            setPaidAt(payload.data.link?.paidAt || null)
+            setStatus('success')
+
+            if (nextPaymentId) {
+              onSuccess?.(nextPaymentId)
+            }
+          } catch (verificationError) {
+            console.error('[RazorpayModal] verification failed:', verificationError)
+            setStatus('error')
+            setError(
+              verificationError instanceof Error
+                ? verificationError.message
+                : 'Payment verification failed',
+            )
+          }
+        },
+      })
+
+      checkout.open()
+    } catch (checkoutError) {
+      console.error('[RazorpayModal] checkout launch failed:', checkoutError)
+      setStatus('error')
+      setError(
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : 'Unable to launch Razorpay checkout',
+      )
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="relative z-10 w-full max-w-md bg-[#0d1f35]/97 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            {/* Razorpay wordmark */}
-            <div className="flex items-center gap-1">
-              <span className="text-[#2563EB] font-bold text-lg tracking-tight">razorpay</span>
-            </div>
-            <div className="h-4 w-px bg-white/15" />
-            <div className="flex items-center gap-1.5 text-xs text-white/50">
-              <Lock className="w-3 h-3 text-[#00d084]" />
-              Secure Payment
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Amount block */}
-        <div className="px-5 py-4 bg-white/3 border-b border-white/8">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs text-white/40 mb-0.5 uppercase tracking-wider">{tripName}</p>
-              <p className="text-xs text-white/30">{description ?? `Payment for ${clientName}`}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-white">&#8377;{formatINR(amount)}</div>
-              <div className="text-xs text-white/40">+ 18% GST: &#8377;{formatINR(gstAmount)}</div>
-              <div className="text-sm font-semibold text-[#00d084] mt-0.5">
-                Total: &#8377;{formatINR(totalAmount)}
+    <GlassModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      title="Secure payment checkout"
+      description="This modal now launches the real Razorpay checkout flow and verifies the payment signature on the server."
+    >
+      <div className="space-y-5">
+        <GlassCard
+          className="border-white/10 bg-[#081220]/80 text-white"
+          opacity="low"
+          padding="lg"
+          blur="lg"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00d084]">
+                  Razorpay
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-white">{tripName}</h3>
+                <p className="mt-1 text-sm text-white/60">
+                  {description || `Secure payment request for ${clientName}`}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[#00d084]/20 bg-[#00d084]/10 px-4 py-3 text-right">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#00d084]/70">Amount due</p>
+                <p className="mt-1 text-2xl font-semibold text-white">
+                  {formatPaymentAmount(amount)}
+                </p>
               </div>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {summaryRows.map((row) => (
+                <div key={row.label} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/40">{row.label}</p>
+                  <p className="mt-1 text-sm font-medium text-white">{row.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </GlassCard>
 
-        <div className="px-5 py-5">
-          <AnimatePresence mode="wait">
-            {/* PROCESSING */}
-            {paymentStatus === 'processing' && (
-              <motion.div
-                key="processing"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-10 gap-4"
-              >
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                >
-                  <RefreshCw className="w-10 h-10 text-[#2563EB]" />
-                </motion.div>
-                <p className="text-white/70 text-sm">Processing payment&hellip;</p>
-                <p className="text-white/30 text-xs">Please do not close this window</p>
-              </motion.div>
-            )}
-
-            {/* SUCCESS */}
-            {paymentStatus === 'success' && (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-6 gap-3"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-                >
-                  <CheckCircle className="w-16 h-16 text-[#00d084]" />
-                </motion.div>
-                <h3 className="text-xl font-semibold text-white">Payment Successful!</h3>
-                <div className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 w-full space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-white/50">Payment ID</span>
-                    <span className="text-white font-mono text-xs">{paymentId}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/50">Amount</span>
-                    <span className="text-white">&#8377;{formatINR(totalAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/50">Client</span>
-                    <span className="text-white">{clientName}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-white/40 text-center">
-                  GST Invoice sent to {mockEmail}
+        <GlassCard
+          className="border-white/10 bg-white/5 text-white"
+          opacity="low"
+          padding="lg"
+          blur="md"
+        >
+          <div className="flex items-start gap-3">
+            <LockKeyhole className="mt-0.5 h-5 w-5 text-[#00d084]" />
+            <div className="space-y-2 text-sm text-white/70">
+              <p className="font-medium text-white">Verified checkout only</p>
+              <p>
+                This flow opens Razorpay Checkout with the server-generated order ID and only marks
+                the payment as successful after backend HMAC verification.
+              </p>
+              {!isConfigured && (
+                <p className="text-amber-200">
+                  Configure <code>NEXT_PUBLIC_RAZORPAY_KEY_ID</code> before using this checkout.
                 </p>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/15 text-sm font-medium transition">
-                  <Download className="w-4 h-4" />
-                  Download Receipt
-                </button>
-                <p className="text-xs text-white/20">Auto-closing in 4 seconds&hellip;</p>
-              </motion.div>
-            )}
+              )}
+              {isConfigured && !isCheckoutReady && (
+                <p className="text-amber-200">
+                  Generate a fresh payment link first. This modal needs both a payment token and a
+                  Razorpay order ID.
+                </p>
+              )}
+            </div>
+          </div>
+        </GlassCard>
 
-            {/* FAILURE */}
-            {paymentStatus === 'failure' && (
-              <motion.div
-                key="failure"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center py-8 gap-3"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
-                  <XCircle className="w-14 h-14 text-red-500" />
-                </motion.div>
-                <h3 className="text-lg font-semibold text-white">Payment Failed</h3>
-                <p className="text-white/50 text-sm text-center">Please try again or use a different payment method.</p>
-                <button
-                  onClick={handleReset}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-semibold hover:bg-[#2563EB]/90 transition"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Try Again
-                </button>
-              </motion.div>
-            )}
+        {status === 'success' && (
+          <GlassCard
+            className="border-emerald-500/20 bg-emerald-500/10 text-emerald-50"
+            opacity="low"
+            padding="lg"
+            blur="md"
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-300" />
+              <div className="space-y-1 text-sm">
+                <p className="font-semibold">Payment verified successfully</p>
+                {paymentId && <p>Razorpay payment ID: {paymentId}</p>}
+                {paidAt && <p>Paid at: {formatTimestamp(paidAt)}</p>}
+              </div>
+            </div>
+          </GlassCard>
+        )}
 
-            {/* IDLE: payment form */}
-            {paymentStatus === 'idle' && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {/* Tabs */}
-                <div className="flex gap-1 bg-white/5 rounded-xl p-1 mb-5">
-                  {TABS.map(tab => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setActiveTab(tab.key)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
-                        activeTab === tab.key
-                          ? 'bg-[#2563EB] text-white shadow'
-                          : 'text-white/50 hover:text-white/80'
-                      }`}
-                    >
-                      {tab.icon}
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+        {status === 'error' && error && (
+          <GlassCard
+            className="border-red-500/20 bg-red-500/10 text-red-50"
+            opacity="low"
+            padding="lg"
+            blur="md"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 text-red-200" />
+              <p className="text-sm">{error}</p>
+            </div>
+          </GlassCard>
+        )}
 
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    {activeTab === 'upi' && <UPITab totalAmount={totalAmount} onPay={handlePay} />}
-                    {activeTab === 'card' && <CardTab totalAmount={totalAmount} onPay={handlePay} />}
-                    {activeTab === 'netbanking' && <NetBankingTab totalAmount={totalAmount} onPay={handlePay} />}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.div>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <GlassButton
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              onClose()
+            }}
+          >
+            Close
+          </GlassButton>
+          <GlassButton
+            type="button"
+            variant="primary"
+            loading={status === 'launching' || status === 'verifying'}
+            disabled={!isCheckoutReady || status === 'success'}
+            onClick={() => {
+              void handleLaunchCheckout()
+            }}
+          >
+            {status === 'launching' || status === 'verifying' ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {status === 'verifying' ? 'Verifying payment...' : 'Launching Razorpay...'}
+              </>
+            ) : (
+              <>
+                <CreditCard className="h-4 w-4" />
+                Open secure checkout
+              </>
             )}
-          </AnimatePresence>
+          </GlassButton>
         </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-4 text-center space-y-1">
-          <p className="text-xs text-white/25">
-            Secured by Razorpay &bull; PCI DSS Compliant &bull; Indian payment gateway
-          </p>
-          <p className="text-xs text-amber-500/50 font-medium">
-            Test mode &mdash; no real transaction
-          </p>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </GlassModal>
   )
 }

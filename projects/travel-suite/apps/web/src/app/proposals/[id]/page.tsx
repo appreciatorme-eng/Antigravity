@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useParams, useRouter } from 'next/navigation';
 import { useRealtimeProposal } from '@/hooks/useRealtimeProposal';
 import VersionDiff from '@/components/VersionDiff';
@@ -71,6 +73,7 @@ export default function AdminProposalViewPage() {
   const params = useParams();
   const router = useRouter();
   const proposalId = params.id as string;
+  const { timezone } = useUserTimezone();
 
   const [loading, setLoading] = useState(true);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -445,7 +448,7 @@ export default function AdminProposalViewPage() {
                 <GlassCard key={version.id} padding="md" rounded="lg">
                   <p className="text-sm text-text-secondary">
                     Version {version.version} • Initial version •{' '}
-                    {new Date(version.created_at).toLocaleString()}
+                    {formatLocalDateTime(version.created_at, timezone)}
                   </p>
                 </GlassCard>
               );
@@ -486,7 +489,7 @@ export default function AdminProposalViewPage() {
           {proposal.viewed_at && (
             <div className="text-xs text-text-secondary mt-2 flex items-center gap-1">
               <Eye className="w-3 h-3" />
-              {new Date(proposal.viewed_at).toLocaleDateString()}
+              {formatLocalDate(proposal.viewed_at, timezone)}
             </div>
           )}
         </GlassCard>
@@ -542,7 +545,7 @@ export default function AdminProposalViewPage() {
         </div>
         {proposal.expires_at && (
           <p className="text-xs text-text-secondary mt-2">
-            Expires: {new Date(proposal.expires_at).toLocaleDateString()}
+            Expires: {formatLocalDate(proposal.expires_at, timezone)}
           </p>
         )}
       </GlassCard>
@@ -633,7 +636,7 @@ export default function AdminProposalViewPage() {
                   </div>
                     <div className="text-right">
                       <div className="text-xs text-primary">
-                      {new Date(comment.created_at || Date.now()).toLocaleDateString()}
+                      {formatLocalDate(comment.created_at || Date.now(), timezone)}
                       </div>
                     {!comment.is_resolved && (
                       <button
@@ -666,7 +669,7 @@ export default function AdminProposalViewPage() {
             <Calendar className="w-4 h-4 text-primary" />
             <span className="text-text-secondary">Created:</span>
             <span className="text-secondary dark:text-white font-medium">
-              {new Date(proposal.created_at).toLocaleString()}
+              {formatLocalDateTime(proposal.created_at, timezone)}
             </span>
           </div>
           {proposal.viewed_at && (
@@ -674,7 +677,7 @@ export default function AdminProposalViewPage() {
               <Eye className="w-4 h-4 text-blue-600" />
               <span className="text-text-secondary">First Viewed:</span>
               <span className="text-secondary dark:text-white font-medium">
-                {new Date(proposal.viewed_at).toLocaleString()}
+                {formatLocalDateTime(proposal.viewed_at, timezone)}
               </span>
             </div>
           )}
@@ -683,7 +686,7 @@ export default function AdminProposalViewPage() {
               <CheckCircle className="w-4 h-4 text-green-600" />
               <span className="text-text-secondary">Approved:</span>
               <span className="text-secondary dark:text-white font-medium">
-                {new Date(proposal.approved_at).toLocaleString()} by {proposal.approved_by}
+                {formatLocalDateTime(proposal.approved_at, timezone)} by {proposal.approved_by}
               </span>
             </div>
           )}
@@ -692,7 +695,7 @@ export default function AdminProposalViewPage() {
               <MessageCircle className="w-4 h-4 text-orange-600" />
               <span className="text-text-secondary">Last Comment:</span>
               <span className="text-secondary dark:text-white font-medium">
-                {new Date(comments[0].created_at || Date.now()).toLocaleString()}
+                {formatLocalDateTime(comments[0].created_at || Date.now(), timezone)}
               </span>
             </div>
           )}

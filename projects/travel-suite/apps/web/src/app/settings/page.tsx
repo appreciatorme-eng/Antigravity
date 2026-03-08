@@ -10,6 +10,8 @@ import { User, Bell, Link2, CreditCard, Shield, Globe, Smartphone, Clock, Users,
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { WhatsAppConnectModal } from '@/components/whatsapp/WhatsAppConnectModal';
+import { DEFAULT_APP_TIMEZONE, getTimezoneDisplayName } from '@/lib/date/tz';
+import { useUserTimezone } from '@/hooks/useUserTimezone';
 
 const TABS = [
     { id: 'organization', label: 'Organization', icon: Globe },
@@ -23,8 +25,10 @@ const TABS = [
 
 export default function SettingsPage() {
     const { toast } = useToast();
+    const { timezone, saveTimezone, saving: savingTimezone, timezoneOptions } = useUserTimezone();
     const [activeTab, setActiveTab] = useState('organization');
     const [loading, setLoading] = useState(false);
+    const [draftTimezone, setDraftTimezone] = useState(DEFAULT_APP_TIMEZONE);
 
     // WhatsApp Connect State
     const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
@@ -52,6 +56,10 @@ export default function SettingsPage() {
             }
         })();
     }, []);
+
+    useEffect(() => {
+        setDraftTimezone(timezone);
+    }, [timezone]);
 
     const handleDisconnectWhatsApp = async () => {
         try {
@@ -190,6 +198,23 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveTimezone = async () => {
+        try {
+            await saveTimezone(draftTimezone);
+            toast({
+                title: 'Timezone saved',
+                description: `${getTimezoneDisplayName(draftTimezone)} will be used across bookings, proposals, and inbox timestamps.`,
+                variant: 'success',
+            });
+        } catch {
+            toast({
+                title: 'Timezone save failed',
+                description: 'Keep working in your current timezone and try saving again.',
+                variant: 'error',
+            });
+        }
+    };
+
     const handleSave = () => {
         setLoading(true);
         setTimeout(() => {
@@ -262,11 +287,16 @@ export default function SettingsPage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Timezone</label>
-                                                <select className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary">
-                                                    <option value="UTC">UTC Focus</option>
-                                                    <option value="EST">Eastern Time (US)</option>
-                                                    <option value="PST">Pacific Time (US)</option>
+                                                <select
+                                                    value={draftTimezone}
+                                                    disabled
+                                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none text-secondary disabled:opacity-100"
+                                                >
+                                                    <option value={draftTimezone}>{getTimezoneDisplayName(draftTimezone)}</option>
                                                 </select>
+                                                <p className="text-xs text-text-muted">
+                                                    Operational timestamps follow the profile timezone below.
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -308,6 +338,39 @@ export default function SettingsPage() {
                                         <div className="space-y-2">
                                             <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Email Address</label>
                                             <input type="email" defaultValue="admin@travelsuite.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
+                                        </div>
+                                        <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
+                                            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                                                <div className="flex-1 space-y-2">
+                                                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                                                        Operational Timezone
+                                                    </label>
+                                                    <select
+                                                        value={draftTimezone}
+                                                        onChange={(event) => setDraftTimezone(event.target.value)}
+                                                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary"
+                                                    >
+                                                        {timezoneOptions.map((option) => (
+                                                            <option key={option} value={option}>
+                                                                {getTimezoneDisplayName(option)}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <p className="text-xs text-text-muted">
+                                                        Used for bookings, proposal activity, and inbox timestamps.
+                                                    </p>
+                                                </div>
+                                                <GlassButton
+                                                    variant="primary"
+                                                    onClick={() => {
+                                                        void handleSaveTimezone();
+                                                    }}
+                                                    disabled={savingTimezone || draftTimezone === timezone}
+                                                    className="rounded-xl px-6"
+                                                >
+                                                    {savingTimezone ? 'Saving timezone…' : 'Save timezone'}
+                                                </GlassButton>
+                                            </div>
                                         </div>
                                     </div>
 

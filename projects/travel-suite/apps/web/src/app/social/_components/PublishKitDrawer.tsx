@@ -29,7 +29,7 @@ export const PublishKitDrawer = ({
     connections,
 }: Props) => {
     const [caption, setCaption] = useState(
-        `✈️ ${templateData?.destination || "Dream Destination"} awaits!\n\n${templateData?.offer || ""} — starting @ ${templateData?.price || ""}\n\nBook now: ${templateData?.contactNumber || ""}\n\n#travel #tours #${(templateData?.destination || "travel").toLowerCase().replace(/\s+/g, "")}`
+        `${templateData?.destination || "Dream Destination"} is open for bookings.\n\n${templateData?.offer || ""}${templateData?.offer && templateData?.price ? "\n\n" : ""}${templateData?.price ? `Packages from ${templateData.price}.` : ""}\n\nContact: ${templateData?.contactNumber || ""}\n\n#travel #tours #${(templateData?.destination || "travel").toLowerCase().replace(/\s+/g, "")}`
     );
     const [platforms, setPlatforms] = useState({ instagram: true, facebook: false });
     const [publishMode, setPublishMode] = useState<PublishMode>("now");
@@ -38,12 +38,12 @@ export const PublishKitDrawer = ({
     const [publishing, setPublishing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [hdDownloading, setHdDownloading] = useState(false);
-    const [published, setPublished] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     const handlePublish = async () => {
         const hasConnection = (platforms.instagram && connections.instagram) || (platforms.facebook && connections.facebook);
         if (!hasConnection) {
-            toast.error("Connect Instagram or Facebook first in Settings → Social Connections.");
+            toast.error("Connect Instagram or Facebook first in Settings before sending this for review.");
             return;
         }
         setPublishing(true);
@@ -63,12 +63,27 @@ export const PublishKitDrawer = ({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
-            if (!res.ok) throw new Error("Publish failed");
-            setPublished(true);
-            toast.success(publishMode === "now" ? "Published successfully! 🎉" : "Scheduled successfully!");
-            setTimeout(() => { setPublished(false); onClose(); }, 2000);
-        } catch {
-            toast.error("Could not publish. Check your platform connections.");
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(
+                    typeof payload?.error === "string"
+                        ? payload.error
+                        : "Review submission failed"
+                );
+            }
+            setSubmitted(true);
+            toast.success(
+                publishMode === "now"
+                    ? "Submitted for review."
+                    : "Review scheduled."
+            );
+            setTimeout(() => { setSubmitted(false); onClose(); }, 2000);
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Could not queue this post for review."
+            );
         } finally {
             setPublishing(false);
         }
@@ -111,7 +126,7 @@ export const PublishKitDrawer = ({
                         {/* Header */}
                         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
                             <div>
-                                <h3 className="font-bold text-lg">Publish Kit</h3>
+                                <h3 className="font-bold text-lg">Review Queue</h3>
                                 <p className="text-indigo-100 text-xs mt-0.5 font-medium">
                                     {template?.name || "Template"}
                                 </p>
@@ -125,7 +140,7 @@ export const PublishKitDrawer = ({
                             {/* Platform selector */}
                             <div>
                                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 block">
-                                    Publish To
+                                    Review targets
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                     {[
@@ -184,11 +199,11 @@ export const PublishKitDrawer = ({
 
                             {/* Timing toggle */}
                             <div>
-                                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 block">When</label>
+                                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 block">Review timing</label>
                                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
                                     {[
-                                        { key: "now", label: "Post Now", icon: Send },
-                                        { key: "schedule", label: "Schedule", icon: Calendar },
+                                        { key: "now", label: "Submit Now", icon: Send },
+                                        { key: "schedule", label: "Schedule Review", icon: Calendar },
                                     ].map(({ key, label, icon: Icon }) => (
                                         <button
                                             key={key}
@@ -245,11 +260,11 @@ export const PublishKitDrawer = ({
 
                         {/* Footer actions */}
                         <div className="p-5 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                            {published ? (
+                            {submitted ? (
                                 <div className="flex items-center justify-center gap-3 py-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-emerald-600">
                                     <CheckCircle2 className="w-6 h-6" />
                                     <span className="font-bold text-lg">
-                                        {publishMode === "now" ? "Published!" : "Scheduled!"}
+                                        {publishMode === "now" ? "Submitted!" : "Review Scheduled"}
                                     </span>
                                 </div>
                             ) : (
@@ -267,10 +282,10 @@ export const PublishKitDrawer = ({
                                             <Calendar className="w-5 h-5 mr-2" />
                                         )}
                                         {publishing
-                                            ? "Publishing..."
+                                            ? "Submitting..."
                                             : publishMode === "now"
-                                            ? "Publish Now"
-                                            : "Schedule Post"}
+                                            ? "Submit for Review"
+                                            : "Schedule Review"}
                                     </Button>
                                     <div className="grid grid-cols-4 gap-2">
                                         <Button

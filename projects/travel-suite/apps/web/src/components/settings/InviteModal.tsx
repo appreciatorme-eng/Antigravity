@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle2, Send } from 'lucide-react'
 import { TeamRole, ROLES, Permission } from '@/lib/team/roles'
+import type { InviteTeamMemberInput } from '@/app/settings/team/team.types'
 
 interface InviteModalProps {
   isOpen: boolean
   onClose: () => void
-  onInvite?: (email: string, role: TeamRole, name: string) => void
+  onInvite?: (payload: InviteTeamMemberInput) => Promise<void> | void
 }
 
 const ROLE_KEY_PERMISSIONS: Record<TeamRole, Permission[]> = {
@@ -36,25 +37,42 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   driver_daily_view: 'Daily trip dashboard',
 }
 
-const ORDERED_ROLES: TeamRole[] = ['owner', 'manager', 'agent', 'driver']
+const ORDERED_ROLES: Array<Exclude<TeamRole, 'owner'>> = ['manager', 'agent', 'driver']
 
 export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [selectedRole, setSelectedRole] = useState<TeamRole>('agent')
+  const [selectedRole, setSelectedRole] = useState<Exclude<TeamRole, 'owner'>>('agent')
   const [submitted, setSubmitted] = useState(false)
   const [submittedEmail, setSubmittedEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !email.trim()) return
-    setSubmittedEmail(email)
-    onInvite?.(email, selectedRole, name)
-    setSubmitted(true)
+
+    try {
+      setSubmitting(true)
+      setSubmitError(null)
+      setSubmittedEmail(email)
+      await onInvite?.({
+        email,
+        role: selectedRole,
+        name,
+        phone,
+      })
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to send invite')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleClose = () => {
+    if (submitting) return
     onClose()
     // Reset after animation completes
     setTimeout(() => {
@@ -64,6 +82,7 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
       setSelectedRole('agent')
       setSubmitted(false)
       setSubmittedEmail('')
+      setSubmitError(null)
     }, 300)
   }
 
@@ -213,11 +232,16 @@ export default function InviteModal({ isOpen, onClose, onInvite }: InviteModalPr
                     {/* Submit */}
                     <button
                       type="submit"
+                      disabled={submitting}
                       className="w-full bg-[#00d084] hover:bg-[#00b873] text-black font-semibold rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
                     >
-                      Send Invite
+                      {submitting ? 'Sending Invite...' : 'Send Invite'}
                       <Send className="w-4 h-4" />
                     </button>
+
+                    {submitError ? (
+                      <p className="text-sm text-red-400">{submitError}</p>
+                    ) : null}
 
                     <p className="text-center text-xs text-white/30 leading-relaxed">
                       They&apos;ll receive an email with a link to join your workspace.

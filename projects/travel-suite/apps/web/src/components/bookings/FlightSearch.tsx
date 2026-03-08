@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { ArrowRightLeft, CalendarDays, Loader2, Plane, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatLocalDateTime, formatLocalTime } from "@/lib/date/tz";
 import { FlightDetails } from "@/types/itinerary";
 import { guessIataCode, normalizeIataCode } from "@/lib/airport";
 import { LocationAutocomplete, LocationSuggestion } from "@/components/bookings/LocationAutocomplete";
@@ -41,6 +42,7 @@ interface FlightSearchProps {
     initialDate?: string;
     initialOrigin?: string;
     initialDestination?: string;
+    timezone?: string;
 }
 
 function resolveCode(input: string, selected: LocationSuggestion | null) {
@@ -58,7 +60,13 @@ function formatDuration(pt: string) {
         .trim();
 }
 
-export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDestination }: FlightSearchProps) {
+export function FlightSearch({
+    onSelect,
+    initialDate,
+    initialOrigin,
+    initialDestination,
+    timezone = "Asia/Kolkata",
+}: FlightSearchProps) {
     const [tripType, setTripType] = useState<TripType>("one_way");
     const [originInput, setOriginInput] = useState(initialOrigin || "");
     const [destinationInput, setDestinationInput] = useState(initialDestination || "");
@@ -157,7 +165,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
             currency: offer.price.currency || "USD",
             source: "amadeus",
             confirmation: returnSegment
-                ? `Return ${returnSegment.departure.iataCode}-${returnSegment.arrival.iataCode} ${new Date(returnSegment.departure.at).toLocaleString()}`
+                ? `Return ${returnSegment.departure.iataCode}-${returnSegment.arrival.iataCode} ${formatLocalDateTime(returnSegment.departure.at, timezone)}`
                 : undefined,
         };
         onSelect(flight);
@@ -317,7 +325,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
                                             <div className="text-center">
                                                 <p className="text-lg font-bold text-slate-900">{outboundFirst.departure.iataCode}</p>
                                                 <p className="text-xs text-slate-500">
-                                                    {new Date(outboundFirst.departure.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                    {formatLocalTime(outboundFirst.departure.at, timezone)}
                                                 </p>
                                             </div>
                                             <div className="flex-1">
@@ -333,7 +341,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
                                             <div className="text-center">
                                                 <p className="text-lg font-bold text-slate-900">{outboundLast.arrival.iataCode}</p>
                                                 <p className="text-xs text-slate-500">
-                                                    {new Date(outboundLast.arrival.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                    {formatLocalTime(outboundLast.arrival.at, timezone)}
                                                 </p>
                                             </div>
                                         </div>
@@ -343,7 +351,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
                                                 <div className="text-center">
                                                     <p className="text-sm font-bold text-slate-800">{inboundFirst.departure.iataCode}</p>
                                                     <p className="text-[11px] text-slate-500">
-                                                        {new Date(inboundFirst.departure.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        {formatLocalTime(inboundFirst.departure.at, timezone)}
                                                     </p>
                                                 </div>
                                                 <div className="flex-1">
@@ -359,7 +367,7 @@ export function FlightSearch({ onSelect, initialDate, initialOrigin, initialDest
                                                 <div className="text-center">
                                                     <p className="text-sm font-bold text-slate-800">{inboundLast.arrival.iataCode}</p>
                                                     <p className="text-[11px] text-slate-500">
-                                                        {new Date(inboundLast.arrival.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        {formatLocalTime(inboundLast.arrival.at, timezone)}
                                                     </p>
                                                 </div>
                                             </div>

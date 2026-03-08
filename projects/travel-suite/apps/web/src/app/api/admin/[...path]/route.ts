@@ -56,6 +56,7 @@ const routes = createCatchAllHandlers([
   ["pricing/overheads", () => import("@/app/api/_handlers/admin/pricing/overheads/route")],
   ["pricing/vendor-history", () => import("@/app/api/_handlers/admin/pricing/vendor-history/route")],
   ["pricing/transactions", () => import("@/app/api/_handlers/admin/pricing/transactions/route")],
+  ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
 ]);
 

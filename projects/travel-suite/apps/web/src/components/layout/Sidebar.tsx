@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -32,6 +31,7 @@ import {
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavCounts } from "@/components/layout/useNavCounts";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -43,13 +43,9 @@ interface NavItem {
     label: string;
     href: string;
     badge?: number;
+    badgeKey?: keyof ReturnType<typeof useNavCounts>;
     badgeColor?: string;
 }
-
-// Mock notification counts (replace with real store/API later)
-const MOCK_WHATSAPP_UNREAD = 3;
-const MOCK_DRIVER_UNASSIGNED = 2;
-const MOCK_NEW_LEADS_TODAY = 1;
 
 const PRIMARY_ITEMS: NavItem[] = [
     {
@@ -61,35 +57,34 @@ const PRIMARY_ITEMS: NavItem[] = [
         icon: MessageCircle,
         label: "Inbox",
         href: "/inbox",
-        badge: MOCK_WHATSAPP_UNREAD,
+        badgeKey: "inboxUnread",
         badgeColor: "#25D366",
     },
     {
         icon: Briefcase,
         label: "Trips",
         href: "/trips",
-        badge: MOCK_DRIVER_UNASSIGNED,
+        badgeKey: "bookingsToday",
         badgeColor: "#f97316",
     },
     {
         icon: Users,
         label: "Clients",
         href: "/clients",
-        badge: MOCK_NEW_LEADS_TODAY,
+        badgeKey: "reviewsNeedingResponse",
         badgeColor: "#3b82f6",
     },
     {
         icon: Plane,
         label: "Planner",
         href: "/planner",
-        badge: 0,
+        badgeKey: "proposalsPending",
         badgeColor: "#8b5cf6",
     },
     {
         icon: Settings,
         label: "Settings",
         href: "/admin/settings",
-        badge: 0,
         badgeColor: "#00d084",
     },
 ];
@@ -237,7 +232,7 @@ function NavItemRow({
 export default function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
-    const { isDemoMode } = useDemoMode();
+    const counts = useNavCounts();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
         () =>
@@ -285,7 +280,7 @@ export default function Sidebar({ className }: SidebarProps) {
             animate={{ width: isCollapsed ? 72 : 256 }}
             transition={{ type: "spring", stiffness: 320, damping: 35 }}
             className={cn(
-                "h-screen flex flex-col bg-slate-900/95 backdrop-blur text-slate-300 border-r border-white/10 sticky top-0 overflow-hidden z-40",
+                "min-h-[100dvh] flex flex-col bg-slate-900/95 backdrop-blur text-slate-300 border-r border-white/10 sticky top-0 overflow-hidden z-40",
                 className
             )}
         >
@@ -306,10 +301,7 @@ export default function Sidebar({ className }: SidebarProps) {
                                 className="flex flex-col overflow-hidden"
                             >
                                 <span className="font-bold text-white text-sm truncate leading-tight">
-                                    GoBuddy Adventures{" "}
-                                    <span className="text-base" role="img" aria-label="India flag">
-                                        🇮🇳
-                                    </span>
+                                    GoBuddy Adventures
                                 </span>
                                 <span className="text-[10px] text-slate-500 font-medium tracking-wide">
                                     PREMIUM SAAS
@@ -336,7 +328,10 @@ export default function Sidebar({ className }: SidebarProps) {
                     {PRIMARY_ITEMS.map((item) => (
                         <NavItemRow
                             key={item.href}
-                            item={{ ...item, badge: isDemoMode ? (item.badge ?? 0) : 0 }}
+                            item={{
+                                ...item,
+                                badge: item.badgeKey ? counts[item.badgeKey] : 0,
+                            }}
                             isActive={isActivePath(item.href)}
                             isCollapsed={isCollapsed}
                         />

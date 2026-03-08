@@ -1,62 +1,75 @@
-import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { apiError, apiSuccess } from "@/lib/api/response";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getPaymentLinkByToken,
+  recordPaymentLinkEvent,
+} from "@/lib/payments/payment-links.server";
 
-// GET /api/payments/track/[token]
-// Returns mock payment link status (development only)
+const tokenSchema = z.string().min(8).max(200);
+const eventSchema = z.object({
+  event: z.enum(["created", "sent", "viewed", "reminder_sent", "paid", "expired", "cancelled"]),
+  metadata: z.record(z.string(), z.string()).optional(),
+});
+
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> },
 ) {
   try {
-    const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:GET')
-    if (guard) return guard
-
-    const { token } = await params
-
-    const mockStatus = {
-      token,
-      status: 'pending' as const,
-      viewCount: 0,
-      lastViewedAt: null,
-      paidAt: null,
-      amount: 5000000, // ₹50,000 in paise
-      currency: 'INR',
+    const { token } = await params;
+    const parsedToken = tokenSchema.safeParse(token);
+    if (!parsedToken.success) {
+      return apiError("Invalid payment link token", 400);
     }
 
-    return Response.json(mockStatus)
+    const admin = createAdminClient();
+    const link = await getPaymentLinkByToken(admin, parsedToken.data, new URL(request.url).origin);
+    if (!link) {
+      return apiError("Payment link not found", 404);
+    }
+
+    return apiSuccess(link);
   } catch (error) {
-    console.error("[/api/payments/track/[token]:GET] Unhandled error:", error);
-    return Response.json(
-      { data: null, error: "An unexpected error occurred. Please try again." },
-      { status: 500 },
-    );
+    console.error("[payments/track/:token] load failed:", error);
+    return apiError("Failed to load payment status", 500);
   }
 }
 
-// POST /api/payments/track/[token]
-// Records a view or payment event (development only)
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> },
 ) {
   try {
-    const guard = ensureMockEndpointAllowed('/api/payments/track/[token]:POST')
-    if (guard) return guard
+    const { token } = await params;
+    const parsedToken = tokenSchema.safeParse(token);
+    if (!parsedToken.success) {
+      return apiError("Invalid payment link token", 400);
+    }
 
-    const { token } = await params
-    const body = await request.json() as { event?: string; metadata?: Record<string, string> }
-    const { event } = body
+    const body = await request.json().catch(() => null);
+    const parsedBody = eventSchema.safeParse(body);
+    if (!parsedBody.success) {
+      return apiError("Invalid payment tracking payload", 400);
+    }
 
-    return Response.json({
-      success: true,
-      token,
-      event,
-      timestamp: new Date().toISOString(),
-    })
+    const admin = createAdminClient();
+    const link = await recordPaymentLinkEvent(admin, {
+      token: parsedToken.data,
+      event: parsedBody.data.event,
+      metadata: parsedBody.data.metadata,
+      razorpayPaymentId: parsedBody.data.metadata?.razorpay_payment_id || null,
+      baseUrl: new URL(request.url).origin,
+    });
+
+    if (!link) {
+      return apiError("Payment link not found", 404);
+    }
+
+    return apiSuccess(link);
   } catch (error) {
-    console.error("[/api/payments/track/[token]:POST] Unhandled error:", error);
-    return Response.json(
-      { data: null, error: "An unexpected error occurred. Please try again." },
-      { status: 500 },
-    );
+    console.error("[payments/track/:token] update failed:", error);
+    return apiError("Failed to update payment status", 500);
   }
 }

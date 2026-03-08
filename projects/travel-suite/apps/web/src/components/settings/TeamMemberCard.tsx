@@ -1,27 +1,19 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { X, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, RefreshCw, X } from 'lucide-react'
 import { TeamRole, ROLES, canManageRole } from '@/lib/team/roles'
-
-export interface TeamMember {
-  id: string
-  name: string
-  email: string
-  role: TeamRole
-  phone: string
-  avatar: string | null
-  status: 'active' | 'pending' | 'suspended'
-  joinedAt: string
-  lastActive: string
-  tripsManaged: number
-}
+import type { TeamMember } from '@/app/settings/team/team.types'
+import { GlassBadge } from '@/components/glass/GlassBadge'
+import { GlassButton } from '@/components/glass/GlassButton'
+import { GlassCard } from '@/components/glass/GlassCard'
 
 interface TeamMemberCardProps {
   member: TeamMember
   currentUserRole: TeamRole
-  onRoleChange?: (memberId: string, newRole: TeamRole) => void
-  onRemove?: (memberId: string) => void
+  onRoleChange?: (memberId: string, newRole: Exclude<TeamRole, 'owner'>) => Promise<void> | void
+  onRemove?: (memberId: string) => Promise<void> | void
+  onResendInvite?: (memberId: string) => Promise<void> | void
   index?: number
 }
 
@@ -54,18 +46,60 @@ export default function TeamMemberCard({
   currentUserRole,
   onRoleChange,
   onRemove,
+  onResendInvite,
   index = 0,
 }: TeamMemberCardProps) {
+  const [busyAction, setBusyAction] = useState<'role' | 'remove' | 'resend' | null>(null)
   const roleDef = ROLES[member.role]
   const canManage = canManageRole(currentUserRole, member.role)
   const isOwner = member.role === 'owner'
+  const roleOptions: Array<Exclude<TeamRole, 'owner'>> =
+    currentUserRole === 'owner' ? ['manager', 'agent', 'driver'] : ['agent', 'driver']
+
+  const statusVariant =
+    member.status === 'active'
+      ? 'success'
+      : member.status === 'pending'
+        ? 'warning'
+        : 'danger'
+
+  const handleRoleChange = async (nextRole: string) => {
+    if (!onRoleChange) return
+    setBusyAction('role')
+    try {
+      await onRoleChange(member.id, nextRole as Exclude<TeamRole, 'owner'>)
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const handleRemove = async () => {
+    if (!onRemove) return
+    setBusyAction('remove')
+    try {
+      await onRemove(member.id)
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!onResendInvite) return
+    setBusyAction('resend')
+    try {
+      await onResendInvite(member.id)
+    } finally {
+      setBusyAction(null)
+    }
+  }
 
   return (
-    <motion.div
+    <GlassCard
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.06 }}
-      className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex flex-col gap-4"
+      padding="lg"
+      className="flex flex-col gap-4 border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-white/5"
     >
       {/* Top row: avatar + name + status */}
       <div className="flex items-start gap-4">
@@ -86,9 +120,11 @@ export default function TeamMemberCard({
         </div>
 
         {/* Status dot + label */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {STATUS_DOT[member.status]}
-          <span className="text-xs text-white/50">{STATUS_LABEL[member.status]}</span>
+          <GlassBadge variant={statusVariant} size="sm">
+            {STATUS_LABEL[member.status]}
+          </GlassBadge>
         </div>
       </div>
 
@@ -111,21 +147,25 @@ export default function TeamMemberCard({
       {canManage && (
         <div className="border-t border-white/5 pt-3 flex items-center gap-3">
           {member.status === 'pending' ? (
-            <button
-              className="flex items-center gap-1.5 text-xs text-[#00d084] hover:text-[#00b873] font-semibold transition-colors"
-              onClick={() => {/* resend invite */ }}
+            <GlassButton
+              variant="secondary"
+              size="sm"
+              loading={busyAction === 'resend'}
+              className="rounded-xl"
+              onClick={handleResend}
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Resend Invite
-            </button>
+            </GlassButton>
           ) : (
             <div className="flex-1">
               <select
                 value={member.role}
-                onChange={(e) => onRoleChange?.(member.id, e.target.value as TeamRole)}
+                disabled={busyAction === 'role'}
+                onChange={(e) => void handleRoleChange(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 text-white rounded-lg p-2 text-xs focus:outline-none focus:border-[#00d084]/50 cursor-pointer"
               >
-                {(Object.keys(ROLES) as TeamRole[]).map((r) => (
+                {roleOptions.map((r) => (
                   <option key={r} value={r} className="bg-[#0f2040] text-white">
                     {ROLES[r].label}
                   </option>
@@ -135,17 +175,19 @@ export default function TeamMemberCard({
           )}
 
           {!isOwner && member.status !== 'pending' && (
-            <button
-              onClick={() => onRemove?.(member.id)}
-              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-semibold transition-colors px-2 py-2 rounded-lg hover:bg-red-400/10"
+            <GlassButton
+              variant="danger"
+              size="sm"
+              loading={busyAction === 'remove'}
+              onClick={handleRemove}
               title="Remove member"
             >
-              <X className="w-3.5 h-3.5" />
+              {busyAction !== 'remove' ? <X className="w-3.5 h-3.5" /> : <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Remove
-            </button>
+            </GlassButton>
           )}
         </div>
       )}
-    </motion.div>
+    </GlassCard>
   )
 }

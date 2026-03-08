@@ -17,26 +17,38 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const sessionName = req.nextUrl.searchParams.get("sessionName");
-        if (!sessionName) {
-            return NextResponse.json(
-                { error: "Missing sessionName" },
-                { status: 400 },
-            );
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("organization_id")
+            .eq("id", user.id)
+            .single();
+
+        if (!profile?.organization_id) {
+            return NextResponse.json({ status: "disconnected" });
         }
 
-        // Fetch token + DB status together — needed for WPPConnect Bearer auth
+        const requestedSessionName = req.nextUrl.searchParams.get("sessionName");
         const admin = createAdminClient();
-        const { data: connection } = await admin
+        let connectionQuery = admin
             .from("whatsapp_connections")
-            .select("session_token, status, phone_number, display_name")
-            .eq("session_name", sessionName)
-            .single();
+            .select("session_name, session_token, status, phone_number, display_name")
+            .eq("organization_id", profile.organization_id);
+
+        if (requestedSessionName) {
+            connectionQuery = connectionQuery.eq("session_name", requestedSessionName);
+        }
+
+        const { data: connection } = await connectionQuery
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        const sessionName = requestedSessionName || connection?.session_name;
 
         const sessionToken = connection?.session_token ?? "";
         const dbStatus = connection?.status ?? "disconnected";
 
-        if (!sessionToken) {
+        if (!sessionToken || !sessionName) {
             return NextResponse.json({ status: "disconnected" });
         }
 
