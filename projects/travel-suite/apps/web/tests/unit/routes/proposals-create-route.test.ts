@@ -205,6 +205,7 @@ it("returns a normalized success envelope after the proposal RPC flow completes"
   expect(payload).toEqual({
     data: {
       proposalId: "33333333-3333-4333-8333-333333333333",
+      amount: 0,
       limit: {
         allowed: true,
         feature: "proposals",
