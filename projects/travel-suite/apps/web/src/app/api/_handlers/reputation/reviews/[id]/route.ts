@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -122,6 +123,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Review not found" }, { status: 404 });
     }
 
+    revalidateTag("reputation", "max");
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

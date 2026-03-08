@@ -1,8 +1,15 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentLinkByToken } from "@/lib/payments/payment-links.server";
+import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
+const PUBLIC_PORTAL_READ_RATE_LIMIT_MAX = Number(
+  process.env.PUBLIC_PORTAL_READ_RATE_LIMIT_MAX || "30"
+);
+const PUBLIC_PORTAL_READ_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_PORTAL_READ_RATE_LIMIT_WINDOW_MS || 60_000
+);
 
 function normalizeText(value: unknown) {
   const text = String(value || "").trim();
@@ -35,6 +42,17 @@ export async function GET(
     const { token } = await params;
     if (!SHARE_TOKEN_REGEX.test(token)) {
       return apiError("Invalid portal token", 400);
+    }
+
+    const rateLimitResponse = await enforcePublicRouteRateLimit(request, {
+      identifier: token,
+      limit: PUBLIC_PORTAL_READ_RATE_LIMIT_MAX,
+      windowMs: PUBLIC_PORTAL_READ_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:portal:read",
+      message: "Too many requests. Please try again later.",
+    });
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const admin = createAdminClient();

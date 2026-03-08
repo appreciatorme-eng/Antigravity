@@ -11,9 +11,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
+import { sendPaymentReceipt } from '@/lib/email/notifications';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
+import { buildInvoiceDownloadUrl } from '@/lib/invoices/public-link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
 import {
@@ -130,6 +134,7 @@ function logWebhookHandlerEvent(
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
   const requestContext = getRequestContext(request, requestId);
+  const requestOrigin = request.nextUrl.origin;
 
   try {
     if (!isPaymentsIntegrationEnabled()) {
@@ -202,7 +207,7 @@ export async function POST(request: NextRequest) {
     // Handle different event types
     switch (eventType) {
       case 'payment.captured':
-        await handlePaymentCaptured(payload, requestContext);
+        await handlePaymentCaptured(payload, requestContext, requestOrigin);
         break;
 
       case 'payment.failed':
@@ -262,7 +267,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
+async function handlePaymentCaptured(
+  payload: RazorpayWebhookPayload,
+  requestContext: WebhookLogContext,
+  requestOrigin: string,
+) {
   const payment = getPaymentEntity(payload);
   if (!payment) {
     logWebhookHandlerEvent('warn', 'payment.captured missing payment entity', requestContext, {
@@ -290,6 +299,47 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
       },
       { context: 'admin' }
     );
+
+    const supabase = createAdminClient();
+    const { data: invoiceRow } = await supabase
+      .from('invoices')
+      .select('invoice_number, client_id, organization_id')
+      .eq('id', invoiceId)
+      .maybeSingle();
+
+    if (invoiceRow?.client_id) {
+      const [{ data: clientProfile }, { data: organization }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', invoiceRow.client_id)
+          .maybeSingle(),
+        supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', invoiceRow.organization_id)
+          .maybeSingle(),
+      ]);
+
+      if (clientProfile?.email) {
+        const paidAtLabel = new Intl.DateTimeFormat('en-IN', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date());
+
+        void sendPaymentReceipt({
+          to: clientProfile.email,
+          recipientName: clientProfile.full_name || 'Traveler',
+          amountLabel: `₹${(payment.amount / 100).toLocaleString('en-IN')}`,
+          paymentId: payment.id,
+          bookingReference: invoiceRow.invoice_number || invoiceId,
+          paidAt: paidAtLabel,
+          operatorName: organization?.name || 'Antigravity Travel',
+          gstLabel: '5% GST (HSN 998551)',
+          invoiceUrl: buildInvoiceDownloadUrl(requestOrigin, invoiceId, payment.id),
+        });
+      }
+    }
   }
 
   let orgIdForFunnel = payment.notes?.organization_id || null;
@@ -315,6 +365,21 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload, requestCon
       },
     });
   }
+
+  void captureServerAnalyticsEvent({
+    event: 'payment_completed',
+    distinctId: orgIdForFunnel || payment.id,
+    properties: {
+      organization_id: orgIdForFunnel,
+      payment_id: payment.id,
+      order_id: payment.order_id,
+      amount_inr: payment.amount / 100,
+      method: payment.method,
+    },
+  });
+
+  revalidateTag('revenue', 'max');
+  revalidateTag('nav-counts', 'max');
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -359,6 +424,8 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestConte
     payment.error_description || 'Payment failed',
     { context: 'admin' }
   );
+
+  revalidateTag('nav-counts', 'max');
 }
 
 async function handleSubscriptionCharged(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

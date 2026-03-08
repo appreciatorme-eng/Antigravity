@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { env } from "@/lib/config/env";
 import { createClient } from "@/lib/supabase/server";
 
-const GOOGLE_PLACES_API_KEY =
-  process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_PLACES_API_KEY = env.google.placesApiKey;
 
 type GoogleReview = {
   author_name?: string;
@@ -114,8 +115,8 @@ export async function POST(request: Request) {
     if (!GOOGLE_PLACES_API_KEY) {
       return NextResponse.json(
         {
-          error:
-            "Google Places is not configured. Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY before syncing reviews.",
+          error: "google_place_id not configured",
+          setupUrl: "/settings",
         },
         { status: 503 },
       );
@@ -135,8 +136,8 @@ export async function POST(request: Request) {
     if (!orgSettings?.google_places_enabled) {
       return NextResponse.json(
         {
-          error:
-            "Connect Google Places in Settings before importing reviews automatically.",
+          error: "google_place_id not configured",
+          setupUrl: "/settings",
         },
         { status: 412 },
       );
@@ -167,8 +168,8 @@ export async function POST(request: Request) {
     if (connections.length === 0) {
       return NextResponse.json(
         {
-          error:
-            "No active Google Business connection found. Connect Google Business first.",
+          error: "google_place_id not configured",
+          setupUrl: "/settings",
         },
         { status: 404 },
       );
@@ -327,6 +328,8 @@ export async function POST(request: Request) {
         });
       }
     }
+
+    revalidateTag("reputation", "max");
 
     return NextResponse.json({
       synced: inserted + updated,

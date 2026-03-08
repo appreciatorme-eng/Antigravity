@@ -17,6 +17,7 @@ import { PricingCard } from "@/components/billing/PricingCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassModal } from "@/components/glass/GlassModal";
+import { ErrorSection } from "@/components/ui/ErrorSection";
 import { useToast } from "@/components/ui/toast";
 import { TIERS, type TierName } from "@/lib/billing/tiers";
 
@@ -345,7 +346,7 @@ export function BillingPageClient() {
                 <h2 className="mt-2 text-2xl font-bold text-white">
                   {TIERS[currentTier].displayName}
                 </h2>
-                <p className="mt-2 text-sm text-white/60">
+                <p className="mt-2 text-sm text-white/75">
                   {data.subscription?.current_period_end
                     ? `Next billing checkpoint: ${new Date(data.subscription.current_period_end).toLocaleDateString("en-IN")}`
                     : "No active paid subscription yet."}
@@ -364,7 +365,7 @@ export function BillingPageClient() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {usageItems.map(([label, used, limit]) => (
                 <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-white/45">{label}</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/70">{label}</p>
                   <p className="mt-2 text-lg font-semibold text-white">
                     {used} / {formatLimit(limit as number | null)}
                   </p>
@@ -379,7 +380,7 @@ export function BillingPageClient() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <span className={`text-sm font-semibold ${billing === "monthly" ? "text-white" : "text-white/40"}`}>
+          <span className={`text-sm font-semibold ${billing === "monthly" ? "text-white" : "text-white/70"}`}>
             Monthly
           </span>
           <button
@@ -387,6 +388,8 @@ export function BillingPageClient() {
             className="relative h-7 w-14 rounded-full border border-white/20 bg-white/10"
             onClick={() => setBilling((value) => (value === "monthly" ? "annual" : "monthly"))}
             aria-label="Toggle billing period"
+            role="switch"
+            aria-checked={billing === "annual"}
           >
             <motion.div
               className="absolute top-1 h-5 w-5 rounded-full bg-[#00d084]"
@@ -394,26 +397,28 @@ export function BillingPageClient() {
               transition={{ type: "spring", stiffness: 500, damping: 30 }}
             />
           </button>
-          <span className={`text-sm font-semibold ${billing === "annual" ? "text-white" : "text-white/40"}`}>
+          <span className={`text-sm font-semibold ${billing === "annual" ? "text-white" : "text-white/70"}`}>
             Annual
           </span>
         </motion.div>
 
-        <motion.div
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {TIER_ORDER.map((tierName) => (
-            <PricingCard
-              key={tierName}
-              tier={TIERS[tierName]}
-              billing={billing}
-              currentTier={currentTier}
-              onSelect={() => void handleSelectTier(tierName)}
-            />
-          ))}
-        </motion.div>
+        <ErrorSection label="Billing plan widget">
+          <motion.div
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {TIER_ORDER.map((tierName) => (
+              <PricingCard
+                key={tierName}
+                tier={TIERS[tierName]}
+                billing={billing}
+                currentTier={currentTier}
+                onSelect={() => void handleSelectTier(tierName)}
+              />
+            ))}
+          </motion.div>
+        </ErrorSection>
 
         <div className="mt-12 text-center">
           <div className="inline-flex items-center gap-2 text-white/35">

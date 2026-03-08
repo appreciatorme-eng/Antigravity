@@ -84,6 +84,9 @@ export default function SettingsPage() {
     const [isTripAdvisorConnecting, setIsTripAdvisorConnecting] = useState(false);
     const [isPlacesEnabled, setIsPlacesEnabled] = useState(false);
     const [isPlacesActivating, setIsPlacesActivating] = useState(false);
+    const [googlePlaceId, setGooglePlaceId] = useState('');
+    const [savedGooglePlaceId, setSavedGooglePlaceId] = useState('');
+    const [isGooglePlaceSaving, setIsGooglePlaceSaving] = useState(false);
     const [upiId, setUpiId] = useState('');
     const [isUpiSaved, setIsUpiSaved] = useState(false);
     const [isUpiSaving, setIsUpiSaving] = useState(false);
@@ -117,8 +120,11 @@ export default function SettingsPage() {
             }
 
             if (placesRes.ok) {
-                const placesData = (await placesRes.json()) as { enabled?: boolean };
+                const placesData = (await placesRes.json()) as { enabled?: boolean; googlePlaceId?: string };
                 setIsPlacesEnabled(placesData.enabled ?? false);
+                const nextPlaceId = placesData.googlePlaceId ?? '';
+                setGooglePlaceId(nextPlaceId);
+                setSavedGooglePlaceId(nextPlaceId);
             }
 
             // TripAdvisor status from org settings
@@ -172,6 +178,38 @@ export default function SettingsPage() {
             toast({ title: 'Activation failed', variant: 'error' });
         } finally {
             setIsPlacesActivating(false);
+        }
+    };
+
+    const handleSaveGooglePlaceId = async () => {
+        const trimmedPlaceId = googlePlaceId.trim();
+        if (!trimmedPlaceId) {
+            toast({ title: 'Google Place ID required', description: 'Paste a valid Google Place ID before saving.', variant: 'error' });
+            return;
+        }
+
+        setIsGooglePlaceSaving(true);
+        try {
+            const res = await fetch('/api/integrations/places', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ googlePlaceId: trimmedPlaceId }),
+            });
+            const data = (await res.json()) as { success?: boolean; error?: string; googlePlaceId?: string; enabled?: boolean };
+            if (!res.ok || !data.success) {
+                toast({ title: 'Save failed', description: data.error ?? 'Could not save Google Place ID', variant: 'error' });
+                return;
+            }
+
+            const nextPlaceId = data.googlePlaceId ?? trimmedPlaceId;
+            setGooglePlaceId(nextPlaceId);
+            setSavedGooglePlaceId(nextPlaceId);
+            setIsPlacesEnabled(data.enabled ?? true);
+            toast({ title: 'Google Place ID saved', description: 'Review sync can now import Google reviews.', variant: 'success' });
+        } catch {
+            toast({ title: 'Save failed', description: 'Could not save Google Place ID', variant: 'error' });
+        } finally {
+            setIsGooglePlaceSaving(false);
         }
     };
 
@@ -649,6 +687,36 @@ export default function SettingsPage() {
                                             >
                                                 {isPlacesActivating ? 'Activating…' : isPlacesEnabled ? 'Active ✓' : 'Activate'}
                                             </GlassButton>
+                                        </div>
+                                        <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-4">
+                                            <label htmlFor="google-place-id" className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                                                Google Place ID
+                                            </label>
+                                            <p className="mt-1 text-xs text-text-muted">
+                                                Find yours in Google Maps by opening your listing, selecting Share, and copying the place link.
+                                            </p>
+                                            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
+                                                <input
+                                                    id="google-place-id"
+                                                    value={googlePlaceId}
+                                                    onChange={(event) => setGooglePlaceId(event.target.value)}
+                                                    placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
+                                                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-secondary outline-none transition focus:border-primary/40 focus:bg-white"
+                                                />
+                                                <GlassButton
+                                                    size="sm"
+                                                    onClick={() => { void handleSaveGooglePlaceId(); }}
+                                                    disabled={isGooglePlaceSaving || googlePlaceId.trim() === savedGooglePlaceId}
+                                                    className="md:min-w-[170px]"
+                                                >
+                                                    {isGooglePlaceSaving ? 'Saving…' : 'Save Place ID'}
+                                                </GlassButton>
+                                            </div>
+                                            {savedGooglePlaceId && (
+                                                <p className="mt-2 text-xs text-emerald-600">
+                                                    Current Place ID: {savedGooglePlaceId}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
+import { env } from "@/lib/config/env";
 
 let _redis: Redis | null | undefined;
 function getRedisClient(): Redis | null {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
         // Check Sentry configured
         const sentryConfigured = Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
         // Check PostHog configured
-        const posthogConfigured = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+        const posthogConfigured = Boolean(env.posthog.key);
 
         return NextResponse.json({
             services: {

@@ -12,6 +12,9 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export interface GlassModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,11 +81,9 @@ export function GlassModal({
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     const getFocusableElements = () =>
-      Array.from(
-        modal.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+      Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+      );
 
     const focusableElements = getFocusableElements();
     const firstElement = focusableElements[0] || modal;
@@ -159,6 +160,7 @@ export function GlassModal({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
+        aria-label={title || "Dialog"}
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
       >

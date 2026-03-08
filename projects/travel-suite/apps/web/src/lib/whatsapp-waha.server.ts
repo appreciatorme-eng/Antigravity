@@ -2,14 +2,15 @@
 // Replaced WAHA Core (single-session only) with WPPConnect (unlimited sessions, free).
 // API reference: https://github.com/wppconnect-team/wppconnect-server
 import "server-only";
+import { env } from "@/lib/config/env";
 import { fetchWithRetry } from "@/lib/network/retry";
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-const WPPCONNECT_URL = process.env.WPPCONNECT_URL;
-const WPPCONNECT_SECRET_KEY = process.env.WHATSAPP_API_KEY;
+const WPPCONNECT_URL = env.wppconnect.baseUrl;
+const WPPCONNECT_SECRET_KEY = env.wppconnect.token;
 
 // ---------------------------------------------------------------------------
 // Types — exported so route handlers can type-check responses
@@ -62,7 +63,7 @@ async function wppFetch(
     token?: string,
     options?: RequestInit,
 ): Promise<Response> {
-    if (!WPPCONNECT_URL) throw new Error("WPPCONNECT_URL env var is not configured");
+    if (!WPPCONNECT_URL) throw new Error("WPPCONNECT_BASE_URL env var is not configured");
 
     const base = WPPCONNECT_URL.replace(/\/$/, "");
     const url = `${base}${path}`;
@@ -104,7 +105,7 @@ async function wppFetch(
  */
 async function generateSessionToken(sessionName: string): Promise<string> {
     if (!WPPCONNECT_SECRET_KEY) {
-        throw new Error("WHATSAPP_API_KEY env var is not configured");
+        throw new Error("WPPCONNECT_TOKEN env var is not configured");
     }
 
     const res = await wppFetch(

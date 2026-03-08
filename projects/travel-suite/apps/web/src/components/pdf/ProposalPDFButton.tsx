@@ -8,8 +8,7 @@
 
 import React, { useState } from 'react';
 import { Download, Mail, Loader2 } from 'lucide-react';
-import { pdf } from '@react-pdf/renderer';
-import { ProposalDocument, type ProposalData } from './ProposalDocument';
+import type { ProposalData } from './ProposalDocument';
 import { GlassButton } from '../glass/GlassButton';
 import { useToast } from '@/components/ui/toast';
 
@@ -32,16 +31,24 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
   const [emailing, setEmailing] = useState(false);
   const { toast } = useToast();
 
+  const renderProposalBlob = async () => {
+    const [{ pdf }, { ProposalDocument }] = await Promise.all([
+      import('@react-pdf/renderer'),
+      import('./ProposalDocument'),
+    ]);
+
+    return pdf(
+      <ProposalDocument
+        proposal={proposalData}
+        organizationName={organizationName}
+      />
+    ).toBlob();
+  };
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      // Generate PDF
-      const blob = await pdf(
-        <ProposalDocument
-          proposal={proposalData}
-          organizationName={organizationName}
-        />
-      ).toBlob();
+      const blob = await renderProposalBlob();
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -76,13 +83,7 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
 
     setEmailing(true);
     try {
-      // Generate PDF blob
-      const blob = await pdf(
-        <ProposalDocument
-          proposal={proposalData}
-          organizationName={organizationName}
-        />
-      ).toBlob();
+      const blob = await renderProposalBlob();
 
       // Convert blob to base64
       const base64 = await new Promise<string>((resolve, reject) => {

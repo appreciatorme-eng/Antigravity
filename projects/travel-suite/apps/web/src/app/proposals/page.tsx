@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
 import { useProposals } from '@/lib/queries/proposals';
 import { createClient } from '@/lib/supabase/client';
@@ -30,7 +30,9 @@ import Link from 'next/link';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassConfirmModal } from '@/components/glass/GlassModal';
-import { GlassListSkeleton } from '@/components/glass/GlassSkeleton';
+import { ErrorSection } from '@/components/ui/ErrorSection';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { TableSkeleton } from '@/components/ui/skeletons/TableSkeleton';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
@@ -74,6 +76,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: BadgeVariant; icon
   commented: { label: 'Commented', variant: 'warning', icon: MessageCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
   approved: { label: 'Approved', variant: 'success', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   rejected: { label: 'Rejected', variant: 'danger', icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
+  archived: { label: 'Archived', variant: 'default', icon: Clock, color: 'text-slate-600', bg: 'bg-slate-100' },
 };
 
 function formatSignedAt(isoString: string, timezone: string): string {
@@ -92,13 +95,15 @@ export default function ProposalsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<Proposal | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkSubmitting, setBulkSubmitting] = useState<false | 'approve' | 'archive'>(false);
 
   // E-Signature modal state
   const [signModalProposal, setSignModalProposal] = useState<Proposal | null>(null);
   const [signatureMap, setSignatureMap] = useState<Record<string, SignatureRecord>>({});
 
   const { data: proposalsRaw, isLoading: loading, refetch: loadProposals } = useProposals(filterStatus);
-  const proposals: Proposal[] = proposalsRaw || [];
+  const proposals = useMemo<Proposal[]>(() => proposalsRaw ?? [], [proposalsRaw]);
 
   async function handleDeleteProposal() {
     if (!deleteConfirm) return;
@@ -144,11 +149,22 @@ export default function ProposalsPage() {
     });
   }
 
-  const filteredItems = proposals.filter((p) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return p.title.toLowerCase().includes(q) || p.client_name?.toLowerCase().includes(q);
-  });
+  const filteredItems = useMemo(
+    () =>
+      proposals.filter((p) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return p.title.toLowerCase().includes(q) || p.client_name?.toLowerCase().includes(q);
+      }),
+    [proposals, searchQuery],
+  );
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => filteredItems.some((proposal) => proposal.id === id)));
+  }, [filteredItems]);
+
+  const allVisibleSelected =
+    filteredItems.length > 0 && filteredItems.every((proposal) => selectedIds.includes(proposal.id));
 
   const summaryStats = [
     { label: 'Total Volume', value: `$${proposals.reduce((s, p) => s + (p.total_price || 0), 0).toLocaleString()}`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary/10' },
@@ -156,6 +172,45 @@ export default function ProposalsPage() {
     { label: 'Conversion', value: proposals.length ? `${Math.round((proposals.filter(p => p.status === 'approved').length / proposals.length) * 100)}%` : '0%', icon: TrendingUp, color: 'text-indigo-500', bg: 'bg-indigo-50' },
     { label: 'Active Leas', value: proposals.filter(p => p.status === 'sent' || p.status === 'viewed').length, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
   ];
+
+  async function handleBulkAction(action: 'approve' | 'archive') {
+    if (selectedIds.length === 0) return;
+    setBulkSubmitting(action);
+
+    try {
+      const response = await fetch('/api/proposals/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids: selectedIds }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error || `Failed to ${action} proposals`);
+      }
+
+      const processed = payload?.data?.processed ?? 0;
+      const errors = payload?.data?.errors ?? [];
+      setSelectedIds([]);
+      await loadProposals();
+      toast({
+        title: action === 'approve' ? 'Proposals approved' : 'Proposals archived',
+        description:
+          errors.length > 0
+            ? `${processed} updated, ${errors.length} skipped.`
+            : `${processed} proposal${processed === 1 ? '' : 's'} updated successfully.`,
+        variant: errors.length > 0 ? 'info' : 'success',
+      });
+    } catch (error) {
+      toast({
+        title: 'Bulk action failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'error',
+      });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -209,11 +264,13 @@ export default function ProposalsPage() {
           </div>
         </GlassCard>
 
-        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-gray-100 shadow-sm" role="tablist" aria-label="Proposal status filter">
           {['all', 'draft', 'sent', 'approved'].map((s) => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
+              role="tab"
+              aria-selected={filterStatus === s}
               className={cn(
                 "px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize",
                 filterStatus === s
@@ -228,32 +285,60 @@ export default function ProposalsPage() {
       </div>
 
       {/* List */}
-      <GlassCard padding="none" className="overflow-hidden border-gray-100 shadow-xl">
-        {loading ? (
-          <GlassListSkeleton items={6} />
-        ) : filteredItems.length === 0 ? (
-          <div className="p-20 text-center">
-            <div className="w-24 h-24 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-gray-100">
-              <Send className="w-10 h-10 text-gray-300" />
-            </div>
-            <h3 className="text-2xl font-serif text-secondary">No proposals found</h3>
-            <p className="text-text-secondary mt-3 max-w-sm mx-auto">
-              Ready to win more business? Create your first professional itinerary proposal today.
-            </p>
-            <Link href="/proposals/create" className="inline-block mt-8">
-              <GlassButton variant="primary" className="rounded-2xl">
-                Begin Proposal
-              </GlassButton>
-            </Link>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
+      <ErrorSection label="Proposals list">
+        <GlassCard padding="none" className="overflow-hidden border-gray-100 shadow-xl">
+          {loading ? (
+            <TableSkeleton rows={6} />
+          ) : filteredItems.length === 0 ? (
+            <EmptyState
+              icon="📋"
+              title="No proposals yet"
+              description="Create your first proposal to start tracking client interest, approvals, and payment conversion."
+              action={{ label: 'Create First Proposal', href: '/proposals/create' }}
+              className="py-20"
+            />
+          ) : (
+            <div>
+              <div className="flex items-center justify-between gap-4 border-b border-gray-100 bg-white/80 px-6 py-4">
+                <label className="inline-flex items-center gap-3 text-sm font-semibold text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={(event) => {
+                      setSelectedIds(
+                        event.target.checked ? filteredItems.map((proposal) => proposal.id) : [],
+                      );
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  Select all visible
+                </label>
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                  {selectedIds.length} selected
+                </span>
+              </div>
+              <div className="divide-y divide-gray-50">
             {filteredItems.map((proposal) => {
               const config = STATUS_CONFIG[proposal.status || 'draft'] || STATUS_CONFIG.draft;
               const signatureRecord = signatureMap[proposal.id] ?? null;
 
               return (
-                <div key={proposal.id} className="group flex items-center justify-between p-6 hover:bg-gray-50/50 transition-all duration-300 relative overflow-hidden">
+                <div key={proposal.id} className="group flex items-center justify-between gap-4 p-6 hover:bg-gray-50/50 transition-all duration-300 relative overflow-hidden">
+                  <div className="shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(proposal.id)}
+                      onChange={(event) => {
+                        setSelectedIds((current) =>
+                          event.target.checked
+                            ? [...current, proposal.id]
+                            : current.filter((id) => id !== proposal.id),
+                        );
+                      }}
+                      aria-label={`Select proposal ${proposal.title}`}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                  </div>
                   <div className="flex items-center gap-6 flex-1">
                     <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center transition-transform group-hover:scale-105 group-hover:shadow-md">
                       <Send className="h-7 w-7 text-primary" />
@@ -353,9 +438,40 @@ export default function ProposalsPage() {
                 </div>
               );
             })}
+              </div>
+            </div>
+          )}
+        </GlassCard>
+      </ErrorSection>
+
+      {selectedIds.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+          <div className="flex w-full max-w-2xl items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/90 px-5 py-4 text-white shadow-2xl shadow-slate-950/30 backdrop-blur-xl">
+            <span className="text-sm font-semibold">
+              {selectedIds.length} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <GlassButton
+                variant="primary"
+                disabled={bulkSubmitting !== false}
+                onClick={() => { void handleBulkAction('approve'); }}
+              >
+                {bulkSubmitting === 'approve' ? 'Approving…' : 'Approve'}
+              </GlassButton>
+              <GlassButton
+                variant="ghost"
+                disabled={bulkSubmitting !== false}
+                onClick={() => { void handleBulkAction('archive'); }}
+              >
+                {bulkSubmitting === 'archive' ? 'Archiving…' : 'Archive'}
+              </GlassButton>
+              <GlassButton variant="ghost" onClick={() => setSelectedIds([])}>
+                Cancel
+              </GlassButton>
+            </div>
           </div>
-        )}
-      </GlassCard>
+        </div>
+      ) : null}
 
       {/* Delete confirm modal */}
       <GlassConfirmModal

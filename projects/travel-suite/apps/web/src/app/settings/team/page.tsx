@@ -6,6 +6,8 @@ import { ArrowLeft, Plus, TrendingUp, UserCheck, Users } from 'lucide-react'
 import { GlassButton } from '@/components/glass/GlassButton'
 import { GlassCard } from '@/components/glass/GlassCard'
 import { GlassBadge } from '@/components/glass/GlassBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { DashboardSkeleton } from '@/components/ui/skeletons/DashboardSkeleton'
 import InviteModal from '@/components/settings/InviteModal'
 import TeamMemberCard from '@/components/settings/TeamMemberCard'
 import type { TeamRole } from '@/lib/team/roles'
@@ -47,9 +49,7 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto space-y-6 pb-12">
-        <GlassCard className="p-8 text-center text-slate-600 dark:text-slate-300">
-          Loading team workspace…
-        </GlassCard>
+        <DashboardSkeleton />
       </div>
     )
   }
@@ -153,21 +153,17 @@ export default function TeamPage() {
         </div>
 
         {filteredMembers.length === 0 ? (
-          <GlassCard className="space-y-4 border-dashed border-slate-300 dark:border-white/10 text-center">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">No team members in this view</h2>
-              <p className="text-sm text-slate-600 dark:text-white/60">
-                Switch filters or invite a new teammate to get this workspace staffed.
-              </p>
-            </div>
-            {viewerCanManageTeam ? (
-              <div className="flex justify-center">
-                <GlassButton onClick={() => setShowInvite(true)}>
-                  <Plus className="w-4 h-4" />
-                  Invite your first member
-                </GlassButton>
-              </div>
-            ) : null}
+          <GlassCard className="border-dashed border-slate-300 dark:border-white/10">
+            <EmptyState
+              icon="👥"
+              title="Just you for now"
+              description="Switch filters or invite a teammate to start collaborating in this workspace."
+              action={
+                viewerCanManageTeam
+                  ? { label: 'Invite Team Member', onClick: () => setShowInvite(true) }
+                  : undefined
+              }
+            />
           </GlassCard>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

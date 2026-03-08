@@ -6,8 +6,21 @@ import {
   getPaymentLinkByToken,
   recordPaymentLinkEvent,
 } from "@/lib/payments/payment-links.server";
+import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
 
 const tokenSchema = z.string().min(8).max(200);
+const PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_MAX = Number(
+  process.env.PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_MAX || "30"
+);
+const PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_WINDOW_MS || 60_000
+);
+const PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_MAX = Number(
+  process.env.PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_MAX || "10"
+);
+const PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_WINDOW_MS = Number(
+  process.env.PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_WINDOW_MS || 60_000
+);
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +31,17 @@ export async function GET(
     const parsedToken = tokenSchema.safeParse(token);
     if (!parsedToken.success) {
       return apiError("Invalid payment link token", 400);
+    }
+
+    const rateLimitResponse = await enforcePublicRouteRateLimit(request, {
+      identifier: parsedToken.data,
+      limit: PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_MAX,
+      windowMs: PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:payment-link:read",
+      message: "Too many requests. Please try again later.",
+    });
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const admin = createAdminClient();
@@ -42,6 +66,17 @@ export async function POST(
     const parsedToken = tokenSchema.safeParse(token);
     if (!parsedToken.success) {
       return apiError("Invalid payment link token", 400);
+    }
+
+    const rateLimitResponse = await enforcePublicRouteRateLimit(request, {
+      identifier: parsedToken.data,
+      limit: PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_MAX,
+      windowMs: PUBLIC_PAYMENT_LINK_WRITE_RATE_LIMIT_WINDOW_MS,
+      prefix: "public:payment-link:write",
+      message: "Too many requests. Please try again later.",
+    });
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const body = await request.json().catch(() => null);

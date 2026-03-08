@@ -218,6 +218,38 @@ Once deployed, Vercel will automatically:
 
 ---
 
+## Payment Reminders Setup
+
+1. Deploy edge function:
+   ```bash
+   supabase functions deploy payment-reminders
+   ```
+2. In Supabase Dashboard → Edge Functions → Secrets, add:
+   - `WPPCONNECT_BASE_URL`
+   - `WPPCONNECT_TOKEN`
+   - `WPPCONNECT_SESSION`
+   - `NEXT_PUBLIC_APP_URL`
+3. Run this once in Supabase SQL Editor to enable hourly payment reminders:
+   ```sql
+   SELECT cron.schedule(
+     'payment-reminders-hourly',
+     '0 * * * *',
+     $$
+     SELECT net.http_post(
+       url     := current_setting('app.supabase_url') || '/functions/v1/payment-reminders',
+       headers := jsonb_build_object(
+         'Authorization', 'Bearer ' || current_setting('app.service_role_key'),
+         'Content-Type', 'application/json'
+       ),
+       body    := '{}'::jsonb
+     );
+     $$
+   );
+   ```
+4. This setup uses Supabase `pg_cron` + Edge Functions. No Vercel cron slots are required.
+
+---
+
 ## Monitoring & Debugging
 
 ### View Logs

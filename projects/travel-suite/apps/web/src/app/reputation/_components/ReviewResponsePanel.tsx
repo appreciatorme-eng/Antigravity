@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReputationReview } from "@/lib/reputation/types";
 import { PLATFORM_LABELS, PLATFORM_COLORS } from "@/lib/reputation/constants";
+import { useAnalytics } from "@/lib/analytics/events";
 
 interface ReviewResponsePanelProps {
   review: ReputationReview | null;
@@ -58,6 +59,7 @@ export function ReviewResponsePanel({
   onClose,
   onSave,
 }: ReviewResponsePanelProps) {
+  const analytics = useAnalytics();
   const [aiResponse, setAiResponse] = useState("");
   const [activeResponse, setActiveResponse] = useState("");
   const [mode, setMode] = useState<PanelMode>("edit");
@@ -82,10 +84,16 @@ export function ReviewResponsePanel({
       setError(null);
 
       try {
-        const res = await fetch("/api/reputation/ai/respond", {
+        const res = await fetch("/api/ai/draft-review-response", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reviewId: review.id, regenerate }),
+          body: JSON.stringify({
+            reviewContent: review.comment ?? review.title ?? "",
+            reviewerName: review.reviewer_name,
+            rating: review.rating,
+            platform: PLATFORM_LABELS[review.platform] ?? review.platform,
+            regenerate,
+          }),
         });
 
         if (!res.ok) {
@@ -94,7 +102,7 @@ export function ReviewResponsePanel({
         }
 
         const data = await res.json();
-        const suggested = data.response?.suggested_response ?? "";
+        const suggested = data.data?.draft ?? "";
         setAiResponse(suggested);
         setActiveResponse(suggested);
       } catch (err) {
@@ -117,13 +125,16 @@ export function ReviewResponsePanel({
     setError(null);
     try {
       await onSave(review.id, activeResponse.trim());
+      if (aiResponse.trim() && activeResponse.trim() === aiResponse.trim()) {
+        analytics.aiSuggestionUsed("review_response");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save response";
       setError(message);
     } finally {
       setSaving(false);
     }
-  }, [review, activeResponse, onSave]);
+  }, [review, activeResponse, aiResponse, analytics, onSave]);
 
   const platformLabel = review
     ? PLATFORM_LABELS[review.platform] ?? review.platform
@@ -242,7 +253,7 @@ export function ReviewResponsePanel({
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-dashed border-purple-500/30 text-purple-600 hover:bg-purple-500/10 hover:border-purple-500/50 transition-colors text-sm"
                     >
                       <Sparkles className="w-4 h-4" />
-                      Generate AI Response
+                      Draft Response
                     </button>
                   )}
 

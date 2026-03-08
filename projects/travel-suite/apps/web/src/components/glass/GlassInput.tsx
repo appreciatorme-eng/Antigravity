@@ -64,6 +64,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
             ref={ref}
             id={inputId}
             className={inputStyles}
+            aria-label={props["aria-label"] ?? label ?? props.placeholder ?? undefined}
             {...props}
           />
         </div>
@@ -127,6 +128,7 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
           ref={ref}
           id={textareaId}
           className={textareaStyles}
+          aria-label={props["aria-label"] ?? label ?? props.placeholder ?? undefined}
           {...props}
         />
 
@@ -191,6 +193,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
             ref={ref}
             id={selectId}
             className={selectStyles}
+            aria-label={props["aria-label"] ?? label ?? undefined}
             {...props}
           >
             {options.map((option) => (

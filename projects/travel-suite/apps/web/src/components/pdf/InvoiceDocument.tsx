@@ -113,6 +113,11 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
   return (
     <Document title={invoice.invoice_number}>
       <Page size="A4" style={styles.page}>
+        {invoice.status === "paid" ? (
+          <View style={styles.watermark} fixed>
+            <Text style={styles.watermarkText}>PAID</Text>
+          </View>
+        ) : null}
         <View style={styles.header}>
           <View>
             <Text style={styles.kicker}>Tax Invoice</Text>
@@ -226,6 +231,7 @@ function Row({
 function buildStyles(theme: { accent: string; muted: string; heading: string; stripe: string }) {
   return StyleSheet.create({
     page: {
+      position: "relative",
       backgroundColor: "#ffffff",
       color: "#0f172a",
       fontSize: 10,
@@ -241,6 +247,20 @@ function buildStyles(theme: { accent: string; muted: string; heading: string; st
       borderBottomWidth: 1,
       borderBottomColor: "#e2e8f0",
       paddingBottom: 14,
+    },
+    watermark: {
+      position: "absolute",
+      top: 260,
+      left: 110,
+      transform: "rotate(-24deg)",
+      opacity: 0.08,
+      zIndex: 0,
+    },
+    watermarkText: {
+      fontSize: 96,
+      fontWeight: 700,
+      color: theme.accent,
+      letterSpacing: 8,
     },
     kicker: {
       textTransform: "uppercase",

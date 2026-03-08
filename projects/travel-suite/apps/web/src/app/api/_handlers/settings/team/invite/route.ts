@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { sendTeamInviteNotification } from "@/lib/email/notifications";
 import { canManageRole, type TeamRole } from "@/lib/team/roles";
 import {
   mapProfileRoleToTeamRole,
@@ -87,6 +88,14 @@ export async function POST(request: Request) {
     if (!invitedUserId) {
       return apiError("Invite did not return a user record", 500);
     }
+
+    void sendTeamInviteNotification({
+      to: normalizedEmail,
+      organizationName: context.organization.name,
+      inviterName: context.actorProfile.full_name || context.organization.name,
+      role,
+      inviteUrl: redirectTo,
+    });
 
     const mappedRole = mapTeamRoleToProfileRole(role);
     const { error: upsertError } = await context.admin.from("profiles").upsert(

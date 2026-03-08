@@ -13,6 +13,7 @@ import Link from "next/link";
 import DownloadPDFButton from "@/components/pdf/DownloadPDFButton";
 import SaveItineraryButton from "./SaveItineraryButton";
 import ShareTripModal from "@/components/ShareTripModal";
+import { AppImage } from "@/components/ui/AppImage";
 import WeatherWidget from "@/components/WeatherWidget";
 import CurrencyConverter from "@/components/CurrencyConverter";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { LogisticsManager } from "@/components/planner/LogisticsManager";
 import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
 import { useItineraries } from "@/lib/queries/itineraries";
+import { useAnalytics } from "@/lib/analytics/events";
 import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
 import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
@@ -59,6 +61,7 @@ const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
 export default function PlannerPage() {
     const supabase = createClient();
     const { toast } = useToast();
+    const analytics = useAnalytics();
     const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(5);
@@ -202,6 +205,7 @@ export default function PlannerPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to generate");
             setResult(data);
+            analytics.itineraryGenerated(data.destination || prompt);
             fetchImagesForItinerary(data);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed to generate itinerary. Try again.");
@@ -397,9 +401,16 @@ export default function PlannerPage() {
                                                                                                         </div>
                                                                                                     ) : imgUrl ? (
                                                                                                         <>
-                                                                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                                                            <img src={imgUrl} alt={act.title} className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110" loading="lazy" referrerPolicy="no-referrer"
-                                                                                                                onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"; e.currentTarget.onerror = null; }} />
+                                                                                                            <AppImage
+                                                                                                                src={imgUrl}
+                                                                                                                alt={act.title}
+                                                                                                                className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                                                                                                                loading="lazy"
+                                                                                                                referrerPolicy="no-referrer"
+                                                                                                                fallbackSrc="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
+                                                                                                                fill
+                                                                                                                sizes="(max-width: 768px) 100vw, 768px"
+                                                                                                            />
                                                                                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                                                                                                             <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-semibold text-gray-800 dark:text-slate-100 shadow-lg">{act.time}</div>
                                                                                                             <div className="absolute bottom-0 left-0 right-0 p-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
 import { Megaphone } from "lucide-react";
 import { toast } from "sonner";
@@ -16,18 +17,18 @@ import { CanvasMode } from "./CanvasMode";
 import { ToolbarActions, type ToolbarAction } from "./ToolbarActions";
 import { TemplateGallery } from "./TemplateGallery";
 
-// Existing components (now accessed via toolbar modals)
-import { MagicPrompter } from "./MagicPrompter";
-import { CarouselBuilder } from "./CarouselBuilder";
-import { MediaLibrary } from "./MediaLibrary";
-import { ReviewsToInsta } from "./ReviewsToInsta";
-import { PosterExtractor } from "./PosterExtractor";
-import { CaptionEngine, CaptionTone, CaptionPlatform } from "./CaptionEngine";
-import { PostHistory } from "./PostHistory";
-import { SocialAnalytics } from "./SocialAnalytics";
 import { PlatformStatusBar } from "./PlatformStatusBar";
-import { BulkExporter } from "./BulkExporter";
-import { TripImporter } from "./TripImporter";
+import { CaptionEngine, CaptionTone, CaptionPlatform } from "./CaptionEngine";
+
+const MagicPrompter = dynamic(() => import("./MagicPrompter").then((mod) => mod.MagicPrompter));
+const CarouselBuilder = dynamic(() => import("./CarouselBuilder").then((mod) => mod.CarouselBuilder));
+const MediaLibrary = dynamic(() => import("./MediaLibrary").then((mod) => mod.MediaLibrary));
+const ReviewsToInsta = dynamic(() => import("./ReviewsToInsta").then((mod) => mod.ReviewsToInsta));
+const PosterExtractor = dynamic(() => import("./PosterExtractor").then((mod) => mod.PosterExtractor));
+const PostHistory = dynamic(() => import("./PostHistory").then((mod) => mod.PostHistory));
+const SocialAnalytics = dynamic(() => import("./SocialAnalytics").then((mod) => mod.SocialAnalytics));
+const BulkExporter = dynamic(() => import("./BulkExporter").then((mod) => mod.BulkExporter));
+const TripImporter = dynamic(() => import("./TripImporter").then((mod) => mod.TripImporter));
 
 interface Props {
     initialOrgData: {

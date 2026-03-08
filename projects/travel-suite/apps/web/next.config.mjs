@@ -1,6 +1,10 @@
 import path from "node:path";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const projectRoot = path.resolve(import.meta.dirname);
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.unsplash.com",
@@ -47,6 +51,21 @@ const remotePatterns = [
   },
 ];
 
+const cspHeader = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://app.posthog.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com",
+  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+  "worker-src 'self' blob:",
+  "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
+].join("; ");
+
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   turbopack: {
@@ -61,6 +80,20 @@ const nextConfig = {
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy", value: cspHeader },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

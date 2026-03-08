@@ -17,6 +17,7 @@ import { HotelSearch } from "@/components/bookings/HotelSearch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { FlightDetails, HotelDetails } from "@/types/itinerary";
 
@@ -207,9 +208,13 @@ export default function BookingsPage() {
                                     ))}
                                 </select>
                                 {itineraries.length === 0 && !loadingItineraries && (
-                                    <p className="text-xs text-slate-500">
-                                        Save an itinerary from Planner first, then import bookings here.
-                                    </p>
+                                    <EmptyState
+                                        icon="✈️"
+                                        title="No bookings yet"
+                                        description="Save an itinerary from Planner first, then import flights or hotels into it here."
+                                        action={{ label: "Open Planner", href: "/planner" }}
+                                        className="py-6"
+                                    />
                                 )}
                                 {importError && <p className="text-xs text-rose-500">{importError}</p>}
 

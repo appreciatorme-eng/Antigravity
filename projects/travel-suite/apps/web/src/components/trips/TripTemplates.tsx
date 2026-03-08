@@ -395,7 +395,7 @@ function TemplateCard({ template, onUseTemplate }: TemplateCardProps) {
       {/* Content */}
       <div className="p-4 flex-1 flex flex-col space-y-3">
         {/* Meta row */}
-        <div className="flex items-center gap-4 text-xs text-white/60">
+        <div className="flex items-center gap-4 text-xs text-white/75">
           <span className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             {template.days} days
@@ -409,7 +409,7 @@ function TemplateCard({ template, onUseTemplate }: TemplateCardProps) {
 
         {/* Price */}
         <div>
-          <span className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">From</span>
+          <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">From</span>
           <div className="text-2xl font-black text-white">
             {formatINR(template.pricePerPerson)}
             <span className="text-sm font-normal text-white/50 ml-1">/person</span>
@@ -445,7 +445,7 @@ function TemplateCard({ template, onUseTemplate }: TemplateCardProps) {
               className="overflow-hidden"
             >
               <div className="border-t border-white/10 pt-3 space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-2">
                   Day-by-Day Preview
                 </div>
                 {template.itinerary.map((day) => (
@@ -462,7 +462,7 @@ function TemplateCard({ template, onUseTemplate }: TemplateCardProps) {
 
                 {/* Inclusions */}
                 <div className="pt-2 border-t border-white/10">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1.5">Included</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1.5">Included</div>
                   <div className="flex flex-wrap gap-1">
                     {template.included.map((inc) => (
                       <span
@@ -486,7 +486,7 @@ function TemplateCard({ template, onUseTemplate }: TemplateCardProps) {
         <div className="flex gap-2 pt-2">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 text-xs font-medium transition-all"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-white/20 text-white/75 hover:text-white hover:border-white/40 text-xs font-medium transition-all"
           >
             <Eye className="w-3.5 h-3.5" />
             {expanded ? 'Hide' : 'Preview'}
@@ -559,7 +559,7 @@ export function TripTemplates({ onTemplateSelect }: TripTemplatesProps) {
       <div className="space-y-3">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
           <input
             type="text"
             placeholder="Search by destination, attraction or name..."
@@ -578,7 +578,7 @@ export function TripTemplates({ onTemplateSelect }: TripTemplatesProps) {
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeFilter === tab.id
                   ? 'bg-[#00d084] text-white shadow-lg shadow-[#00d084]/20'
-                  : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                  : 'bg-white/5 border border-white/10 text-white/75 hover:text-white hover:bg-white/10'
               }`}
             >
               {tab.label}
@@ -588,7 +588,7 @@ export function TripTemplates({ onTemplateSelect }: TripTemplatesProps) {
       </div>
 
       {/* Results count */}
-      <div className="text-xs text-white/40">
+      <div className="text-xs text-white/70">
         {filtered.length} template{filtered.length !== 1 ? 's' : ''} found
         {searchQuery && ` for "${searchQuery}"`}
       </div>
@@ -613,7 +613,7 @@ export function TripTemplates({ onTemplateSelect }: TripTemplatesProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center py-16 text-white/40"
+            className="text-center py-16 text-white/70"
           >
             <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-base font-medium">No templates found</p>

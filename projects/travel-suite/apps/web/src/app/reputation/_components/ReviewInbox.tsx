@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Inbox,
   X,
   Star,
 } from "lucide-react";
@@ -16,6 +15,9 @@ import type {
   ReputationReview,
   ReputationPlatform,
 } from "@/lib/reputation/types";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorSection } from "@/components/ui/ErrorSection";
+import { ReviewSkeleton } from "@/components/ui/skeletons/ReviewSkeleton";
 import { PLATFORM_LABELS } from "@/lib/reputation/constants";
 import { ReviewCard } from "./ReviewCard";
 import { ReviewResponsePanel } from "./ReviewResponsePanel";
@@ -238,6 +240,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const [submitting, setSubmitting] = useState(false);
   const [selectedReview, setSelectedReview] = useState<ReputationReview | null>(null);
   const [isResponsePanelOpen, setIsResponsePanelOpen] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const limit = 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -256,6 +259,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const fetchReviews = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
+      setFetchError(null);
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
@@ -284,6 +288,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       console.error("Error fetching reviews:", err);
+      setFetchError(err instanceof Error ? err.message : "Failed to fetch reviews");
     } finally {
       setLoading(false);
     }
@@ -417,45 +422,57 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       </div>
 
       {/* Review List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-        </div>
-      ) : reviews.length === 0 ? (
-        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center">
-            <Inbox className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews found</h3>
-          <p className="text-sm text-gray-500 max-w-sm mx-auto">
-            {searchInput || platformFilter !== "all" || statusFilter !== "all"
-              ? "Try adjusting your filters or search query."
-              : `Start collecting reviews for ${organizationName ?? "your agency"}. You can add reviews manually or connect platforms.`}
-          </p>
-        </div>
-      ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${page}-${platformFilter}-${statusFilter}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-3"
-          >
-            {reviews.map((review) => (
-              <ReviewCard
-                key={review.id}
-                review={review}
-                onFlag={handleFlag}
-                onRespond={() => {
-                  setSelectedReview(review);
-                  setIsResponsePanelOpen(true);
-                }}
-              />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      )}
+      <ErrorSection label="Reviews inbox">
+        {loading ? (
+          <ReviewSkeleton />
+        ) : fetchError ? (
+          <EmptyState
+            icon="⚠️"
+            title="Reviews unavailable"
+            description={fetchError}
+            action={{ label: "Retry", onClick: () => { void fetchReviews(); } }}
+            className="rounded-2xl border border-gray-200 bg-white"
+          />
+        ) : reviews.length === 0 ? (
+          <EmptyState
+            icon="⭐"
+            title="No reviews yet"
+            description={
+              searchInput || platformFilter !== "all" || statusFilter !== "all"
+                ? "Try adjusting your filters or search query."
+                : `Start collecting reviews for ${organizationName ?? "your agency"}. You can add reviews manually or connect platforms.`
+            }
+            action={
+              searchInput || platformFilter !== "all" || statusFilter !== "all"
+                ? undefined
+                : { label: "Sync from Google", href: "/settings/integrations" }
+            }
+            className="rounded-2xl border border-gray-200 bg-white"
+          />
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${page}-${platformFilter}-${statusFilter}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-3"
+            >
+              {reviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onFlag={handleFlag}
+                  onRespond={() => {
+                    setSelectedReview(review);
+                    setIsResponsePanelOpen(true);
+                  }}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </ErrorSection>
 
       {/* Pagination */}
       {totalPages > 1 && (

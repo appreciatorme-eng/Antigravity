@@ -2,6 +2,7 @@ import "server-only";
 
 import crypto from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { env } from "@/lib/config/env";
 import type { Database, Json } from "@/lib/database.types";
 import { paymentService } from "@/lib/payments/payment-service";
 import {
@@ -399,7 +400,7 @@ export function verifyRazorpayPaymentSignature(
   paymentId: string,
   signature: string,
 ) {
-  const secret = process.env.RAZORPAY_KEY_SECRET;
+  const secret = env.razorpay.keySecret;
   if (!secret) {
     throw new Error("RAZORPAY_KEY_SECRET is not configured");
   }

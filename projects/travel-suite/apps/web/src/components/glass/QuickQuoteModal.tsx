@@ -86,13 +86,13 @@ function BreakdownRow({
   return (
     <div
       className={`flex items-center justify-between text-sm ${
-        highlight ? 'font-black text-white' : dimmed ? 'text-white/40' : 'text-white/70'
+        highlight ? 'font-black text-white' : dimmed ? 'text-white/70' : 'text-white/80'
       }`}
     >
       <span className={highlight ? 'text-white' : ''}>{label}</span>
       <div className="text-right">
         <span className={highlight ? 'text-[#00d084] text-base' : ''}>{value}</span>
-        {sub && <div className="text-[10px] text-white/40 font-normal">{sub}</div>}
+        {sub && <div className="text-[10px] text-white/70 font-normal">{sub}</div>}
       </div>
     </div>
   )
@@ -181,7 +181,7 @@ function DestinationInput({ value, onSelect, onClear }: DestinationInputProps) {
               >
                 <div>
                   <span className="font-semibold text-white">{dest.name}</span>
-                  <span className="text-white/40 ml-2 text-xs">{dest.state}</span>
+                  <span className="text-white/70 ml-2 text-xs">{dest.state}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {dest.type.slice(0, 2).map((t) => (
@@ -414,7 +414,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
             </div>
 
             {/* Days display */}
-            <div className="text-xs text-white/40 flex items-center gap-1.5 -mt-2 ml-1">
+            <div className="text-xs text-white/70 flex items-center gap-1.5 -mt-2 ml-1">
               <Info className="w-3 h-3" />
               {days} night{days !== 1 ? 's' : ''} · {formatTravelerCount(travelers)}
             </div>
@@ -468,7 +468,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
                     className={`py-2.5 px-2 rounded-xl border text-center transition-all ${
                       tier === t.value
                         ? 'bg-[#00d084] text-white border-[#00d084] shadow-lg shadow-[#00d084]/20'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:border-[#00d084]/40 hover:text-white/80'
+                        : 'bg-white/5 border-white/10 text-white/75 hover:border-[#00d084]/40 hover:text-white/90'
                     }`}
                   >
                     <div className="text-xs font-bold">{t.label}</div>
@@ -512,7 +512,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
 
               {/* Meals selector */}
               <div className="flex items-center gap-2 flex-wrap">
-                <Utensils className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <Utensils className="w-3.5 h-3.5 text-white/70 shrink-0" />
                 {MEAL_OPTIONS.map((m) => (
                   <button
                     key={m.value}
@@ -623,7 +623,7 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
 
             {/* Breakdown */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-white/70 mb-3">
                 Price Breakdown
               </div>
 

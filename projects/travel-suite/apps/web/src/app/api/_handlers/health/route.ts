@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@supabase/supabase-js";
+import { env } from "@/lib/config/env";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import {
     getRequestContext,
@@ -22,8 +23,8 @@ type CheckResult = {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = env.supabase.url;
+const supabaseServiceKey = env.supabase.serviceRoleKey;
 
 const supabaseAdmin =
     supabaseUrl && supabaseServiceKey
@@ -76,11 +77,11 @@ function checkObservabilityStack(): {
     posthog: CheckResult;
     uptime_monitor: CheckResult;
 } {
-    const sentry: CheckResult = process.env.SENTRY_DSN
+    const sentry: CheckResult = process.env.SENTRY_DSN || env.sentry.dsn
         ? { status: "healthy", detail: "SENTRY_DSN configured" }
         : { status: "unconfigured", detail: "SENTRY_DSN missing" };
 
-    const posthog: CheckResult = (process.env.POSTHOG_PROJECT_API_KEY || process.env.POSTHOG_API_KEY)
+    const posthog: CheckResult = (process.env.POSTHOG_PROJECT_API_KEY || process.env.POSTHOG_API_KEY || env.posthog.key)
         ? {
             status: "healthy",
             detail: `POSTHOG_HOST=${process.env.POSTHOG_HOST || "https://app.posthog.com"}`,

@@ -109,6 +109,10 @@ function InvoiceRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const handleDownloadInvoice = () => {
+    window.open(`/api/bookings/${invoice.id}/invoice`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="rounded-xl border border-white/40 bg-white/30 dark:bg-slate-800/30 dark:border-slate-700/40 p-4">
       {/* Main row */}
@@ -155,19 +159,26 @@ function InvoiceRow({
           </div>
         </div>
 
-        {invoice.line_items.length > 0 && (
-          <button
-            onClick={onToggle}
-            className="p-1.5 rounded-lg hover:bg-white/40 dark:hover:bg-slate-700/40 transition-colors"
-            aria-label={isExpanded ? "Collapse line items" : "Expand line items"}
-          >
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-text-muted" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-text-muted" />
-            )}
-          </button>
-        )}
+        <div className="flex items-start gap-2">
+          <GlassButton variant="ghost" size="sm" onClick={handleDownloadInvoice}>
+            <FileText className="w-3.5 h-3.5" />
+            Download PDF
+          </GlassButton>
+
+          {invoice.line_items.length > 0 && (
+            <button
+              onClick={onToggle}
+              className="p-1.5 rounded-lg hover:bg-white/40 dark:hover:bg-slate-700/40 transition-colors"
+              aria-label={isExpanded ? "Collapse line items" : "Expand line items"}
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4 text-text-muted" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-text-muted" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Expanded line items */}

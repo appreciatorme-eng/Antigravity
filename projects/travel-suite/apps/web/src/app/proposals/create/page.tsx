@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAnalytics } from '@/lib/analytics/events';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -14,9 +15,12 @@ import {
   Search,
   ChevronDown,
   Check,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/toast';
+import { GlassBadge } from '@/components/glass/GlassBadge';
+import { GlassCard } from '@/components/glass/GlassCard';
 
 interface Client {
   id: string;
@@ -55,6 +59,14 @@ interface FeatureLimitSnapshot {
   upgradePlan: string | null;
 }
 
+interface PricingSuggestion {
+  min: number;
+  median: number;
+  max: number;
+  confidence: 'data' | 'ai_estimate';
+  sampleSize: number;
+}
+
 function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
   if (payload?.code !== 'FEATURE_LIMIT_EXCEEDED') {
     return fallback;
@@ -72,6 +84,7 @@ function formatFeatureLimitError(payload: any, fallback: string) { // eslint-dis
 export default function CreateProposalPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const analytics = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +119,8 @@ export default function CreateProposalPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
   const [proposalLimit, setProposalLimit] = useState<FeatureLimitSnapshot | null>(null);
+  const [pricingSuggestion, setPricingSuggestion] = useState<PricingSuggestion | null>(null);
+  const [pricingSuggestionLoading, setPricingSuggestionLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -209,6 +224,46 @@ export default function CreateProposalPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const template = templates.find((item) => item.id === selectedTemplateId);
+
+    if (!template?.destination || !template.duration_days) {
+      setPricingSuggestion(null);
+      setPricingSuggestionLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      destination: template.destination,
+      durationDays: String(template.duration_days),
+      pax: "2",
+    });
+
+    setPricingSuggestionLoading(true);
+
+    fetch(`/api/ai/pricing-suggestion?${params.toString()}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
+      .then(({ ok, payload }) => {
+        if (!ok) {
+          throw new Error(payload?.error || 'Failed to load pricing guidance');
+        }
+        setPricingSuggestion(payload?.data ?? null);
+      })
+      .catch((error) => {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        setPricingSuggestion(null);
+      })
+      .finally(() => setPricingSuggestionLoading(false));
+
+    return () => controller.abort();
+  }, [selectedTemplateId, templates]);
 
   async function loadProposalLimit(headers?: Record<string, string>) {
     try {
@@ -432,6 +487,8 @@ export default function CreateProposalPage() {
         setError('Proposal created but no proposal id was returned.');
         return;
       }
+
+      analytics.proposalCreated(proposalId, Number(payloadData?.amount || 0));
 
       if (sendEmail) {
         const sendResponse = await fetch(`/api/proposals/${proposalId}/send`, {
@@ -814,6 +871,39 @@ export default function CreateProposalPage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {selectedTemplate && (pricingSuggestionLoading || pricingSuggestion) && (
+              <GlassCard
+                padding="md"
+                rounded="xl"
+                opacity="high"
+                className="border-[#eadfcd] bg-[#fffdf8]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[#1b140a]">
+                      <Sparkles className="h-4 w-4 text-[#9c7c46]" />
+                      <p className="text-sm font-semibold">Pricing guidance</p>
+                    </div>
+                    {pricingSuggestionLoading ? (
+                      <p className="mt-2 text-sm text-[#6f5b3e]">Finding similar trips...</p>
+                    ) : pricingSuggestion ? (
+                      <p className="mt-2 text-sm text-[#6f5b3e]">
+                        Similar trips: ₹{pricingSuggestion.min.toLocaleString('en-IN')} – ₹{pricingSuggestion.max.toLocaleString('en-IN')}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {pricingSuggestion && (
+                    <GlassBadge variant={pricingSuggestion.confidence === 'data' ? 'success' : 'info'}>
+                      {pricingSuggestion.confidence === 'data'
+                        ? `Based on ${pricingSuggestion.sampleSize} bookings`
+                        : 'AI estimate'}
+                    </GlassBadge>
+                  )}
+                </div>
+              </GlassCard>
             )}
           </div>
         )}
