@@ -3,6 +3,7 @@ import { guessIataCode, normalizeIataCode } from "@/lib/airport";
 import { getAmadeusToken, resolveAmadeusBaseUrl } from "@/lib/external/amadeus";
 import { fetchWithRetry } from "@/lib/network/retry";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 function parsePositiveInt(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value || "", 10);
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
     return withCostGuardHeaders(
       NextResponse.json(
         {
-          error: error instanceof Error ? error.message : "Flight search failed",
+          error: safeErrorMessage(error, "Flight search failed"),
         },
         { status: 500 }
       ),

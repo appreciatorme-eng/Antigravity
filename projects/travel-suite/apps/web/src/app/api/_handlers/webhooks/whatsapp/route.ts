@@ -10,6 +10,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 import { NextResponse } from "next/server";
+import { safeEqual } from "@/lib/security/safe-equal";
 
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 
@@ -83,9 +84,12 @@ export async function GET(request: Request): Promise<Response> {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
+  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
   if (
     mode === "subscribe" &&
-    token === process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+    token !== null &&
+    verifyToken !== undefined &&
+    safeEqual(token, verifyToken)
   ) {
     return new Response(challenge ?? "", { status: 200 });
   }

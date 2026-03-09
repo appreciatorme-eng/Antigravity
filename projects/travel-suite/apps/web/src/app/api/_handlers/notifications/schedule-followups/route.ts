@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
+import { isAdminBearerToken } from "@/lib/security/admin-bearer-auth";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -42,22 +44,6 @@ interface CompletedTripRow {
         destination: string | null;
       }>
     | null;
-}
-
-async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
-  if (!authHeader?.startsWith("Bearer ")) return false;
-  const token = authHeader.substring(7);
-
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData?.user) return false;
-
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("role")
-    .eq("id", authData.user.id)
-    .maybeSingle();
-
-  return profile?.role === "admin" || profile?.role === "super_admin";
 }
 
 function clampToFuture(date: Date): string {
@@ -219,7 +205,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to schedule follow-ups" },
+      { error: safeErrorMessage(error, "Failed to schedule follow-ups") },
       { status: 500 }
     );
   }

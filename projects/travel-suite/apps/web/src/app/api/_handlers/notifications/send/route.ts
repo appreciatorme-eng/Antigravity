@@ -12,6 +12,7 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const NOTIFICATION_RATE_LIMIT_MAX = 40;
 const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -245,7 +246,7 @@ export async function POST(request: NextRequest) {
         });
         return withRequestId({ error: result.error }, requestId, { status: 500 });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Failed to send notification");
         logError("Send notification endpoint crashed", error, requestContext);
         void captureOperationalMetric("api.notifications.send.error", {
             request_id: requestId,

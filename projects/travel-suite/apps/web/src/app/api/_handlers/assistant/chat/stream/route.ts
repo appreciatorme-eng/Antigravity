@@ -18,6 +18,7 @@ import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "@/lib/ass
 import { findWorkflow, ALL_WORKFLOWS } from "@/lib/assistant/workflows/definitions";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -566,7 +567,7 @@ async function handleStreamingRequest(
     controller.close();
   } catch (error) {
     writer.writeData("error", {
-      message: error instanceof Error ? error.message : "Something went wrong.",
+      message: safeErrorMessage(error, "Something went wrong."),
     });
     writer.writeDone();
     controller.close();

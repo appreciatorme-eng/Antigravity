@@ -11,6 +11,7 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const UpdateInquirySchema = z.object({
     id: z.string().min(6).max(80),
@@ -54,8 +55,14 @@ export async function GET(request: NextRequest) {
 
         const orgId = profile.organization_id;
 
+        const { searchParams: qs } = new URL(request.url);
+        const cursorReceived = qs.get("cursor_received") || null;
+        const cursorSent = qs.get("cursor_sent") || null;
+        const limitRaw = Number(qs.get("limit") || "50");
+        const limit = Math.min(Math.max(1, Number.isNaN(limitRaw) ? 50 : limitRaw), 100);
+
         // Fetch received inquiries
-        const { data: receivedData, error: receivedError } = await supabase
+        let receivedQuery = supabase
             .from("marketplace_inquiries")
             .select(`
                 *,
@@ -63,10 +70,14 @@ export async function GET(request: NextRequest) {
             `)
             .eq("receiver_org_id", orgId)
             .order("created_at", { ascending: false });
+        if (cursorReceived) {
+            receivedQuery = receivedQuery.lt("created_at", cursorReceived);
+        }
+        const { data: receivedData, error: receivedError } = await receivedQuery.limit(limit);
         if (receivedError) throw receivedError;
 
         // Fetch sent inquiries
-        const { data: sentData, error: sentError } = await supabase
+        let sentQuery = supabase
             .from("marketplace_inquiries")
             .select(`
                 *,
@@ -74,6 +85,10 @@ export async function GET(request: NextRequest) {
             `)
             .eq("sender_org_id", orgId)
             .order("created_at", { ascending: false });
+        if (cursorSent) {
+            sentQuery = sentQuery.lt("created_at", cursorSent);
+        }
+        const { data: sentData, error: sentError } = await sentQuery.limit(limit);
         if (sentError) throw sentError;
 
         const received = (receivedData || []) as MarketplaceInquiryWithOrg[];
@@ -93,9 +108,22 @@ export async function GET(request: NextRequest) {
             sent_count: sent.length,
             duration_ms: durationMs,
         });
-        return withRequestId({ received, sent }, requestId);
+        const nextCursorReceived = received.length === limit
+            ? ((received[received.length - 1] as { created_at?: string } | undefined)?.created_at ?? null)
+            : null;
+        const nextCursorSent = sent.length === limit
+            ? ((sent[sent.length - 1] as { created_at?: string } | undefined)?.created_at ?? null)
+            : null;
+        return withRequestId({
+            received,
+            sent,
+            nextCursorReceived,
+            nextCursorSent,
+            hasMoreReceived: nextCursorReceived !== null,
+            hasMoreSent: nextCursorSent !== null,
+        }, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to load marketplace inquiries";
+        const message = safeErrorMessage(error, "Failed to load marketplace inquiries");
         logError("Marketplace inquiries list failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.inquiries.list.error", {
             request_id: requestId,
@@ -179,7 +207,7 @@ export async function PATCH(request: NextRequest) {
         });
         return withRequestId(data, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to update marketplace inquiry";
+        const message = safeErrorMessage(error, "Failed to update marketplace inquiry");
         logError("Marketplace inquiry update failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.inquiries.update.error", {
             request_id: requestId,

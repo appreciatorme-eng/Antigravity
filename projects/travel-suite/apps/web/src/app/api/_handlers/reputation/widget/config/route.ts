@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { WidgetType, WidgetTheme } from "@/lib/reputation/types";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const VALID_WIDGET_TYPES: WidgetType[] = [
   "carousel",
@@ -46,7 +47,7 @@ export async function GET() {
 
     return NextResponse.json({ widgets: widgets ?? [] });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     console.error("Error fetching widgets:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ widget });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     console.error("Error creating widget:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -264,7 +265,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ widget });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     console.error("Error updating widget:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

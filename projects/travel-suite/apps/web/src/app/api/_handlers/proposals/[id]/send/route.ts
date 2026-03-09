@@ -11,6 +11,7 @@ import { sendProposalSentNotification } from "@/lib/email/notifications";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import type { Database } from "@/lib/database.types";
 import { trackFunnelEvent } from "@/lib/funnel/track";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const SendProposalSchema = z.object({
   channels: z
@@ -80,7 +81,7 @@ async function sendProposalEmail(
   } catch (error: unknown) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Email send failed",
+      error: safeErrorMessage(error, "Email send failed"),
     };
   }
 }

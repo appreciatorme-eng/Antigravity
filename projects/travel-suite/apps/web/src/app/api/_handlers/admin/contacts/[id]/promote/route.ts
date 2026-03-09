@@ -6,6 +6,7 @@ import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/obser
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { jsonWithRequestId as withRequestId } from '@/lib/api/response';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 const CONTACTS_PROMOTE_RATE_LIMIT_MAX = 40;
@@ -199,7 +200,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
     Sentry.captureException(error);
     logError('Contact promote crashed', error, requestContext);
     return withRequestId(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: safeErrorMessage(error, 'Failed to promote contact') },
       requestId,
       { status: 500 }
     );

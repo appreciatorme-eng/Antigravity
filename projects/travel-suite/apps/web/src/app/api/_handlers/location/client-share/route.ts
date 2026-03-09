@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: safeErrorMessage(error, "Failed to process location share") },
             { status: 500 }
         );
     }

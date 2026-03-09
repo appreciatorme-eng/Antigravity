@@ -3,6 +3,7 @@ import { getAmadeusToken, resolveAmadeusBaseUrl, searchAmadeusLocations } from "
 import { guessIataCode, normalizeIataCode } from "@/lib/airport";
 import { fetchWithRetry } from "@/lib/network/retry";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type HotelResult = {
   hotelId: string;
@@ -167,7 +168,7 @@ export async function GET(req: NextRequest) {
     return withCostGuardHeaders(
       NextResponse.json(
         {
-          error: error instanceof Error ? error.message : "Hotel search failed",
+          error: safeErrorMessage(error, "Hotel search failed"),
         },
         { status: 500 }
       ),

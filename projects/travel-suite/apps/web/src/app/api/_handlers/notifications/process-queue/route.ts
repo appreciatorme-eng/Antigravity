@@ -4,6 +4,7 @@ import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
+import { isAdminBearerToken } from "@/lib/security/admin-bearer-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
     apiErrorWithRequestId,
@@ -157,21 +158,6 @@ async function moveToDeadLetter(params: {
         error_message: params.reason,
         failed_channels: params.failedChannels,
     });
-}
-
-async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {
-    if (!authHeader?.startsWith("Bearer ")) return false;
-    const token = authHeader.substring(7);
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData?.user) return false;
-
-    const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-
-    return profile?.role === "admin" || profile?.role === "super_admin";
 }
 
 async function getAdminUserId(authHeader: string | null): Promise<string | null> {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -138,10 +139,7 @@ export async function GET(request: NextRequest) {
         console.error("Driver search error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to search drivers",
+                error: safeErrorMessage(error, "Failed to search drivers"),
             },
             { status: 500 }
         );

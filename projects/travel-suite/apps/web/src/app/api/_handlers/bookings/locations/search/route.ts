@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guessIataCode, normalizeIataCode } from "@/lib/airport";
 import { searchAmadeusLocations } from "@/lib/external/amadeus";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type LocationSuggestion = {
   id: string;
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     return withCostGuardHeaders(NextResponse.json({ suggestions: fallbackSuggestion(query, kind) }), guard.context);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to load location suggestions";
+    const message = safeErrorMessage(error, "Unable to load location suggestions");
     return withCostGuardHeaders(
       NextResponse.json(
         {

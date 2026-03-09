@@ -1,6 +1,20 @@
+/* ------------------------------------------------------------------
+ * WhatsApp Webhook -- WPPConnect / self-hosted WhatsApp
+ *
+ * Handles inbound events (location shares, text messages, images)
+ * from the self-hosted WPPConnect (WAHA) gateway, as opposed to the
+ * Meta Cloud API webhook at /api/webhooks/whatsapp.
+ *
+ * GET: Webhook verification challenge (hub.mode subscribe).
+ * POST: Process incoming location, text, and image messages.
+ *
+ * Security: HMAC-SHA256 signature verification on POST requests.
+ * ------------------------------------------------------------------ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { safeEqual } from "@/lib/security/safe-equal";
 import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, parseWhatsAppTextMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
@@ -61,7 +75,7 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get("hub.verify_token");
     const challenge = searchParams.get("hub.challenge");
 
-    if (mode === "subscribe" && token && verifyToken && token === verifyToken) {
+    if (mode === "subscribe" && token && verifyToken && safeEqual(token, verifyToken)) {
         return new NextResponse(challenge ?? "", { status: 200 });
     }
 

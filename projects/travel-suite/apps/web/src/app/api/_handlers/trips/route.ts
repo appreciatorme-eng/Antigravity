@@ -8,7 +8,7 @@ const supabaseAdmin = createAdminClient();
 function sanitizeSearchTerm(input: string): string {
     const safe = sanitizeText(input, { maxLength: 80 });
     if (!safe) return "";
-    return safe.replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
+    return safe.replace(/[%,().:`"']/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
@@ -179,6 +179,9 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const status = searchParams.get("status") || "all";
         const search = sanitizeSearchTerm(searchParams.get("search") || "");
+        const cursor = searchParams.get("cursor") || null;
+        const limitRaw = Number(searchParams.get("limit") || "50");
+        const limit = Math.min(Math.max(1, Number.isNaN(limitRaw) ? 50 : limitRaw), 100);
 
         if (!isStaff) {
             // Client/driver users can only view their own trips.
@@ -207,8 +210,11 @@ export async function GET(req: NextRequest) {
             if (search) {
                 query = query.or(`itineraries.trip_title.ilike.%${search}%,itineraries.destination.ilike.%${search}%`);
             }
+            if (cursor) {
+                query = query.lt("created_at", cursor);
+            }
 
-            const { data, error } = await query.order("created_at", { ascending: false });
+            const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
             if (error) return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
 
@@ -256,7 +262,10 @@ export async function GET(req: NextRequest) {
                 };
             });
 
-            return NextResponse.json({ trips: enrichedTrips });
+            const nextCursor = enrichedTrips.length === limit
+                ? (enrichedTrips[enrichedTrips.length - 1]?.created_at ?? null)
+                : null;
+            return NextResponse.json({ trips: enrichedTrips, nextCursor, hasMore: nextCursor !== null });
         }
 
         // Staff/Admin access - show organization-scoped trips only.
@@ -302,8 +311,11 @@ export async function GET(req: NextRequest) {
         if (search) {
             query = query.or(`itineraries.trip_title.ilike.%${search}%,profiles.full_name.ilike.%${search}%,itineraries.destination.ilike.%${search}%`);
         }
+        if (cursor) {
+            query = query.lt("created_at", cursor);
+        }
 
-        const { data, error } = await query.order("created_at", { ascending: false });
+        const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
         if (error) {
             return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
@@ -357,7 +369,10 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        return NextResponse.json({ trips });
+        const nextCursor = trips.length === limit
+            ? (trips[trips.length - 1]?.created_at ?? null)
+            : null;
+        return NextResponse.json({ trips, nextCursor, hasMore: nextCursor !== null });
     } catch (error) {
         console.error("Error fetching trips:", error);
         return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });

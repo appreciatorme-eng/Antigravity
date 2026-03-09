@@ -16,6 +16,7 @@ import {
     logError,
     logEvent,
 } from "@/lib/observability/logger";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const MARKETPLACE_VERIFY_LIST_RATE_LIMIT_MAX = 120;
 const MARKETPLACE_VERIFY_LIST_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -178,7 +179,7 @@ export async function GET(request: NextRequest) {
         response.headers.set("x-cache-status", "miss");
         return response;
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Failed to process marketplace verification");
         logError("Marketplace pending verifications fetch failed", error, requestContext);
         void captureOperationalMetric("api.admin.marketplace.verify.list.error", {
             request_id: requestId,
@@ -361,7 +362,7 @@ export async function POST(request: NextRequest) {
         response.headers.set("x-cache-invalidated", String(invalidated));
         return response;
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Failed to process marketplace verification");
         logError("Marketplace verification update failed", error, requestContext);
         void captureOperationalMetric("api.admin.marketplace.verify.update.error", {
             request_id: requestId,

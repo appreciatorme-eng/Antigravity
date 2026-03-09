@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const VALID_TONES: BrandVoiceTone[] = [
   "professional_warm",
@@ -90,7 +91,7 @@ export async function GET() {
 
     return NextResponse.json({ brandVoice: created });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     console.error("Error fetching brand voice:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -276,7 +277,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ brandVoice });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Internal server error");
     console.error("Error updating brand voice:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

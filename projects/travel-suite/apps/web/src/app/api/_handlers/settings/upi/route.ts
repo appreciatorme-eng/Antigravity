@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 // Validates standard UPI handle: localpart@provider (e.g. name@upi, name@okaxis)
 const UPI_REGEX = /^[\w.\-+]+@[\w.\-]+$/;
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         console.error('UPI save error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to save UPI ID' },
+            { error: safeErrorMessage(error, 'Failed to save UPI ID') },
             { status: 500 }
         );
     }

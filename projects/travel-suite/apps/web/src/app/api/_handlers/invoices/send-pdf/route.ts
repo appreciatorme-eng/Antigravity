@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getIntegrationDisabledMessage, isEmailIntegrationEnabled } from "@/lib/integrations";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const SendInvoicePdfSchema = z.object({
   invoice_id: z.string().uuid(),
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error in POST /api/invoices/send-pdf:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send invoice email" },
+      { error: safeErrorMessage(error, "Failed to send invoice email") },
       { status: 500 }
     );
   }

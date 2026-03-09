@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const cursor = searchParams.get("cursor") || null;
+  const limitRaw = Number(searchParams.get("limit") || "50");
+  const limit = Math.min(Math.max(1, Number.isNaN(limitRaw) ? 50 : limitRaw), 100);
+
   try {
     const supabase = await createClient();
     const {
@@ -13,25 +19,37 @@ export async function GET() {
     }
 
     // Fetch itineraries — select only columns guaranteed to exist
-    const { data: itineraries, error } = await supabase
+    let itinQuery = supabase
       .from("itineraries")
       .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary, client_id, template_id")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+    if (cursor) {
+      itinQuery = itinQuery.lt("created_at", cursor);
+    }
+    const { data: itineraries, error } = await itinQuery.limit(limit);
 
     if (error) {
       console.error("Itinerary fetch error, retrying with core columns:", error.message);
-      const { data: fallbackData, error: fallbackError } = await supabase
+      let fallbackQuery = supabase
         .from("itineraries")
         .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+      if (cursor) {
+        fallbackQuery = fallbackQuery.lt("created_at", cursor);
+      }
+      const { data: fallbackData, error: fallbackError } = await fallbackQuery.limit(limit);
 
       if (fallbackError) {
-        return NextResponse.json({ error: fallbackError.message }, { status: 400 });
+        return NextResponse.json({ error: safeErrorMessage(fallbackError, "Failed to load itineraries") }, { status: 400 });
       }
 
-      return NextResponse.json({ itineraries: fallbackData ?? [] });
+      const fallbackList = fallbackData ?? [];
+      const fallbackNextCursor = fallbackList.length === limit
+        ? ((fallbackList[fallbackList.length - 1] as { created_at?: string } | undefined)?.created_at ?? null)
+        : null;
+      return NextResponse.json({ itineraries: fallbackList, nextCursor: fallbackNextCursor, hasMore: fallbackNextCursor !== null });
     }
 
     // Fetch share info for all itineraries — now includes feedback data
@@ -128,9 +146,11 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ itineraries: enriched });
+    const nextCursor = enriched.length === limit
+      ? ((enriched[enriched.length - 1] as { created_at?: string } | undefined)?.created_at ?? null)
+      : null;
+    return NextResponse.json({ itineraries: enriched, nextCursor, hasMore: nextCursor !== null });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
   }
 }
