@@ -1,226 +1,157 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { SplineScene } from '@/components/SplineScene';
 
 /**
- * Layout design: staggered 2-column grid with massive Z-depth separation.
- * Each screen has its own 3D rotateX + rotateY (individual tilt) in addition
- * to the parent scene rotation driven by the mouse. This stacks: parent tilt
- * + individual tilt = same compound 3D look Spline had.
- * 
- * Z range: -100px → +220px (320px total) with 900px perspective = very dramatic.
+ * Static placeholder screens — shown INSTANTLY on page load.
+ * Once Spline loads and textures are injected, we crossfade to Spline.
  */
 const screens = [
-  {
-    id: 1,
-    src: '/dashboard_ui_mockup_1773059467134.png',
-    alt: 'Dashboard',
-    delay: 0.08,
-    // Position in wrapper
-    top: '-80px', left: '-40px',
-    width: 820, height: 492,
-    // Individual 3D tilt — stacks on top of parent scene rotation
-    rx: '4deg', ry: '8deg', rz: '-3deg',
-    // Real Z position — key to depth parallax
-    z: '80px',
-  },
-  {
-    id: 2,
-    src: '/analytics_ui_mockup_1773062281103.png',
-    alt: 'Analytics',
-    delay: 0.18,
-    top: '10px', left: '610px',
-    width: 590, height: 354,
-    rx: '-3deg', ry: '-10deg', rz: '4deg',
-    z: '-40px',
-  },
-  {
-    id: 3,
-    src: '/crm_ui_mockup_1773059519930.png',
-    alt: 'CRM',
-    delay: 0.12,
-    top: '380px', left: '-60px',
-    width: 860, height: 516,
-    rx: '2deg', ry: '6deg', rz: '-1deg',
-    z: '220px', // most in front — moves the most with mouse
-  },
-  {
-    id: 4,
-    src: '/booking_ui_mockup_1773059498138.png',
-    alt: 'Bookings',
-    delay: 0.22,
-    top: '390px', left: '600px',
-    width: 590, height: 354,
-    rx: '-4deg', ry: '-8deg', rz: '3.5deg',
-    z: '60px',
-  },
-  {
-    id: 5,
-    src: '/itinerary_ui_mockup_1773062264651.png',
-    alt: 'Itinerary',
-    delay: 0.28,
-    top: '860px', left: '-20px',
-    width: 700, height: 420,
-    rx: '3deg', ry: '5deg', rz: '-2deg',
-    z: '120px',
-  },
-  {
-    id: 6,
-    src: '/invoicing_ui_mockup_1773062297390.png',
-    alt: 'Invoicing',
-    delay: 0.34,
-    top: '870px', left: '550px',
-    width: 540, height: 324,
-    rx: '-2deg', ry: '-6deg', rz: '2.5deg',
-    z: '-60px', // most behind — moves least = real parallax depth
-  },
+  { src: '/dashboard_ui_mockup_1773059467134.png', alt: 'Dashboard', top: '2%', left: '0%', w: 46, h: 28, rz: -2, delay: 0.05 },
+  { src: '/analytics_ui_mockup_1773062281103.png', alt: 'Analytics', top: '0%', left: '42%', w: 36, h: 22, rz: 3, delay: 0.15 },
+  { src: '/crm_ui_mockup_1773059519930.png', alt: 'CRM', top: '32%', left: '-3%', w: 50, h: 30, rz: -1, delay: 0.1 },
+  { src: '/booking_ui_mockup_1773059498138.png', alt: 'Bookings', top: '34%', left: '40%', w: 38, h: 23, rz: 2.5, delay: 0.2 },
+  { src: '/itinerary_ui_mockup_1773062264651.png', alt: 'Itinerary', top: '64%', left: '2%', w: 42, h: 26, rz: -1.5, delay: 0.25 },
+  { src: '/invoicing_ui_mockup_1773062297390.png', alt: 'Invoicing', top: '66%', left: '38%', w: 34, h: 21, rz: 2, delay: 0.3 },
 ];
 
-// ─── Scene rotation config ───────────────────────────────────────────────────
-const BASE_RX =  8;   // base upward tilt (like Spline's camera angle looking slightly down)
-const BASE_RY = -20;  // base leftward tilt (Spline's resting angle)
-const MAX_RY  =  36;  // total yaw range — very dramatic left-to-right
-const MAX_RX  =  22;  // total pitch range — dramatic up-down
-const LERP    =  0.095; // smooth but responsive
-// ────────────────────────────────────────────────────────────────────────────
+interface HeroScreensProps {
+  onSplineReady?: () => void;
+}
 
-export function HeroScreens() {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const rafRef     = useRef<number>(0);
-  const target     = useRef({ rx: BASE_RX, ry: BASE_RY });
-  const curr       = useRef({ rx: BASE_RX, ry: BASE_RY });
+export function HeroScreens({ onSplineReady }: HeroScreensProps) {
+  const [splineLoaded, setSplineLoaded] = useState(false);
 
-  useEffect(() => {
-    const loop = () => {
-      curr.current.rx += (target.current.rx - curr.current.rx) * LERP;
-      curr.current.ry += (target.current.ry - curr.current.ry) * LERP;
+  const mockups = [
+    '/dashboard_ui_mockup_1773059467134.png',
+    '/booking_ui_mockup_1773059498138.png',
+    '/crm_ui_mockup_1773059519930.png',
+    '/itinerary_ui_mockup_1773062264651.png',
+    '/analytics_ui_mockup_1773062281103.png',
+    '/invoicing_ui_mockup_1773062297390.png',
+  ];
 
-      if (wrapperRef.current) {
-        // Short perspective (900px) = very dramatic foreshortening — same as Spline's FOV
-        wrapperRef.current.style.transform =
-          `translate(-52%, -50%) perspective(900px) rotateX(${curr.current.rx}deg) rotateY(${curr.current.ry}deg)`;
+  const onSplineLoad = async (splineApp: any) => {
+    // 1. Hide unwanted Spline text/logos
+    const targetsToHide = [
+      'PROJECT NAME', 'PROMO', 'your logo+text',
+      'P', 'E', 'A', 'R', 'L', 'PEARL',
+    ];
+    targetsToHide.forEach(name => {
+      const obj = splineApp.findObjectByName(name);
+      if (obj && typeof obj.text !== 'undefined') obj.text = '';
+      if (obj) obj.visible = false;
+    });
+
+    // 2. Inject our custom mockup textures
+    await new Promise(r => setTimeout(r, 1500));
+
+    const promises: Promise<void>[] = [];
+    for (let i = 1; i <= 6; i++) {
+      const panel = splineApp.findObjectByName(`1700x950 ${i}`);
+      if (panel?.material?.layers) {
+        panel.material.layers.forEach((layer: any) => {
+          if (layer.type === 'texture' || layer.type === 'matcap') {
+            promises.push(layer.updateTexture(window.location.origin + mockups[i - 1]));
+          }
+        });
       }
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
+    }
 
-    const onMove = (e: MouseEvent) => {
-      const nx = e.clientX / window.innerWidth  - 0.5;
-      const ny = e.clientY / window.innerHeight - 0.5;
-      target.current.ry = BASE_RY + nx * MAX_RY;
-      target.current.rx = BASE_RX - ny * MAX_RX;
-    };
+    try { await Promise.all(promises); } catch (e) { console.warn('Some textures failed', e); }
 
-    const onLeave = () => {
-      target.current.rx = BASE_RX;
-      target.current.ry = BASE_RY;
-    };
+    // 3. Wait for GPU to paint
+    await new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    );
 
-    window.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseleave', onLeave);
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseleave', onLeave);
-    };
-  }, []);
+    // 4. Reveal Spline (CSS will crossfade out the placeholder)
+    setSplineLoaded(true);
+    onSplineReady?.();
+  };
 
   return (
     <div style={{
       position: 'absolute', top: 0, right: 0,
       width: '60%', height: '100%',
-      overflow: 'visible', zIndex: 10, pointerEvents: 'none',
+      overflow: 'visible', zIndex: 10,
     }}>
 
+      {/* ─── LAYER 1: Static CSS placeholder — INSTANT DISPLAY ─── */}
       <div
-        ref={wrapperRef}
         style={{
-          position: 'absolute',
-          top: '50%', left: '50%',
-          // Initial resting transform — gets overwritten by rAF loop immediately
-          transform: `translate(-52%, -50%) perspective(900px) rotateX(${BASE_RX}deg) rotateY(${BASE_RY}deg)`,
-          // preserve-3d is ESSENTIAL — makes children's translateZ real 3D positions
-          transformStyle: 'preserve-3d',
-          width: '1300px',
-          height: '1350px',
-          willChange: 'transform',
+          position: 'absolute', inset: 0,
+          opacity: splineLoaded ? 0 : 1,
+          transition: 'opacity 1.2s ease-in-out',
+          pointerEvents: splineLoaded ? 'none' : 'auto',
+          // Subtle CSS 3D for the placeholder
+          perspective: '1200px',
+          perspectiveOrigin: '50% 50%',
+          zIndex: 2,
         }}
       >
-        {screens.map(({ id, src, alt, delay, top, left, width, height, rx, ry, rz, z }) => (
-          <motion.div
-            key={id}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, delay, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              position: 'absolute',
-              top, left, width, height,
-              /**
-               * COMPOUND 3D TRANSFORM on each screen:
-               * 1. rotateX/Y — individual tilt gives each screen its own angle
-               * 2. rotateZ — slight 2D slant for variety  
-               * 3. translateZ — the DEPTH position (most important for parallax)
-               * 
-               * When the parent scene rotates, screens at high translateZ
-               * appear to "come forward" dramatically — exactly Spline's depth.
-               */
-              transform: `rotateX(${rx}) rotateY(${ry}) rotateZ(${rz}) translateZ(${z})`,
-              borderRadius: '14px',
-              overflow: 'hidden',
-              boxShadow: '0 30px 90px rgba(0,0,0,0.85), 0 0 0 1px rgba(0,240,255,0.2)',
-              pointerEvents: 'auto',
-              cursor: 'default',
-            }}
-            whileHover={{
-              scale: 1.035,
-              transition: { duration: 0.3 },
-            }}
-          >
-            {/* Screen edge glow */}
-            <div style={{
-              position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
-              borderRadius: '14px',
-              boxShadow: 'inset 0 0 0 1.5px rgba(0,240,255,0.25)',
-              background: 'linear-gradient(135deg, rgba(0,240,255,0.04) 0%, transparent 50%)',
-            }} />
-            {/* Screen reflection sheen */}
-            <div style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%)',
-              zIndex: 2, pointerEvents: 'none', borderRadius: '14px 14px 0 0',
-            }} />
-            <Image
-              src={src} alt={alt}
-              width={width * 2} height={height * 2}
-              priority={id <= 4}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          </motion.div>
-        ))}
+        <div style={{
+          position: 'absolute', inset: 0,
+          transform: 'rotateX(6deg) rotateY(-14deg)',
+          transformStyle: 'preserve-3d',
+        }}>
+          {screens.map(({ src, alt, top, left, w, h, rz, delay }, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                position: 'absolute', top, left,
+                width: `${w}%`, height: `${h}%`,
+                transform: `rotateZ(${rz}deg) translateZ(${(3 - i) * 30}px)`,
+                borderRadius: '12px', overflow: 'hidden',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,240,255,0.18)',
+              }}
+            >
+              <Image
+                src={src} alt={alt}
+                width={1400} height={840}
+                priority
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      {/* Atmospheric depth glow */}
-      <div style={{
-        position: 'absolute', top: '10%', left: '15%',
-        width: '700px', height: '600px', pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at 40% 40%, rgba(0,240,255,0.1) 0%, rgba(0,112,243,0.06) 40%, transparent 70%)',
-        zIndex: 1,
-      }} />
+      {/* ─── LAYER 2: Spline 3D — loads in background, crossfades in ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-10% -10% -10% -5%', // slightly oversized to cover edges during rotation
+          opacity: splineLoaded ? 0.92 : 0,
+          transition: 'opacity 1.5s ease-in-out',
+          pointerEvents: splineLoaded ? 'auto' : 'none',
+          zIndex: 3,
+        }}
+      >
+        <SplineScene
+          sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode"
+          onLoad={onSplineLoad}
+        />
+      </div>
 
-      {/* Left fade — clean boundary with hero text */}
+      {/* Left-edge gradient fade */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0, width: '160px',
-        background: 'linear-gradient(to right, #0A0A0A 40%, transparent)',
-        zIndex: 35, pointerEvents: 'none',
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: '120px',
+        background: 'linear-gradient(to right, #0A0A0A 25%, transparent)',
+        zIndex: 10, pointerEvents: 'none',
       }} />
 
       {/* Bottom fade */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: '140px',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '120px',
         background: 'linear-gradient(to top, #0A0A0A, transparent)',
-        zIndex: 35, pointerEvents: 'none',
+        zIndex: 10, pointerEvents: 'none',
       }} />
     </div>
   );
