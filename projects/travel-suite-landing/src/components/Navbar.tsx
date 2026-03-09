@@ -42,7 +42,7 @@ export function Navbar() {
           maxWidth: '1280px',
           margin: '0 auto',
           padding: '0 40px',
-          height: '80px',
+          height: '120px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -51,18 +51,18 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
             <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '12px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, #00F0FF, #0070F3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(0,240,255,0.5)',
+              boxShadow: '0 0 28px rgba(0,240,255,0.6)',
             }}>
-              <Plane size={22} color="white" />
+              <Plane size={28} color="white" />
             </div>
-            <span style={{ fontWeight: 900, fontSize: '24px', letterSpacing: '-0.5px', color: 'white', lineHeight: 1 }}>
+            <span style={{ fontWeight: 900, fontSize: '30px', letterSpacing: '-0.5px', color: 'white', lineHeight: 1 }}>
               Travel<span style={{ color: '#00F0FF' }}>Suite</span>
             </span>
           </Link>
@@ -77,10 +77,10 @@ export function Navbar() {
                   href={href}
                   style={{
                     position: 'relative',
-                    padding: '10px 20px',
+                    padding: '12px 24px',
                     borderRadius: '999px',
-                    fontSize: '17px',
-                    fontWeight: 500,
+                    fontSize: '22px',
+                    fontWeight: 600,
                     color: active ? 'white' : '#9CA3AF',
                     textDecoration: 'none',
                     transition: 'color 0.3s ease',
@@ -110,12 +110,12 @@ export function Navbar() {
             <Link
               href="/login"
               style={{
-                padding: '12px 24px',
+                padding: '14px 32px',
                 borderRadius: '999px',
-                fontSize: '16px',
+                fontSize: '18px',
                 fontWeight: 600,
                 color: '#00F0FF',
-                border: '1.5px solid rgba(0,240,255,0.5)',
+                border: '2px solid rgba(0,240,255,0.5)',
                 textDecoration: 'none',
                 transition: 'all 0.3s ease',
                 whiteSpace: 'nowrap',
@@ -126,9 +126,9 @@ export function Navbar() {
             <Link
               href="/pricing"
               style={{
-                padding: '12px 24px',
+                padding: '14px 32px',
                 borderRadius: '999px',
-                fontSize: '16px',
+                fontSize: '18px',
                 fontWeight: 700,
                 color: '#000',
                 background: '#00F0FF',
