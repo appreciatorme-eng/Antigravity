@@ -71,12 +71,16 @@ $$;
 -- RLS Policies
 ALTER TABLE public.itinerary_embeddings ENABLE ROW LEVEL SECURITY;
 
--- Anyone can read embeddings to find a match
-CREATE POLICY "Anyone can read itinerary embeddings"
-    ON public.itinerary_embeddings FOR SELECT
+-- Only authenticated users can read cached embeddings
+DROP POLICY IF EXISTS "Anyone can read itinerary embeddings" ON public.itinerary_embeddings;
+DROP POLICY IF EXISTS "Authenticated can read itinerary embeddings" ON public.itinerary_embeddings;
+CREATE POLICY "Authenticated can read itinerary embeddings"
+    ON public.itinerary_embeddings FOR SELECT TO authenticated
     USING (true);
 
--- Backend service role can insert
-CREATE POLICY "Service role can insert itinerary embeddings"
-    ON public.itinerary_embeddings FOR INSERT
+-- Only authenticated users can write cache rows
+DROP POLICY IF EXISTS "Service role can insert itinerary embeddings" ON public.itinerary_embeddings;
+DROP POLICY IF EXISTS "Authenticated can insert itinerary embeddings" ON public.itinerary_embeddings;
+CREATE POLICY "Authenticated can insert itinerary embeddings"
+    ON public.itinerary_embeddings FOR INSERT TO authenticated
     WITH CHECK (true);

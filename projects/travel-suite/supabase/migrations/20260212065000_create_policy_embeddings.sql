@@ -23,8 +23,9 @@ ALTER TABLE public.policy_embeddings ENABLE ROW LEVEL SECURITY;
 -- Index for vector similarity search (IVFFlat first, then upgraded to HNSW in next migration)
 CREATE INDEX IF NOT EXISTS idx_policy_embeddings_vector ON public.policy_embeddings USING ivfflat (embedding vector_cosine_ops);
 
--- Embeddings policies (service role only for write, public read)
+-- Embeddings policies (authenticated access only)
 DROP POLICY IF EXISTS "Anyone can search embeddings" ON public.policy_embeddings;
-CREATE POLICY "Anyone can search embeddings"
-    ON public.policy_embeddings FOR SELECT
+DROP POLICY IF EXISTS "Authenticated can search embeddings" ON public.policy_embeddings;
+CREATE POLICY "Authenticated can search embeddings"
+    ON public.policy_embeddings FOR SELECT TO authenticated
     USING (true);
