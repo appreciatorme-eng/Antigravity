@@ -2,7 +2,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import { Check, Zap, Building2, Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
+const ForceFieldBackground = dynamic(
+  () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
+  { ssr: false }
+);
 
 const plans = [
   {
@@ -67,8 +73,13 @@ export default function PricingPage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="pt-36 pb-16 px-6 md:px-24 text-center">
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+      <section className="relative pt-36 pb-16 px-6 md:px-24 text-center overflow-hidden">
+        {/* Particles Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+          <ForceFieldBackground id="tsparticles-pricing" particleCount={150} />
+        </div>
+        
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-6">
             Simple Pricing
           </div>
@@ -158,6 +169,8 @@ export default function PricingPage() {
           ))}
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

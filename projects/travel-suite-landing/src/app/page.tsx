@@ -6,6 +6,7 @@ import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import dynamic from "next/dynamic";
 const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
@@ -15,7 +16,9 @@ import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag } f
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -386,6 +389,7 @@ export default function Home() {
       </section>
       
     </main>
+    <Footer />
     </>
   );
 }

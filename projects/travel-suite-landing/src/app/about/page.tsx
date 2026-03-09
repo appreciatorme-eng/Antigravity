@@ -1,7 +1,13 @@
 'use client';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import { Users, Globe, Award, Heart } from 'lucide-react';
+import dynamic from 'next/dynamic';
+const ForceFieldBackground = dynamic(
+  () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
+  { ssr: false }
+);
 
 const stats = [
   { value: '500+', label: 'Tour Operators' },
@@ -24,6 +30,11 @@ export default function AboutPage() {
 
       {/* Hero */}
       <section className="relative pt-40 pb-24 px-6 md:px-24 text-center overflow-hidden">
+        {/* Particles Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+          <ForceFieldBackground id="tsparticles-about" particleCount={150} />
+        </div>
+        
         <div className="absolute inset-0 bg-gradient-to-b from-[#00F0FF]/5 to-transparent pointer-events-none" />
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-6">
@@ -104,6 +115,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }
