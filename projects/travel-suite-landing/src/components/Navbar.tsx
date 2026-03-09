@@ -26,74 +26,128 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
-          scrolled
-            ? 'bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/10 shadow-[0_4px_30px_rgba(0,240,255,0.06)]'
-            : 'bg-transparent'
-        }`}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          transition: 'all 0.5s ease',
+          background: scrolled ? 'rgba(10,10,10,0.85)' : 'transparent',
+          backdropFilter: scrolled ? 'blur(20px)' : 'none',
+          borderBottom: scrolled ? '1px solid rgba(255,255,255,0.1)' : 'none',
+        }}
       >
-        <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '0 40px',
+          height: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.5)] group-hover:shadow-[0_0_32px_rgba(0,240,255,0.8)] transition-shadow duration-300">
-              <Plane size={20} className="text-white" />
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #00F0FF, #0070F3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 24px rgba(0,240,255,0.5)',
+            }}>
+              <Plane size={22} color="white" />
             </div>
-            <span className="font-black text-2xl tracking-tight text-white">
-              Travel<span className="text-[#00F0FF]">Suite</span>
+            <span style={{ fontWeight: 900, fontSize: '24px', letterSpacing: '-0.5px', color: 'white', lineHeight: 1 }}>
+              Travel<span style={{ color: '#00F0FF' }}>Suite</span>
             </span>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="hidden md:flex">
             {navLinks.map(({ label, href }) => {
               const active = pathname === href;
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`relative px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300 ${
-                    active
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                  } text-base`}
+                  style={{
+                    position: 'relative',
+                    padding: '10px 20px',
+                    borderRadius: '999px',
+                    fontSize: '17px',
+                    fontWeight: 500,
+                    color: active ? 'white' : '#9CA3AF',
+                    textDecoration: 'none',
+                    transition: 'color 0.3s ease',
+                  }}
                 >
                   {active && (
                     <motion.span
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-full bg-white/10 border border-white/20"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: '999px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                      }}
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
-                  <span className="relative z-10">{label}</span>
+                  <span style={{ position: 'relative', zIndex: 1 }}>{label}</span>
                 </Link>
               );
             })}
           </nav>
 
-          {/* CTA: Account Login */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* CTA Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className="hidden md:flex">
             <Link
               href="/login"
-              className="px-6 py-2.5 rounded-full text-base font-semibold text-[#00F0FF] border border-[#00F0FF]/40 hover:border-[#00F0FF] hover:bg-[#00F0FF]/10 transition-all duration-300"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '999px',
+                fontSize: '16px',
+                fontWeight: 600,
+                color: '#00F0FF',
+                border: '1.5px solid rgba(0,240,255,0.5)',
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                whiteSpace: 'nowrap',
+              }}
             >
               Account Login
             </Link>
             <Link
               href="/pricing"
-              className="px-6 py-2.5 rounded-full text-base font-bold text-black bg-[#00F0FF] hover:bg-white hover:shadow-[0_0_24px_rgba(0,240,255,0.6)] transition-all duration-300"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '999px',
+                fontSize: '16px',
+                fontWeight: 700,
+                color: '#000',
+                background: '#00F0FF',
+                textDecoration: 'none',
+                transition: 'all 0.3s ease',
+                whiteSpace: 'nowrap',
+              }}
             >
               Get Started
             </Link>
           </div>
 
-          {/* Mobile menu toggle */}
+          {/* Mobile toggle */}
           <button
-            className="md:hidden text-white p-2"
+            className="md:hidden"
+            style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '8px' }}
             onClick={() => setMobileOpen(v => !v)}
-            aria-label="Toggle menu"
           >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
       </header>
@@ -106,25 +160,42 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-16 left-0 right-0 z-[99] bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10 px-6 py-6 flex flex-col gap-4 md:hidden"
+            style={{
+              position: 'fixed',
+              top: '80px',
+              left: 0,
+              right: 0,
+              zIndex: 99,
+              background: 'rgba(10,10,10,0.97)',
+              backdropFilter: 'blur(20px)',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              padding: '24px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
           >
             {navLinks.map(({ label, href }) => (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setMobileOpen(false)}
-                className={`text-lg font-medium py-1 transition-colors ${
-                  pathname === href ? 'text-[#00F0FF]' : 'text-gray-300 hover:text-white'
-                }`}
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 500,
+                  color: pathname === href ? '#00F0FF' : '#D1D5DB',
+                  textDecoration: 'none',
+                  padding: '4px 0',
+                }}
               >
                 {label}
               </Link>
             ))}
-            <div className="pt-2 flex flex-col gap-3 border-t border-white/10">
-              <Link href="/login" onClick={() => setMobileOpen(false)} className="text-center px-5 py-3 rounded-full text-sm font-semibold text-[#00F0FF] border border-[#00F0FF]/40">
+            <div style={{ paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <Link href="/login" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 600, color: '#00F0FF', border: '1.5px solid rgba(0,240,255,0.4)', textDecoration: 'none' }}>
                 Account Login
               </Link>
-              <Link href="/pricing" onClick={() => setMobileOpen(false)} className="text-center px-5 py-3 rounded-full text-sm font-bold text-black bg-[#00F0FF]">
+              <Link href="/pricing" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 700, color: '#000', background: '#00F0FF', textDecoration: 'none' }}>
                 Get Started
               </Link>
             </div>
