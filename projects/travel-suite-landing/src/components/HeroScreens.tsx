@@ -8,206 +8,220 @@ const screens = [
   {
     id: 1,
     src: '/dashboard_ui_mockup_1773059467134.png',
-    alt: 'TravelSuite Dashboard',
-    style: {
-      width: 520,
-      height: 310,
-      top: '-5%',
-      right: '18%',
-      zIndex: 4,
-      transform: 'perspective(1200px) rotateY(-18deg) rotateX(6deg) rotateZ(-1deg)',
-    },
+    alt: 'Dashboard',
     delay: 0.1,
+    style: {
+      top: '-30px',
+      left: '0px',
+      width: 500,
+      height: 300,
+      rotate: '-2deg',
+      zIndex: 4,
+    },
   },
   {
     id: 2,
     src: '/analytics_ui_mockup_1773062281103.png',
-    alt: 'TravelSuite Analytics',
-    style: {
-      width: 420,
-      height: 250,
-      top: '2%',
-      right: '-2%',
-      zIndex: 3,
-      transform: 'perspective(1200px) rotateY(-22deg) rotateX(4deg) rotateZ(1deg)',
-    },
+    alt: 'Analytics',
     delay: 0.2,
+    style: {
+      top: '-10px',
+      left: '340px',
+      width: 380,
+      height: 228,
+      rotate: '2deg',
+      zIndex: 3,
+    },
   },
   {
     id: 3,
     src: '/crm_ui_mockup_1773059519930.png',
-    alt: 'TravelSuite CRM',
-    style: {
-      width: 560,
-      height: 340,
-      top: '28%',
-      right: '10%',
-      zIndex: 6,
-      transform: 'perspective(1200px) rotateY(-14deg) rotateX(3deg) rotateZ(-0.5deg)',
-    },
+    alt: 'CRM',
     delay: 0.15,
+    style: {
+      top: '220px',
+      left: '-20px',
+      width: 540,
+      height: 324,
+      rotate: '-1deg',
+      zIndex: 6,
+    },
   },
   {
     id: 4,
     src: '/booking_ui_mockup_1773059498138.png',
-    alt: 'TravelSuite Bookings',
-    style: {
-      width: 400,
-      height: 240,
-      top: '30%',
-      right: '-4%',
-      zIndex: 5,
-      transform: 'perspective(1200px) rotateY(-24deg) rotateX(2deg) rotateZ(1.5deg)',
-    },
+    alt: 'Bookings',
     delay: 0.25,
+    style: {
+      top: '240px',
+      left: '380px',
+      width: 380,
+      height: 228,
+      rotate: '3deg',
+      zIndex: 5,
+    },
   },
   {
     id: 5,
     src: '/itinerary_ui_mockup_1773062264651.png',
-    alt: 'TravelSuite Itinerary',
-    style: {
-      width: 450,
-      height: 270,
-      top: '60%',
-      right: '20%',
-      zIndex: 4,
-      transform: 'perspective(1200px) rotateY(-16deg) rotateX(2deg) rotateZ(-1deg)',
-    },
+    alt: 'Itinerary',
     delay: 0.3,
+    style: {
+      top: '490px',
+      left: '40px',
+      width: 420,
+      height: 252,
+      rotate: '-1.5deg',
+      zIndex: 4,
+    },
   },
   {
     id: 6,
     src: '/invoicing_ui_mockup_1773062297390.png',
-    alt: 'TravelSuite Invoicing',
-    style: {
-      width: 380,
-      height: 230,
-      top: '63%',
-      right: '-2%',
-      zIndex: 3,
-      transform: 'perspective(1200px) rotateY(-26deg) rotateX(1deg) rotateZ(2deg)',
-    },
+    alt: 'Invoicing',
     delay: 0.35,
+    style: {
+      top: '500px',
+      left: '360px',
+      width: 340,
+      height: 204,
+      rotate: '2.5deg',
+      zIndex: 3,
+    },
   },
 ];
 
 export function HeroScreens() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Mouse parallax effect
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const { clientX, clientY, currentTarget } = e;
-      const target = currentTarget as HTMLElement;
-      const rect = target.getBoundingClientRect();
-      const x = (clientX - rect.left) / rect.width - 0.5; // -0.5 to 0.5
-      const y = (clientY - rect.top) / rect.height - 0.5;
+      const rect = container.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
 
-      const cards = container.querySelectorAll<HTMLElement>('.screen-card');
-      cards.forEach((card, i) => {
-        const depth = (i % 3) + 1; // 1, 2, or 3
-        const moveX = x * depth * 14;
-        const moveY = y * depth * 8;
-        card.style.transform = card.dataset.baseTransform
-          ? `${card.dataset.baseTransform} translateX(${moveX}px) translateY(${moveY}px)`
-          : '';
+      const cards = container.querySelectorAll<HTMLElement>('[data-depth]');
+      cards.forEach((card) => {
+        const depth = parseFloat(card.dataset.depth || '1');
+        const moveX = x * depth * 20;
+        const moveY = y * depth * 12;
+        card.style.transform = `${card.dataset.base || ''} translateX(${moveX}px) translateY(${moveY}px)`;
       });
     };
 
     const handleMouseLeave = () => {
-      const cards = container.querySelectorAll<HTMLElement>('.screen-card');
-      cards.forEach(card => {
-        card.style.transform = card.dataset.baseTransform || '';
+      const cards = container.querySelectorAll<HTMLElement>('[data-depth]');
+      cards.forEach((card) => {
         card.style.transition = 'transform 0.8s ease-out';
+        card.style.transform = card.dataset.base || '';
+        setTimeout(() => { card.style.transition = ''; }, 800);
       });
     };
 
-    const parent = container.parentElement;
-    parent?.addEventListener('mousemove', handleMouseMove);
-    parent?.addEventListener('mouseleave', handleMouseLeave);
+    container.addEventListener('mousemove', handleMouseMove);
+    container.addEventListener('mouseleave', handleMouseLeave);
     return () => {
-      parent?.removeEventListener('mousemove', handleMouseMove);
-      parent?.removeEventListener('mouseleave', handleMouseLeave);
+      container.removeEventListener('mousemove', handleMouseMove);
+      container.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, []);
 
   return (
+    // Outer: takes up the right half of the hero section
     <div
       ref={containerRef}
       style={{
         position: 'absolute',
-        inset: 0,
-        overflow: 'hidden',
-        pointerEvents: 'none',
+        top: 0,
+        right: 0,
+        width: '55%',
+        height: '100%',
+        overflow: 'visible',
+        zIndex: 10,
+        pointerEvents: 'auto',
       }}
     >
-      {screens.map(({ id, src, alt, style, delay }) => (
-        <motion.div
-          key={id}
-          className="screen-card"
-          data-base-transform={style.transform}
-          initial={{ opacity: 0, y: 60, scale: 0.92 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{
-            duration: 1.0,
-            delay,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          style={{
-            position: 'absolute',
-            top: style.top,
-            right: style.right,
-            width: style.width,
-            height: style.height,
-            zIndex: style.zIndex,
-            transform: style.transform,
-            willChange: 'transform',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,240,255,0.12)',
-            pointerEvents: 'auto',
-          }}
-          whileHover={{ scale: 1.03, transition: { duration: 0.3 } }}
-        >
-          {/* Subtle cyan edge glow */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '12px',
-            boxShadow: 'inset 0 0 0 1px rgba(0,240,255,0.2)',
-            zIndex: 2,
-            pointerEvents: 'none',
-          }} />
+      {/* Perspective wrapper — creates the 3D depth look */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-60%, -50%) perspective(1400px) rotateY(-10deg) rotateX(4deg)',
+          transformStyle: 'preserve-3d',
+          width: '760px',
+          height: '740px',
+        }}
+      >
+        {screens.map(({ id, src, alt, delay, style }) => {
+          const baseTransform = `rotate(${style.rotate})`;
+          const depth = ((id % 3) + 1).toString();
+          return (
+            <motion.div
+              key={id}
+              data-depth={depth}
+              data-base={baseTransform}
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ scale: 1.04, zIndex: 20, transition: { duration: 0.25 } }}
+              style={{
+                position: 'absolute',
+                top: style.top,
+                left: style.left,
+                width: style.width,
+                height: style.height,
+                zIndex: style.zIndex,
+                transform: baseTransform,
+                borderRadius: '10px',
+                overflow: 'hidden',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,240,255,0.15)',
+                cursor: 'default',
+                willChange: 'transform',
+              }}
+            >
+              {/* Inner glow border */}
+              <div style={{
+                position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+                borderRadius: '10px',
+                boxShadow: 'inset 0 0 0 1px rgba(0,240,255,0.25)',
+              }} />
+              <Image
+                src={src}
+                alt={alt}
+                width={style.width * 2}
+                height={style.height * 2}
+                priority={id <= 4}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </motion.div>
+          );
+        })}
+      </div>
 
-          <Image
-            src={src}
-            alt={alt}
-            width={style.width * 2}
-            height={style.height * 2}
-            priority={id <= 3}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-            }}
-          />
-        </motion.div>
-      ))}
-
-      {/* Atmospheric glow behind the screens */}
+      {/* Ambient glow behind screens */}
       <div style={{
-        position: 'absolute',
-        right: '10%',
-        top: '20%',
-        width: '600px',
-        height: '500px',
-        background: 'radial-gradient(ellipse, rgba(0,240,255,0.06) 0%, rgba(0,112,243,0.04) 50%, transparent 70%)',
-        pointerEvents: 'none',
+        position: 'absolute', top: '20%', left: '20%',
+        width: '500px', height: '400px', pointerEvents: 'none',
+        background: 'radial-gradient(ellipse, rgba(0,240,255,0.07) 0%, rgba(0,112,243,0.05) 50%, transparent 70%)',
         zIndex: 1,
+      }} />
+
+      {/* Left-side fade so screens don't overlap the text */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: '120px',
+        background: 'linear-gradient(to right, #0A0A0A, transparent)',
+        zIndex: 15, pointerEvents: 'none',
+      }} />
+
+      {/* Bottom fade */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '100px',
+        background: 'linear-gradient(to top, #0A0A0A, transparent)',
+        zIndex: 15, pointerEvents: 'none',
       }} />
     </div>
   );

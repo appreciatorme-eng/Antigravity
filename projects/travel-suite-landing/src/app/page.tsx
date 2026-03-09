@@ -56,7 +56,7 @@ export default function Home() {
       <main ref={containerRef} className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
         
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
-        <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
+        <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-visible pt-20 transform-gpu isolate">
         
         {/* Particles — TOP LEFT: sits behind the heading & button text */}
         <div 
