@@ -13,6 +13,7 @@ const ForceFieldBackground = dynamic(
 import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Navbar } from "@/components/Navbar";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -111,6 +112,7 @@ export default function Home() {
 
   return (
     <>
+      <Navbar />
       {/* GLOBAL FIXED BACKGROUND: Force Field perfectly integrated across all sections */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <ForceFieldBackground id="tsparticles-global" />
