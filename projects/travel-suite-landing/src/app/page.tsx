@@ -121,16 +121,31 @@ export default function Home() {
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
         <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
         
-        {/* Particles — LEFT SIDE ONLY, on top but not covering the 6 screens */}
+        {/* Particles — TOP LEFT: sits behind the heading & button text */}
         <div 
-          className="absolute top-0 left-0 bottom-0 z-[15] pointer-events-none overflow-hidden"
+          className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden"
           style={{ 
             width: '45%',
-            maskImage: 'linear-gradient(to right, black 60%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, black 60%, transparent 100%)',
+            height: '60%',
+            maskImage: 'linear-gradient(to right, black 65%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black 65%, transparent 100%)',
           }}
         >
-          <ForceFieldBackground id="tsparticles-hero" particleCount={120} />
+          <ForceFieldBackground id="tsparticles-hero-top" particleCount={100} />
+        </div>
+
+        {/* Particles — BOTTOM LEFT: fills the empty space below the button */}
+        <div 
+          className="absolute bottom-0 left-0 z-[15] pointer-events-none overflow-hidden"
+          style={{ 
+            width: '50%',
+            height: '45%',
+            maskImage: 'linear-gradient(to right, black 70%, transparent 100%), linear-gradient(to top, black 40%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black 70%, transparent 100%)',
+            maskComposite: 'intersect',
+          }}
+        >
+          <ForceFieldBackground id="tsparticles-hero-bottom" particleCount={80} />
         </div>
 
         {/* 3D Spline Layer — mix-blend-lighten makes black bg transparent, bright screens stay visible */}
