@@ -32,14 +32,14 @@ export function Navbar() {
             : 'bg-transparent'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_16px_rgba(0,240,255,0.5)] group-hover:shadow-[0_0_24px_rgba(0,240,255,0.8)] transition-shadow duration-300">
-              <Plane size={16} className="text-white" />
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.5)] group-hover:shadow-[0_0_32px_rgba(0,240,255,0.8)] transition-shadow duration-300">
+              <Plane size={20} className="text-white" />
             </div>
-            <span className="font-black text-lg tracking-tight text-white">
+            <span className="font-black text-2xl tracking-tight text-white">
               Travel<span className="text-[#00F0FF]">Suite</span>
             </span>
           </Link>
@@ -52,11 +52,11 @@ export function Navbar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  className={`relative px-5 py-2.5 rounded-full text-base font-medium transition-all duration-300 ${
                     active
                       ? 'text-white'
                       : 'text-gray-400 hover:text-white'
-                  }`}
+                  } text-base`}
                 >
                   {active && (
                     <motion.span
@@ -75,13 +75,13 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
-              className="px-5 py-2 rounded-full text-sm font-semibold text-[#00F0FF] border border-[#00F0FF]/40 hover:border-[#00F0FF] hover:bg-[#00F0FF]/10 transition-all duration-300"
+              className="px-6 py-2.5 rounded-full text-base font-semibold text-[#00F0FF] border border-[#00F0FF]/40 hover:border-[#00F0FF] hover:bg-[#00F0FF]/10 transition-all duration-300"
             >
               Account Login
             </Link>
             <Link
               href="/pricing"
-              className="px-5 py-2 rounded-full text-sm font-bold text-black bg-[#00F0FF] hover:bg-white hover:shadow-[0_0_24px_rgba(0,240,255,0.6)] transition-all duration-300"
+              className="px-6 py-2.5 rounded-full text-base font-bold text-black bg-[#00F0FF] hover:bg-white hover:shadow-[0_0_24px_rgba(0,240,255,0.6)] transition-all duration-300"
             >
               Get Started
             </Link>
