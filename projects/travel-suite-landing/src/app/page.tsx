@@ -87,10 +87,14 @@ export default function Home() {
         console.error("Some textures failed to map, continuing anyway", err);
       }
       
-      // Fade in the Spline scene now that our mockups are in place
+      // Wait 2 animation frames so the GPU actually paints the new textures
+      // before we reveal the scene — eliminates the flash of default content
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      
+      // Fade in the Spline scene now that our mockups are fully painted
       setIsSplineReady(true);
       
-    }, 1000); // let spline initial payload mount fully
+    }, 1500); // give Spline more time to fully initialise before texture injection
   };
 
   useEffect(() => {
