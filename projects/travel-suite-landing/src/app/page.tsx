@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
+import { Navbar } from "@/components/Navbar";
 import dynamic from "next/dynamic";
 const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
@@ -111,6 +112,9 @@ export default function Home() {
 
   return (
     <>
+      {/* NAV */}
+      <Navbar />
+
       {/* GLOBAL FIXED BACKGROUND: Force Field perfectly integrated across all sections */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <ForceFieldBackground id="tsparticles-global" />
