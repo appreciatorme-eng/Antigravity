@@ -4,7 +4,7 @@ import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import type { Container, Engine } from '@tsparticles/engine';
 
-export function ForceFieldBackground() {
+export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCount = 280 }: { id?: string; particleCount?: number }) {
   const [init, setInit] = useState(false);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function ForceFieldBackground() {
 
   return (
     <Particles
-      id="tsparticles-forcefield"
+      id={id}
       particlesLoaded={particlesLoaded}
       style={{
         position: 'absolute',
@@ -72,7 +72,7 @@ export function ForceFieldBackground() {
           },
           number: {
             density: { enable: true },
-            value: 280,
+            value: particleCount,
           },
           opacity: { value: 0.85 },
           shape: { type: 'circle' },

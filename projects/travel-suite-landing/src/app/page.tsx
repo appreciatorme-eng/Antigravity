@@ -113,7 +113,7 @@ export default function Home() {
     <>
       {/* GLOBAL FIXED BACKGROUND: Force Field perfectly integrated across all sections */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <ForceFieldBackground />
+        <ForceFieldBackground id="tsparticles-global" />
       </div>
 
       <main ref={containerRef} className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
@@ -141,7 +141,7 @@ export default function Home() {
 
         {/* Particle layer inside hero — sits above Spline, below text */}
         <div className="absolute inset-0 z-[15] pointer-events-none">
-          <ForceFieldBackground />
+          <ForceFieldBackground id="tsparticles-hero" particleCount={180} />
         </div>
 
 
