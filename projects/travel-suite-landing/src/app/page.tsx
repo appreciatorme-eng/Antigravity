@@ -154,6 +154,15 @@ export default function Home() {
               </span>
               <ShinyText text="Travel Suite OS is Live" speed={3} color="#00F0FF" shineColor="#ffffff" />
             </div>
+
+            {/* Globe Spline — blended above the heading */}
+            <div className="relative w-64 h-64 pointer-events-auto -ml-4">
+              {/* Soft glow halo behind the globe */}
+              <div className="absolute inset-0 rounded-full bg-[#00F0FF]/10 blur-3xl scale-110 pointer-events-none" />
+              <SplineScene
+                sceneUrl="https://prod.spline.design/mj2hLB9Clf6akvFP/scene.splinecode"
+              />
+            </div>
             
             <h1 className="text-6xl md:text-8xl font-black leading-tight text-glow-aqua">
               Run Your <br />
