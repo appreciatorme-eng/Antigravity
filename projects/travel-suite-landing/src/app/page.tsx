@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
 import { Navbar } from "@/components/Navbar";
+import { HeroScreens } from "@/components/HeroScreens";
 import dynamic from "next/dynamic";
 const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
@@ -20,82 +20,11 @@ gsap.registerPlugin(ScrollTrigger);
 export default function Home() {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: containerRef });
-  const [isSplineReady, setIsSplineReady] = useState(false);
   
-  // Parallax effects
+  // Parallax effects (kept for other sections)
   const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
-  // Handle Spline Load to Customize Text and Imagery Dynamically
-  const onSplineLoad = (splineApp: any) => {
-    // 1. Brutally hide unwanted 3D texts or logos in the scene
-    const targetsToHide = [
-      'PROJECT NAME', 'PROMO', 'your logo+text', 
-      'P', 'E', 'A', 'R', 'L', 'PEARL'
-    ];
-    targetsToHide.forEach(name => {
-      const obj = splineApp.findObjectByName(name);
-      // Try to clear text if it's a text node
-      if (obj && typeof obj.text !== 'undefined') {
-        obj.text = '';
-      } 
-      // Force it to be hidden from the renderer entirely
-      if (obj) {
-        obj.visible = false;
-      }
-    });
 
-    // 2. Texture Overrides to our shiny new Travel Suite interfaces
-    const mockups = [
-      '/dashboard_ui_mockup_1773059467134.png',
-      '/booking_ui_mockup_1773059498138.png',
-      '/crm_ui_mockup_1773059519930.png',
-      '/itinerary_ui_mockup_1773062264651.png',
-      '/analytics_ui_mockup_1773062281103.png',
-      '/invoicing_ui_mockup_1773062297390.png'
-    ];
-
-    setTimeout(async () => {
-      const texturePromises: Promise<void>[] = [];
-      
-      // Loop over the 6 panels in the promo scene ("1700x950 1", "1700x950 2", etc)
-      for (let i = 1; i <= 6; i++) {
-        const panelName = `1700x950 ${i}`;
-        const panel = splineApp.findObjectByName(panelName);
-        if (panel) {
-          try {
-            if (panel.material && panel.material.layers) {
-              panel.material.layers.forEach((layer: any) => {
-                if (layer.type === 'texture' || layer.type === 'matcap') {
-                   const fullUrl = window.location.origin + mockups[i - 1];
-                   texturePromises.push(layer.updateTexture(fullUrl));
-                }
-              });
-            } else {
-               console.log("No material found on", panelName);
-            }
-          } catch (err) {
-             console.log(`Could not inject mockup into ${panelName}`, err);
-          }
-        } else {
-           console.log(`Could not find Spline object: ${panelName}`);
-        }
-      }
-      
-      try {
-        await Promise.all(texturePromises);
-      } catch (err) {
-        console.error("Some textures failed to map, continuing anyway", err);
-      }
-      
-      // Wait 2 animation frames so the GPU actually paints the new textures
-      // before we reveal the scene — eliminates the flash of default content
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      
-      // Fade in the Spline scene now that our mockups are fully painted
-      setIsSplineReady(true);
-      
-    }, 1500); // give Spline more time to fully initialise before texture injection
-  };
 
   useEffect(() => {
     // Elegant reveal animations with GSAP
@@ -156,22 +85,8 @@ export default function Home() {
           <ForceFieldBackground id="tsparticles-hero-bottom" particleCount={140} />
         </div>
 
-        {/* 3D Spline Layer — mix-blend-lighten makes black bg transparent, bright screens stay visible */}
-        <div className="absolute inset-0 z-[10] pointer-events-none">
-          <motion.div 
-            style={{ y: yParallax }} 
-            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out ${isSplineReady ? 'opacity-90' : 'opacity-0'}`}
-          >
-            <SplineScene 
-              sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode" 
-              onLoad={onSplineLoad}
-            />
-          </motion.div>
-
-          {/* Subtle gradients to frame the hero content smoothly */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-[11] pointer-events-none" />
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-[11] pointer-events-none" />
-        </div>
+        {/* ✨ CSS 3D Screens — loads instantly with priority images, zero flash */}
+        <HeroScreens />
 
 
         <div className="relative z-20 max-w-3xl space-y-8 pointer-events-none">
