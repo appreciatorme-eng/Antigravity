@@ -10,7 +10,6 @@
  * Auth follows the same pattern as assistant-briefing / assistant-alerts:
  *   - CRON_SECRET / NOTIFICATION_CRON_SECRET header or bearer
  *   - HMAC-signed request
- *   - Supabase service-role bearer
  *   - Admin bearer token
  * ------------------------------------------------------------------ */
 
@@ -27,12 +26,6 @@ import { generateAndQueueDigests } from "@/lib/assistant/weekly-digest";
 // ---------------------------------------------------------------------------
 
 const supabaseAdmin = createAdminClient();
-
-function isServiceRoleBearer(authHeader: string | null): boolean {
-  if (!authHeader?.startsWith("Bearer ")) return false;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  return authHeader.substring(7) === serviceRole;
-}
 
 async function isAdminBearerToken(
   authHeader: string | null,
@@ -67,13 +60,11 @@ export async function POST(request: NextRequest) {
 
     const secretAuthorized = isCronSecretHeader(headerSecret);
     const bearerCronAuthorized = isCronSecretBearer(authHeader);
-    const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
     const adminAuthorized = await isAdminBearerToken(authHeader);
 
     if (
       !secretAuthorized &&
       !bearerCronAuthorized &&
-      !serviceRoleAuthorized &&
       !adminAuthorized
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
