@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWeatherForLocation, getWeatherForLocations, type LocationWeather } from "@/lib/external/weather";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const WEATHER_TTL_SECONDS = 6 * 60 * 60;
 const WEATHER_CACHE_HEADERS = {
@@ -33,6 +34,17 @@ export async function GET(request: NextRequest) {
     const forecastDays = Math.min(Math.max(days, 1), 16); // Open-Meteo supports up to 16 days
 
     try {
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        const rateLimit = await enforceRateLimit({
+            identifier: ip,
+            limit: 60,
+            windowMs: 60 * 1000,
+            prefix: "pub:weather",
+        });
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         // Single location
         if (location) {
             const cacheKey = `weather:single:v1:${normalizedLocationKey(location)}:${forecastDays}`;

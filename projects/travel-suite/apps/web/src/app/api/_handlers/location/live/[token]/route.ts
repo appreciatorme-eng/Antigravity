@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "node:crypto";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 const SHARE_RATE_LIMIT_WINDOW_MS = 60_000;
@@ -129,7 +130,7 @@ export async function GET(
         });
     } catch (error) {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: safeErrorMessage(error, "Failed to fetch location data") },
             { status: 500 }
         );
     }

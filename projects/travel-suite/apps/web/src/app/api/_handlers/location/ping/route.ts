@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -115,13 +116,14 @@ export async function POST(req: NextRequest) {
             });
 
         if (insertError) {
-            return NextResponse.json({ error: insertError.message }, { status: 500 });
+            console.error("Location ping insert error:", insertError);
+            return NextResponse.json({ error: "Failed to record location" }, { status: 500 });
         }
 
         return NextResponse.json({ ok: true });
     } catch (error) {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Unknown error" },
+            { error: safeErrorMessage(error, "Failed to process location ping") },
             { status: 500 }
         );
     }

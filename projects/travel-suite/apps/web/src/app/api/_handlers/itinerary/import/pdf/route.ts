@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import { PDFParse } from 'pdf-parse';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy_key' });
 
 const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS. 
 I am going to give you raw text extracted from a PDF brochure of a tour/itinerary. 
@@ -44,11 +43,27 @@ Note: For coordinates, if you know the exact lat/lng of the tourist attraction, 
 
 export async function POST(req: Request) {
     try {
+        const groqApiKey = process.env.GROQ_API_KEY;
+        if (!groqApiKey) {
+            return NextResponse.json({ error: 'AI extraction service is not configured' }, { status: 503 });
+        }
+        const groq = new Groq({ apiKey: groqApiKey });
+
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const rateLimitResult = await enforceRateLimit({
+            identifier: user.id,
+            limit: 10,
+            windowMs: 60 * 1000,
+            prefix: 'auth:import:pdf',
+        });
+        if (!rateLimitResult.success) {
+            return NextResponse.json({ error: 'Too many import requests. Please try again later.' }, { status: 429 });
         }
 
         const formData = await req.formData();

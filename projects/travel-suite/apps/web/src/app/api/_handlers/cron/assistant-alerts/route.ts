@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { generateAndQueueAlerts } from "@/lib/assistant/alerts";
 
 // ---------------------------------------------------------------------------

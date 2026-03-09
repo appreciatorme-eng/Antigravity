@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isCronSecretBearer } from "@/lib/security/cron-auth";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createAdminClient();
-
-function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
-    return authHeader.substring(7) === supabaseServiceKey;
-}
 
 export async function POST(request: NextRequest) {
     try {

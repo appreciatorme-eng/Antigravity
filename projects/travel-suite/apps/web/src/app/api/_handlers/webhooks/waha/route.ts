@@ -11,9 +11,10 @@
  *   { event: "onMessage",     session: "org_xxx", token: "...", response: { id, from, body, type } }
  * ------------------------------------------------------------------ */
 
-import { createHmac } from "crypto";
+import { createHmac } from "node:crypto";
 
 import { NextResponse } from "next/server";
+import { safeEqual } from "@/lib/security/safe-equal";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";

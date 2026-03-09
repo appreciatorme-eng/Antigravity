@@ -19,6 +19,7 @@ import {
   isCronSecretBearer,
   isCronSecretHeader,
 } from "@/lib/security/cron-auth";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { generateAndQueueDigests } from "@/lib/assistant/weekly-digest";
 
 // ---------------------------------------------------------------------------

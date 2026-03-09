@@ -1,5 +1,6 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { Redis } from "@upstash/redis";
+import { safeEqual } from "./safe-equal";
 
 const DEFAULT_MAX_AGE_MS = 10 * 60_000;
 const localConsumedNonces = new Map<string, number>();
@@ -29,13 +30,6 @@ function decodeBase64Url(input: string): Buffer {
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
   const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
   return Buffer.from(padded, "base64");
-}
-
-function safeEqual(left: string, right: string): boolean {
-  const leftBuf = Buffer.from(left, "utf8");
-  const rightBuf = Buffer.from(right, "utf8");
-  if (leftBuf.length !== rightBuf.length) return false;
-  return timingSafeEqual(leftBuf, rightBuf);
 }
 
 function getStateSecret(): string {

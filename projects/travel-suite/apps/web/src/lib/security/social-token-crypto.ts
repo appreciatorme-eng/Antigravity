@@ -1,5 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
+const DEV_EPHEMERAL_KEY = randomBytes(32).toString("hex");
+
 const TOKEN_PREFIX = "v1";
 const CIPHER_ALGO = "aes-256-gcm";
 
@@ -57,7 +59,7 @@ function getTokenEncryptionKey(): Buffer {
     throw new Error("SOCIAL_TOKEN_ENCRYPTION_KEY is required in production");
   }
 
-  const devFallback = process.env.META_APP_SECRET?.trim() || "dev-social-token-encryption-key";
+  const devFallback = process.env.META_APP_SECRET?.trim() || DEV_EPHEMERAL_KEY;
   return createHash("sha256").update(devFallback).digest();
 }
 

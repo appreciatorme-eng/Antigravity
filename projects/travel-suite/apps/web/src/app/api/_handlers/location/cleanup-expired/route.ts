@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { safeEqual } from "@/lib/security/safe-equal";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const cleanupSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
 const supabaseAdmin = createAdminClient();
@@ -20,12 +21,6 @@ async function isAdmin(authHeader: string | null): Promise<{ userId: string | nu
         .maybeSingle();
 
     return { userId: profile?.role === "admin" ? authData.user.id : null };
-}
-
-function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
-    const token = authHeader.substring(7);
-    return token === supabaseServiceKey;
 }
 
 function isSignedCronRequest(request: NextRequest): boolean {
@@ -51,7 +46,7 @@ export async function POST(request: NextRequest) {
         const secret = request.headers.get("x-notification-cron-secret") || "";
         const authHeader = request.headers.get("authorization");
         const admin = await isAdmin(authHeader);
-        const hasSecret = cleanupSecret && secret === cleanupSecret;
+        const hasSecret = Boolean(cleanupSecret && secret && safeEqual(secret, cleanupSecret));
         const hasSignedSecret = isSignedCronRequest(request);
         const hasServiceRoleBearer = isServiceRoleBearer(authHeader);
 

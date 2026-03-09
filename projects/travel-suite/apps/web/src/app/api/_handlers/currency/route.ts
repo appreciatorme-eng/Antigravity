@@ -8,6 +8,7 @@ import {
     type ConversionResult,
 } from "@/lib/external/currency";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const CURRENCY_LIST_TTL_SECONDS = 7 * 24 * 60 * 60;
 const CURRENCY_RATES_TTL_SECONDS = 24 * 60 * 60;
@@ -47,6 +48,17 @@ export async function GET(request: NextRequest) {
     const list = searchParams.get("list");
 
     try {
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        const rateLimit = await enforceRateLimit({
+            identifier: ip,
+            limit: 60,
+            windowMs: 60 * 1000,
+            prefix: "pub:currency",
+        });
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         // Get available currencies
         if (list !== null) {
             const cacheKey = "currency:list:v1";

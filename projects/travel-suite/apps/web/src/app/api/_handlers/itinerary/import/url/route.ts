@@ -5,8 +5,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import * as cheerio from 'cheerio';
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy_key' });
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 
 function isPrivateIp(address: string): boolean {
     const normalized = address.trim().toLowerCase();
@@ -97,11 +96,27 @@ Note: For coordinates, if you know the exact lat/lng of the tourist attraction, 
 
 export async function POST(req: Request) {
     try {
+        const groqApiKey = process.env.GROQ_API_KEY;
+        if (!groqApiKey) {
+            return NextResponse.json({ error: 'AI extraction service is not configured' }, { status: 503 });
+        }
+        const groq = new Groq({ apiKey: groqApiKey });
+
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const rateLimitResult = await enforceRateLimit({
+            identifier: user.id,
+            limit: 10,
+            windowMs: 60 * 1000,
+            prefix: 'auth:import:url',
+        });
+        if (!rateLimitResult.success) {
+            return NextResponse.json({ error: 'Too many import requests. Please try again later.' }, { status: 429 });
         }
 
         const parsedBody = await req.json().catch(() => null);

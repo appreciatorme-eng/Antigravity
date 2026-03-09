@@ -1,12 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-
-function safeEqual(left: string, right: string): boolean {
-    const leftBuf = Buffer.from(left, "utf8");
-    const rightBuf = Buffer.from(right, "utf8");
-    if (leftBuf.length !== rightBuf.length) return false;
-    return timingSafeEqual(leftBuf, rightBuf);
-}
+import { safeEqual } from "./safe-equal";
 
 function extractBearerToken(authorization: string | null): string | null {
     if (!authorization?.startsWith("Bearer ")) return null;

@@ -15,8 +15,7 @@ function getGeminiKey(apiKey?: string) {
     apiKey ||
     process.env.GOOGLE_API_KEY ||
     process.env.GOOGLE_GEMINI_API_KEY ||
-    // Backwards compatibility with existing deployments; prefer non-public keys.
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    process.env.GEMINI_API_KEY
   );
 }
 

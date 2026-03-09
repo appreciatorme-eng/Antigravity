@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 
 const supabaseAdmin = createAdminClient();
 
@@ -41,12 +42,6 @@ interface CompletedTripRow {
         destination: string | null;
       }>
     | null;
-}
-
-function isServiceRoleBearer(authHeader: string | null): boolean {
-  if (!authHeader?.startsWith("Bearer ")) return false;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  return authHeader.substring(7) === serviceRole;
 }
 
 async function isAdminBearerToken(authHeader: string | null): Promise<boolean> {

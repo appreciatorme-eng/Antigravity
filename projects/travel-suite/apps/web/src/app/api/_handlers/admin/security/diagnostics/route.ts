@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const SECURITY_DIAGNOSTICS_RATE_LIMIT_MAX = 30;
 const SECURITY_DIAGNOSTICS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (rlsError) {
-      return NextResponse.json({ error: rlsError.message }, { status: 500 });
+      return NextResponse.json({ error: safeErrorMessage(rlsError, "Diagnostics query failed") }, { status: 500 });
     }
 
     const uniqueIpCount = new Set((uniqueIps || []).map((row) => row.ip_hash)).size;
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
     const topShareHashes = Array.from(tokenCountMap.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([hash, count]) => ({ hash_prefix: hash.slice(0, 12), count }));
+      .map(([, count], index) => ({ rank: index + 1, access_count: count }));
 
     return NextResponse.json({
       checked_at: new Date().toISOString(),
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
         access_requests_last_5m: Number(access5m || 0),
         access_requests_last_1h: Number(access1h || 0),
         unique_ip_hashes_last_1h: uniqueIpCount,
-        top_share_hash_prefixes_last_1h: topShareHashes,
+        top_share_access_counts_last_1h: topShareHashes,
       },
       rls: rlsDiagnostics,
       firebase_edge_function: {
@@ -112,7 +113,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: safeErrorMessage(error, "Security diagnostics failed") },
       { status: 500 }
     );
   }

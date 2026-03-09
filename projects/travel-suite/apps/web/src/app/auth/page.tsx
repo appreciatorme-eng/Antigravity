@@ -16,7 +16,9 @@ function AuthPageContent() {
     const searchParams = useSearchParams();
     const supabase = createClient();
     const requestedNext = searchParams.get("next");
-    const nextPath = requestedNext && requestedNext.startsWith("/") ? requestedNext : "/admin";
+    const nextPath = requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : "/admin";
 
     const [mode, setMode] = useState<AuthMode>("login");
     const [email, setEmail] = useState("");

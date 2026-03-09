@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp.server";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
+import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
     apiErrorWithRequestId,
@@ -24,7 +25,6 @@ import {
 import type { Json } from "@/lib/database.types";
 import { processInBatches } from "./batch";
 
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = createAdminClient();
 
 type QueueStatus = "pending" | "processing" | "sent" | "failed" | "cancelled";
@@ -189,11 +189,6 @@ async function getAdminUserId(authHeader: string | null): Promise<string | null>
         : null;
 }
 
-function isServiceRoleBearer(authHeader: string | null): boolean {
-    if (!authHeader?.startsWith("Bearer ") || !supabaseServiceKey) return false;
-    const token = authHeader.substring(7);
-    return token === supabaseServiceKey;
-}
 
 async function resolveLiveLinkForQueueItem(item: QueueItem, payload: Record<string, unknown>) {
     const tripId = item.trip_id;

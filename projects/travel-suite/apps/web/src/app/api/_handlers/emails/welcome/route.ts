@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -18,6 +20,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid token" }, { status: 401 });
         }
 
+        const rateLimit = await enforceRateLimit({
+            identifier: user.id,
+            limit: 5,
+            windowMs: 60 * 1000,
+            prefix: "auth:email:welcome",
+        });
+        if (!rateLimit.success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
+
         const { data: profile, error: profileError } = await supabaseAdmin
             .from("profiles")
             .select("full_name, email, welcome_email_sent_at")
@@ -25,7 +37,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (profileError) {
-            return NextResponse.json({ error: profileError.message }, { status: 400 });
+            return NextResponse.json({ error: safeErrorMessage(profileError, "Failed to load profile") }, { status: 400 });
         }
 
         if (profile?.welcome_email_sent_at) {
@@ -51,8 +63,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: result.success, skipped: result.skipped, reason: result.reason });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        console.error("Welcome email error:", message);
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error("Welcome email error:", error);
+        return NextResponse.json({ error: safeErrorMessage(error, "Failed to send welcome email") }, { status: 500 });
     }
 }

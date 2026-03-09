@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/config/env";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import {
@@ -10,6 +10,7 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 import { isDiagnosticsTokenAuthorized } from "@/lib/security/diagnostics-auth";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type CheckStatus = "healthy" | "degraded" | "down" | "unconfigured";
 
@@ -28,7 +29,7 @@ const supabaseServiceKey = env.supabase.serviceRoleKey;
 
 const supabaseAdmin =
     supabaseUrl && supabaseServiceKey
-        ? createClient(supabaseUrl, supabaseServiceKey)
+        ? createAdminClient()
         : null;
 
 function aggregateStatus(values: CheckStatus[]): CheckStatus {
@@ -452,7 +453,7 @@ export async function GET(request: NextRequest) {
             {
                 status: "down",
                 request_id: requestId,
-                error: error instanceof Error ? error.message : "Unknown health check error",
+                error: safeErrorMessage(error, "Health check failed"),
             },
             { status: 503 }
         );

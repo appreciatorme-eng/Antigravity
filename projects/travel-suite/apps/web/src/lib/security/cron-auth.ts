@@ -1,5 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { Redis } from "@upstash/redis";
+import { safeEqual } from "./safe-equal";
 
 export interface CronAuthOptions {
     secretHeaderName?: string;
@@ -20,13 +21,6 @@ const DEFAULT_MAX_CLOCK_SKEW_MS = 5 * 60_000;
 const DEFAULT_REPLAY_WINDOW_MS = 10 * 60_000;
 const localReplayKeys = new Map<string, number>();
 let replayRedis: Redis | null | undefined;
-
-function safeEqual(left: string, right: string): boolean {
-    const leftBuf = Buffer.from(left, "utf8");
-    const rightBuf = Buffer.from(right, "utf8");
-    if (leftBuf.length !== rightBuf.length) return false;
-    return timingSafeEqual(leftBuf, rightBuf);
-}
 
 function getSigningSecret(): string {
     return (

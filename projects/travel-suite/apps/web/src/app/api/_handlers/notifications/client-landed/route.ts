@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
@@ -19,6 +21,16 @@ export async function POST(request: NextRequest) {
 
         if (authError || !user) {
             return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+        }
+
+        const rateLimitResult = await enforceRateLimit({
+            identifier: user.id,
+            limit: 5,
+            windowMs: 60 * 1000,
+            prefix: "auth:notif:landed",
+        });
+        if (!rateLimitResult.success) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
         }
 
         const body = await request.json();
@@ -152,8 +164,7 @@ export async function POST(request: NextRequest) {
             dayNumber,
         });
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        console.error("Client landed error:", message);
-        return NextResponse.json({ error: message }, { status: 500 });
+        console.error("Client landed error:", error);
+        return NextResponse.json({ error: safeErrorMessage(error, "Failed to process landing notification") }, { status: 500 });
     }
 }

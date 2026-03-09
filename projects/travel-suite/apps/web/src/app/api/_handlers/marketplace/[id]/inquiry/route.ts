@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -106,6 +108,16 @@ export async function POST(
 
         if (senderOrgId === targetOrgId) {
             return withRequestId({ error: "Cannot send inquiry to your own organization" }, requestId, { status: 400 });
+        }
+
+        const rateLimitResult = await enforceRateLimit({
+            identifier: senderOrgId,
+            limit: 10,
+            windowMs: 5 * 60 * 1000,
+            prefix: "auth:marketplace:inquiry",
+        });
+        if (!rateLimitResult.success) {
+            return withRequestId({ error: "Too many inquiry requests. Please try again later." }, requestId, { status: 429 });
         }
 
         const { data: targetProfile } = await supabase
@@ -232,12 +244,11 @@ export async function POST(
             notification,
         }, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to create inquiry";
         logError("Marketplace inquiry create failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.inquiry.create.error", {
             request_id: requestId,
-            error: message,
+            error: error instanceof Error ? error.message : "unknown",
         });
-        return withRequestId({ error: message }, requestId, { status: 500 });
+        return withRequestId({ error: safeErrorMessage(error, "Failed to create inquiry") }, requestId, { status: 500 });
     }
 }
