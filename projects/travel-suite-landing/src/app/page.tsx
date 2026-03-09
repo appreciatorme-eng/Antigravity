@@ -109,7 +109,7 @@ export default function Home() {
   return (
     <>
       {/* GLOBAL FIXED BACKGROUND: Force Field perfectly integrated across all sections */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
         <ForceFieldBackground
           hue={190} 
           saturation={80}
