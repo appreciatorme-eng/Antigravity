@@ -116,8 +116,9 @@ export function ForceFieldBackground({
 }: ForceFieldBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5InstanceRef = useRef<p5 | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugLog, setDebugLog] = useState<any>({});
 
   // Keep latest props in ref to access inside p5 closure without re-instantiating
   const propsRef = useRef({
@@ -203,12 +204,16 @@ export function ForceFieldBackground({
             processImage();
             generatePalette(propsRef.current.hue, propsRef.current.saturation);
             generatePoints();
+            
+            // set debug loaded
+            setDebugLog((prev: any) => ({ ...prev, imageLoaded: true, imgW: loadedImg.width, imgH: loadedImg.height }));
           },
           (err) => {
             if (!isMounted) return;
             console.error("Failed to load image", err);
             setError("Failed to load image");
             setIsLoading(false);
+            setDebugLog((prev: any) => ({ ...prev, error: err }));
           }
         );
       };
@@ -219,6 +224,7 @@ export function ForceFieldBackground({
         p.resizeCanvas(clientWidth, clientHeight);
         processImage();
         generatePoints();
+        setDebugLog((prev: any) => ({ ...prev, resized: { w: clientWidth, h: clientHeight } }));
       };
 
       function processImage() {
@@ -286,6 +292,8 @@ export function ForceFieldBackground({
         lastSpacing = spacing;
         lastNoiseScale = noiseScale;
         lastDensity = density;
+
+        setDebugLog((prev: any) => ({ ...prev, pointsCount: points.length }));
       }
 
       function applyForceField(mx: number, my: number) {
@@ -391,9 +399,21 @@ export function ForceFieldBackground({
           }
         }
 
-        // p.fill(0, 255, 0);
-        // p.noStroke();
-        // p.circle(magnifierX, magnifierY, 100);
+        // DEBUG: Draw a big green circle at the cursor to verify it's updating
+        p.fill(0, 255, 0);
+        p.noStroke();
+        p.circle(magnifierX, magnifierY, 100);
+
+        if (p.frameCount % 60 === 0) {
+           setDebugLog((prev: any) => ({ 
+             ...prev, 
+             drawing: true, 
+             frameCount: p.frameCount, 
+             canvasW: p.width,
+             canvasH: p.height,
+             firstPointPos: points.length > 0 ? `${points[0].pos.x.toFixed(1)}, ${points[0].pos.y.toFixed(1)}` : 'none'
+           }));
+        }
       };
     };
 
@@ -422,6 +442,12 @@ export function ForceFieldBackground({
           {error}
         </div>
       )}
+      
+      {/* ON-SCREEN DEBUGGER */}
+      <div className="absolute top-0 left-0 bg-red-900/90 text-white p-4 font-mono text-[10px] z-50 rounded-br-xl pointer-events-none">
+         <h4 className="font-bold border-b border-red-500 pb-1 mb-2">FORCE FIELD DEBUG</h4>
+         <pre>{JSON.stringify(debugLog, null, 2)}</pre>
+      </div>
     </div>
   );
 }
