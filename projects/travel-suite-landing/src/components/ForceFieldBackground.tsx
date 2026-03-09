@@ -96,7 +96,7 @@ export interface ForceFieldBackgroundProps {
  * a "force field" effect where particles are pushed away by the cursor.
  */
 export function ForceFieldBackground({
-  imageUrl = "https://cdn.pixabay.com/photo/2024/12/13/20/29/alps-9266131_1280.jpg",
+  imageUrl = "/force_field_map.jpg",
   hue = 190, // Keeping our theme color
   saturation = 80,
   threshold = 255,
