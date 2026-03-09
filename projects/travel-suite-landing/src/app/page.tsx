@@ -121,16 +121,23 @@ export default function Home() {
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
         <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
         
-        {/* Particle layer — ambient background depth in dark areas */}
-        <div className="absolute inset-0 z-[5] pointer-events-none">
-          <ForceFieldBackground id="tsparticles-hero" particleCount={180} />
+        {/* Particles — LEFT SIDE ONLY, on top but not covering the 6 screens */}
+        <div 
+          className="absolute top-0 left-0 bottom-0 z-[15] pointer-events-none overflow-hidden"
+          style={{ 
+            width: '45%',
+            maskImage: 'linear-gradient(to right, black 60%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black 60%, transparent 100%)',
+          }}
+        >
+          <ForceFieldBackground id="tsparticles-hero" particleCount={120} />
         </div>
 
         {/* 3D Spline Layer — mix-blend-lighten makes black bg transparent, bright screens stay visible */}
         <div className="absolute inset-0 z-[10] pointer-events-none">
           <motion.div 
             style={{ y: yParallax }} 
-            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out mix-blend-lighten ${isSplineReady ? 'opacity-90' : 'opacity-0'}`}
+            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out ${isSplineReady ? 'opacity-90' : 'opacity-0'}`}
           >
             <SplineScene 
               sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode" 
