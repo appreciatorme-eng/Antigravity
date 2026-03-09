@@ -383,11 +383,9 @@ export function ForceFieldBackground({
               strokeSize *= factor;
             }
             
-            if (palette[shadeIndex]) {
-              p.stroke(palette[shadeIndex]);
-              p.strokeWeight(strokeSize);
-              p.point(x, y);
-            }
+            p.stroke(255, 255, 255, 100); // 100% hardcoded white with slight opacity to test rendering!
+            p.strokeWeight(10); // huge pixels
+            p.point(x, y);
           }
         }
       };
