@@ -6,7 +6,10 @@ import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
 import dynamic from "next/dynamic";
-const ForceFieldBackground = dynamic(() => import("@/components/ForceFieldBackground"), { ssr: false });
+const ForceFieldBackground = dynamic(
+  () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
+  { ssr: false }
+);
 import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -109,19 +112,8 @@ export default function Home() {
   return (
     <>
       {/* GLOBAL FIXED BACKGROUND: Force Field perfectly integrated across all sections */}
-      <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
-        <ForceFieldBackground
-          hue={190} 
-          saturation={80}
-          spacing={10} 
-          forceStrength={120}
-          density={0.8}
-          magnifierRadius={400}
-          minStroke={3}
-          maxStroke={7}
-          friction={0.92}
-          restoreSpeed={0.02}
-        />
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <ForceFieldBackground />
       </div>
 
       <main ref={containerRef} className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
