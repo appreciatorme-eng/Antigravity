@@ -139,61 +139,50 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
         </div>
 
-        {/* Hero Left: Text + Globe integrated behind the text */}
-        <div className="relative z-20 max-w-xl w-full pointer-events-none">
+        {/* Hero Content */}
+        <div className="relative z-20 max-w-3xl space-y-8 pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="space-y-4"
+          >
+            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-wide uppercase">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00F0FF] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00F0FF]"></span>
+              </span>
+              <ShinyText text="Travel Suite OS is Live" speed={3} color="#00F0FF" shineColor="#ffffff" />
+            </div>
 
-          {/* Globe floats behind all text, bleeds upward */}
-          <div className="absolute -top-32 -left-16 w-[420px] h-[420px] z-0 pointer-events-auto opacity-90 mix-blend-screen">
-            <SplineScene
-              sceneUrl="https://prod.spline.design/mj2hLB9Clf6akvFP/scene.splinecode"
-            />
-          </div>
+            <h1 className="text-6xl md:text-8xl font-black leading-tight text-glow-aqua">
+              Run Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#FFD699]">
+                Travel Empire.
+              </span>
+            </h1>
+          </motion.div>
 
-          {/* All original text content on top of the globe */}
-          <div className="relative z-10 space-y-8">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className="space-y-4"
-            >
-              <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-wide uppercase">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00F0FF] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00F0FF]"></span>
-                </span>
-                <ShinyText text="Travel Suite OS is Live" speed={3} color="#00F0FF" shineColor="#ffffff" />
-              </div>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+            className="text-xl md:text-2xl text-gray-400 font-light max-w-2xl"
+          >
+            No more messy PDFs. No more lost WhatsApp chats. The all-in-one operating system for modern Indian tour operators.
+          </motion.p>
 
-              <h1 className="text-6xl md:text-8xl font-black leading-tight text-glow-aqua">
-                Run Your <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#FFD699]">
-                  Travel Empire.
-                </span>
-              </h1>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
-              className="text-xl md:text-2xl text-gray-400 font-light max-w-2xl"
-            >
-              No more messy PDFs. No more lost WhatsApp chats. The all-in-one operating system for modern Indian tour operators.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="pt-6 pointer-events-auto"
-            >
-              <button className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)]">
-                <ShinyText text="Experience the Magic" speed={2.5} color="#ffffff" shineColor="#FFEBCC" />
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </motion.div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="pt-6 pointer-events-auto"
+          >
+            <button className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)]">
+              <ShinyText text="Experience the Magic" speed={2.5} color="#ffffff" shineColor="#FFEBCC" />
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </motion.div>
         </div>
       </section>
 
