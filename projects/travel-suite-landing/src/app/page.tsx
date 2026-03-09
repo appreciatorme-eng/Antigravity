@@ -131,7 +131,7 @@ export default function Home() {
             WebkitMaskImage: 'linear-gradient(to right, black 65%, transparent 100%)',
           }}
         >
-          <ForceFieldBackground id="tsparticles-hero-top" particleCount={100} />
+          <ForceFieldBackground id="tsparticles-hero-top" particleCount={180} />
         </div>
 
         {/* Particles — BOTTOM LEFT: fills the empty space below the button */}
@@ -145,7 +145,7 @@ export default function Home() {
             maskComposite: 'intersect',
           }}
         >
-          <ForceFieldBackground id="tsparticles-hero-bottom" particleCount={80} />
+          <ForceFieldBackground id="tsparticles-hero-bottom" particleCount={140} />
         </div>
 
         {/* 3D Spline Layer — mix-blend-lighten makes black bg transparent, bright screens stay visible */}
