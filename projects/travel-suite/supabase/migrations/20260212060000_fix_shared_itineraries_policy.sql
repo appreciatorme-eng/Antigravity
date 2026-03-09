@@ -1,21 +1,14 @@
--- Fix: shared_itineraries SELECT policy is too permissive (USING true).
--- Restrict to only non-expired shares (defence in depth).
--- The application should still filter by share_code, but this prevents full-table enumeration.
+-- Fix: shared_itineraries SELECT policy previously allowed broad public reads.
+-- Restrict reads to authenticated itinerary owners only.
 
 DROP POLICY IF EXISTS "Anyone can view shared itinerary by code" ON public.shared_itineraries;
 DROP POLICY IF EXISTS "Shared itineraries viewable when not expired" ON public.shared_itineraries;
 DROP POLICY IF EXISTS "Owners can view own shares" ON public.shared_itineraries;
 DROP POLICY IF EXISTS "Owners can delete own shares" ON public.shared_itineraries;
 
-CREATE POLICY "Shared itineraries viewable when not expired"
-    ON public.shared_itineraries FOR SELECT
-    USING (
-        expires_at IS NULL OR expires_at > now()
-    );
-
 -- Allow owners to always see their own shares (for management)
 CREATE POLICY "Owners can view own shares"
-    ON public.shared_itineraries FOR SELECT
+    ON public.shared_itineraries FOR SELECT TO authenticated
     USING (
         EXISTS (
             SELECT 1 FROM public.itineraries

@@ -3,16 +3,10 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { deliverMonthlyOperatorScorecards } from "@/lib/admin/operator-scorecard-delivery";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 
-function isServiceRoleBearer(authHeader: string | null): boolean {
-  if (!authHeader?.startsWith("Bearer ")) return false;
-  const token = authHeader.substring(7);
-  return token === (process.env.SUPABASE_SERVICE_ROLE_KEY || "");
-}
-
 export async function POST(request: NextRequest) {
   try {
     const cronAuth = await authorizeCronRequest(request);
-    let authorized = cronAuth.authorized || isServiceRoleBearer(request.headers.get("authorization"));
+    let authorized = cronAuth.authorized;
 
     if (!authorized) {
       const admin = await requireAdmin(request, { requireOrganization: false });

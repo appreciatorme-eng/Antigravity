@@ -3,7 +3,10 @@ import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SHARED_ITINERARY_PUBLIC_SELECT } from "@/lib/share/public-trip";
+import {
+    SHARED_ITINERARY_PUBLIC_SELECT,
+    shareSelectContainsPii,
+} from "@/lib/share/public-trip";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
 
 export default async function SharedTripPage({
@@ -13,6 +16,10 @@ export default async function SharedTripPage({
 }) {
     const supabaseAdmin = createAdminClient();
     const { token } = await params;
+
+    if (shareSelectContainsPii(SHARED_ITINERARY_PUBLIC_SELECT)) {
+        throw new Error("Unsafe public share select contains sensitive fields");
+    }
 
     // Fetch only the safe public share payload needed to render the itinerary.
     // Do not resolve traveler contact information from a bearer share token.
