@@ -121,6 +121,11 @@ export default function Home() {
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
         <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
         
+        {/* Particle layer BEHIND the Spline — ambient background depth */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <ForceFieldBackground id="tsparticles-hero" particleCount={180} />
+        </div>
+
         {/* 3D Spline Layer (Absolute so it doesn't break Flex layout, EXACTLY like original) */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <motion.div 
@@ -137,11 +142,6 @@ export default function Home() {
           {/* Subtle gradients to frame the hero content smoothly (ensures text readability) */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-10 pointer-events-none" />
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
-        </div>
-
-        {/* Particle layer inside hero — sits above Spline, below text */}
-        <div className="absolute inset-0 z-[15] pointer-events-none">
-          <ForceFieldBackground id="tsparticles-hero" particleCount={180} />
         </div>
 
 
