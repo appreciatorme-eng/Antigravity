@@ -249,13 +249,12 @@ export function ForceFieldBackground({
 
       function generatePalette(h: number, s: number) {
         palette = [];
-        p.push();
-        p.colorMode(p.HSL);
+        p.colorMode(p.HSL, 360, 100, 100); // Explicity define HSL ranges otherwise p5 assumes 0-255
         for (let i = 0; i < 12; i++) {
           let lightness = p.map(i, 0, 11, 95, 5);
           palette.push(p.color(h, s, lightness));
         }
-        p.pop();
+        p.colorMode(p.RGB, 255); // Reset back to RGB for safety after generating
       }
 
       function generatePoints() {
@@ -419,11 +418,6 @@ export function ForceFieldBackground({
           {error}
         </div>
       )}
-
-      {/* HARDWARE MOUNT TEST */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] bg-green-500 text-black px-10 py-5 rounded-3xl font-black text-4xl shadow-2xl pointer-events-auto border-4 border-white">
-        FORCE FIELD IS MOUNTED
-      </div>
     </div>
   );
 }
