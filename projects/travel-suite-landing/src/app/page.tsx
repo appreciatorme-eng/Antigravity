@@ -139,7 +139,12 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
         </div>
 
-        {/* Hero Content */}
+        {/* Particle layer inside hero — sits above Spline, below text */}
+        <div className="absolute inset-0 z-[15] pointer-events-none">
+          <ForceFieldBackground />
+        </div>
+
+
         <div className="relative z-20 max-w-3xl space-y-8 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
