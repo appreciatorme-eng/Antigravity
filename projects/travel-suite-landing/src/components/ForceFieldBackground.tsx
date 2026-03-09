@@ -182,8 +182,14 @@ export function ForceFieldBackground({
       p.setup = () => {
         // Create canvas synchronously to avoid appendChild race condition in React StrictMode
         if (containerRef.current) {
-          const { clientWidth, clientHeight } = containerRef.current;
-          p.createCanvas(clientWidth, clientHeight);
+          let cw = containerRef.current.clientWidth;
+          let ch = containerRef.current.clientHeight;
+          // Fallback if DOM hasn't fully painted (React hydration bug)
+          if (cw <= 0 || ch <= 0) {
+            cw = window.innerWidth;
+            ch = window.innerHeight;
+          }
+          p.createCanvas(cw, ch);
           magnifierX = p.width / 2;
           magnifierY = p.height / 2;
         }
@@ -233,6 +239,11 @@ export function ForceFieldBackground({
           }
           img.updatePixels();
         }
+        
+        // HUGE PERFORMANCE FIX: Call loadPixels() exactly *once* during generation, 
+        // NEVER inside the 60FPS draw() loop!
+        img.loadPixels();
+        
         lastInvertImage = propsRef.current.invertImage;
       }
 
@@ -310,7 +321,8 @@ export function ForceFieldBackground({
           p.clear();
           return;
         }
-        p.clear(); // We use clear() so we don't paint a solid backing that covers other backgrounds
+        // Clear with a faint red tint to verify canvas visibility
+        p.background(50, 0, 0, 100); 
 
         const props = propsRef.current;
 
@@ -338,7 +350,6 @@ export function ForceFieldBackground({
 
         applyForceField(magnifierX, magnifierY);
 
-        img.loadPixels();
         p.noFill();
 
         for (let pt of points) {
@@ -379,6 +390,10 @@ export function ForceFieldBackground({
             }
           }
         }
+
+        // p.fill(0, 255, 0);
+        // p.noStroke();
+        // p.circle(magnifierX, magnifierY, 100);
       };
     };
 
