@@ -5,6 +5,12 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import {
+    getRequestContext,
+    getRequestId,
+    logError,
+    logEvent,
+} from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -28,6 +34,8 @@ function sanitizeSearchTerm(input: string): string {
 }
 
 export async function GET(request: NextRequest) {
+    const requestId = getRequestId(request);
+    const requestContext = getRequestContext(request, requestId);
     try {
         const serverClient = await createServerClient();
         const {
@@ -63,22 +71,24 @@ export async function GET(request: NextRequest) {
             ? Math.min(Math.max(rawLimit, 1), MAX_LIMIT)
             : DEFAULT_LIMIT;
 
+        const rawOffset = parseInt(searchParams.get("offset") ?? "0", 10);
+        const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
+
         let query = supabaseAdmin
             .from("external_drivers")
-            .select("id, full_name, phone, vehicle_type, vehicle_plate, photo_url")
+            .select("id, full_name, phone, vehicle_type, vehicle_plate, photo_url", { count: "exact" })
             .eq("organization_id", orgId)
             .eq("is_active", true)
-            .order("full_name", { ascending: true })
-            .limit(limit);
+            .order("full_name", { ascending: true });
 
         if (searchTerm) {
             query = query.ilike("full_name", `%${searchTerm}%`);
         }
 
-        const { data: drivers, error } = await query;
+        const { data: drivers, count: totalCount, error } = await query.range(offset, offset + limit - 1);
 
         if (error) {
-            console.error("Driver search error:", error);
+            logError("Driver search DB query failed", error, requestContext);
             return NextResponse.json(
                 { error: "Failed to search drivers" },
                 { status: 500 }
@@ -86,7 +96,10 @@ export async function GET(request: NextRequest) {
         }
 
         if (!drivers || drivers.length === 0) {
-            return NextResponse.json({ drivers: [] });
+            return NextResponse.json({
+                drivers: [],
+                pagination: { total: totalCount ?? 0, limit, offset, hasMore: false },
+            });
         }
 
         const today = new Date().toISOString().slice(0, 10);
@@ -103,7 +116,10 @@ export async function GET(request: NextRequest) {
             .in("external_driver_id", driverIds);
 
         if (assignError) {
-            console.error("Assignment count error:", assignError);
+            logEvent("warn", "Driver assignment count query failed", {
+                ...requestContext,
+                error_message: String(assignError.message),
+            });
         }
 
         const todayCountMap = new Map<string, number>();
@@ -134,13 +150,19 @@ export async function GET(request: NextRequest) {
             todayTripCount: todayCountMap.get(driver.id) ?? 0,
         }));
 
-        return NextResponse.json({ drivers: results });
-    } catch (error) {
-        console.error("Driver search error:", error);
-        return NextResponse.json(
-            {
-                error: safeErrorMessage(error, "Failed to search drivers"),
+        return NextResponse.json({
+            drivers: results,
+            pagination: {
+                total: totalCount ?? 0,
+                limit,
+                offset,
+                hasMore: offset + limit < (totalCount ?? 0),
             },
+        });
+    } catch (error) {
+        logError("Driver search endpoint crashed", error, requestContext);
+        return NextResponse.json(
+            { error: safeErrorMessage(error, "Failed to search drivers") },
             { status: 500 }
         );
     }

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -225,6 +226,10 @@ export async function GET(req: NextRequest) {
         const sort = sanitizeSort(url.searchParams.get("sort"));
         const minRating = sanitizeMinRating(url.searchParams.get("min_rating"));
         const verifiedOnly = sanitizeText(url.searchParams.get("verified_only"), { maxLength: 8 }) === "true";
+        const rawPage = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+        const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+        const rawPageLimit = Number.parseInt(url.searchParams.get("limit") ?? "50", 10);
+        const pageLimit = Number.isFinite(rawPageLimit) ? Math.min(Math.max(1, rawPageLimit), 100) : 50;
 
         let supabaseQuery = supabaseAdmin
             .from("marketplace_profiles")
@@ -380,6 +385,10 @@ export async function GET(req: NextRequest) {
             return bTime - aTime;
         });
 
+        const total = results.length;
+        const offset = (page - 1) * pageLimit;
+        const paginated = results.slice(offset, offset + pageLimit);
+
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace list fetched", {
             ...requestContext,
@@ -388,7 +397,9 @@ export async function GET(req: NextRequest) {
             sort,
             min_rating: minRating,
             verified_only: verifiedOnly,
-            results_count: results.length,
+            results_count: total,
+            page,
+            limit: pageLimit,
             durationMs,
         });
         void captureOperationalMetric("api.marketplace.list", {
@@ -398,12 +409,15 @@ export async function GET(req: NextRequest) {
             sort,
             min_rating: minRating,
             verified_only: verifiedOnly,
-            results_count: results.length,
+            results_count: total,
             duration_ms: durationMs,
         });
-        return withRequestId(results, requestId);
+        return withRequestId(
+            { items: paginated, pagination: { page, limit: pageLimit, total, hasMore: offset + pageLimit < total } },
+            requestId
+        );
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Marketplace list failed");
         logError("Marketplace list failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.list.error", {
             request_id: requestId,
@@ -489,7 +503,7 @@ export async function PATCH(req: NextRequest) {
         });
         return withRequestId(data, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Marketplace profile update failed");
         logError("Marketplace profile update failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.profile.update.error", {
             request_id: requestId,

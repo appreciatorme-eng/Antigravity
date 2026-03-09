@@ -33,6 +33,9 @@ export default defineConfig({
         "src/app/api/_handlers/webhooks/waha/secret.ts",
         "src/app/api/_handlers/share/[token]/public-share.ts",
         "src/app/api/_handlers/notifications/process-queue/batch.ts",
+        "src/middleware.ts",
+        "src/app/api/_handlers/marketplace/route.ts",
+        "src/app/api/_handlers/drivers/search/route.ts",
       ],
       reporter: ["text", "json-summary"],
       thresholds: {
