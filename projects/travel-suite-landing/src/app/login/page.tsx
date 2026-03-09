@@ -4,6 +4,11 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Eye, EyeOff, Plane } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+const ForceFieldBackground = dynamic(
+  () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
+  { ssr: false }
+);
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,6 +17,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col">
       <Navbar />
+      
+      {/* Particles Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-30">
+        <ForceFieldBackground id="tsparticles-login" particleCount={100} />
+      </div>
 
       <div className="flex-1 flex items-center justify-center px-6 pt-16">
         <motion.div

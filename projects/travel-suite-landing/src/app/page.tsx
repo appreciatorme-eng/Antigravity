@@ -5,6 +5,8 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 import dynamic from "next/dynamic";
 const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
@@ -13,9 +15,10 @@ const ForceFieldBackground = dynamic(
 import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Navbar } from "@/components/Navbar";
 
-gsap.registerPlugin(ScrollTrigger);
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -384,6 +387,7 @@ export default function Home() {
       </section>
       
     </main>
+    <Footer />
     </>
   );
 }
