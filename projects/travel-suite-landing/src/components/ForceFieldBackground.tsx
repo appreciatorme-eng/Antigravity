@@ -72,9 +72,9 @@ export function ForceFieldBackground() {
           },
           number: {
             density: { enable: true },
-            value: 130,
+            value: 280,
           },
-          opacity: { value: 0.8 },
+          opacity: { value: 0.85 },
           shape: { type: 'circle' },
           size: { value: { min: 1, max: 3 } },
         },
