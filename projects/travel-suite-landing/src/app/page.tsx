@@ -113,9 +113,9 @@ export default function Home() {
         <ForceFieldBackground
           hue={190} 
           saturation={80}
-          spacing={20} 
+          spacing={10} 
           forceStrength={120}
-          density={1.3}
+          density={0.8}
           magnifierRadius={400}
           minStroke={3}
           maxStroke={7}
