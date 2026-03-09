@@ -419,6 +419,11 @@ export function ForceFieldBackground({
           {error}
         </div>
       )}
+
+      {/* HARDWARE MOUNT TEST */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] bg-green-500 text-black px-10 py-5 rounded-3xl font-black text-4xl shadow-2xl pointer-events-auto border-4 border-white">
+        FORCE FIELD IS MOUNTED
+      </div>
     </div>
   );
 }
