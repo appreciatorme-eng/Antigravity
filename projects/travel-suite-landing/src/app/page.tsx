@@ -121,27 +121,26 @@ export default function Home() {
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
         <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
         
-        {/* Particle layer BEHIND the Spline — ambient background depth */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Particle layer — ambient background depth in dark areas */}
+        <div className="absolute inset-0 z-[5] pointer-events-none">
           <ForceFieldBackground id="tsparticles-hero" particleCount={180} />
         </div>
 
-        {/* 3D Spline Layer (Absolute so it doesn't break Flex layout, EXACTLY like original) */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* 3D Spline Layer — mix-blend-lighten makes black bg transparent, bright screens stay visible */}
+        <div className="absolute inset-0 z-[10] pointer-events-none">
           <motion.div 
             style={{ y: yParallax }} 
-            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out ${isSplineReady ? 'opacity-90' : 'opacity-0'}`}
+            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out mix-blend-lighten ${isSplineReady ? 'opacity-90' : 'opacity-0'}`}
           >
-            {/* Project Promo - look at mouse */}
             <SplineScene 
               sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode" 
               onLoad={onSplineLoad}
             />
           </motion.div>
 
-          {/* Subtle gradients to frame the hero content smoothly (ensures text readability) */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-10 pointer-events-none" />
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-10 pointer-events-none" />
+          {/* Subtle gradients to frame the hero content smoothly */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-[11] pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-[11] pointer-events-none" />
         </div>
 
 
