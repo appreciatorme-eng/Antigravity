@@ -41,20 +41,25 @@ async function dispatch(
   pathParts: string[],
   routes: RouteEntry[]
 ): Promise<NextResponse> {
-  const match = matchRoute(pathParts, routes);
+  try {
+    const match = matchRoute(pathParts, routes);
 
-  if (!match) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!match) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const handler = await match.loader();
+    const fn = handler[method];
+
+    if (typeof fn !== "function") {
+      return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+    }
+
+    return fn(req, { params: Promise.resolve(match.params) });
+  } catch (error) {
+    console.error("[api-dispatch] unhandled error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const handler = await match.loader();
-  const fn = handler[method];
-
-  if (typeof fn !== "function") {
-    return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
-  }
-
-  return fn(req, { params: Promise.resolve(match.params) });
 }
 
 export function createCatchAllHandlers(routes: RouteEntry[]) {
