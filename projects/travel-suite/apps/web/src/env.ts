@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+// Razorpay credentials are required in production — payments cannot function without them.
+// In dev/test/CI they remain optional so the app boots without payment infrastructure.
+const razorpayField = (isProduction: boolean) =>
+  isProduction ? z.string().min(1) : z.string().min(1).optional();
+
+const IS_PROD_ENV = process.env.NODE_ENV === 'production';
+
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   INTERNAL_API_SECRET: z.string().min(16).optional(),
@@ -14,9 +21,9 @@ const serverSchema = z.object({
   GOOGLE_GEMINI_API_KEY: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
-  RAZORPAY_KEY_ID: z.string().min(1).optional(),
-  RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
-  RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
+  RAZORPAY_KEY_ID: razorpayField(IS_PROD_ENV),
+  RAZORPAY_KEY_SECRET: razorpayField(IS_PROD_ENV),
+  RAZORPAY_WEBHOOK_SECRET: razorpayField(IS_PROD_ENV),
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
   RESEND_FROM_NAME: z.string().min(1).optional(),
