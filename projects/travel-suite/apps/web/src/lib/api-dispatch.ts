@@ -118,6 +118,7 @@ export function createCatchAllHandlers(routes: RouteEntry[]) {
       status: 204,
       headers: {
         Allow: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, x-requested-with",
         "Access-Control-Max-Age": "86400",
