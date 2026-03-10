@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/config/env";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type PlacesRequestBody = {
   googlePlaceId?: string;
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Google Places activation error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to activate Google Places" },
+      { error: safeErrorMessage(error, "Request failed") },
       { status: 500 },
     );
   }

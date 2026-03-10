@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type Milestone = {
   id: "setup" | "itinerary" | "share";
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: safeErrorMessage(error, "Request failed"),
       },
       { status: 500 }
     );

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -100,10 +101,7 @@ export async function POST(request: NextRequest) {
         console.error("Task dismiss error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to dismiss task",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 }
         );

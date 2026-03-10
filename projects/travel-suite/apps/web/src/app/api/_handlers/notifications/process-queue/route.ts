@@ -6,6 +6,7 @@ import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { isAdminBearerToken } from "@/lib/security/admin-bearer-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
     apiErrorWithRequestId,
     apiSuccessWithRequestId,
@@ -557,7 +558,7 @@ export async function POST(request: NextRequest) {
         logError("Notification queue run crashed", error, requestContext);
         void captureOperationalMetric("api.notifications.queue.error", {
             request_id: requestId,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: safeErrorMessage(error, "Request failed"),
         });
 
         return apiErrorWithRequestId(

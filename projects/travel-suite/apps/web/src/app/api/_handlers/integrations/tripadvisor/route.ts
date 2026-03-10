@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 import { getTripAdvisorLocationDetails, getTripAdvisorReviews } from '@/lib/external/tripadvisor.server';
 
 const TRIPADVISOR_API_KEY = process.env.TRIPADVISOR_API_KEY;
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         console.error('TripAdvisor connect error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to connect TripAdvisor' },
+            { error: safeErrorMessage(error, "Request failed") },
             { status: 500 }
         );
     }
@@ -110,7 +111,7 @@ export async function GET() {
     } catch (error: unknown) {
         console.error('TripAdvisor reviews fetch error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to fetch TripAdvisor reviews' },
+            { error: safeErrorMessage(error, "Request failed") },
             { status: 500 }
         );
     }

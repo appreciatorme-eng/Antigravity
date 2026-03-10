@@ -4,6 +4,7 @@ import {
     diagnosticsUnauthorizedResponse,
     isDiagnosticsTokenAuthorized,
 } from "@/lib/security/diagnostics-auth";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 /**
  * Test endpoint to verify geocoding is working
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
             {
                 success: false,
                 location,
-                error: error instanceof Error ? error.message : "Unknown error",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 }
         );

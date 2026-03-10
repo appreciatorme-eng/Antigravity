@@ -3,6 +3,7 @@ import { getCityCenter } from '@/lib/geocoding-with-cache';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { requireAdmin } from '@/lib/auth/admin';
 import { sanitizeText } from '@/lib/security/sanitize';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 function isDebugEndpointEnabled() {
   if (process.env.NODE_ENV === 'production') return false;
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
         {
           success: false,
           model: 'gemini-2.5-flash',
-          error: error instanceof Error ? error.message : String(error),
+          error: safeErrorMessage(error, "Request failed"),
         },
         { status: 500 }
       );
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest) {
       {
         success: false,
         city,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: safeErrorMessage(error, "Request failed"),
       },
       { status: 500 }
     );

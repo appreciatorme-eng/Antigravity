@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import { PDFParse } from 'pdf-parse';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         console.error("PDF Import Error:", error);
-        const message = error instanceof Error ? error.message : 'Failed to import from PDF';
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

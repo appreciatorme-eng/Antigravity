@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { getWahaQR } from "@/lib/whatsapp-waha.server";
 
 export async function GET(req: NextRequest) {
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ qrBase64 });
     } catch (error) {
         console.error("[whatsapp/qr] error:", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

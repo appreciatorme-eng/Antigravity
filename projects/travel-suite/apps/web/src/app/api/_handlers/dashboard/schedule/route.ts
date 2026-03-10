@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -215,10 +216,7 @@ export async function GET() {
         console.error("Dashboard schedule error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to fetch schedule",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 }
         );

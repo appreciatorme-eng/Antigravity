@@ -55,7 +55,7 @@ async function timedFetch(
         Sentry.captureException(error);
         return {
             latency: Date.now() - startedAt,
-            error: error instanceof Error ? error.message : "Network error",
+            error: safeErrorMessage(error, "Health check error"),
         };
     } finally {
         clearTimeout(timer);
@@ -117,7 +117,7 @@ async function checkDatabase(): Promise<CheckResult> {
         return {
             status: "down",
             latency_ms: latency,
-            detail: error.message,
+            detail: safeErrorMessage(error, "Health check error"),
         };
     }
 
