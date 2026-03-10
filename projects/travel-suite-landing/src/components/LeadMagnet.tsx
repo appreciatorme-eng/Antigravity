@@ -77,13 +77,13 @@ export function LeadMagnet() {
                                         Free Guide
                                     </div>
                                     <h3 className="text-3xl font-black leading-tight text-white drop-shadow-md">
-                                        The 2024 Agency Scaling Blueprint
+                                        The 2026 Agency Scaling Blueprint
                                     </h3>
                                 </div>
 
                                 <div className="relative z-10">
                                     <img
-                                        src="https://images.unsplash.com/photo-1555620165-df04e229a4df?q=80&w=600&auto=format&fit=crop"
+                                        src="/guide_cover.png"
                                         alt="Guide Preview"
                                         className="rounded-xl shadow-2xl border-4 border-white/20 -rotate-3 hover:rotate-0 transition-transform duration-500 max-h-48 object-cover"
                                     />
