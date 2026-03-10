@@ -377,8 +377,8 @@ async function handlePaymentCaptured(
     },
   });
 
-  revalidateTag('revenue');
-  revalidateTag('nav-counts');
+  revalidateTag('revenue', 'max');
+  revalidateTag('nav-counts', 'max');
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

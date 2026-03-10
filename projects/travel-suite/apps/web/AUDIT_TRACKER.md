@@ -16,7 +16,7 @@ Production readiness audit score: **67/100**. All findings below are tracked wit
 | 6 | MEDIUM | `vitest.config.ts:34` | Raise `thresholds.lines` from `30` to `60`; add `branches: 50` and `functions: 60` thresholds | CI fails if coverage drops below 60%, enforcing meaningful coverage growth | ✅ |
 | 7 | MEDIUM | `src/app/api/_handlers/portal/[token]/route.ts:167-188` | Fetch `proposal_activities` and `proposal_accommodations` in `Promise.all` rather than sequentially | Two fewer round-trip delays per portal page load | ✅ |
 | 8 | MEDIUM | `src/lib/image-search.ts:107` | Wrap Wikipedia API calls with a concurrency limit (max 5 parallel via `p-limit` or manual semaphore) | No longer fires unbounded parallel requests to Wikimedia | ✅ |
-| 9 | LOW | `src/app/api/_handlers/payments/webhook/route.ts:380-381` | Remove second argument from `revalidateTag('revenue', 'max')` and `revalidateTag('nav-counts', 'max')` — Next.js ignores it silently | Dead code removed; no API misuse | ✅ |
+| 9 | LOW | `src/app/api/_handlers/payments/webhook/route.ts:380-381` | ~~Remove second argument~~ — **false positive**: this Next.js version's `revalidateTag(tag, profile)` requires 2 args; `'max'` is a valid cache-life profile. Reverted. | N/A — no change needed | ⚠️ |
 | 10 | LOW | `src/lib/image-search.ts:97-98` | Replace in-place `activity.imageUrl = ...` / `activity.image = ...` mutation with immutable spread pattern returned from `populateItineraryImages` | Follows immutability convention; no hidden side effects | ✅ |
 | 11 | LOW | `src/lib/geocoding.ts:17` | Replace unbounded `Map` with a simple LRU-style cache (max 500 entries, evict oldest on overflow) | Geocode cache cannot grow unboundedly in long-running processes | ✅ |
 
