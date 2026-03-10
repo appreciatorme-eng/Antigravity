@@ -946,8 +946,7 @@ export default function Home() {
         {/* ═══ SECTION 10: Interactive Demo Sandbox ═══ */}
         <InteractiveDemo />
 
-        {/* ═══ SECTION 10.5: ROI Calculator ═══ */}
-        <ROICalculator />
+
 
         {/* ═══ SECTION 11: Integration Partners ═══ */}
         <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
