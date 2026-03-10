@@ -99,7 +99,7 @@ async function slugExists(slug: string): Promise<boolean> {
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error("Organization slug check failed");
   }
 
   return Boolean(data?.id);
@@ -154,7 +154,7 @@ async function ensureProfile(userId: string, email: string | null) {
     .eq('id', userId)
     .maybeSingle();
 
-  if (profileError) throw new Error(profileError.message);
+  if (profileError) throw new Error("Failed to load profile");
 
   if (profile) {
     return profile;
@@ -172,7 +172,7 @@ async function ensureProfile(userId: string, email: string | null) {
     .single();
 
   if (insertError || !inserted) {
-    throw new Error(insertError?.message || 'Failed to create profile');
+    throw new Error('Failed to create profile');
   }
 
   return inserted;
@@ -207,7 +207,7 @@ async function getOrganization(organizationId: string | null): Promise<Onboardin
   }
 
   if (!isMissingColumnError(organizationWithTemplateError, 'itinerary_template')) {
-    throw new Error(organizationWithTemplateError.message);
+    throw new Error("Failed to load organization");
   }
 
   const { data: organizationWithoutTemplate, error: organizationWithoutTemplateError } =
@@ -218,7 +218,7 @@ async function getOrganization(organizationId: string | null): Promise<Onboardin
       .maybeSingle();
 
   if (organizationWithoutTemplateError) {
-    throw new Error(organizationWithoutTemplateError.message);
+    throw new Error("Failed to load organization");
   }
 
   return organizationWithoutTemplate

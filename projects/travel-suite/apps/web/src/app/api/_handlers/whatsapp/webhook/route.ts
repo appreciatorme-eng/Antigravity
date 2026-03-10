@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, parseWhatsAppTextMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
                     .from("whatsapp_webhook_events")
                     .update({
                         processing_status: "rejected",
-                        reject_reason: error.message,
+                        reject_reason: safeErrorMessage(error, "location_processing_failed"),
                     })
                     .eq("provider_message_id", location.messageId);
             }
@@ -270,7 +271,7 @@ async function processWhatsAppTextMessages(
         } catch (error) {
             await supabaseAdmin.from("whatsapp_webhook_events").update({
                 processing_status: "rejected",
-                reject_reason: error instanceof Error ? error.message : "unknown_error",
+                reject_reason: safeErrorMessage(error, "text_processing_failed"),
             }).eq("provider_message_id", textMsg.messageId);
         }
     }
@@ -343,7 +344,7 @@ async function processWhatsAppImages(
 
         if (uploadError) {
             await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: "rejected", reject_reason: `storage_error: ${uploadError.message}`
+                processing_status: "rejected", reject_reason: "storage_upload_failed"
             }).eq("provider_message_id", image.messageId);
             continue;
         }
