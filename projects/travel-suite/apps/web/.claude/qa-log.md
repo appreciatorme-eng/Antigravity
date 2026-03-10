@@ -15,7 +15,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S2 — Full 487-case sweep | 2026-03-10 | ~160 | 72 | 11 | 25 | ~290 |
 | S2b — Agent 7 (TMPL/AI/Cron/Images/Weather/Admin) | 2026-03-10 | 33 | 20 | 13 | 0 | 0 |
 | S3 — Cookie-auth sweep (Reputation/Social/Asst/Settings) | 2026-03-10 | ~55 | 32 | 9 | 9 | 5 |
-| **Total** | | **~276** | **~146** | **~33** | **~34** | **~285** |
+| S4 — Asst/WA/Notify/Bill/Price/Settings agent | 2026-03-11 | 52 | 38 | 11 | 0 | 3 |
+| **Total** | | **~328** | **~184** | **~44** | **~34** | **~288** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -480,6 +481,67 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 
 ---
 
+## Test Results — Session 4 (Asst/WA/Notify/Bill/Price/Settings)
+
+Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| ASST-001 | POST /api/assistant/chat `{message:"..."}` | ✅ Pass | |
+| ASST-004 | GET /api/assistant/conversations | ✅ Pass | |
+| ASST-007 | GET /api/assistant/quick-prompts | ✅ Pass | Returns `{prompts:[]}` |
+| ASST-008 | GET /api/assistant/usage | ✅ Pass | |
+| ASST-009 | POST /api/assistant/chat `{message:""}` | ✅ Pass | 400 |
+| ASST-011 | POST /api/assistant/confirm `{actionId:"..."}` | ❌ Spec | 400 — spec sends wrong payload; endpoint expects `{action,actionName}` not `{actionId}` |
+| ASST-012 | GET /api/assistant/conversations/nonexistentsessionid | ✅ Pass | 404 |
+| ASST-013 | POST /api/ai/suggest-reply `{content,role}` | ❌ Spec | 400 — missing `lastMessages` array; corrected payload returns 200 |
+| ASST-014 | POST /api/ai/draft-review-response | ✅ Pass | 200 with AI draft |
+| ASST-015 | GET /api/admin/insights/ai-usage | ✅ Pass | |
+| ASST-018 | POST /api/assistant/chat `{message:"<script>alert(1)</script>"}` | ✅ Pass | XSS sanitized |
+| WA-001 | GET /api/whatsapp/health | ✅ Pass | |
+| WA-002 | GET /api/admin/whatsapp/health | ✅ Pass | |
+| WA-003 | GET /api/whatsapp/status | ✅ Pass | |
+| WA-010 | GET /api/whatsapp/conversations | ❌ Fail | 500 — module load error from missing WPPCONNECT env vars → **BUG-026** (Fixed) |
+| WA-013 | POST /api/whatsapp/send `{}` | ✅ Pass | 400 missing phone |
+| WA-014 | POST /api/whatsapp/send `{phone}` (no message) | ✅ Pass | 400 |
+| WA-015 | POST /api/whatsapp/send `{phone:"abc",message:"test"}` | ✅ Pass | 400 invalid phone |
+| WA-016 | POST /api/whatsapp/broadcast `{phones:[],message:"test"}` | ⚠️ Partial | 409 `whatsapp_not_connected` fires before empty-phones check; order differs from spec |
+| WA-021 | POST /api/admin/whatsapp/normalize-driver-phones | ✅ Pass | |
+| WA-022 | POST /api/whatsapp/send `{phone,message:"<script>..."}` | ✅ Pass | 409 WA not connected; XSS not echoed |
+| NOTIFY-002 | POST /api/notifications/process-queue | ✅ Pass | |
+| NOTIFY-003 | POST /api/notifications/retry-failed | ✅ Pass | |
+| NOTIFY-004 | POST /api/notifications/schedule-followups | ✅ Pass | |
+| NOTIFY-005 | POST /api/notifications/client-landed `{}` | ✅ Pass | 400 |
+| NOTIFY-006 | GET /api/admin/notifications/delivery | ✅ Pass | |
+| NOTIFY-011 | POST /api/notifications/send `{}` | ✅ Pass | 400 |
+| NOTIFY-012 | POST /api/notifications/send `{type:"test"}` | ✅ Pass | 400 missing recipientId |
+| NOTIFY-013 | POST /api/emails/welcome `{email:"not-an-email"}` | ❌ Env | 200 `{skipped:true,reason:"missing_email_provider_config"}` — Resend not configured, format never validated |
+| NOTIFY-014 | POST /api/notifications/retry-failed | ✅ Pass | `count=0` |
+| BILL-003 | GET /api/subscriptions | ✅ Pass | |
+| BILL-004 | GET /api/subscriptions/limits | ✅ Pass | |
+| BILL-006 | GET /api/billing/subscription | ❌ Data | 404 — qa-admin has no org_id in Vercel DB for this test run |
+| BILL-007 | POST /api/billing/contact-sales `{name,email,message}` | ❌ Data | 404 — same org_id gap; valid body returns 400 for missing `target_tier` (validation works) |
+| BILL-008 | POST /api/billing/contact-sales `{}` | ✅ Pass | 400 Zod validation |
+| BILL-013 | GET /api/admin/referrals | ✅ Pass | |
+| BILL-014 | GET /api/admin/reputation/client-referrals | ✅ Pass | |
+| PRICE-002 | GET /api/admin/pricing/dashboard | ✅ Pass | |
+| PRICE-003 | GET /api/admin/pricing/trip-costs | ❌ Spec | 405 — no collection GET; only POST + /:id GET. Spec error |
+| PRICE-007 | GET /api/admin/pricing/overheads | ✅ Pass | |
+| PRICE-011 | GET /api/admin/pricing/trips | ✅ Pass | |
+| PRICE-012 | GET /api/admin/pricing/vendor-history | ❌ Spec | 400 — requires `?vendor=&category=` params; corrected URL returns 200 |
+| PRICE-013 | GET /api/admin/pricing/transactions | ✅ Pass | |
+| PRICE-014 | POST /api/admin/pricing/trip-costs `{}` | ✅ Pass | 400 |
+| PRICE-015 | POST /api/admin/pricing/trip-costs `{amount:-100}` | ✅ Pass | 400 |
+| PRICE-016 | GET /api/admin/pricing/trip-costs/00000000-... | ✅ Pass | 404 |
+| PRICE-020 | GET /api/currency | ❌ Spec | 400 — requires `?base=`, `?list`, or `?amount=&from=&to=`; corrected URL returns 200 |
+| SET-003 | GET /api/settings/team | ✅ Pass | |
+| SET-005 | POST /api/settings/team/invite `{}` | ✅ Pass | 400 |
+| SET-010 | POST /api/settings/team/invite `{email:"test"}` | ✅ Pass | 400 invalid email |
+| SET-014 | GET /api/settings/upi | ✅ Pass | |
+| SET-016 | GET /api/admin/security/diagnostics | ❌ Perm | 403 — requires super-admin role; standard admin blocked (correct) |
+
+---
+
 ## Bug Registry
 
 | ID | Sev | Description | Root Cause | Fix | Commit | Status |
@@ -509,6 +571,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | BUG-023 | INFO | `/api/social/reviews/public` → 405 on GET | POST-only by design — review submission is a write operation | Test expectation wrong; use POST to submit a review | — | **Expected** (POST-only) |
 | BUG-024 | MED | `GET /api/payments/links/{token}` → 500 for nonexistent token | `getPaymentLinkByToken` throws on missing `payment_links` table (PGRST205); caught by route handler as 500 | Return null in `getPaymentLinkByToken` when table not found (PGRST205/42P01) → route returns 404 | pending-commit | **Fixed** ✅ |
 | BUG-025 | LOW | `OPTIONS /api/admin/*` → 405, no CORS preflight headers | Admin dispatcher tried to route OPTIONS to handler modules; none export OPTIONS → 405 | `createCatchAllHandlers` OPTIONS handler now returns 204 directly with CORS Allow headers | pending-commit | **Fixed** ✅ |
+| BUG-026 | MED | `GET /api/whatsapp/conversations` → 500 when WhatsApp not configured | `whatsapp-waha.server.ts` module throws `Invalid environment variables` at import time when `WPPCONNECT_*` env vars absent; entire module load fails | Inlined `sessionNameFromOrgId` logic; removed bad import; added PGRST205 graceful fallback | pending-commit | **Fixed** ✅ |
 
 ---
 
@@ -568,5 +631,6 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | BUG-020 fix verification | ✅ Done | Fixed: GET /api/reputation/analytics/snapshot now returns latest snapshot |
 | BUG-024 fix verification | ✅ Done | Fixed: payment_links table-not-found handled gracefully → 404 |
 | BUG-025 fix verification | ✅ Done | Fixed: OPTIONS on admin catch-all returns 204 + CORS headers |
+| BUG-026 fix verification | ✅ Done | Fixed: whatsapp/conversations no longer imports whatsapp-waha.server; returns [] gracefully |
 | BUG-016 fix verification | ✅ Done | Fixed in 82c2b08; POST /api/social/posts → 201 confirmed |
 | BUG-017 fix verification | ✅ Done | Fixed in 82c2b08; GET /api/billing/subscription → plan:pro_monthly confirmed |

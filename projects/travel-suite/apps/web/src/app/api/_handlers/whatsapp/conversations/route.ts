@@ -10,7 +10,6 @@ import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getChatbotSessionsForPhones } from "@/lib/whatsapp/chatbot-flow";
-import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,7 +67,7 @@ export async function GET(): Promise<Response> {
       const userTimezone = resolveAppTimezone(
         typeof user.user_metadata?.timezone === "string" ? user.user_metadata.timezone : null
       );
-      const sessionName = sessionNameFromOrgId(orgId);
+      const sessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
       const admin = createAdminClient();
 
       // Fetch the last 300 text events for this org's session (newest first)
@@ -80,7 +79,14 @@ export async function GET(): Promise<Response> {
           .order("received_at", { ascending: false })
           .limit(300);
 
-      if (error || !events || events.length === 0) {
+      if (error) {
+          // table may not exist in all environments
+          if (error.code === "PGRST205" || error.code === "42P01") {
+              return NextResponse.json({ conversations: [] });
+          }
+          throw error;
+      }
+      if (!events || events.length === 0) {
           return NextResponse.json({ conversations: [] });
       }
 
