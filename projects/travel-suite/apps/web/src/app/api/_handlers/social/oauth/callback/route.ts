@@ -83,7 +83,9 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 60);
 
-    const pagesRes = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${longLivedToken}`);
+    const pagesRes = await fetch('https://graph.facebook.com/v20.0/me/accounts', {
+        headers: { Authorization: `Bearer ${longLivedToken}` },
+    });
     if (!pagesRes.ok) {
         console.error('Failed to fetch Facebook pages:', await pagesRes.text());
         return redirectWithError(req, 'oauth_pages_fetch_failed');
@@ -110,7 +112,8 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
         );
 
         const fbPageIgRes = await fetch(
-            `https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+            `https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account`,
+            { headers: { Authorization: `Bearer ${page.access_token}` } }
         );
 
         if (!fbPageIgRes.ok) continue;
