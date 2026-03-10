@@ -17,6 +17,7 @@ function isPrivateIp(address: string): boolean {
         if (normalized.startsWith('127.')) return true;
         if (normalized.startsWith('10.')) return true;
         if (normalized.startsWith('192.168.')) return true;
+        if (normalized.startsWith('169.254.')) return true;
         if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
         return false;
     }
@@ -28,6 +29,7 @@ function isPrivateIp(address: string): boolean {
         if (normalized.startsWith('::ffff:127.')) return true;
         if (normalized.startsWith('::ffff:10.')) return true;
         if (normalized.startsWith('::ffff:192.168.')) return true;
+        if (normalized.startsWith('::ffff:169.254.')) return true;
         if (/^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(normalized)) return true;
         return false;
     }

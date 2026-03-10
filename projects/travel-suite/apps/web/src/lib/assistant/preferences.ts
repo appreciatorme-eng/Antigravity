@@ -12,6 +12,7 @@ import "server-only";
  * types. We cast via `(ctx.supabase as any)` until types are regenerated.
  * ------------------------------------------------------------------ */
 
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ActionContext } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -107,14 +108,16 @@ export async function setPreference(
       );
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error("[assistant/preferences] setPreference error:", error.message);
+      return { success: false, error: safeErrorMessage(error, "Failed to save preference") };
     }
 
     return { success: true };
   } catch (err) {
+    console.error("[assistant/preferences] setPreference unhandled:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Unknown error",
+      error: safeErrorMessage(err, "Failed to save preference"),
     };
   }
 }
@@ -132,14 +135,16 @@ export async function deletePreference(
       .eq("preference_key", key);
 
     if (error) {
-      return { success: false, error: error.message };
+      console.error("[assistant/preferences] deletePreference error:", error.message);
+      return { success: false, error: safeErrorMessage(error, "Failed to delete preference") };
     }
 
     return { success: true };
   } catch (err) {
+    console.error("[assistant/preferences] deletePreference unhandled:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Unknown error",
+      error: safeErrorMessage(err, "Failed to delete preference"),
     };
   }
 }

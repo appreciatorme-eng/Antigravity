@@ -73,7 +73,7 @@ async function generateImage(
                 prompt,
                 image_size: { width, height },
                 num_images: 1,
-                enable_safety_checker: false,
+                enable_safety_checker: true,
                 num_inference_steps: config.numInferenceSteps,
                 guidance_scale: config.guidanceScale,
             },

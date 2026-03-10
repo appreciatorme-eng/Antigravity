@@ -21,7 +21,7 @@ async function sendProposalChannels(
 ): Promise<ProposalNotificationResult> {
   const endpoint =
     typeof window === 'undefined'
-      ? `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')}/api/proposals/${proposalId}/send`
+      ? `${(process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')}/api/proposals/${proposalId}/send`
       : `/api/proposals/${proposalId}/send`;
 
   const response = await fetch(endpoint, {
@@ -49,7 +49,7 @@ async function sendProposalChannels(
 export function getProposalShareUrl(shareToken: string): string {
   if (!shareToken) return '';
   if (typeof window === 'undefined') {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
     return `${baseUrl}/p/${shareToken}`;
   }
   return `${window.location.origin}/p/${shareToken}`;

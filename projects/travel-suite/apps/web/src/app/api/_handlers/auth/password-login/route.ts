@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 
 const LoginSchema = z.object({
-  email: z.string().min(3).max(320),
+  email: z.string().email().max(320),
   password: z.string().min(6).max(256),
 });
 

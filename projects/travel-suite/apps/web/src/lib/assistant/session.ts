@@ -20,6 +20,7 @@ import "server-only";
  * lib/subscriptions/limits.ts.
  * ------------------------------------------------------------------ */
 
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ActionContext, ConversationMessage } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -107,8 +108,9 @@ export async function getOrCreateSession(
     .single();
 
   if (insertError || !created) {
+    console.error("[assistant/session] create error:", insertError?.message);
     throw new Error(
-      `Failed to create assistant session: ${insertError?.message ?? "unknown error"}`,
+      `Failed to create assistant session: ${safeErrorMessage(insertError, "unknown error")}`,
     );
   }
 
@@ -140,8 +142,9 @@ export async function updateSessionHistory(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
+    console.error("[assistant/session] updateSessionHistory error:", error.message);
     throw new Error(
-      `Failed to update session history: ${error.message}`,
+      `Failed to update session history: ${safeErrorMessage(error, "database error")}`,
     );
   }
 }
@@ -165,8 +168,9 @@ export async function setPendingAction(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
+    console.error("[assistant/session] setPendingAction error:", error.message);
     throw new Error(
-      `Failed to set pending action: ${error.message}`,
+      `Failed to set pending action: ${safeErrorMessage(error, "database error")}`,
     );
   }
 }
@@ -184,8 +188,9 @@ export async function clearPendingAction(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
+    console.error("[assistant/session] clearPendingAction error:", error.message);
     throw new Error(
-      `Failed to clear pending action: ${error.message}`,
+      `Failed to clear pending action: ${safeErrorMessage(error, "database error")}`,
     );
   }
 }

@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
                     : 1080,
             },
             num_images: 1,
-            enable_safety_checker: false,
+            enable_safety_checker: true,
           },
         });
         backgroundUrl = (falResult.data as { images?: { url: string }[] })

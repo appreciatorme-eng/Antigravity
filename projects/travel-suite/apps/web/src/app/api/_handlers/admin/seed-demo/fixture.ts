@@ -1,8 +1,6 @@
 // seed-demo/fixture.ts — demo data for GoBuddy Adventures (Demo) org.
 // Extracted from route.ts to keep the handler lean and data testable.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { DEMO_ORG_ID } from "@/lib/demo/constants";
 
 const DEMO_ADMIN_ID = "d0000000-0000-4000-8000-000000000002";

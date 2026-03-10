@@ -14,7 +14,6 @@
 import { createHmac } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import { safeEqual } from "@/lib/security/safe-equal";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";

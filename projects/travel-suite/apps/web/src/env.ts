@@ -5,6 +5,7 @@ const serverSchema = z.object({
   INTERNAL_API_SECRET: z.string().min(16).optional(),
   SOCIAL_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
   SOCIAL_OAUTH_STATE_SECRET: z.string().min(16).optional(),
+  ADMIN_CRON_SECRET: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -27,6 +28,10 @@ const serverSchema = z.object({
   WHATSAPP_API_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   WELCOME_FROM_EMAIL: z.string().email().optional(),
+  FAL_KEY: z.string().min(1).optional(),
+  META_APP_ID: z.string().min(1).optional(),
+  META_APP_SECRET: z.string().min(1).optional(),
+  META_REDIRECT_URI: z.string().url().optional(),
 });
 
 const clientSchema = z.object({
@@ -44,6 +49,7 @@ const processEnv = {
   INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET,
   SOCIAL_TOKEN_ENCRYPTION_KEY: process.env.SOCIAL_TOKEN_ENCRYPTION_KEY,
   SOCIAL_OAUTH_STATE_SECRET: process.env.SOCIAL_OAUTH_STATE_SECRET,
+  ADMIN_CRON_SECRET: process.env.ADMIN_CRON_SECRET,
   CRON_SECRET: process.env.CRON_SECRET,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -73,6 +79,10 @@ const processEnv = {
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   WELCOME_FROM_EMAIL: process.env.WELCOME_FROM_EMAIL,
+  FAL_KEY: process.env.FAL_KEY,
+  META_APP_ID: process.env.META_APP_ID,
+  META_APP_SECRET: process.env.META_APP_SECRET,
+  META_REDIRECT_URI: process.env.META_REDIRECT_URI,
 };
 
 const merged = serverSchema.merge(clientSchema);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -15,6 +16,7 @@ export default function Error({
 }) {
     useEffect(() => {
         console.error("App segment error:", error);
+        Sentry.captureException(error);
     }, [error]);
 
     return (

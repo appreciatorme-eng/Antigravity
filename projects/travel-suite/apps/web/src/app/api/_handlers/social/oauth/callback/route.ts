@@ -7,7 +7,7 @@ import { exchangeLinkedInCode, getLinkedInProfile } from '@/lib/external/linkedi
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET;
-const META_REDIRECT_URI = process.env.META_REDIRECT_URI || 'http://localhost:3000/api/social/oauth/callback';
+const META_REDIRECT_URI = process.env.META_REDIRECT_URI ?? '';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://travelsuite-rust.vercel.app';
 const GOOGLE_REDIRECT_URI = `${APP_URL}/api/social/oauth/callback?provider=google`;
