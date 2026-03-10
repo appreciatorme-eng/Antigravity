@@ -12,7 +12,7 @@ const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
   { ssr: false }
 );
-import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag } from "lucide-react";
+import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag, Check } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -234,24 +234,99 @@ export default function Home() {
                 Clients view photos, day-by-day plans, and accept instantly on their phones.
               </p>
             </div>
-            <div className="relative h-[500px] w-full glass-card rounded-3xl overflow-hidden group">
-              {/* Optional: Add a second Spline scene for the laptop/proposal preview or an abstract image */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#00F0FF]/10 to-transparent"></div>
-              {/* Fallback image/div representing a dashboard UI mapping */}
-              <div className="absolute inset-x-8 bottom-0 top-8 bg-[#171717] rounded-t-2xl border-t border-x border-white/20 shadow-2xl p-6 transition-transform duration-700 group-hover:translate-y-4">
-                <div className="w-full h-8 bg-white/5 rounded-md mb-6"></div>
-                <div className="space-y-4">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="flex gap-4 items-center">
-                      <div className="w-16 h-16 bg-white/5 rounded-lg shrink-0"></div>
-                      <div className="w-full space-y-2">
-                        <div className="h-4 w-3/4 bg-white/10 rounded"></div>
-                        <div className="h-3 w-1/2 bg-white/5 rounded"></div>
-                      </div>
+            <div className="relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#00F0FF]/10 to-transparent group" style={{ perspective: '1000px' }}>
+              
+              {/* Main Phone Mockup */}
+              <div 
+                className="relative w-[260px] h-[520px] bg-black rounded-[40px] border-[8px] border-white/10 shadow-2xl overflow-hidden transition-all duration-700 ease-out group-hover:[transform:rotateY(-12deg)_rotateX(6deg)_scale(1.05)]"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                 {/* Internal screen */}
+                 <div className="absolute inset-0 bg-[#0A0A0A] overflow-hidden flex flex-col">
+                    {/* Header Image */}
+                    <div className="relative h-56 w-full shrink-0">
+                       <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop" alt="Bali" className="w-full h-full object-cover" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
+                       <div className="absolute bottom-4 left-4 right-4">
+                          <div className="flex justify-between items-end">
+                            <div>
+                               <h3 className="text-xl font-bold text-white leading-tight">7 Days in<br/>Bali</h3>
+                               <p className="text-xs text-[#00F0FF] mt-1 tracking-wider uppercase">Proposal #4092</p>
+                            </div>
+                            <div className="text-right">
+                               <p className="text-xs text-gray-400">Total</p>
+                               <p className="text-lg font-bold text-white">₹1.2L</p>
+                            </div>
+                          </div>
+                       </div>
                     </div>
-                  ))}
-                </div>
+                    
+                    {/* Itinerary points */}
+                    <div className="p-4 space-y-4 flex-1">
+                       <div className="flex gap-3 items-center">
+                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-xs font-bold text-gray-400">01</div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-200">Arrival & Checking</p>
+                            <p className="text-[10px] text-gray-500">Private Airport Transfer</p>
+                          </div>
+                       </div>
+                       <div className="flex gap-3 items-center">
+                          <div className="w-8 h-8 rounded-full bg-[#00F0FF]/10 flex items-center justify-center shrink-0 border border-[#00F0FF]/30 text-xs font-bold text-[#00F0FF]">02</div>
+                          <div>
+                            <p className="text-sm font-semibold text-white">Ubud Temple Tour</p>
+                            <p className="text-[10px] text-[#00F0FF]/80">Full day guided experience</p>
+                          </div>
+                       </div>
+                       <div className="flex gap-3 items-center">
+                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-xs font-bold text-gray-400">03</div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-200">Nusa Penida Drift</p>
+                            <p className="text-[10px] text-gray-500">Ferry & Snorkeling</p>
+                          </div>
+                       </div>
+                    </div>
+                    
+                    {/* Accept button (sticky bottom flex-end) */}
+                    <div className="p-4 bg-gradient-to-t from-[#0A0A0A] to-transparent shrink-0">
+                       <button className="w-full py-3 bg-[#00F0FF] rounded-xl text-black font-bold text-sm shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:scale-[1.02] transition-transform">
+                         Accept & Pay
+                       </button>
+                    </div>
+                 </div>
               </div>
+              
+              {/* Floating Notification */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20, rotate: 0 }}
+                whileInView={{ opacity: 1, y: 0, rotate: 5 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="absolute top-1/4 -right-6 md:right-4 z-10 glass-card px-4 py-3 rounded-2xl border-white/20 shadow-2xl flex items-center gap-3 transform hover:scale-105 transition-transform cursor-default"
+              >
+                  <div className="w-10 h-10 rounded-full bg-[#00F0FF]/20 flex items-center justify-center text-[#00F0FF]">
+                     <Check size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Status</p>
+                    <p className="text-sm font-bold text-white">Client Accepted!</p>
+                  </div>
+              </motion.div>
+
+              {/* Floating Payment Notification */}
+              <motion.div 
+                initial={{ opacity: 0, y: -20, rotate: 0 }}
+                whileInView={{ opacity: 1, y: 0, rotate: -3 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="absolute bottom-1/4 -left-6 md:left-4 z-10 glass-card px-4 py-3 rounded-2xl border-white/20 shadow-2xl flex items-center gap-3 transform hover:scale-105 transition-transform cursor-default"
+              >
+                  <div className="w-10 h-10 rounded-full bg-[#FF9933]/20 flex items-center justify-center text-[#FF9933]">
+                     <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Payment</p>
+                    <p className="text-sm font-bold text-white">₹50k Deposit Paid</p>
+                  </div>
+              </motion.div>
+
             </div>
           </div>
 
@@ -312,7 +387,7 @@ export default function Home() {
                 height={420}
                 cardDistance={50}
                 verticalDistance={40}
-                delay={4500}
+                delay={2000}
                 pauseOnHover={true}
                 skewAmount={6}
               >
