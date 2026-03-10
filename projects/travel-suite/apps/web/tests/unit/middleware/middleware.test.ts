@@ -12,7 +12,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const updateSessionMock = vi.fn();
-const profileSelectMock = vi.fn();
 
 vi.mock("@/lib/supabase/middleware", () => ({
     updateSession: updateSessionMock,

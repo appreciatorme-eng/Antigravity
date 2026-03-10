@@ -7,7 +7,6 @@ import {
   extractTravelerCount,
   extractDuration,
   extractBudget,
-  isLikelyInquiry,
 } from "../../../src/lib/leads/intent-parser";
 
 // ---------------------------------------------------------------------------
@@ -77,13 +76,15 @@ describe("ConvertLeadSchema", () => {
   // -- Missing required fields --
 
   it("rejects when organization_id is missing", () => {
-    const { organization_id: _, ...rest } = validPayload;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { organization_id: _orgId, ...rest } = validPayload;
     const result = ConvertLeadSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });
 
   it("rejects when phone is missing", () => {
-    const { phone: _, ...rest } = validPayload;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { phone: _phone, ...rest } = validPayload;
     const result = ConvertLeadSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });

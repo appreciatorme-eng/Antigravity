@@ -13,7 +13,7 @@ function makeRequest(method: string, url = "http://localhost") {
 
 /** A handler module that echoes back the method it was invoked with. */
 function echoModule(methods: string[]) {
-  const mod: Record<string, Function> = {};
+  const mod: Record<string, (...args: unknown[]) => unknown> = {};
   for (const m of methods) {
     mod[m] = async (
       _req: NextRequest,
