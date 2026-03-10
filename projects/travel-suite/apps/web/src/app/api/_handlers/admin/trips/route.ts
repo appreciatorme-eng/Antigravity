@@ -173,10 +173,8 @@ export async function GET(req: NextRequest) {
             query = query.eq("status", status);
         }
 
-        if (search) {
-            query = query.or(`itineraries.trip_title.ilike.%${search}%,profiles.full_name.ilike.%${search}%,itineraries.destination.ilike.%${search}%`);
-        }
-
+        // Note: PostgREST does not support .or() filtering on embedded resource columns.
+        // Search is applied client-side after the fetch instead.
         const { data, error } = await query.order("created_at", { ascending: false });
 
         if (error) {
@@ -209,7 +207,18 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        return NextResponse.json({ trips });
+        const filtered = search
+            ? trips.filter((t) => {
+                const lc = search.toLowerCase();
+                return (
+                    (t.itineraries?.trip_title || "").toLowerCase().includes(lc) ||
+                    (t.itineraries?.destination || "").toLowerCase().includes(lc) ||
+                    (t.profiles?.full_name || "").toLowerCase().includes(lc)
+                );
+            })
+            : trips;
+
+        return NextResponse.json({ trips: filtered });
     } catch {
         return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
     }
@@ -249,6 +258,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        if (new Date(startDate) > new Date(endDate)) {
+            return NextResponse.json({ error: "startDate must be before or equal to endDate" }, { status: 400 });
+        }
+
         const { data: clientProfile } = await admin.adminClient
             .from("profiles")
             .select("organization_id")
@@ -282,8 +295,8 @@ export async function POST(req: NextRequest) {
 
         const itineraryPayload = {
             user_id: clientId,
-            trip_title: itinerary.trip_title || "New Trip",
-            destination: itinerary.destination || "TBD",
+            trip_title: itinerary.trip_title || body.title || "New Trip",
+            destination: itinerary.destination || body.destination || "TBD",
             summary: itinerary.summary || "",
             duration_days: itinerary.duration_days || 1,
             raw_data: itinerary.raw_data || { days: [] },

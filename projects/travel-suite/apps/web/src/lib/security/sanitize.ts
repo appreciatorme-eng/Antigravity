@@ -1,6 +1,7 @@
 export type SanitizeTextOptions = {
   maxLength?: number;
   preserveNewlines?: boolean;
+  stripHtml?: boolean;
 };
 
 export function sanitizeText(
@@ -9,10 +10,16 @@ export function sanitizeText(
 ): string {
   const maxLength = options.maxLength ?? 200;
   const preserveNewlines = options.preserveNewlines === true;
+  const stripHtml = options.stripHtml === true;
 
   if (value === null || value === undefined) return "";
 
   let text = String(value);
+
+  if (stripHtml) {
+    text = text.replace(/<[^>]*>/g, "");
+  }
+
   if (!preserveNewlines) {
     text = text.replace(/[\r\n\t]+/g, " ");
   }

@@ -145,7 +145,7 @@ export async function POST(req: Request) {
         }
 
         const email = String(body.email || "").trim().toLowerCase();
-        const fullName = String(body.full_name || "").trim();
+        const fullName = sanitizeText(body.full_name, { maxLength: 200, stripHtml: true });
         const phone = String(body.phone || "").trim();
         const normalizedPhone = phone ? phone.replace(/\D/g, "") : "";
         const preferredDestination = String(body.preferredDestination || "").trim();
@@ -347,12 +347,22 @@ export async function GET(req: Request) {
             return attachRateLimitHeaders(response, rateLimit);
         }
 
-        const { data: profiles, error: profilesError } = await supabaseAdmin
+        const search = sanitizeText(new URL(req.url).searchParams.get("search"), { maxLength: 80 });
+
+        let profilesQuery = supabaseAdmin
             .from("profiles")
             .select("id, role, full_name, email, phone, avatar_url, created_at, preferred_destination, travelers_count, budget_min, budget_max, travel_style, interests, home_airport, notes, lead_status, client_tag, phase_notifications_enabled, lifecycle_stage, marketing_opt_in, referral_source, source_channel")
             .eq("role", "client")
             .eq("organization_id", effectiveOrgId)
             .order("created_at", { ascending: false });
+
+        if (search) {
+            profilesQuery = profilesQuery.or(
+                `full_name.ilike.%${search}%,email.ilike.%${search}%`
+            );
+        }
+
+        const { data: profiles, error: profilesError } = await profilesQuery;
 
         if (profilesError) {
             return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
@@ -500,7 +510,9 @@ export async function PATCH(req: Request) {
                 : null;
 
         // Additional fields for update
-        const fullName = typeof body.full_name === "string" ? body.full_name.trim() : undefined;
+        const fullName = typeof body.full_name === "string"
+            ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true }) || undefined
+            : undefined;
         const phone = typeof body.phone === "string" ? body.phone.trim() : undefined;
         // email is not updated here to avoid auth sync issues for now
         const preferredDestination = typeof body.preferredDestination === "string" ? body.preferredDestination.trim() : undefined;

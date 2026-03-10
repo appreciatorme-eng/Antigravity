@@ -16,7 +16,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S2b — Agent 7 (TMPL/AI/Cron/Images/Weather/Admin) | 2026-03-10 | 33 | 20 | 13 | 0 | 0 |
 | S3 — Cookie-auth sweep (Reputation/Social/Asst/Settings) | 2026-03-10 | ~55 | 32 | 9 | 9 | 5 |
 | S4 — Asst/WA/Notify/Bill/Price/Settings agent | 2026-03-11 | 52 | 38 | 11 | 0 | 3 |
-| **Total** | | **~328** | **~184** | **~44** | **~34** | **~288** |
+| S5 — Client/Contacts/Trip agent | 2026-03-11 | 37 | 22 | 11 | 4 | 0 |
+| **Total** | | **~365** | **~206** | **~55** | **~38** | **~288** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -542,6 +543,51 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 
 ---
 
+## Test Results — Session 5 (Client/Contacts/Trip)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| CLIENT-001 | POST /api/admin/clients — create | ✅ Pass | Returns `{"success":true,"userId":"..."}` (key is `userId`, not `id`) |
+| CLIENT-003 | GET /api/admin/clients — list | ✅ Pass | Returns `{"clients":[...]}` |
+| CLIENT-005 | PATCH /api/admin/clients?id={id} — update full_name | ⚠️ Partial | Query param `?id=` ignored; id must be in request body → **BUG-027 (API contract)** |
+| CLIENT-006 | PATCH — update email | ❌ Fail | Email field not updatable by design (comment: "auth sync issues") → **BUG-028 (design limitation)** |
+| CLIENT-007 | DELETE /api/admin/clients?id={id} | ✅ Pass | `{"success":true}` |
+| CLIENT-008 | GET — verify deleted absent | ✅ Pass | |
+| CLIENT-011 | POST — missing full_name | ✅ Pass | 400 |
+| CLIENT-012 | POST — missing email | ✅ Pass | 400 |
+| CLIENT-013 | POST — invalid email format | ⚠️ Partial | 400 but message is "Failed to create user" not "Invalid email format" → **BUG-029 (opaque message)** |
+| CLIENT-016 | POST — XSS `<script>` in full_name | ✅ Pass | Script now stripped by sanitizeText stripHtml → **BUG-030 fixed** |
+| CLIENT-017 | POST — SQL injection in email | ✅ Pass | 400 rejected |
+| CLIENT-018 | PATCH — non-existent UUID | ⚠️ Partial | 404 when id in body; 400 when id in query param (wrong path) → **BUG-027** |
+| CLIENT-019 | DELETE — non-existent UUID | ✅ Pass | 404 |
+| CLIENT-020 | DELETE — no id param | ✅ Pass | 400 |
+| CLIENT-021 | GET ?search=QA — filtered | ✅ Pass | Search filtering now implemented → **BUG-031 fixed** |
+| CLIENT-022 | GET ?search=zzz999 — empty result | ✅ Pass | Returns empty array → **BUG-031 fixed** |
+| CLIENT-024 | GET /api/admin/contacts | ✅ Pass | 200 `{"contacts":[]}` |
+| CLIENT-027 | POST /api/admin/contacts/{null-uuid}/promote | ✅ Pass | 404 |
+| TRIP-001 | POST /api/admin/trips — create | ✅ Pass | Returns `tripId` (not `id`) → **BUG-032 (key inconsistency, INFO)** |
+| TRIP-003 | GET /api/admin/trips — list | ✅ Pass | |
+| TRIP-004 | GET /api/trips | ⏭ Skip | 401 for admin JWT — client-facing endpoint, cookie auth only; use `/api/admin/trips` → **Expected** |
+| TRIP-005 | GET /api/admin/trips/{id} | ✅ Pass | |
+| TRIP-006 | GET /api/trips/{id} | ✅ Pass | |
+| TRIP-008 | DELETE /api/trips/{id} | ✅ Pass | |
+| TRIP-009 | GET /api/trips/{deleted-id} | ✅ Pass | 404 |
+| TRIP-012 | GET /api/trips/{id}/add-ons | ✅ Pass | |
+| TRIP-014 | GET /api/trips/{id}/invoices | ✅ Pass | |
+| TRIP-016 | POST — no clientId | ✅ Pass | 400 |
+| TRIP-017 | POST — no startDate | ✅ Pass | 400 |
+| TRIP-018 | POST — no endDate | ✅ Pass | 400 |
+| TRIP-019 | POST — endDate before startDate | ✅ Pass | Now returns 400 "startDate must be before or equal to endDate" → **BUG-033 fixed** |
+| TRIP-020 | POST — non-existent clientId | ✅ Pass | 404 |
+| TRIP-021 | DELETE /api/trips/{null-uuid} | ✅ Pass | 404 |
+| TRIP-022 | POST /api/admin/trips/{null-uuid}/clone | ✅ Pass | 404 |
+| TRIP-025 | POST — destination "São Paulo" | ✅ Pass | Top-level `destination` now accepted as fallback → **BUG-034 fixed** |
+| TRIP-030 | GET /api/admin/operations/command-center | ✅ Pass | |
+| TRIP-032 | GET /api/admin/trips?status=confirmed | ✅ Pass | Status filter works |
+| TRIP-033 | GET /api/admin/trips?search=QA | ✅ Pass | JS-side search now works; removed broken PostgREST `.or()` → **BUG-035 fixed** |
+
+---
+
 ## Bug Registry
 
 | ID | Sev | Description | Root Cause | Fix | Commit | Status |
@@ -571,7 +617,16 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-023 | INFO | `/api/social/reviews/public` → 405 on GET | POST-only by design — review submission is a write operation | Test expectation wrong; use POST to submit a review | — | **Expected** (POST-only) |
 | BUG-024 | MED | `GET /api/payments/links/{token}` → 500 for nonexistent token | `getPaymentLinkByToken` throws on missing `payment_links` table (PGRST205); caught by route handler as 500 | Return null in `getPaymentLinkByToken` when table not found (PGRST205/42P01) → route returns 404 | pending-commit | **Fixed** ✅ |
 | BUG-025 | LOW | `OPTIONS /api/admin/*` → 405, no CORS preflight headers | Admin dispatcher tried to route OPTIONS to handler modules; none export OPTIONS → 405 | `createCatchAllHandlers` OPTIONS handler now returns 204 directly with CORS Allow headers | pending-commit | **Fixed** ✅ |
-| BUG-026 | MED | `GET /api/whatsapp/conversations` → 500 when WhatsApp not configured | `whatsapp-waha.server.ts` module throws `Invalid environment variables` at import time when `WPPCONNECT_*` env vars absent; entire module load fails | Inlined `sessionNameFromOrgId` logic; removed bad import; added PGRST205 graceful fallback | pending-commit | **Fixed** ✅ |
+| BUG-026 | MED | `GET /api/whatsapp/conversations` → 500 when WhatsApp not configured | `whatsapp-waha.server.ts` module throws `Invalid environment variables` at import time when `WPPCONNECT_*` env vars absent; entire module load fails | Inlined `sessionNameFromOrgId` logic; removed bad import; added PGRST205 graceful fallback | 6c5fb3f | **Fixed** ✅ |
+| BUG-027 | LOW | `PATCH /api/admin/clients?id={id}` — query param `id` ignored; API contract mismatch | Handler only reads `id` from request body (line 493: `body.id`); DELETE correctly reads from query param | Design inconsistency — body id is required for PATCH; `?id=` query param silently ignored | — | **Known Limitation** (by design) |
+| BUG-028 | LOW | `PATCH /api/admin/clients` — email field not updatable | Comment in code: "email is not updated here to avoid auth sync issues for now" | Intentional design limitation — email update requires auth.admin.updateUserById() sync | — | **Known Limitation** (by design) |
+| BUG-029 | LOW | POST client with invalid email → 400 "Failed to create user" (opaque) | Error originates from `auth.admin.createUser()` which doesn't expose the specific validation error | Consider pre-validating email format with regex before calling Supabase auth | — | **Open** |
+| BUG-030 | HIGH | POST/PATCH client — `full_name` not sanitized: HTML/script tags stored raw | `fullName = String(body.full_name || "").trim()` — no HTML stripping; `<script>alert(1)</script>` stored in DB | Added `stripHtml: true` option to `sanitizeText()`; applied to POST and PATCH handlers | df7a917 (sanitize.ts) / pending-commit | **Fixed** ✅ |
+| BUG-031 | MED | GET /api/admin/clients — `?search=` query param silently ignored; returns all clients | GET handler had no search/filter logic at all | Added `.or(full_name.ilike.%s%,email.ilike.%s%)` Supabase filter when `search` param present | pending-commit | **Fixed** ✅ |
+| BUG-032 | INFO | POST /api/admin/clients returns `userId`, POST /api/admin/trips returns `tripId` — inconsistent with `id` convention | Inconsistency between handlers; downstream consumers expecting `id` key will break | No code fix — document API response keys in API reference | — | **Info/Doc** |
+| BUG-033 | HIGH | POST /api/admin/trips — trip created with `endDate < startDate` (no date validation) | No date ordering check in POST handler | Added `new Date(startDate) > new Date(endDate)` → 400 check | pending-commit | **Fixed** ✅ |
+| BUG-034 | LOW | POST /api/admin/trips — top-level `destination` field ignored; stored as "TBD" | POST body `{destination: "Goa"}` goes to `itinerary = body.itinerary || {}`, not top-level; `itinerary.destination` undefined | Added `body.destination` as fallback in itinerary payload | pending-commit | **Fixed** ✅ |
+| BUG-035 | HIGH | GET /api/admin/trips?search=QA → 400 "Failed to process trip" | PostgREST `.or()` does not support filtering on embedded resource columns (`itineraries.trip_title.ilike`) — throws validation error | Removed broken PostgREST `.or()`; applied JS-side search filter after fetch | pending-commit | **Fixed** ✅ |
 
 ---
 
@@ -582,7 +637,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | INFO-001 | LOW | Non-existent resource IDs return 400 instead of 404 | Incorrect HTTP semantics; clients cannot distinguish bad request from not found |
 | INFO-002 | LOW | Some superadmin endpoints return 404 instead of 403 for non-superadmin users | Security principle of not revealing what exists is inconsistently applied |
 | INFO-003 | LOW | No request body size limit enforced (10KB+ field values accepted) | Potential DoS vector; should enforce e.g. 1MB body limit at middleware level |
-| INFO-004 | MED | XSS payload chars stored in DB (client name `<script>...`) | React auto-escapes on render so not currently exploitable, but raw HTML responses or PDF generation could be affected |
+| INFO-004 | MED | XSS payload chars stored in DB (client name `<script>...`) | React auto-escapes on render so not currently exploitable, but raw HTML responses or PDF generation could be affected | **Resolved** — BUG-030 fixed with `stripHtml: true` in sanitizeText |
 | INFO-005 | LOW | No dedicated `GET /api/admin/tour-templates` list endpoint | Templates must be fetched via `GET /api/admin/trips?type=template` — not documented |
 
 ---
