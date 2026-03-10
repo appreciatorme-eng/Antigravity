@@ -16,6 +16,41 @@ function extractId(req: NextRequest): string {
   return segments[segments.length - 1];
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
+
+    const id = extractId(req);
+    const db = admin.adminClient as any;
+    const { data, error } = await db
+      .from("monthly_overhead_expenses")
+      .select("id, description, amount, category, month_start, organization_id, created_at, updated_at")
+      .eq("id", id)
+      .eq("organization_id", admin.organizationId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[/api/admin/pricing/overheads/[id]:GET] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+    }
+    if (!data) {
+      return NextResponse.json({ error: "Overhead not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("[/api/admin/pricing/overheads/[id]:GET] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);

@@ -36,7 +36,7 @@ export async function GET(
       .select("*")
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       throw error;

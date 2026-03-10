@@ -19,6 +19,44 @@ const CreateSchema = z.object({
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+export async function GET(req: NextRequest) {
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin.ok) return admin.response;
+    if (!admin.organizationId) {
+      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+    }
+
+    const url = new URL(req.url);
+    const tripId = url.searchParams.get("trip_id");
+
+    const db = admin.adminClient as any;
+    let query = db
+      .from("trip_service_costs")
+      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_by, created_at")
+      .eq("organization_id", admin.organizationId)
+      .order("created_at", { ascending: false });
+
+    if (tripId) {
+      query = query.eq("trip_id", tripId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("[/api/admin/pricing/trip-costs:GET] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+    }
+
+    return NextResponse.json({ costs: data || [] });
+  } catch (error) {
+    console.error("[/api/admin/pricing/trip-costs:GET] Unhandled error:", error);
+    return Response.json(
+      { data: null, error: "An unexpected error occurred. Please try again." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
