@@ -59,8 +59,7 @@ function getTokenEncryptionKey(): Buffer {
     throw new Error("SOCIAL_TOKEN_ENCRYPTION_KEY is required in production");
   }
 
-  const devFallback = process.env.META_APP_SECRET?.trim() || DEV_EPHEMERAL_KEY;
-  return createHash("sha256").update(devFallback).digest();
+  return createHash("sha256").update(DEV_EPHEMERAL_KEY).digest();
 }
 
 export function isEncryptedSocialToken(value: string | null | undefined): boolean {

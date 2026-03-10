@@ -14,8 +14,7 @@ const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? "";
 
 function verifyInternalToken(request: NextRequest): boolean {
   if (!INTERNAL_API_SECRET) {
-    console.warn("[leads/convert] INTERNAL_API_SECRET is not set; endpoint is unauthenticated");
-    return true;
+    return false;
   }
   const provided = request.headers.get("x-internal-token") ?? "";
   try {
@@ -44,6 +43,10 @@ const ConvertLeadSchema = z.object({
 });
 
 export async function POST(request: NextRequest): Promise<Response> {
+  if (!INTERNAL_API_SECRET) {
+    console.error("[leads/convert] INTERNAL_API_SECRET is not configured; endpoint is disabled");
+    return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+  }
   if (!verifyInternalToken(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

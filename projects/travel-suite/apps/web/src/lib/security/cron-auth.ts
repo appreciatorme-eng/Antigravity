@@ -86,8 +86,20 @@ async function claimReplayKey(key: string, replayWindowMs: number): Promise<bool
             const result = await redis.set(key, "1", { nx: true, ex: ttlSeconds });
             return result === "OK";
         } catch {
-            // Fall back to local memory if Redis is temporarily unavailable.
+            if (process.env.NODE_ENV === "production") {
+                console.warn(
+                    "[cron-auth] Redis unavailable for replay detection — falling back to in-memory. " +
+                    "Replay keys reset per cold start in serverless. " +
+                    "Ensure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set."
+                );
+            }
         }
+    } else if (process.env.NODE_ENV === "production") {
+        console.warn(
+            "[cron-auth] Redis not configured for replay detection — using in-memory fallback. " +
+            "Replay keys reset per cold start in serverless. " +
+            "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed replay detection."
+        );
     }
 
     const now = Date.now();

@@ -33,12 +33,7 @@ function decodeBase64Url(input: string): Buffer {
 }
 
 function getStateSecret(): string {
-  return (
-    process.env.SOCIAL_OAUTH_STATE_SECRET?.trim() ||
-    process.env.CRON_SIGNING_SECRET?.trim() ||
-    process.env.NEXTAUTH_SECRET?.trim() ||
-    ""
-  );
+  return process.env.SOCIAL_OAUTH_STATE_SECRET?.trim() || "";
 }
 
 function requireStateSecret(): string {

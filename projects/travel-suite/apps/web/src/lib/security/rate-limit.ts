@@ -95,9 +95,20 @@ function enforceLocalRateLimit(options: RateLimitOptions): RateLimitResult {
     };
 }
 
+function warnLocalFallback(prefix: string): void {
+    if (process.env.NODE_ENV === "production") {
+        console.warn(
+            `[rate-limit] Redis not available for prefix "${prefix}". ` +
+            `Falling back to in-memory rate limiting — resets per cold start in serverless. ` +
+            `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed rate limiting.`
+        );
+    }
+}
+
 export async function enforceRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
     const limiter = getUpstashLimiter(options.limit, options.windowMs, options.prefix);
     if (!limiter) {
+        warnLocalFallback(options.prefix);
         return enforceLocalRateLimit(options);
     }
 
@@ -110,6 +121,7 @@ export async function enforceRateLimit(options: RateLimitOptions): Promise<RateL
             reset: typeof result.reset === "number" ? result.reset : Date.now() + options.windowMs,
         };
     } catch {
+        warnLocalFallback(options.prefix);
         return enforceLocalRateLimit(options);
     }
 }
