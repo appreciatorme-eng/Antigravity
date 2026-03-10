@@ -485,6 +485,10 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | BUG-017 | MED | `GET /api/billing/subscription` → 404 "Organization not found" for authenticated QA user | `organizations` RLS SELECT policy only allows `auth.uid() = owner_id` — non-owner members get `null` silently from `maybeSingle()`; user client was used for both `organizations` and `resolveOrganizationPlan` queries | Use `createAdminClient()` for `organizations` query and `resolveOrganizationPlan()` in billing handler | 82c2b08 | **Fixed** ✅ |
 | BUG-018 | LOW | AI pricing-suggestion → "Failed to generate pricing suggestion" with valid params | OpenAI/AI provider key not configured for pricing suggestion endpoint | Configure AI provider key (`OPENAI_API_KEY` or equivalent) | — | **Open** |
 | BUG-019 | LOW | `GET /api/images/pixabay?query=beach` → `{url:null}` | Pixabay API key configured but response parsing returns null URL | Check Pixabay response structure parsing vs expected `hits[0].webformatURL` | — | **Open** |
+| BUG-020 | LOW | `GET /api/reputation/analytics/snapshot` → 405 | Test plan specifies GET but handler only exports POST | Rename test to POST or add GET handler alias | — | **Open** |
+| BUG-021 | LOW | `POST /api/reputation/nps/submit` validates score before doing token DB lookup — returns 400 "score must be 1–10" when score is missing/invalid even for nonexistent tokens | Zod validates score before handler queries DB for token; spec expects 404 for nonexistent token | Reorder: check token existence first, then validate score | — | **Open** |
+| BUG-022 | LOW | `GET /api/marketplace/{id}/view` → 405 | Test plan specifies GET; handler only exports POST | Fix test: use POST, or add GET handler | — | **Open** |
+| BUG-023 | LOW | `/api/social/reviews/public` → 405 Method Not Allowed | Catch-all route has `["reviews/public", ...]` handler but dispatcher returns 405 for that path segment | Investigate catch-all routing for `reviews/public` nested path | — | **Open** |
 
 ---
 
@@ -518,6 +522,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 - **Google Places not configured** — INT-PLACES returns `{enabled:false, googlePlaceId:""}`.
 - **TripAdvisor API key not configured** — TRIPADVISOR_API_KEY missing from Vercel env.
 - **Root `/api/*` endpoints use cookie-based session auth** — resolved in S3 by capturing session cookie from login. Bearer JWT only works for `/api/admin/*`.
+- **Bearer JWT expires after 1 hour** — long-running test agents that obtained a JWT at session start will get 401 on all `requireAdmin()` endpoints after expiry. Re-login before testing admin routes if session > 50 min old. `SUPABASE_SERVICE_ROLE_KEY` is correctly configured on Vercel (confirmed by billing fix).
 
 ---
 
