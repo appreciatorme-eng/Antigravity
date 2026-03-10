@@ -42,8 +42,9 @@ const solutionsData = {
     }
 };
 
-export default function SolutionPage({ params }: { params: { type: string } }) {
-    const data = solutionsData[params.type as keyof typeof solutionsData] || solutionsData.solo;
+export default async function SolutionPage({ params }: { params: Promise<{ type: string }> }) {
+    const resolvedParams = await params;
+    const data = solutionsData[resolvedParams.type as keyof typeof solutionsData] || solutionsData.solo;
 
     return (
         <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white flex flex-col pt-32">
