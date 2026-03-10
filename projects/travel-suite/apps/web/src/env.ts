@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const serverSchema = z.object({
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   GOOGLE_API_KEY: z.string().min(1).optional(),
@@ -26,8 +26,8 @@ const serverSchema = z.object({
 });
 
 const clientSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().min(1).optional(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NEXT_PUBLIC_MAPBOX_TOKEN: z.string().min(1).optional(),
   NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
@@ -70,7 +70,9 @@ const processEnv = {
 const merged = serverSchema.merge(clientSchema);
 const parsed = merged.safeParse(processEnv);
 const skipEnvValidation =
-  process.env.SKIP_ENV_VALIDATION === 'true' || process.env.SKIP_ENV_VALIDATION === '1';
+  process.env.SKIP_ENV_VALIDATION === 'true' ||
+  process.env.SKIP_ENV_VALIDATION === '1' ||
+  process.env.NODE_ENV === 'test';
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (!parsed.success) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
 import {
   reserveDailySpendUsd,
@@ -162,11 +163,11 @@ export async function POST(req: Request) {
     }
 
     // Cost guard
-    const costPerRequest = getEstimatedRequestCostUsd("ai_image");
-    const planCap = getPlanDailySpendCapUsd("ai_image", tier);
-    const emergencyCap = await getEmergencyDailySpendCapUsd("ai_image");
+    const costPerRequest = getEstimatedRequestCostUsd("ai_text");
+    const planCap = getPlanDailySpendCapUsd("ai_text", tier);
+    const emergencyCap = await getEmergencyDailySpendCapUsd("ai_text");
 
-    const reservation = await reserveDailySpendUsd(organizationId, "ai_image", costPerRequest, {
+    const reservation = await reserveDailySpendUsd(organizationId, "ai_text", costPerRequest, {
       planCapUsd: planCap,
       emergencyCapUsd: emergencyCap,
     });
@@ -217,8 +218,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ analysis });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Error analyzing review:", error);
+    const message = safeErrorMessage(error, "Request failed");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

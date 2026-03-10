@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 export async function DELETE(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const supabase = await createClient();
@@ -23,7 +24,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'No organization found' }, { status: 400 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         // Verify connection exists and belongs to this organization
         const { data: connection, error: getError } = await supabase
@@ -49,7 +50,7 @@ export async function DELETE(
         return NextResponse.json({ success: true });
     } catch (error: unknown) {
         console.error('Error deleting social connection:', error);
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

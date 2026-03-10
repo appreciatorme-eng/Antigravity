@@ -87,6 +87,8 @@ function loadFaq(): readonly FaqRow[] {
   }
 }
 
+const FAQ_ROWS: readonly FaqRow[] = loadFaq();
+
 function tokenize(text: string): Set<string> {
   return new Set(
     text
@@ -98,10 +100,9 @@ function tokenize(text: string): Set<string> {
 }
 
 function retrieveFaqContext(query: string, maxChunks = 3): readonly FaqRow[] {
-  const rows = loadFaq();
   const queryTokens = tokenize(query);
 
-  return rows
+  return FAQ_ROWS
     .map((row) => {
       const rowTokens = tokenize(`${row.question} ${row.answer}`);
       let overlap = 0;

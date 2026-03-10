@@ -1,6 +1,6 @@
 import { createCatchAllHandlers } from "@/lib/api-dispatch";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const routes = createCatchAllHandlers([
   ["ai/draft-review-response", () => import("@/app/api/_handlers/ai/draft-review-response/route")],

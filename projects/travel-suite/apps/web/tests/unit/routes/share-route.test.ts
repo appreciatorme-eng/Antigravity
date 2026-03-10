@@ -55,7 +55,7 @@ it("does not expose email or phone fields in the public response", async () => {
               id: "share-1",
               itinerary_id: "iti-1",
               client_comments: [],
-              expires_at: "2026-03-10T00:00:00.000Z",
+              expires_at: "2099-01-01T00:00:00.000Z",
               status: "viewed",
               approved_by: null,
               approved_at: null,

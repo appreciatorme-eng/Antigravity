@@ -17,7 +17,14 @@ security = HTTPBearer(auto_error=False)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+_IS_PRODUCTION = os.getenv("ENV", "").lower() in {"production", "prod"}
 ALLOW_DEV_AUTH_BYPASS = os.getenv("ALLOW_DEV_AUTH_BYPASS", "").lower() in {"1", "true", "yes"}
+
+if _IS_PRODUCTION and ALLOW_DEV_AUTH_BYPASS:
+    logger.error(
+        "ALLOW_DEV_AUTH_BYPASS is set in production — this is a security risk. Disabling bypass."
+    )
+    ALLOW_DEV_AUTH_BYPASS = False
 
 
 async def verify_supabase_token(

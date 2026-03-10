@@ -4,6 +4,7 @@ import Groq from "groq-sdk";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const SOCIAL_GENERATE_RATE_LIMIT_MAX = 30;
 const SOCIAL_GENERATE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -336,8 +337,9 @@ export async function POST(request: NextRequest) {
       posts,
     });
   } catch (error) {
+    console.error("Error generating social posts:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: safeErrorMessage(error, "Request failed") },
       { status: 500 }
     );
   }

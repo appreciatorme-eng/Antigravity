@@ -1,13 +1,32 @@
-// Public leads convert endpoint — creates or refreshes a crm_contacts lead record.
+// Internal leads convert endpoint — creates or refreshes a crm_contacts lead record.
 // Called internally from WhatsApp webhook and other inbound channels (no user session).
-// Uses service-role client; rate-limited by IP to prevent abuse.
+// Protected by INTERNAL_API_SECRET shared-secret header + IP rate limiting.
 
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { parseLeadMessage } from "@/lib/leads/intent-parser";
 import { BUDGET_TIERS, type BudgetTier } from "@/lib/leads/types";
+
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? "";
+
+function verifyInternalToken(request: NextRequest): boolean {
+  if (!INTERNAL_API_SECRET) {
+    console.warn("[leads/convert] INTERNAL_API_SECRET is not set; endpoint is unauthenticated");
+    return true;
+  }
+  const provided = request.headers.get("x-internal-token") ?? "";
+  try {
+    const a = Buffer.from(provided.padEnd(INTERNAL_API_SECRET.length));
+    const b = Buffer.from(INTERNAL_API_SECRET);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 const ConvertLeadSchema = z.object({
   organization_id: z.string().uuid(),
@@ -25,6 +44,10 @@ const ConvertLeadSchema = z.object({
 });
 
 export async function POST(request: NextRequest): Promise<Response> {
+  if (!verifyInternalToken(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 

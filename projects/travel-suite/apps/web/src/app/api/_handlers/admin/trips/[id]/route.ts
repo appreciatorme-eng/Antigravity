@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const TRIP_DETAILS_RATE_LIMIT_MAX = 120;
 const TRIP_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -309,6 +310,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             latestDriverLocation: latestLocation || null,
         });
     } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+        console.error("Error fetching trip details:", error);
+        return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 }

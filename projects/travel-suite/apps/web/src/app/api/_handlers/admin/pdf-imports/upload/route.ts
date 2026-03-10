@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const PDF_IMPORTS_UPLOAD_RATE_LIMIT_MAX = 30;
 const PDF_IMPORTS_UPLOAD_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -191,10 +192,11 @@ export async function POST(req: NextRequest) {
       message: "PDF uploaded successfully. AI extraction will begin shortly.",
     });
   } catch (error) {
+    console.error("Error uploading PDF import:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: safeErrorMessage(error, "Request failed"),
       },
       { status: 500 },
     );

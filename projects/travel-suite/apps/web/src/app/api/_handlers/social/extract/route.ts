@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
+    if (typeof image !== "string" || image.length > 10_000_000) {
+      return NextResponse.json({ error: "Image too large (max 10MB base64)" }, { status: 413 });
+    }
+
     const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
     if (!geminiApiKey) {

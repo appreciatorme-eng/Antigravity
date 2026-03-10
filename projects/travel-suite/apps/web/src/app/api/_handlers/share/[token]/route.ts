@@ -14,8 +14,6 @@ import {
   type ShareRow,
 } from './public-share';
 
-const supabaseAdmin = createAdminClient();
-
 const ShareActionSchema = z.object({
   action: z.enum([
     'comment',
@@ -99,6 +97,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const supabaseAdmin = createAdminClient();
   try {
     const { token: rawToken } = await params;
     const token = sanitizeShareToken(rawToken);
@@ -144,6 +143,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const supabaseAdmin = createAdminClient();
   try {
     const { token: rawToken } = await params;
     const token = sanitizeShareToken(rawToken);
