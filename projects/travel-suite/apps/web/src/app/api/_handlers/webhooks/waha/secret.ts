@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "crypto";
+import { safeEqual } from "@/lib/security/safe-equal";
 
 export function validateWahaWebhookSecret(options: {
   requestUrl: string;
@@ -6,8 +6,7 @@ export function validateWahaWebhookSecret(options: {
   allowUnsigned: boolean;
   providedHeaderSecret: string | null;
 }) {
-  const { requestUrl, configuredSecret, allowUnsigned, providedHeaderSecret } =
-    options;
+  const { configuredSecret, allowUnsigned, providedHeaderSecret } = options;
 
   if (!configuredSecret) {
     if (allowUnsigned) {
@@ -21,16 +20,9 @@ export function validateWahaWebhookSecret(options: {
     };
   }
 
-  const url = new URL(requestUrl);
-  const providedSecret =
-    providedHeaderSecret?.trim() ?? url.searchParams.get("secret")?.trim() ?? "";
-  const providedBuffer = Buffer.from(providedSecret, "utf8");
-  const expectedBuffer = Buffer.from(configuredSecret, "utf8");
+  const providedSecret = providedHeaderSecret?.trim() ?? "";
 
-  if (
-    providedBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(providedBuffer, expectedBuffer)
-  ) {
+  if (!safeEqual(providedSecret, configuredSecret)) {
     return {
       ok: false as const,
       status: 401,

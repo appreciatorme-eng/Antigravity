@@ -43,7 +43,7 @@ it("rejects invalid shared secrets", () => {
   });
 });
 
-it("accepts valid secrets from the header or query string", () => {
+it("accepts valid secrets from the header", () => {
   expect(
     validateWahaWebhookSecret({
       requestUrl: "https://app.example.com/api/webhooks/waha",
@@ -52,7 +52,9 @@ it("accepts valid secrets from the header or query string", () => {
       providedHeaderSecret: "secret-123",
     })
   ).toEqual({ ok: true });
+});
 
+it("rejects secrets passed via query string (logs exposure risk)", () => {
   expect(
     validateWahaWebhookSecret({
       requestUrl: "https://app.example.com/api/webhooks/waha?secret=secret-123",
@@ -60,5 +62,9 @@ it("accepts valid secrets from the header or query string", () => {
       allowUnsigned: false,
       providedHeaderSecret: null,
     })
-  ).toEqual({ ok: true });
+  ).toEqual({
+    ok: false,
+    status: 401,
+    error: "Invalid or missing webhook secret",
+  });
 });

@@ -285,6 +285,7 @@ async function handlePaymentCaptured(
     payment_id: payment.id,
   });
 
+  const supabase = createAdminClient();
   const invoiceId = payment.notes?.invoice_id;
 
   if (invoiceId) {
@@ -300,7 +301,6 @@ async function handlePaymentCaptured(
       { context: 'admin' }
     );
 
-    const supabase = createAdminClient();
     const { data: invoiceRow } = await supabase
       .from('invoices')
       .select('invoice_number, client_id, organization_id')
@@ -344,7 +344,6 @@ async function handlePaymentCaptured(
 
   let orgIdForFunnel = payment.notes?.organization_id || null;
   if (!orgIdForFunnel && invoiceId) {
-    const supabase = createAdminClient();
     const { data: invoiceRow } = await supabase
       .from('invoices')
       .select('organization_id')
@@ -355,7 +354,7 @@ async function handlePaymentCaptured(
 
   if (orgIdForFunnel) {
     trackFunnelEvent({
-      supabase: createAdminClient(),
+      supabase,
       organizationId: orgIdForFunnel,
       eventType: 'payment_completed',
       metadata: {
@@ -378,8 +377,8 @@ async function handlePaymentCaptured(
     },
   });
 
-  revalidateTag('revenue', 'max');
-  revalidateTag('nav-counts', 'max');
+  revalidateTag('revenue');
+  revalidateTag('nav-counts');
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -425,7 +424,7 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestConte
     { context: 'admin' }
   );
 
-  revalidateTag('nav-counts', 'max');
+  revalidateTag('nav-counts');
 }
 
 async function handleSubscriptionCharged(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

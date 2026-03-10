@@ -299,7 +299,8 @@ async function recalculateProposalPrice(proposalId: string) {
   });
 
   if (error) {
-    return { error: error.message };
+    console.error("[proposals] recalculate price rpc error:", error);
+    return { error: "Request failed" };
   }
 
   if (newPrice !== null && newPrice !== undefined) {
@@ -310,7 +311,8 @@ async function recalculateProposalPrice(proposalId: string) {
       .eq('id', proposalId);
 
     if (updateError) {
-      return { error: updateError.message };
+      console.error("[proposals] update price error:", updateError);
+      return { error: "Request failed" };
     }
 
     return { price: numericPrice };
@@ -596,7 +598,8 @@ export async function POST(
         .eq('id', activityId);
 
       if (activityError) {
-        return NextResponse.json({ error: activityError.message }, { status: 400 });
+        console.error("[proposals] toggle activity error:", activityError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       const recalculated = await recalculateProposalPrice(proposal.id);
@@ -639,7 +642,8 @@ export async function POST(
         .eq('id', addOnId);
 
       if (addOnError) {
-        return NextResponse.json({ error: addOnError.message }, { status: 400 });
+        console.error("[proposals] toggle add-on error:", addOnError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       const recalculated = await recalculateProposalPrice(proposal.id);
@@ -679,7 +683,8 @@ export async function POST(
         .eq('id', addOnId);
 
       if (vehicleError) {
-        return NextResponse.json({ error: vehicleError.message }, { status: 400 });
+        console.error("[proposals] select vehicle error:", vehicleError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       const recalculated = await recalculateProposalPrice(proposal.id);
@@ -722,7 +727,8 @@ export async function POST(
       });
 
       if (commentError) {
-        return NextResponse.json({ error: commentError.message }, { status: 400 });
+        console.error("[proposals] insert comment error:", commentError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       if (proposal.status !== 'approved') {
@@ -753,7 +759,8 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (approveError) {
-        return NextResponse.json({ error: approveError.message }, { status: 400 });
+        console.error("[proposals] approve error:", approveError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       if (proposal.organization_id) {
@@ -870,10 +877,8 @@ export async function POST(
               }
             }
           } catch (paymentError) {
-            paymentRequestError =
-              paymentError instanceof Error
-                ? paymentError.message
-                : "Failed to create payment link";
+            console.error("[proposals] payment link error:", paymentError);
+            paymentRequestError = "Failed to create payment link";
           }
         }
       }
@@ -924,7 +929,8 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (rejectError) {
-        return NextResponse.json({ error: rejectError.message }, { status: 400 });
+        console.error("[proposals] reject error:", rejectError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       const operatorContact = await loadOperatorContact(proposal.organization_id, proposal.created_by);
@@ -977,7 +983,8 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (tierError) {
-        return NextResponse.json({ error: tierError.message }, { status: 400 });
+        console.error("[proposals] select tier error:", tierError);
+        return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
       return NextResponse.json({

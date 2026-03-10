@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { safeEqual } from "./safe-equal";
 
 type HeaderLike = {
   get(name: string): string | null;
@@ -8,13 +8,6 @@ type RequestLike = {
   headers: HeaderLike;
   url: string;
 };
-
-function safeHeaderEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left, "utf8");
-  const rightBuffer = Buffer.from(right, "utf8");
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return timingSafeEqual(leftBuffer, rightBuffer);
-}
 
 export function isBearerRequest(req: RequestLike): boolean {
   const auth = req.headers.get("authorization") || "";
@@ -61,7 +54,7 @@ export function passesMutationCsrfGuard(req: RequestLike): boolean {
     if (!providedToken) {
       return false;
     }
-    return safeHeaderEqual(providedToken, configuredToken);
+    return safeEqual(providedToken, configuredToken);
   }
 
   return hasTrustedSameOrigin(req);

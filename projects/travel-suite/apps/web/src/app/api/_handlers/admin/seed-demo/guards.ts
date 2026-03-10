@@ -1,3 +1,5 @@
+import { safeEqual } from "@/lib/security/safe-equal";
+
 export function isSeedDemoBlockedInProduction(
   nodeEnv: string | undefined,
   allowSeedInProd: string | undefined
@@ -13,5 +15,5 @@ export function hasValidSeedDemoCronSecret(
     return true;
   }
 
-  return providedSecret?.trim() === expectedSecret.trim();
+  return safeEqual(providedSecret?.trim() ?? "", expectedSecret.trim());
 }

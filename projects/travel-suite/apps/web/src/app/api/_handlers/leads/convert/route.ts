@@ -2,7 +2,7 @@
 // Called internally from WhatsApp webhook and other inbound channels (no user session).
 // Protected by INTERNAL_API_SECRET shared-secret header + IP rate limiting.
 
-import { timingSafeEqual } from "node:crypto";
+import { safeEqual } from "@/lib/security/safe-equal";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,14 +17,7 @@ function verifyInternalToken(request: NextRequest): boolean {
     return false;
   }
   const provided = request.headers.get("x-internal-token") ?? "";
-  try {
-    const a = Buffer.from(provided.padEnd(INTERNAL_API_SECRET.length));
-    const b = Buffer.from(INTERNAL_API_SECRET);
-    if (a.length !== b.length) return false;
-    return timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
+  return safeEqual(provided, INTERNAL_API_SECRET);
 }
 
 const ConvertLeadSchema = z.object({

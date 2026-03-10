@@ -56,7 +56,7 @@ function isOnboardingComplete(profile: {
     return (
         !!profile.organization_id &&
         profile.role === "admin" &&
-        Number(profile.onboarding_step || 0) >= 2
+        Number(profile.onboarding_step ?? 0) >= 2
     );
 }
 

@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  INTERNAL_API_SECRET: z.string().min(16).optional(),
+  SOCIAL_TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
+  SOCIAL_OAUTH_STATE_SECRET: z.string().min(16).optional(),
+  CRON_SECRET: z.string().min(1).optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   GOOGLE_API_KEY: z.string().min(1).optional(),
@@ -37,6 +41,10 @@ const clientSchema = z.object({
 
 const processEnv = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET,
+  SOCIAL_TOKEN_ENCRYPTION_KEY: process.env.SOCIAL_TOKEN_ENCRYPTION_KEY,
+  SOCIAL_OAUTH_STATE_SECRET: process.env.SOCIAL_OAUTH_STATE_SECRET,
+  CRON_SECRET: process.env.CRON_SECRET,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
