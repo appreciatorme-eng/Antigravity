@@ -134,9 +134,9 @@ export async function GET(request: NextRequest) {
     return withCostGuardHeaders(
       NextResponse.json(
         {
-          error: safeErrorMessage(error, "Flight search failed"),
+          error: safeErrorMessage(error, "Flight search service unavailable"),
         },
-        { status: 500 }
+        { status: 503 }
       ),
       guard.context
     );

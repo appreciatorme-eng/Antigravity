@@ -175,9 +175,9 @@ export async function GET(req: NextRequest) {
     return withCostGuardHeaders(
       NextResponse.json(
         {
-          error: safeErrorMessage(error, "Hotel search failed"),
+          error: safeErrorMessage(error, "Hotel search service unavailable"),
         },
-        { status: 500 }
+        { status: 503 }
       ),
       guard.context
     );

@@ -28,11 +28,15 @@ function normalizeStatusAfterTotals(
   return "partially_paid";
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function loadInvoiceForOrg(
   adminClient: ReturnType<(typeof import("@/lib/supabase/admin"))["createAdminClient"]>,
   id: string,
   organizationId: string
 ) {
+  if (!UUID_REGEX.test(id)) return { invoice: null, error: null };
+
   const { data: invoice, error } = await adminClient
     .from("invoices")
     .select("*")

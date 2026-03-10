@@ -2,13 +2,56 @@
  * Add-on Detail API Routes
  *
  * Endpoints for individual add-on operations
+ * GET /api/add-ons/[id] - Get single add-on
  * PUT /api/add-ons/[id] - Update add-on
+ * PATCH /api/add-ons/[id] - Partial update add-on
  * DELETE /api/add-ons/[id] - Delete add-on
  */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+    }
+
+    const { data: addon, error } = await supabase
+      .from('add_ons')
+      .select('id, name, description, price, category, image_url, duration, is_active, created_at, updated_at')
+      .eq('id', id)
+      .eq('organization_id', profile.organization_id)
+      .single();
+
+    if (error || !addon) {
+      return NextResponse.json({ error: 'Add-on not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ addon });
+  } catch (error) {
+    console.error('Error in GET /api/add-ons/[id]:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: Request,
@@ -86,7 +129,12 @@ export async function PUT(
   }
 }
 
-export const PATCH = PUT;
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return PUT(request, { params });
+}
 
 export async function DELETE(
   request: Request,

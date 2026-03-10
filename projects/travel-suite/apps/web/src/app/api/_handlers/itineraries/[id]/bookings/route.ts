@@ -51,6 +51,53 @@ function toItineraryPayload(rawData: unknown): Partial<ItineraryResult> {
   return rawData as Partial<ItineraryResult>;
 }
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const requestId = getRequestId(req);
+  try {
+    const { id } = await params;
+    if (!id) {
+      return withRequestId({ error: "Missing itinerary id" }, requestId, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return withRequestId({ error: "Unauthorized" }, requestId, { status: 401 });
+    }
+
+    const { data: itinerary, error } = await supabase
+      .from("itineraries")
+      .select("id, raw_data")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !itinerary) {
+      return withRequestId({ error: "Itinerary not found" }, requestId, { status: 404 });
+    }
+
+    const rawData = toItineraryPayload(itinerary.raw_data);
+    const logistics = rawData.logistics ?? {};
+    const flights = Array.isArray(logistics.flights) ? logistics.flights : [];
+    const hotels = Array.isArray(logistics.hotels) ? logistics.hotels : [];
+
+    return withRequestId({
+      itineraryId: id,
+      logistics: { flights, hotels },
+      totals: { flights: flights.length, hotels: hotels.length },
+    }, requestId);
+  } catch (error) {
+    const message = safeErrorMessage(error, "Request failed");
+    return withRequestId({ error: message }, requestId, { status: 500 });
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
