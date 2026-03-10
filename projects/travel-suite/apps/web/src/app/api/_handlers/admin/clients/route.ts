@@ -176,6 +176,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
         }
 
+        const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!EMAIL_REGEX.test(email)) {
+            return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+        }
+
         let { data: existingProfile } = await supabaseAdmin
             .from("profiles")
             .select("id")

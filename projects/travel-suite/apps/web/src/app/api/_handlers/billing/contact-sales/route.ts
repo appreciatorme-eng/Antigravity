@@ -96,7 +96,9 @@ export async function POST(request: Request) {
       return apiError("Organization not found", 404);
     }
 
-    const { data: organization, error: orgError } = await supabase
+    const admin = createAdminClient();
+
+    const { data: organization, error: orgError } = await admin
       .from("organizations")
       .select("id, name")
       .eq("id", profile.organization_id)
@@ -106,8 +108,6 @@ export async function POST(request: Request) {
       console.error("[billing/contact-sales] failed to load organization:", orgError);
       return apiError("Organization not found", 404);
     }
-
-    const admin = createAdminClient();
     const note = [
       `Billing upgrade request`,
       `Target tier: ${parsed.data.target_tier}`,

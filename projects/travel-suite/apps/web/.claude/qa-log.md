@@ -23,7 +23,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S6d — Settings/Contacts/Workflow/Notifications/Calendar | 2026-03-11 | 24 | 17 | 7 | 0 | 0 |
 | S6e — Bug fixes (BUG-062) | 2026-03-11 | — | — | — | — | — |
 | S7a — DRIVER/SEC/EDGE | 2026-03-11 | 31 | 22 | 7 | 2 | 0 |
-| **Total** | | **~484** | **~285** | **~85** | **~40** | **~296** |
+| S7b — WA/ASST/BILL/NOTIFY re-runs | 2026-03-11 | ~20 | ~15 | 0 | 5 | 0 |
+| **Total** | | **~504** | **~300** | **~85** | **~45** | **~296** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -522,7 +523,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | NOTIFY-006 | GET /api/admin/notifications/delivery | ✅ Pass | |
 | NOTIFY-011 | POST /api/notifications/send `{}` | ✅ Pass | 400 |
 | NOTIFY-012 | POST /api/notifications/send `{type:"test"}` | ✅ Pass | 400 missing recipientId |
-| NOTIFY-013 | POST /api/emails/welcome `{email:"not-an-email"}` | ❌ Env | 200 `{skipped:true,reason:"missing_email_provider_config"}` — Resend not configured, format never validated |
+| NOTIFY-013 | POST /api/emails/welcome `{email:"not-an-email"}` | ⏭ Spec | Handler reads email from auth user profile only — request body not parsed at all. Body `{email}` silently ignored. `skipped:true` = RESEND not configured (expected). Not a validation bug |
 | NOTIFY-014 | POST /api/notifications/retry-failed | ✅ Pass | `count=0` |
 | BILL-003 | GET /api/subscriptions | ✅ Pass | |
 | BILL-004 | GET /api/subscriptions/limits | ✅ Pass | |
@@ -806,7 +807,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | DRIVER-003–007,011–016 | ✅ Done | S7a covered. DRIVER-013/014 were spec errors (GET-only endpoint, format→400) |
 | SEC-001–005,011–019,023–025,027 | ✅ Done | S7a covered. All pass. SEC-023 is base64url padding behavior (by design) |
 | EDGE-001–004,009–011,014–015,017 | ✅ Done | S7a covered. EDGE-015 fixed (BUG-066) |
-| MKTPLACE + PERF + remaining EDGE | 🔲 Pending | S8a/S8b agents running |
+| MKTPLACE (MKT-004 to MKT-019) + PERF + remaining EDGE/SEC | 🔲 Pending | S9a/S9b agents launching |
 
 ---
 
