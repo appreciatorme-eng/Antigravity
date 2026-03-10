@@ -12,9 +12,15 @@ it("blocks seed-demo in production unless explicitly allowed", () => {
   expect(isSeedDemoBlockedInProduction("development", undefined)).toBe(false);
 });
 
-it("validates the optional cron secret correctly", () => {
-  expect(hasValidSeedDemoCronSecret(undefined, null)).toBe(true);
+it("fails closed when no secret is configured (returns false)", () => {
+  expect(hasValidSeedDemoCronSecret(undefined, null)).toBe(false);
+  expect(hasValidSeedDemoCronSecret(undefined, "anything")).toBe(false);
+});
+
+it("validates the cron secret correctly when configured", () => {
   expect(hasValidSeedDemoCronSecret("expected", "expected")).toBe(true);
   expect(hasValidSeedDemoCronSecret("expected", " expected ")).toBe(true);
   expect(hasValidSeedDemoCronSecret("expected", "wrong")).toBe(false);
+  expect(hasValidSeedDemoCronSecret("expected", null)).toBe(false);
+  expect(hasValidSeedDemoCronSecret("expected", "")).toBe(false);
 });
