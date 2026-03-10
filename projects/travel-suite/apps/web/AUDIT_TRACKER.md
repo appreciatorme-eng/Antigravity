@@ -8,7 +8,7 @@ Production readiness audit score: **67/100**. All findings below are tracked wit
 
 | # | Severity | File | Action | Expected Result | Status |
 |---|----------|------|--------|-----------------|--------|
-| 1 | CRITICAL | `src/hooks/useRealtimeUpdates.ts` | Replace fabricated `Math.random()` data + hardcoded Indian names/metrics with real Supabase Realtime channel subscriptions. Zero `INITIAL_METRICS` on mount; populate from DB. | Live dashboard reflects actual DB state; no synthetic noise on production | ⬜ |
+| 1 | CRITICAL | `src/hooks/useRealtimeUpdates.ts` | Replace fabricated `Math.random()` data + hardcoded Indian names/metrics with real Supabase Realtime channel subscriptions. Zero `INITIAL_METRICS` on mount; populate from DB. | Live dashboard reflects actual DB state; no synthetic noise on production | ✅ |
 | 2 | HIGH | `src/lib/security/rate-limit.ts` | Make `enforceRateLimit` throw/return 503-worthy error in production when Redis is unavailable instead of silently falling back to per-instance Map | Rate limiting never silently bypasses in production Vercel deployments | ⬜ |
 | 3 | HIGH | `src/lib/security/cron-auth.ts:22` | Make `localReplayKeys` fallback log a hard error in production; expose `isReplayProtectionAvailable()` helper so callers can surface 503 | Replay protection no longer silently resets on cold start | ⬜ |
 | 4 | HIGH | `src/env.ts:17-19` | Change `RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET` from `.optional()` to required only when `NODE_ENV === 'production'` using `z.preprocess` / conditional schema | App fails fast at boot if deployed without payment credentials | ⬜ |
