@@ -14,7 +14,6 @@
  * Next.js 16 / Turbopack requirement that only one edge entry file exists.
  * ------------------------------------------------------------------ */
 
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
@@ -61,7 +60,7 @@ function isOnboardingComplete(profile: {
 }
 
 export async function middleware(request: NextRequest) {
-    const sessionResponse = await updateSession(request);
+    const { response: sessionResponse, user, supabase } = await updateSession(request);
 
     const pathname = request.nextUrl.pathname;
     const protectedPath = isProtectedPath(pathname);
@@ -71,38 +70,12 @@ export async function middleware(request: NextRequest) {
         return sessionResponse;
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseKey) {
-        return sessionResponse;
-    }
-
-    let authResponse = sessionResponse;
-    const supabase = createServerClient(supabaseUrl, supabaseKey, {
-        cookies: {
-            getAll() {
-                return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value }) =>
-                    request.cookies.set(name, value)
-                );
-                authResponse = NextResponse.next({ request });
-                cookiesToSet.forEach(({ name, value, options }) =>
-                    authResponse.cookies.set(name, value, options)
-                );
-            },
-        },
-    });
-
-    const { data: { user } } = await supabase.auth.getUser();
-
     if (!user) {
         if (protectedPath || onboardingPath) {
             const requested = `${pathname}${request.nextUrl.search}`;
             return NextResponse.redirect(buildAuthRedirect(request, requested));
         }
-        return authResponse;
+        return sessionResponse;
     }
 
     const { data: profile } = await supabase
@@ -130,7 +103,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(safeNext, request.url));
     }
 
-    return authResponse;
+    return sessionResponse;
 }
 
 export const config = {

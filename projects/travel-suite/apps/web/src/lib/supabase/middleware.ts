@@ -1,8 +1,13 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type SupabaseClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import type { User } from '@supabase/supabase-js';
 import { getSupabasePublicRuntimeConfig } from './env';
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<{
+    response: NextResponse;
+    user: User | null;
+    supabase: SupabaseClient;
+}> {
     let supabaseResponse = NextResponse.next({
         request,
     });
@@ -35,7 +40,7 @@ export async function updateSession(request: NextRequest) {
     // supabase.auth.getUser(). A simple mistake could make it very hard to debug
     // issues with users being randomly logged out.
 
-    await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    return supabaseResponse;
+    return { response: supabaseResponse, user, supabase };
 }
