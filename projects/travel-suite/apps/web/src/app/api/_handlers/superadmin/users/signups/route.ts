@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
 
         const [profilesResult, totalResult, monthResult, orgResult] = await Promise.all([
             profilesQuery,
-            adminClient.from("profiles").select("*", { count: "exact", head: true }),
-            adminClient.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", monthStart()),
+            adminClient.from("profiles").select("id", { count: "exact", head: true }),
+            adminClient.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", monthStart()),
             since
-                ? adminClient.from("organizations").select("*", { count: "exact", head: true }).gte("created_at", since)
-                : adminClient.from("organizations").select("*", { count: "exact", head: true }),
+                ? adminClient.from("organizations").select("id", { count: "exact", head: true }).gte("created_at", since)
+                : adminClient.from("organizations").select("id", { count: "exact", head: true }),
         ]);
 
         const recentRows = (profilesResult.data ?? []).map((p) => ({

@@ -59,7 +59,7 @@ export const SocialAnalytics = () => {
         .select("platform, status");
       const { count: whatsappCount } = await supabase
         .from("social_media_library")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("source", "whatsapp");
 
       const breakdown = { instagram: 0, facebook: 0 };

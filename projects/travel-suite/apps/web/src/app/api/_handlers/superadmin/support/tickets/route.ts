@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
         const [result, openCount, inProgressCount] = await Promise.all([
             query,
-            db.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "open"),
-            db.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+            db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open"),
+            db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
         ]);
 
         const tickets = (result.data ?? []).map((t: any) => {

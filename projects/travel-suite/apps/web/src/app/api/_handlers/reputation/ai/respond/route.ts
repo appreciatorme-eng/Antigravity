@@ -192,7 +192,7 @@ export async function POST(req: Request) {
       monthStart.setUTCHours(0, 0, 0, 0);
 
       const { count } = await repFrom(supabase, "reputation_reviews")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .not("ai_suggested_response", "is", null)
         .gte("updated_at", monthStart.toISOString());

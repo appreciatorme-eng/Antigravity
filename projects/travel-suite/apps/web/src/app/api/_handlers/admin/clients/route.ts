@@ -362,7 +362,7 @@ export async function GET(req: Request) {
             (profiles || []).map(async (client) => {
                 const { count } = await supabaseAdmin
                     .from("trips")
-                    .select("*", { count: "exact", head: true })
+                    .select("id", { count: "exact", head: true })
                     .eq("client_id", client.id);
 
                 return {

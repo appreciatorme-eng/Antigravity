@@ -24,6 +24,9 @@ type SerializedExtras = {
   organizationName?: string | null;
 };
 
+const PAYMENT_LINK_COLUMNS =
+  "id, token, organization_id, proposal_id, booking_id, client_id, client_name, client_phone, client_email, amount_paise, currency, description, status, razorpay_order_id, razorpay_payment_id, expires_at, viewed_at, paid_at, created_at, created_by, updated_at" as const;
+
 const PAYMENT_EVENT_PREFIX = "payment_link.";
 
 function isPaymentEventType(value: string): value is PaymentEventType {
@@ -49,7 +52,7 @@ function sanitizeMetadata(value: unknown): Record<string, string> | undefined {
   return pairs.length > 0 ? Object.fromEntries(pairs) : undefined;
 }
 
-function mapEventRow(row: PaymentEventRow): PaymentEvent | null {
+function mapEventRow(row: Pick<PaymentEventRow, "event_type" | "created_at" | "metadata">): PaymentEvent | null {
   const rawType = row.event_type.startsWith(PAYMENT_EVENT_PREFIX)
     ? row.event_type.slice(PAYMENT_EVENT_PREFIX.length)
     : row.event_type;
@@ -69,7 +72,7 @@ async function loadLinkEvents(
 ): Promise<PaymentEvent[]> {
   const { data, error } = await admin
     .from("payment_events")
-    .select("*")
+    .select("event_type, created_at, metadata")
     .eq("payment_link_id", paymentLinkId)
     .order("created_at", { ascending: true });
 
@@ -187,7 +190,7 @@ async function expireIfNeeded(admin: AdminDbClient, link: PaymentLinkRow) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", link.id)
-    .select("*")
+    .select(PAYMENT_LINK_COLUMNS)
     .single();
 
   if (error) {
@@ -213,7 +216,7 @@ export async function getPaymentLinkByToken(
 ): Promise<PaymentLinkData | null> {
   const { data, error } = await admin
     .from("payment_links")
-    .select("*")
+    .select(PAYMENT_LINK_COLUMNS)
     .eq("token", token)
     .maybeSingle();
 
@@ -278,7 +281,7 @@ export async function createPaymentLinkRecord(
       expires_at: expiresAt,
       created_by: args.createdBy,
     })
-    .select("*")
+    .select(PAYMENT_LINK_COLUMNS)
     .single();
 
   if (error) {
@@ -325,7 +328,7 @@ export async function recordPaymentLinkEvent(
 ) {
   const { data, error } = await admin
     .from("payment_links")
-    .select("*")
+    .select(PAYMENT_LINK_COLUMNS)
     .eq("token", args.token)
     .maybeSingle();
 
@@ -363,7 +366,7 @@ export async function recordPaymentLinkEvent(
     .from("payment_links")
     .update(updatePayload)
     .eq("id", data.id)
-    .select("*")
+    .select(PAYMENT_LINK_COLUMNS)
     .single();
 
   if (updateError) {

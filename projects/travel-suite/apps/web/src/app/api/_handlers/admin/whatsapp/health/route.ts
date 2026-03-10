@@ -136,12 +136,12 @@ export async function GET(req: NextRequest) {
           await Promise.all([
             admin.adminClient
               .from("driver_locations")
-              .select("*", { count: "exact", head: true })
+              .select("id", { count: "exact", head: true })
               .in("driver_id", scopedDriverIds)
               .gte("recorded_at", oneHourAgo),
             admin.adminClient
               .from("driver_locations")
-              .select("*", { count: "exact", head: true })
+              .select("id", { count: "exact", head: true })
               .in("driver_id", scopedDriverIds)
               .gte("recorded_at", dayAgo),
           ]);
@@ -153,11 +153,11 @@ export async function GET(req: NextRequest) {
         await Promise.all([
           admin.adminClient
             .from("driver_locations")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .gte("recorded_at", oneHourAgo),
           admin.adminClient
             .from("driver_locations")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .gte("recorded_at", dayAgo),
         ]);
       location1h = Number(location1hCount || 0);

@@ -234,7 +234,7 @@ async function getFeatureUsage(
   if (feature === "clients") {
     const { count } = await supabase
       .from("profiles")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .eq("role", "client");
     return { used: count || 0, resetAt: null };
@@ -243,7 +243,7 @@ async function getFeatureUsage(
   if (feature === "trips") {
     const { count } = await supabase
       .from("trips")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .gte("created_at", monthStart);
     return { used: count || 0, resetAt };
@@ -252,7 +252,7 @@ async function getFeatureUsage(
   if (feature === "proposals") {
     const { count } = await supabase
       .from("proposals")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .gte("created_at", monthStart);
     return { used: count || 0, resetAt };
@@ -261,7 +261,7 @@ async function getFeatureUsage(
   if (feature === "templates") {
     const { count } = await supabase
       .from("tour_templates")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId)
       .eq("status", "active");
     return { used: count || 0, resetAt: null };
@@ -269,7 +269,7 @@ async function getFeatureUsage(
 
   const { count } = await supabase
     .from("profiles")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("organization_id", organizationId)
     .neq("role", "client");
   return { used: count || 0, resetAt: null };

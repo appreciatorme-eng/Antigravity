@@ -28,12 +28,12 @@ export async function GET(request: NextRequest) {
             { data: subscriptions },
             signupTrendResult,
         ] = await Promise.all([
-            adminClient.from("profiles").select("*", { count: "exact", head: true }),
-            adminClient.from("organizations").select("*", { count: "exact", head: true }),
-            adminClient.from("trips").select("*", { count: "exact", head: true })
+            adminClient.from("profiles").select("id", { count: "exact", head: true }),
+            adminClient.from("organizations").select("id", { count: "exact", head: true }),
+            adminClient.from("trips").select("id", { count: "exact", head: true })
                 .gte("created_at", monthStart()),
-            adminClient.from("proposals").select("*", { count: "exact", head: true }),
-            adminClient.from("support_tickets").select("*", { count: "exact", head: true })
+            adminClient.from("proposals").select("id", { count: "exact", head: true }),
+            adminClient.from("support_tickets").select("id", { count: "exact", head: true })
                 .eq("status", "open"),
             adminClient.from("subscriptions").select("amount").eq("status", "active"),
             adminClient.from("profiles").select("created_at")

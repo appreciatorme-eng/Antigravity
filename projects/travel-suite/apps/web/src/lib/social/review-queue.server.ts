@@ -79,7 +79,7 @@ export async function ensureSocialPostForReview(options: {
   if (input.postId) {
     const { data: existingPost, error: fetchError } = await supabase
       .from("social_posts")
-      .select("*")
+      .select("id")
       .eq("id", input.postId)
       .eq("organization_id", organizationId)
       .single();
@@ -92,7 +92,7 @@ export async function ensureSocialPostForReview(options: {
       .from("social_posts")
       .update(postPatch)
       .eq("id", existingPost.id)
-      .select("*")
+      .select("id, organization_id, created_by, template_id, template_data, source, status, caption_instagram, caption_facebook, rendered_image_url, rendered_image_urls, hashtags, created_at, updated_at")
       .single();
 
     if (updateError || !updatedPost) {
@@ -112,7 +112,7 @@ export async function ensureSocialPostForReview(options: {
       source: "manual",
       ...postPatch,
     } satisfies SocialPostInsert)
-    .select("*")
+    .select("id, organization_id, created_by, template_id, template_data, source, status, caption_instagram, caption_facebook, rendered_image_url, rendered_image_urls, hashtags, created_at, updated_at")
     .single();
 
   if (insertError || !createdPost) {

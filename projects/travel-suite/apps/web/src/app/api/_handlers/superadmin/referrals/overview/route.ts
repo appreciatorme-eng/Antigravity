@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
             incentivesResult,
         ] = await Promise.all([
             // B2B referrals total
-            db.from("referrals").select("*", { count: "exact", head: true }),
-            db.from("referrals").select("*", { count: "exact", head: true }).eq("status", "converted"),
+            db.from("referrals").select("id", { count: "exact", head: true }),
+            db.from("referrals").select("id", { count: "exact", head: true }).eq("status", "converted"),
             // Client flywheel events
             db
                 .from("client_referral_events")
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
                 .limit(200),
             db
                 .from("client_referral_events")
-                .select("*", { count: "exact", head: true })
+                .select("id", { count: "exact", head: true })
                 .eq("status", "converted"),
             // Incentives issued
             db

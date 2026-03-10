@@ -151,14 +151,14 @@ export async function POST() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { count: requestsSent } = await (supabase as any)
       .from("reputation_campaign_sends")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("status", "sent");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { count: requestsConverted } = await (supabase as any)
       .from("reputation_campaign_sends")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("review_submitted", true);
 

@@ -45,6 +45,9 @@ export type WhatsAppProposalDraftSummary = {
 
 type DraftRow = Database["public"]["Tables"]["whatsapp_proposal_drafts"]["Row"];
 
+const DRAFT_COLUMNS =
+  "id, organization_id, chatbot_session_id, client_id, template_id, traveler_name, traveler_phone, traveler_email, destination, travel_dates, trip_start_date, trip_end_date, group_size, budget_inr, title, status, source_context, created_at, updated_at" as const;
+
 const DRAFT_PLACEHOLDER_DOMAIN = "lead.antigravity.invalid";
 
 function normalizePhone(phone: string) {
@@ -336,7 +339,7 @@ export async function upsertWhatsAppProposalDraftFromCollected(args: {
 
   const { data: existing } = await admin
     .from("whatsapp_proposal_drafts")
-    .select("*")
+    .select("id, status")
     .eq("organization_id", args.organizationId)
     .eq("chatbot_session_id", args.chatbotSessionId)
     .maybeSingle();
@@ -371,7 +374,7 @@ export async function upsertWhatsAppProposalDraftFromCollected(args: {
     .upsert(existing ? { ...payload, id: existing.id } : payload, {
       onConflict: "chatbot_session_id",
     })
-    .select("*")
+    .select(DRAFT_COLUMNS)
     .single();
 
   if (error) {
@@ -389,7 +392,7 @@ export async function getWhatsAppProposalDraftForOrg(args: {
   const admin = createAdminClient();
   const draftQuery = admin
     .from("whatsapp_proposal_drafts")
-    .select("*")
+    .select(DRAFT_COLUMNS)
     .eq("id", args.draftId)
     .eq("organization_id", args.organizationId)
     .maybeSingle();
@@ -415,7 +418,7 @@ export async function getWhatsAppProposalDraftForOrg(args: {
     })
     .eq("id", data.id)
     .eq("organization_id", args.organizationId)
-    .select("*")
+    .select(DRAFT_COLUMNS)
     .single();
 
   if (updateError) {

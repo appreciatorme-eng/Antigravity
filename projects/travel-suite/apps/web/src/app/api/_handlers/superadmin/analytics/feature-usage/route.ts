@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
     try {
         const [trips, tripsPrev, proposals, proposalsPrev, aiSessions, aiPrev, socialPosts, socialPrev] =
             await Promise.all([
-                db.from("trips").select("*", { count: "exact", head: true }).gte("created_at", since),
-                db.from("trips").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                db.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", since),
-                db.from("proposals").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                db.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", since),
-                db.from("assistant_sessions").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
-                db.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", since),
-                db.from("social_posts").select("*", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("trips").select("id", { count: "exact", head: true }).gte("created_at", since),
+                db.from("trips").select("id", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("proposals").select("id", { count: "exact", head: true }).gte("created_at", since),
+                db.from("proposals").select("id", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("assistant_sessions").select("id", { count: "exact", head: true }).gte("created_at", since),
+                db.from("assistant_sessions").select("id", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
+                db.from("social_posts").select("id", { count: "exact", head: true }).gte("created_at", since),
+                db.from("social_posts").select("id", { count: "exact", head: true }).gte("created_at", prevSince).lt("created_at", since),
             ]);
 
         function pct(cur: number, prev: number): number {

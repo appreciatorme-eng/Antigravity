@@ -94,11 +94,11 @@ export async function GET(req: NextRequest) {
 
   try {
     // Count templates with and without v2 embeddings
-    const { count: total } = await admin.adminClient.from("tour_templates").select("*", { count: "exact", head: true });
+    const { count: total } = await admin.adminClient.from("tour_templates").select("id", { count: "exact", head: true });
 
     const { count: withEmbeddings } = await admin.adminClient
       .from("tour_templates")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .not("embedding_v2", "is", null);
 
     await auditAdminAction(

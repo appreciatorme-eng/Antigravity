@@ -153,7 +153,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
 
         const { data: assignmentsData } = await admin.adminClient
             .from("trip_driver_assignments")
-            .select("*")
+            .select("id, day_number, external_driver_id, pickup_time, pickup_location, notes")
             .eq("trip_id", tripId);
 
         const assignmentsMap: Record<number, AssignmentRow> = {};
@@ -170,7 +170,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
 
         const { data: accommodationsData } = await admin.adminClient
             .from("trip_accommodations")
-            .select("*")
+            .select("id, day_number, hotel_name, address, check_in_time, contact_phone")
             .eq("trip_id", tripId);
 
         const accommodationsMap: Record<number, AccommodationRow> = {};

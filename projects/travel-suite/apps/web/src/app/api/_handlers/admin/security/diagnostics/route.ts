@@ -56,11 +56,11 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       admin.adminClient
         .from("trip_location_share_access_logs")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .gte("created_at", fiveMinAgoIso),
       admin.adminClient
         .from("trip_location_share_access_logs")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .gte("created_at", oneHourAgoIso),
       admin.adminClient
         .from("trip_location_share_access_logs")

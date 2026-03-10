@@ -164,13 +164,13 @@ export default function NotificationLogsPage() {
                 { count: failedCount = 0 },
                 { count: upcomingHourCount = 0 },
             ] = await Promise.all([
-                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "pending"),
-                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "processing"),
-                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "sent"),
-                supabase.from("notification_queue").select("*", { count: "exact", head: true }).eq("status", "failed"),
+                supabase.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "pending"),
+                supabase.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "processing"),
+                supabase.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "sent"),
+                supabase.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "failed"),
                 supabase
                     .from("notification_queue")
-                    .select("*", { count: "exact", head: true })
+                    .select("id", { count: "exact", head: true })
                     .eq("status", "pending")
                     .gte("scheduled_for", nowIso)
                     .lte("scheduled_for", inOneHourIso),

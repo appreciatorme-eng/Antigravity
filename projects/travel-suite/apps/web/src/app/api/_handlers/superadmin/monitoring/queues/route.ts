@@ -19,18 +19,18 @@ export async function GET(request: NextRequest) {
                 .limit(1000),
             adminClient
                 .from("notification_queue")
-                .select("*", { count: "exact", head: true })
+                .select("id", { count: "exact", head: true })
                 .eq("status", "failed"),
             adminClient
                 .from("notification_dead_letters")
-                .select("*", { count: "exact", head: true }),
+                .select("id", { count: "exact", head: true }),
             adminClient
                 .from("social_post_queue")
-                .select("*", { count: "exact", head: true })
+                .select("id", { count: "exact", head: true })
                 .eq("status", "pending"),
             adminClient
                 .from("pdf_extraction_queue")
-                .select("*", { count: "exact", head: true })
+                .select("id", { count: "exact", head: true })
                 .eq("status", "pending"),
         ]);
 

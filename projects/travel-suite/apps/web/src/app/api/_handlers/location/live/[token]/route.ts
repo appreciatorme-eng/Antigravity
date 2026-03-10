@@ -35,7 +35,7 @@ export async function GET(
 
         const { count: recentCount } = await supabaseAdmin
             .from("trip_location_share_access_logs")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .eq("share_token_hash", tokenHash)
             .eq("ip_hash", ipHash)
             .gte("created_at", windowStartIso);

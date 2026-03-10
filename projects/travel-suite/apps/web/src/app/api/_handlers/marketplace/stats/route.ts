@@ -60,14 +60,14 @@ export async function GET(request: NextRequest) {
         // 3. Get Views Count
         const { count: viewsCount, error: viewsError } = await supabase
             .from("marketplace_profile_views")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .eq("profile_id", marketProfile.id);
         if (viewsError) throw viewsError;
 
         // 4. Get Inquiries Count
         const { count: inquiriesCount, error: inquiriesError } = await supabase
             .from("marketplace_inquiries")
-            .select("*", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true })
             .eq("receiver_org_id", orgId);
         if (inquiriesError) throw inquiriesError;
 

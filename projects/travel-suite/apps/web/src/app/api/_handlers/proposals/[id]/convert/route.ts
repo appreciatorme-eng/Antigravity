@@ -119,7 +119,7 @@ export async function POST(
         // We fetch days separately to sort them easily
         const { data: daysData, error: daysError } = await supabaseAdmin
             .from("proposal_days")
-            .select("*")
+            .select("id, day_number, title, description")
             .eq("proposal_id", proposalId)
             .order("day_number", { ascending: true });
 
@@ -135,7 +135,7 @@ export async function POST(
         if (dayIds.length > 0) {
             const { data, error: activitiesError } = await supabaseAdmin
                 .from("proposal_activities")
-                .select("*")
+                .select("proposal_day_id, time, title, description, location, image_url, price, is_selected")
                 .in("proposal_day_id", dayIds)
                 .eq("is_selected", true) // Only include selected activities
                 .order("display_order", { ascending: true });

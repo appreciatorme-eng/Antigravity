@@ -47,7 +47,7 @@ async function getReviewForOrganization(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation_reviews is present in live schema but not in generated typings
   const { data: review, error } = await (supabase as any)
     .from("reputation_reviews")
-    .select("*")
+    .select("id, organization_id, rating, comment, title, reviewer_name, platform, destination, trip_type")
     .eq("id", reviewId)
     .eq("organization_id", organizationId)
     .single();
@@ -122,7 +122,7 @@ async function upsertSocialPost(options: {
       })
       .eq("id", existingPostId)
       .eq("organization_id", organizationId)
-      .select("*")
+      .select("id, organization_id, created_by, template_id, template_data, source, status, caption_instagram, caption_facebook, rendered_image_url, rendered_image_urls, hashtags, created_at, updated_at")
       .single();
 
     if (error || !data) {
@@ -138,7 +138,7 @@ async function upsertSocialPost(options: {
         ...payload,
         template_data: payload.template_data as SocialPostInsert["template_data"],
       })
-    .select("*")
+    .select("id, organization_id, created_by, template_id, template_data, source, status, caption_instagram, caption_facebook, rendered_image_url, rendered_image_urls, hashtags, created_at, updated_at")
     .single();
 
   if (error || !data) {
@@ -155,7 +155,7 @@ async function getExistingAsset(
 ) {
   const { data, error } = await supabase
     .from("review_marketing_assets")
-    .select("*")
+    .select("id, review_id, social_post_id, organization_id, lifecycle_state, template_id, image_url, platform_targets, quote_excerpt, last_queued_at")
     .eq("review_id", reviewId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -214,7 +214,7 @@ async function persistAsset(options: {
       .from("review_marketing_assets")
       .update(row)
       .eq("id", existingAssetId)
-      .select("*")
+      .select("id, review_id, social_post_id, organization_id, lifecycle_state, template_id, image_url, platform_targets, quote_excerpt, last_queued_at")
       .single();
 
     if (error || !data) {
@@ -227,7 +227,7 @@ async function persistAsset(options: {
   const { data, error } = await supabase
     .from("review_marketing_assets")
     .insert(row)
-    .select("*")
+    .select("id, review_id, social_post_id, organization_id, lifecycle_state, template_id, image_url, platform_targets, quote_excerpt, last_queued_at")
     .single();
 
   if (error || !data) {
