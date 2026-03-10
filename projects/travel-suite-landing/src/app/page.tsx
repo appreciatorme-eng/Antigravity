@@ -19,6 +19,8 @@ import { IndiaMap } from "@/components/IndiaMap";
 import { Testimonials } from "@/components/Testimonials";
 import { HowItWorks } from "@/components/HowItWorks";
 import { CustomerLogos } from "@/components/CustomerLogos";
+import { ROICalculator } from "@/components/ROICalculator";
+import { InteractiveDemo } from "@/components/InteractiveDemo";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -1032,6 +1034,12 @@ export default function Home() {
             </motion.div>
           </div>
         </section>
+
+        {/* ═══ SECTION 10: Interactive Demo Sandbox ═══ */}
+        <InteractiveDemo />
+
+        {/* ═══ SECTION 10.5: ROI Calculator ═══ */}
+        <ROICalculator />
 
         {/* ═══ SECTION 11: Integration Partners ═══ */}
         <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">

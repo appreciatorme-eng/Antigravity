@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Plane } from 'lucide-react';
+import { Menu, X, Plane, ChevronDown } from 'lucide-react';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -18,6 +18,7 @@ import { ThemeToggle } from './ThemeToggle';
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [solutionsOpen, setSolutionsOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -106,6 +107,45 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Solutions Dropdown */}
+            <div
+              className="relative group"
+              onMouseEnter={() => setSolutionsOpen(true)}
+              onMouseLeave={() => setSolutionsOpen(false)}
+            >
+              <button
+                className="flex items-center gap-1 relative px-6 py-3 rounded-full text-[22px] font-semibold text-[#9CA3AF] hover:text-white transition-colors"
+              >
+                Solutions <ChevronDown size={20} className={`transition-transform duration-300 ${solutionsOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {solutionsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-xl overflow-hidden z-50 p-2"
+                  >
+                    {[
+                      { title: 'For Solo Agents', path: '/solutions/solo' },
+                      { title: 'For Scaling Agencies', path: '/solutions/agency' },
+                      { title: 'For Corporate TMCs', path: '/solutions/tmc' }
+                    ].map((item) => (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        className="block px-4 py-3 rounded-xl hover:bg-white/5 text-gray-300 hover:text-[#00F0FF] transition-colors"
+                      >
+                        {item.title}
+                      </Link>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </nav>
 
           {/* CTA Buttons */}
@@ -179,6 +219,30 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px 0', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="text-gray-500 font-semibold text-sm uppercase tracking-wider px-2">Solutions</span>
+              {[
+                { title: 'For Solo Agents', path: '/solutions/solo' },
+                { title: 'For Scaling Agencies', path: '/solutions/agency' },
+                { title: 'For Corporate TMCs', path: '/solutions/tmc' }
+              ].map((item) => (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setMobileOpen(false)}
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 500,
+                    color: '#D1D5DB',
+                    textDecoration: 'none',
+                    padding: '4px 8px',
+                  }}
+                >
+                  {item.title}
+                </Link>
+              ))}
+            </div>
+
             <div style={{ paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-gray-400 font-medium">Theme</span>
@@ -190,7 +254,7 @@ export function Navbar() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence >
     </>
   );
 }

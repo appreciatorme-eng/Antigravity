@@ -5,6 +5,7 @@ import { ScrollProgress } from "@/components/ScrollProgress";
 import { StickyMobileCTA } from "@/components/StickyMobileCTA";
 import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { LiveChat } from "@/components/LiveChat";
+import { LeadMagnet } from "@/components/LeadMagnet";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <StickyMobileCTA />
         <ExitIntentPopup />
         <LiveChat />
+        <LeadMagnet />
         {children}
       </body>
     </html>
