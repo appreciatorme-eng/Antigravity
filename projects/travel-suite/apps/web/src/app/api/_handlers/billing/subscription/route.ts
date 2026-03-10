@@ -3,6 +3,7 @@ import { PLAN_CATALOG, type CanonicalPlanId } from "@/lib/billing/plan-catalog";
 import { isPaymentsIntegrationEnabled } from "@/lib/integrations";
 import { paymentService } from "@/lib/payments/payment-service";
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function mapPlanIdToTier(planId: CanonicalPlanId): "free" | "pro" | "enterprise" {
@@ -38,15 +39,16 @@ export async function GET() {
       return apiError("Organization not found", 404);
     }
 
+    const adminSupabase = createAdminClient();
     const [{ data: organization, error: orgError }, subscription, resolvedPlan, clientCountRes, proposalCountRes, teamCountRes] =
       await Promise.all([
-        supabase
+        adminSupabase
           .from("organizations")
           .select("id, name, billing_state, subscription_tier")
           .eq("id", profile.organization_id)
           .maybeSingle(),
         paymentService.getCurrentSubscription(profile.organization_id),
-        resolveOrganizationPlan(supabase, profile.organization_id),
+        resolveOrganizationPlan(adminSupabase, profile.organization_id),
         supabase
           .from("clients")
           .select("id", { count: "exact", head: true })

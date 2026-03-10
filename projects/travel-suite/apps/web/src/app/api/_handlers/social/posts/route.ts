@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const CreatePostSchema = z.object({
-    template_id: z.string().uuid().optional(),
+    template_id: z.string().min(1).optional(),
     template_data: z.record(z.string(), z.unknown()).optional(),
     caption_instagram: z.string().max(2200).optional(),
     caption_facebook: z.string().max(63206).optional(),
@@ -82,11 +82,11 @@ export async function POST(req: Request) {
         const insertPayload: any = {
             organization_id: profile.organization_id,
             created_by: user.id,
-            template_id,
-            template_data,
+            template_id: template_id ?? '',
+            template_data: template_data ?? {},
             caption_instagram,
             caption_facebook,
-            hashtags,
+            hashtags: hashtags ? JSON.stringify(hashtags) : null,
             status: status || 'draft',
             source: source || 'manual',
             rendered_image_url,
