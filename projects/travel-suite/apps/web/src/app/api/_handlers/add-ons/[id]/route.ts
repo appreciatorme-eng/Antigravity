@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sanitizeText } from '@/lib/security/sanitize';
 
 export async function PUT(
   request: Request,
@@ -36,18 +37,31 @@ export async function PUT(
 
     const body = await request.json();
 
+    const updatePayload: Record<string, unknown> = {};
+    if (body.name !== undefined) {
+      updatePayload.name = sanitizeText(body.name, { maxLength: 200, stripHtml: true });
+    }
+    if (body.description !== undefined) {
+      updatePayload.description = body.description
+        ? sanitizeText(body.description, { maxLength: 1000, stripHtml: true })
+        : null;
+    }
+    if (body.price !== undefined) {
+      const price = parseFloat(body.price);
+      if (isNaN(price) || price < 0) {
+        return NextResponse.json({ error: 'Price must be zero or greater' }, { status: 400 });
+      }
+      updatePayload.price = price;
+    }
+    if (body.category !== undefined) updatePayload.category = body.category;
+    if (body.image_url !== undefined) updatePayload.image_url = body.image_url;
+    if (body.duration !== undefined) updatePayload.duration = body.duration;
+    if (body.is_active !== undefined) updatePayload.is_active = body.is_active;
+
     // Update add-on
     const { data: addon, error } = await supabase
       .from('add_ons')
-      .update({
-        name: body.name,
-        description: body.description,
-        price: parseFloat(body.price),
-        category: body.category,
-        image_url: body.image_url,
-        duration: body.duration,
-        is_active: body.is_active,
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('organization_id', profile.organization_id) // Security: ensure user owns this add-on
       .select()
@@ -71,6 +85,8 @@ export async function PUT(
     );
   }
 }
+
+export const PATCH = PUT;
 
 export async function DELETE(
   request: Request,

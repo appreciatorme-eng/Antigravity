@@ -17,7 +17,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S3 — Cookie-auth sweep (Reputation/Social/Asst/Settings) | 2026-03-10 | ~55 | 32 | 9 | 9 | 5 |
 | S4 — Asst/WA/Notify/Bill/Price/Settings agent | 2026-03-11 | 52 | 38 | 11 | 0 | 3 |
 | S5 — Client/Contacts/Trip agent | 2026-03-11 | 37 | 22 | 11 | 4 | 0 |
-| **Total** | | **~365** | **~206** | **~55** | **~38** | **~288** |
+| S6a — Proposal/Invoice/Addon/Booking agent | 2026-03-11 | 38 | 21 | 9 | 0 | 8 |
+| **Total** | | **~403** | **~227** | **~64** | **~38** | **~296** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -627,6 +628,60 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-033 | HIGH | POST /api/admin/trips — trip created with `endDate < startDate` (no date validation) | No date ordering check in POST handler | Added `new Date(startDate) > new Date(endDate)` → 400 check | pending-commit | **Fixed** ✅ |
 | BUG-034 | LOW | POST /api/admin/trips — top-level `destination` field ignored; stored as "TBD" | POST body `{destination: "Goa"}` goes to `itinerary = body.itinerary || {}`, not top-level; `itinerary.destination` undefined | Added `body.destination` as fallback in itinerary payload | pending-commit | **Fixed** ✅ |
 | BUG-035 | HIGH | GET /api/admin/trips?search=QA → 400 "Failed to process trip" | PostgREST `.or()` does not support filtering on embedded resource columns (`itineraries.trip_title.ilike`) — throws validation error | Removed broken PostgREST `.or()`; applied JS-side search filter after fetch | pending-commit | **Fixed** ✅ |
+| BUG-036 | HIGH | `[...path]` catch-all routes (add-ons, itineraries, proposals, bookings) silently reject Bearer token | Routes use `createClient()` (SSR cookie-only); Bearer header not read. External API clients get 401. `/api/admin/*` routes correctly use `requireAdmin()` with Bearer support. | Architectural — browser SSR routes use cookie auth by design; document in API docs | — | **Known Limitation** |
+| BUG-037 | HIGH | POST /api/add-ons — negative `price` accepted and stored (e.g. `price: -10`) | No `price >= 0` validation in POST handler | Added `if (price < 0)` → 400 check in add-ons POST and PUT/PATCH | pending-commit | **Fixed** ✅ |
+| BUG-038 | HIGH | POST /api/add-ons — raw HTML/XSS stored verbatim in `name` field (e.g. `<img src=x onerror=alert(1)>`) | No sanitization on `name` or `description` fields in add-ons route | Applied `sanitizeText(…, { stripHtml: true })` to name and description in POST and PUT/PATCH | pending-commit | **Fixed** ✅ |
+| BUG-039 | HIGH | GET /api/bookings/hotels/search with `checkOutDate < checkInDate` → 500 instead of 400 | No date ordering validation before sending to Amadeus API | Added `checkOutDate <= checkInDate` → 400 guard after city code resolution | pending-commit | **Fixed** ✅ |
+| BUG-040 | MED | PATCH /api/add-ons/{id} → 405 Method Not Allowed | `[id]/route.ts` only exported `PUT` and `DELETE`; no PATCH handler | Added `export const PATCH = PUT` alias | pending-commit | **Fixed** ✅ |
+| BUG-041 | MED | GET /api/itineraries/{id} → 405 Method Not Allowed | `GET /api/itineraries/:id` not registered in dispatch table | Needs investigation — dispatch routing issue | — | **Open** |
+| BUG-042 | MED | GET /api/admin/leads/{id} → 405 Method Not Allowed | Dynamic `[id]` segment not registered for GET in admin/leads | Needs investigation | — | **Open** |
+| BUG-043 | MED | GET /api/proposals/{id}/pdf → 401 with valid Bearer token | Proposal PDF route uses cookie-only auth (same as BUG-036 pattern) | Same as BUG-036 — SSR cookie auth by design | — | **Known Limitation** |
+| BUG-044 | LOW | POST /api/leads/convert → 503 "Service not configured" | Lead conversion service not wired up in production environment | Service/feature not yet implemented | — | **Open (unimplemented feature)** |
+
+---
+
+## Test Results — Session 6a (Proposal/Invoice/Addon/Booking)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| PROP-026 | POST /api/proposals/create with `{}` | ✅ Pass | 400 with field-level errors for both templateId and clientId |
+| PROP-027 | POST /api/proposals/create with clientId only | ✅ Pass | 400 — templateId missing |
+| PROP-028 | POST /api/proposals/create with templateId only | ✅ Pass | 400 — clientId missing |
+| PROP-018 | POST /api/proposals/null-uuid/convert with {startDate} | ✅ Pass | 404 |
+| PROP-016 | POST /api/proposals/null-uuid/convert with {} | ✅ Pass | 400 "Start date is required" |
+| PROP-032 | GET /api/proposals/{id}/pdf with Bearer token | ❌ Fail | 401 — cookie-only auth → **BUG-043** |
+| PROP-022 | GET /api/admin/proposals/null-uuid/payment-plan | ✅ Pass | 404 |
+| PROP-034 | POST /api/leads/convert with {} | ❌ Fail | 503 "Service not configured" → **BUG-044** |
+| PROP-035 | GET /api/admin/leads | ✅ Pass | 200 paginated response |
+| PROP-036 | GET /api/admin/leads/{id} | ❌ Fail | 405 → **BUG-042** |
+| INV-001 | GET /api/invoices | ✅ Pass | 200 with array of 4 invoices |
+| INV-007 | POST /api/invoices/send-pdf | ⚠️ Partial | 202 disabled — RESEND_API_KEY not configured |
+| INV-009 | POST /api/payments/create-order | ⚠️ Partial | 503 disabled — Razorpay not configured |
+| INV-021 | POST /api/payments/verify with fake signature | ✅ Pass | 400 "Invalid payment verification payload" |
+| INV-029 | GET /api/portal/nonexistenttoken | ✅ Pass | 404 |
+| INV-033 | POST /api/itinerary/share with {} | ⚠️ Partial | 202 disabled — WhatsApp not configured |
+| INV-034 | GET /api/share/nonexistenttoken | ✅ Pass | 404 |
+| ADDON-003 | GET /api/add-ons | ✅ Pass | 200 with 5 items |
+| ADDON-007 | GET /api/add-ons/stats | ✅ Pass | 200 with usage stats |
+| ADDON-002 | POST /api/add-ons (valid) | ✅ Pass | 201 created |
+| ADDON-005 | PATCH /api/add-ons/{id} | ❌ Fail | 405 — handler only had PUT → **BUG-040 fixed** |
+| ADDON-006 | DELETE /api/add-ons/{id} | ✅ Pass | 200 |
+| ADDON-008 | POST /api/add-ons (missing name) | ✅ Pass | 400 |
+| ADDON-009 | POST /api/add-ons (missing price) | ✅ Pass | 400 |
+| ADDON-010 | POST /api/add-ons with price=-10 | ❌ Fail | 201 — negative price accepted → **BUG-037 fixed** |
+| ADDON-017 | POST /api/add-ons with XSS name | ❌ Fail | 201 — raw HTML stored → **BUG-038 fixed** |
+| BOOK-002 | GET /api/bookings/flights/search | ⚠️ Partial | 500 — Amadeus rate-limited; param names differ from spec (`dest` vs `destination`) |
+| BOOK-003 | GET /api/bookings/hotels/search | ⚠️ Partial | 500 — Amadeus unavailable; correct params are `checkInDate`/`checkOutDate` |
+| BOOK-004 | GET /api/bookings/locations/search?q=Goa | ✅ Pass | 200 with graceful fallback suggestion |
+| BOOK-005 | GET /api/itineraries | ✅ Pass | 200 empty array |
+| BOOK-009 | POST /api/itinerary/generate | ✅ Pass | 200 — AI itinerary generated from cache |
+| BOOK-014 | POST /api/itinerary/generate with {} | ✅ Pass | 400 with field errors |
+| BOOK-015 | POST /api/itinerary/import/url with bad URL | ✅ Pass | 400 "URL format is invalid" |
+| BOOK-017 | POST /api/itineraries/null-uuid/feedback with {} | ✅ Pass | 404 |
+| BOOK-018 | GET /api/itineraries/{id} | ❌ Fail | 405 → **BUG-041** |
+| BOOK-019 | GET /api/bookings/flights/search (no params) | ✅ Pass | 400 validation error |
+| BOOK-021 | GET /api/bookings/hotels/search (no params) | ✅ Pass | 400 validation error |
+| BOOK-022 | GET /api/bookings/hotels/search with checkout < checkin | ❌ Fail | 500 instead of 400 → **BUG-039 fixed** |
 
 ---
 

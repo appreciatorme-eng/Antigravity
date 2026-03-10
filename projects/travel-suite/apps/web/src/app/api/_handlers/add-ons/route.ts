@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sanitizeText } from '@/lib/security/sanitize';
 
 export async function GET(request: Request) {
   try {
@@ -86,10 +87,22 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    // Validate required fields
-    if (!body.name || !body.price || !body.category) {
+    const name = sanitizeText(body.name, { maxLength: 200, stripHtml: true });
+    const description = body.description
+      ? sanitizeText(body.description, { maxLength: 1000, stripHtml: true })
+      : null;
+    const price = parseFloat(body.price);
+
+    if (!name || isNaN(price) || !body.category) {
       return NextResponse.json(
         { error: 'Missing required fields: name, price, category' },
+        { status: 400 }
+      );
+    }
+
+    if (price < 0) {
+      return NextResponse.json(
+        { error: 'Price must be zero or greater' },
         { status: 400 }
       );
     }
@@ -99,9 +112,9 @@ export async function POST(request: Request) {
       .from('add_ons')
       .insert({
         organization_id: profile.organization_id,
-        name: body.name,
-        description: body.description || null,
-        price: parseFloat(body.price),
+        name,
+        description,
+        price,
         category: body.category,
         image_url: body.image_url || null,
         duration: body.duration || null,

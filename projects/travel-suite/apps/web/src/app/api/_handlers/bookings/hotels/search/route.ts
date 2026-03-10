@@ -60,6 +60,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    if (checkInDate && checkOutDate && checkOutDate <= checkInDate) {
+      return withCostGuardHeaders(
+        NextResponse.json({ error: "checkOutDate must be after checkInDate" }, { status: 400 }),
+        guard.context
+      );
+    }
+
     const token = await getAmadeusToken();
     const amadeusBaseUrl = resolveAmadeusBaseUrl();
 
