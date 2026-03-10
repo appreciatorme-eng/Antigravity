@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
 export interface RealtimeMetrics {
   activeTrips: number
@@ -23,124 +25,96 @@ export interface RealtimeUpdate {
 }
 
 interface UseRealtimeUpdatesOptions {
-  pollIntervalMs?: number       // default 30000 (30s)
+  organizationId?: string       // scope queries to an org
   enabled?: boolean             // default true
 }
 
-const INDIAN_NAMES = [
-  'Sharma ji',
-  'Mehta family',
-  'Kumar saab',
-  'Kapoor group',
-  'Gupta ji',
-  'Verma family',
-  'Nair group',
-  'Pillai saab',
-]
-
-const DESTINATIONS = [
-  'Rajasthan',
-  'Kerala',
-  'Goa',
-  'Ladakh',
-  'Himachal Pradesh',
-  'Uttarakhand',
-  'Andaman',
-  'Kashmir',
-  'Coorg',
-  'Varanasi',
-]
-
-const DRIVER_NAMES = [
-  'Ramesh bhai',
-  'Suresh ji',
-  'Dinesh Kumar',
-  'Mahesh Yadav',
-  'Rakesh Singh',
-  'Naresh Sharma',
-]
-
-function randomItem<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
+const ZERO_METRICS: RealtimeMetrics = {
+  activeTrips: 0,
+  todayRevenue: 0,
+  pendingQuotes: 0,
+  unreadWhatsApp: 0,
+  driversOnRoute: 0,
+  newLeadsToday: 0,
+  lastUpdated: new Date(),
+  isLive: false,
 }
 
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
-function generateUUID(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
+async function fetchMetrics(organizationId: string | undefined): Promise<RealtimeMetrics> {
+  const supabase = createClient()
+  const today = todayIso()
 
-function generateUpdate(): RealtimeUpdate {
-  const updateTypes: RealtimeUpdate['type'][] = [
-    'new_whatsapp',
-    'payment_received',
-    'trip_started',
-    'new_lead',
-    'driver_update',
-  ]
-  const type = randomItem(updateTypes)
-  const name = randomItem(INDIAN_NAMES)
-  const destination = randomItem(DESTINATIONS)
+  const [
+    activeTripsRes,
+    driversOnRouteRes,
+    todayRevenueRes,
+    pendingQuotesRes,
+    newLeadsTodayRes,
+    unreadWhatsAppRes,
+  ] = await Promise.all([
+    supabase
+      .from('trips')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'in_progress')
+      .match(organizationId ? { organization_id: organizationId } : {}),
 
-  switch (type) {
-    case 'new_whatsapp':
-      return {
-        type,
-        title: `New WhatsApp from ${name}`,
-        description: `Inquiry about ${destination}`,
-        timestamp: new Date(),
-        id: generateUUID(),
-      }
-    case 'payment_received': {
-      // Random amount between ₹5,000 and ₹75,000 in paise
-      const amount = randomInt(5000, 75000) * 100
-      return {
-        type,
-        title: 'Payment received',
-        description: `₹${(amount / 100).toLocaleString('en-IN')} received from ${name}`,
-        amount,
-        timestamp: new Date(),
-        id: generateUUID(),
-      }
-    }
-    case 'trip_started':
-      return {
-        type,
-        title: 'Trip started',
-        description: `${destination} trip is underway`,
-        timestamp: new Date(),
-        id: generateUUID(),
-      }
-    case 'new_lead':
-      return {
-        type,
-        title: 'New lead',
-        description: `${name} enquired about ${destination}`,
-        timestamp: new Date(),
-        id: generateUUID(),
-      }
-    case 'driver_update':
-      return {
-        type,
-        title: 'Driver update',
-        description: `${randomItem(DRIVER_NAMES)} reached pickup point`,
-        timestamp: new Date(),
-        id: generateUUID(),
-      }
+    supabase
+      .from('trips')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'in_progress')
+      .not('driver_id', 'is', null)
+      .match(organizationId ? { organization_id: organizationId } : {}),
+
+    supabase
+      .from('payment_links')
+      .select('amount_paise')
+      .eq('status', 'paid')
+      .gte('paid_at', `${today}T00:00:00.000Z`)
+      .match(organizationId ? { organization_id: organizationId } : {}),
+
+    supabase
+      .from('proposals')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['draft', 'sent', 'pending'])
+      .match(organizationId ? { organization_id: organizationId } : {}),
+
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('lifecycle_stage', 'lead')
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .match(organizationId ? { organization_id: organizationId } : {}),
+
+    supabase
+      .from('whatsapp_webhook_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('processing_status', 'pending')
+      .gte('received_at', `${today}T00:00:00.000Z`),
+  ])
+
+  const todayRevenue = (todayRevenueRes.data ?? []).reduce(
+    (sum, row) => sum + (row.amount_paise ?? 0),
+    0,
+  )
+
+  return {
+    activeTrips: activeTripsRes.count ?? 0,
+    driversOnRoute: driversOnRouteRes.count ?? 0,
+    todayRevenue,
+    pendingQuotes: pendingQuotesRes.count ?? 0,
+    newLeadsToday: newLeadsTodayRes.count ?? 0,
+    unreadWhatsApp: unreadWhatsAppRes.count ?? 0,
+    lastUpdated: new Date(),
+    isLive: true,
   }
 }
 
-const INITIAL_METRICS: RealtimeMetrics = {
-  activeTrips: 23,
-  todayRevenue: 185000_00,     // ₹1,85,000 in paise
-  pendingQuotes: 7,
-  unreadWhatsApp: 4,
-  driversOnRoute: 8,
-  newLeadsToday: 3,
-  lastUpdated: new Date(),
-  isLive: true,
+function makeUpdateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 export function useRealtimeUpdates(options?: UseRealtimeUpdatesOptions): {
@@ -150,73 +124,122 @@ export function useRealtimeUpdates(options?: UseRealtimeUpdatesOptions): {
   lastPing: Date | null
   clearUpdates: () => void
 } {
-  const pollIntervalMs = options?.pollIntervalMs ?? 30_000
   const enabled = options?.enabled ?? true
+  const organizationId = options?.organizationId
 
-  const [metrics, setMetrics] = useState<RealtimeMetrics>(INITIAL_METRICS)
+  const [metrics, setMetrics] = useState<RealtimeMetrics>(ZERO_METRICS)
   const [updates, setUpdates] = useState<RealtimeUpdate[]>([])
+  const [isConnected, setIsConnected] = useState(false)
   const [lastPing, setLastPing] = useState<Date | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   const clearUpdates = useCallback(() => {
     setUpdates([])
   }, [])
 
+  const pushUpdate = useCallback((update: RealtimeUpdate) => {
+    setUpdates((prev) => [update, ...prev].slice(0, 10))
+    setLastPing(new Date())
+  }, [])
+
+  const refreshMetrics = useCallback(() => {
+    fetchMetrics(organizationId).then((fresh) => {
+      setMetrics(fresh)
+    }).catch((err: unknown) => {
+      console.error('[useRealtimeUpdates] metrics refresh failed:', err)
+    })
+  }, [organizationId])
+
   useEffect(() => {
     if (!enabled) return
 
-    const tick = () => {
-      // Randomly update 1–2 metrics with small deltas
-      setMetrics((prev) => {
-        const next = { ...prev, lastUpdated: new Date() }
+    // Initial load
+    refreshMetrics()
 
-        // Always nudge revenue
-        const revDelta = (randomInt(-5, 5) * 5000_00) as number
-        next.todayRevenue = Math.max(0, prev.todayRevenue + revDelta)
+    const supabase = createClient()
+    const channel = supabase.channel('dashboard-realtime')
 
-        // Randomly pick one count metric to bump
-        const countTargets = [
-          'activeTrips',
-          'pendingQuotes',
-          'unreadWhatsApp',
-          'driversOnRoute',
-          'newLeadsToday',
-        ] as const
-
-        const target = randomItem([...countTargets])
-        const delta = randomInt(-1, 3)
-        next[target] = Math.max(0, (prev[target] as number) + delta)
-
-        // Occasionally bump a second metric
-        if (Math.random() > 0.5) {
-          const target2 = randomItem([...countTargets])
-          const delta2 = randomInt(-1, 2)
-          next[target2] = Math.max(0, (prev[target2] as number) + delta2)
+    channel
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: 'status=eq.in_progress' }, (payload) => {
+        const row = payload.new as { destination?: string; name?: string }
+        pushUpdate({
+          type: 'trip_started',
+          title: 'Trip started',
+          description: `${row.destination ?? row.name ?? 'A trip'} is now underway`,
+          timestamp: new Date(),
+          id: makeUpdateId(),
+        })
+        refreshMetrics()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payment_links' }, (payload) => {
+        const row = payload.new as { amount_paise?: number; client_name?: string; status?: string }
+        if (row.status === 'paid') {
+          pushUpdate({
+            type: 'payment_received',
+            title: 'Payment received',
+            description: `₹${((row.amount_paise ?? 0) / 100).toLocaleString('en-IN')} received${row.client_name ? ` from ${row.client_name}` : ''}`,
+            amount: row.amount_paise ?? 0,
+            timestamp: new Date(),
+            id: makeUpdateId(),
+          })
+          refreshMetrics()
         }
-
-        return next
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'payment_links', filter: 'status=eq.paid' }, (payload) => {
+        const row = payload.new as { amount_paise?: number; client_name?: string }
+        pushUpdate({
+          type: 'payment_received',
+          title: 'Payment received',
+          description: `₹${((row.amount_paise ?? 0) / 100).toLocaleString('en-IN')} received${row.client_name ? ` from ${row.client_name}` : ''}`,
+          amount: row.amount_paise ?? 0,
+          timestamp: new Date(),
+          id: makeUpdateId(),
+        })
+        refreshMetrics()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'proposals' }, (payload) => {
+        const row = payload.new as { title?: string }
+        pushUpdate({
+          type: 'new_lead',
+          title: 'New quote request',
+          description: row.title ?? 'A new proposal was created',
+          timestamp: new Date(),
+          id: makeUpdateId(),
+        })
+        refreshMetrics()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_webhook_events' }, (payload) => {
+        const row = payload.new as { event_type?: string; wa_id?: string }
+        pushUpdate({
+          type: 'new_whatsapp',
+          title: 'New WhatsApp message',
+          description: `Incoming ${row.event_type ?? 'message'}${row.wa_id ? ` from ${row.wa_id}` : ''}`,
+          timestamp: new Date(),
+          id: makeUpdateId(),
+        })
+        refreshMetrics()
+      })
+      .subscribe((status) => {
+        const connected = status === 'SUBSCRIBED'
+        setIsConnected(connected)
+        if (connected) {
+          setLastPing(new Date())
+        }
       })
 
-      // Generate a new update notification
-      const newUpdate = generateUpdate()
-      setUpdates((prev) => [newUpdate, ...prev].slice(0, 10))
-
-      setLastPing(new Date())
-    }
-
-    const intervalId = setInterval(tick, pollIntervalMs)
-
-    // Fire once immediately so UI feels live on mount
-    tick()
+    channelRef.current = channel
 
     return () => {
-      clearInterval(intervalId)
+      supabase.removeChannel(channel).catch((err: unknown) => {
+        console.error('[useRealtimeUpdates] channel cleanup failed:', err)
+      })
     }
-  }, [enabled, pollIntervalMs])
+  }, [enabled, organizationId, pushUpdate, refreshMetrics])
 
   return {
     metrics,
     updates,
-    isConnected: true, // stub: always true (real: Supabase Realtime channel status)
+    isConnected,
     lastPing,
     clearUpdates,
   }
