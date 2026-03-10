@@ -21,6 +21,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { CustomerLogos } from "@/components/CustomerLogos";
 import { ROICalculator } from "@/components/ROICalculator";
 import { InteractiveDemo } from "@/components/InteractiveDemo";
+import { LeadMagnetSection } from "@/components/LeadMagnetSection";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -1014,6 +1015,9 @@ export default function Home() {
 
         {/* ═══ SECTION 13: Testimonials ═══ */}
         <Testimonials />
+
+        {/* Lead Magnet Funnel */}
+        <LeadMagnetSection />
 
         {/* Climax / CTA */}
         <section className="relative z-30 py-40 bg-transparent text-center px-10 border-t border-white/10 mt-20">

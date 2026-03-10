@@ -5,6 +5,13 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import Link from 'next/link';
 import { ArrowRight, Calendar, User } from 'lucide-react';
+import { LeadMagnetSection } from '@/components/LeadMagnetSection';
+import dynamic from 'next/dynamic';
+
+const ForceFieldBackground = dynamic(
+    () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
+    { ssr: false }
+);
 
 const articles = [
     {
@@ -38,15 +45,21 @@ const articles = [
 
 export default function Blog() {
     return (
-        <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white flex flex-col pt-32">
+        <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white flex flex-col relative overflow-hidden">
             <Navbar />
 
-            <main className="flex-grow max-w-7xl mx-auto w-full px-6 md:px-24 pb-32">
+            {/* Hero Section */}
+            <section className="relative pt-40 pb-20 px-6 md:px-24 overflow-hidden">
+                <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+                    <ForceFieldBackground id="tsparticles-blog" particleCount={150} />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-[#00F0FF]/5 to-transparent pointer-events-none" />
+
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="mb-20 text-center"
+                    className="relative z-10 max-w-7xl mx-auto text-center"
                 >
                     <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
                         Travel<span className="text-[#00F0FF]">Suite</span> Resources
@@ -55,6 +68,9 @@ export default function Blog() {
                         Insights, strategies, and playbooks for modern tour operators who want to grow faster and work less.
                     </p>
                 </motion.div>
+            </section>
+
+            <main className="flex-grow max-w-7xl mx-auto w-full px-6 md:px-24 pb-32 pt-10">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {articles.map((article, index) => (
@@ -137,6 +153,9 @@ export default function Blog() {
                     </div>
                 </motion.div>
             </main>
+
+            {/* Lead Magnet Funnel */}
+            <LeadMagnetSection />
 
             <Footer />
         </div>

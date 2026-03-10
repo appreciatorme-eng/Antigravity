@@ -34,9 +34,7 @@ export function LeadMagnet() {
 
         // Simulate API call
         setSubmitted(true);
-        setTimeout(() => {
-            handleClose();
-        }, 3000);
+        // Removed auto-close to allow the user to click the download button
     };
 
     return (
@@ -142,6 +140,16 @@ export function LeadMagnet() {
                                         <p className="text-gray-400">
                                             We've just sent the blueprint to <span className="text-white font-medium">{email}</span>. Look out for an email from the TravelSuite team.
                                         </p>
+                                        <div className="pt-4">
+                                            <a
+                                                href="/The-2026-Agency-Scaling-Blueprint.pdf"
+                                                download
+                                                className="inline-flex items-center gap-2 bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/30 px-6 py-3 rounded-xl font-bold hover:bg-[#00F0FF]/20 transition-all no-underline"
+                                            >
+                                                <Download size={18} />
+                                                Download Now
+                                            </a>
+                                        </div>
                                     </motion.div>
                                 )}
 

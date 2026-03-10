@@ -1,15 +1,18 @@
 'use client';
+
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Check, Zap, Building2, Sparkles, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { ComparisonTable } from '@/components/ComparisonTable';
+import { LeadMagnetSection } from '@/components/LeadMagnetSection';
+
 const ForceFieldBackground = dynamic(
   () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
   { ssr: false }
 );
-import { ComparisonTable } from '@/components/ComparisonTable';
 
 const plans = [
   {
@@ -38,28 +41,26 @@ const plans = [
       'Unlimited Proposals',
       'Magic Link Proposals',
       'WhatsApp Automation (Unlimited)',
-      'Advanced CRM + Pipeline',
-      'Amadeus Flight & Hotel Search',
-      'Team Collaboration (5 seats)',
-      'Priority Support',
+      'Driver & Supplier Portal',
+      'GST Invoicing & Payments',
+      'Priority 24/7 Support',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Started Now',
     highlight: true,
   },
   {
     name: 'Enterprise',
     icon: <Building2 size={20} />,
-    price: { monthly: null, annual: null },
-    description: 'For large agencies with custom needs.',
+    price: { monthly: 'Custom', annual: 'Custom' },
+    description: 'Tailored solutions for large TMCs and franchises.',
     color: '#A259FF',
     features: [
-      'Everything in Pro',
-      'Unlimited Seats',
-      'Custom Integrations',
+      'Custom API Integrations',
+      'White-label Domain',
       'Dedicated Account Manager',
-      'SLA Guarantee',
-      'White-label Options',
-      'On-premise Deployment',
+      'Multi-branch Management',
+      'Role-based Permissions',
+      'Custom Training & Onboarding',
     ],
     cta: 'Contact Sales',
     highlight: false,
@@ -68,49 +69,48 @@ const plans = [
 
 const faqs = [
   {
-    q: 'Is there a free trial?',
-    a: 'Yes! Every plan comes with a 14-day free trial. No credit card required. You get full access to all features in your chosen plan so you can experience the difference before committing.',
+    question: "Is there a free trial available?",
+    answer: "Yes! We offer a 14-day free trial on our Starter and Pro plans. No credit card is required to start exploring."
   },
   {
-    q: 'Can I import my existing client data?',
-    a: 'Absolutely. TravelSuite supports CSV imports for your client database, booking history, and itinerary templates. Our onboarding team will help you migrate everything in under 24 hours.',
+    question: "Can I import data from my current CRM?",
+    answer: "Absolutely. Our onboarding team helps you migrate your leads, itineraries, and supplier data from Excel or other CRMs for free."
   },
   {
-    q: 'Do you support international payments?',
-    a: 'Yes. We integrate with Razorpay for domestic Indian payments and Stripe for international transactions. Your clients can pay in INR, USD, EUR, GBP, and 20+ other currencies.',
+    question: "Does it support international payments?",
+    answer: "Yes, TravelSuite integrates with global payment gateways like Stripe and Razorpay, supporting 135+ currencies."
   },
   {
-    q: 'Can I cancel anytime?',
-    a: 'Of course. There are no long-term contracts. You can upgrade, downgrade, or cancel your subscription at any time from your dashboard. We believe you should stay because you love the product, not because you\'re locked in.',
+    question: "Can I cancel my subscription anytime?",
+    answer: "Yes, you can cancel or change your plan at any time. If you cancel, you'll still have access until the end of your billing cycle."
   },
   {
-    q: 'Do you offer an API for custom integrations?',
-    a: 'Yes, our Pro and Enterprise plans include full REST API access. You can integrate TravelSuite with your existing booking systems, accounting software, or custom tools.',
+    question: "Do you offer API access?",
+    answer: "API access is available on our Enterprise plan for custom integrations with your existing tech stack."
   },
   {
-    q: 'What are the support hours?',
-    a: 'Starter plans get email support (response within 24 hours). Pro plans get priority support with response within 4 hours via WhatsApp and email. Enterprise plans get a dedicated account manager with direct phone access.',
-  },
+    question: "What kind of support is provided?",
+    answer: "Starter users get email support. Pro and Enterprise users enjoy priority 24/7 WhatsApp and phone support."
+  }
 ];
 
-function FAQItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
+function FAQItem({ question, answer }: { question: string, answer: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="border-b border-white/10 last:border-b-0">
+    <div className="border-b border-white/5 last:border-0">
       <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-5 text-left group"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-6 flex items-center justify-between text-left group"
       >
-        <span className={`text-lg font-semibold transition-colors ${open ? 'text-[#00F0FF]' : 'text-white group-hover:text-gray-300'}`}>
-          {q}
-        </span>
+        <span className="text-lg font-semibold group-hover:text-[#00F0FF] transition-colors">{question}</span>
         <ChevronDown
           size={20}
-          className={`text-gray-500 transition-transform duration-300 shrink-0 ml-4 ${open ? 'rotate-180 text-[#00F0FF]' : ''}`}
+          className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#00F0FF]' : ''}`}
         />
       </button>
       <AnimatePresence>
-        {open && (
+        {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -118,7 +118,9 @@ function FAQItem({ q, a }: { q: string; a: string }) {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <p className="text-gray-400 pb-5 leading-relaxed">{a}</p>
+            <p className="pb-6 text-gray-400 leading-relaxed">
+              {answer}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -126,104 +128,112 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-export default function PricingPage() {
-  const [annual, setAnnual] = useState(false);
+export default function Pricing() {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
+    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white relative overflow-x-hidden">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative pt-36 pb-16 px-6 md:px-24 text-center overflow-hidden">
-        {/* Particles Background */}
+      {/* Hero Section */}
+      <section className="relative pt-40 pb-20 px-6 md:px-24 mb-20 overflow-hidden">
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
           <ForceFieldBackground id="tsparticles-pricing" particleCount={150} />
         </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#00F0FF]/5 to-transparent pointer-events-none" />
 
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-6">
-            Simple Pricing
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6">
-            Plans that grow<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#FFD699]">with your business</span>
-          </h1>
-          <p className="text-xl text-gray-400 max-w-xl mx-auto mb-10">
-            No hidden fees. No long-term lock-in. Start free for 14 days.
-          </p>
+        <div className="relative z-10 max-w-7xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-[#00F0FF] mb-8"
+          >
+            <Sparkles size={16} />
+            Simple, Transparent Pricing
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-5xl md:text-8xl font-black mb-8 tracking-tighter"
+          >
+            Scale Your <br />
+            <span className="bg-gradient-to-r from-[#00F0FF] via-[#A259FF] to-[#FF9933] bg-clip-text text-transparent">Business.</span>
+          </motion.h1>
 
-          {/* Billing toggle */}
-          <div className="inline-flex items-center gap-3 p-1 rounded-full border border-white/10 bg-white/5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="flex items-center justify-center gap-4 mb-20"
+          >
+            <span className={`text-lg font-medium transition-colors ${billingCycle === 'monthly' ? 'text-white' : 'text-gray-500'}`}>Monthly</span>
             <button
-              onClick={() => setAnnual(false)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${!annual ? 'bg-white text-black' : 'text-gray-400'}`}
-            >Monthly</button>
-            <button
-              onClick={() => setAnnual(true)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${annual ? 'bg-white text-black' : 'text-gray-400'}`}
-            >Annual <span className="text-[#00F0FF] ml-1">−20%</span></button>
-          </div>
-        </motion.div>
+              onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
+              className="w-16 h-8 rounded-full bg-white/10 border border-white/10 relative p-1 transition-colors hover:border-[#00F0FF]/50"
+            >
+              <motion.div
+                animate={{ x: billingCycle === 'annual' ? 32 : 0 }}
+                className="w-6 h-6 rounded-full bg-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+              />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-medium transition-colors ${billingCycle === 'annual' ? 'text-white' : 'text-gray-500'}`}>Annually</span>
+              <span className="px-2 py-0.5 rounded-md bg-[#00F0FF]/10 text-[#00F0FF] text-xs font-bold">SAVE 20%</span>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
-      {/* Plans */}
-      <section className="pb-32 px-6 md:px-24">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
-          {plans.map(({ name, icon, price, description, color, features, cta, highlight }, i) => (
+      {/* Pricing Cards */}
+      <section className="relative px-6 md:px-24 pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          {plans.map((plan, i) => (
             <motion.div
-              key={name}
+              key={i}
               initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.15 }}
-              className={`relative rounded-3xl p-8 flex flex-col border transition-all duration-300 hover:scale-[1.02] ${highlight
-                ? 'border-[#FF9933]/60 bg-gradient-to-b from-[#FF9933]/10 to-transparent shadow-[0_0_60px_rgba(255,153,51,0.15)]'
-                : 'border-white/10 bg-white/5 hover:border-white/20'
-                }`}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              viewport={{ once: true }}
+              className={`relative group p-8 rounded-[2.5rem] border transition-all duration-500 ${plan.highlight ? 'bg-white/[0.05] border-[#00F0FF]/30 shadow-[0_0_50px_rgba(0,240,255,0.1)]' : 'bg-white/[0.02] border-white/10 hover:border-white/20'}`}
             >
-              {highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#FF9933] text-black text-xs font-black tracking-widest uppercase">
+              {plan.highlight && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#00F0FF] to-[#A259FF] rounded-full text-xs font-black text-white shadow-lg uppercase tracking-wider">
                   Most Popular
                 </div>
               )}
 
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}20`, color }}>
-                  {icon}
-                </div>
-                <h3 className="text-xl font-bold">{name}</h3>
+              <div className="mb-8 p-4 rounded-2xl inline-flex bg-white/5 border border-white/5" style={{ color: plan.color }}>
+                {plan.icon}
               </div>
 
-              <div className="mb-3">
-                {price.monthly ? (
-                  <div className="flex items-end gap-1">
-                    <span className="text-5xl font-black">₹{annual ? price.annual?.toLocaleString() : price.monthly?.toLocaleString()}</span>
-                    <span className="text-gray-400 mb-2">/mo</span>
-                  </div>
-                ) : (
-                  <div className="text-4xl font-black text-gray-300">Custom</div>
+              <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
+              <p className="text-gray-400 text-sm mb-6 leading-relaxed">{plan.description}</p>
+
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-black">₹{typeof plan.price === 'string' ? plan.price : (billingCycle === 'monthly' ? plan.price.monthly : plan.price.annual)}</span>
+                  {typeof plan.price !== 'string' && <span className="text-gray-500">/mo</span>}
+                </div>
+                {typeof plan.price !== 'string' && billingCycle === 'annual' && (
+                  <p className="text-[#00F0FF] text-xs font-medium mt-1">Billed annually</p>
                 )}
               </div>
 
-              <p className="text-gray-400 text-sm mb-6">{description}</p>
-
-              <ul className="space-y-3 mb-8 flex-1">
-                {features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                    <Check size={16} className="mt-0.5 shrink-0" style={{ color }} />
-                    {f}
-                  </li>
+              <div className="space-y-4 mb-10">
+                {plan.features.map((feature, j) => (
+                  <div key={j} className="flex items-start gap-3">
+                    <Check size={18} className="text-[#00F0FF] mt-0.5 shrink-0" />
+                    <span className="text-sm text-gray-300">{feature}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
 
               <button
-                className="w-full py-3 rounded-xl font-bold text-sm transition-all duration-300"
-                style={
-                  highlight
-                    ? { background: '#FF9933', color: '#000' }
-                    : { border: `1px solid ${color}40`, color, background: `${color}10` }
-                }
+                className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 ${plan.highlight ? 'bg-[#00F0FF] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'bg-white/5 text-white hover:bg-white/10'}`}
               >
-                {cta}
+                {plan.cta}
               </button>
             </motion.div>
           ))}
@@ -234,7 +244,7 @@ export default function PricingPage() {
       <ComparisonTable />
 
       {/* FAQ Section */}
-      <section className="pb-32 px-6 md:px-24">
+      <section className="py-32 px-6 md:px-24">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -260,6 +270,9 @@ export default function PricingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Lead Magnet Funnel */}
+      <LeadMagnetSection />
 
       <Footer />
     </div>

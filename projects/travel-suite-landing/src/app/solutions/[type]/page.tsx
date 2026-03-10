@@ -1,7 +1,16 @@
+'use client';
+
+import React from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const ForceFieldBackground = dynamic(
+    () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
+    { ssr: false }
+);
 
 const solutionsData = {
     solo: {
@@ -42,50 +51,57 @@ const solutionsData = {
     }
 };
 
-export default async function SolutionPage({ params }: { params: Promise<{ type: string }> }) {
-    const resolvedParams = await params;
+export default function SolutionPage({ params }: { params: Promise<{ type: string }> }) {
+    const resolvedParams = React.use(params);
     const data = solutionsData[resolvedParams.type as keyof typeof solutionsData] || solutionsData.solo;
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white flex flex-col pt-32">
+        <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-[#00F0FF]/30 selection:text-white flex flex-col relative overflow-hidden">
             <Navbar />
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <section className="px-6 md:px-24 mb-24 max-w-7xl mx-auto">
-                    <div className="flex flex-col lg:flex-row gap-16 items-center">
-                        <div className="lg:w-1/2">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#FF9933]/30 text-[#FF9933] text-sm font-semibold tracking-widest uppercase mb-6">
-                                {data.badge}
-                            </div>
-                            <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-tight">
-                                {data.title}
-                            </h1>
-                            <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-xl">
-                                {data.description}
-                            </p>
+                <section className="relative pt-40 pb-20 px-6 md:px-24 mb-24 overflow-hidden">
+                    <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+                        <ForceFieldBackground id="tsparticles-solutions" particleCount={150} />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#00F0FF]/5 to-transparent pointer-events-none" />
 
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <Link
-                                    href="/login"
-                                    className="px-8 py-4 rounded-full bg-[#00F0FF] text-black font-bold text-center hover:bg-[#00F0FF]/90 transition-all flex items-center justify-center gap-2 group shadow-[0_0_30px_rgba(0,240,255,0.3)]"
-                                >
-                                    Start Your Free Trial
-                                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                                </Link>
-                                <Link
-                                    href="/demo"
-                                    className="px-8 py-4 rounded-full border border-white/20 text-white font-bold text-center hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                                >
-                                    Book a Demo
-                                </Link>
-                            </div>
-                        </div>
+                    <div className="relative z-10 max-w-7xl mx-auto">
+                        <div className="flex flex-col lg:flex-row gap-16 items-center">
+                            <div className="lg:w-1/2">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#FF9933]/30 text-[#FF9933] text-sm font-semibold tracking-widest uppercase mb-6">
+                                    {data.badge}
+                                </div>
+                                <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-tight">
+                                    {data.title}
+                                </h1>
+                                <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-xl">
+                                    {data.description}
+                                </p>
 
-                        <div className="lg:w-1/2 w-full">
-                            <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-square md:aspect-[4/3]">
-                                <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/20 to-[#FF9933]/20 mix-blend-overlay z-10" />
-                                <img src={data.heroImg} alt={data.badge} className="w-full h-full object-cover grayscale opacity-80" />
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Link
+                                        href="/login"
+                                        className="px-8 py-4 rounded-full bg-[#00F0FF] text-black font-bold text-center hover:bg-[#00F0FF]/90 transition-all flex items-center justify-center gap-2 group shadow-[0_0_30px_rgba(0,240,255,0.3)]"
+                                    >
+                                        Start Your Free Trial
+                                        <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                    </Link>
+                                    <Link
+                                        href="/demo"
+                                        className="px-8 py-4 rounded-full border border-white/20 text-white font-bold text-center hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        Book a Demo
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div className="lg:w-1/2 w-full">
+                                <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-square md:aspect-[4/3]">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/20 to-[#FF9933]/20 mix-blend-overlay z-10" />
+                                    <img src={data.heroImg} alt={data.badge} className="w-full h-full object-cover grayscale opacity-80" />
+                                </div>
                             </div>
                         </div>
                     </div>
