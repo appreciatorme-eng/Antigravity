@@ -27,6 +27,12 @@ const PROTECTED_PREFIXES = [
     "/reputation",
     "/social",
     "/support",
+    "/clients",
+    "/drivers",
+    "/inbox",
+    "/add-ons",
+    "/analytics",
+    "/calendar",
 ];
 
 function isProtectedPath(pathname: string): boolean {
