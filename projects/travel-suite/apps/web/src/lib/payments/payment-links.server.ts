@@ -221,6 +221,8 @@ export async function getPaymentLinkByToken(
     .maybeSingle();
 
   if (error) {
+    // payment_links table may not exist in all environments
+    if (error.code === "PGRST205" || error.code === "42P01") return null;
     throw error;
   }
   if (!data) return null;

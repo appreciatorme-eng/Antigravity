@@ -57,6 +57,9 @@ async function dispatch(
 
     return fn(req, { params: Promise.resolve(match.params) });
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
+    }
     console.error("[api-dispatch] unhandled error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -110,9 +113,16 @@ export function createCatchAllHandlers(routes: RouteEntry[]) {
     return dispatch(req, "DELETE", path, sorted);
   }
 
-  async function OPTIONS(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
-    const { path } = await ctx.params;
-    return dispatch(req, "OPTIONS", path, sorted);
+  async function OPTIONS() {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        Allow: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-requested-with",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
   }
 
   return { GET, POST, PATCH, PUT, DELETE, OPTIONS };

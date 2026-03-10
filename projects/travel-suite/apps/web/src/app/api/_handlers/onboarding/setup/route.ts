@@ -324,7 +324,7 @@ export async function POST(request: Request) {
     const safeUserEmail = sanitizeEmail(auth.user.email);
 
     const operatorName = sanitizeText(body.operatorName, { maxLength: 120 });
-    const companyName = sanitizeText(body.companyName, { maxLength: 120 });
+    const companyName = sanitizeText(body.companyName ?? body.name, { maxLength: 120 });
     const phone = sanitizePhone(body.phone) || '';
     const whatsappPhone = sanitizePhone(body.whatsappPhone) || '';
     const bio = sanitizeText(body.bio, { maxLength: 2400, preserveNewlines: true });

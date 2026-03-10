@@ -37,6 +37,48 @@ function computePlatformStats(
   };
 }
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id) {
+      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: snapshot, error: snapshotError } = await (supabase as any)
+      .from("reputation_snapshots")
+      .select("*")
+      .eq("organization_id", profile.organization_id)
+      .order("snapshot_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (snapshotError) {
+      throw snapshotError;
+    }
+
+    return NextResponse.json({ snapshot: snapshot ?? null });
+  } catch (error: unknown) {
+    const message = safeErrorMessage(error, "Request failed");
+    console.error("Error fetching reputation snapshot:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function POST() {
   try {
     const supabase = await createClient();
