@@ -38,7 +38,14 @@ export async function GET(req: NextRequest) {
         const stats = await getGeocodingUsageStats();
 
         if (!stats) {
-            return NextResponse.json({ error: "Could not retrieve usage statistics" }, { status: 500 });
+            return NextResponse.json({
+                status: "not_configured",
+                month: new Date().toISOString().slice(0, 7),
+                usage: { totalRequests: 0, cacheHits: 0, apiCalls: 0, cacheHitRate: "0%" },
+                limits: { threshold: 0, remaining: 0, percentageUsed: "0%", limitReached: false },
+                lastApiCall: null,
+                message: "Geocoding usage statistics are not available. The get_geocoding_usage_stats database function may not be installed.",
+            });
         }
 
         const percentageUsed = ((stats.apiCalls / stats.limitThreshold) * 100).toFixed(2);

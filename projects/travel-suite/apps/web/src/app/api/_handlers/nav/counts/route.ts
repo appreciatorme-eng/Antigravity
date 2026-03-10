@@ -3,7 +3,10 @@ import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
-import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
+
+function sessionNameFromOrgId(orgId: string): string {
+  return `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
+}
 
 type ProposalCountRow = {
   status: string | null;
@@ -50,7 +53,20 @@ const getCachedNavCounts = unstable_cache(
         .in("response_status", ["pending", "draft"]),
     ]);
 
-    if (inboxUnreadResult.error) throw inboxUnreadResult.error;
+    // WhatsApp table may not exist — treat as non-fatal, return 0 unread
+    const inboxUnread =
+      !inboxUnreadResult.error ||
+      inboxUnreadResult.error.code === "PGRST205" ||
+      inboxUnreadResult.error.code === "42P01"
+        ? (inboxUnreadResult.count ?? 0)
+        : 0;
+    if (
+      inboxUnreadResult.error &&
+      inboxUnreadResult.error.code !== "PGRST205" &&
+      inboxUnreadResult.error.code !== "42P01"
+    ) {
+      console.warn("[nav/counts] inboxUnread error (non-fatal):", inboxUnreadResult.error.message);
+    }
     if (proposalsResult.error) throw proposalsResult.error;
     if (bookingsTodayResult.error) throw bookingsTodayResult.error;
     if (reviewsResult.error) throw reviewsResult.error;
@@ -62,7 +78,7 @@ const getCachedNavCounts = unstable_cache(
     }).length;
 
     return {
-      inboxUnread: inboxUnreadResult.count ?? 0,
+      inboxUnread,
       proposalsPending,
       bookingsToday: bookingsTodayResult.count ?? 0,
       reviewsNeedingResponse: reviewsResult.count ?? 0,

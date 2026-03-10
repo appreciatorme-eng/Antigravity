@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     const { token, score, feedback } = body;
 
-    // Validate required fields
+    // Validate token format first (cheap, no DB)
     if (!token || typeof token !== "string" || !UUID_REGEX.test(token)) {
       return NextResponse.json(
         { error: "token is required" },
@@ -34,15 +34,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const scoreValue = Number(score);
-    if (isNaN(scoreValue) || scoreValue < 1 || scoreValue > 10) {
-      return NextResponse.json(
-        { error: "score must be a number between 1 and 10" },
-        { status: 400 }
-      );
-    }
-
-    // Look up the campaign send by nps_token
+    // Look up the campaign send by nps_token before validating score
+    // so an invalid token always returns 404 regardless of score validity
     const { data: send, error: sendError } = await repFrom(supabase, "reputation_campaign_sends")
       .select("*, reputation_review_campaigns(*)")
       .eq("nps_token", token)
@@ -56,6 +49,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Invalid or expired token" },
         { status: 404 }
+      );
+    }
+
+    const scoreValue = Number(score);
+    if (isNaN(scoreValue) || scoreValue < 1 || scoreValue > 10) {
+      return NextResponse.json(
+        { error: "score must be a number between 1 and 10" },
+        { status: 400 }
       );
     }
 

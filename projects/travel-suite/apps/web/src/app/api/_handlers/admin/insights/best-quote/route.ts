@@ -74,7 +74,12 @@ export async function POST(req: NextRequest) {
         .eq("organization_id", admin.organizationId)
         .eq("id", proposalId)
         .maybeSingle();
-      baseProposal = proposal || null;
+
+      if (!proposal) {
+        return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+      }
+
+      baseProposal = proposal;
 
       const { data: selectedAddOns } = await admin.adminClient
         .from("proposal_add_ons")
