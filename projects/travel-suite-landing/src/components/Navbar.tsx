@@ -7,10 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Plane } from 'lucide-react';
 
 const navLinks = [
-  { label: 'Home',     href: '/' },
+  { label: 'Home', href: '/' },
   { label: 'About Us', href: '/about' },
-  { label: 'Pricing',  href: '/pricing' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Blog', href: '/blog' },
 ];
+
+import { ThemeToggle } from './ThemeToggle';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -107,6 +110,7 @@ export function Navbar() {
 
           {/* CTA Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className="hidden md:flex">
+            <ThemeToggle />
             <Link
               href="/login"
               style={{
@@ -176,6 +180,10 @@ export function Navbar() {
               </Link>
             ))}
             <div style={{ paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-400 font-medium">Theme</span>
+                <ThemeToggle />
+              </div>
               <Link href="/login" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 600, color: '#00F0FF', border: '1.5px solid rgba(0,240,255,0.4)', textDecoration: 'none' }}>
                 Account Login
               </Link>

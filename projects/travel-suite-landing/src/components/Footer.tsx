@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  
+
   const footerLinks = [
     {
       title: 'Platform',
@@ -22,7 +22,7 @@ export function Footer() {
       links: [
         { label: 'About Us', href: '/about' },
         { label: 'Careers', href: '#' },
-        { label: 'Blog', href: '#' },
+        { label: 'Blog', href: '/blog' },
         { label: 'Contact', href: '#' },
       ]
     },
@@ -40,7 +40,7 @@ export function Footer() {
     <footer className="bg-[#050505] border-t border-white/5 pt-20 pb-10 px-6 md:px-24">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
-          
+
           {/* Brand Column */}
           <div className="lg:col-span-2 space-y-6">
             <Link href="/" className="inline-flex items-center gap-2 group">

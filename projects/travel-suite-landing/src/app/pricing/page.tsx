@@ -9,6 +9,7 @@ const ForceFieldBackground = dynamic(
   () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
   { ssr: false }
 );
+import { ComparisonTable } from '@/components/ComparisonTable';
 
 const plans = [
   {
@@ -138,7 +139,7 @@ export default function PricingPage() {
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
           <ForceFieldBackground id="tsparticles-pricing" particleCount={150} />
         </div>
-        
+
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-6">
             Simple Pricing
@@ -174,11 +175,10 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.15 }}
-              className={`relative rounded-3xl p-8 flex flex-col border transition-all duration-300 hover:scale-[1.02] ${
-                highlight
-                  ? 'border-[#FF9933]/60 bg-gradient-to-b from-[#FF9933]/10 to-transparent shadow-[0_0_60px_rgba(255,153,51,0.15)]'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
-              }`}
+              className={`relative rounded-3xl p-8 flex flex-col border transition-all duration-300 hover:scale-[1.02] ${highlight
+                ? 'border-[#FF9933]/60 bg-gradient-to-b from-[#FF9933]/10 to-transparent shadow-[0_0_60px_rgba(255,153,51,0.15)]'
+                : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}
             >
               {highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#FF9933] text-black text-xs font-black tracking-widest uppercase">
@@ -229,6 +229,9 @@ export default function PricingPage() {
           ))}
         </div>
       </section>
+
+      {/* Comparison Table */}
+      <ComparisonTable />
 
       {/* FAQ Section */}
       <section className="pb-32 px-6 md:px-24">
