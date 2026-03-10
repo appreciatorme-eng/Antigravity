@@ -1,17 +1,5 @@
 import { z } from 'zod';
 
-// Razorpay credentials are required in production — payments cannot function without them.
-// Use VERCEL_ENV (set by Vercel platform) rather than NODE_ENV because Vercel sets
-// NODE_ENV=production on ALL deployments including preview branches. VERCEL_ENV is
-// 'production' only for the canonical production deployment.
-const razorpayField = (isProduction: boolean) =>
-  isProduction ? z.string().min(1) : z.string().min(1).optional();
-
-const IS_PROD_ENV =
-  process.env.VERCEL_ENV === 'production' ||
-  // Non-Vercel environments (bare Node.js, Docker, etc.) fall back to NODE_ENV
-  (process.env.VERCEL_ENV === undefined && process.env.NODE_ENV === 'production');
-
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   INTERNAL_API_SECRET: z.string().min(16).optional(),
@@ -26,9 +14,12 @@ const serverSchema = z.object({
   GOOGLE_GEMINI_API_KEY: z.string().min(1).optional(),
   GROQ_API_KEY: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
-  RAZORPAY_KEY_ID: razorpayField(IS_PROD_ENV),
-  RAZORPAY_KEY_SECRET: razorpayField(IS_PROD_ENV),
-  RAZORPAY_WEBHOOK_SECRET: razorpayField(IS_PROD_ENV),
+  // TODO: Add RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET to Vercel
+  // project environment variables before enabling payments in production. Payment
+  // endpoints return 503 when these are absent (enforced inside the payment handlers).
+  RAZORPAY_KEY_ID: z.string().min(1).optional(),
+  RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
   RESEND_FROM_NAME: z.string().min(1).optional(),
