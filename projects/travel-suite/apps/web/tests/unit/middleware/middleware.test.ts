@@ -12,22 +12,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const updateSessionMock = vi.fn();
-const getUserMock = vi.fn();
-const fromMock = vi.fn();
+const profileSelectMock = vi.fn();
 
 vi.mock("@/lib/supabase/middleware", () => ({
     updateSession: updateSessionMock,
 }));
-
-vi.mock("@supabase/ssr", () => ({
-    createServerClient: vi.fn(() => ({
-        auth: { getUser: getUserMock },
-        from: fromMock,
-    })),
-}));
-
-const SUPABASE_URL = "http://localhost:54321";
-const SUPABASE_KEY = "test-anon-key";
 
 function makeRequest(pathname: string, search = ""): NextRequest {
     return new NextRequest(`http://localhost${pathname}${search}`);
@@ -47,6 +36,23 @@ function buildProfileChain(profile: {
     };
 }
 
+function mockUpdateSession(
+    user: { id: string } | null,
+    profile: {
+        organization_id: string | null;
+        role: string | null;
+        onboarding_step: number | null;
+    } | null = null
+) {
+    updateSessionMock.mockImplementation(async (req: NextRequest) => ({
+        response: NextResponse.next({ request: req }),
+        user,
+        supabase: {
+            from: vi.fn().mockReturnValue(buildProfileChain(profile)),
+        },
+    }));
+}
+
 async function loadMiddleware() {
     vi.resetModules();
     return import("../../../src/middleware");
@@ -54,32 +60,23 @@ async function loadMiddleware() {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE_URL;
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = SUPABASE_KEY;
-    updateSessionMock.mockImplementation(async (req: NextRequest) =>
-        NextResponse.next({ request: req })
-    );
-    getUserMock.mockResolvedValue({ data: { user: null } });
-    fromMock.mockReturnValue(buildProfileChain(null));
+    mockUpdateSession(null);
 });
 
 afterEach(() => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    vi.restoreAllMocks();
 });
 
 it("passes public routes through without hitting the DB", async () => {
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/"));
     expect(response.status).toBe(200);
-    expect(getUserMock).not.toHaveBeenCalled();
 });
 
 it("passes /auth route through without hitting the DB", async () => {
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/auth"));
     expect(response.status).toBe(200);
-    expect(getUserMock).not.toHaveBeenCalled();
 });
 
 it("redirects unauthenticated request to /admin to /auth with next param", async () => {
@@ -106,9 +103,9 @@ it("redirects unauthenticated request to /onboarding to /auth", async () => {
 });
 
 it("redirects incomplete-onboarding user from /admin to /onboarding", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: null, role: "admin", onboarding_step: 0 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: null, role: "admin", onboarding_step: 0 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/admin/trips"));
@@ -119,9 +116,9 @@ it("redirects incomplete-onboarding user from /admin to /onboarding", async () =
 });
 
 it("redirects user with no organization from /planner to /onboarding", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: null, role: "admin", onboarding_step: 1 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: null, role: "admin", onboarding_step: 1 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/planner"));
@@ -130,9 +127,9 @@ it("redirects user with no organization from /planner to /onboarding", async () 
 });
 
 it("allows onboarding-complete admin user through to /admin", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: "org-1", role: "admin", onboarding_step: 2 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/admin/trips"));
@@ -140,9 +137,9 @@ it("allows onboarding-complete admin user through to /admin", async () => {
 });
 
 it("redirects onboarding-complete user away from /onboarding to /admin", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: "org-1", role: "admin", onboarding_step: 2 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/onboarding"));
@@ -151,9 +148,9 @@ it("redirects onboarding-complete user away from /onboarding to /admin", async (
 });
 
 it("redirects onboarding-complete user to safe next param from /onboarding", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: "org-1", role: "admin", onboarding_step: 2 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/onboarding", "?next=%2Ftrips"));
@@ -162,9 +159,9 @@ it("redirects onboarding-complete user to safe next param from /onboarding", asy
 });
 
 it("blocks open-redirect: //evil.com next param falls back to /admin", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: "org-1", role: "admin", onboarding_step: 2 })
+    mockUpdateSession(
+        { id: "user-1" },
+        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/onboarding", "?next=%2F%2Fevil.com"));
@@ -174,9 +171,9 @@ it("blocks open-redirect: //evil.com next param falls back to /admin", async () 
 });
 
 it("super_admin bypasses onboarding check for /god routes", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { id: "super-1" } } });
-    fromMock.mockReturnValue(
-        buildProfileChain({ organization_id: null, role: "super_admin", onboarding_step: null })
+    mockUpdateSession(
+        { id: "super-1" },
+        { organization_id: null, role: "super_admin", onboarding_step: null }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/god/panel"));

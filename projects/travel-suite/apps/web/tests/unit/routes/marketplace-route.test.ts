@@ -41,18 +41,44 @@ vi.mock("@/lib/observability/metrics", () => ({
 }));
 
 function buildMarketplaceQueryChain(rows: unknown[]) {
-    const finalOrder = { order: vi.fn().mockResolvedValue({ data: rows, error: null }) };
-    const chain = {
+    const result = { data: rows, error: null, count: rows.length };
+    const chain: Record<string, ReturnType<typeof vi.fn>> = {
         select: vi.fn(),
         eq: vi.fn(),
         contains: vi.fn(),
         or: vi.fn(),
-        order: vi.fn().mockReturnValue(finalOrder),
+        order: vi.fn(),
+        range: vi.fn(),
+        limit: vi.fn(),
     };
-    chain.select.mockReturnValue(chain);
-    chain.eq.mockReturnValue(chain);
-    chain.contains.mockReturnValue(chain);
-    chain.or.mockReturnValue(chain);
+    for (const key of Object.keys(chain)) {
+        chain[key].mockImplementation(() => chain);
+    }
+    chain.range.mockImplementation((from: number, to: number) => {
+        const sliced = rows.slice(from, to + 1);
+        const rangeChain = { ...chain };
+        for (const key of Object.keys(rangeChain)) {
+            rangeChain[key].mockImplementation(() => rangeChain);
+        }
+        Object.defineProperty(rangeChain, "then", {
+            value: (resolve: (v: unknown) => void) => resolve({ data: sliced, error: null, count: rows.length }),
+        });
+        return rangeChain;
+    });
+    chain.limit.mockImplementation(() => {
+        const limitChain = { ...chain };
+        for (const key of Object.keys(limitChain)) {
+            limitChain[key].mockImplementation(() => limitChain);
+        }
+        Object.defineProperty(limitChain, "then", {
+            value: (resolve: (v: unknown) => void) => resolve({ data: rows, error: null, count: rows.length }),
+        });
+        return limitChain;
+    });
+    Object.defineProperty(chain, "then", {
+        value: (resolve: (v: unknown) => void) => resolve(result),
+        configurable: true,
+    });
     return chain;
 }
 
