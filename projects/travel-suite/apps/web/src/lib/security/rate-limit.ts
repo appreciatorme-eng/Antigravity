@@ -97,10 +97,18 @@ function enforceLocalRateLimit(options: RateLimitOptions): RateLimitResult {
 
 function warnLocalFallback(prefix: string): void {
     if (process.env.NODE_ENV === "production") {
+        // In production this is a SEV-HIGH operational issue: rate limiting will
+        // reset on every cold start, making it trivially bypassable. Surface as
+        // an error so it is caught by error monitoring (Sentry etc.).
+        console.error(
+            `[rate-limit] CRITICAL: Redis unavailable for prefix "${prefix}". ` +
+            `Falling back to in-memory rate limiting — bypassed on every serverless cold start. ` +
+            `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to fix.`
+        );
+    } else {
         console.warn(
-            `[rate-limit] Redis not available for prefix "${prefix}". ` +
-            `Falling back to in-memory rate limiting — resets per cold start in serverless. ` +
-            `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed rate limiting.`
+            `[rate-limit] Redis not configured for prefix "${prefix}". ` +
+            `Using in-memory fallback (acceptable in dev/test).`
         );
     }
 }

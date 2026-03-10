@@ -87,17 +87,19 @@ async function claimReplayKey(key: string, replayWindowMs: number): Promise<bool
             return result === "OK";
         } catch {
             if (process.env.NODE_ENV === "production") {
-                console.warn(
-                    "[cron-auth] Redis unavailable for replay detection — falling back to in-memory. " +
+                // SEV-HIGH: Redis error mid-request — replay keys will reset on cold start.
+                console.error(
+                    "[cron-auth] CRITICAL: Redis error during replay detection — falling back to in-memory. " +
                     "Replay keys reset per cold start in serverless. " +
-                    "Ensure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set."
+                    "Investigate UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN health."
                 );
             }
         }
     } else if (process.env.NODE_ENV === "production") {
-        console.warn(
-            "[cron-auth] Redis not configured for replay detection — using in-memory fallback. " +
-            "Replay keys reset per cold start in serverless. " +
+        // SEV-HIGH: Redis not configured in production — replay protection is instance-local only.
+        console.error(
+            "[cron-auth] CRITICAL: Redis not configured — replay detection uses in-memory fallback. " +
+            "Replay keys reset per cold start. " +
             "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed replay detection."
         );
     }
