@@ -123,22 +123,6 @@ export function Navbar() {
             >
               Account Login
             </Link>
-            <Link
-              href="/pricing"
-              style={{
-                padding: '14px 32px',
-                borderRadius: '999px',
-                fontSize: '18px',
-                fontWeight: 700,
-                color: '#000',
-                background: '#00F0FF',
-                textDecoration: 'none',
-                transition: 'all 0.3s ease',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Get Started
-            </Link>
           </div>
 
           {/* Mobile toggle */}
@@ -194,9 +178,6 @@ export function Navbar() {
             <div style={{ paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               <Link href="/login" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 600, color: '#00F0FF', border: '1.5px solid rgba(0,240,255,0.4)', textDecoration: 'none' }}>
                 Account Login
-              </Link>
-              <Link href="/pricing" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 700, color: '#000', background: '#00F0FF', textDecoration: 'none' }}>
-                Get Started
               </Link>
             </div>
           </motion.div>

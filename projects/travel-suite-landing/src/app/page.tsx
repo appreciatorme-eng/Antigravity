@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
@@ -462,10 +463,10 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="pt-6 pointer-events-auto"
           >
-            <button className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)]">
+            <Link href="/login" className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)] no-underline">
               <ShinyText text="Experience the Magic" speed={2.5} color="#ffffff" shineColor="#FFEBCC" />
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Link>
           </motion.div>
         </div>
       </section>
@@ -930,14 +931,14 @@ export default function Home() {
       <ROICalculator />
 
       {/* ═══ SECTION 10: Live Pulse Dashboard ═══ */}
-      <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+      <section className="relative z-30 py-24 px-10 md:px-24" style={{ background: 'linear-gradient(180deg, #050508 0%, #0A0A10 50%, #050508 100%)' }}>
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-center mb-8"
+            className="text-center mb-12"
           >
             <h2 className="text-4xl md:text-5xl font-bold">Happening <span className="text-[#00F0FF]">Right Now</span></h2>
             <p className="text-xl text-gray-400 mt-4">Tour operators across India are sending proposals as you read this.</p>
@@ -948,25 +949,78 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="relative h-[580px] rounded-3xl border border-white/10 bg-white/[0.02] overflow-hidden flex items-center justify-center"
+            className="relative rounded-3xl border border-white/10 overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.02) 0%, rgba(10,10,15,0.95) 30%, rgba(10,10,15,0.98) 70%, rgba(0,240,255,0.02) 100%)' }}
           >
-            {/* India Map Component */}
-            <IndiaMap />
-
-            {/* Center stat overlay */}
-            <div className="relative z-20 text-center p-8 rounded-3xl bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 shadow-[0_0_40px_rgba(0,240,255,0.15)]">
-              <div className="text-5xl font-black text-[#00F0FF]">
-                <CountUp to={247} duration={3} />
+            <div className="flex flex-col md:flex-row items-center">
+              {/* Left side: India Map */}
+              <div className="relative flex-1 h-[500px] md:h-[540px] flex items-center justify-center">
+                <IndiaMap />
+                {/* Subtle grid overlay on map area only */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
               </div>
-              <p className="text-sm text-gray-400 mt-2">proposals sent today</p>
-              <div className="flex items-center justify-center gap-2 mt-3">
-                <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse"></div>
-                <span className="text-xs text-[#00F0FF]/60">Live</span>
+
+              {/* Right side: Live Stats Panel */}
+              <div className="md:w-[320px] w-full p-8 md:pr-10 flex flex-col gap-6">
+                {/* Main stat */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  viewport={{ once: true }}
+                  className="p-6 rounded-2xl border border-[#00F0FF]/20 bg-[#00F0FF]/[0.04] text-center"
+                >
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-[#00FF88] animate-pulse"></div>
+                    <span className="text-xs text-[#00FF88] font-semibold uppercase tracking-wider">Live</span>
+                  </div>
+                  <div className="text-5xl font-black text-[#00F0FF]">
+                    <CountUp to={247} duration={3} />
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">proposals sent today</p>
+                </motion.div>
+
+                {/* Secondary stats */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  viewport={{ once: true }}
+                  className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
+                >
+                  <div className="text-3xl font-bold text-[#FF9933]">
+                    <CountUp to={42} duration={2.5} />
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">operators online now</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                  viewport={{ once: true }}
+                  className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
+                >
+                  <div className="text-3xl font-bold text-[#00FF88]">
+                    ₹<CountUp to={18} duration={2} />L
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">bookings processed today</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                  viewport={{ once: true }}
+                  className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
+                >
+                  <div className="text-3xl font-bold text-[#A855F7]">
+                    <CountUp to={10} duration={2} />
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">cities active right now</p>
+                </motion.div>
               </div>
             </div>
-
-            {/* Subtle grid overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
           </motion.div>
         </div>
       </section>
