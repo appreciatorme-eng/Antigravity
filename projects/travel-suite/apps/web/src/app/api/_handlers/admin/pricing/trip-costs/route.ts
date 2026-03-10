@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const CreateSchema = z.object({
   trip_id: z.string().uuid(),
@@ -51,7 +52,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/admin/pricing/trip-costs:POST] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 
     return NextResponse.json(data, { status: 201 });

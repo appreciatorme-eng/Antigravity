@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const UpdateSchema = z.object({
   category: z.string().min(1).optional(),
@@ -47,8 +48,9 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error || !data) {
+      console.error("[/api/admin/pricing/overheads/[id]:PATCH] DB error:", error);
       return NextResponse.json(
-        { error: error?.message || "Not found" },
+        { error: safeErrorMessage(error, "Not found") },
         { status: error ? 500 : 404 }
       );
     }
@@ -79,7 +81,8 @@ export async function DELETE(req: NextRequest) {
       .eq("organization_id", admin.organizationId);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/admin/pricing/overheads/[id]:DELETE] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -49,7 +50,8 @@ export async function GET(req: NextRequest) {
       .order("category", { ascending: true });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/admin/pricing/overheads:GET] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 
     return NextResponse.json({ expenses: data || [] });
@@ -101,7 +103,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/admin/pricing/overheads:POST] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 
     return NextResponse.json(data, { status: 201 });

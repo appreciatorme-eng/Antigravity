@@ -3,6 +3,7 @@ import { z } from "zod";
 import Groq from "groq-sdk";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sanitizeText } from "@/lib/security/sanitize";
 
 const TRIP_CLONE_RATE_LIMIT_MAX = 20;
@@ -392,7 +393,7 @@ export async function POST(
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: safeErrorMessage(error, "Request failed") },
       { status: 500 }
     );
   }

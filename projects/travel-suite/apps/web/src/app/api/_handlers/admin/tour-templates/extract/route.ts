@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/admin';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 import { extractTourFromPDF } from '@/lib/import/pdf-extractor';
 import { extractTourFromURL, getTourPreviewFromURL } from '@/lib/import/url-scraper';
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result, { status: result.success ? 200 : 400 });
     } catch (error) {
       return NextResponse.json(
-        { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+        { success: false, error: safeErrorMessage(error, "Request failed") },
         { status: 500 }
       );
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
   getCachedJson,
   isJsonCacheConfigured,
@@ -237,8 +238,8 @@ function toInr(usd: number): number {
 }
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
-  return "Failed to load cost overview";
+  if (error instanceof Error) return safeErrorMessage(error, "Request failed");
+  return "Request failed";
 }
 
 function toCacheMeta(

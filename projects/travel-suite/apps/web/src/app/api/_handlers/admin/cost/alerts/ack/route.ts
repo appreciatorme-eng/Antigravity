@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { acknowledgeCostAlert } from "@/lib/cost/alert-ack";
 import { invalidateCostOverviewCache } from "@/lib/cost/overview-cache";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const AckAlertSchema = z.object({
   alert_id: z.string().trim().min(3).max(200),
@@ -97,10 +98,6 @@ export async function POST(request: NextRequest) {
       acknowledged_by: acknowledged.acknowledgedBy,
     });
   } catch (error) {
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "Failed to acknowledge alert";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { embedAllTemplates } from "@/lib/embeddings";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type AdminAuth = Awaited<ReturnType<typeof requireAdmin>>;
 
@@ -70,13 +71,13 @@ export async function POST(req: NextRequest) {
     await auditAdminAction(
       admin,
       "Generate embeddings failed",
-      error instanceof Error ? error.message : "Unknown error"
+      safeErrorMessage(error, "Request failed")
     );
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: safeErrorMessage(error, "Request failed"),
         message: "Failed to generate embeddings. Check server logs for details.",
       },
       { status: 500 }
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: safeErrorMessage(error, "Request failed"),
       },
       { status: 500 }
     );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sanitizeText } from "@/lib/security/sanitize";
 
 const WHATSAPP_HEALTH_RATE_LIMIT_MAX = 60;
@@ -289,7 +290,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      { error: safeErrorMessage(error, "Request failed") },
       { status: 500 },
     );
   }

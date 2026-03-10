@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const QuerySchema = z.object({
   vendor: z.string().min(1),
@@ -42,7 +43,8 @@ export async function GET(req: NextRequest) {
       .limit(10);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[/api/admin/pricing/vendor-history:GET] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 
     const rows = (data || []) as HistoryRow[];

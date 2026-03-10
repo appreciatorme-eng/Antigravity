@@ -9,6 +9,7 @@ import {
   parseTierPricing,
   type ProposalPackageTier,
 } from "@/lib/proposals/types";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const TierPriceSchema = z.number().min(0).max(100_000_000).nullable().optional();
 
@@ -133,7 +134,8 @@ export async function PATCH(
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      console.error("[/api/admin/proposals/[id]/tiers:PATCH] DB error:", error);
+      return NextResponse.json({ error: safeErrorMessage(error, "Validation failed") }, { status: 400 });
     }
     if (!updated) {
       return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
