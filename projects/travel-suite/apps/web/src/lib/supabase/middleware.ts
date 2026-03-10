@@ -1,4 +1,5 @@
-import { createServerClient, type SupabaseClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { User } from '@supabase/supabase-js';
 import { getSupabasePublicRuntimeConfig } from './env';

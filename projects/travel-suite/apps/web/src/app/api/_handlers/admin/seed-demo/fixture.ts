@@ -206,7 +206,7 @@ export function buildExternalDrivers() {
 }
 
 export function buildWorkflowStageEvents() {
-  const [c1, c2, c3, c4, c5, c6, c7, , c9, c10, c11, c12] = DEMO_CLIENT_IDS;
+  const [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12] = DEMO_CLIENT_IDS;
   return [
     { id: uuid(), profile_id: c11, organization_id: DEMO_ORG_ID, from_stage: "",                 to_stage: "lead",              changed_by: DEMO_ADMIN_ID, created_at: "2026-03-01T09:00:00Z" },
     { id: uuid(), profile_id: c12, organization_id: DEMO_ORG_ID, from_stage: "",                 to_stage: "lead",              changed_by: DEMO_ADMIN_ID, created_at: "2026-03-03T17:00:00Z" },
