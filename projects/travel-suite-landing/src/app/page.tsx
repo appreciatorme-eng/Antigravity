@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef, useEffect, useState, useCallback } from "react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { SplineScene } from "@/components/SplineScene";
 import { CardSwap, Card } from "@/components/CardSwap";
 import ShinyText from "@/components/ShinyText";
@@ -12,12 +12,265 @@ const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
   { ssr: false }
 );
-import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag, Check, Users, Map, Compass } from "lucide-react";
+import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag, Check, Users, Map, Compass, XCircle, CheckCircle2, Calculator, ChevronLeft, ChevronRight, Play, Zap } from "lucide-react";
+import { CountUp } from "@/components/CountUp";
+import { IndiaMap } from "@/components/IndiaMap";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
+}
+
+/* ─── ROI Calculator Component ─── */
+function ROICalculator() {
+  const [trips, setTrips] = useState(20);
+  const [avgBooking, setAvgBooking] = useState(100000);
+  const hoursSaved = Math.round(trips * 3.5);
+  const addOnRevenue = Math.round(trips * avgBooking * 0.15);
+  const proposalTime = Math.round(trips * 45);
+  const newProposalTime = Math.round(trips * 5);
+
+  return (
+    <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+      <div className="max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#FF9933]/30 text-[#FF9933] text-sm font-semibold tracking-widest uppercase mb-4">
+            <Calculator size={14} /> ROI Calculator
+          </div>
+          <h2 className="text-4xl md:text-5xl font-bold">See How Much You <span className="text-[#FF9933]">Save</span></h2>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+          className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-8 md:p-12"
+        >
+          {/* Sliders */}
+          <div className="grid md:grid-cols-2 gap-10 mb-12">
+            <div>
+              <label className="text-sm text-gray-400 font-semibold tracking-wider uppercase block mb-3">
+                Trips per month
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={trips}
+                  onChange={e => setTrips(Number(e.target.value))}
+                  className="flex-1 h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#FF9933] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-[#FF9933] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(255,153,51,0.5)]"
+                />
+                <span className="text-2xl font-black text-[#FF9933] w-14 text-right">{trips}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 font-semibold tracking-wider uppercase block mb-3">
+                Average Booking Value
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={10000}
+                  max={500000}
+                  step={5000}
+                  value={avgBooking}
+                  onChange={e => setAvgBooking(Number(e.target.value))}
+                  className="flex-1 h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#00F0FF] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-[#00F0FF] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(0,240,255,0.5)]"
+                />
+                <span className="text-2xl font-black text-[#00F0FF] w-24 text-right">₹{(avgBooking / 1000).toFixed(0)}K</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-5 rounded-2xl border border-[#00F0FF]/20 bg-[#00F0FF]/5">
+              <div className="text-3xl font-black text-[#00F0FF]">{hoursSaved}h</div>
+              <p className="text-xs text-gray-400 mt-1">Hours Saved / Month</p>
+            </div>
+            <div className="text-center p-5 rounded-2xl border border-[#FF9933]/20 bg-[#FF9933]/5">
+              <div className="text-3xl font-black text-[#FF9933]">₹{(addOnRevenue / 1000).toFixed(0)}K</div>
+              <p className="text-xs text-gray-400 mt-1">Add-on Revenue Gained</p>
+            </div>
+            <div className="text-center p-5 rounded-2xl border border-red-500/20 bg-red-500/5">
+              <div className="text-3xl font-black text-red-400">{proposalTime}m</div>
+              <p className="text-xs text-gray-400 mt-1">Old Proposal Time</p>
+            </div>
+            <div className="text-center p-5 rounded-2xl border border-[#A259FF]/20 bg-[#A259FF]/5">
+              <div className="text-3xl font-black text-[#A259FF]">{newProposalTime}m</div>
+              <p className="text-xs text-gray-400 mt-1">New Proposal Time</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Interactive Proposal Preview Component ─── */
+const proposalDays = [
+  {
+    day: 1,
+    title: 'Arrive in Bali',
+    location: 'Ubud, Bali',
+    image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600&auto=format&fit=crop',
+    description: 'Private airport transfer to your luxury villa in Ubud. Welcome dinner at the resort.',
+    tags: ['Transfer', 'Dinner Included'],
+  },
+  {
+    day: 2,
+    title: 'Sacred Temple Trail',
+    location: 'Tirta Empul & Tegallalang',
+    image: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=80&w=600&auto=format&fit=crop',
+    description: 'Full-day guided tour of sacred water temples and the iconic rice terraces.',
+    tags: ['Guided Tour', 'Cultural'],
+  },
+  {
+    day: 3,
+    title: 'Nusa Penida Island',
+    location: 'Nusa Penida',
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=600&auto=format&fit=crop',
+    description: 'Speed boat to Nusa Penida. Snorkeling with manta rays and cliff-top photo spots.',
+    tags: ['Adventure', 'Snorkeling'],
+  },
+];
+
+function ProposalPreview() {
+  const [currentDay, setCurrentDay] = useState(0);
+  const [accepted, setAccepted] = useState(false);
+
+  const nextDay = useCallback(() => {
+    setCurrentDay(prev => Math.min(prev + 1, proposalDays.length - 1));
+  }, []);
+
+  const prevDay = useCallback(() => {
+    setCurrentDay(prev => Math.max(prev - 1, 0));
+  }, []);
+
+  return (
+    <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+      <div className="max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#A259FF]/30 text-[#A259FF] text-sm font-semibold tracking-widest uppercase mb-4">
+            <FileText size={14} /> Try It Yourself
+          </div>
+          <h2 className="text-4xl md:text-5xl font-bold">Experience a <span className="text-[#A259FF]">Magic Link</span></h2>
+          <p className="text-xl text-gray-400 mt-4">This is what your clients see. Swipe through the days.</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+          className="relative max-w-lg mx-auto"
+        >
+          {/* Phone container */}
+          <div className="rounded-[32px] border-[6px] border-white/10 bg-[#0A0A0A] overflow-hidden shadow-2xl">
+            {/* Image */}
+            <div className="relative h-56 w-full overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentDay}
+                  src={proposalDays[currentDay].image}
+                  alt={proposalDays[currentDay].title}
+                  className="w-full h-full object-cover"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -50 }}
+                  transition={{ duration: 0.3 }}
+                />
+              </AnimatePresence>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] to-transparent"></div>
+              <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-xs text-white font-bold border border-white/20">
+                Day {proposalDays[currentDay].day} of {proposalDays.length}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentDay}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="text-[#00F0FF] text-xs font-semibold tracking-wider uppercase">{proposalDays[currentDay].location}</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">{proposalDays[currentDay].title}</h3>
+                  <p className="text-sm text-gray-400 mt-3 leading-relaxed">{proposalDays[currentDay].description}</p>
+                  <div className="flex gap-2 mt-4">
+                    {proposalDays[currentDay].tags.map(tag => (
+                      <span key={tag} className="px-3 py-1 rounded-full text-[10px] bg-white/5 border border-white/10 text-gray-300 font-medium">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Navigation */}
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <button
+                  onClick={prevDay}
+                  disabled={currentDay === 0}
+                  className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                {/* Dots */}
+                <div className="flex gap-2">
+                  {proposalDays.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors ${i === currentDay ? 'bg-[#A259FF]' : 'bg-white/20'}`}
+                    />
+                  ))}
+                </div>
+
+                {currentDay === proposalDays.length - 1 ? (
+                  <button
+                    onClick={() => setAccepted(true)}
+                    className={`px-5 py-2 rounded-full text-xs font-bold transition-all ${
+                      accepted
+                        ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]'
+                        : 'bg-[#A259FF] text-white hover:shadow-[0_0_20px_rgba(162,89,255,0.4)]'
+                    }`}
+                  >
+                    {accepted ? '✓ Accepted!' : 'Accept & Pay'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={nextDay}
+                    className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
 }
 
 export default function Home() {
@@ -214,6 +467,96 @@ export default function Home() {
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ Before vs. After — Hooks visitors with problem/solution right away ═══ */}
+      <section className="relative z-30 bg-transparent py-24 px-10 md:px-24 mt-10">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#ff3366]/30 text-[#ff3366] text-sm font-semibold tracking-widest uppercase mb-4">
+              <Zap size={14} /> The Transformation
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold">The Old Way vs. <span className="text-[#00F0FF]">The TravelSuite Way</span></h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* OLD WAY */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="p-8 rounded-3xl border border-red-500/20 bg-red-500/5 space-y-5"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400">
+                  <XCircle size={24} />
+                </div>
+                <h3 className="text-2xl font-bold text-red-400">The Old Way</h3>
+              </div>
+              {[
+                { text: 'Client details scattered across 5 WhatsApp groups', icon: '💬' },
+                { text: 'Itineraries copy-pasted from old emails & Word docs', icon: '📄' },
+                { text: 'Payment follow-ups lost in endless threads', icon: '💸' },
+                { text: 'Forgetting to upsell spa packages & transfers', icon: '😰' },
+                { text: '11 PM phone calls for driver contact numbers', icon: '📞' },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  viewport={{ once: true }}
+                  className="flex items-center gap-3 text-gray-400"
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <p className="text-sm">{item.text}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* TRAVELSUITE WAY */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="p-8 rounded-3xl border border-[#00F0FF]/30 bg-[#00F0FF]/5 space-y-5 shadow-[0_0_40px_rgba(0,240,255,0.05)]"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#00F0FF]/20 flex items-center justify-center text-[#00F0FF]">
+                  <CheckCircle2 size={24} />
+                </div>
+                <h3 className="text-2xl font-bold text-[#00F0FF]">The TravelSuite Way</h3>
+              </div>
+              {[
+                { text: 'Every client in one intelligent CRM pipeline', icon: '✅' },
+                { text: 'Drag & drop itinerary builder with auto-descriptions', icon: '🎯' },
+                { text: 'Auto payment reminders via WhatsApp', icon: '💰' },
+                { text: 'One-click add-on marketplace boosts revenue 30%', icon: '🚀' },
+                { text: 'Automated driver & activity confirmations', icon: '🤖' },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 + 0.2 }}
+                  viewport={{ once: true }}
+                  className="flex items-center gap-3 text-gray-200"
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <p className="text-sm font-medium">{item.text}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -580,7 +923,117 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ═══ SECTION: Interactive Proposal Preview ═══ */}
+      <ProposalPreview />
 
+      {/* ═══ SECTION: ROI Calculator ═══ */}
+      <ROICalculator />
+
+      {/* ═══ SECTION 10: Live Pulse Dashboard ═══ */}
+      <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold">Happening <span className="text-[#00F0FF]">Right Now</span></h2>
+            <p className="text-xl text-gray-400 mt-4">Tour operators across India are sending proposals as you read this.</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="relative h-[580px] rounded-3xl border border-white/10 bg-white/[0.02] overflow-hidden flex items-center justify-center"
+          >
+            {/* India Map Component */}
+            <IndiaMap />
+
+            {/* Center stat overlay */}
+            <div className="relative z-20 text-center p-8 rounded-3xl bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 shadow-[0_0_40px_rgba(0,240,255,0.15)]">
+              <div className="text-5xl font-black text-[#00F0FF]">
+                <CountUp to={247} duration={3} />
+              </div>
+              <p className="text-sm text-gray-400 mt-2">proposals sent today</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse"></div>
+                <span className="text-xs text-[#00F0FF]/60">Live</span>
+              </div>
+            </div>
+
+            {/* Subtle grid overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 11: Integration Partners ═══ */}
+      <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-sm text-gray-500 uppercase tracking-widest font-semibold mb-8"
+          >
+            Integrates with the tools you already use
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="flex flex-wrap justify-center gap-6 md:gap-10"
+          >
+            {['WhatsApp', 'Razorpay', 'Amadeus', 'Google Flights', 'Twilio'].map((name) => (
+              <div
+                key={name}
+                className="px-6 py-3 rounded-2xl border border-white/10 bg-white/[0.03] text-gray-400 text-sm font-semibold hover:border-[#00F0FF]/40 hover:text-[#00F0FF] hover:bg-[#00F0FF]/5 transition-all cursor-default"
+              >
+                {name}
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 12: Demo Video ═══ */}
+      <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold">See It In <span className="text-[#FF9933]">Action</span></h2>
+            <p className="text-xl text-gray-400 mt-4">Watch how TravelSuite transforms your daily workflow in 60 seconds.</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="relative aspect-video rounded-3xl border border-white/10 bg-gradient-to-br from-[#FF9933]/10 via-[#0A0A0A] to-[#00F0FF]/10 overflow-hidden flex items-center justify-center group cursor-pointer"
+          >
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"></div>
+            <div className="relative z-10 w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+              <Play size={32} className="text-white ml-1" />
+            </div>
+            <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center">
+              <p className="text-sm text-gray-400">TravelSuite Product Demo</p>
+              <p className="text-sm text-gray-500">1:02</p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Climax / CTA */}
       <section className="relative z-30 py-40 bg-transparent text-center px-10 border-t border-white/10 mt-20">

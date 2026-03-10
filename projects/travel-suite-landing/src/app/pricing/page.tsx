@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
-import { Check, Zap, Building2, Sparkles } from 'lucide-react';
+import { Check, Zap, Building2, Sparkles, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const ForceFieldBackground = dynamic(
   () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
@@ -64,6 +64,66 @@ const plans = [
     highlight: false,
   },
 ];
+
+const faqs = [
+  {
+    q: 'Is there a free trial?',
+    a: 'Yes! Every plan comes with a 14-day free trial. No credit card required. You get full access to all features in your chosen plan so you can experience the difference before committing.',
+  },
+  {
+    q: 'Can I import my existing client data?',
+    a: 'Absolutely. TravelSuite supports CSV imports for your client database, booking history, and itinerary templates. Our onboarding team will help you migrate everything in under 24 hours.',
+  },
+  {
+    q: 'Do you support international payments?',
+    a: 'Yes. We integrate with Razorpay for domestic Indian payments and Stripe for international transactions. Your clients can pay in INR, USD, EUR, GBP, and 20+ other currencies.',
+  },
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Of course. There are no long-term contracts. You can upgrade, downgrade, or cancel your subscription at any time from your dashboard. We believe you should stay because you love the product, not because you\'re locked in.',
+  },
+  {
+    q: 'Do you offer an API for custom integrations?',
+    a: 'Yes, our Pro and Enterprise plans include full REST API access. You can integrate TravelSuite with your existing booking systems, accounting software, or custom tools.',
+  },
+  {
+    q: 'What are the support hours?',
+    a: 'Starter plans get email support (response within 24 hours). Pro plans get priority support with response within 4 hours via WhatsApp and email. Enterprise plans get a dedicated account manager with direct phone access.',
+  },
+];
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/10 last:border-b-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-5 text-left group"
+      >
+        <span className={`text-lg font-semibold transition-colors ${open ? 'text-[#00F0FF]' : 'text-white group-hover:text-gray-300'}`}>
+          {q}
+        </span>
+        <ChevronDown
+          size={20}
+          className={`text-gray-500 transition-transform duration-300 shrink-0 ml-4 ${open ? 'rotate-180 text-[#00F0FF]' : ''}`}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <p className="text-gray-400 pb-5 leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
@@ -167,6 +227,34 @@ export default function PricingPage() {
               </button>
             </motion.div>
           ))}
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="pb-32 px-6 md:px-24">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold">Frequently Asked <span className="text-[#00F0FF]">Questions</span></h2>
+            <p className="text-xl text-gray-400 mt-4">Everything you need to know before getting started.</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 md:p-8"
+          >
+            {faqs.map((faq, i) => (
+              <FAQItem key={i} {...faq} />
+            ))}
+          </motion.div>
         </div>
       </section>
 

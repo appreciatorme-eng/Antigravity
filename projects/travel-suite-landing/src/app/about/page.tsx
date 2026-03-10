@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Heart, Globe, Mountain, Code2, MapPin, Compass, Users, Sparkles } from 'lucide-react';
+import { CountUp } from '@/components/CountUp';
 import dynamic from 'next/dynamic';
 const ForceFieldBackground = dynamic(
   () => import('@/components/ForceFieldBackground').then(m => m.ForceFieldBackground),
@@ -37,10 +38,10 @@ const principles = [
 ];
 
 const stats = [
-  { value: '30+', label: 'US States Lived In' },
-  { value: '8+',  label: 'Countries Explored' },
-  { value: '10+', label: 'Years in Software' },
-  { value: '1',   label: 'Brother\'s Business That Started It All' },
+  { num: 30, suffix: '+', label: 'US States Lived In' },
+  { num: 8,  suffix: '+', label: 'Countries Explored' },
+  { num: 10, suffix: '+', label: 'Years in Software' },
+  { num: 1,  suffix: '',  label: 'Brother\'s Business That Started It All' },
 ];
 
 export default function AboutPage() {
@@ -202,7 +203,7 @@ export default function AboutPage() {
       {/* ═══ STATS ═══ */}
       <section className="py-16 px-6 md:px-24">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-          {stats.map(({ value, label }, i) => (
+          {stats.map(({ num, suffix, label }, i) => (
             <motion.div
               key={label}
               initial={{ opacity: 0, y: 20 }}
@@ -211,7 +212,9 @@ export default function AboutPage() {
               viewport={{ once: true }}
               className="text-center p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-[#00F0FF]/40 transition-colors"
             >
-              <div className="text-4xl font-black text-[#00F0FF] mb-1">{value}</div>
+              <div className="text-4xl font-black text-[#00F0FF] mb-1">
+                <CountUp to={num} suffix={suffix} />
+              </div>
               <div className="text-sm text-gray-400">{label}</div>
             </motion.div>
           ))}

@@ -72,3 +72,4 @@ supabase/.temp/
 .ai-research/
 AI_DESIGN_INTELLIGENCE.md
 .vercel
+node-compile-cache/
