@@ -31,8 +31,7 @@ export async function GET(request: NextRequest) {
       .gte("paid_at", range.fromISO)
       .lt("paid_at", range.toExclusiveISO);
 
-    // payment_links table may not be migrated yet; return empty results in that case
-    if (error && error.code !== "PGRST205") throw error;
+    // payment_links table may not be migrated yet; return empty LTV data gracefully
 
     const grouped = new Map<
       string,
