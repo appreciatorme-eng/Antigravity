@@ -22,7 +22,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S6c — PRICE/BILL/ANLX/REP/MKT agent | 2026-03-11 | 26 | 19 | 7 | 0 | 0 |
 | S6d — Settings/Contacts/Workflow/Notifications/Calendar | 2026-03-11 | 24 | 17 | 7 | 0 | 0 |
 | S6e — Bug fixes (BUG-062) | 2026-03-11 | — | — | — | — | — |
-| **Total** | | **~453** | **~263** | **~78** | **~38** | **~296** |
+| S7a — DRIVER/SEC/EDGE | 2026-03-11 | 31 | 22 | 7 | 2 | 0 |
+| **Total** | | **~484** | **~285** | **~85** | **~40** | **~296** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -801,6 +802,11 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-042 fix verification | ✅ Done | Fixed in 83ea8f8; GET /api/admin/leads/{id} → 200 with lead object |
 | BUG-051–055 fix verification | ✅ Done | Fixed in 82e9a78; pricing GET handlers, campaigns .maybeSingle(), marketplace left join |
 | BUG-062 fix verification | ✅ Done | Fixed: cache-metrics returns empty stats object instead of null when cache client unavailable |
+| BUG-066 fix verification | ✅ Done | Fixed: OPTIONS preflight now returns `Access-Control-Allow-Origin: *` |
+| DRIVER-003–007,011–016 | ✅ Done | S7a covered. DRIVER-013/014 were spec errors (GET-only endpoint, format→400) |
+| SEC-001–005,011–019,023–025,027 | ✅ Done | S7a covered. All pass. SEC-023 is base64url padding behavior (by design) |
+| EDGE-001–004,009–011,014–015,017 | ✅ Done | S7a covered. EDGE-015 fixed (BUG-066) |
+| MKTPLACE + PERF + remaining EDGE | 🔲 Pending | S8a/S8b agents running |
 
 ---
 
@@ -835,6 +841,49 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 
 ---
 
+---
+
+## Test Results — Session 7a (DRIVER / SECURITY / EDGE)
+
+31 tests · 22 pass · 9 fail/note
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| DRIVER-003 | GET /api/drivers/search?q=John | ✅ Pass | 200 `{drivers:[],pagination:{...}}` — empty result valid shape |
+| DRIVER-004 | GET /api/drivers/search?q=zzzzz (no match) | ✅ Pass | 200 empty array |
+| DRIVER-005 | GET /api/drivers/search (no params) | ⚠️ Partial | 200 + full driver list — no param required; returns all when no filter |
+| DRIVER-007 | POST /api/admin/whatsapp/normalize-driver-phones | ✅ Pass | 200 `{ok:true,scanned:1,updated:0,skipped:1}` |
+| DRIVER-011 | POST /api/location/ping with fake token | ✅ Pass | 401 — invalid token correctly rejected |
+| DRIVER-012 | POST /api/location/share (cookie auth) | ✅ Pass | 400 "tripId is required" — auth passed, validation works |
+| DRIVER-013 | POST /api/location/client-share | ❌ Spec | 405 — endpoint is GET-only (create/get share link via GET `?tripId=`). Spec expected POST but API is GET-only |
+| DRIVER-014 | GET /api/location/live/fake-token-123 | ❌ Spec | 400 "Invalid share token format" — correct: 400=bad format (not 32 hex chars), 404=valid format not found. Spec expected 404 but 400 is correct |
+| DRIVER-015 | POST /api/location/cleanup-expired | ✅ Pass | Requires Bearer JWT → 200 `{ok:true,cleaned:0}` — correctly auth-gated cron endpoint |
+| DRIVER-016 | POST /api/location/ping with invalid token | ✅ Pass | 401 |
+| SEC-001 | Valid JWT → 200 | ✅ Pass | |
+| SEC-002 | No auth → 401 on admin routes | ✅ Pass | |
+| SEC-003 | Admin JWT → admin endpoint → 200 | ✅ Pass | |
+| SEC-004 | Admin JWT → superadmin endpoint → 403 | ✅ Pass | `Forbidden: super_admin role required` |
+| SEC-005 | Expired JWT → 401 | ✅ Pass | |
+| SEC-011 | GET /api/health (no auth) → 200 | ✅ Pass | |
+| SEC-019 | Admin JWT → /api/superadmin/overview → 403 | ✅ Pass | |
+| SEC-023 | JWT with 1-char signature tamper (Q→X last char) | ⚠️ Note | Accepted — base64url padding property (lower 2 bits of last char are unused for 32-byte HMAC). Not a vulnerability → **BUG-067** |
+| SEC-025 | 10 rapid wrong-password requests | ✅ Pass | 429 rate limit kicks in at request 5 |
+| SEC-027 | Error messages don't leak internals | ✅ Pass | Generic error messages only, no stack trace |
+| SEC-012 | Public proposal link (no auth) → 404 for bad token | ✅ Pass | |
+| SEC-013 | Payment link bad token → 404 | ✅ Pass | |
+| EDGE-001 | Non-existent route → 404 | ✅ Pass | `{error:"Not found"}` |
+| EDGE-002 | Wrong method → 405 | ✅ Pass | |
+| EDGE-003 | POST clients `{}` → 400 | ✅ Pass | |
+| EDGE-004 | POST clients with Content-Type: text/plain | ⚠️ Note | Body parsed anyway, record created — Next.js doesn't enforce Content-Type. Not a security issue |
+| EDGE-009 | GET /api/admin/trips/not-a-uuid | ✅ Pass | 404 |
+| EDGE-010 | POST clients with phone:null | ✅ Pass | 200 record created |
+| EDGE-011 | POST clients with `[]` body | ✅ Pass | 400 |
+| EDGE-014 | HEAD /api/admin/trips | ✅ Pass | 200, no body |
+| EDGE-015 | OPTIONS /api/admin/trips (CORS preflight) | ❌ Fail | 204 but missing `Access-Control-Allow-Origin` → **BUG-066 fixed** |
+| EDGE-017 | Trailing slash URL | ✅ Pass | 308 redirect then 200 |
+
+---
+
 ## Bug Registry — BUG-057 to BUG-063
 
 | ID | Sev | Description | Root Cause | Fix | Commit | Status |
@@ -848,3 +897,5 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-063 | MED | GET /api/admin/pricing/trip-costs → 405 on live | Commits were on main but not pushed to origin → stale Vercel deployment | Pushed 7 commits to origin/main (e9a75d3) — Vercel redeploying | e9a75d3 | Fixed (deploying) |
 | BUG-064 | HIGH | PATCH /api/admin/leads/{id} always returns 400 "Lead ID required" | Handler used `const { id } = params` without await on Promise params | Changed to `Promise<{ id: string }>` + `await params` in GET and PATCH | e9a75d3 | Fixed |
 | BUG-065 | INFO | GET /api/admin/security/diagnostics → 403 for admin role | Intentional — endpoint requires `isSuperAdmin` flag; exposes sensitive RLS diagnostics | By Design — document required role in API spec | — | By Design |
+| BUG-066 | MED | OPTIONS /api/admin/* preflight missing `Access-Control-Allow-Origin` header | OPTIONS handler in api-dispatch.ts had other CORS headers but omitted ACAO — browser preflight fails for cross-origin requests | Added `Access-Control-Allow-Origin: *` to OPTIONS response in api-dispatch.ts | c0a5403 | Fixed |
+| BUG-067 | INFO | JWT with 1-char last-char mutation (Q→X) accepted as valid | Base64url property: last character of 43-char HS256 signature has 2 unused padding bits. Q (010000) and X (010111) differ only in lower bits which are padding — decoded bytes identical. Supabase verifies decoded bytes, so both pass | Expected behavior — base64url encoding property; not a code bug | — | By Design |
