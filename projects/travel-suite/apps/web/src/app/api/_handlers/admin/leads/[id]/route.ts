@@ -36,12 +36,12 @@ const UpdateLeadSchema = z.object({
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin(req, { requireOrganization: true });
   if (!admin.ok) return admin.response;
 
-  const { id } = params;
+  const { id } = await params;
   if (!id || typeof id !== "string") {
     return NextResponse.json({ error: "Lead ID required" }, { status: 400 });
   }
@@ -62,12 +62,12 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin(req, { requireOrganization: true });
   if (!admin.ok) return admin.response;
 
-  const { id } = params;
+  const { id } = await params;
   if (!id || typeof id !== "string") {
     return NextResponse.json({ error: "Lead ID required" }, { status: 400 });
   }
