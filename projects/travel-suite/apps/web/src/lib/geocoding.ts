@@ -13,8 +13,35 @@ interface GeocodeResult {
     formattedAddress: string;
 }
 
-// In-memory cache to avoid redundant API calls during a session
-const geocodeCache = new Map<string, GeocodeResult>();
+const GEOCODE_CACHE_MAX = 500;
+const GEOCODE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface GeocacheEntry {
+    result: GeocodeResult;
+    expiresAt: number;
+}
+
+// Bounded in-memory cache: max 500 entries, 24-hour TTL, insertion-order eviction.
+const geocodeCache = new Map<string, GeocacheEntry>();
+
+function cacheGet(key: string): GeocodeResult | undefined {
+    const entry = geocodeCache.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+        geocodeCache.delete(key);
+        return undefined;
+    }
+    return entry.result;
+}
+
+function cacheSet(key: string, result: GeocodeResult): void {
+    if (geocodeCache.size >= GEOCODE_CACHE_MAX) {
+        // Evict the oldest insertion (first key in Map iteration order)
+        const firstKey = geocodeCache.keys().next().value;
+        if (firstKey !== undefined) geocodeCache.delete(firstKey);
+    }
+    geocodeCache.set(key, { result, expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS });
+}
 
 /**
  * Geocode a location string to coordinates using Mapbox API
@@ -32,10 +59,8 @@ export async function geocodeLocation(
 
     const cacheKey = `${location.toLowerCase()}|${proximity?.join(',') || ''}`;
 
-    // Check in-memory cache first
-    if (geocodeCache.has(cacheKey)) {
-        return geocodeCache.get(cacheKey)!;
-    }
+    const cached = cacheGet(cacheKey);
+    if (cached) return cached;
 
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -75,8 +100,7 @@ export async function geocodeLocation(
             formattedAddress: feature.place_name,
         };
 
-        // Cache the result
-        geocodeCache.set(cacheKey, result);
+        cacheSet(cacheKey, result);
 
         return result;
     } catch (error) {

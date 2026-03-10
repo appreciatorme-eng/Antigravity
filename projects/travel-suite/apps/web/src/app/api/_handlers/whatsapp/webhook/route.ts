@@ -196,15 +196,17 @@ export async function POST(request: NextRequest) {
         // Parse text messages synchronously so we can include counts in the response
         const textMessages = parseWhatsAppTextMessages(payload);
 
-        // Process text messages asynchronously to avoid blocking the webhook response
-        processWhatsAppTextMessages(payload, rawBody, signatureValid, requestContext).catch((error) => {
-            logError("WhatsApp text message processing failed", error, requestContext);
+        // Process text messages fire-and-forget to avoid blocking the webhook response.
+        // TODO: replace with a durable queue (Inngest / SQS) — serverless GC can silently
+        //       drop this promise before it resolves on a fast cold-start teardown.
+        void processWhatsAppTextMessages(payload, rawBody, signatureValid, requestContext).catch((error) => {
+            logError("WhatsApp text message processing failed — message may be lost. Move to a durable queue.", error, requestContext);
         });
 
-        // Process images asynchronously to avoid blocking the webhook response
-        // In a real production app this should be queued (e.g. Inngest / SQS)
-        processWhatsAppImages(payload, rawBody, signatureValid, requestContext).catch((error) => {
-            logError("WhatsApp image processing failed", error, requestContext);
+        // Process images fire-and-forget to avoid blocking the webhook response.
+        // TODO: same — needs durable queue for production reliability.
+        void processWhatsAppImages(payload, rawBody, signatureValid, requestContext).catch((error) => {
+            logError("WhatsApp image processing failed — message may be lost. Move to a durable queue.", error, requestContext);
         });
 
         return NextResponse.json({
