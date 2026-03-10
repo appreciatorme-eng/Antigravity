@@ -49,7 +49,7 @@ export default function Blog() {
             <Navbar />
 
             {/* Hero Section */}
-            <section className="relative pt-40 pb-20 px-6 md:px-24 overflow-hidden">
+            <section className="relative pt-32 md:pt-40 pb-16 md:pb-20 px-6 md:px-24 overflow-hidden">
                 <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
                     <ForceFieldBackground id="tsparticles-blog" particleCount={150} />
                 </div>
@@ -61,18 +61,18 @@ export default function Blog() {
                     transition={{ duration: 0.6 }}
                     className="relative z-10 max-w-7xl mx-auto text-center"
                 >
-                    <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight">
+                    <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tight">
                         Travel<span className="text-[#00F0FF]">Suite</span> Resources
                     </h1>
-                    <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                    <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
                         Insights, strategies, and playbooks for modern tour operators who want to grow faster and work less.
                     </p>
                 </motion.div>
             </section>
 
-            <main className="flex-grow max-w-7xl mx-auto w-full px-6 md:px-24 pb-32 pt-10">
+            <main className="flex-grow max-w-7xl mx-auto w-full px-6 md:px-24 pb-20 md:pb-32 pt-8 md:pt-10">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                     {articles.map((article, index) => (
                         <motion.article
                             key={index}
@@ -125,13 +125,13 @@ export default function Blog() {
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="mt-32 p-10 md:p-16 rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#FF9933]/10 to-transparent relative overflow-hidden"
+                    className="mt-20 md:mt-32 p-8 md:p-16 rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#FF9933]/10 to-transparent relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 w-96 h-96 bg-[#FF9933]/10 blur-[100px] rounded-full" />
 
                     <div className="relative z-10 max-w-2xl">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-4">Stay ahead of the <span className="text-[#FF9933]">curve</span></h2>
-                        <p className="text-gray-400 mb-8 text-lg">
+                        <h2 className="text-2xl md:text-5xl font-bold mb-4">Stay ahead of the <span className="text-[#FF9933]">curve</span></h2>
+                        <p className="text-gray-400 mb-8 text-base md:text-lg">
                             Get one actionable tip every Tuesday on how to automate your travel business. No fluff, just operator playbooks.
                         </p>
 

@@ -11,7 +11,7 @@ const ForceFieldBackground = dynamic(
 );
 
 const travelPins = [
-  'Masai Mara', 'Vietnam', 'Mexico', 'Bahamas', 'Thailand', 
+  'Masai Mara', 'Vietnam', 'Mexico', 'Bahamas', 'Thailand',
   'Santo Domingo', 'Egypt', 'New York', 'California', 'Texas',
   'Colorado', 'Montana', 'Oregon', 'Florida', 'Hawaii',
 ];
@@ -39,9 +39,9 @@ const principles = [
 
 const stats = [
   { num: 30, suffix: '+', label: 'US States Lived In' },
-  { num: 8,  suffix: '+', label: 'Countries Explored' },
+  { num: 8, suffix: '+', label: 'Countries Explored' },
   { num: 10, suffix: '+', label: 'Years in Software' },
-  { num: 1,  suffix: '',  label: 'Brother\'s Business That Started It All' },
+  { num: 1, suffix: '', label: 'Brother\'s Business That Started It All' },
 ];
 
 export default function AboutPage() {
@@ -50,7 +50,7 @@ export default function AboutPage() {
       <Navbar />
 
       {/* ═══ HERO ═══ */}
-      <section className="relative pt-40 pb-28 px-6 md:px-24 text-center overflow-hidden">
+      <section className="relative pt-32 md:pt-40 pb-16 md:pb-28 px-6 md:px-24 text-center overflow-hidden">
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
           <ForceFieldBackground id="tsparticles-about" particleCount={150} />
         </div>
@@ -65,19 +65,19 @@ export default function AboutPage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-6">
             <Heart size={14} /> Our Story
           </div>
-          <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6">
+          <h1 className="text-4xl md:text-7xl font-black leading-tight mb-6">
             Created by <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#ff3366]">Tour Operators</span><br />
             Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#A259FF]">Tour Operators</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
             TravelSuite wasn't born in a boardroom. It was born watching a brother struggle to manage his adventure company with spreadsheets, WhatsApp groups, and sticky notes.
           </p>
         </motion.div>
       </section>
 
       {/* ═══ THE ORIGIN STORY ═══ */}
-      <section className="py-20 px-6 md:px-24">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+      <section className="py-16 md:py-20 px-6 md:px-24">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -88,7 +88,7 @@ export default function AboutPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#FF9933]/30 text-[#FF9933] text-sm font-semibold tracking-widest uppercase">
               <Sparkles size={14} /> The Beginning
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
               It Started With a <br /><span className="text-[#FF9933]">Brother's Business</span>
             </h2>
             <p className="text-lg text-gray-400 leading-relaxed">
@@ -141,15 +141,15 @@ export default function AboutPage() {
       </section>
 
       {/* ═══ AVI'S JOURNEY ═══ */}
-      <section className="py-20 px-6 md:px-24">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+      <section className="py-16 md:py-20 px-6 md:px-24">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
           {/* Travel Pins Visual */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
-            className="relative h-[420px] rounded-3xl border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 via-transparent to-[#A259FF]/5 flex items-center justify-center overflow-hidden"
+            className="relative h-[300px] md:h-[420px] rounded-3xl border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 via-transparent to-[#A259FF]/5 flex items-center justify-center overflow-hidden"
           >
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=1200&auto=format&fit=crop')] bg-cover bg-center opacity-[0.07]"></div>
             <div className="relative z-10 flex flex-wrap justify-center gap-3 max-w-md px-6">
@@ -184,7 +184,7 @@ export default function AboutPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase">
               <Globe size={14} /> The Founder
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
               A Digital Nomad Meets<br /><span className="text-[#00F0FF]">Enterprise Software</span>
             </h2>
             <p className="text-lg text-gray-400 leading-relaxed">
@@ -201,7 +201,7 @@ export default function AboutPage() {
       </section>
 
       {/* ═══ STATS ═══ */}
-      <section className="py-16 px-6 md:px-24">
+      <section className="py-12 md:py-16 px-6 md:px-24">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map(({ num, suffix, label }, i) => (
             <motion.div
@@ -222,19 +222,19 @@ export default function AboutPage() {
       </section>
 
       {/* ═══ FOUNDING PRINCIPLES ═══ */}
-      <section className="py-20 px-6 md:px-24">
+      <section className="py-16 md:py-20 px-6 md:px-24">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12 md:mb-16"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#A259FF]/30 text-[#A259FF] text-sm font-semibold tracking-widest uppercase mb-4">
               <Compass size={14} /> Our Principles
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold">Why TravelSuite is <span className="text-[#A259FF]">Different</span></h2>
+            <h2 className="text-3xl md:text-5xl font-bold">Why TravelSuite is <span className="text-[#A259FF]">Different</span></h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -267,19 +267,19 @@ export default function AboutPage() {
       </section>
 
       {/* ═══ TEAM ═══ */}
-      <section className="py-20 px-6 md:px-24">
+      <section className="py-16 md:py-20 px-6 md:px-24">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-12 md:mb-16"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-4">
               <Users size={14} /> The Team
             </div>
-            <h2 className="text-4xl font-bold">The People Behind TravelSuite</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">The People Behind TravelSuite</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">

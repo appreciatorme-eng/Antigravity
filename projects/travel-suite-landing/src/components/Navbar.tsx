@@ -42,15 +42,7 @@ export function Navbar() {
           borderBottom: scrolled ? '1px solid rgba(255,255,255,0.1)' : 'none',
         }}
       >
-        <div style={{
-          maxWidth: '1280px',
-          margin: '0 auto',
-          padding: '0 40px',
-          height: '120px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 md:h-[120px] flex items-center justify-between">
 
           {/* Logo */}
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
@@ -188,20 +180,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2 }}
-            style={{
-              position: 'fixed',
-              top: '80px',
-              left: 0,
-              right: 0,
-              zIndex: 99,
-              background: 'rgba(10,10,10,0.97)',
-              backdropFilter: 'blur(20px)',
-              borderBottom: '1px solid rgba(255,255,255,0.1)',
-              padding: '24px 32px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}
+            className="fixed top-20 md:top-[120px] left-0 right-0 z-[99] bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10 px-6 py-8 flex flex-col gap-4 max-h-[calc(100vh-80px)] overflow-y-auto"
           >
             {navLinks.map(({ label, href }) => (
               <Link
@@ -248,7 +227,7 @@ export function Navbar() {
                 <span className="text-gray-400 font-medium">Theme</span>
                 <ThemeToggle />
               </div>
-              <Link href="/login" onClick={() => setMobileOpen(false)} style={{ textAlign: 'center', padding: '14px', borderRadius: '999px', fontSize: '16px', fontWeight: 600, color: '#00F0FF', border: '1.5px solid rgba(0,240,255,0.4)', textDecoration: 'none' }}>
+              <Link href="/login" onClick={() => setMobileOpen(false)} className="text-center p-4 rounded-full text-base font-semibold text-[#00F0FF] border-2 border-[#00F0FF]/40 hover:bg-[#00F0FF]/10 transition-colors">
                 Account Login
               </Link>
             </div>

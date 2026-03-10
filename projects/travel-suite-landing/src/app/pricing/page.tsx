@@ -136,7 +136,7 @@ export default function Pricing() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-20 px-6 md:px-24 mb-20 overflow-hidden">
+      <section className="relative pt-32 md:pt-40 pb-16 md:pb-20 px-6 md:px-24 mb-12 md:mb-20 overflow-hidden">
         <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
           <ForceFieldBackground id="tsparticles-pricing" particleCount={150} />
         </div>
@@ -156,7 +156,7 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl md:text-8xl font-black mb-8 tracking-tighter"
+            className="text-4xl md:text-8xl font-black mb-6 md:mb-8 tracking-tighter"
           >
             Scale Your <br />
             <span className="bg-gradient-to-r from-[#00F0FF] via-[#A259FF] to-[#FF9933] bg-clip-text text-transparent">Business.</span>
@@ -166,7 +166,7 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex items-center justify-center gap-4 mb-20"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-2 md:mb-20"
           >
             <span className={`text-lg font-medium transition-colors ${billingCycle === 'monthly' ? 'text-white' : 'text-gray-500'}`}>Monthly</span>
             <button
@@ -187,8 +187,8 @@ export default function Pricing() {
       </section>
 
       {/* Pricing Cards */}
-      <section className="relative px-6 md:px-24 pb-32">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section className="relative px-6 md:px-24 pb-20 md:pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {plans.map((plan, i) => (
             <motion.div
               key={i}
@@ -196,7 +196,7 @@ export default function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
               viewport={{ once: true }}
-              className={`relative group p-8 rounded-[2.5rem] border transition-all duration-500 ${plan.highlight ? 'bg-white/[0.05] border-[#00F0FF]/30 shadow-[0_0_50px_rgba(0,240,255,0.1)]' : 'bg-white/[0.02] border-white/10 hover:border-white/20'}`}
+              className={`relative group p-6 md:p-8 rounded-3xl md:rounded-[2.5rem] border transition-all duration-500 ${plan.highlight ? 'bg-white/[0.05] border-[#00F0FF]/30 shadow-[0_0_50px_rgba(0,240,255,0.1)]' : 'bg-white/[0.02] border-white/10 hover:border-white/20'}`}
             >
               {plan.highlight && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-[#00F0FF] to-[#A259FF] rounded-full text-xs font-black text-white shadow-lg uppercase tracking-wider">
@@ -244,17 +244,17 @@ export default function Pricing() {
       <ComparisonTable />
 
       {/* FAQ Section */}
-      <section className="py-32 px-6 md:px-24">
+      <section className="py-20 md:py-32 px-6 md:px-24">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-10 md:mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold">Frequently Asked <span className="text-[#00F0FF]">Questions</span></h2>
-            <p className="text-xl text-gray-400 mt-4">Everything you need to know before getting started.</p>
+            <h2 className="text-3xl md:text-5xl font-bold">Frequently Asked <span className="text-[#00F0FF]">Questions</span></h2>
+            <p className="text-lg md:text-xl text-gray-400 mt-4">Everything you need to know before getting started.</p>
           </motion.div>
 
           <motion.div

@@ -6,6 +6,7 @@ import type { Container, Engine } from '@tsparticles/engine';
 
 export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCount = 280 }: { id?: string; particleCount?: number }) {
   const [init, setInit] = useState(false);
+  const [activeParticleCount, setActiveParticleCount] = useState(particleCount);
 
   useEffect(() => {
     initParticlesEngine(async (engine: Engine) => {
@@ -14,6 +15,28 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
       setInit(true);
     });
   }, []);
+
+  // Handle responsive particle density
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        // Mobile: drastically reduce count for performance, but keep interaction
+        setActiveParticleCount(Math.min(40, Math.floor(particleCount * 0.3)));
+      } else if (window.innerWidth < 1024) {
+        // Tablet: moderate reduction
+        setActiveParticleCount(Math.min(100, Math.floor(particleCount * 0.6)));
+      } else {
+        // Desktop: full count
+        setActiveParticleCount(particleCount);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [particleCount]);
 
   const particlesLoaded = useCallback(async (container?: Container) => {
     // Container is ready
@@ -64,7 +87,7 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
             },
             number: {
               density: { enable: true },
-              value: particleCount,
+              value: activeParticleCount,
             },
             opacity: { value: 0.85 },
             shape: { type: 'circle' },

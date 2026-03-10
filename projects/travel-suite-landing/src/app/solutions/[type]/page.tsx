@@ -61,22 +61,22 @@ export default function SolutionPage({ params }: { params: Promise<{ type: strin
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <section className="relative pt-40 pb-20 px-6 md:px-24 mb-24 overflow-hidden">
+                <section className="relative pt-32 md:pt-40 pb-16 md:pb-20 px-6 md:px-24 mb-16 md:mb-24 overflow-hidden">
                     <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
                         <ForceFieldBackground id="tsparticles-solutions" particleCount={150} />
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-b from-[#00F0FF]/5 to-transparent pointer-events-none" />
 
                     <div className="relative z-10 max-w-7xl mx-auto">
-                        <div className="flex flex-col lg:flex-row gap-16 items-center">
+                        <div className="flex flex-col lg:flex-row gap-10 md:gap-16 items-center">
                             <div className="lg:w-1/2">
                                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#FF9933]/30 text-[#FF9933] text-sm font-semibold tracking-widest uppercase mb-6">
                                     {data.badge}
                                 </div>
-                                <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tight leading-tight">
+                                <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tight leading-tight">
                                     {data.title}
                                 </h1>
-                                <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-xl">
+                                <p className="text-lg md:text-xl text-gray-400 mb-8 md:mb-10 leading-relaxed max-w-xl">
                                     {data.description}
                                 </p>
 
@@ -108,11 +108,11 @@ export default function SolutionPage({ params }: { params: Promise<{ type: strin
                 </section>
 
                 {/* Benefits Section */}
-                <section className="py-24 bg-white/[0.02] border-y border-white/5 relative overflow-hidden">
+                <section className="py-16 md:py-24 bg-white/[0.02] border-y border-white/5 relative overflow-hidden">
                     <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-[#00F0FF]/5 blur-[120px] rounded-full" />
 
                     <div className="px-6 md:px-24 max-w-7xl mx-auto relative z-10">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-16 text-center">Why travel professionals choose <span className="text-[#00F0FF]">TravelSuite</span></h2>
+                        <h2 className="text-2xl md:text-5xl font-bold mb-12 md:mb-16 text-center">Why travel professionals choose <span className="text-[#00F0FF]">TravelSuite</span></h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {data.benefits.map((benefit, i) => (

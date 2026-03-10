@@ -19,7 +19,6 @@ import { IndiaMap } from "@/components/IndiaMap";
 import { Testimonials } from "@/components/Testimonials";
 import { HowItWorks } from "@/components/HowItWorks";
 import { CustomerLogos } from "@/components/CustomerLogos";
-import { ROICalculator } from "@/components/ROICalculator";
 import { InteractiveDemo } from "@/components/InteractiveDemo";
 import { LeadMagnetSection } from "@/components/LeadMagnetSection";
 import gsap from "gsap";
@@ -72,7 +71,7 @@ function ProposalPreview() {
   }, []);
 
   return (
-    <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+    <section className="relative z-30 bg-transparent py-16 md:py-24 px-6 md:px-24">
       <div className="max-w-5xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -84,7 +83,7 @@ function ProposalPreview() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#A259FF]/30 text-[#A259FF] text-sm font-semibold tracking-widest uppercase mb-4">
             <FileText size={14} /> Try It Yourself
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold">Experience a <span className="text-[#A259FF]">Magic Link</span></h2>
+          <h2 className="text-3xl md:text-5xl font-bold">Experience a <span className="text-[#A259FF]">Magic Link</span></h2>
           <p className="text-xl text-gray-400 mt-4">This is what your clients see. Swipe through the days.</p>
         </motion.div>
 
@@ -291,7 +290,7 @@ export default function Home() {
       <main ref={containerRef} className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
 
         {/* 🎬 Scene 1: The Hero - "The Desk of Tomorrow" */}
-        <section className="relative h-screen flex items-center justify-between px-10 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
+        <section className="relative h-screen flex items-center justify-between px-6 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
 
           {/* Particles — TOP LEFT: sits behind the heading & button text */}
           <div
@@ -353,7 +352,7 @@ export default function Home() {
                 <ShinyText text="Travel Suite OS is Live" speed={3} color="#00F0FF" shineColor="#ffffff" />
               </div>
 
-              <h1 className="text-6xl md:text-8xl font-black leading-tight text-glow-aqua">
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight text-glow-aqua">
                 Run Your <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#FFD699]">
                   Travel Empire.
@@ -365,7 +364,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
-              className="text-xl md:text-2xl text-gray-400 font-light max-w-2xl"
+              className="text-lg md:text-2xl text-gray-400 font-light max-w-2xl"
             >
               No more messy PDFs. No more lost WhatsApp chats. The all-in-one operating system for modern Indian tour operators.
             </motion.p>
@@ -391,7 +390,7 @@ export default function Home() {
         <HowItWorks />
 
         {/* ═══ Before vs. After — Hooks visitors with problem/solution right away ═══ */}
-        <section className="relative z-30 bg-transparent py-24 px-10 md:px-24 mt-10">
+        <section className="relative z-30 bg-transparent py-16 md:py-24 px-6 md:px-24 mt-10">
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -403,7 +402,7 @@ export default function Home() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#ff3366]/30 text-[#ff3366] text-sm font-semibold tracking-widest uppercase mb-4">
                 <Zap size={14} /> The Transformation
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold">The Old Way vs. <span className="text-[#00F0FF]">The TravelSuite Way</span></h2>
+              <h2 className="text-3xl md:text-5xl font-bold">The Old Way vs. <span className="text-[#00F0FF]">The TravelSuite Way</span></h2>
             </motion.div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -481,17 +480,17 @@ export default function Home() {
         </section>
 
         {/* 🎬 Stories / Features using Glassmorphism */}
-        <section className="relative z-30 bg-transparent py-32 px-10 md:px-24 mt-20">
-          <div className="max-w-7xl mx-auto space-y-32">
+        <section className="relative z-30 bg-transparent py-16 md:py-32 px-6 md:px-24 mt-10 md:mt-20">
+          <div className="max-w-7xl mx-auto space-y-20 md:space-y-32">
 
             {/* Feature 1: The Magic Link */}
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="space-y-6 reveal-text">
                 <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#00F0FF]">
                   <FileText size={32} />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold">The Magic Link <span className="text-[#00F0FF]">Proposals</span></h2>
-                <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                <h2 className="text-3xl md:text-5xl font-bold">The Magic Link <span className="text-[#00F0FF]">Proposals</span></h2>
+                <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
                   Making itineraries used to take hours of typing into Word.
                   Now, create beautiful, interactive web-link proposals in minutes.
                   Clients view photos, day-by-day plans, and accept instantly on their phones.
@@ -594,7 +593,7 @@ export default function Home() {
             </div>
 
             {/* Feature 2: WhatsApp Engine */}
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="order-2 md:order-1 relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FF9933]/10 to-transparent">
                 {/* Decorative WhatsApp Style Bubbles */}
                 <motion.div
@@ -618,8 +617,8 @@ export default function Home() {
                 <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#FF9933]">
                   <MessageCircle size={32} />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold">The Automated <span className="text-[#FF9933]">WhatsApp Engine</span></h2>
-                <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                <h2 className="text-3xl md:text-5xl font-bold">The Automated <span className="text-[#FF9933]">WhatsApp Engine</span></h2>
+                <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
                   Clients calling at 11 PM for their driver's number? Our engine speaks to them where they are.
                   Automated updates sent straight to their WhatsApp—no manual typing required.
                 </p>
@@ -630,15 +629,15 @@ export default function Home() {
         </section>
 
         {/* Feature 3: The Upsell Marketplace */}
-        <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
-          <div className="max-w-7xl mx-auto space-y-32">
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+        <section className="relative z-30 bg-transparent py-16 px-6 md:px-24">
+          <div className="max-w-7xl mx-auto space-y-20 md:space-y-32">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="space-y-6 reveal-text">
                 <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff99d6]">
                   <ShoppingBag size={32} />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold">The One-Click <span className="text-[#ff99d6]">Add-ons</span></h2>
-                <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                <h2 className="text-3xl md:text-5xl font-bold">The One-Click <span className="text-[#ff99d6]">Add-ons</span></h2>
+                <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
                   Leaving revenue on the table because you forget to upsell?
                   Give clients the choice to add extras right inside their proposal.
                   With our elegant marketplace, they click, you earn.
@@ -700,9 +699,9 @@ export default function Home() {
         </section>
 
         {/* Feature 4: Intelligent Client CRM */}
-        <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
-          <div className="max-w-7xl mx-auto space-y-32">
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+        <section className="relative z-30 bg-transparent py-16 px-6 md:px-24">
+          <div className="max-w-7xl mx-auto space-y-20 md:space-y-32">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="order-2 md:order-1 relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#A259FF]/10 to-transparent group" style={{ perspective: '1000px' }}>
                 <div className="relative w-full max-w-sm space-y-4">
                   <div className="absolute inset-0 -mx-4 -my-8 border-l border-white/5 pl-4 before:absolute before:inset-y-0 before:left-1/2 before:-translate-x-1/2 before:w-px before:bg-white/5 opacity-50"></div>
@@ -761,8 +760,8 @@ export default function Home() {
                 <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#A259FF]">
                   <Users size={32} />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold">Intelligent <span className="text-[#A259FF]">Client CRM</span></h2>
-                <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                <h2 className="text-3xl md:text-5xl font-bold">Intelligent <span className="text-[#A259FF]">Client CRM</span></h2>
+                <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
                   Track every lead from initial inquiry to their flight home. Know exactly who needs a follow-up, who just opened your proposal, and who is ready to pay. Your entire travel pipeline, perfectly organized.
                 </p>
               </div>
@@ -771,15 +770,15 @@ export default function Home() {
         </section>
 
         {/* Feature 5: Drag & Drop Itinerary Builder */}
-        <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
-          <div className="max-w-7xl mx-auto space-y-32">
-            <div className="grid md:grid-cols-2 gap-16 items-center">
+        <section className="relative z-30 bg-transparent py-16 px-6 md:px-24">
+          <div className="max-w-7xl mx-auto space-y-20 md:space-y-32">
+            <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
               <div className="space-y-6 reveal-text">
                 <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff3366]">
                   <Map size={32} />
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold">Smart Drag & Drop <span className="text-[#ff3366]">Builder</span></h2>
-                <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                <h2 className="text-3xl md:text-5xl font-bold">Smart Drag & Drop <span className="text-[#ff3366]">Builder</span></h2>
+                <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
                   Stop copying and pasting from Wikipedia! Access a global database of flights, hotels, and activities. Just drag them into the timeline, and we'll automatically generate the descriptions, photos, and policies.
                 </p>
               </div>
@@ -846,11 +845,8 @@ export default function Home() {
         {/* ═══ SECTION: Interactive Proposal Preview ═══ */}
         <ProposalPreview />
 
-        {/* ═══ SECTION: ROI Calculator ═══ */}
-        <ROICalculator />
-
         {/* ═══ SECTION 10: Live Pulse Dashboard ═══ */}
-        <section className="relative z-30 py-24 px-10 md:px-24" style={{ background: 'linear-gradient(180deg, #050508 0%, #0A0A10 50%, #050508 100%)' }}>
+        <section className="relative z-30 py-16 md:py-24 px-6 md:px-24" style={{ background: 'linear-gradient(180deg, #050508 0%, #0A0A10 50%, #050508 100%)' }}>
           <div className="max-w-6xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -859,8 +855,8 @@ export default function Home() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold">Happening <span className="text-[#00F0FF]">Right Now</span></h2>
-              <p className="text-xl text-gray-400 mt-4">Tour operators across India are sending proposals as you read this.</p>
+              <h2 className="text-3xl md:text-5xl font-bold">Happening <span className="text-[#00F0FF]">Right Now</span></h2>
+              <p className="text-lg md:text-xl text-gray-400 mt-4">Tour operators across India are sending proposals as you read this.</p>
             </motion.div>
 
             <motion.div
@@ -950,7 +946,7 @@ export default function Home() {
 
 
         {/* ═══ SECTION 11: Integration Partners ═══ */}
-        <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
+        <section className="relative z-30 bg-transparent py-16 px-6 md:px-24">
           <div className="max-w-5xl mx-auto text-center">
             <motion.p
               initial={{ opacity: 0 }}
@@ -981,7 +977,7 @@ export default function Home() {
         </section>
 
         {/* ═══ SECTION 12: Demo Video ═══ */}
-        <section className="relative z-30 bg-transparent py-24 px-10 md:px-24">
+        <section className="relative z-30 bg-transparent py-16 md:py-24 px-6 md:px-24">
           <div className="max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -990,8 +986,8 @@ export default function Home() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold">See It In <span className="text-[#FF9933]">Action</span></h2>
-              <p className="text-xl text-gray-400 mt-4">Watch how TravelSuite transforms your daily workflow in 60 seconds.</p>
+              <h2 className="text-3xl md:text-5xl font-bold">See It In <span className="text-[#FF9933]">Action</span></h2>
+              <p className="text-lg md:text-xl text-gray-400 mt-4">Watch how TravelSuite transforms your daily workflow in 60 seconds.</p>
             </motion.div>
 
             <motion.div
@@ -1020,14 +1016,14 @@ export default function Home() {
         <LeadMagnetSection />
 
         {/* Climax / CTA */}
-        <section className="relative z-30 py-40 bg-transparent text-center px-10 border-t border-white/10 mt-20">
+        <section className="relative z-30 py-24 md:py-40 bg-transparent text-center px-6 md:px-10 border-t border-white/10 mt-20">
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/50 to-transparent"></div>
           <div className="max-w-4xl mx-auto space-y-10 reveal-text">
             <Plane className="w-20 h-20 text-[#00F0FF] mx-auto opacity-80" />
-            <h2 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
+            <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tight">
               Stop managing on <br />10 different apps.
             </h2>
-            <p className="text-2xl text-gray-400 font-light">
+            <p className="text-lg md:text-2xl text-gray-400 font-light">
               Bring your proposals, WhatsApp chats, drivers, and payments into one beautiful screen. Join the top tour operators in India today.
             </p>
             <Link href="/login" className="group mt-8 inline-flex px-12 py-5 text-xl font-bold text-[#0A0A0A] bg-white rounded-full hover:bg-gray-200 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] no-underline">
