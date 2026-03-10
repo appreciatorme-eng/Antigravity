@@ -12,7 +12,7 @@ const ForceFieldBackground = dynamic(
   () => import("@/components/ForceFieldBackground").then(m => m.ForceFieldBackground),
   { ssr: false }
 );
-import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag, Check } from "lucide-react";
+import { ArrowRight, Plane, MessageCircle, FileText, CreditCard, ShoppingBag, Check, Users, Map, Compass } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -431,6 +431,150 @@ export default function Home() {
                   </Card>
                 ))}
               </CardSwap>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature 4: Intelligent Client CRM */}
+      <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
+        <div className="max-w-7xl mx-auto space-y-32">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="order-2 md:order-1 relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#A259FF]/10 to-transparent group" style={{ perspective: '1000px' }}>
+              <div className="relative w-full max-w-sm space-y-4">
+                <div className="absolute inset-0 -mx-4 -my-8 border-l border-white/5 pl-4 before:absolute before:inset-y-0 before:left-1/2 before:-translate-x-1/2 before:w-px before:bg-white/5 opacity-50"></div>
+
+                <motion.div 
+                  initial={{ opacity: 0, x: -30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6 }}
+                  className="relative z-10 p-4 rounded-2xl glass border border-white/10 flex items-center gap-4 bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#A259FF] to-[#00F0FF] flex items-center justify-center text-white font-bold text-lg">R</div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold">Rohan Sharma</p>
+                    <p className="text-xs text-[#00F0FF]">New Lead • Maldives</p>
+                  </div>
+                  <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#A259FF]/20 text-[#A259FF]">HOT</div>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, x: 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="relative z-10 p-4 rounded-2xl glass border border-[#FF9933]/30 flex items-center gap-4 bg-[#FF9933]/5 shadow-[0_0_20px_rgba(255,153,51,0.1)] translate-x-12"
+                >
+                  <div className="w-12 h-12 rounded-full border-2 border-[#FF9933] overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop" alt="Priya" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold">Priya & Rahul</p>
+                    <p className="text-xs text-[#FF9933]">Proposal Sent • Bali</p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-[#FF9933] animate-pulse"></div>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  className="relative z-10 p-4 rounded-2xl glass border border-[#00F0FF]/30 flex items-center gap-4 bg-[#00F0FF]/5 translate-x-4"
+                >
+                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-white">
+                    <Users size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold flex items-center gap-2">The Kapoor Family <Check size={12} className="text-[#00F0FF]" /></p>
+                    <p className="text-xs text-gray-400">Traveling • Europe</p>
+                  </div>
+                  <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#00F0FF]/20 text-[#00F0FF] flex items-center gap-1">
+                     Paid
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+            
+            <div className="order-1 md:order-2 space-y-6 reveal-text">
+              <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#A259FF]">
+                <Users size={32} />
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold">Intelligent <span className="text-[#A259FF]">Client CRM</span></h2>
+              <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                Track every lead from initial inquiry to their flight home. Know exactly who needs a follow-up, who just opened your proposal, and who is ready to pay. Your entire travel pipeline, perfectly organized.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature 5: Drag & Drop Itinerary Builder */}
+      <section className="relative z-30 bg-transparent py-16 px-10 md:px-24">
+        <div className="max-w-7xl mx-auto space-y-32">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6 reveal-text">
+              <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff3366]">
+                <Map size={32} />
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold">Smart Drag & Drop <span className="text-[#ff3366]">Builder</span></h2>
+              <p className="text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+                Stop copying and pasting from Wikipedia! Access a global database of flights, hotels, and activities. Just drag them into the timeline, and we'll automatically generate the descriptions, photos, and policies.
+              </p>
+            </div>
+            
+            <div className="relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-bl from-[#ff3366]/10 to-transparent group">
+               {/* Visual: Timeline builder */}
+               <div className="absolute inset-y-12 w-full max-w-sm flex shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                 {/* Timeline Line */}
+                 <div className="w-1 bg-white/10 h-full absolute left-8 rounded-full"></div>
+                 
+                 <div className="w-full space-y-6 px-4">
+                   {/* Day 1 */}
+                   <motion.div 
+                     initial={{ opacity: 0, x: 20 }}
+                     whileInView={{ opacity: 1, x: 0 }}
+                     transition={{ duration: 0.5 }}
+                     className="relative ml-10 glass-card p-4 rounded-2xl backdrop-blur-md transform transition-transform group-hover:translate-x-2 bg-white/5 border-white/10"
+                   >
+                     <div className="absolute w-4 h-4 rounded-full bg-[#ff3366] -left-[35px] top-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(255,51,102,0.8)]"><div className="w-1.5 h-1.5 bg-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div></div>
+                     <p className="text-[#ff3366] text-xs font-bold tracking-wider uppercase mb-1">Day 1</p>
+                     <h4 className="text-white font-semibold text-lg">Arrive in Paris</h4>
+                     <p className="text-sm text-gray-400 mt-1 line-clamp-2">Check into Hotel Le Meurice. Private transfer from CDG configured automatically.</p>
+                   </motion.div>
+
+                   {/* Add new block floating animation */}
+                   <motion.div 
+                     initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                     whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                     transition={{ duration: 0.6, delay: 0.3 }}
+                     className="relative ml-10 glass-card p-4 rounded-2xl backdrop-blur-xl shadow-2xl z-10 cursor-grab active:cursor-grabbing border-[#ff3366]/30 bg-gradient-to-r from-[#ff3366]/20 to-transparent"
+                     style={{ rotate: '-2deg' }}
+                   >
+                     <div className="absolute w-4 h-4 rounded-full bg-[#111] border border-white/20 -left-[35px] top-1/2 -translate-y-1/2 opacity-50"></div>
+                     <div className="flex justify-between items-start mb-2">
+                       <p className="text-[#ff3366] text-[10px] font-bold tracking-wider uppercase flex items-center gap-1"><Compass size={12}/> Dragging from Library...</p>
+                     </div>
+                     <h4 className="text-white font-bold">Louvre Museum VIP Pass</h4>
+                     <div className="flex gap-2 mt-3">
+                       <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 text-white border border-white/10">Activity</span>
+                       <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#ff3366]/20 text-[#ff3366] border border-[#ff3366]/30">Skip-The-Line</span>
+                     </div>
+                   </motion.div>
+
+                   {/* Day 2 */}
+                   <motion.div 
+                     initial={{ opacity: 0, x: 20 }}
+                     whileInView={{ opacity: 1, x: 0 }}
+                     transition={{ duration: 0.5, delay: 0.1 }}
+                     className="relative ml-10 glass-card p-4 rounded-2xl backdrop-blur-md bg-white/5 border-white/10 opacity-70"
+                   >
+                     <div className="absolute w-4 h-4 rounded-full bg-[#00F0FF] -left-[35px] top-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(0,240,255,0.8)]"><div className="w-1.5 h-1.5 bg-white rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div></div>
+                     <p className="text-[#00F0FF] text-[10px] font-bold tracking-wider uppercase mb-1">Day 2</p>
+                     <h4 className="text-white font-semibold">Eiffel Tower Dinner</h4>
+                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">Reserved seating at Le Jules Verne. Dietary reqs sent.</p>
+                   </motion.div>
+                 </div>
+
+               </div>
             </div>
           </div>
         </div>
