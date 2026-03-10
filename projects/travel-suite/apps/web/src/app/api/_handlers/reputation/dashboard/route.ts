@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { calculateHealthScore } from "@/lib/reputation/score-calculator";
 import { PLATFORM_LABELS, PLATFORM_COLORS } from "@/lib/reputation/constants";
 import type {
@@ -156,7 +157,7 @@ export async function GET() {
     const dashboardData = await getCachedReputationDashboard(profile.organization_id);
     return NextResponse.json(dashboardData);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation dashboard:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

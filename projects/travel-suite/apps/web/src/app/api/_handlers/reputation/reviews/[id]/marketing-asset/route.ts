@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
   ensureReviewMarketingAsset,
   scheduleReviewMarketingAsset,
@@ -70,8 +71,7 @@ export async function POST(
       );
     }
 
-    const message =
-      error instanceof Error ? error.message : "Failed to process review marketing asset";
+    const message = safeErrorMessage(error, "Request failed");
     const status =
       message === "Unauthorized"
         ? 401

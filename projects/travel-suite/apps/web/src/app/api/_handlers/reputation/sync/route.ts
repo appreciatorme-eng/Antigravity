@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const GOOGLE_PLACES_API_KEY = env.google.placesApiKey;
 
@@ -340,7 +341,7 @@ export async function POST(request: Request) {
       lastSyncedAt: syncedAt,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to sync reviews";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("[reputation/sync] sync failed:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

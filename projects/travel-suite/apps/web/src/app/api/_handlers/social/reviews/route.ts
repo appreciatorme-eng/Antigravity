@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET() {
     try {
@@ -33,7 +34,7 @@ export async function GET() {
         return NextResponse.json({ reviews });
     } catch (error: unknown) {
         console.error('Error fetching social reviews:', error);
-        const message = error instanceof Error ? error.message : "Internal server error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ review });
     } catch (error: unknown) {
         console.error('Error creating manual review:', error);
-        const message = error instanceof Error ? error.message : "Internal server error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

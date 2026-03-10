@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ConnectionPlatform } from "@/lib/reputation/types";
 
 export async function GET() {
@@ -36,7 +37,7 @@ export async function GET() {
 
     return NextResponse.json({ connections: connections ?? [] });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching platform connections:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ connection });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating platform connection:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -179,7 +180,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error deleting platform connection:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
   isCronSecretBearer,
   isCronSecretHeader,
@@ -99,8 +100,7 @@ export async function POST(request: NextRequest) {
     console.error("[cron/reputation-campaigns] Fatal error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Internal server error",
+        error: safeErrorMessage(error, "Request failed"),
       },
       { status: 500 }
     );

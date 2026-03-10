@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { CampaignType } from "@/lib/reputation/types";
 
 const VALID_CAMPAIGN_TYPES: CampaignType[] = [
@@ -46,8 +47,7 @@ export async function GET() {
 
     return NextResponse.json({ campaigns: campaigns ?? [] });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation campaigns:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -137,8 +137,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating reputation campaign:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

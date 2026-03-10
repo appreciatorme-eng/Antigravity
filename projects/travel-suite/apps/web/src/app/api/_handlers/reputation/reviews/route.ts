@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, ResponseStatus, SentimentLabel } from "@/lib/reputation/types";
 
 export async function GET(req: Request) {
@@ -133,7 +134,7 @@ export async function GET(req: Request) {
       limit,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation reviews:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -210,7 +211,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ review });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating reputation review:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

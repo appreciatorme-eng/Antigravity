@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
   reserveDailySpendUsd,
   getEstimatedRequestCostUsd,
@@ -253,7 +254,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ analyzed, skipped, errors });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error in batch analyze:", error);
     return NextResponse.json(
       { error: message, analyzed, skipped, errors },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, TrendDataPoint } from "@/lib/reputation/types";
 
 const PERIOD_DAYS: Record<string, number> = {
@@ -146,7 +147,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ trends });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation trends:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

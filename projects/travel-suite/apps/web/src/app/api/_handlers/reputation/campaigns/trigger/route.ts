@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
 
 export async function POST() {
@@ -183,8 +184,7 @@ export async function POST() {
 
     return NextResponse.json({ sends_created: totalSendsCreated });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error triggering campaign sends:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

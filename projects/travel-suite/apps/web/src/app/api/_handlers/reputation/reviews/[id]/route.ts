@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(
   _req: Request,
@@ -45,7 +46,7 @@ export async function GET(
 
     return NextResponse.json({ review });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation review:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -126,7 +127,7 @@ export async function PATCH(
     revalidateTag("reputation", "max");
     return NextResponse.json({ review });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error updating reputation review:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

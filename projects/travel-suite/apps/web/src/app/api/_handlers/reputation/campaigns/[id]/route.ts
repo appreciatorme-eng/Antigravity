@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(
   _req: Request,
@@ -50,8 +51,7 @@ export async function GET(
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation campaign:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -141,8 +141,7 @@ export async function PATCH(
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error updating reputation campaign:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -198,8 +197,7 @@ export async function DELETE(
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error archiving reputation campaign:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

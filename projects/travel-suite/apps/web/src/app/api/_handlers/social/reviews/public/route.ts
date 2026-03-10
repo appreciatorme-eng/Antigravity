@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
@@ -221,7 +222,7 @@ export async function POST(req: NextRequest) {
         return withRateLimitHeaders(response, limiter);
     } catch (error: unknown) {
         console.error("Error submitting public review:", error);
-        const message = error instanceof Error ? error.message : "Internal server error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

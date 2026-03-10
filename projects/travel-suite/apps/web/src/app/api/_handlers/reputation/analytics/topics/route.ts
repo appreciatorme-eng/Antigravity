@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const PERIOD_DAYS: Record<string, number> = {
   "30d": 30,
@@ -79,7 +80,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ topics });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
+    const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation topics:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
