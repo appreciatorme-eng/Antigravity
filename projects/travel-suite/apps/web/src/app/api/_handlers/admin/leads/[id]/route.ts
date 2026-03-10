@@ -34,6 +34,32 @@ const UpdateLeadSchema = z.object({
   note: z.string().max(5000).optional(),
 });
 
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const admin = await requireAdmin(req, { requireOrganization: true });
+  if (!admin.ok) return admin.response;
+
+  const { id } = params;
+  if (!id || typeof id !== "string") {
+    return NextResponse.json({ error: "Lead ID required" }, { status: 400 });
+  }
+
+  const { data: lead, error } = await admin.adminClient
+    .from("crm_contacts")
+    .select("id, full_name, email, phone, stage, source, notes, assigned_to, expected_value, destination, budget_tier, travelers, duration_days, departure_month, lost_reason, organization_id, created_at, updated_at, last_activity_at, closed_at")
+    .eq("id", id)
+    .eq("organization_id", admin.organizationId!)
+    .single();
+
+  if (error || !lead) {
+    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ lead });
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
