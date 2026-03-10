@@ -46,7 +46,7 @@ type ProposalSendRow = Database["public"]["Tables"]["proposals"]["Row"] & {
 };
 
 function makeShareUrl(request: NextRequest, shareToken: string) {
-  const base = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+  const base = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).trim();
   return `${base.replace(/\/$/, "")}/p/${shareToken}`;
 }
 
