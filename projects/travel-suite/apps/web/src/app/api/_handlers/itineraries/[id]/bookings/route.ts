@@ -5,6 +5,7 @@ import type { Json } from "@/lib/database.types";
 import type { FlightDetails, HotelDetails, ItineraryResult } from "@/types/itinerary";
 import { getRequestId } from "@/lib/observability/logger";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const FlightSchema = z.object({
   id: z.string().min(1),
@@ -136,7 +137,7 @@ export async function POST(
       },
     }, requestId);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal Server Error";
+    const message = safeErrorMessage(error, "Request failed");
     return withRequestId({ error: message }, requestId, { status: 500 });
   }
 }

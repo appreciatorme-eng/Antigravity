@@ -11,6 +11,7 @@ import {
   getIntegrationDisabledMessage,
   isEmailIntegrationEnabled,
 } from '@/lib/integrations';
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const SendPdfSchema = z.object({
   proposal_id: z.string().uuid(),
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error in POST /api/proposals/send-pdf:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to send PDF' },
+      { error: safeErrorMessage(error, "Request failed") },
       { status: 500 }
     );
   }

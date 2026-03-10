@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         });
         return withRequestId(data || [], requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Request failed");
         logError("Marketplace reviews list failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.reviews.list.error", {
             request_id: requestId,
@@ -188,7 +189,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
         return withRequestId(data, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = safeErrorMessage(error, "Request failed");
         logError("Marketplace review create failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.reviews.create.error", {
             request_id: requestId,

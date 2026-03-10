@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -146,7 +147,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         const { data: tripData, error: tripError } = await tripQuery.single();
 
         if (tripError || !tripData) {
-            return NextResponse.json({ error: tripError?.message || "Trip not found" }, { status: 404 });
+            return NextResponse.json({ error: safeErrorMessage(tripError, "Trip not found") }, { status: 404 });
         }
 
         const itinerary = Array.isArray(tripData.itineraries)
@@ -351,7 +352,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             invoiceSummary,
         });
     } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 }
 

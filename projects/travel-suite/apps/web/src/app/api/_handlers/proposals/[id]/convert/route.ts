@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/notifications";
 import { getNextInvoiceNumber } from "@/lib/invoices/module";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 // Define strict types for the database entities we're working with
 type ProposalDay = {
@@ -314,7 +315,7 @@ export async function POST(
     } catch (error) {
         console.error("Convert proposal error:", error);
         return NextResponse.json({
-            error: error instanceof Error ? error.message : "Unknown error"
+            error: safeErrorMessage(error, "Request failed")
         }, { status: 500 });
     }
 }

@@ -8,6 +8,7 @@ import {
     logEvent,
 } from "@/lib/observability/logger";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
         }, requestId);
 
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Internal Server Error";
+        const message = safeErrorMessage(error, "Request failed");
         logError("Marketplace stats fetch failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.stats.get.error", {
             request_id: requestId,

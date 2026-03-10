@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -77,8 +78,7 @@ export async function GET(
         console.error("Trip add-ons error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error ? error.message : "Unknown error",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 },
         );
@@ -144,8 +144,7 @@ export async function PATCH(
         console.error("Trip add-on update error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error ? error.message : "Unknown error",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 },
         );

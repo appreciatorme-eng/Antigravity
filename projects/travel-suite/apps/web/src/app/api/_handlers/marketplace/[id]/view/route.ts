@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -100,7 +101,7 @@ export async function POST(
         });
         return withRequestId({ success: true }, requestId);
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Failed to record marketplace profile view";
+        const message = safeErrorMessage(error, "Request failed");
         logError("Marketplace view tracking failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.view.track.error", {
             request_id: requestId,

@@ -247,7 +247,7 @@ export async function POST(
         logError("Marketplace inquiry create failed", error, requestContext);
         void captureOperationalMetric("api.marketplace.inquiry.create.error", {
             request_id: requestId,
-            error: error instanceof Error ? error.message : "unknown",
+            error: safeErrorMessage(error, "Request failed"),
         });
         return withRequestId({ error: safeErrorMessage(error, "Failed to create inquiry") }, requestId, { status: 500 });
     }

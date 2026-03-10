@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ClientComment } from "@/types/feedback";
 
 const FeedbackActionSchema = z.discriminatedUnion("action", [
@@ -199,7 +200,7 @@ export async function POST(
         return NextResponse.json({ success: true, comments: updatedComments });
     } catch (error) {
         console.error("Internal error in feedback endpoint:", error);
-        const message = error instanceof Error ? error.message : "Internal Server Error";
+        const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

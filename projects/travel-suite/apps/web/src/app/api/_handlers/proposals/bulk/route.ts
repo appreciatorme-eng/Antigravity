@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const bulkSchema = z.object({
   action: z.enum(["approve", "archive"]),
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
         .eq("id", proposalId);
 
       if (error) {
-        errors.push(`${proposalId}: ${error.message}`);
+        errors.push(`${proposalId}: ${safeErrorMessage(error, "Request failed")}`);
         continue;
       }
 

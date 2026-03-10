@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 function omitFields<T extends Record<string, unknown>, K extends keyof T>(
     value: T,
@@ -124,6 +125,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
             message: "Trip duplicated successfully."
         });
     } catch (error) {
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 });
+        return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 }

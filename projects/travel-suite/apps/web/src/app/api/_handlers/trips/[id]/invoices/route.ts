@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { normalizeInvoiceMetadata } from "@/lib/invoices/module";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
 
@@ -142,8 +143,7 @@ export async function GET(
         console.error("Trip invoices error:", error);
         return NextResponse.json(
             {
-                error:
-                    error instanceof Error ? error.message : "Unknown error",
+                error: safeErrorMessage(error, "Request failed"),
             },
             { status: 500 },
         );

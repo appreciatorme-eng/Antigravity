@@ -9,6 +9,7 @@ import {
 } from "@/lib/marketplace-options";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -42,13 +43,7 @@ type MarketplaceOptionRow = {
 };
 
 function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string") return message;
-  }
-  return "Unknown error";
+  return safeErrorMessage(error, "Request failed");
 }
 
 function isMissingRelationError(error: unknown, relation: string): boolean {
