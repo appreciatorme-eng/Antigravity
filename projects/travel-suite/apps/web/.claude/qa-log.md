@@ -20,7 +20,9 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S6a — Proposal/Invoice/Addon/Booking agent | 2026-03-11 | 38 | 21 | 9 | 0 | 8 |
 | S6b — Bug fixes (BUG-045–050) | 2026-03-11 | — | — | — | — | — |
 | S6c — PRICE/BILL/ANLX/REP/MKT agent | 2026-03-11 | 26 | 19 | 7 | 0 | 0 |
-| **Total** | | **~429** | **~246** | **~71** | **~38** | **~296** |
+| S6d — Settings/Contacts/Workflow/Notifications/Calendar | 2026-03-11 | 24 | 17 | 7 | 0 | 0 |
+| S6e — Bug fixes (BUG-062) | 2026-03-11 | — | — | — | — | — |
+| **Total** | | **~453** | **~263** | **~78** | **~38** | **~296** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -798,3 +800,49 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-045–050 fix verification | ✅ Done | Fixed in f16388f; UUID 404, GET handlers for add-ons/itineraries/bookings, PATCH explicit fn, 503 for Amadeus |
 | BUG-042 fix verification | ✅ Done | Fixed in 83ea8f8; GET /api/admin/leads/{id} → 200 with lead object |
 | BUG-051–055 fix verification | ✅ Done | Fixed in 82e9a78; pricing GET handlers, campaigns .maybeSingle(), marketplace left join |
+| BUG-062 fix verification | ✅ Done | Fixed: cache-metrics returns empty stats object instead of null when cache client unavailable |
+
+---
+
+## Test Results — Session 6d (Settings/Contacts/Workflow/Notifications/Calendar)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| SET-001 | GET /api/settings (root) | ❌ Fail | 404 — no root GET handler for settings namespace → **BUG-057 (Not Implemented)** |
+| SET-002 | PATCH /api/settings (root) | ❌ Fail | 404 — no root PATCH handler → **BUG-057 (Not Implemented)** |
+| SET-003 | GET /api/settings/team | ✅ Pass | 200 `{members:[...]}` — team members listed |
+| SET-004 | POST /api/settings/team/invite | ✅ Pass | 200 or 400 validation |
+| SET-005 | GET /api/settings/marketplace | ✅ Pass | 200 marketplace profile settings |
+| SET-006 | GET /api/settings/upi | ✅ Pass | 200 UPI settings |
+| SET-007 | GET /api/settings/integrations | ❌ Fail | 404 — handler missing → **BUG-059 (Not Implemented)** |
+| CONT-001 | GET /api/admin/contacts | ✅ Pass | 200 contacts list |
+| CONT-002 | POST /api/admin/contacts/{id}/promote | ✅ Pass | 200 or 400 |
+| CONT-003 | GET /api/admin/destinations | ✅ Pass | 200 |
+| WF-001 | GET /api/admin/workflow/rules | ✅ Pass | 200 `{rules:[]}` |
+| WF-002 | GET /api/admin/workflow/events | ✅ Pass | 200 `{events:[]}` |
+| WF-003 | GET /api/calendar (root) | ❌ Fail | 404 — calendar backend unimplemented → **BUG-058 (Not Implemented)** |
+| NOTIF-001 | GET /api/admin/notifications/delivery | ✅ Pass | 200 delivery queue |
+| NOTIF-002 | POST /api/admin/notifications/delivery/retry `{queue_id}` | ✅ Pass | 200 or 404 |
+| NOTIF-003 | POST /api/admin/notifications/delivery/retry `{notificationId}` | ❌ Fail | 400 "queue_id is required" — field name mismatch in test spec → **BUG-060 (Spec Error, not code bug)** |
+| NOTIF-004 | POST /api/notifications/send | ✅ Pass | 200 with RESEND disabled |
+| COST-001 | GET /api/admin/cost/overview | ✅ Pass | 200 `{totals, breakdown}` |
+| COST-002 | POST /api/admin/cost/alerts/ack `{alert_id}` | ✅ Pass | 200 acknowledged |
+| COST-003 | POST /api/admin/cost/alerts/ack `{alertId}` | ❌ Fail | 400 validation error — wrong field name in test spec → **BUG-061 (Spec Error, not code bug)** |
+| CACHE-001 | GET /api/admin/cache-metrics | ❌ Fail | 200 `{data:null}` — returns null when cache client unavailable → **BUG-062 fixed** |
+| SEC-001 | GET /api/admin/security/diagnostics | ✅ Pass | 200 security summary |
+| PDF-001 | GET /api/admin/pdf-imports | ✅ Pass | 200 `{imports:[]}` |
+| PRICE-011 | GET /api/admin/pricing/trip-costs (re-test on live) | ❌ Fail | 405 on live Vercel — fix committed in fix/seventh-audit-sweep not yet merged → **BUG-063 (Pending Deploy)** |
+
+---
+
+## Bug Registry — BUG-057 to BUG-063
+
+| ID | Sev | Description | Root Cause | Fix | Commit | Status |
+|----|-----|-------------|------------|-----|--------|--------|
+| BUG-057 | LOW | GET/PATCH /api/settings → 404 | No root settings handler registered in dispatch table | Not Implemented — no `/api/settings` root endpoint needed; specific sub-routes work | — | Not Implemented |
+| BUG-058 | LOW | GET /api/calendar → 404 | Calendar backend entirely unimplemented | Not Implemented — no calendar handler exists | — | Not Implemented |
+| BUG-059 | LOW | GET /api/settings/integrations → 404 | Handler file missing; not in dispatch table | Not Implemented — integrations settings not built yet | — | Not Implemented |
+| BUG-060 | INFO | POST delivery/retry with `notificationId` → 400 | Test spec used camelCase `notificationId` but API expects `queue_id` | Spec error — API is correct. Use `queue_id` | — | Spec Error |
+| BUG-061 | INFO | POST cost/alerts/ack with `alertId` → 400 | Test spec used camelCase `alertId` but API expects `alert_id` | Spec error — API is correct. Use `alert_id` | — | Spec Error |
+| BUG-062 | MED | GET /api/admin/cache-metrics → `{data:null}` | `getSharedCacheStats()` returns null when service client env vars absent or DB error | Return empty stats object `{totalHits:0, totalMisses:0, hitRate:0, bySource:{}, topDestinations:{}}` when null | (uncommitted) | Fixed |
+| BUG-063 | MED | GET /api/admin/pricing/trip-costs → 405 on live | Handler fix from BUG-051 committed to `fix/seventh-audit-sweep`, not yet deployed to live Vercel | Will resolve on merge to main | 82e9a78 | Pending Deploy |

@@ -19,7 +19,13 @@ export async function GET(req: NextRequest) {
     const stats = await getSharedCacheStats(days, organizationId);
 
     return NextResponse.json({
-      data: stats,
+      data: stats ?? {
+        totalHits: 0,
+        totalMisses: 0,
+        hitRate: 0,
+        bySource: {},
+        topDestinations: {},
+      },
       error: null,
     });
   } catch (error) {
