@@ -262,9 +262,28 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const { data, error } = await supabaseQuery
-            .order("is_verified", { ascending: false })
-            .order("updated_at", { ascending: false });
+        const canUseDbPagination =
+            minRating === 0 &&
+            (sort === "verified_first" || sort === "recent");
+
+        if (canUseDbPagination) {
+            if (sort === "recent") {
+                supabaseQuery = supabaseQuery.order("updated_at", { ascending: false });
+            } else {
+                supabaseQuery = supabaseQuery
+                    .order("is_verified", { ascending: false })
+                    .order("updated_at", { ascending: false });
+            }
+            const offset = (page - 1) * pageLimit;
+            supabaseQuery = supabaseQuery.range(offset, offset + pageLimit - 1);
+        } else {
+            supabaseQuery = supabaseQuery
+                .order("is_verified", { ascending: false })
+                .order("updated_at", { ascending: false })
+                .limit(500);
+        }
+
+        const { data, error, count: dbCount } = await supabaseQuery;
 
         if (error) throw error;
 
@@ -341,53 +360,61 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        const filtered = mapped.filter((item) => item.average_rating >= minRating);
+        let paginated: typeof mapped;
+        let total: number;
 
-        const results = filtered.sort((a, b) => {
-            if (sort === "top_rated") {
-                if (b.average_rating !== a.average_rating) return b.average_rating - a.average_rating;
-                return b.review_count - a.review_count;
-            }
-            if (sort === "most_reviewed") {
-                if (b.review_count !== a.review_count) return b.review_count - a.review_count;
-                return b.average_rating - a.average_rating;
-            }
-            if (sort === "recent") {
+        if (canUseDbPagination) {
+            paginated = mapped;
+            total = typeof dbCount === "number" ? dbCount : mapped.length;
+        } else {
+            const filtered = mapped.filter((item) => item.average_rating >= minRating);
+
+            const results = filtered.sort((a, b) => {
+                if (sort === "top_rated") {
+                    if (b.average_rating !== a.average_rating) return b.average_rating - a.average_rating;
+                    return b.review_count - a.review_count;
+                }
+                if (sort === "most_reviewed") {
+                    if (b.review_count !== a.review_count) return b.review_count - a.review_count;
+                    return b.average_rating - a.average_rating;
+                }
+                if (sort === "recent") {
+                    const aTime = Date.parse(String(a.updated_at || "")) || 0;
+                    const bTime = Date.parse(String(b.updated_at || "")) || 0;
+                    return bTime - aTime;
+                }
+                if (sort === "margin_high") {
+                    const aMargin = Number(a.margin_rate || 0);
+                    const bMargin = Number(b.margin_rate || 0);
+                    return bMargin - aMargin;
+                }
+                if (sort === "margin_low") {
+                    const aMargin = Number(a.margin_rate || 0);
+                    const bMargin = Number(b.margin_rate || 0);
+                    return aMargin - bMargin;
+                }
+                if (sort === "discovery") {
+                    return Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
+                }
+
+                // Default: verified partners first, then best discovery score, then freshness.
+                const aVerified = a.is_verified ? 1 : 0;
+                const bVerified = b.is_verified ? 1 : 0;
+                if (bVerified !== aVerified) return bVerified - aVerified;
+
+                const scoreDiff =
+                    Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
+                if (scoreDiff !== 0) return scoreDiff;
+
                 const aTime = Date.parse(String(a.updated_at || "")) || 0;
                 const bTime = Date.parse(String(b.updated_at || "")) || 0;
                 return bTime - aTime;
-            }
-            if (sort === "margin_high") {
-                const aMargin = Number(a.margin_rate || 0);
-                const bMargin = Number(b.margin_rate || 0);
-                return bMargin - aMargin;
-            }
-            if (sort === "margin_low") {
-                const aMargin = Number(a.margin_rate || 0);
-                const bMargin = Number(b.margin_rate || 0);
-                return aMargin - bMargin;
-            }
-            if (sort === "discovery") {
-                return Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
-            }
+            });
 
-            // Default: verified partners first, then best discovery score, then freshness.
-            const aVerified = a.is_verified ? 1 : 0;
-            const bVerified = b.is_verified ? 1 : 0;
-            if (bVerified !== aVerified) return bVerified - aVerified;
-
-            const scoreDiff =
-                Number(b.marketplace_rank_score || 0) - Number(a.marketplace_rank_score || 0);
-            if (scoreDiff !== 0) return scoreDiff;
-
-            const aTime = Date.parse(String(a.updated_at || "")) || 0;
-            const bTime = Date.parse(String(b.updated_at || "")) || 0;
-            return bTime - aTime;
-        });
-
-        const total = results.length;
-        const offset = (page - 1) * pageLimit;
-        const paginated = results.slice(offset, offset + pageLimit);
+            total = results.length;
+            const offset = (page - 1) * pageLimit;
+            paginated = results.slice(offset, offset + pageLimit);
+        }
 
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace list fetched", {
@@ -413,7 +440,7 @@ export async function GET(req: NextRequest) {
             duration_ms: durationMs,
         });
         return withRequestId(
-            { items: paginated, pagination: { page, limit: pageLimit, total, hasMore: offset + pageLimit < total } },
+            { items: paginated, pagination: { page, limit: pageLimit, total, hasMore: (page - 1) * pageLimit + pageLimit < total } },
             requestId
         );
     } catch (error: unknown) {
