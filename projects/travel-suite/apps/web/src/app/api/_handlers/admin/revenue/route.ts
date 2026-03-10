@@ -72,7 +72,10 @@ const getCachedRevenueSnapshot = unstable_cache(
         .neq("role", "client"),
     ]);
 
-    if (paidLinksResult.error) throw paidLinksResult.error;
+    // payment_links table may not be migrated yet; treat missing-table errors as empty
+    if (paidLinksResult.error && paidLinksResult.error.code !== "PGRST205") {
+      throw paidLinksResult.error;
+    }
     if (proposalsResult.error) throw proposalsResult.error;
     if (tripsResult.error) throw tripsResult.error;
     if (activeOperatorsResult.error) throw activeOperatorsResult.error;

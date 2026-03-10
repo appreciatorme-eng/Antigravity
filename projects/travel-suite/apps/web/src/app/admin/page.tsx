@@ -388,7 +388,7 @@ export default function AdminDashboard() {
             color: "text-violet-600",
             iconBg: "bg-violet-100/50",
             description: "Total registered clients",
-            href: "/admin/clients",
+            href: "/clients",
         },
         {
             label: "Total Bookings",
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
                             </GlassCard>
                         </Link>
 
-                        <Link href="/admin/drivers" className="group">
+                        <Link href="/drivers" className="group">
                             <GlassCard padding="md" className="transition-all hover:bg-indigo-50/50 border-gray-100 group-hover:border-indigo-200">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -578,7 +578,7 @@ export default function AdminDashboard() {
                             </GlassCard>
                         </Link>
 
-                        <Link href="/admin/clients" className="group">
+                        <Link href="/clients" className="group">
                             <GlassCard padding="md" className="transition-all hover:bg-violet-50/50 border-gray-100 group-hover:border-violet-200">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center group-hover:scale-110 transition-transform">

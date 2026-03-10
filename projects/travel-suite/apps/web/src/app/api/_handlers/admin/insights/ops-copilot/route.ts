@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
         title: `Stale lead: ${safeTitle(profile.full_name, "Client")}`,
         description: "Send tailored follow-up sequence and propose one itinerary option.",
         due_at: profile.last_contacted_at || profile.created_at || null,
-        href: "/admin/clients",
+        href: "/clients",
         context: {
           lead_status: leadStatus,
           profile_id: profile.id,
