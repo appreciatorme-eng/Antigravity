@@ -70,46 +70,71 @@ export async function getWikiImage(query: string, titleStr: string): Promise<str
     return getDeterministicFallback(titleStr);
 }
 
+const WIKI_CONCURRENCY_LIMIT = 5;
+
+/** Lightweight semaphore — limits concurrent async tasks without a dep on p-limit. */
+function makeSemaphore(concurrency: number) {
+    let active = 0;
+    const queue: Array<() => void> = [];
+
+    function next() {
+        if (queue.length > 0 && active < concurrency) {
+            active++;
+            const resolve = queue.shift()!;
+            resolve();
+        }
+    }
+
+    return async function acquire(): Promise<() => void> {
+        if (active < concurrency) {
+            active++;
+            return () => { active--; next(); };
+        }
+        await new Promise<void>((resolve) => queue.push(resolve));
+        return () => { active--; next(); };
+    };
+}
+
 /**
- * Appends 'imageUrl' to every activity by searching Wikipedia for the real-life location.
+ * Returns a new itinerary with 'imageUrl' and 'image' set on every activity
+ * by searching Wikipedia for the real-life location. Immutable — does not
+ * mutate the input; returns a deep-cloned structure with images applied.
  */
 export async function populateItineraryImages<T extends ItineraryForImages>(itinerary: T): Promise<T> {
     try {
         const destination = itinerary.destination || "destination";
-        const imagePromises: Promise<void>[] = [];
-        let activitiesCount = 0;
+        const semaphore = makeSemaphore(WIKI_CONCURRENCY_LIMIT);
 
-        for (const day of itinerary.days) {
-            for (const activity of day.activities) {
-                // Skip if activity already has a valid image
-                if (activity.image || activity.imageUrl) {
-                    continue;
-                }
+        const updatedDays = await Promise.all(
+            itinerary.days.map(async (day) => {
+                const updatedActivities = await Promise.all(
+                    day.activities.map(async (activity) => {
+                        if (activity.image || activity.imageUrl) {
+                            return activity;
+                        }
 
-                activitiesCount++;
-                const p = async () => {
-                    // Try to search the specific landmark WITH the destination to ensure accuracy
-                    // e.g. "Louvre Paris"
-                    const searchQuery = `${activity.title} ${destination}`;
-                    const imgUrl = await getWikiImage(searchQuery, activity.title);
+                        const release = await semaphore();
+                        try {
+                            const searchQuery = `${activity.title} ${destination}`;
+                            const imgUrl = await getWikiImage(searchQuery, activity.title);
+                            return imgUrl
+                                ? { ...activity, imageUrl: imgUrl, image: imgUrl }
+                                : activity;
+                        } finally {
+                            release();
+                        }
+                    }),
+                );
+                return { ...day, activities: updatedActivities };
+            }),
+        );
 
-                    if (imgUrl) {
-                        activity.imageUrl = imgUrl;     // Template compat 1
-                        activity.image = imgUrl;        // Template compat 2
-                    }
-                };
-                imagePromises.push(p());
-            }
-        }
+        const activitiesCount = updatedDays.reduce((n, d) => n + d.activities.length, 0);
+        console.log(`🖼️ [Images] Populated photos for up to ${activitiesCount} activities (max ${WIKI_CONCURRENCY_LIMIT} concurrent).`);
 
-        // Wait for all Wikipedia API searches to complete concurrently
-        // We set 10 batches to avoid overloading Wikimedia rules (they allow parallel requests, but good to be nice)
-        await Promise.allSettled(imagePromises);
-        console.log(`🖼️ [Images] Successfully populated photos for ${activitiesCount} activities!`);
-
-        return itinerary;
+        return { ...itinerary, days: updatedDays };
     } catch (error) {
         console.error('Image fetching error (non-blocking):', error);
-        return itinerary; // Return original itinerary if geocoding fails
+        return itinerary;
     }
 }

@@ -165,27 +165,26 @@ export async function GET(
     const tripEndDate = normalizeText(trip?.end_date);
 
     const dayIds = (daysResult.data || []).map((day) => day.id);
-    const activities =
+    const [activities, accommodations] = await Promise.all([
       dayIds.length > 0
-        ? await admin
+        ? admin
             .from("proposal_activities")
             .select("proposal_day_id, time, title, description, location")
             .in("proposal_day_id", dayIds)
             .order("display_order", { ascending: true })
-        : { data: [], error: null };
+        : Promise.resolve({ data: [], error: null }),
+      dayIds.length > 0
+        ? admin
+            .from("proposal_accommodations")
+            .select("proposal_day_id, hotel_name, room_type")
+            .in("proposal_day_id", dayIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
     if (activities.error) {
       console.error("[portal/:token] failed to load activities:", activities.error);
       return apiError("Failed to load trip portal", 500);
     }
-
-    const accommodations =
-      dayIds.length > 0
-        ? await admin
-            .from("proposal_accommodations")
-            .select("proposal_day_id, hotel_name, room_type")
-            .in("proposal_day_id", dayIds)
-        : { data: [], error: null };
 
     if (accommodations.error) {
       console.error("[portal/:token] failed to load accommodations:", accommodations.error);
