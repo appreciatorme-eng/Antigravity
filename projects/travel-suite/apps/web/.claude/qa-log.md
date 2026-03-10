@@ -324,13 +324,17 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | ID | Test | Status | Notes |
 |----|------|--------|-------|
 | GOD-001 | /api/superadmin/orgs → blocked for admin | ⚠️ Partial | Returns 404 instead of 403 — inconsistent |
-| GOD-002 | /api/superadmin/kill-switch → blocked | ⚠️ Partial | Returns 404 instead of 403 |
-| GOD-003 | /api/superadmin/announcements → 403 | ✅ Pass | Correctly returns 403 for admin role |
-| GOD-004 | /api/superadmin/audit-log → 403 | ✅ Pass | Correctly returns 403 for admin role |
-| GOD-005 | /api/superadmin/support → blocked | ⚠️ Partial | Returns 404 instead of 403 |
-| GOD-006 | /api/superadmin/org-suspend → blocked | ⚠️ Partial | Returns 404 instead of 403 |
+| GOD-002 | GET /api/superadmin/overview → 403 | ✅ Pass | Correctly returns 403 for admin role |
+| GOD-004 | GET /api/superadmin/users/signups → 403 | ✅ Pass | Correctly forbidden |
+| GOD-005 | GET /api/superadmin/users/directory → 403 | ✅ Pass | Correctly forbidden |
+| GOD-011 | GET /api/superadmin/analytics/feature-usage → 403 | ✅ Pass | Correctly forbidden |
+| GOD-014 | GET /api/superadmin/cost/aggregate → 403 | ✅ Pass | Correctly forbidden |
+| GOD-019 | GET /api/superadmin/announcements → 403 | ✅ Pass | Correctly forbidden |
+| GOD-025 | GET /api/superadmin/support/tickets → 403 | ✅ Pass | Correctly forbidden |
+| GOD-029 | POST /api/superadmin/settings/kill-switch → 403 | ✅ Pass | Correctly forbidden |
+| GOD-031 | POST /api/superadmin/settings/org-suspend → 403 | ✅ Pass | Correctly forbidden |
 | GOD-007 | /god page → redirects for admin user | ⏭ Blocked | UI test |
-| GOD-008 to GOD-032 | Superadmin CRUD, kill-switch, announcements | ⏭ Blocked | Requires super_admin JWT |
+| GOD-008 to GOD-032 | Superadmin CRUD, announcements (as super_admin) | ⏭ Blocked | Requires super_admin JWT |
 
 ### SETTINGS — Settings & Team
 
@@ -356,7 +360,12 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | SEC-008 | Huge payload (10KB name) accepted | ⚠️ Partial | No body size limit enforced → **INFO-003** |
 | SEC-009 | Path traversal /admin/../../etc/passwd | ✅ Pass | Returns 403 |
 | SEC-010 to SEC-018 | CORS, CSP, tenant isolation | ⏭ Blocked | Requires browser or second-org JWT |
-| SEC-019 | Admin cannot access /god | ✅ Pass | 403 on announcements/audit-log (partial 404 on others) |
+| SEC-011 | GET /api/health — no auth | ✅ Pass | Public endpoint accessible, returns 200 |
+| SEC-012 | GET /api/proposals/public/nonexistenttoken | ✅ Pass | Returns 404 for unknown share token |
+| SEC-013 | GET /api/payments/links/nonexistenttoken | ❌ Fail | Returns 500 instead of 404 → **BUG-024** |
+| SEC-014 | GET /api/reputation/nps/nonexistenttoken | ✅ Pass | 400 "Invalid token" (non-UUID format) — correct |
+| SEC-019 | Admin cannot access /god | ✅ Pass | 403 on all superadmin endpoints confirmed |
+| SEC-023 | Modified JWT (tampered last char) | ✅ Pass | Tampered token correctly rejected → 401 |
 | SEC-020 to SEC-028 | Role escalation, rate limits | 🔲 Pending | |
 
 ### EDGE — Edge Cases & Error Handling
@@ -364,32 +373,41 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | ID | Test | Status | Notes |
 |----|------|--------|-------|
 | EDGE-001 | GET non-existent resource → 400 | ⚠️ Partial | Returns 400 instead of 404 (incorrect HTTP semantics) → **INFO-001** |
-| EDGE-002 | Malformed UUID → 400 | ✅ Pass | |
-| EDGE-003 | Empty body on POST → 400 | ✅ Pass | |
-| EDGE-004 | Invalid JSON body → 500 | ❌ Fail | Returns 500 instead of 400 → **BUG-006** |
-| EDGE-005 | Currency endpoint | ✅ Pass | Returns exchange rate data |
-| EDGE-006 | Weather API | ❌ Fail | API key not configured |
-| EDGE-007 | Unsplash image search | ❌ Fail | API key errors |
-| EDGE-008 | Pexels image search | ❌ Fail | API key errors |
-| EDGE-009 | Pixabay image search | ❌ Fail | API key errors |
-| EDGE-010 | AI draft review response | ⚠️ Partial | Returns `{data, error}` — endpoint exists, output incomplete |
-| EDGE-011 to EDGE-022 | Large datasets, concurrent requests | 🔲 Pending | |
+| EDGE-002 | DELETE /api/admin/dashboard/stats (wrong method) | ✅ Pass | 405 Method Not Allowed correctly enforced |
+| EDGE-003 | POST /api/admin/clients `{}` → 400 | ✅ Pass | "Name and email are required" |
+| EDGE-004 | POST /api/admin/clients Content-Type: text/plain | ❌ Fail | Returns 500 instead of 400/415 → **BUG-006** |
+| EDGE-008 | Double-DELETE same client | ✅ Pass | First → 200; second → 404 "Client not found" — idempotency correct |
+| EDGE-009 | GET /api/admin/trips/not-a-uuid | ✅ Pass | 400 "Invalid trip id" |
+| EDGE-010 | POST /api/admin/clients with `phone: null` | ✅ Pass | Nullable phone accepted |
+| EDGE-014 | HEAD /api/admin/trips | ✅ Pass | HEAD method returns 200 |
+| EDGE-015 | OPTIONS /api/admin/trips — CORS preflight | ❌ Fail | Returns 405; no `Access-Control-Allow-*` headers → **BUG-025** |
+| EDGE-016 | GET /api/admin//clients (double slash) | ✅ Pass | 308 redirect; Next.js normalizes double slashes |
+| EDGE-019 | 393-char search query | ✅ Pass | No crash; returns 200 |
+| EDGE-022 | GET /api/weather?location=zzzznonexistent | ✅ Pass | 404 "Could not find weather data" |
+| EDGE-011 to EDGE-013 | Large datasets, concurrent requests | 🔲 Pending | |
 
 ### PERF — Performance & Load
 
 | ID | Test | Status | Notes |
 |----|------|--------|-------|
-| PERF-001 | Admin clients list response time | ✅ Pass | Sub-second response |
-| PERF-002 | Health check response time | ✅ Pass | Near-instant (<50ms) |
-| PERF-003 to PERF-012 | Concurrent requests, large payloads | 🔲 Pending | |
+| PERF-001 | GET / homepage | ✅ Pass | 1.258s — within SSR range |
+| PERF-002 | GET /api/admin/clients | ✅ Pass | 1.040s |
+| PERF-003 | GET /api/admin/trips | ✅ Pass | 0.984s |
+| PERF-004 | GET /api/admin/revenue?preset=30d (1st call) | ✅ Pass | 0.825s |
+| PERF-005 | GET /api/admin/revenue?preset=30d (2nd call) | ⚠️ Partial | 0.853s — no cache speedup (28ms slower); Vercel serverless may not cache per-user responses |
+| PERF-008 | GET /api/images/pexels?query=beach | ✅ Pass | 0.231s (likely upstream cached) |
+| PERF-012 | GET /api/health (warm function) | ✅ Pass | 0.248s |
+| PERF-006/007/009-011 | Concurrent requests, large payloads | 🔲 Pending | |
 
 ### E2E — End-to-End Business Workflows
 
 | ID | Test | Status | Notes |
 |----|------|--------|-------|
-| E2E-001 | Create client → create trip → confirm in list → delete both | ✅ Pass | Full lifecycle verified |
+| E2E-001 | Create client → create trip → confirm in list → delete both | ✅ Pass | Full lifecycle verified; client+trip+delete all work |
+| E2E-001b | Full sales pipeline: client→proposal→convert→invoice | ⏭ Blocked | QA org has 0 proposal templates; `{"error":"Template not found"}` |
 | E2E-002 | Invoice auto-created on trip create | ⚠️ Partial | Trip alone does NOT auto-create invoice; only proposal→convert does |
-| E2E-003 to E2E-012 | Full proposal→convert→invoice, payment, email | ⏭ Blocked | Requires seeded templates + cookie auth |
+| E2E-012 | Add-on to invoice flow | ⏭ Blocked | `/api/add-ons` uses SSR cookie auth, not Bearer JWT; requires browser session |
+| E2E-003 to E2E-011 | Payment, email, multi-org flows | ⏭ Blocked | Requires templates + cookie auth + configured providers |
 
 ---
 
@@ -489,6 +507,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | BUG-021 | LOW | `POST /api/reputation/nps/submit` validates score before doing token DB lookup — returns 400 "score must be 1–10" when score is missing/invalid even for nonexistent tokens | Zod validates score before handler queries DB for token; spec expects 404 for nonexistent token | Reorder: check token existence first, then validate score | — | **Open** |
 | BUG-022 | LOW | `GET /api/marketplace/{id}/view` → 405 | Test plan specifies GET; handler only exports POST | Fix test: use POST, or add GET handler | — | **Open** |
 | BUG-023 | LOW | `/api/social/reviews/public` → 405 Method Not Allowed | Catch-all route has `["reviews/public", ...]` handler but dispatcher returns 405 for that path segment | Investigate catch-all routing for `reviews/public` nested path | — | **Open** |
+| BUG-024 | MED | `GET /api/payments/links/{token}` → 500 for nonexistent token | Payment link lookup throws unhandled error instead of returning clean 404 | Add existence check; return 404 "Payment link not found" | — | **Open** |
+| BUG-025 | LOW | `OPTIONS /api/admin/*` → 405, no CORS preflight headers | Admin API routes don't handle OPTIONS method; no `Access-Control-Allow-*` headers returned | Add CORS OPTIONS handler in catch-all route or Next.js middleware | — | **Open** |
 
 ---
 
