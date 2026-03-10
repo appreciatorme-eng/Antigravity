@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
 // Razorpay credentials are required in production — payments cannot function without them.
-// In dev/test/CI they remain optional so the app boots without payment infrastructure.
+// Use VERCEL_ENV (set by Vercel platform) rather than NODE_ENV because Vercel sets
+// NODE_ENV=production on ALL deployments including preview branches. VERCEL_ENV is
+// 'production' only for the canonical production deployment.
 const razorpayField = (isProduction: boolean) =>
   isProduction ? z.string().min(1) : z.string().min(1).optional();
 
-const IS_PROD_ENV = process.env.NODE_ENV === 'production';
+const IS_PROD_ENV =
+  process.env.VERCEL_ENV === 'production' ||
+  // Non-Vercel environments (bare Node.js, Docker, etc.) fall back to NODE_ENV
+  (process.env.VERCEL_ENV === undefined && process.env.NODE_ENV === 'production');
 
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
