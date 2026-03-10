@@ -45,26 +45,17 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 md:h-[120px] flex items-center justify-between">
 
           {/* Logo */}
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '14px',
-              background: 'linear-gradient(135deg, #00F0FF, #0070F3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 28px rgba(0,240,255,0.6)',
-            }}>
-              <Plane size={28} color="white" />
+          <Link href="/" className="flex items-center gap-2 md:gap-3 no-underline z-50">
+            <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] md:shadow-[0_0_28px_rgba(0,240,255,0.6)]">
+              <Plane className="w-5 h-5 md:w-7 md:h-7 text-white" />
             </div>
-            <span style={{ fontWeight: 900, fontSize: '30px', letterSpacing: '-0.5px', color: 'white', lineHeight: 1 }}>
-              Travel<span style={{ color: '#00F0FF' }}>Suite</span>
+            <span className="font-black text-2xl md:text-3xl tracking-tight text-white leading-none">
+              Travel<span className="text-[#00F0FF]">Suite</span>
             </span>
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }} className="hidden md:flex">
+          <nav className="hidden lg:flex items-center gap-1">
             {navLinks.map(({ label, href }) => {
               const active = pathname === href;
               return (
@@ -141,7 +132,7 @@ export function Navbar() {
           </nav>
 
           {/* CTA Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className="hidden md:flex">
+          <div className="hidden lg:flex items-center gap-3">
             <ThemeToggle />
             <Link
               href="/login"
@@ -163,7 +154,7 @@ export function Navbar() {
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden"
+            className="lg:hidden z-50"
             style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '8px' }}
             onClick={() => setMobileOpen(v => !v)}
           >
@@ -180,7 +171,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-20 md:top-[120px] left-0 right-0 z-[99] bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10 px-6 py-8 flex flex-col gap-4 max-h-[calc(100vh-80px)] overflow-y-auto"
+            className="fixed top-20 lg:top-[120px] left-0 right-0 z-[99] bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10 px-6 py-8 flex flex-col gap-4 max-h-[calc(100vh-80px)] overflow-y-auto shadow-2xl"
           >
             {navLinks.map(({ label, href }) => (
               <Link
