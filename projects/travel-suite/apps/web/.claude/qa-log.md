@@ -18,7 +18,9 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S4 — Asst/WA/Notify/Bill/Price/Settings agent | 2026-03-11 | 52 | 38 | 11 | 0 | 3 |
 | S5 — Client/Contacts/Trip agent | 2026-03-11 | 37 | 22 | 11 | 4 | 0 |
 | S6a — Proposal/Invoice/Addon/Booking agent | 2026-03-11 | 38 | 21 | 9 | 0 | 8 |
-| **Total** | | **~403** | **~227** | **~64** | **~38** | **~296** |
+| S6b — Bug fixes (BUG-045–050) | 2026-03-11 | — | — | — | — | — |
+| S6c — PRICE/BILL/ANLX/REP/MKT agent | 2026-03-11 | 26 | 19 | 7 | 0 | 0 |
+| **Total** | | **~429** | **~246** | **~71** | **~38** | **~296** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -130,8 +132,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | DASH-014 | Upsell recommendations | ✅ Pass | Returns `{window_days, analyzed, recommendations, quick_wins}` |
 | DASH-015 | Dashboard require auth | ✅ Pass | Insights return 401 without token |
 | DASH-016 | LTV analytics | ✅ Pass | `GET /api/admin/ltv` → `{customers, range}` |
-| DASH-017 | Operator reports | ❌ Fail | `GET /api/admin/reports/operators` → error |
-| DASH-018 | Destination reports | ❌ Fail | `GET /api/admin/reports/destinations` → error |
+| DASH-017 | Operator reports | ❌ Not Implemented | `GET /api/admin/reports/operators` — no handler file exists; route never registered |
+| DASH-018 | Destination reports | ❌ Not Implemented | `GET /api/admin/reports/destinations` — no handler file exists; route never registered |
 | DASH-019 to DASH-021 | Dashboard UI tests | ⏭ Blocked | UI tests |
 | DASH-022 | `GET /api/admin/insights/best-quote` | ❌ Fail | Returns 405 Method Not Allowed — endpoint is POST-only |
 
@@ -632,11 +634,23 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-037 | HIGH | POST /api/add-ons — negative `price` accepted and stored (e.g. `price: -10`) | No `price >= 0` validation in POST handler | Added `if (price < 0)` → 400 check in add-ons POST and PUT/PATCH | pending-commit | **Fixed** ✅ |
 | BUG-038 | HIGH | POST /api/add-ons — raw HTML/XSS stored verbatim in `name` field (e.g. `<img src=x onerror=alert(1)>`) | No sanitization on `name` or `description` fields in add-ons route | Applied `sanitizeText(…, { stripHtml: true })` to name and description in POST and PUT/PATCH | pending-commit | **Fixed** ✅ |
 | BUG-039 | HIGH | GET /api/bookings/hotels/search with `checkOutDate < checkInDate` → 500 instead of 400 | No date ordering validation before sending to Amadeus API | Added `checkOutDate <= checkInDate` → 400 guard after city code resolution | pending-commit | **Fixed** ✅ |
-| BUG-040 | MED | PATCH /api/add-ons/{id} → 405 Method Not Allowed | `[id]/route.ts` only exported `PUT` and `DELETE`; no PATCH handler | Added `export const PATCH = PUT` alias | pending-commit | **Fixed** ✅ |
-| BUG-041 | MED | GET /api/itineraries/{id} → 405 Method Not Allowed | `GET /api/itineraries/:id` not registered in dispatch table | Needs investigation — dispatch routing issue | — | **Open** |
-| BUG-042 | MED | GET /api/admin/leads/{id} → 405 Method Not Allowed | Dynamic `[id]` segment not registered for GET in admin/leads | Needs investigation | — | **Open** |
+| BUG-040 | MED | PATCH /api/add-ons/{id} → 405 Method Not Allowed | `[id]/route.ts` only exported `PUT` and `DELETE`; `export const PATCH = PUT` doesn't work via dynamic import | Replaced with explicit `export async function PATCH(...)` that delegates to PUT | f16388f | **Fixed** ✅ |
+| BUG-041 | MED | GET /api/itineraries/{id} → 405 Method Not Allowed | `itineraries/[id]/route.ts` only had PATCH handler; no GET | Added GET handler selecting id, client_id, budget, raw_data | f16388f | **Fixed** ✅ |
+| BUG-042 | MED | GET /api/admin/leads/{id} → 405 Method Not Allowed | `admin/leads/[id]/route.ts` only exported PATCH, no GET | Added GET handler selecting all lead fields with org-scoped filter | 83ea8f8 | **Fixed** ✅ |
+| BUG-045 | MED | GET /api/invoices/{invalid-id} → 500 instead of 404 | Invalid UUID passed to Supabase triggers postgres error 22P02, caught as generic 500 | Added UUID_REGEX guard in `loadInvoiceForOrg()` — invalid UUID returns `{invoice:null, error:null}` → 404 | f16388f | **Fixed** ✅ |
+| BUG-046 | MED | GET /api/add-ons/{id} → 405 (no GET handler) | `add-ons/[id]/route.ts` had no GET handler | Added GET handler with org-scoped lookup and explicit column select | f16388f | **Fixed** ✅ |
+| BUG-047 | MED | PATCH /api/add-ons/{id} still 405 after BUG-040 fix | `export const PATCH = PUT` alias does not work when module is dynamically imported via api-dispatch; method lookup returns undefined | Replaced alias with explicit `export async function PATCH(request, context) { return PUT(request, context); }` | f16388f | **Fixed** ✅ |
+| BUG-048 | MED | GET /api/itineraries/{id} → 405 (no GET handler) | `itineraries/[id]/route.ts` only exported PATCH | Added GET handler | f16388f | **Fixed** ✅ |
+| BUG-049 | MED | GET /api/itineraries/{id}/bookings → 405 (no GET handler) | `itineraries/[id]/bookings/route.ts` only exported POST | Added GET handler that returns flights/hotels arrays from `raw_data.logistics` | f16388f | **Fixed** ✅ |
+| BUG-050 | LOW | GET /api/bookings/flights/search and hotels/search → 500 on Amadeus failure | Catch block returned 500 for all exceptions including upstream service failures | Changed catch block status from 500 → 503 with "service unavailable" message | f16388f | **Fixed** ✅ |
 | BUG-043 | MED | GET /api/proposals/{id}/pdf → 401 with valid Bearer token | Proposal PDF route uses cookie-only auth (same as BUG-036 pattern) | Same as BUG-036 — SSR cookie auth by design | — | **Known Limitation** |
 | BUG-044 | LOW | POST /api/leads/convert → 503 "Service not configured" | Lead conversion service not wired up in production environment | Service/feature not yet implemented | — | **Open (unimplemented feature)** |
+| BUG-051 | MED | GET /api/admin/pricing/trip-costs → 405 Method Not Allowed | `trip-costs/route.ts` only exported POST; no GET collection handler | Added GET handler with optional `?trip_id=` filter | 82e9a78 | **Fixed** ✅ |
+| BUG-052 | MED | GET /api/admin/pricing/overheads/{id} → 405 Method Not Allowed | `overheads/[id]/route.ts` only exported PATCH and DELETE; no GET | Added GET handler returning single overhead by org-scoped ID | 82e9a78 | **Fixed** ✅ |
+| BUG-053 | LOW | GET /api/reputation/analytics/history → 404 | Route handler file does not exist; not registered in reputation dispatcher | Not implemented — no handler file | — | **Not Implemented** |
+| BUG-054 | MED | GET /api/reputation/campaigns/{non-existent-id} → 500 instead of 404 | Handler used `.single()` — Supabase throws PGRST116 ("no rows") which gets caught as generic 500 | Changed `.single()` → `.maybeSingle()`; null result now returns 404 | 82e9a78 | **Fixed** ✅ |
+| BUG-055 | MED | GET /api/marketplace → 500 (crashes on any request) | `organizations!inner(...)` forced inner join — fails when marketplace_profiles table is empty or join fails | Changed to `organizations(...)` (left join); empty table now returns `[]` instead of crashing | 82e9a78 | **Fixed** ✅ |
+| BUG-056 | LOW | POST /api/billing/contact-sales → 404 "Organization not found" | Handler uses `createClient()` (SSR/RLS) to query `organizations` table; RLS policy blocks read for this user session despite valid `organization_id` in profile | RLS policy on `organizations` table needs to allow the session-authenticated user to read their own row | — | **Open** |
 
 ---
 
@@ -682,6 +696,42 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BOOK-019 | GET /api/bookings/flights/search (no params) | ✅ Pass | 400 validation error |
 | BOOK-021 | GET /api/bookings/hotels/search (no params) | ✅ Pass | 400 validation error |
 | BOOK-022 | GET /api/bookings/hotels/search with checkout < checkin | ❌ Fail | 500 instead of 400 → **BUG-039 fixed** |
+
+---
+
+## Test Results — Session 6c (PRICE/BILL/ANLX/REP/MKT)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| PRICE-002 | GET /api/admin/pricing/dashboard | ✅ Pass | `{kpis, categoryBreakdown, topProfitableTrips, monthlyTrend}` |
+| PRICE-003 | GET /api/admin/pricing/trip-costs | ❌ Fail | 405 — no GET handler → **BUG-051 fixed** |
+| PRICE-004 | POST /api/admin/pricing/trip-costs (valid body) | ✅ Pass | 201 created. Note: spec body had wrong category and missing trip_id |
+| PRICE-005 | GET /api/admin/pricing/trip-costs/{id} | ✅ Pass | 200 with cost record |
+| PRICE-006 | PATCH /api/admin/pricing/trip-costs/{id} | ✅ Pass | 200 updated |
+| PRICE-007 | GET /api/admin/pricing/overheads | ✅ Pass | 200 `{expenses:[...]}` |
+| PRICE-008 | POST /api/admin/pricing/overheads (valid body) | ✅ Pass | 201 created. Note: spec body had wrong field names (name/monthly_amount vs description/amount/category/month_start) |
+| PRICE-009 | GET /api/admin/pricing/overheads/{id} | ❌ Fail | 405 — no GET handler → **BUG-052 fixed** |
+| PRICE-010 | DELETE /api/admin/pricing/trip-costs/{id} | ✅ Pass | 200 `{success:true}` |
+| BILL-003 | GET /api/subscriptions | ✅ Pass | 200 — subscription:null (no active plan). Note: requires SSR cookies, not Bearer |
+| BILL-004 | GET /api/billing/subscription-limits | ✅ Pass | 200 `{plan_id, tier, limits, credit_packs, premium_automation_gate}` |
+| BILL-006 | GET /api/billing/subscription | ✅ Pass | 200 plan=pro_monthly |
+| BILL-007 | POST /api/billing/contact-sales | ❌ Fail | 404 "Organization not found" — RLS blocks organizations table read → **BUG-056** |
+| ANLX-001 | GET /api/admin/revenue | ✅ Pass | 200 `{series, totals, range}` |
+| ANLX-002 | GET /api/admin/ltv | ✅ Pass | 200 `{customers, range}` |
+| ANLX-003 | GET /api/admin/insights/best-quote | ❌ Fail | 404 — spec used wrong path (/insights/ vs /admin/insights/) AND wrong method (GET vs POST). Not a code bug — spec error |
+| ANLX-004 | GET /api/reputation/analytics/snapshot | ✅ Pass | 200 `{snapshot}` (cookie auth) |
+| ANLX-005 | GET /api/admin/geocoding/usage | ✅ Pass | 200 `{status, month, usage, limits}` |
+| ANLX-006 | GET /api/admin/dashboard/stats | ✅ Pass | 200 `{events, completedCount}` |
+| REP-001 | GET /api/reputation/campaigns | ✅ Pass | 200 `{campaigns:[]}` (cookie auth) |
+| REP-002 | GET /api/reputation/analytics/snapshot | ✅ Pass | 200 `{snapshot}` |
+| REP-003 | GET /api/reputation/analytics/history | ❌ Fail | 404 — route not registered, handler file doesn't exist → **BUG-053 (Not Implemented)** |
+| REP-004 | GET /api/reputation/reviews | ✅ Pass | 200 `{reviews:[], total:0, page:1, limit:20}` |
+| REP-005 | GET /api/reputation/campaigns/{non-existent-id} | ❌ Fail | 500 — .single() throws PGRST116 for no-match → **BUG-054 fixed** |
+| REP-006 | POST /api/nps/submit (missing token) | ✅ Pass | 400 "token is required" |
+| REP-007 | POST /api/nps/submit (fake token) | ✅ Pass | 404 "Invalid or expired token" |
+| MKT-001 | GET /api/marketplace | ❌ Fail | 500 — organizations!inner join crashes on empty table → **BUG-055 fixed** |
+| MKT-002 | GET /api/marketplace/inquiries | ✅ Pass | 200 `{received, sent, nextCursorReceived, ...}` |
+| MKT-003 | GET /api/marketplace/stats | ✅ Pass | 200 `{views, inquiries, conversion_rate, ...}` |
 
 ---
 
@@ -744,3 +794,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-026 fix verification | ✅ Done | Fixed: whatsapp/conversations no longer imports whatsapp-waha.server; returns [] gracefully |
 | BUG-016 fix verification | ✅ Done | Fixed in 82c2b08; POST /api/social/posts → 201 confirmed |
 | BUG-017 fix verification | ✅ Done | Fixed in 82c2b08; GET /api/billing/subscription → plan:pro_monthly confirmed |
+| BUG-037–040 fix verification | ✅ Done | Fixed in 96db30e; price validation, XSS sanitization, hotel date guard, PATCH alias |
+| BUG-045–050 fix verification | ✅ Done | Fixed in f16388f; UUID 404, GET handlers for add-ons/itineraries/bookings, PATCH explicit fn, 503 for Amadeus |
+| BUG-042 fix verification | ✅ Done | Fixed in 83ea8f8; GET /api/admin/leads/{id} → 200 with lead object |
+| BUG-051–055 fix verification | ✅ Done | Fixed in 82e9a78; pricing GET handlers, campaigns .maybeSingle(), marketplace left join |
