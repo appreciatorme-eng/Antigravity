@@ -5,7 +5,7 @@ import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const CreatePostSchema = z.object({
     template_id: z.string().uuid().optional(),
-    template_data: z.record(z.unknown()).optional(),
+    template_data: z.record(z.string(), z.unknown()).optional(),
     caption_instagram: z.string().max(2200).optional(),
     caption_facebook: z.string().max(63206).optional(),
     hashtags: z.array(z.string().max(100)).max(30).optional(),
@@ -78,20 +78,22 @@ export async function POST(req: Request) {
         }
         const { template_id, template_data, caption_instagram, caption_facebook, hashtags, status, source, rendered_image_url } = parsed.data;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const insertPayload: any = {
+            organization_id: profile.organization_id,
+            created_by: user.id,
+            template_id,
+            template_data,
+            caption_instagram,
+            caption_facebook,
+            hashtags,
+            status: status || 'draft',
+            source: source || 'manual',
+            rendered_image_url,
+        };
         const { data: post, error } = await supabase
             .from("social_posts")
-            .insert({
-                organization_id: profile.organization_id,
-                created_by: user.id,
-                template_id,
-                template_data,
-                caption_instagram,
-                caption_facebook,
-                hashtags,
-                status: status || 'draft',
-                source: source || 'manual',
-                rendered_image_url
-            })
+            .insert(insertPayload)
             .select()
             .single();
 
