@@ -12,7 +12,7 @@ export function hasValidSeedDemoCronSecret(
   providedSecret: string | null | undefined
 ) {
   if (!expectedSecret) {
-    return true;
+    return false;
   }
 
   return safeEqual(providedSecret?.trim() ?? "", expectedSecret.trim());

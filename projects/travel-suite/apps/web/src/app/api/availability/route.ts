@@ -2,7 +2,6 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type UntypedFromResult = ReturnType<AdminClient["from"]>;
@@ -22,36 +21,14 @@ function untypedFrom(client: AdminClient, table: string) {
   return (client as unknown as { from: (name: string) => UntypedFromResult }).from(table);
 }
 
-async function resolveAuthenticatedOrganizationId() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: apiError("Unauthorized", 401) } as const;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return { error: apiError("Failed to resolve organization", 500) } as const;
-  }
-
-  if (!profile?.organization_id) {
-    return { error: apiError("Organization not found", 404) } as const;
-  }
-
-  return { organizationId: profile.organization_id } as const;
-}
 
 export async function GET(request: Request) {
   try {
+    const adminResult = await requireAdmin(request);
+    if (!adminResult.ok) {
+      return adminResult.response;
+    }
+
     const url = new URL(request.url);
     const parsed = AvailabilityQuerySchema.safeParse({
       from: url.searchParams.get("from"),
@@ -64,15 +41,10 @@ export async function GET(request: Request) {
       });
     }
 
-    const context = await resolveAuthenticatedOrganizationId();
-    if ("error" in context) {
-      return context.error;
-    }
-
-    const admin = createAdminClient();
+    const admin = adminResult.adminClient;
     const { data, error } = await untypedFrom(admin, "operator_unavailability")
       .select("id, start_date, end_date, reason, created_at")
-      .eq("organization_id", context.organizationId)
+      .eq("organization_id", adminResult.organizationId)
       .lte("start_date", parsed.data.to)
       .gte("end_date", parsed.data.from)
       .order("start_date", { ascending: true });

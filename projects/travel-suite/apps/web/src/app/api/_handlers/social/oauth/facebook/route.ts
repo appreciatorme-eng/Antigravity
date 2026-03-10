@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSocialOAuthState } from '@/lib/security/social-oauth-state';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_REDIRECT_URI = process.env.META_REDIRECT_URI || 'http://localhost:3000/api/social/oauth/callback'; // fallback for local
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
     } catch (error: unknown) {
         console.error('Error initiating Facebook OAuth:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to initiate OAuth flow' },
+            { error: safeErrorMessage(error, 'Failed to initiate OAuth flow') },
             { status: 500 }
         );
     }
