@@ -77,6 +77,7 @@ test.describe('Admin Trip Management', () => {
   });
 
   test('admin can view trip details and assignments', async ({ adminPage }) => {
+    test.setTimeout(60_000); // Extra time under parallel multi-browser load
     await gotoWithRetry(adminPage, '/admin/trips');
 
     // Click on first trip

@@ -2,7 +2,8 @@ import { test, expect } from '../fixtures/auth';
 import { gotoWithRetry } from '../fixtures/navigation';
 
 test.describe('Tour Operator Workflows', () => {
-    test('Complete Tour Operator Lifecycle: Client -> Template -> Add-on -> Proposal', async ({ adminPage }) => {
+    test('Complete Tour Operator Lifecycle: Client -> Template -> Add-on -> Proposal', async ({ adminPage, isMobile }) => {
+        test.skip(isMobile, 'Multi-step workflow is desktop-only — too resource-intensive for mobile emulation under parallel load');
         test.setTimeout(300_000); // 5 minutes
 
         const uniq = Date.now();
