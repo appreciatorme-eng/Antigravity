@@ -25,7 +25,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S7a — DRIVER/SEC/EDGE | 2026-03-11 | 31 | 22 | 7 | 2 | 0 |
 | S7b — WA/ASST/BILL/NOTIFY re-runs | 2026-03-11 | ~20 | ~15 | 0 | 5 | 0 |
 | S9a — MKT/SEC/EDGE agent | 2026-03-11 | 22 | 14 | 3 | 5 | 0 |
-| S9b — PERF/CRON/Cost/Referrals/Ops/PDF/Billing/Client agent | 2026-03-11 | 21 | 18 | 1 | 2 | 0 |
+| S9b — PERF/CRON/Cost/Referrals/Ops/PDF/Billing/Client agent | 2026-03-11 | 25 | 16 | 5 | 4 | 0 |
 | S10b — BUG-068 verify, PERF, Role, AUTH, ONBOARD | 2026-03-11 | 20 | 13 | 3 | 0 | 4 |
 | S10c — ADDON / INV / PERF / AUTH direct runs | 2026-03-11 | 36 | 27 | 5 | 4 | 0 |
 | S10d — BUG-069 rate limit, T3-2 invoice PDF, remaining direct runs | 2026-03-11 | 15 | 9 | 3 | 3 | 0 |
@@ -1103,6 +1103,10 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-072 | MED | Raw Supabase/PostgREST error messages exposed in 12 API handlers | `error?.message` from Supabase errors passed directly into JSON response bodies (e.g., "Cannot coerce the result to a single JSON object" from `.single()` on empty result). Discovered via SEC-027 test: `GET /api/admin/trips/{non-existent-uuid}` returned raw PostgREST message | Replaced all `err?.message \|\| "fallback"` patterns with static fallback strings across 12 handlers: admin/trips/[id], admin/trips/[id]/clone, admin/insights/{action-queue,roi,smart-upsell-timing,upsell-recommendations,margin-leak,daily-brief,ops-copilot,ai-usage}, location/client-share, proposals/create | 3ab7cbc | Fixed ✅ |
 | BUG-073 | MED | `POST /api/admin/clients` stores `"[object Object]"` when `full_name` is a JSON object | `sanitizeText(body.full_name, ...)` was called without a `typeof` guard in the POST handler. JS coerces any non-string to string via `.toString()` → `"[object Object]"` written to DB. PATCH handler (line 518) already had the guard but POST did not | Added `typeof body.full_name === "string" ? sanitizeText(...) : ""` guard in POST handler (mirrors existing PATCH logic) | f79f47d | Fixed ✅ |
 | BUG-074 | MED | `PATCH /api/marketplace/inquiries` → 500 when inquiry ID doesn't exist | `.update().select().single()` returns PGRST116 error when zero rows match the filter; error was re-thrown to the outer catch block which returned a generic 500 | Added `if (error.code === "PGRST116") return 404 "Inquiry not found"` before `throw error`, matching the same pattern used in admin/trips/[id] | f79f47d | Fixed ✅ |
+| BUG-075 | INFO | `POST /api/cron/review-reminder`, `proposal-followup`, `nps-survey` → 404 | These 3 CRON endpoints are not registered in the main dispatcher (`[...path]/route.ts`). Routes referenced in test plan but never implemented | — | Known Limitation |
+| BUG-076 | INFO | `GET /api/admin/cost/aggregate` and `/api/admin/cost/alerts` → 404 | Cost alert list and aggregate endpoints not registered in admin dispatcher — only `/cost/overview` and `/cost/alerts/ack` exist | — | Known Limitation |
+| BUG-077 | INFO | `POST /api/admin/cost/alerts/ack` returns 200 for nonexistent `alert_id` | `acknowledgeCostAlert()` uses `upsert()` into `cost_alert_acknowledgments` — alert IDs are dynamic string constants, not stored DB records. Upsert always succeeds regardless of whether the alert ever fired | By design — idempotent ack is intentional; pre-acking a future alert is valid. No fix needed | — | By Design |
+| BUG-078 | LOW | `POST /api/admin/clients` accepts `full_name` up to unlimited length; silently truncates to 200 chars via `sanitizeText()` with no validation error | No raw-length check before `sanitizeText(maxLength:200)` — caller receives HTTP 200 with a client created using a 200-char truncated name, unaware of truncation | Added raw-length guard: if `body.full_name.length > 200` → 400 "Name must be 200 characters or fewer" in both POST and PATCH handlers | (pending) | Fixed ✅ |
 
 ---
 
@@ -1341,3 +1345,69 @@ Direct curl tests run by orchestrator. **22 tests · 17 pass · 5 note/spec**
 - **SEC-027 pattern**: Any handler returning `error?.message` directly (instead of `safeErrorMessage()`) can expose PostgREST/Supabase internal error messages. Full sweep found 12 such instances — all fixed in BUG-072.
 - **SEC-025**: Auth endpoint DOES have rate limiting (429 after ~8 bad attempts) even though admin dispatcher does not (BUG-069). Login brute-force is protected.
 - **EDGE-007**: Postgres handles concurrent inserts at the application level correctly — no race conditions detected in concurrent client creation under load of 10.
+
+---
+
+## Test Results — Session 9b (PERF / CRON / Cost / Referrals / OPS / PDF / Billing re-verify)
+
+**Date**: 2026-03-11
+**Tests**: 25 · 16 pass · 5 fail/404 · 4 partial/by-design · 4 bugs found (BUG-075–078)
+
+### Bug Fixes Applied This Session
+
+- **BUG-078 Fixed**: Added raw-length guard (`> 200 chars → 400`) to `POST /api/admin/clients` and `PATCH /api/admin/clients` before `sanitizeText()` call
+
+### PERF
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| PERF-006 | 10 concurrent GET /api/admin/clients | ✅ Pass | All 10 → 200; per-req 1.5–2.7s; wall time 2759ms |
+| PERF-007 | POST with 900-char full_name | ⚠️ Partial | Accepted with 200; silently truncated to 200 by sanitizeText → **BUG-078 fixed** |
+| PERF-009 | Revenue analytics 90d range | ✅ Pass | 200 in 1.073s |
+| PERF-010 | Cache behavior — 3 rapid requests | ⚠️ Partial | All 200 (0.82–0.90s); no measurable caching speedup; cost overview confirms `cache.enabled:false` |
+| PERF-012 | Health check baseline | ✅ Pass | 0.24–0.52s; req1 slightly slower (cold start) |
+
+### CRON
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| CRON-005 | POST /api/cron/review-reminder | ❌ Fail | 404 — route not implemented → **BUG-075** (Known Limitation) |
+| CRON-006 | POST /api/cron/proposal-followup | ❌ Fail | 404 — route not implemented → **BUG-075** |
+| CRON-007 | POST /api/cron/nps-survey | ❌ Fail | 404 — route not implemented → **BUG-075** |
+| CRON-008 | Full cron route sweep | ⚠️ Partial | assistant-alerts/briefing/digest → 200 ✅; operator-scorecards → 401 (needs `CRON_SECRET`, not Bearer JWT — expected) |
+
+### Cost Management
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| COST-001 | GET /api/admin/cost/overview | ✅ Pass | 200; full cost scope returned with emergency caps, alerts:[], cache.enabled:false |
+| COST-002 | GET /api/admin/cost/aggregate | ❌ Fail | 404 — route not registered → **BUG-076** (Known Limitation) |
+| COST-003 | GET /api/admin/cost/alerts | ❌ Fail | 404 — route not registered → **BUG-076** |
+| COST-004 | POST /api/admin/cost/alerts/ack — empty body | ✅ Pass | 400 with field-level Zod error ✅ |
+| COST-005 | POST /api/admin/cost/alerts/ack — nonexistent UUID | ⚠️ Note | 200 — upsert always succeeds; idempotent ack by design → **BUG-077** (By Design) |
+
+### Referrals
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| REFERRAL-001 | GET /api/admin/referrals | ✅ Pass | 200; referralCode, empty referrals, correct stats shape |
+| REFERRAL-002 | GET /api/admin/reputation/client-referrals | ✅ Pass | 200; full stats shape with zeroed data |
+| REFERRAL-003 | POST /api/admin/referrals — empty body | ✅ Pass | 400 "Referral code required" ✅ |
+
+### Operations & PDF
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| OPS-001 | GET /api/admin/operations/command-center (authed) | ✅ Pass | 200 in 1.594s; live counts: 11 expiring quotes, 2 overdue invoices |
+| OPS-002 | GET /api/admin/operations/command-center (no auth) | ✅ Pass | 401 "Unauthorized" ✅ |
+| PDF-002 | GET /api/admin/pdf-imports | ✅ Pass | 200; empty list with correct pagination envelope |
+| PDF-003 | GET /api/admin/pdf-imports/{nonexistent-uuid} | ✅ Pass | 404 `{"success":false,"error":"PDF import not found"}` ✅ |
+
+### Fix Verifications
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| BILL-007-VERIFY | POST /api/billing/contact-sales — valid body | ✅ Pass | 200; lead created; `email_skipped:true` expected (RESEND not configured) — **BUG-056 confirmed fixed** |
+| BILL-008-VERIFY | POST /api/billing/contact-sales — missing target_tier | ✅ Pass | 400 with Zod field error — schema validation correct |
+| CLIENT-013-VERIFY | POST /api/admin/clients — invalid email | ✅ Pass | 400 "Invalid email format" — **BUG-029 confirmed fixed** |
+| CLIENT-014-VERIFY | POST /api/admin/clients — valid email | ✅ Pass | 200 client created — **BUG-029 confirmed fixed** |

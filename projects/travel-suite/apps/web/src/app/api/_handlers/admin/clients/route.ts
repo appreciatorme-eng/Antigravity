@@ -145,6 +145,9 @@ export async function POST(req: Request) {
         }
 
         const email = String(body.email || "").trim().toLowerCase();
+        if (typeof body.full_name === "string" && body.full_name.length > 200) {
+            return NextResponse.json({ error: "Name must be 200 characters or fewer" }, { status: 400 });
+        }
         const fullName = typeof body.full_name === "string"
             ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true })
             : "";
@@ -517,6 +520,9 @@ export async function PATCH(req: Request) {
                 : null;
 
         // Additional fields for update
+        if (typeof body.full_name === "string" && body.full_name.length > 200) {
+            return NextResponse.json({ error: "Name must be 200 characters or fewer" }, { status: 400 });
+        }
         const fullName = typeof body.full_name === "string"
             ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true }) || undefined
             : undefined;
