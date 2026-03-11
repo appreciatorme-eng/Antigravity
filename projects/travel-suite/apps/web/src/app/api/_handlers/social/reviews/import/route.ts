@@ -21,6 +21,8 @@ export async function POST() {
             return NextResponse.json({ error: 'No organization found' }, { status: 400 });
         }
 
+        const orgId: string = profile.organization_id;
+
         // Fetch marketplace reviews
         const { data: marketplaceReviews, error: mError } = await supabase
             .from('marketplace_reviews')
@@ -31,7 +33,7 @@ export async function POST() {
         created_at,
         reviewer_org:organizations!marketplace_reviews_reviewer_org_id_fkey(name)
       `)
-            .eq('target_org_id', profile.organization_id);
+            .eq('target_org_id', orgId);
 
         if (mError) throw mError;
 
@@ -39,35 +41,41 @@ export async function POST() {
             return NextResponse.json({ message: 'No marketplace reviews found to import' });
         }
 
-        let importedCount = 0;
+        const { data: existingReviews } = await supabase
+            .from('social_reviews')
+            .select('reviewer_name, comment')
+            .eq('organization_id', orgId)
+            .eq('source', 'marketplace');
 
-        for (const review of marketplaceReviews) {
-            // Check if we already imported this one by looking for a matching comment/reviewer
-            const reviewerOrg = review.reviewer_org as { name: string } | null;
-            const reviewerName = reviewerOrg?.name || 'Marketplace Partner';
+        const existingSet = new Set(
+            (existingReviews || []).map((r) => `${r.reviewer_name}::${r.comment}`)
+        );
 
-            const { data: existing } = await supabase
-                .from('social_reviews')
-                .select('id')
-                .eq('organization_id', profile.organization_id)
-                .eq('reviewer_name', reviewerName)
-                .eq('source', 'marketplace')
-                .eq('comment', review.comment || '')
-                .maybeSingle();
-
-            if (!existing && review.comment) { // Only import if it has text
-                await supabase.from('social_reviews').insert({
-                    organization_id: profile.organization_id,
-                    reviewer_name: reviewerName,
+        const toInsert = marketplaceReviews
+            .filter((review) => {
+                if (!review.comment) return false;
+                const reviewerOrg = review.reviewer_org as { name: string } | null;
+                const reviewerName = reviewerOrg?.name || 'Marketplace Partner';
+                return !existingSet.has(`${reviewerName}::${review.comment}`);
+            })
+            .map((review) => {
+                const reviewerOrg = review.reviewer_org as { name: string } | null;
+                return {
+                    organization_id: orgId,
+                    reviewer_name: reviewerOrg?.name || 'Marketplace Partner',
                     trip_name: 'Marketplace Collaboration',
                     rating: review.rating || 5,
                     comment: review.comment,
-                    source: 'marketplace',
+                    source: 'marketplace' as const,
                     created_at: review.created_at || new Date().toISOString(),
-                });
-                importedCount++;
-            }
+                };
+            });
+
+        if (toInsert.length > 0) {
+            await supabase.from('social_reviews').insert(toInsert);
         }
+
+        const importedCount = toInsert.length;
 
         return NextResponse.json({ message: `Successfully imported ${importedCount} reviews` });
     } catch (error: unknown) {

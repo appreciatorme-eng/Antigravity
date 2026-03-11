@@ -1,5 +1,10 @@
 // Subscription creation, cancellation, and tier limit enforcement.
 
+const MONTHLY_BILLING_CYCLES = 12;
+const MONTHLY_PERIOD_DAYS = 30;
+const ANNUAL_PERIOD_DAYS = 365;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 import { razorpay } from './razorpay';
 import { PaymentServiceError } from './errors';
 import { getPaymentClient, resolveCompanyState, wrapPaymentError } from './payment-utils';
@@ -55,7 +60,7 @@ export async function createSubscription(
     const razorpaySubscription = await razorpay.subscriptions.create({
       plan_id: `plan_${options.planId}`,
       customer_notify: 1,
-      total_count: options.billingCycle === 'monthly' ? 12 : 1,
+      total_count: options.billingCycle === 'monthly' ? MONTHLY_BILLING_CYCLES : 1,
       quantity: 1,
       notes: {
         organization_id: options.organizationId,
@@ -64,9 +69,9 @@ export async function createSubscription(
     });
 
     const now = new Date();
-    const periodLength = options.billingCycle === 'monthly' ? 30 : 365;
+    const periodDays = options.billingCycle === 'monthly' ? MONTHLY_PERIOD_DAYS : ANNUAL_PERIOD_DAYS;
     const currentPeriodStart = now;
-    const currentPeriodEnd = new Date(now.getTime() + periodLength * 24 * 60 * 60 * 1000);
+    const currentPeriodEnd = new Date(now.getTime() + periodDays * MS_PER_DAY);
 
     const { data: subscription, error } = await supabase
       .from('subscriptions')
@@ -223,10 +228,24 @@ export async function cancelSubscription(
 /**
  * Get organization's current subscription
  */
+export interface Subscription {
+  id: string;
+  organization_id: string;
+  razorpay_subscription_id: string | null;
+  plan_id: string | null;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
 export async function getCurrentSubscription(
   organizationId: string,
   execution: PaymentExecutionOptions = {}
-): Promise<any | null> { // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<Subscription | null> {
   const context: PaymentExecutionContext = execution.context || 'user_session';
 
   try {
@@ -251,10 +270,10 @@ export async function getCurrentSubscription(
     }
 
     const rows = Array.isArray(subscription) ? subscription : [];
-    const prioritized = rows.find((row) => row.status === 'active') || rows[0] || null;
+    const prioritized = (rows.find((row) => row.status === 'active') || rows[0] || null) as Subscription | null;
     return prioritized;
   } catch (error) {
-    wrapPaymentError(error, {
+    return wrapPaymentError(error, {
       code: 'payments_db_error',
       operation: 'get_current_subscription',
       context,

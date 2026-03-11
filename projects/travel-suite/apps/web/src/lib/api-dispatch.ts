@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
+  (process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HandlerModule = Record<string, any>;
@@ -105,6 +113,13 @@ async function dispatch(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const isMutation = method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE";
+    const routePath = pathParts.join("/");
+    const csrfExempt = routePath.startsWith("webhook") || routePath.startsWith("cron/") || routePath === "payments/webhook" || routePath === "webhooks/waha";
+    if (isMutation && !csrfExempt && !passesMutationCsrfGuard(req)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+    }
+
     const handler = await match.loader();
     const fn = handler[method];
 
@@ -175,15 +190,18 @@ export function createCatchAllHandlers(
     return dispatch(req, "DELETE", path, sorted, rl);
   }
 
-  async function OPTIONS() {
+  async function OPTIONS(req: NextRequest) {
+    const origin = req.headers.get("origin") || "";
+    const allowedOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "";
     return new NextResponse(null, {
       status: 204,
       headers: {
         Allow: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-        "Access-Control-Allow-Origin": "*",
+        ...(allowedOrigin ? { "Access-Control-Allow-Origin": allowedOrigin } : {}),
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, x-requested-with",
         "Access-Control-Max-Age": "86400",
+        "Vary": "Origin",
       },
     });
   }

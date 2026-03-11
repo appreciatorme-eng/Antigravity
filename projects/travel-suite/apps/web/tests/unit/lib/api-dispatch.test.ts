@@ -8,7 +8,11 @@ import { createCatchAllHandlers } from "../../../src/lib/api-dispatch";
 /* ------------------------------------------------------------------ */
 
 function makeRequest(method: string, url = "http://localhost") {
-  return new NextRequest(url, { method });
+  const headers: Record<string, string> = {};
+  if (method !== "GET" && method !== "OPTIONS") {
+    headers["authorization"] = "Bearer test-csrf-bypass";
+  }
+  return new NextRequest(url, { method, headers });
 }
 
 /** A handler module that echoes back the method it was invoked with. */
@@ -169,7 +173,7 @@ describe("createCatchAllHandlers", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Origin")).not.toBe("*");
     expect(res.headers.get("Access-Control-Allow-Methods")).toContain("OPTIONS");
   });
 

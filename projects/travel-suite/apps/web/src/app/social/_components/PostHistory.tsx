@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Clock, Trash2, Download, Send, CheckCircle2, XCircle, Loader2, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -43,7 +43,7 @@ export const PostHistory = () => {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [filter, setFilter] = useState<string>("all");
 
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch("/api/social/posts");
@@ -54,9 +54,9 @@ export const PostHistory = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    useEffect(() => { fetchPosts(); }, []);
+    useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
     const handleDelete = async (id: string) => {
         setDeletingId(id);

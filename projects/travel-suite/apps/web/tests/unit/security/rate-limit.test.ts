@@ -103,18 +103,19 @@ it("logs a warning to console when Upstash is not configured in dev", async () =
   warnSpy.mockRestore();
 });
 
-it("logs console.error when Upstash is not configured in production", async () => {
+it("fail-closed: rejects request when Upstash is not configured in production", async () => {
   vi.stubEnv("NODE_ENV", "production");
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-  await enforceRateLimit({
+  const result = await enforceRateLimit({
     identifier: "prod-warn-user",
     limit: 5,
     windowMs: 10_000,
     prefix: "unit:prod-warn-test",
   });
 
-  expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("CRITICAL"));
+  expect(result.success).toBe(false);
+  expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("FAIL-CLOSED"));
   errorSpy.mockRestore();
 });
 

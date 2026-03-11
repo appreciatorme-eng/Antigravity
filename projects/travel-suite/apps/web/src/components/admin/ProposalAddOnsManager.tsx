@@ -8,7 +8,6 @@ import {
   Search,
   X,
   Check,
-  DollarSign,
   Package,
   Loader2,
 } from 'lucide-react';
@@ -64,6 +63,7 @@ export default function ProposalAddOnsManager({
   proposalId,
   readonly = false,
 }: ProposalAddOnsManagerProps) {
+  const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [proposalAddOns, setProposalAddOns] = useState<ProposalAddOn[]>([]);
@@ -76,8 +76,6 @@ export default function ProposalAddOnsManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: proposalRows, error: proposalRowsError } = await (supabase as any)
         .from('proposal_add_ons')
@@ -131,14 +129,13 @@ export default function ProposalAddOnsManager({
     } finally {
       setLoading(false);
     }
-  }, [proposalId]);
+  }, [proposalId, supabase]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
   async function syncProposalPrice() {
-    const supabase = createClient();
     const { data: newPrice } = await supabase.rpc('calculate_proposal_price', {
       p_proposal_id: proposalId,
     });
@@ -154,7 +151,6 @@ export default function ProposalAddOnsManager({
   async function addAddOnToProposal(addon: AddOn) {
     setSaving(true);
     try {
-      const supabase = createClient();
       const transport = isTransportCategory(addon.category);
       const selectedTransportExists = proposalAddOns.some(
         (item) => isTransportCategory(item.category) && item.is_selected
@@ -201,8 +197,6 @@ export default function ProposalAddOnsManager({
 
     setSaving(true);
     try {
-      const supabase = createClient();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('proposal_add_ons')
@@ -231,7 +225,6 @@ export default function ProposalAddOnsManager({
   async function toggleSelection(proposalAddOn: ProposalAddOn) {
     setSaving(true);
     try {
-      const supabase = createClient();
       const nextValue = !proposalAddOn.is_selected;
 
       if (isTransportCategory(proposalAddOn.category) && nextValue) {
@@ -334,8 +327,7 @@ export default function ProposalAddOnsManager({
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50/90 to-emerald-50/90 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
           <div className="text-sm font-medium text-secondary dark:text-white">Selected Add-On Value</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
-            <DollarSign className="w-5 h-5" />
-            {totalSelectedValue.toFixed(2)}
+            ₹{totalSelectedValue.toFixed(2)}
           </div>
         </div>
       </GlassCard>
@@ -390,7 +382,7 @@ export default function ProposalAddOnsManager({
 
                     <div className="text-right ml-4">
                       <div className="text-lg font-bold text-primary">
-                        ${(proposalAddOn.unit_price * proposalAddOn.quantity).toFixed(2)}
+                        ₹{(proposalAddOn.unit_price * proposalAddOn.quantity).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -509,7 +501,7 @@ export default function ProposalAddOnsManager({
                         <p className="text-sm text-text-secondary line-clamp-2">{addon.description}</p>
                       )}
                       <div className="text-sm font-bold text-primary mt-2">
-                        ${Number(addon.price || 0).toFixed(2)}
+                        ₹{Number(addon.price || 0).toFixed(2)}
                         {addon.duration && (
                           <span className="text-xs text-text-secondary ml-2">• {addon.duration}</span>
                         )}

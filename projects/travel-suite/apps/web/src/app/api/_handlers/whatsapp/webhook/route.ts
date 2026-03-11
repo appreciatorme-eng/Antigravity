@@ -11,7 +11,7 @@
  * Security: HMAC-SHA256 signature verification on POST requests.
  * ------------------------------------------------------------------ */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
@@ -54,7 +54,10 @@ async function resolveCurrentTripId(driverId: string): Promise<string | null> {
 }
 
 function payloadHash(rawBody: string): string {
-    return createHmac("sha256", appSecret || "fallback").update(rawBody).digest("hex");
+    if (!appSecret) {
+        throw new Error("WHATSAPP_APP_SECRET is required for HMAC operations");
+    }
+    return createHmac("sha256", appSecret).update(rawBody).digest("hex");
 }
 
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
@@ -88,8 +91,17 @@ export async function POST(request: NextRequest) {
     const requestContext = getRequestContext(request, requestId);
 
     try {
+        const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+        if (contentLength > 1_048_576) {
+            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+        }
+
         const allowUnsignedWebhook = isUnsignedWebhookAllowed();
         const rawBody = await request.text();
+
+        if (rawBody.length > 1_048_576) {
+            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+        }
         const signatureHeader = request.headers.get("x-hub-signature-256");
         const signatureValid = verifySignature(rawBody, signatureHeader);
 
@@ -196,17 +208,17 @@ export async function POST(request: NextRequest) {
         // Parse text messages synchronously so we can include counts in the response
         const textMessages = parseWhatsAppTextMessages(payload);
 
-        // Process text messages fire-and-forget to avoid blocking the webhook response.
-        // TODO: replace with a durable queue (Inngest / SQS) — serverless GC can silently
-        //       drop this promise before it resolves on a fast cold-start teardown.
-        void processWhatsAppTextMessages(payload, rawBody, signatureValid, requestContext).catch((error) => {
-            logError("WhatsApp text message processing failed — message may be lost. Move to a durable queue.", error, requestContext);
-        });
-
-        // Process images fire-and-forget to avoid blocking the webhook response.
-        // TODO: same — needs durable queue for production reliability.
-        void processWhatsAppImages(payload, rawBody, signatureValid, requestContext).catch((error) => {
-            logError("WhatsApp image processing failed — message may be lost. Move to a durable queue.", error, requestContext);
+        after(async () => {
+            try {
+                await processWhatsAppTextMessages(payload, rawBody, signatureValid, requestContext);
+            } catch (error) {
+                logError("WhatsApp text message processing failed", error, requestContext);
+            }
+            try {
+                await processWhatsAppImages(payload, rawBody, signatureValid, requestContext);
+            } catch (error) {
+                logError("WhatsApp image processing failed", error, requestContext);
+            }
         });
 
         return NextResponse.json({

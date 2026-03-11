@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Platform settings: Redis-first (60 s TTL) with Supabase fallback.
 // Writes update DB → invalidate Redis → log to platform_audit_log.
 
@@ -57,6 +56,7 @@ function redisKey(key: string): string {
 }
 
 async function fetchFromSupabase(key: string): Promise<JsonValue | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminClient = createAdminClient() as any;
   const { data } = await adminClient
     .from("platform_settings")
@@ -76,8 +76,8 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
       if (cached !== null && cached !== undefined) {
         return cached;
       }
-    } catch {
-      // Fall through to Supabase on Redis error.
+    } catch (err) {
+      console.warn(`[platform-settings] Redis read failed for key="${key}":`, err);
     }
   }
 
@@ -86,8 +86,8 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
   if (value !== null && redis) {
     try {
       await redis.set(redisKey(key), value, { ex: REDIS_TTL_SECONDS });
-    } catch {
-      // Cache population is best-effort.
+    } catch (err) {
+      console.warn(`[platform-settings] Redis write failed for key="${key}":`, err);
     }
   }
 
@@ -99,6 +99,7 @@ export async function setPlatformSetting(
   value: JsonValue,
   actorId: string
 ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminClient = createAdminClient() as any;
 
   await adminClient.from("platform_settings").upsert({
@@ -112,8 +113,8 @@ export async function setPlatformSetting(
   if (redis) {
     try {
       await redis.del(redisKey(key));
-    } catch {
-      // Cache invalidation is best-effort.
+    } catch (err) {
+      console.warn(`[platform-settings] Redis invalidation failed for key="${key}":`, err);
     }
   }
 
@@ -195,6 +196,7 @@ export async function isOrgSuspended(orgId: string): Promise<boolean> {
 }
 
 export async function getAllPlatformSettings(): Promise<Record<string, JsonValue>> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminClient = createAdminClient() as any;
   const { data } = await adminClient
     .from("platform_settings")
@@ -203,5 +205,6 @@ export async function getAllPlatformSettings(): Promise<Record<string, JsonValue
 
   if (!data) return {};
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return Object.fromEntries(data.map((row: any) => [row.key, row.value as JsonValue]));
 }
