@@ -27,6 +27,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S9a — MKT/SEC/EDGE agent | 2026-03-11 | 22 | 14 | 3 | 5 | 0 |
 | S9b — PERF/CRON/Cost/Referrals/Ops/PDF/Billing/Client agent | 2026-03-11 | 25 | 16 | 5 | 4 | 0 |
 | S10b — BUG-068 verify, PERF, Role, AUTH, ONBOARD | 2026-03-11 | 20 | 13 | 2 (spec err) | 1 | 4 |
+| S10a — Add-ons / Invoice / E2E / Rate limit | 2026-03-11 | 22 | 19 | 3 (by design) | 0 | 0 |
 | S10c — ADDON / INV / PERF / AUTH direct runs | 2026-03-11 | 36 | 27 | 5 | 4 | 0 |
 | S10d — BUG-069 rate limit, T3-2 invoice PDF, remaining direct runs | 2026-03-11 | 15 | 9 | 3 | 3 | 0 |
 | S10e — Full route coverage sweep (119 main + 54 admin routes) | 2026-03-11 | 78 | 58 | 8 | 12 | 0 |
@@ -1464,3 +1465,53 @@ Direct curl tests run by orchestrator. **22 tests · 17 pass · 5 note/spec**
 | ONBOARD-001 | GET /api/onboarding/status | ❌ Note | 404 — route does not exist. No status endpoint implemented. **Known Limitation** |
 | ONBOARD-002 | GET /api/admin/onboarding/setup | ❌ Note | 404 — **Test spec error**: correct path is `/api/onboarding/setup` (no admin prefix); GET exports from that handler ✅ |
 | ONBOARD-003 | POST /api/onboarding/setup (already complete) | ✅ Pass | 200 `{onboardingComplete:true}` — idempotent ✅ |
+
+---
+
+## Test Results — Session 10a (Add-ons / Invoice / E2E-012 / Rate Limit)
+
+**Date**: 2026-03-11
+**Tests**: 22 · 19 pass · 3 by-design/note · 0 new bugs
+
+### Add-ons CRUD
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| ADDON-002 | POST /api/add-ons (create) | ✅ Pass | 201. Note: `category` field required but not in test spec — sent `"transport"` |
+| ADDON-003 | GET /api/add-ons (list) | ✅ Pass | Array returned correctly |
+| ADDON-004 | GET /api/add-ons/:id | ✅ Pass | Detail object returned |
+| ADDON-005 | PATCH /api/add-ons/:id (update price) | ✅ Pass | price 1500→2000 confirmed |
+| ADDON-006 | DELETE /api/add-ons/:id | ✅ Pass | 200 deleted |
+| ADDON-007 | GET /api/add-ons/stats | ✅ Pass | {totalAddOns, activeAddOns, ...} shape correct |
+| ADDON-008 | POST /api/add-ons — missing name | ✅ Pass | 400 |
+| ADDON-009 | POST /api/add-ons — missing price | ✅ Pass | 400 |
+| ADDON-010 | POST /api/add-ons — negative price | ✅ Pass | 400 "Price must be zero or greater" |
+| ADDON-011 | POST /api/add-ons — free (price=0) | ✅ Pass | 201 ✅ |
+| ADDON-013 | POST /api/trips/:id/add-ons | ⚠️ Note | 405 — endpoint exports GET + PATCH only. **By Design**: direct REST attachment not implemented; add-ons reach trips via proposal_add_ons → proposal → trip conversion |
+| ADDON-014 | GET /api/trips/:id/add-ons (after failed attach) | ⚠️ Note | 200 empty — cascading from ADDON-013 |
+| ADDON-015 | DELETE trip add-on (none attached) | ⚠️ Note | 404 — cascading from ADDON-013 |
+| ADDON-017 | XSS in add-on name | ✅ Pass | `<img onerror=...>` stripped → empty → 400. `<script>` stripped; inner text `"alert(1)"` survives — **By Design** (sanitizeText removes tags, keeps text; content is safe for storage) |
+| ADDON-018 | Emoji ✈️ in add-on name | ✅ Pass | 201 — emoji stored correctly ✅ |
+
+### Invoices
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| INV-001 | GET /api/invoices (list) | ✅ Pass | 4 invoices returned |
+| INV-002 | GET /api/invoices/:id | ✅ Pass | Invoice detail correct |
+| INV-004 | Invoice number format | ✅ Pass | `INV-YYYYMM-NNNN` format confirmed on all 4 |
+| INV-005 | total_amount check | ✅ Pass | 2700 matches. Note: currency stored as USD (not INR) — **By Design** (creation-time currency) |
+| INV-006 | Fresh invoice status | ✅ Pass | status="draft" confirmed ✅ |
+| INV-007 | POST /api/invoices/send-pdf | ✅ Pass | 202 graceful disabled: `{"success":false,"disabled":true,"error":"Email integration is not configured..."}` |
+
+### E2E + Rate Limit
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| E2E-012 | Full add-on attach to trip E2E | ⚠️ Note | Blocked at Step 3 — same root cause as ADDON-013 (no POST on trips/:id/add-ons). By Design |
+| T4-8 | Rate limit 50 rapid requests | ✅ Pass | **BUG-069 was fixed** (044a318) before this test ran. Admin dispatcher now enforces 300 req/5 min |
+
+### Known Limitations Identified
+
+- `POST /api/add-ons` requires a `category` field not documented in the test spec. Valid values include `"transport"`, `"accommodation"`, etc.
+- `POST /api/trips/:id/add-ons` does not exist. The architectural path is: create catalog add-on → attach to proposal via proposal_add_ons → convert proposal to trip.
