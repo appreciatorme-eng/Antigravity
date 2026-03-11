@@ -13,14 +13,14 @@
 
 | ID | Title | File | Action | Outcome | Status |
 |----|-------|------|--------|---------|--------|
-| C-01 | CORS wildcard on all API routes | `src/lib/api-dispatch.ts:183` | Replace `*` with env-based `ALLOWED_ORIGINS` allowlist | Cross-origin requests blocked except from allowed domains | ⏳ |
-| C-02 | Fire-and-forget webhook processing | `src/app/api/_handlers/whatsapp/webhook/route.ts:200-210` | Wrap with `after()` from `next/server` (Next.js 15+) | Promises survive serverless GC | ⏳ |
-| C-03 | Payment webhook unchecked DB mutations | `src/app/api/_handlers/payments/webhook/route.ts:468-527` | Check `{ error }` from all 3 `.update()` calls; log; return non-200 | Billing state corruption prevented | ⏳ |
-| C-04 | `revalidateTag` called with 2 args | `src/app/api/_handlers/payments/webhook/route.ts:380-381,427` | Remove second `'max'` argument | Cache revalidation works correctly | ⏳ |
-| C-05 | `payloadHash` HMAC fallback key | `src/app/api/_handlers/whatsapp/webhook/route.ts:56-58` | Throw when `appSecret` is null | No weak HMAC keys | ⏳ |
-| C-06 | Client-side dashboard 10-query waterfall | `src/lib/queries/dashboard.ts:183-233` | Create server-side `/api/admin/dashboard/stats` endpoint | Single API call replaces 10 roundtrips | ⏳ |
-| C-07 | `getCurrentSubscription` returns `any` | `src/lib/payments/subscription-service.ts:229` | Define `Subscription` interface; type return properly | Type safety on billing checks | ⏳ |
-| C-08 | Initial RLS `using(true)` on profiles | Supabase migration | Drop "Public profiles viewable by everyone"; add org-scoped policy | Profile data no longer leaked | ⏳ |
+| C-01 | CORS wildcard on all API routes | `src/lib/api-dispatch.ts:183` | Replace `*` with env-based `ALLOWED_ORIGINS` allowlist | Cross-origin requests blocked except from allowed domains | ✅ |
+| C-02 | Fire-and-forget webhook processing | `src/app/api/_handlers/whatsapp/webhook/route.ts:200-210` | Wrap with `after()` from `next/server` (Next.js 15+) | Promises survive serverless GC | ✅ |
+| C-03 | Payment webhook unchecked DB mutations | `src/app/api/_handlers/payments/webhook/route.ts:468-527` | Check `{ error }` from all 3 `.update()` calls; log; return non-200 | Billing state corruption prevented | ✅ |
+| C-04 | `revalidateTag` called with 2 args | `src/app/api/_handlers/payments/webhook/route.ts:380-381,427` | Verified: 2nd arg `'max'` is correct Next.js 15+ cache profile | No change needed — false positive | 📝 |
+| C-05 | `payloadHash` HMAC fallback key | `src/app/api/_handlers/whatsapp/webhook/route.ts:56-58` | Throw when `appSecret` is null | No weak HMAC keys | ✅ |
+| C-06 | Client-side dashboard 10-query waterfall | `src/lib/queries/dashboard.ts:183-233` | Expanded server-side `/api/admin/dashboard/stats`; hook now fetches API | Single API call replaces 10 roundtrips | ✅ |
+| C-07 | `getCurrentSubscription` returns `any` | `src/lib/payments/subscription-service.ts:229` | Define `Subscription` interface; type return properly | Type safety on billing checks | ✅ |
+| C-08 | Initial RLS `using(true)` on profiles | Supabase migration | Drop "Public profiles viewable by everyone"; add org-scoped policy | Profile data no longer leaked | ✅ |
 
 ---
 

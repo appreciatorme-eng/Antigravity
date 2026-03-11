@@ -467,14 +467,21 @@ async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload, requ
 
   const supabase = createAdminClient();
 
-  // Update subscription status
-  await supabase
+  const { error } = await supabase
     .from('subscriptions')
     .update({
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
     })
     .eq('razorpay_subscription_id', subscription.id);
+
+  if (error) {
+    logWebhookHandlerEvent('error', 'Failed to update subscription to cancelled', requestContext, {
+      payment_event_type: 'subscription.cancelled',
+      payment_subscription_id: subscription.id,
+      db_error: error.message,
+    });
+  }
 }
 
 async function handleSubscriptionPaused(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -493,11 +500,18 @@ async function handleSubscriptionPaused(payload: RazorpayWebhookPayload, request
 
   const supabase = createAdminClient();
 
-  // Update subscription status
-  await supabase
+  const { error } = await supabase
     .from('subscriptions')
     .update({ status: 'paused' })
     .eq('razorpay_subscription_id', subscription.id);
+
+  if (error) {
+    logWebhookHandlerEvent('error', 'Failed to update subscription to paused', requestContext, {
+      payment_event_type: 'subscription.paused',
+      payment_subscription_id: subscription.id,
+      db_error: error.message,
+    });
+  }
 }
 
 async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -516,12 +530,19 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
 
   const supabase = createAdminClient();
 
-  // Update invoice status
-  await supabase
+  const { error } = await supabase
     .from('invoices')
     .update({
       status: 'paid',
       razorpay_payment_id: invoice.payment_id,
     })
     .eq('razorpay_invoice_id', invoice.id);
+
+  if (error) {
+    logWebhookHandlerEvent('error', 'Failed to update invoice to paid', requestContext, {
+      payment_event_type: 'invoice.paid',
+      payment_invoice_id: invoice.id,
+      db_error: error.message,
+    });
+  }
 }

@@ -223,10 +223,24 @@ export async function cancelSubscription(
 /**
  * Get organization's current subscription
  */
+export interface Subscription {
+  id: string;
+  organization_id: string;
+  razorpay_subscription_id: string | null;
+  plan_id: string | null;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
+
 export async function getCurrentSubscription(
   organizationId: string,
   execution: PaymentExecutionOptions = {}
-): Promise<any | null> { // eslint-disable-line @typescript-eslint/no-explicit-any
+): Promise<Subscription | null> {
   const context: PaymentExecutionContext = execution.context || 'user_session';
 
   try {
@@ -251,10 +265,10 @@ export async function getCurrentSubscription(
     }
 
     const rows = Array.isArray(subscription) ? subscription : [];
-    const prioritized = rows.find((row) => row.status === 'active') || rows[0] || null;
+    const prioritized = (rows.find((row) => row.status === 'active') || rows[0] || null) as Subscription | null;
     return prioritized;
   } catch (error) {
-    wrapPaymentError(error, {
+    return wrapPaymentError(error, {
       code: 'payments_db_error',
       operation: 'get_current_subscription',
       context,
