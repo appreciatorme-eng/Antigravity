@@ -2,6 +2,12 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 
 export const maxDuration = 60;
 
+const ADMIN_RATE_LIMIT = {
+    limit: 300,
+    windowMs: 5 * 60 * 1000,
+    prefix: "api:admin:dispatch",
+};
+
 const routes = createCatchAllHandlers([
   ["cache-metrics", () => import("@/app/api/_handlers/admin/cache-metrics/route")],
   ["clear-cache", () => import("@/app/api/_handlers/admin/clear-cache/route")],
@@ -62,6 +68,6 @@ const routes = createCatchAllHandlers([
   ["pricing/transactions", () => import("@/app/api/_handlers/admin/pricing/transactions/route")],
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
-]);
+], { rateLimit: ADMIN_RATE_LIMIT });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

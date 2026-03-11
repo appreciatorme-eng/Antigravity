@@ -1,8 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type HandlerModule = Record<string, any>;
 type RouteEntry = [string, () => Promise<HandlerModule>];
+
+export interface DispatcherRateLimitConfig {
+    limit: number;
+    windowMs: number;
+    prefix: string;
+}
+
+function extractRateLimitIdentifier(req: NextRequest): string {
+    const auth = req.headers.get("authorization") ?? "";
+    if (auth.startsWith("Bearer ")) {
+        const token = auth.slice(7);
+        const parts = token.split(".");
+        if (parts.length === 3) {
+            try {
+                const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+                const decoded = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+                if (typeof decoded?.sub === "string" && decoded.sub.length > 0) {
+                    return `user:${decoded.sub}`;
+                }
+            } catch {
+                // fall through to IP fallback
+            }
+        }
+    }
+    const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown";
+    return `ip:${ip}`;
+}
 
 function matchRoute(
   pathParts: string[],
@@ -39,9 +70,35 @@ async function dispatch(
   req: NextRequest,
   method: string,
   pathParts: string[],
-  routes: RouteEntry[]
+  routes: RouteEntry[],
+  rl?: DispatcherRateLimitConfig
 ): Promise<NextResponse> {
   try {
+    if (rl) {
+        const identifier = extractRateLimitIdentifier(req);
+        const result = await enforceRateLimit({
+            identifier,
+            limit: rl.limit,
+            windowMs: rl.windowMs,
+            prefix: rl.prefix,
+        });
+        if (!result.success) {
+            const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+            return NextResponse.json(
+                { error: "Too many requests. Please retry later." },
+                {
+                    status: 429,
+                    headers: {
+                        "retry-after": String(retryAfter),
+                        "x-ratelimit-limit": String(result.limit),
+                        "x-ratelimit-remaining": "0",
+                        "x-ratelimit-reset": String(result.reset),
+                    },
+                }
+            );
+        }
+    }
+
     const match = matchRoute(pathParts, routes);
 
     if (!match) {
@@ -65,7 +122,12 @@ async function dispatch(
   }
 }
 
-export function createCatchAllHandlers(routes: RouteEntry[]) {
+export function createCatchAllHandlers(
+  routes: RouteEntry[],
+  options?: { rateLimit?: DispatcherRateLimitConfig }
+) {
+  const rl = options?.rateLimit;
+
   // Sort routes: static segments before dynamic ones (more specific first)
   const sorted = [...routes].sort(([a], [b]) => {
     const aParts = a.split("/");
@@ -90,27 +152,27 @@ export function createCatchAllHandlers(routes: RouteEntry[]) {
 
   async function GET(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
     const { path } = await ctx.params;
-    return dispatch(req, "GET", path, sorted);
+    return dispatch(req, "GET", path, sorted, rl);
   }
 
   async function POST(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
     const { path } = await ctx.params;
-    return dispatch(req, "POST", path, sorted);
+    return dispatch(req, "POST", path, sorted, rl);
   }
 
   async function PATCH(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
     const { path } = await ctx.params;
-    return dispatch(req, "PATCH", path, sorted);
+    return dispatch(req, "PATCH", path, sorted, rl);
   }
 
   async function PUT(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
     const { path } = await ctx.params;
-    return dispatch(req, "PUT", path, sorted);
+    return dispatch(req, "PUT", path, sorted, rl);
   }
 
   async function DELETE(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
     const { path } = await ctx.params;
-    return dispatch(req, "DELETE", path, sorted);
+    return dispatch(req, "DELETE", path, sorted, rl);
   }
 
   async function OPTIONS() {
