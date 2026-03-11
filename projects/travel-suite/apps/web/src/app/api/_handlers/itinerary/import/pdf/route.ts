@@ -67,7 +67,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Too many import requests. Please try again later.' }, { status: 429 });
         }
 
-        const formData = await req.formData();
+        let formData: FormData;
+        try {
+            formData = await req.formData();
+        } catch {
+            return NextResponse.json({ error: 'PDF file is required (multipart/form-data)' }, { status: 400 });
+        }
         const fileEntry = formData.get('file');
         if (!(fileEntry instanceof File)) {
             return NextResponse.json({ error: 'PDF file is required' }, { status: 400 });
