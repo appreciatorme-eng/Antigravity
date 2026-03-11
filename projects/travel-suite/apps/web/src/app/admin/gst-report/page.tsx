@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileSpreadsheet,
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { formatINR, formatINRShort } from "@/lib/india/formats";
 
@@ -31,83 +32,15 @@ interface GSTRow {
   status: InvoiceStatus;
 }
 
-const MOCK_DATA: GSTRow[] = [
-  {
-    invoiceNo: "INV-2026-001",
-    date: "2026-02-03",
-    client: "Sharma Family",
-    trip: "Rajasthan Heritage Tour (7N/8D)",
-    baseAmount: 142000,
-    gst: 7100,
-    total: 149100,
-    status: "paid",
-  },
-  {
-    invoiceNo: "INV-2026-002",
-    date: "2026-02-07",
-    client: "Priya Nair",
-    trip: "Kerala Backwaters & Munnar (5N/6D)",
-    baseAmount: 68500,
-    gst: 3425,
-    total: 71925,
-    status: "paid",
-  },
-  {
-    invoiceNo: "INV-2026-003",
-    date: "2026-02-11",
-    client: "Kapoor Enterprises (10 pax)",
-    trip: "Goa Corporate Retreat (3N/4D)",
-    baseAmount: 215000,
-    gst: 10750,
-    total: 225750,
-    status: "pending",
-  },
-  {
-    invoiceNo: "INV-2026-004",
-    date: "2026-02-14",
-    client: "Mehta & Associates",
-    trip: "Himachal Manali Snow Trip (4N/5D)",
-    baseAmount: 89600,
-    gst: 4480,
-    total: 94080,
-    status: "paid",
-  },
-  {
-    invoiceNo: "INV-2026-005",
-    date: "2026-02-18",
-    client: "Gupta Family",
-    trip: "Golden Triangle Delhi-Agra-Jaipur (5N/6D)",
-    baseAmount: 54200,
-    gst: 2710,
-    total: 56910,
-    status: "cancelled",
-  },
-  {
-    invoiceNo: "INV-2026-006",
-    date: "2026-02-22",
-    client: "Iyer Wedding Group (22 pax)",
-    trip: "Andaman Islands Honeymoon Package (6N/7D)",
-    baseAmount: 386000,
-    gst: 19300,
-    total: 405300,
-    status: "pending",
-  },
+const CURRENT_YEAR = new Date().getFullYear();
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
-
-const MONTHS = [
-  "January 2026",
-  "February 2026",
-  "March 2026",
-  "April 2026",
-  "May 2026",
-  "June 2026",
-  "July 2026",
-  "August 2026",
-  "September 2026",
-  "October 2026",
-  "November 2026",
-  "December 2026",
-];
+const MONTHS = MONTH_NAMES.map((m, i) => ({
+  label: `${m} ${CURRENT_YEAR}`,
+  value: `${CURRENT_YEAR}-${String(i + 1).padStart(2, "0")}`,
+}));
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -258,24 +191,51 @@ function generatePDF(rows: GSTRow[], month: string): void {
 }
 
 export default function GSTReportPage() {
-  const [selectedMonth, setSelectedMonth] = useState("February 2026");
+  const currentMonthValue = MONTHS[new Date().getMonth()]?.value ?? MONTHS[0]?.value ?? "";
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [allRows, setAllRows] = useState<GSTRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const fetchRows = useCallback(async (month: string) => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch(`/api/admin/reports/gst?month=${month}`);
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        setFetchError(json?.error ?? "Failed to load GST data");
+        return;
+      }
+      const json = (await res.json()) as { data?: { rows?: GSTRow[] } };
+      setAllRows(json.data?.rows ?? []);
+    } catch {
+      setFetchError("Network error — could not load GST data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchRows(selectedMonth);
+  }, [selectedMonth, fetchRows]);
 
   const filteredRows = useMemo(() => {
-    if (statusFilter === "all") return MOCK_DATA;
-    return MOCK_DATA.filter((r) => r.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === "all") return allRows;
+    return allRows.filter((r) => r.status === statusFilter);
+  }, [allRows, statusFilter]);
 
   const summary = useMemo(() => {
-    const paid = MOCK_DATA.filter((r) => r.status === "paid");
-    const allActive = MOCK_DATA.filter((r) => r.status !== "cancelled");
+    const paid = allRows.filter((r) => r.status === "paid");
+    const allActive = allRows.filter((r) => r.status !== "cancelled");
     return {
       totalSales: allActive.reduce((s, r) => s + r.total, 0),
       gstCollected: paid.reduce((s, r) => s + r.gst, 0),
       netRevenue: paid.reduce((s, r) => s + r.baseAmount, 0),
-      invoiceCount: MOCK_DATA.length,
+      invoiceCount: allRows.length,
     };
-  }, []);
+  }, [allRows]);
 
   const totals = useMemo(
     () =>
@@ -297,6 +257,8 @@ export default function GSTReportPage() {
     { value: "pending", label: "Pending" },
     { value: "cancelled", label: "Cancelled" },
   ];
+
+  const selectedMonthLabel = MONTHS.find((m) => m.value === selectedMonth)?.label ?? selectedMonth;
 
   const summaryCards = [
     {
@@ -366,8 +328,8 @@ export default function GSTReportPage() {
                 className="h-10 appearance-none rounded-xl border border-white/10 bg-white/5 pl-4 pr-10 text-sm font-semibold text-white backdrop-blur-xl focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
               >
                 {MONTHS.map((m) => (
-                  <option key={m} value={m} className="bg-[#0a1628] text-white">
-                    {m}
+                  <option key={m.value} value={m.value} className="bg-[#0a1628] text-white">
+                    {m.label}
                   </option>
                 ))}
               </select>
@@ -376,8 +338,9 @@ export default function GSTReportPage() {
 
             {/* Download CSV */}
             <button
-              onClick={() => generateCSV(filteredRows, selectedMonth)}
-              className="flex h-10 items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-4 text-sm font-bold text-emerald-400 transition-all hover:bg-emerald-500/25"
+              onClick={() => generateCSV(filteredRows, selectedMonthLabel)}
+              disabled={loading || filteredRows.length === 0}
+              className="flex h-10 items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-4 text-sm font-bold text-emerald-400 transition-all hover:bg-emerald-500/25 disabled:opacity-40"
             >
               <Download className="h-4 w-4" />
               Download CSV
@@ -385,8 +348,9 @@ export default function GSTReportPage() {
 
             {/* Download PDF */}
             <button
-              onClick={() => generatePDF(filteredRows, selectedMonth)}
-              className="flex h-10 items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/15 px-4 text-sm font-bold text-blue-400 transition-all hover:bg-blue-500/25"
+              onClick={() => generatePDF(filteredRows, selectedMonthLabel)}
+              disabled={loading || filteredRows.length === 0}
+              className="flex h-10 items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/15 px-4 text-sm font-bold text-blue-400 transition-all hover:bg-blue-500/25 disabled:opacity-40"
             >
               <FileText className="h-4 w-4" />
               Download PDF
@@ -450,7 +414,7 @@ export default function GSTReportPage() {
             <h2 className="font-bold text-white">
               Invoice Line Items
               <span className="ml-2 text-sm font-normal text-white/40">
-                {selectedMonth}
+                {selectedMonthLabel}
               </span>
             </h2>
             {/* Status filter */}
@@ -471,84 +435,97 @@ export default function GSTReportPage() {
             </div>
           </div>
 
+          {/* Loading / error states */}
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-[#00d084]" />
+              <span className="ml-3 text-sm text-white/40">Loading GST data…</span>
+            </div>
+          )}
+          {!loading && fetchError && (
+            <div className="py-12 text-center text-sm text-rose-400">{fetchError}</div>
+          )}
+
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
-              <thead>
-                <tr className="bg-white/3 border-b border-white/10">
-                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Invoice No</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Date</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Client</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Trip</th>
-                  <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">Base Amt</th>
-                  <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">GST 5%</th>
-                  <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">Total</th>
-                  <th className="px-5 py-3 text-center text-[10px] font-black uppercase tracking-widest text-white/40">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-sm text-white/30">
-                      No invoices match the selected filter.
-                    </td>
+          {!loading && !fetchError && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px]">
+                <thead>
+                  <tr className="bg-white/3 border-b border-white/10">
+                    <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Invoice No</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Date</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Client</th>
+                    <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-white/40">Trip</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">Base Amt</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">GST 5%</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-black uppercase tracking-widest text-white/40">Total</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-black uppercase tracking-widest text-white/40">Status</th>
                   </tr>
-                ) : (
-                  filteredRows.map((row, idx) => (
-                    <tr
-                      key={row.invoiceNo}
-                      className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
-                        idx % 2 === 1 ? "bg-white/2" : ""
-                      }`}
-                    >
-                      <td className="px-5 py-4">
-                        <span className="font-mono text-xs font-bold text-[#00d084]">{row.invoiceNo}</span>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-white/60">{formatDate(row.date)}</td>
-                      <td className="px-5 py-4">
-                        <span className="text-sm font-semibold text-white">{row.client}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="text-sm text-white/50 leading-snug">{row.trip}</span>
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono text-sm text-white/70">
-                        ₹{row.baseAmount.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono text-sm text-blue-400">
-                        ₹{row.gst.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-5 py-4 text-right font-mono text-sm font-bold text-white">
-                        ₹{row.total.toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-5 py-4 text-center">
-                        <StatusBadge status={row.status} />
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-sm text-white/30">
+                        No payment records found for {selectedMonthLabel}.
                       </td>
                     </tr>
-                  ))
+                  ) : (
+                    filteredRows.map((row, idx) => (
+                      <tr
+                        key={row.invoiceNo}
+                        className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
+                          idx % 2 === 1 ? "bg-white/2" : ""
+                        }`}
+                      >
+                        <td className="px-5 py-4">
+                          <span className="font-mono text-xs font-bold text-[#00d084]">{row.invoiceNo}</span>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-white/60">{formatDate(row.date)}</td>
+                        <td className="px-5 py-4">
+                          <span className="text-sm font-semibold text-white">{row.client}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-sm text-white/50 leading-snug">{row.trip}</span>
+                        </td>
+                        <td className="px-5 py-4 text-right font-mono text-sm text-white/70">
+                          ₹{row.baseAmount.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-5 py-4 text-right font-mono text-sm text-blue-400">
+                          ₹{row.gst.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-5 py-4 text-right font-mono text-sm font-bold text-white">
+                          ₹{row.total.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <StatusBadge status={row.status} />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {/* Totals row */}
+                {filteredRows.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t-2 border-[#00d084]/30 bg-[#00d084]/5">
+                      <td className="px-5 py-4 text-xs font-black uppercase tracking-widest text-[#00d084]" colSpan={4}>
+                        Total ({filteredRows.length} invoice{filteredRows.length !== 1 ? "s" : ""})
+                      </td>
+                      <td className="px-5 py-4 text-right font-mono text-sm font-bold text-white">
+                        ₹{totals.base.toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-5 py-4 text-right font-mono text-sm font-bold text-blue-400">
+                        ₹{totals.gst.toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-5 py-4 text-right font-mono text-sm font-bold text-emerald-400">
+                        ₹{totals.total.toLocaleString("en-IN")}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-              {/* Totals row */}
-              {filteredRows.length > 0 && (
-                <tfoot>
-                  <tr className="border-t-2 border-[#00d084]/30 bg-[#00d084]/5">
-                    <td className="px-5 py-4 text-xs font-black uppercase tracking-widest text-[#00d084]" colSpan={4}>
-                      Total ({filteredRows.length} invoice{filteredRows.length !== 1 ? "s" : ""})
-                    </td>
-                    <td className="px-5 py-4 text-right font-mono text-sm font-bold text-white">
-                      ₹{totals.base.toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4 text-right font-mono text-sm font-bold text-blue-400">
-                      ₹{totals.gst.toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4 text-right font-mono text-sm font-bold text-emerald-400">
-                      ₹{totals.total.toLocaleString("en-IN")}
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+              </table>
+            </div>
+          )}
         </motion.div>
 
         {/* Footer note */}
