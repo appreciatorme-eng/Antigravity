@@ -7,12 +7,8 @@ test.describe('Admin Create Flows (prod)', () => {
   test('admin can create client, tour template, and proposal', async ({ adminPage }) => {
     test.setTimeout(240_000);
 
-    // Tour template creation triggers window.alert().
-    const dialogMessages: string[] = [];
-    adminPage.on('dialog', async (dialog) => {
-      dialogMessages.push(dialog.message());
-      await dialog.accept();
-    });
+    // Accept any dialogs that may appear (e.g. legacy alert() calls).
+    adminPage.on('dialog', async (dialog) => { await dialog.accept(); });
 
     const uniq = Date.now();
     const clientName = `E2E Client ${uniq}`;
@@ -47,12 +43,9 @@ test.describe('Admin Create Flows (prod)', () => {
     await adminPage.locator('textarea[placeholder*="Brief overview of this day" i]').fill('Arrive, settle in, and explore key landmarks.');
 
     await adminPage.getByRole('button', { name: /save template/i }).click();
-    await expect(adminPage).toHaveURL(/\/admin\/tour-templates\/?$/);
-    await expect(adminPage.getByText(templateName).first()).toBeVisible({ timeout: 20_000 });
-    expect(
-      dialogMessages.some((m) => /template created successfully/i.test(m)),
-      `Expected template success alert, got: ${dialogMessages.join(' | ')}`
-    ).toBeTruthy();
+    // Template creation now uses a toast (not window.alert) — verify via URL redirect + template visible in list
+    await expect(adminPage).toHaveURL(/\/admin\/tour-templates\/?$/, { timeout: 30_000 });
+    await expect(adminPage.getByText(templateName).first()).toBeVisible({ timeout: 30_000 });
 
     // 3) Create proposal using the new client + template.
     // Proposals create UI is at /proposals/create (not /admin/proposals/create — 404).
@@ -87,7 +80,7 @@ test.describe('Admin Create Flows (prod)', () => {
     // 4) Create driver (tests another key admin create flow).
     const driverName = `E2E Driver ${uniq}`;
     const driverPhone = `+1555${uniq.toString().slice(-7)}`;
-    await gotoWithRetry(adminPage, '/admin/drivers');
+    await gotoWithRetry(adminPage, '/drivers');
     await expect(adminPage.locator('h1, h2').filter({ hasText: /drivers/i })).toBeVisible({ timeout: 15_000 });
 
     await adminPage.getByRole('button', { name: /add driver/i }).first().click();

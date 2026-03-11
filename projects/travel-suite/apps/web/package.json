@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "portless antigravity next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",

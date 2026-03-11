@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 import { createCatchAllHandlers } from "../../../src/lib/api-dispatch";
@@ -289,5 +289,162 @@ describe("createCatchAllHandlers", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.params).toEqual({ id: "hello%20world" });
+  });
+
+  /* ---------- error handling in handlers ---------- */
+
+  it("returns 500 when the handler throws a generic error", async () => {
+    const errorModule = {
+      GET: () => {
+        throw new Error("something went wrong");
+      },
+    };
+    const { GET } = createCatchAllHandlers([
+      ["boom", () => Promise.resolve(errorModule)],
+    ]);
+
+    const res = await GET(makeRequest("GET"), {
+      params: Promise.resolve({ path: ["boom"] }),
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Internal server error");
+  });
+
+  it("returns 400 when the handler throws a SyntaxError", async () => {
+    const syntaxErrorModule = {
+      POST: () => {
+        throw new SyntaxError("Unexpected token");
+      },
+    };
+    const { POST } = createCatchAllHandlers([
+      ["parse", () => Promise.resolve(syntaxErrorModule)],
+    ]);
+
+    const res = await POST(makeRequest("POST"), {
+      params: Promise.resolve({ path: ["parse"] }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Invalid JSON in request body");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Rate limiting via DispatcherRateLimitConfig                        */
+/* ------------------------------------------------------------------ */
+
+const enforceRateLimitMock = vi.fn();
+
+vi.mock("../../../src/lib/security/rate-limit", () => ({
+  enforceRateLimit: (...args: unknown[]) => enforceRateLimitMock(...args),
+}));
+
+describe("createCatchAllHandlers with rateLimit option", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("passes the request when rate limit allows it", async () => {
+    enforceRateLimitMock.mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: Date.now() + 60_000,
+    });
+
+    const { GET } = createCatchAllHandlers(
+      [["ping", () => Promise.resolve(echoModule(["GET"]))]],
+      { rateLimit: { limit: 100, windowMs: 60_000, prefix: "test" } },
+    );
+
+    const res = await GET(
+      new NextRequest("http://localhost/api/ping", {
+        method: "GET",
+        headers: { authorization: "Bearer fake.jwt.token" },
+      }),
+      { params: Promise.resolve({ path: ["ping"] }) },
+    );
+
+    expect(res.status).toBe(200);
+    expect(enforceRateLimitMock).toHaveBeenCalledOnce();
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    enforceRateLimitMock.mockResolvedValue({
+      success: false,
+      limit: 5,
+      remaining: 0,
+      reset: Date.now() + 30_000,
+    });
+
+    const { POST } = createCatchAllHandlers(
+      [["action", () => Promise.resolve(echoModule(["POST"]))]],
+      { rateLimit: { limit: 5, windowMs: 30_000, prefix: "test-rl" } },
+    );
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/action", {
+        method: "POST",
+        headers: { "x-forwarded-for": "1.2.3.4" },
+      }),
+      { params: Promise.resolve({ path: ["action"] }) },
+    );
+
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toContain("Too many requests");
+    expect(res.headers.get("retry-after")).toBeTruthy();
+    expect(res.headers.get("x-ratelimit-limit")).toBe("5");
+    expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
+  });
+
+  it("uses x-real-ip as identifier when no authorization header", async () => {
+    enforceRateLimitMock.mockResolvedValue({
+      success: true,
+      limit: 10,
+      remaining: 9,
+      reset: Date.now() + 60_000,
+    });
+
+    const { GET } = createCatchAllHandlers(
+      [["check", () => Promise.resolve(echoModule(["GET"]))]],
+      { rateLimit: { limit: 10, windowMs: 60_000, prefix: "ip-test" } },
+    );
+
+    await GET(
+      new NextRequest("http://localhost/api/check", {
+        method: "GET",
+        headers: { "x-real-ip": "10.0.0.1" },
+      }),
+      { params: Promise.resolve({ path: ["check"] }) },
+    );
+
+    const callArg = enforceRateLimitMock.mock.calls[0][0];
+    expect(callArg.identifier).toBe("ip:10.0.0.1");
+  });
+
+  it("falls back to 'unknown' identifier when no IP headers are present", async () => {
+    enforceRateLimitMock.mockResolvedValue({
+      success: true,
+      limit: 10,
+      remaining: 9,
+      reset: Date.now() + 60_000,
+    });
+
+    const { GET } = createCatchAllHandlers(
+      [["check2", () => Promise.resolve(echoModule(["GET"]))]],
+      { rateLimit: { limit: 10, windowMs: 60_000, prefix: "unknown-test" } },
+    );
+
+    await GET(
+      new NextRequest("http://localhost/api/check2", { method: "GET" }),
+      { params: Promise.resolve({ path: ["check2"] }) },
+    );
+
+    const callArg = enforceRateLimitMock.mock.calls[0][0];
+    expect(callArg.identifier).toBe("ip:unknown");
   });
 });

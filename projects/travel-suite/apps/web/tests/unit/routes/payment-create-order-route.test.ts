@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PaymentServiceError } from "../../../src/lib/payments/errors";
 
 const createClientMock = vi.fn();
 const createOrderMock = vi.fn();
@@ -108,4 +109,142 @@ it("returns the created order in the normalized success envelope", async () => {
     error: null,
   });
   expect(createOrderMock).toHaveBeenCalledWith(5000, "INR", "org-1", {});
+});
+
+function makeAuthenticatedClient(orgId: string | null = "org-1") {
+  const singleMock = vi.fn().mockResolvedValue({
+    data: orgId ? { organization_id: orgId } : null,
+    error: orgId ? null : { message: "not found" },
+  });
+  return {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: "user-1" } },
+        error: null,
+      }),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({ single: singleMock })),
+      })),
+    })),
+  };
+}
+
+it("returns 503 when payments integration is disabled", async () => {
+  isPaymentsIntegrationEnabledMock.mockReturnValue(false);
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 500 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(503);
+  const payload = await response.json();
+  expect(payload.data).toBeNull();
+});
+
+it("returns 429 when rate limit is exceeded", async () => {
+  enforceRateLimitMock.mockResolvedValue({ success: false });
+  createClientMock.mockResolvedValue(makeAuthenticatedClient());
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 500 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(429);
+});
+
+it("returns 404 when organization_id is missing from profile", async () => {
+  createClientMock.mockResolvedValue(makeAuthenticatedClient(null));
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 500 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(404);
+});
+
+it("returns 400 when amount is zero", async () => {
+  createClientMock.mockResolvedValue(makeAuthenticatedClient());
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 0 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(400);
+  const payload = await response.json();
+  expect(payload.error).toContain("amount");
+});
+
+it("returns 400 when both invoice_id and subscription_id are provided", async () => {
+  createClientMock.mockResolvedValue(makeAuthenticatedClient());
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 1000, invoice_id: "inv-1", subscription_id: "sub-1" }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(400);
+});
+
+it("handles PaymentServiceError from createOrder with correct status", async () => {
+  createClientMock.mockResolvedValue(makeAuthenticatedClient());
+  const { POST } = await loadRoute();
+  const { PaymentServiceError: FreshPSE } = await import("../../../src/lib/payments/errors");
+  createOrderMock.mockRejectedValue(
+    new FreshPSE({
+      code: "payments_config_error",
+      message: "Razorpay not configured",
+      operation: "create_order",
+    })
+  );
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 1000 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(503);
+});
+
+it("returns 500 for unexpected errors from createOrder", async () => {
+  createClientMock.mockResolvedValue(makeAuthenticatedClient());
+  createOrderMock.mockRejectedValue(new Error("Unexpected failure"));
+
+  const { POST } = await loadRoute();
+  const response = await POST(
+    new NextRequest("http://localhost/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({ amount: 1000 }),
+      headers: { "content-type": "application/json" },
+    })
+  );
+
+  expect(response.status).toBe(500);
 });
