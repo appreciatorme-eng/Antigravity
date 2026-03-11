@@ -36,7 +36,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S13 — Playwright E2E all 5 browsers (714 pass / 0 fail) | 2026-03-10 | 714 | 714 | 0 | 0 | 0 |
 | S14 — God Mode E2E + template_days seeding (784 pass / 0 fail) | 2026-03-10 | 784 | 784 | 0 | 0 | 0 |
 | S15 — Marketplace fix + CRON/WA/integration unblock (783 pass / 0 fail / 22 skip) | 2026-03-11 | 783 | 783 | 0 | 0 | 22 |
-| **Total** | | **~1681** | **~1375** | **~110** | **~74** | **~344** |
+| S16 — God mode E2E (13 tests × 5 browsers = 65), audit-log BUG-079 fix, clone RPC verified (849 pass / 0 fail / 22 skip) | 2026-03-11 | 849 | 849 | 0 | 0 | 22 |
+| **Total** | | **~1746** | **~1440** | **~110** | **~74** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -1757,3 +1758,35 @@ Direct curl tests run by orchestrator. **22 tests · 17 pass · 5 note/spec**
 | `e2e/tests/marketplace-inquiries-api.spec.ts` | **EDIT** — extract `.items` from response |
 | `e2e/.env` | **EDIT** (local/gitignored) — CRON_SECRET, WHATSAPP_APP_SECRET, E2E_TARGET=prod |
 | `.claude/qa-log.md` | **EDIT** — added S15 |
+
+---
+
+## Test Results — Session 16 (God Mode E2E + Audit-Log Bug Fix)
+
+**Date**: 2026-03-11
+**Method**: Playwright v1.58.2 against live Vercel deployment (`https://travelsuite-rust.vercel.app`)
+**Runner**: `npx playwright test --config=e2e/playwright.config.ts e2e/tests/god.spec.ts` (all 5 projects)
+**Result**: **66 passed · 0 failed · 0 skipped** (in ~54s, on top of existing 783 = **849 total**)
+
+### What's New
+
+- **`e2e/tests/god.spec.ts`** — 13 god mode tests × 5 browsers = 65 browser-tests:
+  - 12 page-load tests (command center, analytics, announcements, audit-log, costs, org cost drilldown, directory, kill-switch, monitoring, referrals, signups, support)
+  - 1 access-control test (admin role → `/god` shows "Access Denied")
+  - `test.use({ timeout: 60_000 })` set for Vercel cold-start resilience
+- **BUG-082 discovered and fixed** — audit-log page crashed on load (see below)
+- **`clone_template_to_proposal` RPC verified** — 3 proposal_days + 6 proposal_activities cloned from QA Bali Tour template correctly
+
+### Bug Registry Additions
+
+| ID | Severity | Description | Root Cause | Fix | Commit | Status |
+|----|----------|-------------|------------|-----|--------|--------|
+| BUG-082 | HIGH | `/god/audit-log` page crashes with "Something went wrong" on load | `AuditData` interface in page used `log: AuditEntry[]` but API returns `entries: AuditEntry[]`; also `actor: { full_name, email }` (nested) but API returns `actor_name: string` (flat); and `limit: number` vs `pages: number`. React threw `TypeError: Cannot read properties of undefined (reading 'length')` on `data.log.length` | Updated `AuditData` interface + all usages: `log → entries`, `actor?.full_name ?? actor?.email → actor_name`, `totalPages` uses `data.pages` directly | 53787cc | Fixed ✅ |
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `src/app/(superadmin)/god/audit-log/page.tsx` | **EDIT** — fixed AuditData/AuditEntry types to match API response |
+| `e2e/tests/god.spec.ts` | **CREATE** — 13 god mode tests, 60s timeout |
+| `.claude/qa-log.md` | **EDIT** — added S16 |
