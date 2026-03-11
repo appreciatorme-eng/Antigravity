@@ -8,7 +8,6 @@ import {
   Search,
   X,
   Check,
-  DollarSign,
   Package,
   Loader2,
 } from 'lucide-react';
@@ -328,8 +327,7 @@ export default function ProposalAddOnsManager({
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50/90 to-emerald-50/90 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
           <div className="text-sm font-medium text-secondary dark:text-white">Selected Add-On Value</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
-            <DollarSign className="w-5 h-5" />
-            {totalSelectedValue.toFixed(2)}
+            ₹{totalSelectedValue.toFixed(2)}
           </div>
         </div>
       </GlassCard>
@@ -384,7 +382,7 @@ export default function ProposalAddOnsManager({
 
                     <div className="text-right ml-4">
                       <div className="text-lg font-bold text-primary">
-                        ${(proposalAddOn.unit_price * proposalAddOn.quantity).toFixed(2)}
+                        ₹{(proposalAddOn.unit_price * proposalAddOn.quantity).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -503,7 +501,7 @@ export default function ProposalAddOnsManager({
                         <p className="text-sm text-text-secondary line-clamp-2">{addon.description}</p>
                       )}
                       <div className="text-sm font-bold text-primary mt-2">
-                        ${Number(addon.price || 0).toFixed(2)}
+                        ₹{Number(addon.price || 0).toFixed(2)}
                         {addon.duration && (
                           <span className="text-xs text-text-secondary ml-2">• {addon.duration}</span>
                         )}

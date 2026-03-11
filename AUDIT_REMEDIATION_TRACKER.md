@@ -69,16 +69,16 @@
 
 | ID | Title | Action | Outcome | Status |
 |----|-------|--------|---------|--------|
-| L-01 | Inconsistent API response envelopes | Refactor 5 worst offenders to `apiSuccess`/`apiError` | Consistent response shape | ⏳ |
-| L-02 | File naming inconsistency (hooks) | Rename `use-shortcuts.ts` → `useShortcuts.ts` | Consistent camelCase | ⏳ |
-| L-03 | Dollar sign in INR product | Fix display to `₹` | Correct currency | ⏳ |
-| L-04 | `useEffect` empty deps with closures | Fix 4 components | Correct dependencies | ⏳ |
-| L-05 | Magic numbers in payment code | Extract to named constants | Self-documenting | ⏳ |
-| L-06 | Flat file sprawl in `src/lib/` | Move 26 root files to subdirectories | Clean organization | ⏳ |
-| L-07 | Duplicate `embeddings.ts` / `embeddings-v2.ts` | Delete v1 if unused | No dead code | ⏳ |
-| L-08 | REST verb naming | Rename to resource-oriented paths | RESTful design | ⏳ |
-| L-09 | `as any` / `as unknown` 130+ casts | Regenerate Supabase types | ~80% casts eliminated | ⏳ |
-| L-10 | Three TODO comments | Address or document | No orphaned TODOs | ⏳ |
+| L-01 | Inconsistent API response envelopes | Refactor 5 worst offenders to `apiSuccess`/`apiError` | Deferred — large refactor, no functional risk | 📝 |
+| L-02 | File naming inconsistency (hooks) | Rename `use-shortcuts.ts` → `useShortcuts.ts` | Consistent camelCase | ✅ |
+| L-03 | Dollar sign in INR product | Fix display to `₹` | Correct currency | ✅ |
+| L-04 | `useEffect` empty deps with closures | Fix 2 components (PostHistory, god/page) | Correct dependencies | ✅ |
+| L-05 | Magic numbers in payment code | Extract to named constants | Self-documenting | ✅ |
+| L-06 | Flat file sprawl in `src/lib/` | Move 26 root files to subdirectories | Deferred — large refactor, high regression risk | 📝 |
+| L-07 | Duplicate `embeddings.ts` / `embeddings-v2.ts` | Verified: v1 is a v2 wrapper, actively imported | False positive — no dead code | 📝 |
+| L-08 | REST verb naming | Rename to resource-oriented paths | Deferred — breaking change for clients | 📝 |
+| L-09 | `as any` / `as unknown` 130+ casts | Regenerate Supabase types | Deferred — requires Supabase CLI type regeneration | 📝 |
+| L-10 | TODO comment in env.ts | Removed — Razorpay keys handled by payment handlers | No orphaned TODOs | ✅ |
 
 ---
 

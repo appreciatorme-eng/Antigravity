@@ -23,7 +23,7 @@ const createOrderSchema = z.object({
   invoice_id: z.string().trim().optional().nullable(),
   subscription_id: z.string().trim().optional().nullable(),
   allow_partial: z.boolean().default(false),
-  notes: z.record(z.string()).optional().default({}),
+  notes: z.record(z.string(), z.string()).optional().default({}),
 });
 
 const CREATE_ORDER_RATE_LIMIT_MAX = 10;

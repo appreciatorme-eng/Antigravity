@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Users, Building2, Map, DollarSign, Zap, LifeBuoy,
@@ -57,7 +57,7 @@ export default function GodCommandCenter() {
     const [loading, setLoading] = useState(true);
     const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-    async function fetchOverview() {
+    const fetchOverview = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch("/api/superadmin/overview");
@@ -67,9 +67,9 @@ export default function GodCommandCenter() {
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
-    useEffect(() => { fetchOverview(); }, []);
+    useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
     const kpis: KpiCardProps[] = data ? [
         {

@@ -476,7 +476,7 @@ async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload, requ
     .eq('razorpay_subscription_id', subscription.id);
 
   if (error) {
-    logWebhookHandlerEvent('error', 'Failed to update subscription to cancelled', requestContext, {
+    logWebhookHandlerEvent('warn', 'Failed to update subscription to cancelled', requestContext, {
       payment_event_type: 'subscription.cancelled',
       payment_subscription_id: subscription.id,
       db_error: error.message,
@@ -506,7 +506,7 @@ async function handleSubscriptionPaused(payload: RazorpayWebhookPayload, request
     .eq('razorpay_subscription_id', subscription.id);
 
   if (error) {
-    logWebhookHandlerEvent('error', 'Failed to update subscription to paused', requestContext, {
+    logWebhookHandlerEvent('warn', 'Failed to update subscription to paused', requestContext, {
       payment_event_type: 'subscription.paused',
       payment_subscription_id: subscription.id,
       db_error: error.message,
@@ -539,7 +539,7 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
     .eq('razorpay_invoice_id', invoice.id);
 
   if (error) {
-    logWebhookHandlerEvent('error', 'Failed to update invoice to paid', requestContext, {
+    logWebhookHandlerEvent('warn', 'Failed to update invoice to paid', requestContext, {
       payment_event_type: 'invoice.paid',
       payment_invoice_id: invoice.id,
       db_error: error.message,
