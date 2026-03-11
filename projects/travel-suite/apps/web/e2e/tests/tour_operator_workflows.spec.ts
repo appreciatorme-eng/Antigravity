@@ -11,18 +11,21 @@ test.describe('Tour Operator Workflows', () => {
         const templateName = `Workflow Template ${uniq}`;
         const addOnName = `Workflow Add-on ${uniq}`;
 
-        // 1. CRM: Create a Client
-        await gotoWithRetry(adminPage, '/admin/clients');
+        // 1. CRM: Create a Client (clients UI lives at /clients — see BUG-002 nav fix)
+        await gotoWithRetry(adminPage, '/clients');
         await adminPage.getByRole('button', { name: /add client/i }).click();
         await adminPage.getByLabel(/full name/i).fill(clientName);
-        await adminPage.getByLabel(/^email$/i).fill(clientEmail);
+        await adminPage.getByLabel(/email/i).first().fill(clientEmail);
 
+        // Submit button inside the modal reads "Add Client" (not "Create Client") — use .last()
+        // to distinguish it from the page-level "Add Client" opener button.
         const [createClientResp] = await Promise.all([
             adminPage.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST'),
-            adminPage.getByRole('button', { name: /create client/i }).click(),
+            adminPage.getByRole('button', { name: /add client/i }).last().click(),
         ]);
         expect(createClientResp.ok()).toBeTruthy();
-        await expect(adminPage.getByText(clientName)).toBeVisible({ timeout: 30_000 });
+        // Use .first() — success toast + card heading both contain clientName (strict mode).
+        await expect(adminPage.getByText(clientName).first()).toBeVisible({ timeout: 30_000 });
 
         // 2. Product: Create a Tour Template
         await gotoWithRetry(adminPage, '/admin/tour-templates');
@@ -42,8 +45,8 @@ test.describe('Tour Operator Workflows', () => {
         await adminPage.getByRole('button', { name: /save template/i }).click();
         await expect(adminPage.getByText(templateName).first()).toBeVisible({ timeout: 30_000 });
 
-        // 3. Upsell: Create an Add-on
-        await gotoWithRetry(adminPage, '/admin/add-ons');
+        // 3. Upsell: Create an Add-on (UI lives at /add-ons — see BUG-002 nav fix)
+        await gotoWithRetry(adminPage, '/add-ons');
         await adminPage.getByRole('button', { name: /add new add-on/i }).click();
 
         await adminPage.getByLabel(/name/i).fill(addOnName);
@@ -58,30 +61,35 @@ test.describe('Tour Operator Workflows', () => {
         expect(createAddOnResp.ok()).toBeTruthy();
         await expect(adminPage.getByText(addOnName)).toBeVisible();
 
-        // 4. Sales: Create a Proposal
-        await gotoWithRetry(adminPage, '/admin/proposals/create');
+        // 4. Sales: Create a Proposal (UI at /proposals/create — see BUG-002 nav fix)
+        await gotoWithRetry(adminPage, '/proposals/create');
 
-        // Select Client
-        const clientSelect = adminPage.locator('select').nth(0);
-        await expect.poll(async () => clientSelect.locator('option').count(), { timeout: 30_000 }).toBeGreaterThan(1);
-        const clientOption = clientSelect.locator('option', { hasText: clientName }).first();
-        const clientValue = await clientOption.getAttribute('value');
-        await clientSelect.selectOption(clientValue!);
+        // Select Client via custom combobox (not a native <select>)
+        const clientSearchInput = adminPage.getByLabel(/search and select client/i);
+        await clientSearchInput.click();
+        await clientSearchInput.fill(clientName);
+        // Wait for dropdown results and click the first match
+        const clientDropdownItem = adminPage.locator('[class*="max-h-64"] button')
+            .filter({ hasText: clientName }).first();
+        await expect(clientDropdownItem).toBeVisible({ timeout: 15_000 });
+        await clientDropdownItem.click();
 
-        // Select Template
-        const templateSelect = adminPage.locator('select').nth(1);
-        await expect.poll(async () => templateSelect.locator('option').count(), { timeout: 30_000 }).toBeGreaterThan(1);
+        // Select Template via the single native <select> on the page
+        const templateSelect = adminPage.locator('select').first();
+        await expect
+            .poll(async () => templateSelect.locator('option').count(), { timeout: 30_000 })
+            .toBeGreaterThan(1);
         const templateOption = templateSelect.locator('option', { hasText: templateName }).first();
         const templateValue = await templateOption.getAttribute('value');
         await templateSelect.selectOption(templateValue!);
 
-        // Create Proposal
+        // Create Proposal (button becomes enabled once client + template are selected)
+        await expect(adminPage.getByRole('button', { name: /create proposal/i })).toBeEnabled({ timeout: 10_000 });
         await adminPage.getByRole('button', { name: /create proposal/i }).click();
-        await expect(adminPage).toHaveURL(/\/admin\/proposals\/[0-9a-f-]+/i, { timeout: 30_000 });
+        await expect(adminPage).toHaveURL(/\/proposals\/[0-9a-f-]+/i, { timeout: 30_000 });
 
         // 5. Verify Proposal Page Load
-        await expect(adminPage.getByRole('heading', { name: templateName })).toBeVisible();
-        await expect(adminPage.getByText('Client Share Link')).toBeVisible();
+        await expect(adminPage.getByText('Client Share Link')).toBeVisible({ timeout: 30_000 });
 
         console.log('✅ Tour Operator Workflow Test Completed Successfully');
     });

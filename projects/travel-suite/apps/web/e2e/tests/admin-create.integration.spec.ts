@@ -21,13 +21,17 @@ test.describe('Admin Create Flows (prod)', () => {
     const templateDestination = 'Dubai, UAE';
 
     // 1) Create client (and ensure it also becomes a row in `clients` table).
-    await gotoWithRetry(adminPage, '/admin/clients');
+    // Clients UI lives at /clients (not /admin/clients — see BUG-002 nav fix)
+    await gotoWithRetry(adminPage, '/clients');
     await adminPage.getByRole('button', { name: /add client/i }).click();
     await adminPage.getByLabel(/full name/i).fill(clientName);
-    await adminPage.getByLabel(/^email$/i).fill(clientEmail);
+    // Label text is "Email *" — use unanchored regex to match GlassInput rendered label
+    await adminPage.getByLabel(/email/i).first().fill(clientEmail);
+    // Modal submit button text is "Add Client" (not "Create Client") — target .last() to
+    // distinguish from the page-level "Add Client" opener button.
     const [createClientResp] = await Promise.all([
       adminPage.waitForResponse((resp) => resp.url().includes('/api/admin/clients') && resp.request().method() === 'POST'),
-      adminPage.getByRole('button', { name: /create client/i }).click(),
+      adminPage.getByRole('button', { name: /add client/i }).last().click(),
     ]);
     expect(createClientResp.ok(), `Create client failed: ${createClientResp.status()} ${createClientResp.url()}`).toBeTruthy();
     await expect(adminPage.getByText(/create a new client profile/i)).toBeHidden({ timeout: 20_000 });
@@ -51,20 +55,20 @@ test.describe('Admin Create Flows (prod)', () => {
     ).toBeTruthy();
 
     // 3) Create proposal using the new client + template.
-    await gotoWithRetry(adminPage, '/admin/proposals/create');
-    const selects = adminPage.locator('select');
-    const clientSelect = selects.first();
-    const templateSelect = selects.nth(1);
+    // Proposals create UI is at /proposals/create (not /admin/proposals/create — 404).
+    await gotoWithRetry(adminPage, '/proposals/create');
 
-    // Select by substring match to tolerate minor label formatting differences.
-    await expect
-      .poll(async () => clientSelect.locator('option').count(), { timeout: 30_000 })
-      .toBeGreaterThan(1);
-    const clientOption = clientSelect.locator('option', { hasText: clientName }).first();
-    const clientValue = await clientOption.getAttribute('value');
-    expect(clientValue, 'Expected to find newly created client in proposal dropdown').toBeTruthy();
-    await clientSelect.selectOption(clientValue!);
+    // Client picker is a custom combobox (not a native <select>).
+    const clientSearchInput = adminPage.getByLabel(/search and select client/i);
+    await clientSearchInput.click();
+    await clientSearchInput.fill(clientName);
+    const clientDropdownItem = adminPage.locator('[class*="max-h-64"] button')
+      .filter({ hasText: clientName }).first();
+    await expect(clientDropdownItem).toBeVisible({ timeout: 15_000 });
+    await clientDropdownItem.click();
 
+    // Template uses the single native <select> on the page.
+    const templateSelect = adminPage.locator('select').first();
     await expect
       .poll(async () => templateSelect.locator('option').count(), { timeout: 30_000 })
       .toBeGreaterThan(1);
@@ -75,10 +79,10 @@ test.describe('Admin Create Flows (prod)', () => {
 
     await expect(adminPage.getByRole('button', { name: /create proposal/i })).toBeEnabled({ timeout: 20_000 });
     await adminPage.getByRole('button', { name: /create proposal/i }).click();
-    await expect(adminPage).toHaveURL(/\/admin\/proposals\/[0-9a-f-]+/i, { timeout: 30_000 });
+    await expect(adminPage).toHaveURL(/\/proposals\/[0-9a-f-]+/i, { timeout: 30_000 });
 
     // Basic render check on the proposal page.
-    await expect(adminPage.getByRole('heading', { name: /client share link/i })).toBeVisible({ timeout: 30_000 });
+    await expect(adminPage.getByText('Client Share Link')).toBeVisible({ timeout: 30_000 });
 
     // 4) Create driver (tests another key admin create flow).
     const driverName = `E2E Driver ${uniq}`;

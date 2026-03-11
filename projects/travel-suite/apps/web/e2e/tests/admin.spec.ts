@@ -46,15 +46,16 @@ test.describe('Admin Dashboard', () => {
 });
 
 test.describe('Driver Management', () => {
+  // Drivers UI lives at /drivers (not /admin/drivers — see BUG-002 nav fix)
   test('admin can view drivers list', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/drivers');
+    await gotoWithRetry(adminPage, '/drivers');
 
     // Should see drivers page
     await expect(adminPage.locator('h1, h2').filter({ hasText: /drivers/i })).toBeVisible();
   });
 
   test('admin can add new driver', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/drivers');
+    await gotoWithRetry(adminPage, '/drivers');
     await expect(adminPage.locator('h1, h2').filter({ hasText: /drivers/i })).toBeVisible({ timeout: 15000 });
     const driverName = `Test Driver E2E ${Date.now()}`;
     const phoneNumber = `+1555${Date.now().toString().slice(-7)}`;
@@ -81,7 +82,7 @@ test.describe('Driver Management', () => {
   });
 
   test('admin can edit driver', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/drivers');
+    await gotoWithRetry(adminPage, '/drivers');
 
     // Click edit on first driver
     const editButton = adminPage.locator('button[title="Edit driver"]').first();
@@ -96,7 +97,7 @@ test.describe('Driver Management', () => {
   });
 
   test('admin can toggle driver active status', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/drivers');
+    await gotoWithRetry(adminPage, '/drivers');
 
     // Find active toggle
     const toggle = adminPage.locator('input[type="checkbox"], [role="switch"]').first();
@@ -114,15 +115,16 @@ test.describe('Driver Management', () => {
 });
 
 test.describe('Client Management', () => {
+  // Clients UI lives at /clients (not /admin/clients — see BUG-002 nav fix)
   test('admin can view clients list', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/clients');
+    await gotoWithRetry(adminPage, '/clients');
 
     // Should see clients page
     await expect(adminPage.locator('h1, h2').filter({ hasText: /clients/i })).toBeVisible();
   });
 
   test('admin can search clients', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/clients');
+    await gotoWithRetry(adminPage, '/clients');
 
     // Find search input
     const searchInput = adminPage.locator('input[type="search"], input[placeholder*="search" i]');
@@ -138,7 +140,7 @@ test.describe('Client Management', () => {
   });
 
   test('admin can view client details', async ({ adminPage }) => {
-    await gotoWithRetry(adminPage, '/admin/clients');
+    await gotoWithRetry(adminPage, '/clients');
 
     // Click on first client
     const clientRow = adminPage.locator('tr, [data-testid="client-item"]').first();

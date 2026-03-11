@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadDotenv } from 'dotenv';
 import path from 'node:path';
+
+// Load e2e/.env before resolving any env-dependent config values so that
+// PLAYWRIGHT_BASE_URL, TEST_ADMIN_EMAIL, etc. are available at config-eval time.
+// This is required because Playwright's own .env auto-load runs after the config
+// module is evaluated, which is too late for top-level const assignments.
+loadDotenv({ path: path.join(__dirname, '.env'), override: false });
 
 const configDir = __dirname;
 const appDir = path.resolve(configDir, '..');

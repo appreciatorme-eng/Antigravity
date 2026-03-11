@@ -56,8 +56,8 @@ test.describe('Admin Trip Management', () => {
   test('admin can view all trips', async ({ adminPage }) => {
     await gotoWithRetry(adminPage, '/admin/trips');
 
-    // Should see trips page content
-    await expect(adminPage.locator('h1, h2').filter({ hasText: /trips/i })).toBeVisible();
+    // Should see trips page — the admin heading is "Expeditions" (the trip manager label)
+    await expect(adminPage.locator('h1, h2').filter({ hasText: /expeditions|trips/i })).toBeVisible();
     await expect(adminPage.locator('a[href^="/admin/trips/"], [data-testid="trip-item"], table').first()).toBeVisible();
   });
 
