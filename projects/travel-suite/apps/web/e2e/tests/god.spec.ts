@@ -2,9 +2,12 @@ import { test, expect } from '../fixtures/auth';
 import { gotoWithRetry } from '../fixtures/navigation';
 
 const QA_ORG_ID = 'c498cecc-9aaa-4a37-a26e-fe591e065ac9';
-const TIMEOUT = 30_000;
+// 60s per-test to absorb Vercel cold-start on /api/superadmin/me
+const TIMEOUT = 60_000;
 
 test.describe('God Mode — Super Admin Panel', () => {
+  test.use({ timeout: 60_000 });
+
   test('command center dashboard loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god');
     await expect(superAdminPage.locator('h1').filter({ hasText: 'Command Center' }))
