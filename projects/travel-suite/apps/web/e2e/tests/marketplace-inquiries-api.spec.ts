@@ -51,9 +51,9 @@ authTest.describe('Marketplace Inquiries API - Authenticated', () => {
 
     const marketplaceResponse = await clientPage.request.get('/api/marketplace');
     expect(marketplaceResponse.ok()).toBeTruthy();
-    const marketplacePayload = (await marketplaceResponse.json().catch(() => [])) as unknown;
-    const marketplaceRows = Array.isArray(marketplacePayload)
-      ? (marketplacePayload as MarketplaceProfile[])
+    const marketplacePayload = (await marketplaceResponse.json().catch(() => ({ items: [] }))) as { items?: MarketplaceProfile[] };
+    const marketplaceRows = Array.isArray(marketplacePayload?.items)
+      ? marketplacePayload.items
       : [];
 
     const verifiedTarget = marketplaceRows.find(

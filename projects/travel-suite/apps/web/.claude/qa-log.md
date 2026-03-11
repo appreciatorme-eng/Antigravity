@@ -35,6 +35,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S12 — Playwright E2E (chromium, 110 pass / 44 skip / 0 fail) | 2026-03-10 | 154 | 110 | 0 | 0 | 44 |
 | S13 — Playwright E2E all 5 browsers (714 pass / 0 fail) | 2026-03-10 | 714 | 714 | 0 | 0 | 0 |
 | S14 — God Mode E2E + template_days seeding (784 pass / 0 fail) | 2026-03-10 | 784 | 784 | 0 | 0 | 0 |
+| S15 — Marketplace fix + unblock cron/WA/integration skips (pending redeploy) | 2026-03-11 | — | — | — | — | — |
 | **Total** | | **~1656** | **~1350** | **~110** | **~74** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.

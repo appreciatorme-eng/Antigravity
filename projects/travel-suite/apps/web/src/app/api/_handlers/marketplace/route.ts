@@ -235,8 +235,7 @@ export async function GET(req: NextRequest) {
             .from("marketplace_profiles")
             .select(`
                 *,
-                organization:organizations(name, logo_url),
-                reviews:marketplace_reviews(rating)
+                organization:organizations(name, logo_url)
             `);
 
         if (verification) {
