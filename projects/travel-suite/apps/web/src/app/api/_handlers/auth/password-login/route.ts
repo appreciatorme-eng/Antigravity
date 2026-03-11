@@ -5,7 +5,7 @@ import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limi
 
 const LoginSchema = z.object({
   email: z.string().email().max(320),
-  password: z.string().min(6).max(256),
+  password: z.string().min(8).max(256),
 });
 
 const RATE_LIMIT_MAX = 8;

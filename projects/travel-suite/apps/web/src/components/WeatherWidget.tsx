@@ -46,12 +46,17 @@ export default function WeatherWidget({ destination, days = 7, compact = false }
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        const abortController = new AbortController();
+
         async function fetchWeather() {
             try {
                 setLoading(true);
                 setError(null);
 
-                const res = await fetch(`/api/weather?location=${encodeURIComponent(destination)}&days=${days}`);
+                const res = await fetch(
+                    `/api/weather?location=${encodeURIComponent(destination)}&days=${days}`,
+                    { signal: abortController.signal }
+                );
 
                 if (!res.ok) {
                     throw new Error("Failed to fetch weather");
@@ -60,16 +65,20 @@ export default function WeatherWidget({ destination, days = 7, compact = false }
                 const data = await res.json();
                 setWeather(data);
             } catch (err) {
+                if (abortController.signal.aborted) return;
                 setError("Could not load weather data");
-                console.error(err);
             } finally {
-                setLoading(false);
+                if (!abortController.signal.aborted) {
+                    setLoading(false);
+                }
             }
         }
 
         if (destination) {
             fetchWeather();
         }
+
+        return () => abortController.abort();
     }, [destination, days]);
 
     if (loading) {

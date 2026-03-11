@@ -183,7 +183,7 @@ function AuthPageContent() {
                                         className="pl-9 h-11 bg-gray-50/50 dark:bg-white/10 border-gray-200 dark:border-white/10 text-secondary dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/50 focus-visible:ring-primary"
                                         placeholder="••••••••"
                                         required
-                                        minLength={6}
+                                        minLength={8}
                                     />
                                 </div>
                             </div>

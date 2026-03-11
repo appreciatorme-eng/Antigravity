@@ -21,6 +21,8 @@ export async function POST() {
             return NextResponse.json({ error: 'No organization found' }, { status: 400 });
         }
 
+        const orgId: string = profile.organization_id;
+
         // Fetch marketplace reviews
         const { data: marketplaceReviews, error: mError } = await supabase
             .from('marketplace_reviews')
@@ -31,7 +33,7 @@ export async function POST() {
         created_at,
         reviewer_org:organizations!marketplace_reviews_reviewer_org_id_fkey(name)
       `)
-            .eq('target_org_id', profile.organization_id);
+            .eq('target_org_id', orgId);
 
         if (mError) throw mError;
 
@@ -42,7 +44,7 @@ export async function POST() {
         const { data: existingReviews } = await supabase
             .from('social_reviews')
             .select('reviewer_name, comment')
-            .eq('organization_id', profile.organization_id)
+            .eq('organization_id', orgId)
             .eq('source', 'marketplace');
 
         const existingSet = new Set(
@@ -59,7 +61,7 @@ export async function POST() {
             .map((review) => {
                 const reviewerOrg = review.reviewer_org as { name: string } | null;
                 return {
-                    organization_id: profile.organization_id,
+                    organization_id: orgId,
                     reviewer_name: reviewerOrg?.name || 'Marketplace Partner',
                     trip_name: 'Marketplace Collaboration',
                     rating: review.rating || 5,

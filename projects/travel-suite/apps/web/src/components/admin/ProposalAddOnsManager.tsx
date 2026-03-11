@@ -64,6 +64,7 @@ export default function ProposalAddOnsManager({
   proposalId,
   readonly = false,
 }: ProposalAddOnsManagerProps) {
+  const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [proposalAddOns, setProposalAddOns] = useState<ProposalAddOn[]>([]);
@@ -76,8 +77,6 @@ export default function ProposalAddOnsManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: proposalRows, error: proposalRowsError } = await (supabase as any)
         .from('proposal_add_ons')
@@ -131,14 +130,13 @@ export default function ProposalAddOnsManager({
     } finally {
       setLoading(false);
     }
-  }, [proposalId]);
+  }, [proposalId, supabase]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
   async function syncProposalPrice() {
-    const supabase = createClient();
     const { data: newPrice } = await supabase.rpc('calculate_proposal_price', {
       p_proposal_id: proposalId,
     });
@@ -154,7 +152,6 @@ export default function ProposalAddOnsManager({
   async function addAddOnToProposal(addon: AddOn) {
     setSaving(true);
     try {
-      const supabase = createClient();
       const transport = isTransportCategory(addon.category);
       const selectedTransportExists = proposalAddOns.some(
         (item) => isTransportCategory(item.category) && item.is_selected
@@ -201,8 +198,6 @@ export default function ProposalAddOnsManager({
 
     setSaving(true);
     try {
-      const supabase = createClient();
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from('proposal_add_ons')
@@ -231,7 +226,6 @@ export default function ProposalAddOnsManager({
   async function toggleSelection(proposalAddOn: ProposalAddOn) {
     setSaving(true);
     try {
-      const supabase = createClient();
       const nextValue = !proposalAddOn.is_selected;
 
       if (isTransportCategory(proposalAddOn.category) && nextValue) {

@@ -47,21 +47,21 @@
 
 | ID | Title | File | Action | Outcome | Status |
 |----|-------|------|--------|---------|--------|
-| M-01 | `unsafe-inline` in CSP script-src | `next.config.mjs:59` | Document as Next.js requirement | Risk documented | ⏳ |
-| M-02 | Middleware excludes `/api` from auth | `src/middleware.ts:119-123` | Document defense-in-depth gap | Risk documented | ⏳ |
-| M-03 | Admin client singleton | `src/lib/supabase/admin.ts` | Document as acceptable (stateless) | Risk documented | ⏳ |
-| M-04 | Amadeus error message leakage | `src/lib/external/amadeus.ts:60-61` | Sanitize error message | No credential hints | ⏳ |
-| M-05 | Cron GET=POST delegation | All cron handlers | Remove `GET` export | Cron only via POST | ⏳ |
-| M-06 | Reputation widget CORS wildcard | `reputation/widget/[token]/route.ts` | Document as intentional | Risk documented | ⏳ |
-| M-07 | Password minimum 6 chars | `auth/page.tsx` + `password-login/route.ts` | Increase to `min(8)` | OWASP compliant | ⏳ |
-| M-08 | WhatsApp webhook body size | `whatsapp/webhook/route.ts:92` | Add 1MB limit | Memory exhaustion prevented | ⏳ |
-| M-09 | 3 oversized files (1400-1600 lines) | `admin/trips/[id]`, `ui/map`, `proposals/create` | Extract sub-components | Files under 800 lines | ⏳ |
-| M-10 | `console.error` not structured logger | Multiple client files | Replace in key files | Consistent observability | ⏳ |
-| M-11 | Platform settings blanket ESLint disable | `src/lib/platform/settings.ts:1` | Replace with inline comments | Granular suppression | ⏳ |
-| M-12 | Empty catch blocks in settings | `src/lib/platform/settings.ts:79,89,115` | Add `console.warn` | Redis outages diagnosable | ⏳ |
-| M-13 | `WeatherWidget` no abort on unmount | `src/components/WeatherWidget.tsx:48-73` | Add `AbortController` cleanup | No unmounted state updates | ⏳ |
-| M-14 | Missing RLS-critical indexes | Supabase migration | Add indexes on notification FK columns | RLS performance improved | ⏳ |
-| M-15 | Duplicate Supabase client creation | `ProposalAddOnsManager.tsx` | `useMemo` single client | Single instance per component | ⏳ |
+| M-01 | `unsafe-inline` in CSP script-src | `next.config.mjs:59` | Document as Next.js requirement | Next.js requires unsafe-inline for inline scripts | 📝 |
+| M-02 | Middleware excludes `/api` from auth | `src/middleware.ts:119-123` | Document defense-in-depth gap | Handler-level auth is the pattern; middleware skip is intentional | 📝 |
+| M-03 | Admin client singleton | `src/lib/supabase/admin.ts` | Document as acceptable (stateless) | Supabase client is stateless per-request — acceptable | 📝 |
+| M-04 | Amadeus error message leakage | `src/lib/external/amadeus.ts:60-61` | Sanitize error message | No credential hints | ✅ |
+| M-05 | Cron GET=POST delegation | All cron handlers | Remove `GET` export | Cron only via POST | ✅ |
+| M-06 | Reputation widget CORS wildcard | `reputation/widget/[token]/route.ts` | Document as intentional | Embeddable widget — CORS wildcard is by design | 📝 |
+| M-07 | Password minimum 6 chars | `auth/page.tsx` + `password-login/route.ts` | Increase to `min(8)` | OWASP compliant | ✅ |
+| M-08 | WhatsApp webhook body size | `whatsapp/webhook/route.ts:92` | Add 1MB limit | Memory exhaustion prevented | ✅ |
+| M-09 | 3 oversized files (1400-1600 lines) | `admin/trips/[id]`, `ui/map`, `proposals/create` | Extract sub-components | Deferred — large refactor, no security risk | 📝 |
+| M-10 | `console.error` not structured logger | Multiple client files | Replace in key files | Client-side only — no server PII risk; deferred | 📝 |
+| M-11 | Platform settings blanket ESLint disable | `src/lib/platform/settings.ts:1` | Replace with inline comments | Granular suppression | ✅ |
+| M-12 | Empty catch blocks in settings | `src/lib/platform/settings.ts:79,89,115` | Add `console.warn` | Redis outages diagnosable | ✅ |
+| M-13 | `WeatherWidget` no abort on unmount | `src/components/WeatherWidget.tsx:48-73` | Add `AbortController` cleanup | No unmounted state updates | ✅ |
+| M-14 | Missing RLS-critical indexes | Supabase migration | Add indexes on notification FK columns | RLS performance improved | ✅ |
+| M-15 | Duplicate Supabase client creation | `ProposalAddOnsManager.tsx` | `useMemo` single client | Single instance per component | ✅ |
 
 ---
 

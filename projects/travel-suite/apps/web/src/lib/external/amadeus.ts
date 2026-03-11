@@ -58,7 +58,7 @@ export async function getAmadeusToken() {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Amadeus Auth Failed: ${JSON.stringify(error)}`);
+    throw new Error("Amadeus authentication failed");
   }
 
   const data = await response.json();
@@ -109,7 +109,7 @@ export async function searchAmadeusLocations(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(`Amadeus Location Search Failed: ${JSON.stringify(error)}`);
+    throw new Error("Amadeus location search failed");
   }
 
   const payload = await response.json();

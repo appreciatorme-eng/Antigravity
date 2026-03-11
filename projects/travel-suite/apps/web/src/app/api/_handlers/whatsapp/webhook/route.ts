@@ -91,8 +91,17 @@ export async function POST(request: NextRequest) {
     const requestContext = getRequestContext(request, requestId);
 
     try {
+        const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+        if (contentLength > 1_048_576) {
+            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+        }
+
         const allowUnsignedWebhook = isUnsignedWebhookAllowed();
         const rawBody = await request.text();
+
+        if (rawBody.length > 1_048_576) {
+            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+        }
         const signatureHeader = request.headers.get("x-hub-signature-256");
         const signatureValid = verifySignature(rawBody, signatureHeader);
 
