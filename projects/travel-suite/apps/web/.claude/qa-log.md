@@ -30,7 +30,7 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S10c — ADDON / INV / PERF / AUTH direct runs | 2026-03-11 | 36 | 27 | 5 | 4 | 0 |
 | S10d — BUG-069 rate limit, T3-2 invoice PDF, remaining direct runs | 2026-03-11 | 15 | 9 | 3 | 3 | 0 |
 | S10e — Full route coverage sweep (119 main + 54 admin routes) | 2026-03-11 | 78 | 58 | 8 | 12 | 0 |
-| S11 — EDGE/SEC/PERF pending items + BUG-072 discovery | 2026-03-11 | 22 | 17 | 2 | 3 | 0 |
+| S11 — EDGE/SEC/PERF pending items + BUG-072/073/074 discovery+fix | 2026-03-11 | 22 | 17 | 2 | 3 | 0 |
 | **Total** | | **~718** | **~456** | **~110** | **~74** | **~300** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
@@ -1101,6 +1101,8 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-070 | HIGH | `POST /api/trips/:id/clone` → 500; `POST /api/admin/trips/:id/clone` → 400 "violates trips_status_check" | Both clone handlers insert new trips with `status:"draft"` but the DB `trips_status_check` constraint does NOT include "draft" as a valid status. Valid initial status is "pending". Admin handler also leaked raw Postgres constraint message | Changed `status:"draft"` → `status:"pending"` in both handlers; removed raw DB error from admin response | f1794ab | Fixed ✅ |
 | BUG-071 | LOW | `POST /api/itinerary/import/pdf` → 500 "Internal server error" when no file provided | Handler calls `req.formData()` without try/catch — when body is not `multipart/form-data`, `formData()` throws before the `instanceof File` check is reached → caught by outer try/catch → generic 500 | Wrapped `req.formData()` in its own try/catch returning 400 "PDF file is required (multipart/form-data)" | b2802a7 | Fixed ✅ |
 | BUG-072 | MED | Raw Supabase/PostgREST error messages exposed in 12 API handlers | `error?.message` from Supabase errors passed directly into JSON response bodies (e.g., "Cannot coerce the result to a single JSON object" from `.single()` on empty result). Discovered via SEC-027 test: `GET /api/admin/trips/{non-existent-uuid}` returned raw PostgREST message | Replaced all `err?.message \|\| "fallback"` patterns with static fallback strings across 12 handlers: admin/trips/[id], admin/trips/[id]/clone, admin/insights/{action-queue,roi,smart-upsell-timing,upsell-recommendations,margin-leak,daily-brief,ops-copilot,ai-usage}, location/client-share, proposals/create | 3ab7cbc | Fixed ✅ |
+| BUG-073 | MED | `POST /api/admin/clients` stores `"[object Object]"` when `full_name` is a JSON object | `sanitizeText(body.full_name, ...)` was called without a `typeof` guard in the POST handler. JS coerces any non-string to string via `.toString()` → `"[object Object]"` written to DB. PATCH handler (line 518) already had the guard but POST did not | Added `typeof body.full_name === "string" ? sanitizeText(...) : ""` guard in POST handler (mirrors existing PATCH logic) | f79f47d | Fixed ✅ |
+| BUG-074 | MED | `PATCH /api/marketplace/inquiries` → 500 when inquiry ID doesn't exist | `.update().select().single()` returns PGRST116 error when zero rows match the filter; error was re-thrown to the outer catch block which returned a generic 500 | Added `if (error.code === "PGRST116") return 404 "Inquiry not found"` before `throw error`, matching the same pattern used in admin/trips/[id] | f79f47d | Fixed ✅ |
 
 ---
 
@@ -1292,12 +1294,14 @@ Direct curl tests run by orchestrator. **22 tests · 17 pass · 5 note/spec**
 
 ## Test Results — Session 11 (EDGE/SEC/PERF pending items)
 
-22 tests · 17 pass · 2 fail/note · 3 partial · 1 bug found (BUG-072)
+22 tests · 17 pass · 2 fail/note · 3 partial · 3 bugs found (BUG-072/073/074)
 
 ### Bug Fixes Applied This Session
 
 - **BUG-071 Fixed** (b2802a7): `itinerary/import/pdf` — wrap `req.formData()` in try/catch → 400 instead of 500
 - **BUG-072 Fixed** (3ab7cbc): 12 handlers exposing raw `err?.message` in HTTP responses — all sanitized
+- **BUG-073 Fixed** (f79f47d): `POST /api/admin/clients` — `typeof` guard on `full_name` prevents `"[object Object]"` stored in DB
+- **BUG-074 Fixed** (f79f47d): `PATCH /api/marketplace/inquiries` — PGRST116 caught → 404 instead of 500
 
 ### EDGE — Remaining Cases
 
