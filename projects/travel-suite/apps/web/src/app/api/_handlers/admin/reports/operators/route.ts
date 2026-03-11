@@ -6,17 +6,6 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
 
-interface TripDriverRow {
-    external_drivers: { id: string; name: string } | Array<{ id: string; name: string }> | null;
-}
-
-function normalizeDriver(
-    relation: TripDriverRow["external_drivers"],
-): { id: string; name: string } | null {
-    if (Array.isArray(relation)) return relation[0] ?? null;
-    return relation ?? null;
-}
-
 export async function GET(request: NextRequest) {
     try {
         const admin = await requireAdmin(request);
@@ -34,34 +23,15 @@ export async function GET(request: NextRequest) {
 
         const { data, error } = await admin.adminClient
             .from("itineraries")
-            .select("external_drivers(id, name)")
+            .select("id")
             .eq("organization_id", organizationId)
             .gte("created_at", range.fromISO)
             .lt("created_at", range.toExclusiveISO);
 
         if (error) throw error;
 
-        const counts = new Map<string, { name: string; trips: number }>();
-        let unassigned = 0;
-
-        for (const row of (data || []) as TripDriverRow[]) {
-            const driver = normalizeDriver(row.external_drivers);
-            if (!driver) {
-                unassigned += 1;
-                continue;
-            }
-            const existing = counts.get(driver.id);
-            if (existing) {
-                existing.trips += 1;
-            } else {
-                counts.set(driver.id, { name: driver.name, trips: 1 });
-            }
-        }
-
-        const operators = Array.from(counts.entries())
-            .map(([id, { name, trips }]) => ({ id, name, trips }))
-            .sort((a, b) => b.trips - a.trips)
-            .slice(0, 20);
+        const unassigned = (data || []).length;
+        const operators: { id: string; name: string; trips: number }[] = [];
 
         return NextResponse.json({
             operators,
