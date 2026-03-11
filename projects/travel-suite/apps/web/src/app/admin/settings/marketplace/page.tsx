@@ -275,7 +275,7 @@ export default function MarketplaceSettingsPage() {
     const addRateItem = () => {
         if (newRateService && newRateMargin) {
             const newItem: RateCardItem = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: crypto.randomUUID(),
                 service: newRateService,
                 margin: Number(newRateMargin)
             };
@@ -292,7 +292,7 @@ export default function MarketplaceSettingsPage() {
     const addDocument = () => {
         if (docName && docUrl) {
             const newDoc: ComplianceDocument = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: crypto.randomUUID(),
                 name: docName,
                 url: docUrl,
                 type: docType,

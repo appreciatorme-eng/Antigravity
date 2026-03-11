@@ -656,7 +656,7 @@ export async function POST(req: Request) {
       }));
 
     // 4. Create SSE stream
-    const sessionId = `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionId = `s-${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         handleStreamingRequest(

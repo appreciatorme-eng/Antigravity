@@ -98,7 +98,7 @@ const DEFAULT_TRAVELERS: Traveler[] = [
 // ---------------------------------------------------------------------------
 
 function generateId(): string {
-  return `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  return `t-${crypto.randomUUID()}`
 }
 
 function getInitials(name: string): string {

@@ -122,7 +122,7 @@ async function generateUniqueOrganizationSlug(companyName: string, userId: strin
   }
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const randomPart = Math.random().toString(36).slice(2, 6);
+    const randomPart = crypto.randomUUID().replace(/-/g, "").slice(0, 6);
     const timePart = Date.now().toString(36).slice(-4);
     const suffix = `${fallbackSeed.slice(0, 2)}${timePart}${randomPart}${attempt.toString(36)}`;
     const candidate = appendSlugSuffix(baseSlug, suffix);

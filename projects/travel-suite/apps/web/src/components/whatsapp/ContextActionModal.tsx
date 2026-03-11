@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -14,6 +14,9 @@ import {
   TrendingUp,
   Send,
   Building,
+  Loader2,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -22,12 +25,13 @@ import type { ConversationContact } from './whatsapp.types';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-export type ContextActionType = 'trip-detail' | 'create-trip' | 'send-quote';
+export type ContextActionType = 'trip-detail' | 'create-trip' | 'send-quote' | 'create-proposal';
 
 interface ContextActionModalProps {
   isOpen: boolean;
   type: ContextActionType;
   tripName?: string;
+  waId?: string;
   contact: ConversationContact;
   channel: 'whatsapp' | 'email';
   onSendMessage?: (message: string, subject?: string) => boolean | void | Promise<boolean | void>;
@@ -423,6 +427,148 @@ function SendQuotePanel({
   );
 }
 
+// ─── CREATE PROPOSAL PANEL ───────────────────────────────────────────────────
+
+interface ExtractedFields {
+  destination: string | null;
+  travel_dates: string | null;
+  trip_start_date: string | null;
+  trip_end_date: string | null;
+  group_size: number | null;
+  budget_inr: number | null;
+  traveler_name: string | null;
+}
+
+function CreateProposalPanel({
+  contact,
+  waId,
+  onClose,
+}: {
+  contact: ConversationContact;
+  waId: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [extracted, setExtracted] = useState<ExtractedFields | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const res = await fetch('/api/whatsapp/extract-trip-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ waId, contactName: contact.name, contactPhone: contact.phone }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          draftId?: string;
+          extracted?: ExtractedFields;
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok || !json.draftId) throw new Error(json.error || 'Extraction failed');
+        setDraftId(json.draftId);
+        setExtracted(json.extracted ?? null);
+        setStatus('done');
+      } catch (err) {
+        if (cancelled) return;
+        setErrorMsg(err instanceof Error ? err.message : 'Extraction failed');
+        setStatus('error');
+      }
+    }
+    void run();
+    return () => { cancelled = true; };
+  }, [waId, contact.name, contact.phone]);
+
+  function openProposal(id?: string | null) {
+    if (id) {
+      router.push(`/proposals/create?whatsappDraft=${encodeURIComponent(id)}`);
+    } else {
+      router.push('/proposals/create');
+    }
+    onClose();
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-10">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-full bg-violet-500/15 animate-ping" />
+          <div className="relative w-14 h-14 rounded-full bg-violet-500/20 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-violet-400 animate-pulse" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-white">Reading conversation…</p>
+          <p className="text-xs text-slate-500 mt-1">AI is extracting trip details</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-white">Could not extract details</p>
+            <p className="text-xs text-slate-400 mt-0.5">{errorMsg}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => openProposal(null)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          Open Blank Proposal Form
+        </button>
+      </div>
+    );
+  }
+
+  const fields = [
+    { icon: <MapPin className="w-3.5 h-3.5" />, label: 'Destination', val: extracted?.destination },
+    { icon: <Calendar className="w-3.5 h-3.5" />, label: 'Dates', val: extracted?.travel_dates || (extracted?.trip_start_date ? `${extracted.trip_start_date} → ${extracted.trip_end_date ?? '?'}` : null) },
+    { icon: <Users className="w-3.5 h-3.5" />, label: 'Group', val: extracted?.group_size != null ? `${extracted.group_size} people` : null },
+    { icon: <IndianRupee className="w-3.5 h-3.5" />, label: 'Budget', val: extracted?.budget_inr != null ? `₹${extracted.budget_inr.toLocaleString('en-IN')}` : null },
+  ].filter((f) => f.val);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/20">
+        <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+        <p className="text-xs text-violet-300 font-semibold">AI extracted from conversation</p>
+        <Check className="w-3.5 h-3.5 text-violet-400 ml-auto" />
+      </div>
+
+      {fields.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2">
+          {fields.map(({ icon, label, val }) => (
+            <div key={label} className="flex flex-col gap-1 p-2.5 rounded-xl bg-white/5 border border-white/8">
+              <div className="flex items-center gap-1.5 text-slate-500">{icon}<span className="text-[10px] uppercase tracking-wider font-bold">{label}</span></div>
+              <p className="text-xs font-semibold text-white leading-tight">{val}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-500 text-center py-2">No trip details found in the conversation yet.</p>
+      )}
+
+      <button
+        onClick={() => openProposal(draftId)}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-colors active:scale-[0.98]"
+      >
+        <FileText className="w-4 h-4" />
+        Open Proposal Form
+      </button>
+    </div>
+  );
+}
+
 // ─── MODAL CONFIG ─────────────────────────────────────────────────────────────
 
 const MODAL_CONFIG: Record<ContextActionType, {
@@ -449,6 +595,12 @@ const MODAL_CONFIG: Record<ContextActionType, {
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/15',
   },
+  'create-proposal': {
+    title: 'Create Proposal',
+    icon: <Sparkles className="w-4 h-4" />,
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/15',
+  },
 };
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
@@ -457,6 +609,7 @@ export function ContextActionModal({
   isOpen,
   type,
   tripName,
+  waId,
   contact,
   channel,
   onSendMessage,
@@ -507,6 +660,8 @@ export function ContextActionModal({
                   <p className="text-[10px] text-slate-500">
                     {type === 'trip-detail'
                       ? (tripName ?? 'Trip')
+                      : type === 'create-proposal'
+                      ? `${contact.name} · AI-powered extraction`
                       : `${contact.name} · via ${channel === 'email' ? '✉️ Email' : '💬 WhatsApp'}`}
                   </p>
                 </div>
@@ -524,6 +679,9 @@ export function ContextActionModal({
               {type === 'create-trip' && <CreateTripPanel contact={contact} onClose={onClose} />}
               {type === 'send-quote' && (
                 <SendQuotePanel contact={contact} channel={channel} onSend={handleSend} />
+              )}
+              {type === 'create-proposal' && (
+                <CreateProposalPanel contact={contact} waId={waId ?? ''} onClose={onClose} />
               )}
             </div>
           </motion.div>

@@ -26,7 +26,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
     const destinationCode = guessIataCode(data.destination);
 
     const createEmptyFlight = (overrides?: Partial<FlightDetails>): FlightDetails => ({
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         airline: '',
         flight_number: '',
         departure_airport: '',
@@ -37,7 +37,7 @@ export function LogisticsManager({ data, onChange }: LogisticsManagerProps) {
     });
 
     const createEmptyHotel = (overrides?: Partial<HotelDetails>): HotelDetails => ({
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         name: '',
         address: '',
         check_in: '',

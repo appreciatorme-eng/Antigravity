@@ -114,7 +114,7 @@ async function fetchMetrics(organizationId: string | undefined): Promise<Realtim
 }
 
 function makeUpdateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  return crypto.randomUUID()
 }
 
 export function useRealtimeUpdates(options?: UseRealtimeUpdatesOptions): {

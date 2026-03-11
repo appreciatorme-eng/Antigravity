@@ -65,7 +65,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
             };
         } else {
             newAddOn = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: crypto.randomUUID(),
                 name: '',
                 description: '',
                 price: 0,

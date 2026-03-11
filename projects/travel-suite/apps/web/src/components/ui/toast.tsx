@@ -72,7 +72,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     const toast = useCallback(
         ({ title, description, variant = "info", durationMs = DEFAULT_DURATION_MS }: ToastOptions) => {
-            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            const id = crypto.randomUUID();
             setToasts((prev) => [...prev, { id, title, description, variant, durationMs }]);
 
             if (durationMs > 0) {

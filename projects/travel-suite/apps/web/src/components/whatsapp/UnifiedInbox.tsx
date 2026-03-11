@@ -25,6 +25,7 @@ import {
   MessageCircle,
   AlertTriangle,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -368,6 +369,7 @@ function ContextPanel({ conversation, onContextAction }: ContextPanelProps) {
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quick Actions</p>
               {[
+                { icon: <Sparkles className="w-3 h-3" />, label: 'Create Proposal', color: '#a78bfa', action: 'create-proposal' },
                 { icon: <TrendingUp className="w-3 h-3" />, label: 'Create Trip', color: '#25D366', action: 'create-trip' },
                 { icon: <FileText className="w-3 h-3" />, label: 'Send Quote', color: '#6366f1', action: 'send-quote' },
                 { icon: <Car className="w-3 h-3" />, label: 'Assign Driver', color: '#f59e0b', action: 'assign-driver' },
@@ -745,7 +747,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     );
   }
 
-  const [contextModal, setContextModal] = useState<{ type: ContextActionType; tripName?: string } | null>(null);
+  const [contextModal, setContextModal] = useState<{ type: ContextActionType; tripName?: string; waId?: string } | null>(null);
   const [ctxActionModal, setCtxActionModal] = useState<ActionMode | null>(null);
   const [isWaConnectOpen, setIsWaConnectOpen] = useState(false);
 
@@ -774,6 +776,12 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
 
     if (action === 'request-payment') {
       setCtxActionModal('payment');
+      return;
+    }
+
+    if (action === 'create-proposal') {
+      const waId = contact.phone.replace(/[\s+]/g, '');
+      setContextModal({ type: 'create-proposal', waId });
       return;
     }
 
@@ -1131,6 +1139,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           isOpen
           type={contextModal.type}
           tripName={contextModal.tripName}
+          waId={contextModal.waId}
           contact={selectedConversation.contact}
           channel={selectedChannel}
           onSendMessage={(msg, subject) => {

@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         if (!signatureValid && !allowUnsignedWebhook) {
             try {
                 await supabaseAdmin.from("whatsapp_webhook_events").insert({
-                    provider_message_id: `invalid-signature-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    provider_message_id: `invalid-signature-${Date.now()}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
                     wa_id: null,
                     event_type: "location",
                     payload_hash: payloadHash(rawBody),

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     // Mock Razorpay order response
-    const orderId = `order_${Math.random().toString(36).slice(2, 16)}`
+    const orderId = `order_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`
 
     return NextResponse.json({
       id: orderId,
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       id: orderId,
       status: 'paid',
       amount_paid: 0,
-      payment_id: `pay_${Math.random().toString(36).slice(2, 16)}`,
+      payment_id: `pay_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`,
     })
   } catch (error) {
     console.error("[/api/payments/razorpay:GET] Unhandled error:", error);
