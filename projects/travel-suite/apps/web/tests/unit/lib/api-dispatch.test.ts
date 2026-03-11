@@ -141,7 +141,7 @@ describe("createCatchAllHandlers", () => {
 
   /* ---------- all HTTP methods ---------- */
 
-  it.each(["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"] as const)(
+  it.each(["GET", "POST", "PATCH", "PUT", "DELETE"] as const)(
     "dispatches %s method correctly",
     async (method) => {
       const handlers = createCatchAllHandlers([
@@ -158,6 +158,20 @@ describe("createCatchAllHandlers", () => {
       expect(body.method).toBe(method);
     },
   );
+
+  it("OPTIONS returns 204 with CORS headers (intercepted by dispatcher)", async () => {
+    const handlers = createCatchAllHandlers([
+      ["test", () => Promise.resolve(echoModule(["OPTIONS"]))],
+    ]);
+
+    const res = await handlers.OPTIONS(makeRequest("OPTIONS"), {
+      params: Promise.resolve({ path: ["test"] }),
+    });
+
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Methods")).toContain("OPTIONS");
+  });
 
   /* ---------- route sorting / priority ---------- */
 

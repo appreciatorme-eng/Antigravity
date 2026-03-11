@@ -90,6 +90,22 @@ function makeServerClient(userId: string | null) {
     };
 }
 
+function buildReviewsQueryChain(reviews: unknown[] = []) {
+    const result = { data: reviews, error: null };
+    const chain: Record<string, ReturnType<typeof vi.fn>> = {
+        select: vi.fn(),
+        in: vi.fn(),
+    };
+    for (const key of Object.keys(chain)) {
+        chain[key].mockImplementation(() => chain);
+    }
+    Object.defineProperty(chain, "then", {
+        value: (resolve: (v: unknown) => void) => resolve(result),
+        configurable: true,
+    });
+    return chain;
+}
+
 function makeAdminClient(rows: unknown[], orgId: string | null = "org-1") {
     return {
         auth: {
@@ -97,6 +113,7 @@ function makeAdminClient(rows: unknown[], orgId: string | null = "org-1") {
         },
         from: vi.fn().mockImplementation((table: string) => {
             if (table === "marketplace_profiles") return buildMarketplaceQueryChain(rows);
+            if (table === "marketplace_reviews") return buildReviewsQueryChain([]);
             return {
                 select: vi.fn().mockReturnValue({
                     eq: vi.fn().mockReturnValue({
