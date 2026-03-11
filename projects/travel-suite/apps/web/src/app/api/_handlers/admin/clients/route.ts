@@ -145,7 +145,9 @@ export async function POST(req: Request) {
         }
 
         const email = String(body.email || "").trim().toLowerCase();
-        const fullName = sanitizeText(body.full_name, { maxLength: 200, stripHtml: true });
+        const fullName = typeof body.full_name === "string"
+            ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true })
+            : "";
         const phone = String(body.phone || "").trim();
         const normalizedPhone = phone ? phone.replace(/\D/g, "") : "";
         const preferredDestination = String(body.preferredDestination || "").trim();

@@ -187,7 +187,15 @@ export async function PATCH(request: NextRequest) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === "PGRST116") {
+                return withRequestId({ error: "Inquiry not found" }, requestId, { status: 404 });
+            }
+            throw error;
+        }
+        if (!data) {
+            return withRequestId({ error: "Inquiry not found" }, requestId, { status: 404 });
+        }
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace inquiry updated", {
             ...requestContext,
