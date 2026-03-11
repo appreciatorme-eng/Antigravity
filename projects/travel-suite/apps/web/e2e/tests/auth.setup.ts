@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { expect, request, test as setup } from '@playwright/test';
 
-type UserType = 'client' | 'admin' | 'driver';
+type UserType = 'client' | 'admin' | 'driver' | 'superAdmin';
 
 type Credential = {
   email: string;
@@ -24,6 +24,7 @@ const TEST_USERS: Record<UserType, Credential | null> = {
   client: readCredential('TEST_CLIENT'),
   admin: readCredential('TEST_ADMIN'),
   driver: readCredential('TEST_DRIVER'),
+  superAdmin: readCredential('TEST_SUPER_ADMIN'),
 };
 
 const AUTH_STATE_DIR = path.resolve(__dirname, '..', '.auth');

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test as base, expect, Browser, Page } from '@playwright/test';
 
-type UserType = 'client' | 'admin' | 'driver';
+type UserType = 'client' | 'admin' | 'driver' | 'superAdmin';
 
 type Credential = {
   email: string;
@@ -24,6 +24,7 @@ const TEST_USERS: Record<UserType, Credential | null> = {
   client: readCredential('TEST_CLIENT'),
   admin: readCredential('TEST_ADMIN'),
   driver: readCredential('TEST_DRIVER'),
+  superAdmin: readCredential('TEST_SUPER_ADMIN'),
 };
 
 const AUTH_STATE_DIR = path.resolve(__dirname, '..', '.auth');
@@ -31,6 +32,7 @@ const AUTH_STATE_PATHS: Record<UserType, string> = {
   client: path.join(AUTH_STATE_DIR, 'client.json'),
   admin: path.join(AUTH_STATE_DIR, 'admin.json'),
   driver: path.join(AUTH_STATE_DIR, 'driver.json'),
+  superAdmin: path.join(AUTH_STATE_DIR, 'superadmin.json'),
 };
 
 function getMissingCredentialMessage(userType: UserType): string {
@@ -47,6 +49,7 @@ export const test = base.extend<{
   authenticatedPage: Page;
   adminPage: Page;
   clientPage: Page;
+  superAdminPage: Page;
 }>({
   // Generic authenticated page (client role)
   authenticatedPage: async ({ browser }, runFixture, testInfo) => {
@@ -86,6 +89,21 @@ export const test = base.extend<{
     }
 
     const page = await createAuthenticatedPage(browser, 'client');
+    try {
+      await runFixture(page);
+    } finally {
+      await page.context().close();
+    }
+  },
+
+  // Super admin authenticated page (god mode)
+  superAdminPage: async ({ browser }, runFixture, testInfo) => {
+    if (!hasUsableAuthConfig('superAdmin')) {
+      testInfo.skip(true, getMissingCredentialMessage('superAdmin'));
+      return;
+    }
+
+    const page = await createAuthenticatedPage(browser, 'superAdmin');
     try {
       await runFixture(page);
     } finally {
