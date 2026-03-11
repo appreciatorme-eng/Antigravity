@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
         notificationRes.error ||
         tripRes.error ||
         clientRes.error;
-      return NextResponse.json({ error: err?.message || "Failed to build ops copilot queue" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to build ops copilot queue" }, { status: 500 });
     }
 
     const actions: CopilotAction[] = [];

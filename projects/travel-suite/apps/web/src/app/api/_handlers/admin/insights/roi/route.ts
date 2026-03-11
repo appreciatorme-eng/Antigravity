@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       clientsRes.error ||
       invoicesRes.error ||
       notificationsRes.error;
-    return NextResponse.json({ error: err?.message || "Failed to load ROI metrics" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load ROI metrics" }, { status: 500 });
   }
 
   const trips = tripsRes.data || [];

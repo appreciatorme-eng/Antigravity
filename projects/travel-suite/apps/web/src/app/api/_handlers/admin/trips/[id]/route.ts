@@ -121,7 +121,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         const { data: tripData, error: tripError } = await tripQuery.single();
 
         if (tripError || !tripData) {
-            return NextResponse.json({ error: tripError?.message || "Trip not found" }, { status: 404 });
+            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
         }
         if (!tripData.organization_id) {
             return NextResponse.json({ error: "Trip organization is not configured" }, { status: 400 });

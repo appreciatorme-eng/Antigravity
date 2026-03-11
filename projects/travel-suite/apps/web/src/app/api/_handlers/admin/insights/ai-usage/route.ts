@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (orgRes.error || usageRes.error) {
       const err = orgRes.error || usageRes.error;
       if (!isSchemaDriftError(err?.message || undefined)) {
-        return NextResponse.json({ error: err?.message || "Failed to load AI usage" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to load AI usage" }, { status: 500 });
       }
 
       return NextResponse.json({

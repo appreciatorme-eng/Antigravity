@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
 
         if (insertError || !inserted) {
             return NextResponse.json(
-                { error: insertError?.message || "Failed to create share" },
+                { error: "Failed to create share" },
                 { status: 500 }
             );
         }

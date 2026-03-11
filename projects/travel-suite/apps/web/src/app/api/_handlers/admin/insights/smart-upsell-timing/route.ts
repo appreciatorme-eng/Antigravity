@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     if (tripRes.error || addOnRes.error) {
       const err = tripRes.error || addOnRes.error;
-      return NextResponse.json({ error: err?.message || "Failed to compute smart upsell timing" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to compute smart upsell timing" }, { status: 500 });
     }
 
     const trips = tripRes.data || [];

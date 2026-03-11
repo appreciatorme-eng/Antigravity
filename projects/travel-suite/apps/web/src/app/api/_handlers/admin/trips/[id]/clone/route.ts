@@ -359,7 +359,7 @@ export async function POST(
 
     if (itineraryInsertError || !newItinerary) {
       return NextResponse.json(
-        { error: itineraryInsertError?.message || "Failed to create cloned itinerary" },
+        { error: "Failed to create cloned itinerary" },
         { status: 400 }
       );
     }

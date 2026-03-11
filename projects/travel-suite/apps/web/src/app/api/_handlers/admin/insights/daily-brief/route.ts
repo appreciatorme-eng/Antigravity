@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
     if (proposalRes.error || invoiceRes.error || tripRes.error || monthlyProposalRes.error || monthlyInvoiceRes.error) {
       const err = proposalRes.error || invoiceRes.error || tripRes.error || monthlyProposalRes.error || monthlyInvoiceRes.error;
-      return NextResponse.json({ error: err?.message || "Failed to build daily brief" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to build daily brief" }, { status: 500 });
     }
 
     const queue = buildRevenueRiskActionQueue({

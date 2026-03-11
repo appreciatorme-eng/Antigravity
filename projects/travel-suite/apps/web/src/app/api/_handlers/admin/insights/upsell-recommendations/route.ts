@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
 
     if (addOnsRes.error || proposalsRes.error || tripsRes.error) {
       const err = addOnsRes.error || proposalsRes.error || tripsRes.error;
-      return NextResponse.json({ error: err?.message || "Failed to load upsell inputs" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to load upsell inputs" }, { status: 500 });
     }
 
     const addOns = addOnsRes.data || [];
