@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   (process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || "")
@@ -110,6 +111,13 @@ async function dispatch(
 
     if (!match) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const isMutation = method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE";
+    const routePath = pathParts.join("/");
+    const csrfExempt = routePath.startsWith("webhook") || routePath.startsWith("cron/") || routePath === "payments/webhook" || routePath === "webhooks/waha";
+    if (isMutation && !csrfExempt && !passesMutationCsrfGuard(req)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
     }
 
     const handler = await match.loader();

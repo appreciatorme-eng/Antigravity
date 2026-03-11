@@ -3,6 +3,7 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 export const maxDuration = 60;
 
 const routes = createCatchAllHandlers([
+  // H-01: Rate limit config added to main catch-all
   ["ai/draft-review-response", () => import("@/app/api/_handlers/ai/draft-review-response/route")],
   ["ai/pricing-suggestion", () => import("@/app/api/_handlers/ai/pricing-suggestion/route")],
   ["ai/suggest-reply", () => import("@/app/api/_handlers/ai/suggest-reply/route")],
@@ -120,6 +121,6 @@ const routes = createCatchAllHandlers([
   ["whatsapp/test-message", () => import("@/app/api/_handlers/whatsapp/test-message/route")],
   ["whatsapp/webhook", () => import("@/app/api/_handlers/whatsapp/webhook/route")],
   ["webhooks/waha", () => import("@/app/api/_handlers/webhooks/waha/route")],
-]);
+], { rateLimit: { limit: 200, windowMs: 5 * 60 * 1000, prefix: "api:main" } });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

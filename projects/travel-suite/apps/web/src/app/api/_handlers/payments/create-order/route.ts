@@ -15,6 +15,16 @@ import {
 } from '@/lib/integrations';
 import { apiError, apiSuccess } from '@/lib/api/response';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { z } from 'zod';
+
+const createOrderSchema = z.object({
+  amount: z.number().positive("Amount must be positive"),
+  currency: z.enum(["INR", "USD"]).default("INR"),
+  invoice_id: z.string().trim().optional().nullable(),
+  subscription_id: z.string().trim().optional().nullable(),
+  allow_partial: z.boolean().default(false),
+  notes: z.record(z.string()).optional().default({}),
+});
 
 const CREATE_ORDER_RATE_LIMIT_MAX = 10;
 const CREATE_ORDER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -62,37 +72,18 @@ export async function POST(request: NextRequest) {
       return apiError('Organization not found', 404);
     }
 
-    // Parse request body
-    const body = await request.json().catch(() => null);
-    if (!body || typeof body !== 'object') {
+    const rawBody = await request.json().catch(() => null);
+    if (!rawBody || typeof rawBody !== 'object') {
       return apiError('Invalid request body', 400);
     }
 
-    const amount = Number((body as { amount?: unknown }).amount);
-    const currency = (body as { currency?: string }).currency === 'USD' ? 'USD' : 'INR';
-    const invoice_id = typeof (body as { invoice_id?: unknown }).invoice_id === 'string'
-      ? (body as { invoice_id: string }).invoice_id.trim()
-      : null;
-    const subscription_id = typeof (body as { subscription_id?: unknown }).subscription_id === 'string'
-      ? (body as { subscription_id: string }).subscription_id.trim()
-      : null;
-    const allowPartial = (body as { allow_partial?: unknown }).allow_partial === true;
-    const notesRaw = (body as { notes?: unknown }).notes;
-    const notes =
-      notesRaw && typeof notesRaw === 'object' && !Array.isArray(notesRaw)
-        ? (notesRaw as Record<string, unknown>)
-        : {};
-    const orderNotes: Record<string, string> = {};
-    for (const [key, value] of Object.entries(notes)) {
-      if (typeof value === 'string' && value.trim().length > 0) {
-        orderNotes[key] = value;
-      }
+    const parsed = createOrderSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message || 'Validation failed', 400);
     }
 
-    // Validate amount
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return apiError('Valid amount is required', 400);
-    }
+    const { amount, currency, invoice_id, subscription_id, allow_partial: allowPartial, notes } = parsed.data;
+    const orderNotes = notes;
 
     if (invoice_id && subscription_id) {
       return apiError('Provide either invoice_id or subscription_id, not both', 400);

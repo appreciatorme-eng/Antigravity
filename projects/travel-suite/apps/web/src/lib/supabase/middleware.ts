@@ -34,6 +34,7 @@ export async function updateSession(request: NextRequest): Promise<{
                             ...options,
                             httpOnly: true,
                             secure: process.env.NODE_ENV === 'production',
+                            sameSite: 'lax',
                         })
                     );
                 },

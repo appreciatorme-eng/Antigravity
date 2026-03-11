@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { env } from "@/lib/config/env";
 
 function getInvoiceAccessSecret() {
-  return env.razorpay.keySecret || env.razorpay.webhookSecret || env.supabase.serviceRoleKey || null;
+  return process.env.INVOICE_SIGNING_SECRET || env.razorpay.keySecret || env.razorpay.webhookSecret || null;
 }
 
 export function signInvoiceAccess(invoiceId: string, paymentId: string) {

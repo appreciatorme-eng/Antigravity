@@ -116,6 +116,18 @@ function warnLocalFallback(prefix: string): void {
 export async function enforceRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
     const limiter = getUpstashLimiter(options.limit, options.windowMs, options.prefix);
     if (!limiter) {
+        if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_FAIL_OPEN !== "true") {
+            console.error(
+                `[rate-limit] FAIL-CLOSED: Redis unavailable for prefix "${options.prefix}". ` +
+                `Rejecting request. Set RATE_LIMIT_FAIL_OPEN=true to allow fallback.`
+            );
+            return {
+                success: false,
+                limit: options.limit,
+                remaining: 0,
+                reset: Date.now() + options.windowMs,
+            };
+        }
         warnLocalFallback(options.prefix);
         return enforceLocalRateLimit(options);
     }

@@ -28,18 +28,18 @@
 
 | ID | Title | File | Action | Outcome | Status |
 |----|-------|------|--------|---------|--------|
-| H-01 | No rate limit on main catch-all | `src/app/api/[...path]/route.ts` | Add rate limit config to `createCatchAllHandlers` | 120+ public routes rate-limited | ⏳ |
-| H-02 | Rate limit in-memory fallback bypasses | `src/lib/security/rate-limit.ts:98-114` | Add fail-closed mode in production | Rate limiting not bypassable | ⏳ |
-| H-03 | No `SameSite` on cookies | `src/lib/supabase/middleware.ts:33-38` | Add `sameSite: 'lax'` | CSRF via cookie attachment prevented | ⏳ |
-| H-04 | CSRF on only 2/120+ endpoints | `src/lib/api-dispatch.ts` | Add CSRF check in `dispatch()` for mutations | All mutation endpoints protected | ⏳ |
-| H-05 | Invoice HMAC falls back to service role key | `src/lib/invoices/public-link.ts:4-6` | Add `INVOICE_SIGNING_SECRET` env; remove service role fallback | Service role key never as HMAC | ⏳ |
-| H-06 | Missing error boundaries | `src/app/` | Add `error.tsx` to 8 route segments | Errors isolated per segment | ⏳ |
-| H-07 | `console.log` PII leakage | `src/hooks/useRealtimeProposal.ts` | Remove/gate 8 console.log calls | No PII in browser console | ⏳ |
-| H-08 | Callback instability in realtime hook | `src/hooks/useRealtimeProposal.ts:177-186` | Use `useRef` pattern for callbacks | No subscription churn | ⏳ |
-| H-09 | N+1 in reviews import | `src/app/api/_handlers/social/reviews/import/route.ts:44-59` | Batch query + batch insert | O(1) queries not O(N) | ⏳ |
-| H-10 | No Zod on `create-order` | `src/app/api/_handlers/payments/create-order/route.ts:66-90` | Add Zod schema | Consistent validation | ⏳ |
-| H-11 | `wrapPaymentError` typed as `void` | `src/lib/payments/subscription-service.ts` | Change to `never` | TypeScript flow correct | ⏳ |
-| H-12 | Missing HSTS header | `next.config.mjs:84-96` | Add `Strict-Transport-Security` header | HTTPS downgrade prevented | ⏳ |
+| H-01 | No rate limit on main catch-all | `src/app/api/[...path]/route.ts` | Added rate limit config (200/5min) to `createCatchAllHandlers` | 120+ public routes rate-limited | ✅ |
+| H-02 | Rate limit in-memory fallback bypasses | `src/lib/security/rate-limit.ts:98-114` | Added fail-closed mode in production | Rate limiting not bypassable | ✅ |
+| H-03 | No `SameSite` on cookies | `src/lib/supabase/middleware.ts:33-38` | Added `sameSite: 'lax'` | CSRF via cookie attachment prevented | ✅ |
+| H-04 | CSRF on only 2/120+ endpoints | `src/lib/api-dispatch.ts` | Added CSRF check in `dispatch()` for mutations (exempt: webhooks, cron) | All mutation endpoints protected | ✅ |
+| H-05 | Invoice HMAC falls back to service role key | `src/lib/invoices/public-link.ts:4-6` | Added `INVOICE_SIGNING_SECRET` env; removed service role fallback | Service role key never as HMAC | ✅ |
+| H-06 | Missing error boundaries | `src/app/` | Added `error.tsx` to 8 route segments | Errors isolated per segment | ✅ |
+| H-07 | `console.log` PII leakage | `src/hooks/useRealtimeProposal.ts` | Removed all 8 console.log calls | No PII in browser console | ✅ |
+| H-08 | Callback instability in realtime hook | `src/hooks/useRealtimeProposal.ts:177-186` | Used `useRef` pattern for callbacks; removed from dep array | No subscription churn | ✅ |
+| H-09 | N+1 in reviews import | `src/app/api/_handlers/social/reviews/import/route.ts:44-59` | Batch query + batch insert | O(1) queries not O(N) | ✅ |
+| H-10 | No Zod on `create-order` | `src/app/api/_handlers/payments/create-order/route.ts:66-90` | Added Zod schema | Consistent validation | ✅ |
+| H-11 | `wrapPaymentError` typed as `void` | `src/lib/payments/subscription-service.ts` | Verified: already typed as `never` | False positive — no change needed | 📝 |
+| H-12 | Missing HSTS header | `next.config.mjs:84-96` | Added `Strict-Transport-Security: max-age=63072000; includeSubDomains` | HTTPS downgrade prevented | ✅ |
 
 ---
 
