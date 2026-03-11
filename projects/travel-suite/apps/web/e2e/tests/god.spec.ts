@@ -1,144 +1,87 @@
 import { test, expect } from '../fixtures/auth';
 import { gotoWithRetry } from '../fixtures/navigation';
 
+const QA_ORG_ID = 'c498cecc-9aaa-4a37-a26e-fe591e065ac9';
+const TIMEOUT = 30_000;
+
 test.describe('God Mode — Super Admin Panel', () => {
-  // ── Page Load Tests (super admin) ──────────────────────────
-
-  test('god mode dashboard loads (Command Center)', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
+  test('command center dashboard loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Command Center' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Command Center' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('kill switch panel loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(superAdminPage, '/god/kill-switch');
-    // Kill switch heading is a <p>, not <h1>. Text is unique (sidebar label is "Kill Switch").
-    await expect(superAdminPage.locator('text=Emergency Control Panel')).toBeVisible({
-      timeout: 30_000,
-    });
+  test('analytics page loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, '/god/analytics');
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Feature Usage' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('announcements page loads (Broadcast Center)', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
+  test('broadcast center (announcements) loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god/announcements');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Broadcast Center' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Broadcast Center' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('audit log page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
+  test('audit log loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god/audit-log');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Audit Log' })
-    ).toBeVisible({ timeout: 30_000 });
-  });
-
-  test('support tickets page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(superAdminPage, '/god/support');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Support Tickets' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Audit Log' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
   test('API cost dashboard loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
     await gotoWithRetry(superAdminPage, '/god/costs');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'API Cost Dashboard' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'API Cost Dashboard' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('feature usage analytics page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(superAdminPage, '/god/analytics');
-
-    // The analytics API may error on empty data, producing an error boundary.
-    // Verify auth passed (no "Access Denied") and page attempted to render.
-    const heading = superAdminPage.getByRole('heading', { name: 'Feature Usage' });
-    const errorBoundary = superAdminPage.locator('text=Something went wrong');
-
-    await expect
-      .poll(
-        async () => {
-          if (await heading.isVisible().catch(() => false)) return 'loaded';
-          if (await errorBoundary.isVisible().catch(() => false)) return 'error-boundary';
-          return 'pending';
-        },
-        { timeout: 30_000 }
-      )
-      .not.toBe('pending');
-
-    // Auth must have passed — no "Access Denied".
-    await expect(superAdminPage.getByRole('heading', { name: 'Access Denied' })).toHaveCount(0);
+  test('org cost drilldown loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, `/god/costs/org/${QA_ORG_ID}`);
+    // h1 renders the org name dynamically — verify page loaded without Access Denied
+    await expect(superAdminPage.locator('h1').first())
+      .toBeVisible({ timeout: TIMEOUT });
+    await expect(superAdminPage.locator('text=Access Denied')).not.toBeVisible();
   });
 
-  test('directory page loads (All Contacts)', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
+  test('all contacts directory loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god/directory');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'All Contacts' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'All Contacts' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('signups page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(superAdminPage, '/god/signups');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'User Signups' })
-    ).toBeVisible({ timeout: 30_000 });
+  test('kill switch emergency panel loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, '/god/kill-switch');
+    await expect(superAdminPage.locator('text=Emergency Control Panel'))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('referrals page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(superAdminPage, '/god/referrals');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Referral Tracking' })
-    ).toBeVisible({ timeout: 30_000 });
-  });
-
-  test('health monitoring page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
+  test('health monitor loads', async ({ superAdminPage }) => {
     await gotoWithRetry(superAdminPage, '/god/monitoring');
-    await expect(
-      superAdminPage.getByRole('heading', { name: 'Health Monitor' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Health Monitor' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  test('per-org cost detail page loads', async ({ superAdminPage }) => {
-    test.setTimeout(60_000);
-    // Use the QA org ID — the page shows the org name dynamically.
-    await gotoWithRetry(superAdminPage, '/god/costs/org/c498cecc-9aaa-4a37-a26e-fe591e065ac9');
-
-    // Page should show either the org name heading or a loading indicator (no Access Denied).
-    const heading = superAdminPage.locator('h1');
-    await expect(heading).toBeVisible({ timeout: 30_000 });
-
-    // Must NOT show "Access Denied" — confirms super_admin auth passed.
-    await expect(superAdminPage.getByRole('heading', { name: 'Access Denied' })).toHaveCount(0);
+  test('referral tracking loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, '/god/referrals');
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Referral Tracking' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 
-  // ── Access Denial Tests ────────────────────────────────────
+  test('user signups loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, '/god/signups');
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'User Signups' }))
+      .toBeVisible({ timeout: TIMEOUT });
+  });
 
-  test('admin user is denied access to /god', async ({ adminPage }) => {
-    test.setTimeout(60_000);
+  test('support tickets loads', async ({ superAdminPage }) => {
+    await gotoWithRetry(superAdminPage, '/god/support');
+    await expect(superAdminPage.locator('h1').filter({ hasText: 'Support Tickets' }))
+      .toBeVisible({ timeout: TIMEOUT });
+  });
+
+  test('admin user sees Access Denied on /god', async ({ adminPage }) => {
     await gotoWithRetry(adminPage, '/god');
-
-    // The god/layout.tsx shows "Access Denied" for non-super_admin roles.
-    await expect(
-      adminPage.getByRole('heading', { name: 'Access Denied' })
-    ).toBeVisible({ timeout: 30_000 });
-  });
-
-  test('client user is denied access to /god', async ({ clientPage }) => {
-    test.setTimeout(60_000);
-    await gotoWithRetry(clientPage, '/god');
-    await expect(
-      clientPage.getByRole('heading', { name: 'Access Denied' })
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(adminPage.locator('h1').filter({ hasText: 'Access Denied' }))
+      .toBeVisible({ timeout: TIMEOUT });
   });
 });

@@ -12,18 +12,17 @@ interface AuditEntry {
     category: string;
     target_type: string | null;
     target_id: string | null;
-    details: Record<string, unknown>;
+    details: Record<string, unknown> | null;
     ip_address: string | null;
     created_at: string;
-    actor: { full_name: string | null; email: string | null } | null;
+    actor_name: string;
 }
 
 interface AuditData {
-    log: AuditEntry[];
+    entries: AuditEntry[];
     total: number;
     page: number;
-    limit: number;
-    category: string;
+    pages: number;
 }
 
 const CATEGORY_OPTIONS = [
@@ -83,7 +82,7 @@ export default function AuditLogPage() {
         setPage(0);
     }
 
-    const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+    const totalPages = data?.pages ?? 0;
 
     return (
         <div className="space-y-6">
@@ -129,10 +128,10 @@ export default function AuditLogPage() {
                     Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} className="h-16 bg-gray-900 border border-gray-800 rounded-xl animate-pulse" />
                     ))
-                ) : !data || data.log.length === 0 ? (
+                ) : !data || data.entries.length === 0 ? (
                     <div className="text-center py-16 text-gray-500">No audit entries found</div>
                 ) : (
-                    data.log.map((entry) => {
+                    data.entries.map((entry) => {
                         const isExp = expanded === entry.id;
                         const hasDetails = Object.keys(entry.details ?? {}).length > 0;
                         return (
@@ -168,9 +167,7 @@ export default function AuditLogPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
-                                            <span>
-                                                {entry.actor?.full_name ?? entry.actor?.email ?? "System"}
-                                            </span>
+                                            <span>{entry.actor_name}</span>
                                             {entry.target_type && (
                                                 <span className="text-gray-600">
                                                     {entry.target_type}
