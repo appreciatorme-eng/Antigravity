@@ -103,7 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         >(originalTrip, ["id", "created_at", "updated_at"]);
 
         clonedTripData.itinerary_id = newItineraryId;
-        clonedTripData.status = "draft"; // Reset the status for the new cloned trip
+        clonedTripData.status = "pending"; // Reset to initial status for the cloned trip
 
         // Optionally clear dates to avoid conflicts or let them reset
         // clonedTripData.start_date = null;

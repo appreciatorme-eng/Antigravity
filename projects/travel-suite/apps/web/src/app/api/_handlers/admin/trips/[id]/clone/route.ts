@@ -371,7 +371,7 @@ export async function POST(
         organization_id: tripRow.organization_id,
         start_date: preferredStartDate,
         end_date: preferredEndDate,
-        status: "draft",
+        status: "pending",
         itinerary_id: newItinerary.id,
       })
       .select("id")
@@ -379,7 +379,7 @@ export async function POST(
 
     if (tripInsertError || !newTrip) {
       return NextResponse.json(
-        { error: tripInsertError?.message || "Failed to create cloned trip" },
+        { error: "Failed to create cloned trip" },
         { status: 400 }
       );
     }
