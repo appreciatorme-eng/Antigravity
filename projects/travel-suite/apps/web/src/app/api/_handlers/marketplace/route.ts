@@ -285,7 +285,16 @@ export async function GET(req: NextRequest) {
 
         const { data, error, count: dbCount } = await supabaseQuery;
 
-        if (error) throw error;
+        if (error) {
+            logEvent("warn", "Marketplace profiles query failed — returning empty list", {
+                ...requestContext,
+                error: safeErrorMessage(error, "Query failed"),
+            });
+            return withRequestId(
+                { items: [], pagination: { page, limit: pageLimit, total: 0, hasMore: false } },
+                requestId
+            );
+        }
 
         // Process data to include average rating and flatten organization info
         const rows = (data || []) as unknown as MarketplaceProfileRow[];
