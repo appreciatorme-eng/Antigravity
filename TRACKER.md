@@ -25,64 +25,57 @@
 - ⏳ Migration for `proposal_access_tokens` table (if not exists)
 - ⏳ `portal/[token]/route.ts` handler reads from DB, validates expiry + org scope
 
-## P0 Dev: GST Report → Real Data ⏳
-**Priority**: Blocking go-live | **Est**: 4 hours
-- ⏳ `/admin/gst-report/page.tsx` — replace mock data with real `payment_links` query
-- ⏳ Wire to existing Supabase `payment_links` table
+## P0 Dev: GST Report → Real Data ✅
+**Commit**: `2a6dc3a`
+- ✅ `/admin/gst-report/page.tsx` — real API fetch, month selector, loading/error states
+- ✅ `/api/admin/reports/gst` handler — `payment_links` + `proposals` join, 5% GST calc
+- ✅ Registered in admin dispatch table
 
 ---
 
-## Feature 2: Review → Marketing Asset Pipeline ⏳
-**Est**: 3–4 days | **Vercel cron**: N/A (trigger-based, no cron)
-### DB
-- ⏳ `supabase/migrations/20260401010000_auto_review_social_draft.sql` — trigger on `reviews` insert
-### Code
-- ⏳ `src/lib/social/review-to-card.ts` — auto-generate social draft card from review
-- ⏳ `src/app/api/_handlers/social/reviews/route.ts` — wire AI draft gen on review save
-- ⏳ `src/components/social/ReviewsToInsta.tsx` — one-click "Publish" button in Social Studio
+## Feature 2: Review → Marketing Asset Pipeline ✅
+**Already implemented** (audit confirmed 2026-03-11)
+- ✅ `src/lib/social/review-marketing.server.ts` — marketing asset generator
+- ✅ `src/app/api/_handlers/social/reviews/` — review handlers
+- ✅ `src/components/social/_components/ReviewsToInsta.tsx` — one-click publish
+- ✅ `src/app/api/_handlers/reputation/reviews/[id]/marketing-asset/` — per-review asset
 
 ---
 
-## Feature 3: Shared Itinerary Cache ⏳
-**Est**: 3–4 days
-### DB
-- ⏳ `supabase/migrations/20260401020000_global_itinerary_pool.sql`
-### Code
-- ⏳ `src/lib/itinerary/itinerary-cache.ts` — lookup + save to global pool
-- ⏳ `src/lib/itinerary/semantic-cache.ts` — pgvector similarity lookup
-- ⏳ Wire into `itinerary/generate` handler to check cache before AI generation
+## Feature 3: Shared Itinerary Cache ✅
+**Already implemented** (audit confirmed 2026-03-11)
+- ✅ `shared_itinerary_cache` + `shared_itinerary_cache_events` tables exist in DB
+- ✅ `src/lib/itinerary/itinerary-cache.ts` — lookup + save
+- ✅ `src/lib/itinerary/semantic-cache.ts` — pgvector similarity
+- ✅ `src/lib/itinerary/shared-itinerary-cache.ts` — wired into generate handler
 
 ---
 
-## Feature 4: Pay to Feature Marketplace Listings ⏳
-**Est**: 2–3 days
-### DB
-- ⏳ `supabase/migrations/20260401030000_marketplace_featured.sql`
-### Code
-- ⏳ `src/lib/marketplace/featured-tiers.ts` — tier definitions + pricing
-- ⏳ `src/app/api/_handlers/marketplace/listing-subscription/route.ts` — already exists, extend
-- ⏳ `src/app/api/_handlers/marketplace/listing-subscription/verify/route.ts` — already exists, extend
+## Feature 4: Pay to Feature Marketplace Listings ✅
+**Already implemented** (audit confirmed 2026-03-11)
+- ✅ `marketplace_listing_subscriptions` table exists in DB
+- ✅ `src/lib/marketplace/marketplace-listing-plans.ts` — free/lite/pro/top tiers
+- ✅ `src/app/api/_handlers/marketplace/listing-subscription/route.ts` — full Razorpay
+- ✅ `src/app/api/_handlers/marketplace/listing-subscription/verify/route.ts`
 
 ---
 
-## Feature 5: Monthly Operator Scorecard ⏳
-**Est**: 4–5 days | **⚠️ NO Vercel cron** (hobby plan full — use pg_cron + Supabase Edge Function)
-### DB
-- ⏳ `supabase/migrations/20260401040000_scorecard_deliveries.sql`
-### Edge Function
-- ⏳ `supabase/functions/monthly-scorecard/index.ts` — compute scorecard, email via Resend
-- ⏳ pg_cron schedule: `0 0 1 * *` (1st of each month)
-### Code
-- ⏳ `src/app/api/_handlers/admin/reports/scorecard/route.ts` — manual trigger endpoint
+## Feature 5: Monthly Operator Scorecard ✅
+**Commit**: `2a6dc3a` (Edge Function) | cron handler existed prior
+- ✅ `operator_scorecards` table exists in DB
+- ✅ `src/lib/admin/operator-scorecard.ts` — scorecard computation
+- ✅ `src/lib/admin/operator-scorecard-delivery.ts` — PDF gen + Resend email
+- ✅ `src/app/api/_handlers/cron/operator-scorecards/route.ts` — cron trigger
+- ✅ `supabase/functions/monthly-scorecard/index.ts` — Edge Function HTTP caller
+- 🚫 **Ops**: Schedule via Supabase dashboard → `0 0 1 * *` (monthly, 1st of month)
 
 ---
 
-## Feature 6: Replace OpenAI Embeddings with pgvector ⏳
-**Est**: 1–2 days
-### Code
-- ⏳ `src/lib/embeddings.ts` — swap OpenAI embed calls for Supabase/gte-small model
-- ⏳ `supabase/functions/embed/index.ts` — Edge Function that wraps gte-small
-- ⏳ Update all callers of `generateEmbedding()` to use new function
+## Feature 6: Replace OpenAI Embeddings with pgvector ✅
+**Already implemented** (audit confirmed 2026-03-11)
+- ✅ `src/lib/embeddings-v2.ts` — uses Gemini `gemini-embedding-001` (not OpenAI)
+- ✅ `itinerary_embeddings` table with vector column exists in DB
+- ✅ All callers use `generateEmbeddingV2()` from embeddings-v2.ts
 
 ---
 
@@ -103,7 +96,7 @@
 ---
 
 ## Test Suite Status
-- **Vitest**: 581 pass / 0 fail / 0 skip (as of Feature 1 commit)
+- **Vitest**: 581 pass / 0 fail / 0 skip (as of commit 2a6dc3a)
 - **Playwright E2E**: 783 pass / 0 fail / 22 skip (as of S16/S17)
 
 ---
