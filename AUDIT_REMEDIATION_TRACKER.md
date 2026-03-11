@@ -83,13 +83,18 @@
 ---
 
 ## Test Suite Status
-- **Vitest**: TBD after remediation
-- **Playwright E2E**: TBD after remediation
-- **New tests**: `e2e/tests/audit-remediation.spec.ts` — TBD
+- **Vitest**: TBD — run after all fixes
+- **Playwright E2E**: TBD — run after all fixes
+- **New tests**: `e2e/tests/audit-remediation.spec.ts` — 13 tests covering security headers, CORS, CSRF, cron POST-only, password min length, webhook body limit, rate limiting, payment webhook auth, cookie security
 
 ---
 
 ## Commit Log
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| 0 | — | 2026-03-11 | Tracker created |
+| 0 | `d23bce0` | 2026-03-11 | Tracker created |
+| 1 | `eaf66ba` | 2026-03-11 | CRITICAL fixes (C-01–C-08) |
+| 2 | `a559fe9` | 2026-03-11 | HIGH fixes (H-01–H-12) |
+| 3 | `714ce10` | 2026-03-11 | MEDIUM fixes (M-01–M-15) |
+| 4 | `0192315` | 2026-03-11 | LOW fixes (L-01–L-10) |
+| 5 | — | 2026-03-11 | E2E audit remediation tests |
