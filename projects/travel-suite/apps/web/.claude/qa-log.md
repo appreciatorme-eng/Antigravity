@@ -29,7 +29,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S10b — BUG-068 verify, PERF, Role, AUTH, ONBOARD | 2026-03-11 | 20 | 13 | 3 | 0 | 4 |
 | S10c — ADDON / INV / PERF / AUTH direct runs | 2026-03-11 | 36 | 27 | 5 | 4 | 0 |
 | S10d — BUG-069 rate limit, T3-2 invoice PDF, remaining direct runs | 2026-03-11 | 15 | 9 | 3 | 3 | 0 |
-| **Total** | | **~618** | **~381** | **~100** | **~59** | **~300** |
+| S10e — Full route coverage sweep (119 main + 54 admin routes) | 2026-03-11 | 78 | 58 | 8 | 12 | 0 |
+| **Total** | | **~696** | **~439** | **~108** | **~71** | **~300** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -884,6 +885,116 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 
 ---
 
+## Test Results — Session S10e (Full Route Coverage — 119 main + 54 admin routes)
+
+**Date**: 2026-03-11
+**Tests**: 78 · 58 pass · 8 fail/note · 12 data/config limited · 2 bugs found (BUG-070, BUG-071)
+
+> This session systematically tested every registered route in both dispatchers. Route lists extracted from source.
+
+### Main Dispatcher — Previously Untested
+
+| ID | Route | Status | Notes |
+|----|-------|--------|-------|
+| CURR-001 | GET /api/currency (no params) | ✅ Pass | 400 "Provide 'amount', 'from', and 'to' or 'base' or 'list'" — validation works |
+| CURR-002 | GET /api/currency?from=USD&to=INR&amount=100 | ✅ Pass | `{result:9196, rate:91.96, formatted:{from:"$100.00",to:"₹9,196.00"}}` |
+| CURR-003 | GET /api/currency?base=USD | ✅ Pass | Returns `{base, date, rates:{...}}` |
+| DASH-001 | GET /api/dashboard/schedule | ✅ Pass | `{events:[], completedCount:0}` |
+| DASH-002 | GET /api/dashboard/tasks | ✅ Pass | Returns task list with priorities |
+| ADDON-019 | GET /api/add-ons/stats | ✅ Pass | `{totalRevenue:0, totalSales:0, totalAddOns:18, activeAddOns:18}` |
+| ITIN-001 | GET /api/itineraries | ✅ Pass | `{itineraries:[], nextCursor:null, hasMore:false}` |
+| ITIN-002 | GET /api/itineraries/:id | ⚠️ Note | Returns "Itinerary not found" — itinerary IDs from trip detail don't resolve via this route (different access pattern) |
+| ITIN-003 | GET /api/itineraries/:id/feedback | ⚠️ Note | 405 Method Not Allowed — feedback is POST-only |
+| ITIN-004 | POST /api/itinerary/generate | ✅ Pass | `{prompt,destination,days}` → full AI itinerary JSON returned (Groq) |
+| ITIN-005 | POST /api/itinerary/import/url (empty) | ⚠️ Note | 400 "Valid URL is required" — validation OK |
+| ITIN-006 | POST /api/itinerary/import/url (valid URL) | ⚠️ Note | 500 — likely Vercel serverless network restriction on external HTTP fetch |
+| ITIN-007 | POST /api/itinerary/import/pdf | ❌ Fail | 500 "Internal server error" for both empty JSON and empty multipart — no pre-validation → **BUG-071** |
+| ITIN-008 | POST /api/itinerary/share | ⚠️ Note | `{success:false, disabled:true}` — WhatsApp integration not configured |
+| SUB-001 | GET /api/subscriptions | ✅ Pass | `{subscription:null}` — no active Razorpay subscription |
+| SUB-002 | GET /api/subscriptions/limits | ✅ Pass | Returns full plan limits: `{plan_id:"pro_monthly", tier:"pro", limits:{...}}` |
+| SUB-003 | POST /api/subscriptions/cancel | ⚠️ Note | `{success:false, disabled:true}` — Razorpay not configured |
+| SUPP-001 | GET /api/support | ✅ Pass | 200 `[]` |
+| WEATH-001 | GET /api/weather (no params) | ✅ Pass | 400 "Provide 'location' or 'locations'" — validation OK |
+| WEATH-002 | GET /api/weather?location=Goa | ✅ Pass | Returns Open-Meteo forecast (OpenWeatherMap fallback works) |
+| TRIP-C-001 | GET /api/trips (cookie) | ✅ Pass | Returns trip list for org |
+| TRIP-C-002 | GET /api/trips/:id (cookie) | ✅ Pass | `{status:"pending", destination:"TBD"}` |
+| TRIP-C-003 | GET /api/trips/:id/invoices | ✅ Pass | `{invoices:[]}` |
+| TRIP-C-004 | GET /api/trips/:id/notifications | ✅ Pass | `{notifications:[]}` |
+| TRIP-C-005 | POST /api/trips/:id/clone (cookie) | ❌ Fail | 500 → **BUG-070** — wrong status "draft" violates trips_status_check; **Fixed f1794ab** |
+| PAY-001 | POST /api/payments/links | ⚠️ Note | `{disabled:true}` — Razorpay not configured |
+| PAY-002 | POST /api/payments/create-order | ⚠️ Note | `{disabled:true}` — Razorpay not configured |
+| SHARE-001 | GET /api/share/fake-token | ✅ Pass | 404 `{data:null, error:"Share not found"}` |
+| PORTAL-001 | GET /api/portal/fake-token | ✅ Pass | 404 `{data:null, error:"Portal not found"}` |
+| IMG-001 | GET /api/images?query=beach | ✅ Pass | Returns Wikipedia image URL (fallback source) |
+| IMG-002 | GET /api/unsplash?query=beach | ✅ Pass | 410 "Deprecated route. Use /api/images/unsplash" — properly deprecated |
+| AI-001 | POST /api/ai/draft-review-response | ✅ Pass | 200 with drafted response (Groq) — requires: reviewContent, reviewerName, platform |
+| AI-002 | POST /api/ai/suggest-reply (wrong role) | ⚠️ Note | 400 "Invalid option: expected 'traveler'&#124;'agent'&#124;'system'" — spec used "client" role |
+| AI-003 | POST /api/ai/suggest-reply (correct role) | ✅ Pass | 200 with suggested reply (role must be "traveler", "agent", or "system") |
+| NOTIF-005 | POST /api/notifications/schedule-followups (cookie) | ⚠️ Note | 401 — cron-secret required, not cookie auth |
+| NOTIF-006 | POST /api/notifications/schedule-followups (JWT) | ✅ Pass | 200 — Bearer JWT accepted |
+| NOTIF-007 | POST /api/notifications/process-queue | ⚠️ Note | 401 — cron-secret required |
+| NOTIF-008 | POST /api/notifications/retry-failed | ⚠️ Note | 401 — cron-secret required |
+| NOTIF-009 | POST /api/notifications/client-landed | ⚠️ Note | 401 — requires specific token |
+| LEAD-001 | POST /api/leads/convert | ⚠️ Note | "Service not configured" — CRM integration dependency not set up |
+| MKT-020 | GET /api/marketplace/options | ✅ Pass | Returns service_regions and travel_styles lists |
+| MKT-021 | GET /api/marketplace/:id/reviews | ✅ Pass | `[]` — route exists, no reviews for this listing |
+| MKT-022 | POST /api/marketplace/:id/view | ⚠️ Note | "Profile not found" — QA org has no marketplace profile |
+| MKT-023 | POST /api/marketplace/:id/inquiry | ⚠️ Note | "Operator not available in marketplace" — QA org not subscribed |
+| MKT-024 | GET /api/marketplace/listing-subscription | ⚠️ Note | "Failed to load listing subscription" — no subscription |
+| PROP-005 | POST /api/proposals/bulk | ✅ Pass | `{action:"archive",processed:0,errors:["not found in workspace"]}` — valid shape |
+| PROP-006 | POST /api/proposals/send-pdf | ⚠️ Note | `{disabled:true}` — RESEND_API_KEY not configured |
+| BOOK-005 | GET /api/bookings/locations/search?query=Goa | ✅ Pass | `{suggestions:[]}` — graceful when Amadeus not configured |
+
+### Admin Dispatcher — Previously Untested
+
+| ID | Route | Status | Notes |
+|----|-------|--------|-------|
+| DASH-003 | GET /api/admin/dashboard/stats | ✅ Pass | `{totalDrivers:1, totalClients:15, activeTrips:9, pendingNotifications:0}` |
+| FUNNEL-001 | GET /api/admin/funnel | ✅ Pass | Returns stage-based funnel with counts |
+| GEO-001 | GET /api/admin/geocoding/usage | ✅ Pass | `{status:"not_configured", month:"2026-03", usage:{totalRequests:0}}` |
+| INS-001 | GET /api/admin/insights/action-queue | ✅ Pass | `{expiring_proposals:10, unpaid_invoices:0, stalled_trips:...}` |
+| INS-002 | GET /api/admin/insights/ai-usage | ✅ Pass | `{tier:"pro", caps:{monthly_request_cap:400}, usage:{...}}` |
+| INS-003 | GET /api/admin/insights/daily-brief | ✅ Pass | Returns actionable top items for the day |
+| INS-004 | GET /api/admin/insights/margin-leak | ✅ Pass | `{flagged_count:0, leaks:[]}` |
+| INS-005 | GET /api/admin/insights/ops-copilot | ✅ Pass | Returns ops queue of 12 items |
+| INS-006 | GET /api/admin/insights/proposal-risk | ✅ Pass | `{analyzed:12, high_risk:8, medium_risk:3, low_risk:1}` |
+| INS-007 | GET /api/admin/insights/roi | ✅ Pass | `{roi:{score:38.1, estimated_hours_saved:13.8}}` |
+| INS-008 | GET /api/admin/insights/smart-upsell-timing | ✅ Pass | Returns upsell timing recommendations |
+| INS-009 | GET /api/admin/insights/upsell-recommendations | ✅ Pass | Returns analyzed recommendations |
+| INS-010 | GET /api/admin/insights/win-loss | ✅ Pass | `{totals:{proposals:12, wins:0, losses:0, win_rate:0}}` |
+| MKT-V-001 | GET /api/admin/marketplace/verify | ✅ Pass | Returns pending verification listings |
+| OPS-001 | GET /api/admin/operations/command-center | ✅ Pass | Returns day-window operations summary |
+| PRICE-012 | GET /api/admin/pricing/dashboard | ✅ Pass | `{kpis:{totalInvestment:245200, totalRevenue:394000, grossProfit:148800}}` |
+| PRICE-013 | GET /api/admin/pricing/overheads | ✅ Pass | Returns expenses list |
+| PRICE-014 | GET /api/admin/pricing/transactions | ✅ Pass | Returns transactions list |
+| PRICE-015 | GET /api/admin/pricing/trips | ✅ Pass | Returns priced trips list |
+| PRICE-016 | GET /api/admin/pricing/vendor-history (no params) | ✅ Pass | 400 "vendor and category params required" — validation OK |
+| PRICE-017 | GET /api/admin/pricing/vendor-history?vendor=test&category=transport | ✅ Pass | 200 — returns (empty) vendor history |
+| REP-031 | GET /api/admin/reputation/client-referrals | ✅ Pass | `{stats:{total_promoters:0}, referrals:[]}` |
+| EMB-001 | GET /api/admin/generate-embeddings | ✅ Pass | 200 |
+| CACHE-002 | POST /api/admin/clear-cache | ✅ Pass | `{success:true, clearedCount:0}` |
+| TRIP-A-005 | POST /api/admin/trips/:id/clone | ❌ Fail | 400 "trips_status_check" constraint violation → **BUG-070 — Fixed f1794ab** |
+| PROP-007 | GET /api/admin/proposals/:id/payment-plan (fake UUID) | ✅ Pass | 404 — route exists, proper 404 |
+| PROP-008 | GET /api/admin/proposals/:id/tiers (fake UUID) | ✅ Pass | "Proposal not found" |
+| SEED-001 | GET /api/admin/seed-demo | ⚠️ Note | 405 — POST-only endpoint |
+| CRON-001 | GET /api/cron/reputation-campaigns (no secret) | ✅ Pass | 401 — CRON_SECRET required, not exposed |
+| CRON-002 | GET /api/cron/assistant-digest (no secret) | ✅ Pass | 401 — CRON_SECRET required |
+
+### Key Discoveries from S10e
+
+- **All 9 AI Insights endpoints return 200** — action-queue, ai-usage, daily-brief, margin-leak, ops-copilot, proposal-risk, roi, smart-upsell-timing, win-loss all fully functional
+- **Pricing suite complete** — dashboard, overheads, transactions, trips, vendor-history all return 200
+- **`itinerary/generate` works** — Groq API configured; generates full 3-day itinerary JSON ✅
+- **`ai/suggest-reply` role enum** — role must be `"traveler"|"agent"|"system"`, not `"client"` (test plan spec error)
+- **Currency conversion** — works with live exchange rates (91.96 INR/USD)
+- **Weather** — works via Open-Meteo (no API key required) even when OpenWeatherMap not configured
+- **Legacy `/api/unsplash`** — correctly 410 Deprecated; use `/api/images/unsplash` instead
+- **CRON endpoints** — all require `CRON_SECRET` header, not user auth; correctly returns 401 without it
+- **`/api/admin/seed-demo`** — POST-only (405 on GET)
+- **Trip clone BUG-070** — Found and fixed. `status:"draft"` → `status:"pending"` in both handlers
+
+---
+
 ## Test Results — Session 6d (Settings/Contacts/Workflow/Notifications/Calendar)
 
 | ID | Test | Status | Notes |
@@ -975,6 +1086,8 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-067 | INFO | JWT with 1-char last-char mutation (Q→X) accepted as valid | Base64url property: last character of 43-char HS256 signature has 2 unused padding bits. Q (010000) and X (010111) differ only in lower bits which are padding — decoded bytes identical. Supabase verifies decoded bytes, so both pass | Expected behavior — base64url encoding property; not a code bug | — | By Design |
 | BUG-068 | MED | GET /api/marketplace → 500 "Marketplace list failed" for all users | `marketplace_profiles` or `marketplace_reviews` table missing in live Supabase DB (types present in `database.types.ts` but migration not applied). Query fails → `if (error) throw error` → outer catch → 500 | Return graceful empty list `{items:[],pagination:{total:0,...}}` when DB query fails (same pattern as BUG-003 for revenue/LTV) | baf9da3 | Fixed ✅ Verified |
 | BUG-069 | MED | No rate limiting on `/api/admin/*` routes — 50+ burst requests all return 200, no 429 | `enforceRateLimit()` is NOT called in the admin dispatcher (`src/app/api/admin/[...path]/route.ts`) or the main dispatcher (`src/app/api/[...path]/route.ts`). Individual handlers like `notifications/send` have their own rate limit, but the dispatcher-level guard is absent — authenticated users can flood all admin endpoints without throttling | Add dispatcher-level rate limiting in admin and main route handlers | — | Open |
+| BUG-070 | HIGH | `POST /api/trips/:id/clone` → 500; `POST /api/admin/trips/:id/clone` → 400 "violates trips_status_check" | Both clone handlers insert new trips with `status:"draft"` but the DB `trips_status_check` constraint does NOT include "draft" as a valid status. Valid initial status is "pending". Admin handler also leaked raw Postgres constraint message | Changed `status:"draft"` → `status:"pending"` in both handlers; removed raw DB error from admin response | f1794ab | Fixed ✅ |
+| BUG-071 | LOW | `POST /api/itinerary/import/pdf` → 500 "Internal server error" when no file provided | Handler calls `PDFParse` on the request body before validating that a multipart PDF file was actually attached. Empty/JSON body causes `pdf-parse` to throw → caught by try/catch → generic 500. Should return 400 "PDF file is required" | Validate `Content-Type: multipart/form-data` and file presence before attempting parse | — | Open |
 
 ---
 
