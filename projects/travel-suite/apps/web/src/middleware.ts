@@ -58,6 +58,10 @@ function isOnboardingComplete(profile: {
 } | null): boolean {
     if (!profile) return false;
     if (profile.role === "super_admin") return true;
+    // Client and driver accounts are created by admins — they never self-onboard.
+    if (profile.role === "client" || profile.role === "driver") {
+        return !!profile.organization_id;
+    }
     return (
         !!profile.organization_id &&
         profile.role === "admin" &&
