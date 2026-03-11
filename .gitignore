@@ -62,6 +62,7 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+.coverage
 .nyc_output/
 
 # Supabase
@@ -73,3 +74,34 @@ supabase/.temp/
 AI_DESIGN_INTELLIGENCE.md
 .vercel
 node-compile-cache/
+
+# Claude Code / AI tooling
+.agent/
+.agents/
+.axon/
+.claude/
+.kiro/
+.mcp_data/
+.mcp.json
+.windsurf/
+.playwright-cli/
+skills-lock.json
+
+# Build caches
+playwright-transform-cache-*/
+v8-compile-cache-*/
+jest_dx/
+depot-*
+
+# One-time audit artifacts
+DEPENDENCY_ANALYSIS_TECHNICAL.md
+DEPENDENCY_AUDIT_COMPLETE.txt
+DEPENDENCY_AUDIT_INDEX.md
+DEPENDENCY_AUDIT_REPORT.md
+DEPENDENCY_AUDIT_SUMMARY.txt
+DEPENDENCY_UPDATE_COMMANDS.md
+
+# Ephemeral screenshots
+*.png
+!projects/**/public/**/*.png
+!projects/**/assets/**/*.png
