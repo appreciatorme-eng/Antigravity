@@ -83,8 +83,8 @@
 ---
 
 ## Test Suite Status
-- **Vitest**: TBD — run after all fixes
-- **Playwright E2E**: TBD — run after all fixes
+- **Vitest**: 581 pass / 0 fail (4 tests updated for audit remediation changes)
+- **Playwright E2E**: 8 pass / 9 fail pre-deploy (9 failures expected — fixes not yet on Vercel)
 - **New tests**: `e2e/tests/audit-remediation.spec.ts` — 13 tests covering security headers, CORS, CSRF, cron POST-only, password min length, webhook body limit, rate limiting, payment webhook auth, cookie security
 
 ---

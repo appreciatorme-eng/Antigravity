@@ -193,7 +193,7 @@ it("returns 400 when amount is zero", async () => {
 
   expect(response.status).toBe(400);
   const payload = await response.json();
-  expect(payload.error).toContain("amount");
+  expect(payload.error.toLowerCase()).toContain("amount");
 });
 
 it("returns 400 when both invoice_id and subscription_id are provided", async () => {
