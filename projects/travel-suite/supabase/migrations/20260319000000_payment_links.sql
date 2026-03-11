@@ -1,10 +1,13 @@
+-- Enable pgcrypto for gen_random_bytes token generation
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS public.payment_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
     proposal_id UUID REFERENCES public.proposals(id) ON DELETE SET NULL,
-    booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
+    booking_id UUID, -- FK to bookings added later (table not yet created)
     client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL,
-    token TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+    token TEXT NOT NULL UNIQUE DEFAULT encode(extensions.gen_random_bytes(16), 'hex'),
     client_name TEXT,
     client_phone TEXT,
     client_email TEXT,

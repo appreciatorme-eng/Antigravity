@@ -237,6 +237,9 @@ export async function GET(req: NextRequest) {
                 *,
                 organization:organizations(name, logo_url)
             `);
+        // Note: marketplace_reviews has no direct FK to marketplace_profiles
+        // (both use organizations as the join bridge). Reviews are fetched in a
+        // second query after profile IDs are known and merged in JS below.
 
         if (verification) {
             supabaseQuery = supabaseQuery.eq("verification_status", verification);
@@ -295,8 +298,35 @@ export async function GET(req: NextRequest) {
             );
         }
 
+        // Fetch reviews for returned profiles via a second query (no direct FK between
+        // marketplace_reviews and marketplace_profiles — both bridge through organizations).
+        const profileRows = (data || []) as unknown as MarketplaceProfileRow[];
+        const orgIds = profileRows
+            .map((r) => (r as unknown as Record<string, unknown>).organization_id as string)
+            .filter(Boolean);
+        const reviewsByOrgId = new Map<string, MarketplaceReviewRow[]>();
+        if (orgIds.length > 0) {
+            const { data: reviewData } = await supabaseAdmin
+                .from("marketplace_reviews")
+                .select("target_org_id, rating")
+                .in("target_org_id", orgIds);
+            for (const rev of reviewData ?? []) {
+                const key = rev.target_org_id;
+                if (!key) continue;
+                const bucket = reviewsByOrgId.get(key) ?? [];
+                bucket.push({ rating: rev.rating });
+                reviewsByOrgId.set(key, bucket);
+            }
+        }
+
         // Process data to include average rating and flatten organization info
-        const rows = (data || []) as unknown as MarketplaceProfileRow[];
+        const rows = profileRows.map((r) => {
+            const rr = r as unknown as Record<string, unknown>;
+            return {
+                ...r,
+                reviews: reviewsByOrgId.get(rr.organization_id as string) ?? [],
+            } as MarketplaceProfileRow;
+        });
         const mapped = rows.map((item) => {
             const ratings = (item.reviews || []).map((review) => Number(review.rating || 0));
             const avgRating = ratings.length > 0

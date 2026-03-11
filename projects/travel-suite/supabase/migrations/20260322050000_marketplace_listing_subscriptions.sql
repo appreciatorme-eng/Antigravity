@@ -76,4 +76,4 @@ DROP TRIGGER IF EXISTS set_updated_at_marketplace_listing_subscriptions
 CREATE TRIGGER set_updated_at_marketplace_listing_subscriptions
   BEFORE UPDATE ON public.marketplace_listing_subscriptions
   FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at();
+  EXECUTE FUNCTION public.handle_updated_at();
