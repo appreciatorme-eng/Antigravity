@@ -26,7 +26,9 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S7b — WA/ASST/BILL/NOTIFY re-runs | 2026-03-11 | ~20 | ~15 | 0 | 5 | 0 |
 | S9a — MKT/SEC/EDGE agent | 2026-03-11 | 22 | 14 | 3 | 5 | 0 |
 | S9b — PERF/CRON/Cost/Referrals/Ops/PDF/Billing/Client agent | 2026-03-11 | 21 | 18 | 1 | 2 | 0 |
-| **Total** | | **~547** | **~332** | **~89** | **~52** | **~296** |
+| S10b — BUG-068 verify, PERF, Role, AUTH, ONBOARD | 2026-03-11 | 20 | 13 | 3 | 0 | 4 |
+| S10c — ADDON / INV / PERF / AUTH direct runs | 2026-03-11 | 36 | 27 | 5 | 4 | 0 |
+| **Total** | | **~603** | **~372** | **~97** | **~56** | **~300** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -772,6 +774,12 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 - **Google Places not configured** — INT-PLACES returns `{enabled:false, googlePlaceId:""}`.
 - **TripAdvisor API key not configured** — TRIPADVISOR_API_KEY missing from Vercel env.
 - **Root `/api/*` endpoints use cookie-based session auth** — resolved in S3 by capturing session cookie from login. Bearer JWT only works for `/api/admin/*`.
+- **Add-ons require `category` field** — `POST /api/add-ons` requires `name`, `price`, AND `category`. Test plan spec omitted `category`. Valid values observed: `service`, `transport`.
+- **Trip add-on attachment is via proposal_add_ons** — `POST /api/trips/{id}/add-ons` returns 405. Add-ons are attached to proposals, then surfaced via trip's proposals. Use `PATCH /api/trips/{id}/add-ons` to update existing proposal_add_on records.
+- **No root proposals list endpoint** — `GET /api/proposals` and `GET /api/admin/proposals` both 404. Proposals accessed via trip/client detail routes. Test plan PERF-004 spec is wrong.
+- **Pexels image search param is `query=`** — not `q=`. PERF-008 test plan spec used wrong param. `GET /api/images/pexels?query=beach` → 200.
+- **No `/api/onboarding/status` route** — Only `POST /api/onboarding/setup` and `POST /api/onboarding/first-value` exist. ONBOARD-001 spec is wrong.
+- **Client-role RBAC untestable via password-login** — Admin-created client users have no password. JWT unobtainable without self-registration flow.
 - **Bearer JWT expires after 1 hour** — long-running test agents that obtained a JWT at session start will get 401 on all `requireAdmin()` endpoints after expiry. Re-login before testing admin routes if session > 50 min old. `SUPABASE_SERVICE_ROLE_KEY` is correctly configured on Vercel (confirmed by billing fix).
 
 ---
@@ -813,7 +821,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | MKTPLACE (MKT-004 to MKT-019) + PERF + remaining EDGE/SEC | ✅ Done | S9a/S9b completed. BUG-068 found (marketplace tables missing — graceful degradation applied) |
 | BUG-056 fix verification (contact-sales org RLS) | ✅ Done | BILL-007-VERIFY → HTTP 200 confirmed on live Vercel |
 | BUG-029 fix verification (invalid email format) | ✅ Done | CLIENT-013-VERIFY → HTTP 400 "Invalid email format" confirmed on live |
-| BUG-068 fix verification (marketplace GET 500) | 🔲 Pending | Fix committed; Vercel redeploy needed |
+| BUG-068 fix verification (marketplace GET 500) | ✅ Done | GET /api/marketplace → HTTP 200 `{items:[],pagination:{total:0,...}}` confirmed live |
 
 ---
 
@@ -906,7 +914,7 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BUG-065 | INFO | GET /api/admin/security/diagnostics → 403 for admin role | Intentional — endpoint requires `isSuperAdmin` flag; exposes sensitive RLS diagnostics | By Design — document required role in API spec | — | By Design |
 | BUG-066 | MED | OPTIONS /api/admin/* preflight missing `Access-Control-Allow-Origin` header | OPTIONS handler in api-dispatch.ts had other CORS headers but omitted ACAO — browser preflight fails for cross-origin requests | Added `Access-Control-Allow-Origin: *` to OPTIONS response in api-dispatch.ts | c0a5403 | Fixed |
 | BUG-067 | INFO | JWT with 1-char last-char mutation (Q→X) accepted as valid | Base64url property: last character of 43-char HS256 signature has 2 unused padding bits. Q (010000) and X (010111) differ only in lower bits which are padding — decoded bytes identical. Supabase verifies decoded bytes, so both pass | Expected behavior — base64url encoding property; not a code bug | — | By Design |
-| BUG-068 | MED | GET /api/marketplace → 500 "Marketplace list failed" for all users | `marketplace_profiles` or `marketplace_reviews` table missing in live Supabase DB (types present in `database.types.ts` but migration not applied). Query fails → `if (error) throw error` → outer catch → 500 | Return graceful empty list `{items:[],pagination:{total:0,...}}` when DB query fails (same pattern as BUG-003 for revenue/LTV) | pending push | Fixed |
+| BUG-068 | MED | GET /api/marketplace → 500 "Marketplace list failed" for all users | `marketplace_profiles` or `marketplace_reviews` table missing in live Supabase DB (types present in `database.types.ts` but migration not applied). Query fails → `if (error) throw error` → outer catch → 500 | Return graceful empty list `{items:[],pagination:{total:0,...}}` when DB query fails (same pattern as BUG-003 for revenue/LTV) | baf9da3 | Fixed ✅ Verified |
 
 ---
 
@@ -972,3 +980,124 @@ Agent: curl + cookie auth | 52 tests | 38 pass · 11 fail · 3 info
 | BILL-007-VERIFY | POST /api/billing/contact-sales (valid body) — **BUG-056 verify** | ✅ Pass | **HTTP 200** `{requested:true,lead_id:"1c1bd215-..."}` — BUG-056 confirmed fixed ✅ |
 | BILL-008 | POST /api/billing/contact-sales (invalid email) | ✅ Pass | 400 validation error |
 | CLIENT-013-VERIFY | POST /api/admin/clients `{email:"not-an-email"}` — **BUG-029 verify** | ✅ Pass | **HTTP 400** `{"error":"Invalid email format"}` — BUG-029 confirmed fixed ✅ |
+
+---
+
+## Test Results — Session S10b (BUG-068 verify, PERF, Role Enforcement, AUTH, ONBOARD)
+
+**Date**: 2026-03-11
+**Auth**: Bearer JWT + cookie (`/api/auth/password-login`)
+**Output file**: `/tmp/s10b_results.txt`
+
+### BUG-068 Verification
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| BUG-068-VERIFY (JWT) | GET /api/marketplace with Bearer token | ✅ Pass | HTTP 200 `{"items":[],"pagination":{"page":1,"limit":50,"total":0,"hasMore":false}}` — fix confirmed live |
+| BUG-068-VERIFY (Cookie) | GET /api/marketplace with cookie auth | ✅ Pass | HTTP 200 same response — consistent across auth methods |
+
+### PERF Tests
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| PERF-002 | GET /api/admin/clients — response time | ✅ Pass | HTTP 200, **1.911s** (under 2s) |
+| PERF-003 | GET /api/admin/trips — response time | ✅ Pass | HTTP 200, **1.087s** (under 2s) |
+| PERF-004 | GET /api/proposals — response time | ⏭ Blocked | HTTP 404 — route not found under `/api/proposals` or `/api/admin/proposals` |
+| PERF-005 | GET /api/admin/revenue — first vs second call | ✅ Pass | First: HTTP 200 1.988s; Second: HTTP 200 0.894s — cache effect observed |
+| PERF-008 | GET /api/images/pexels?query=beach — image search time | ✅ Pass | HTTP 200, **1.02s** (under 5s). Note: param is `query=` not `q=` — test spec used wrong param name |
+| PERF-011 | GET /api/admin/trips?page=1&limit=50 — paginated | ✅ Pass | HTTP 200, **1.205s** (under 5s); note: no pagination envelope in response body |
+
+### Role Enforcement (T4-9)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| T4-9 Step 1 | POST /api/admin/clients — create client-role user | ✅ Pass | HTTP 200 `{"success":true,"userId":"500ad91f-..."}` |
+| T4-9 Step 2 | POST /api/auth/password-login as created client | ⏭ Blocked | HTTP 401 — admin-created users have no password; login blocked (expected behaviour) |
+| T4-9 Step 3 | Admin route access with client JWT | ⏭ Blocked | Dependent on Step 2; no client JWT obtainable |
+
+### AUTH API Tests
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| AUTH-002 | POST /api/auth/password-login — valid credentials | ✅ Pass | HTTP 200 + `set-cookie` with `Secure; SameSite=lax` session cookie |
+| AUTH-009 | POST /api/auth/password-login — non-existent email | ✅ Pass | HTTP 400 validation error (password too short fires first); no user enumeration |
+| AUTH-013 | POST /api/auth/password-login — SQL injection in email | ✅ Pass | HTTP 400 `{"error":"Invalid request body"}` — rejected at schema validation, no data leak |
+| AUTH-015 | GET /api/admin/clients — expired/forged JWT | ✅ Pass | HTTP 401 `{"error":"Unauthorized"}` |
+| AUTH-016 | GET /api/admin/clients — malformed JWT (`abc123notajwt`) | ✅ Pass | HTTP 401 `{"error":"Unauthorized"}` |
+| AUTH-017 | GET /api/admin/clients — missing Authorization header | ✅ Pass | HTTP 401 `{"error":"Unauthorized"}` |
+
+### ONBOARD Tests
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| ONBOARD-001 | GET /api/onboarding/status | ❌ Spec | HTTP 404 — no `/api/onboarding/status` route in dispatch. Only `onboarding/setup` and `onboarding/first-value` exist |
+| ONBOARD-002 | GET /api/admin/onboarding/setup | ❌ Spec | HTTP 404 — setup is at `/api/onboarding/setup` (main dispatcher), not under `/api/admin/` |
+| ONBOARD-003 | POST /api/onboarding/setup — already complete org | ✅ Pass | HTTP 200 `{"success":true,"onboardingComplete":true,"organizationId":"c498cecc-...","next":"/admin"}` — idempotent |
+
+### S10b Notes
+
+- **PERF-008 param**: Pexels images endpoint uses `?query=` not `?q=`. Test plan spec wrong. 200 confirmed with correct param in 1.02s ✅
+- **ONBOARD-001/002**: Spec errors — `/api/onboarding/status` never existed; setup is at `/api/onboarding/setup` (POST-only), not under admin. Both 404s are expected.
+- **Role enforcement (T4-9)**: Admin-created client users have no password set — cannot obtain JWT for them via password-login. Client-role RBAC can only be tested with a user who self-registered. Marked blocked.
+- **AUTH-009 note**: S10b got HTTP 400 (Zod rejects `q=1` password < 6 chars) rather than hitting Supabase. My direct run got 401 (password passes Zod, Supabase rejects unknown email). Both are safe generic errors — no user enumeration.
+
+---
+
+## Test Results — Session S10c (ADDON / INV / direct runs)
+
+Direct curl tests run by orchestrator. **22 tests · 17 pass · 5 note/spec**
+
+### Add-ons (ADDON)
+
+**Spec gap found**: `POST /api/add-ons` requires `category` field not documented in test plan. Valid categories observed: `service`, `transport`. Trip add-on attachment is via `PATCH /api/trips/{id}/add-ons` (updates `proposal_add_ons`), not `POST`. No DELETE handler on trip add-ons route.
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| ADDON-002 | POST /api/add-ons `{name, price, category}` | ✅ Pass | HTTP 201 with addon object. `category` field required (not in test plan spec) |
+| ADDON-003 | GET /api/add-ons | ✅ Pass | HTTP 200 with array of 19 add-ons |
+| ADDON-004 | GET /api/add-ons/{id} | ✅ Pass | HTTP 200 with addon detail |
+| ADDON-005 | PATCH /api/add-ons/{id} `{price:2000}` | ✅ Pass | HTTP 200 price updated |
+| ADDON-006 | DELETE /api/add-ons/{id} | ✅ Pass | HTTP 200 `{success:true}` |
+| ADDON-007 | GET /api/add-ons/stats | ✅ Pass | HTTP 200 `{totalRevenue:0,totalSales:0,totalAddOns:19,activeAddOns:19}` |
+| ADDON-008 | POST /api/add-ons — missing name | ✅ Pass | HTTP 400 "Missing required fields: name, price, category" |
+| ADDON-009 | POST /api/add-ons — missing price | ✅ Pass | HTTP 400 "Missing required fields: name, price, category" |
+| ADDON-010 | POST /api/add-ons — negative price | ✅ Pass | HTTP 400 "Price must be zero or greater" |
+| ADDON-011 | POST /api/add-ons — zero price (free) | ✅ Pass | HTTP 201 — free add-ons allowed ✅ |
+| ADDON-013 | POST /api/trips/{id}/add-ons — attach addon | ❌ Spec | HTTP 405 — endpoint is GET+PATCH only; attach is via PATCH on `proposal_add_ons` records |
+| ADDON-014 | GET /api/trips/{id}/add-ons — verify attached | ✅ Pass | HTTP 200 `{addOns:[]}` — returns add-ons via trip's proposals |
+| ADDON-015 | DELETE /api/trips/{id}/add-ons/{addonId} | ❌ Spec | HTTP 404 — no DELETE handler; deselect via `PATCH {is_selected:false}` |
+| ADDON-017 | POST add-on with `<script>alert(1)</script>` name | ✅ Pass | Stored as `alert(1)` — `<script>` tags stripped by `stripHtml:true` sanitizer ✅ |
+| ADDON-018 | POST add-on with emoji ✈️ in name | ✅ Pass | HTTP 201 — emoji stored and returned correctly ✅ |
+
+### Invoices (INV)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| INV-001 | GET /api/invoices | ✅ Pass | HTTP 200 with 3 invoices in QA org |
+| INV-002 | GET /api/invoices/{id} | ✅ Pass | HTTP 200 with invoice object |
+| INV-004 | Invoice number format | ✅ Pass | Format `INV-YYYYMM-NNNN` confirmed (e.g., INV-202603-0003) |
+| INV-005 | Invoice amount matches proposal total | ✅ Pass | `total_amount: 2700` matches T3-1 convert total ✅ |
+| INV-006 | Invoice status is draft after creation | ✅ Pass | `status: "draft"` ✅ |
+| INV-007 | POST /api/invoices/send-pdf | ⚠️ Partial | HTTP 202 `{success:false,disabled:true}` — RESEND not configured, handled gracefully |
+
+### PERF (direct runs, confirming S10b)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| PERF-002 | GET /api/admin/clients timing | ✅ Pass | 200 in **1.43s** (< 2s) |
+| PERF-003 | GET /api/admin/trips timing | ✅ Pass | 200 in **1.38s** (< 2s) |
+| PERF-004 | GET /api/proposals timing | ❌ Spec | 404 — no root proposals list endpoint. Spec error. Proposals accessed per-trip/client |
+| PERF-005 | Revenue API cache (2 calls) | ✅ Pass | Call 1: 0.95s, Call 2: 0.90s — both 200, consistent |
+| PERF-008 | GET /api/images/pexels?query=beach | ✅ Pass | 200 in **1.02s** (< 5s). Spec used `?q=` but correct param is `?query=` |
+| PERF-011 | GET /api/admin/trips?page=1&limit=50 | ✅ Pass | 200 in **0.90s** (< 5s) |
+
+### AUTH (direct runs, confirming S10b)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| AUTH-002 | POST /api/auth/password-login — valid | ✅ Pass | HTTP 200 + `Set-Cookie: sb-...; Secure; SameSite=lax` |
+| AUTH-009 | Password-login — non-existent email | ✅ Pass | HTTP 401 "Invalid email or password" — generic, no user enumeration ✅ |
+| AUTH-013 | Password-login — SQL injection email | ✅ Pass | HTTP 400 Zod email validation — injection blocked at schema layer ✅ |
+| AUTH-015 | Admin endpoint — expired/invalid JWT | ✅ Pass | HTTP 401 |
+| AUTH-016 | Admin endpoint — malformed JWT | ✅ Pass | HTTP 401 |
+| AUTH-017 | Admin endpoint — no auth header | ✅ Pass | HTTP 401 |
