@@ -4,7 +4,6 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-type UntypedFromResult = ReturnType<AdminClient["from"]>;
 
 const AvailabilityQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -17,8 +16,10 @@ const AvailabilityCreateSchema = z.object({
   reason: z.string().trim().max(240).optional(),
 });
 
-function untypedFrom(client: AdminClient, table: string) {
-  return (client as unknown as { from: (name: string) => UntypedFromResult }).from(table);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function untypedFrom(client: AdminClient, table: string): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (client as any).from(table);
 }
 
 
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
     const admin = adminResult.adminClient;
     const { data, error } = await untypedFrom(admin, "operator_unavailability")
       .select("id, start_date, end_date, reason, created_at")
-      .eq("organization_id", adminResult.organizationId)
+      .eq("organization_id", adminResult.organizationId!)
       .lte("start_date", parsed.data.to)
       .gte("end_date", parsed.data.from)
       .order("start_date", { ascending: true });
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await untypedFrom(admin.adminClient, "operator_unavailability")
       .insert({
-        organization_id: admin.organizationId,
+        organization_id: admin.organizationId!,
         start_date: parsed.data.start_date,
         end_date: parsed.data.end_date,
         reason: parsed.data.reason?.trim() || null,
@@ -143,7 +144,7 @@ export async function DELETE(request: Request) {
     const { error } = await untypedFrom(admin.adminClient, "operator_unavailability")
       .delete()
       .eq("id", id)
-      .eq("organization_id", admin.organizationId);
+      .eq("organization_id", admin.organizationId!);
 
     if (error) {
       console.error("[availability] failed to delete blocked dates:", error);

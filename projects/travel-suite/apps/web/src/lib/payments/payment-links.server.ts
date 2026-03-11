@@ -25,7 +25,7 @@ type SerializedExtras = {
 };
 
 const PAYMENT_LINK_COLUMNS =
-  "id, token, organization_id, proposal_id, booking_id, client_id, client_name, client_phone, client_email, amount_paise, currency, description, status, razorpay_order_id, razorpay_payment_id, expires_at, viewed_at, paid_at, created_at, created_by, updated_at" as const;
+  "id, token, organization_id, proposal_id, booking_id, client_id, client_name, client_phone, client_email, amount_paise, currency, description, status, razorpay_order_id, razorpay_payment_id, expires_at, viewed_at, paid_at, reminder_sent_at, created_at, created_by, updated_at" as const;
 
 const PAYMENT_EVENT_PREFIX = "payment_link.";
 
