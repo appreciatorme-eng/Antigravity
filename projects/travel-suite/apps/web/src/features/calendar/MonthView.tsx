@@ -39,6 +39,19 @@ export function MonthView({
     [events, weeks, monthStart, monthEnd]
   );
 
+  const singleDayEventIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const e of events) {
+      if (!e.endDate) { ids.add(e.id); continue; }
+      const start = new Date(e.startDate);
+      const end = new Date(e.endDate);
+      if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth() && start.getDate() === end.getDate()) {
+        ids.add(e.id);
+      }
+    }
+    return ids;
+  }, [events]);
+
   return (
     <GlassCard padding="none" className="overflow-hidden">
       {/* Weekday headers */}
@@ -56,13 +69,7 @@ export function MonthView({
         <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-b-xl overflow-hidden">
           {monthDays.map((day, idx) => {
             const dayEvents = day ? getEventsForDay(events, year, month, day) : [];
-            // Filter single-day events only (multi-day rendered as lanes)
-            const singleDayEvents = dayEvents.filter(e => {
-              if (!e.endDate) return true;
-              const start = new Date(e.startDate);
-              const end = new Date(e.endDate);
-              return start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth() && start.getDate() === end.getDate();
-            });
+            const singleDayEvents = dayEvents.filter(e => singleDayEventIds.has(e.id));
             const blockedForDay = day
               ? getBlockedSlotsForDay(blockedSlots, year, month, day)
               : [];

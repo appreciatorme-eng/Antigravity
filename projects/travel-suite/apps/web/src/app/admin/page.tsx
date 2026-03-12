@@ -348,15 +348,13 @@ export default function AdminDashboard() {
         return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
     };
 
-    const formatCompactCurrency = (value: number) =>
-        new Intl.NumberFormat("en-IN", {
-            style: "currency",
-            currency: "INR",
-            notation: "compact",
-            maximumFractionDigits: 1,
-        }).format(value);
+    const compactCurrencyFormatter = useMemo(
+        () => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }),
+        []
+    );
+    const formatCompactCurrency = (value: number) => compactCurrencyFormatter.format(value);
 
-    const statCards = [
+    const statCards = useMemo(() => [
         {
             label: "Recovered Revenue",
             value: loading ? "---" : formatCompactCurrency(stats.recoveredRevenue),
@@ -412,7 +410,7 @@ export default function AdminDashboard() {
             description: "Open proposals still awaiting a client decision",
             href: "/proposals"
         },
-    ];
+    ], [loading, stats]);
 
     return (
         <div className="space-y-10 pb-20">
