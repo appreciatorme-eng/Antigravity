@@ -61,10 +61,16 @@ export default function PaymentLinkButton({
 
   useEffect(() => {
     if (state !== 'created') return
+    const controller = new AbortController()
     const interval = setInterval(() => {
-      void refreshLink()
+      if (!controller.signal.aborted) {
+        void refreshLink()
+      }
     }, 5000)
-    return () => clearInterval(interval)
+    return () => {
+      controller.abort()
+      clearInterval(interval)
+    }
   }, [state, refreshLink])
 
   async function handleCreate() {

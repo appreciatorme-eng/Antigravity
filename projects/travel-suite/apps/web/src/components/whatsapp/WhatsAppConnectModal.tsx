@@ -121,30 +121,38 @@ export function WhatsAppConnectModal({
     useEffect(() => {
         if (isDemoMode || step !== "scanning" || !sessionName) return;
 
+        const controller = new AbortController();
         const interval = setInterval(async () => {
             try {
                 const res = await fetch(
                     `/api/whatsapp/qr?sessionName=${sessionName}`,
+                    { signal: controller.signal },
                 );
                 if (!res.ok) return;
                 const data = await res.json() as { qrBase64?: string };
                 if (data.qrBase64) setQrBase64(data.qrBase64);
             } catch (err) {
+                if (err instanceof DOMException && err.name === "AbortError") return;
                 console.error("Error refreshing WhatsApp QR:", err);
             }
         }, 5000);
 
-        return () => clearInterval(interval);
+        return () => {
+            controller.abort();
+            clearInterval(interval);
+        };
     }, [isDemoMode, step, sessionName]);
 
     // Real mode: poll the API for connection status every 2 s
     useEffect(() => {
         if (isDemoMode || step !== "scanning" || !sessionName) return;
 
+        const controller = new AbortController();
         const interval = setInterval(async () => {
             try {
                 const res = await fetch(
                     `/api/whatsapp/status?sessionName=${sessionName}`,
+                    { signal: controller.signal },
                 );
                 if (!res.ok) return;
                 const data = await res.json() as { status: string; number?: string; name?: string };
@@ -159,11 +167,15 @@ export function WhatsAppConnectModal({
                     onConnected();
                 }
             } catch (error) {
+                if (error instanceof DOMException && error.name === "AbortError") return;
                 console.error("Error polling WhatsApp status:", error);
             }
         }, 2000);
 
-        return () => clearInterval(interval);
+        return () => {
+            controller.abort();
+            clearInterval(interval);
+        };
     }, [isDemoMode, step, sessionName, onConnected]);
 
     const handleTestMessage = async () => {

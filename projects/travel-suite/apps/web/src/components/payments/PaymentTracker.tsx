@@ -90,12 +90,18 @@ export default function PaymentTracker({
   }, [loadLink])
 
   useEffect(() => {
+    const controller = new AbortController()
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadLink()
     const interval = setInterval(() => {
-      void loadLink()
+      if (!controller.signal.aborted) {
+        void loadLink()
+      }
     }, 5000)
-    return () => clearInterval(interval)
+    return () => {
+      controller.abort()
+      clearInterval(interval)
+    }
   }, [loadLink])
 
   const getStepStatus = (step: TimelineStep): 'done' | 'active' | 'pending' => {
