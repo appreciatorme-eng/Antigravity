@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -13,14 +14,14 @@ export async function POST(request: NextRequest) {
         // Verify user authorization
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const token = authHeader.substring(7);
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
         if (authError || !user) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+            return apiError("Invalid token", 401);
         }
 
         const rateLimitResult = await enforceRateLimit({
@@ -30,14 +31,14 @@ export async function POST(request: NextRequest) {
             prefix: "auth:notif:landed",
         });
         if (!rateLimitResult.success) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+            return apiError("Too many requests", 429);
         }
 
         const body = await request.json();
         const { tripId } = body;
 
         if (!tripId) {
-            return NextResponse.json({ error: "tripId is required" }, { status: 400 });
+            return apiError("tripId is required", 400);
         }
 
         // Get trip details (scoped to the authenticated client)
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (tripError || !trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         const itinerary = Array.isArray(trip.itineraries) ? trip.itineraries[0] : trip.itineraries;
@@ -165,6 +166,6 @@ export async function POST(request: NextRequest) {
         });
     } catch (error: unknown) {
         console.error("Client landed error:", error);
-        return NextResponse.json({ error: safeErrorMessage(error, "Failed to process landing notification") }, { status: 500 });
+        return apiError(safeErrorMessage(error, "Failed to process landing notification"), 500);
     }
 }

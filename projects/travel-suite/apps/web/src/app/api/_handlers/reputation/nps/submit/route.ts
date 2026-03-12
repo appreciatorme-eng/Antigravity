@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { repFrom } from "@/lib/reputation/db";
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
       prefix: "pub:nps:submit",
     });
     if (!rl.success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return apiError("Too many requests", 429);
     }
 
     const supabase = await createClient();
@@ -28,10 +29,7 @@ export async function POST(req: NextRequest) {
 
     // Validate token format first (cheap, no DB)
     if (!token || typeof token !== "string" || !UUID_REGEX.test(token)) {
-      return NextResponse.json(
-        { error: "token is required" },
-        { status: 400 }
-      );
+      return apiError("token is required", 400);
     }
 
     // Look up the campaign send by nps_token before validating score
@@ -46,27 +44,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (!send) {
-      return NextResponse.json(
-        { error: "Invalid or expired token" },
-        { status: 404 }
-      );
+      return apiError("Invalid or expired token", 404);
     }
 
     const scoreValue = Number(score);
     if (isNaN(scoreValue) || scoreValue < 1 || scoreValue > 10) {
-      return NextResponse.json(
-        { error: "score must be a number between 1 and 10" },
-        { status: 400 }
-      );
+      return apiError("score must be a number between 1 and 10", 400);
     }
 
     // Validate token not expired
     const expiresAt = new Date(send.nps_token_expires_at);
     if (expiresAt < new Date()) {
-      return NextResponse.json(
-        { error: "This survey link has expired" },
-        { status: 410 }
-      );
+      return apiError("This survey link has expired", 410);
     }
 
     // Determine routing based on NPS score
@@ -141,7 +130,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("Error submitting NPS score:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return apiError("Internal server error", 500);
   }
 }
 

@@ -12,6 +12,7 @@
  * ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
 import { isAdminBearerToken } from "@/lib/security/admin-bearer-auth";
 import { generateAndQueueAlerts } from "@/lib/assistant/alerts";
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       !bearerCronAuthorized &&
       !adminAuthorized
     ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const result = await generateAndQueueAlerts();

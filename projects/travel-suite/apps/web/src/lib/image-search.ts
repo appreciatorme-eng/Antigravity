@@ -3,6 +3,8 @@
  * Designed to provide "million-dollar" aesthetics for the premium itinerary templates.
  */
 
+import { logEvent, logError } from '@/lib/observability/logger';
+
 /** Minimal shape the image populator needs -- compatible with ItineraryResult and ItineraryLike. */
 interface ItineraryForImages {
     destination?: string;
@@ -63,7 +65,7 @@ export async function getWikiImage(query: string, titleStr: string): Promise<str
             }
         }
     } catch (e) {
-        console.error(`Wiki image search failed for "${query}":`, (e as Error).message);
+        logError(`Wiki image search failed for "${query}"`, e);
     }
 
     // As a final fallback, use a free stunning luxury resort/mountain/travel image
@@ -130,11 +132,11 @@ export async function populateItineraryImages<T extends ItineraryForImages>(itin
         );
 
         const activitiesCount = updatedDays.reduce((n, d) => n + d.activities.length, 0);
-        console.log(`🖼️ [Images] Populated photos for up to ${activitiesCount} activities (max ${WIKI_CONCURRENCY_LIMIT} concurrent).`);
+        logEvent('info', `[Images] Populated photos for up to ${activitiesCount} activities (max ${WIKI_CONCURRENCY_LIMIT} concurrent)`);
 
         return { ...itinerary, days: updatedDays };
     } catch (error) {
-        console.error('Image fetching error (non-blocking):', error);
+        logError('Image fetching error (non-blocking)', error);
         return itinerary;
     }
 }

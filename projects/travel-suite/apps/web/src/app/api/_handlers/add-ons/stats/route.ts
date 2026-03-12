@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 
 interface AddOnSaleRelation {
@@ -36,7 +37,7 @@ export async function GET() {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get organization ID from profile
@@ -47,7 +48,7 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     // Calculate start of current month
@@ -64,7 +65,7 @@ export async function GET() {
 
     if (salesError) {
       console.error('Error fetching sales:', salesError);
-      return NextResponse.json({ error: salesError.message }, { status: 500 });
+      return apiError(salesError.message, 500);
     }
 
     // Calculate total revenue
@@ -129,9 +130,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error in GET /api/add-ons/stats:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return apiError('Internal server error', 500);
   }
 }

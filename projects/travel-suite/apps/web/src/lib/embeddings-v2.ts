@@ -1,6 +1,7 @@
 import "server-only";
 
 import { env } from "@/lib/config/env";
+import { logEvent, logError } from "@/lib/observability/logger";
 
 export const EMBEDDING_MODEL_V2 = "gemini-embedding-001";
 export const EMBEDDING_VERSION_V2 = 2;
@@ -36,7 +37,7 @@ async function requestEmbedding(
 ): Promise<number[]> {
   const apiKey = env.google.geminiApiKey;
   if (!apiKey) {
-    console.warn("[embeddings-v2] GOOGLE_GEMINI_API_KEY is not configured");
+    logEvent('warn', "[embeddings-v2] GOOGLE_GEMINI_API_KEY is not configured");
     return [];
   }
 
@@ -68,7 +69,7 @@ async function requestEmbedding(
     );
 
     if (!response.ok) {
-      console.error(
+      logError(
         "[embeddings-v2] Gemini embedding request failed",
         response.status,
       );
@@ -78,7 +79,7 @@ async function requestEmbedding(
     const body = (await response.json()) as GeminiEmbeddingResponse;
     return body.embedding?.values ?? [];
   } catch (error) {
-    console.error("[embeddings-v2] Gemini embedding error", error);
+    logError("[embeddings-v2] Gemini embedding error", error);
     return [];
   }
 }

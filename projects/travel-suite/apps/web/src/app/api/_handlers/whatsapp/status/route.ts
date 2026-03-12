@@ -2,6 +2,7 @@
 // Returns the current WPPConnect session status mapped to a frontend shape.
 // Fetches session_token from DB — WPPConnect requires Bearer auth for all calls.
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getWahaStatus } from "@/lib/whatsapp-waha.server";
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabase

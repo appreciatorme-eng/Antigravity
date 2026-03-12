@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const organizationId = profile.organization_id;
@@ -119,10 +120,7 @@ export async function POST(req: Request) {
     const tierLimits = REPUTATION_TIER_LIMITS[tier] ?? REPUTATION_TIER_LIMITS.free;
 
     if (!tierLimits.sentimentAnalysis) {
-      return NextResponse.json(
-        { error: "Sentiment analysis requires a Pro or Enterprise plan" },
-        { status: 403 }
-      );
+      return apiError("Sentiment analysis requires a Pro or Enterprise plan", 403);
     }
 
     const body = await req.json();
@@ -138,8 +136,7 @@ export async function POST(req: Request) {
 
     // If reviewId is provided, fetch the review
     if (reviewId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: review, error: reviewError } = await (supabase as any)
+      const { data: review, error: reviewError } = await supabase
         .from("reputation_reviews")
         .select("id, comment, rating, organization_id")
         .eq("id", reviewId)
@@ -147,7 +144,7 @@ export async function POST(req: Request) {
         .single();
 
       if (reviewError || !review) {
-        return NextResponse.json({ error: "Review not found" }, { status: 404 });
+        return apiError("Review not found", 404);
       }
 
       reviewText = review.comment ?? "";
@@ -156,10 +153,7 @@ export async function POST(req: Request) {
     }
 
     if (!reviewText || typeof reviewText !== "string" || reviewText.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Review text is required (provide reviewId or text)" },
-        { status: 400 }
-      );
+      return apiError("Review text is required (provide reviewId or text)", 400);
     }
 
     // Cost guard
@@ -173,20 +167,14 @@ export async function POST(req: Request) {
     });
 
     if (!reservation.allowed) {
-      return NextResponse.json(
-        { error: "Daily AI spend limit reached. Please try again tomorrow." },
-        { status: 429 }
-      );
+      return apiError("Daily AI spend limit reached. Please try again tomorrow.", 429);
     }
 
     // Call Gemini
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
     if (!geminiApiKey) {
-      return NextResponse.json(
-        { error: "AI service is not configured" },
-        { status: 503 }
-      );
+      return apiError("AI service is not configured", 503);
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -200,8 +188,7 @@ export async function POST(req: Request) {
 
     // Update the review in DB if we have a reviewId
     if (targetReviewId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await supabase
         .from("reputation_reviews")
         .update({
           sentiment_score: analysis.sentiment_score,
@@ -220,6 +207,6 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     console.error("Error analyzing review:", error);
     const message = safeErrorMessage(error, "Request failed");
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

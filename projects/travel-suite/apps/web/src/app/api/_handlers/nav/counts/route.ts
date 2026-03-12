@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -26,9 +27,6 @@ const getCachedNavCounts = unstable_cache(
   async (organizationId: string, sessionName: string, today: string) => {
     const admin = createAdminClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation_reviews is present in the live schema but not in generated admin typings yet
-    const reputationAdmin = admin as any;
-
     const [inboxUnreadResult, proposalsResult, bookingsTodayResult, reviewsResult] = await Promise.all([
       admin
         .from("whatsapp_webhook_events")
@@ -46,7 +44,7 @@ const getCachedNavCounts = unstable_cache(
         .eq("organization_id", organizationId)
         .eq("start_date", today)
         .in("status", ["planned", "confirmed", "in_progress", "active"]),
-      reputationAdmin
+      admin
         .from("reputation_reviews")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
@@ -96,7 +94,7 @@ export async function GET(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -121,7 +119,7 @@ export async function GET(request: Request) {
     const today = new Date().toISOString().slice(0, 10);
 
     const counts = await getCachedNavCounts(organizationId, sessionName, today);
-    return NextResponse.json(counts);
+    return apiSuccess(counts);
   } catch (error) {
     console.error("[/api/nav/counts:GET] Unhandled error:", error);
     return NextResponse.json(

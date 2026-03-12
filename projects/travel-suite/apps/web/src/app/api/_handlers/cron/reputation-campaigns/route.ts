@@ -11,6 +11,7 @@
  * ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       !isCronSecretHeader(headerSecret) &&
       !isCronSecretBearer(authHeader)
     ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const supabase = createAdminClient();

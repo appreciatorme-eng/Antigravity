@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     // Fetch itineraries — select only columns guaranteed to exist
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       const { data: fallbackData, error: fallbackError } = await fallbackQuery.limit(limit);
 
       if (fallbackError) {
-        return NextResponse.json({ error: safeErrorMessage(fallbackError, "Failed to load itineraries") }, { status: 400 });
+        return apiError(safeErrorMessage(fallbackError, "Failed to load itineraries"), 400);
       }
 
       const fallbackList = fallbackData ?? [];
@@ -151,6 +152,6 @@ export async function GET(request: NextRequest) {
       : null;
     return NextResponse.json({ itineraries: enriched, nextCursor, hasMore: nextCursor !== null });
   } catch (error) {
-    return NextResponse.json({ error: safeErrorMessage(error) }, { status: 500 });
+    return apiError(safeErrorMessage(error), 500);
   }
 }

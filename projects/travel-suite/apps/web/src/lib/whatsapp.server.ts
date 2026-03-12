@@ -1,5 +1,7 @@
 import "server-only";
 
+import { logError } from "@/lib/observability/logger";
+
 export interface WhatsAppSendResult {
     success: boolean;
     provider: "meta_cloud_api";
@@ -319,7 +321,7 @@ export async function downloadWhatsAppMedia(mediaId: string): Promise<Buffer | n
         const arrayBuffer = await mediaRes.arrayBuffer();
         return Buffer.from(arrayBuffer);
     } catch (error) {
-        console.error('Error downloading WA media:', error);
+        logError('Error downloading WA media', error);
         return null;
     }
 }

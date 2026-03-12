@@ -4,6 +4,7 @@
 
 import { safeEqual } from "@/lib/security/safe-equal";
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -38,10 +39,10 @@ const ConvertLeadSchema = z.object({
 export async function POST(request: NextRequest): Promise<Response> {
   if (!INTERNAL_API_SECRET) {
     console.error("[leads/convert] INTERNAL_API_SECRET is not configured; endpoint is disabled");
-    return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+    return apiError("Service not configured", 503);
   }
   if (!verifyInternalToken(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const ip =
@@ -54,14 +55,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     prefix: "int:leads:convert",
   });
   if (!rl.success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return apiError("Too many requests", 429);
   }
 
   let rawBody: unknown;
   try {
     rawBody = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return apiError("Invalid JSON body", 400);
   }
 
   const parsed = ConvertLeadSchema.safeParse(rawBody);
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   if (error) {
     console.error("[leads/convert] insert error:", error);
-    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+    return apiError("Failed to create lead", 500);
   }
 
   await supabase.from("conversion_events").insert({

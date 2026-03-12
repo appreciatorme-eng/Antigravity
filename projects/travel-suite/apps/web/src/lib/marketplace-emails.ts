@@ -1,3 +1,4 @@
+import { logEvent } from "@/lib/observability/logger";
 import { fetchWithRetry } from "@/lib/network/retry";
 
 export type EmailResult = {
@@ -12,7 +13,7 @@ const fromEmail = process.env.WELCOME_FROM_EMAIL || "marketplace@itinerary.ai";
 
 async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }): Promise<EmailResult> {
     if (!apiKey) {
-        console.warn("Missing RESEND_API_KEY. Skipping email.");
+        logEvent('warn', "Missing RESEND_API_KEY. Skipping email.");
         return { success: false, skipped: true, reason: "missing_api_key" };
     }
 

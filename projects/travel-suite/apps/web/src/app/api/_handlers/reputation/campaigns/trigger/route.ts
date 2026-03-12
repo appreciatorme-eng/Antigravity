@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
+import type { Database } from "@/lib/supabase/database.types";
+
+/** Fields selected from the clients table -- not all columns exist in generated types */
+type ClientContactFields = { name: string | null; phone: string | null; email: string | null };
 
 export async function POST() {
   try {
@@ -11,7 +16,7 @@ export async function POST() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -21,15 +26,11 @@ export async function POST() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
     // Fetch active campaigns for this org
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaigns, error: campaignsError } = await (supabase as any)
+    const { data: campaigns, error: campaignsError } = await supabase
       .from("reputation_review_campaigns")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -75,8 +76,7 @@ export async function POST() {
 
       for (const trip of trips) {
         // Dedup: check if a send already exists for this campaign + trip
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: existingSend } = await (supabase as any)
+        const { data: existingSend } = await supabase
           .from("reputation_campaign_sends")
           .select("id")
           .eq("campaign_id", campaign.id)
@@ -94,12 +94,12 @@ export async function POST() {
         let clientEmail: string | null = null;
 
         if (trip.client_id) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: client } = await (supabase as any)
+          // clients table select uses fields not fully represented in generated types
+          const { data: client } = await (supabase
             .from("clients")
             .select("name, phone, email")
             .eq("id", trip.client_id)
-            .single();
+            .single() as unknown as Promise<{ data: ClientContactFields | null; error: unknown }>);
 
           if (client) {
             clientName = client.name ?? null;
@@ -128,8 +128,7 @@ export async function POST() {
           review_submitted: false,
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: send, error: sendError } = await (supabase as any)
+        const { data: send, error: sendError } = await supabase
           .from("reputation_campaign_sends")
           .insert(sendData)
           .select()
@@ -145,23 +144,25 @@ export async function POST() {
 
         // Queue notification for WhatsApp delivery
         if (send && clientPhone && campaign.channel_sequence?.includes("whatsapp")) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: queueError } = await (supabase as any)
+          // notification_queue insert uses runtime schema fields not in generated types
+          const notificationPayload = {
+            organization_id: profile.organization_id,
+            channel: "whatsapp",
+            recipient: clientPhone,
+            template_name: campaign.whatsapp_template_name || "nps_survey",
+            template_data: {
+              client_name: clientName,
+              nps_link: `${process.env.NEXT_PUBLIC_APP_URL || ""}/reputation/nps/${npsToken}`,
+              campaign_name: campaign.name,
+            },
+            status: "pending",
+            related_type: "campaign_send",
+            related_id: send.id,
+          };
+          const { error: queueError } = await (supabase
             .from("notification_queue")
-            .insert({
-              organization_id: profile.organization_id,
-              channel: "whatsapp",
-              recipient: clientPhone,
-              template_name: campaign.whatsapp_template_name || "nps_survey",
-              template_data: {
-                client_name: clientName,
-                nps_link: `${process.env.NEXT_PUBLIC_APP_URL || ""}/reputation/nps/${npsToken}`,
-                campaign_name: campaign.name,
-              },
-              status: "pending",
-              related_type: "campaign_send",
-              related_id: send.id,
-            });
+            .insert(notificationPayload as unknown as Database['public']['Tables']['notification_queue']['Insert'])
+          );
 
           if (queueError) {
             console.error(
@@ -170,8 +171,7 @@ export async function POST() {
             );
           } else {
             // Update the send with the notification queue link
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase as any)
+            await supabase
               .from("reputation_campaign_sends")
               .update({ status: "sent", sent_at: new Date().toISOString() })
               .eq("id", send.id);
@@ -186,6 +186,6 @@ export async function POST() {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error triggering campaign sends:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

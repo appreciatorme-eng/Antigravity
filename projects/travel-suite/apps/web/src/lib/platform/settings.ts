@@ -2,6 +2,7 @@
 // Writes update DB → invalidate Redis → log to platform_audit_log.
 
 import { Redis } from "@upstash/redis";
+import { logEvent } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 
@@ -56,8 +57,7 @@ function redisKey(key: string): string {
 }
 
 async function fetchFromSupabase(key: string): Promise<JsonValue | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("platform_settings")
     .select("value")
@@ -77,7 +77,7 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
         return cached;
       }
     } catch (err) {
-      console.warn(`[platform-settings] Redis read failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis read failed for key="${key}"`, { err });
     }
   }
 
@@ -87,7 +87,7 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
     try {
       await redis.set(redisKey(key), value, { ex: REDIS_TTL_SECONDS });
     } catch (err) {
-      console.warn(`[platform-settings] Redis write failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis write failed for key="${key}"`, { err });
     }
   }
 
@@ -99,8 +99,7 @@ export async function setPlatformSetting(
   value: JsonValue,
   actorId: string
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
 
   await adminClient.from("platform_settings").upsert({
     key,
@@ -114,7 +113,7 @@ export async function setPlatformSetting(
     try {
       await redis.del(redisKey(key));
     } catch (err) {
-      console.warn(`[platform-settings] Redis invalidation failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis invalidation failed for key="${key}"`, { err });
     }
   }
 
@@ -196,8 +195,7 @@ export async function isOrgSuspended(orgId: string): Promise<boolean> {
 }
 
 export async function getAllPlatformSettings(): Promise<Record<string, JsonValue>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("platform_settings")
     .select("key, value, description, updated_by, updated_at, created_at")
@@ -205,6 +203,5 @@ export async function getAllPlatformSettings(): Promise<Record<string, JsonValue
 
   if (!data) return {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return Object.fromEntries(data.map((row: any) => [row.key, row.value as JsonValue]));
+  return Object.fromEntries(data.map((row) => [row.key, row.value as JsonValue]));
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -170,6 +171,6 @@ export async function POST(req: Request) {
         });
     } catch (error: unknown) {
         console.error("Error processing social queue:", error);
-        return NextResponse.json({ error: "Failed to process queue item" }, { status: 500 });
+        return apiError("Failed to process queue item", 500);
     }
 }

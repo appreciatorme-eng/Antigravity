@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     const body = await request.json();
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
       .eq('id', user.id)
       .maybeSingle();
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     const { data: proposal } = await supabase
@@ -82,16 +83,13 @@ export async function POST(request: Request) {
       .eq('organization_id', profile.organization_id)
       .maybeSingle();
     if (!proposal) {
-      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
+      return apiError('Proposal not found', 404);
     }
 
     const resendApiKey = process.env.RESEND_API_KEY;
     const senderEmail = process.env.WELCOME_FROM_EMAIL;
     if (!resendApiKey || !senderEmail) {
-      return NextResponse.json(
-        { error: 'Email provider is not configured (RESEND_API_KEY / WELCOME_FROM_EMAIL missing)' },
-        { status: 503 }
-      );
+      return apiError('Email provider is not configured (RESEND_API_KEY / WELCOME_FROM_EMAIL missing)', 503);
     }
 
     const attachmentBase64 = normalizeBase64(pdf_base64);
@@ -143,9 +141,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error in POST /api/proposals/send-pdf:', error);
-    return NextResponse.json(
-      { error: safeErrorMessage(error, "Request failed") },
-      { status: 500 }
-    );
+    return apiError(safeErrorMessage(error, "Request failed"), 500);
   }
 }

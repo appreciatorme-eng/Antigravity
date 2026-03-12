@@ -8,11 +8,11 @@ import "server-only";
  *
  * Each preference is a key-value pair scoped to (organization, user).
  *
- * NOTE: `assistant_preferences` is not yet in the generated Database
- * types. We cast via `(ctx.supabase as any)` until types are regenerated.
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -31,8 +31,7 @@ export interface PreferenceEntry {
 // ---------------------------------------------------------------------------
 
 function prefsTable(ctx: ActionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (ctx.supabase as any).from("assistant_preferences");
+  return ctx.supabase.from("assistant_preferences");
 }
 
 // ---------------------------------------------------------------------------
@@ -54,11 +53,11 @@ export async function getAllPreferences(
       return [];
     }
 
-    return (data as Array<{ preference_key: string; preference_value: unknown; updated_at: string }>).map(
+    return data.map(
       (row) => ({
         key: row.preference_key,
         value: row.preference_value,
-        updatedAt: row.updated_at,
+        updatedAt: row.updated_at ?? "",
       }),
     );
   } catch {
@@ -83,7 +82,7 @@ export async function getPreference(
       return null;
     }
 
-    return (data as { preference_value: unknown }).preference_value;
+    return data.preference_value;
   } catch {
     return null;
   }
@@ -102,19 +101,19 @@ export async function setPreference(
           organization_id: ctx.organizationId,
           user_id: ctx.userId,
           preference_key: key,
-          preference_value: value,
+          preference_value: value as Json,
         },
         { onConflict: "organization_id,user_id,preference_key" },
       );
 
     if (error) {
-      console.error("[assistant/preferences] setPreference error:", error.message);
+      logError("[assistant/preferences] setPreference error", error);
       return { success: false, error: safeErrorMessage(error, "Failed to save preference") };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[assistant/preferences] setPreference unhandled:", err);
+    logError("[assistant/preferences] setPreference unhandled", err);
     return {
       success: false,
       error: safeErrorMessage(err, "Failed to save preference"),
@@ -135,13 +134,13 @@ export async function deletePreference(
       .eq("preference_key", key);
 
     if (error) {
-      console.error("[assistant/preferences] deletePreference error:", error.message);
+      logError("[assistant/preferences] deletePreference error", error);
       return { success: false, error: safeErrorMessage(error, "Failed to delete preference") };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[assistant/preferences] deletePreference unhandled:", err);
+    logError("[assistant/preferences] deletePreference unhandled", err);
     return {
       success: false,
       error: safeErrorMessage(err, "Failed to delete preference"),

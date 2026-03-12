@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/notifications";
@@ -93,11 +94,11 @@ export async function POST(
         const startDateStr = String(body.startDate || "");
 
         if (!startDateStr) {
-            return NextResponse.json({ error: "Start date is required" }, { status: 400 });
+            return apiError("Start date is required", 400);
         }
         const startDate = new Date(startDateStr);
         if (Number.isNaN(startDate.getTime())) {
-            return NextResponse.json({ error: "Invalid start date" }, { status: 400 });
+            return apiError("Invalid start date", 400);
         }
 
         // 1. Fetch Proposal with all related data
@@ -112,7 +113,7 @@ export async function POST(
             .single();
 
         if (proposalError || !proposal) {
-            return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+            return apiError("Proposal not found", 404);
         }
 
         // 2. Fetch Days and Activities
@@ -126,7 +127,7 @@ export async function POST(
         if (daysError) throw daysError;
         const days = (daysData || []) as ProposalDay[];
         if (days.length === 0) {
-            return NextResponse.json({ error: "Proposal has no day plan to convert" }, { status: 400 });
+            return apiError("Proposal has no day plan to convert", 400);
         }
 
         // Fetch ALL activities for this proposal in one query
@@ -166,7 +167,7 @@ export async function POST(
         });
 
         if (!proposal.client_id) {
-            return NextResponse.json({ error: "Proposal client is not set" }, { status: 400 });
+            return apiError("Proposal client is not set", 400);
         }
 
         const destination = normalizeTemplateDestination(
@@ -314,8 +315,6 @@ export async function POST(
 
     } catch (error) {
         console.error("Convert proposal error:", error);
-        return NextResponse.json({
-            error: safeErrorMessage(error, "Request failed")
-        }, { status: 500 });
+        return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 }

@@ -1,4 +1,5 @@
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 import {
   EMBEDDING_MODEL_V2,
   EMBEDDING_VERSION_V2,
@@ -51,7 +52,7 @@ export async function getSemanticMatch(
     });
 
     if (error) {
-      console.error(
+      logError(
         "[semantic-cache] match_itineraries_v2 error - skipping semantic cache",
         error,
       );
@@ -64,7 +65,7 @@ export async function getSemanticMatch(
 
     return null;
   } catch (error) {
-    console.error("[semantic-cache] Semantic match extraction failed:", error);
+    logError("[semantic-cache] Semantic match extraction failed", error);
     return null;
   }
 }
@@ -106,9 +107,9 @@ export async function saveSemanticMatch(
     });
 
     if (error) {
-      console.error("[semantic-cache] Failed to insert semantic itinerary:", error);
+      logError("[semantic-cache] Failed to insert semantic itinerary", error);
     }
   } catch (error) {
-    console.error("[semantic-cache] Failed to save semantic match:", error);
+    logError("[semantic-cache] Failed to save semantic match", error);
   }
 }

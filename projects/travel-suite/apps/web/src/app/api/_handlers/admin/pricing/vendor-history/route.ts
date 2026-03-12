@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -8,14 +9,12 @@ const QuerySchema = z.object({
   category: z.string().min(1),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const url = new URL(req.url);
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
       category: url.searchParams.get("category") || "",
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "vendor and category params required" }, { status: 400 });
+      return apiError("vendor and category params required", 400);
     }
 
     type HistoryRow = {
@@ -32,7 +31,7 @@ export async function GET(req: NextRequest) {
       trip_id: string; created_at: string;
     };
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .select("vendor_name, category, cost_amount, trip_id, created_at")
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/vendor-history:GET] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     const rows = (data || []) as HistoryRow[];

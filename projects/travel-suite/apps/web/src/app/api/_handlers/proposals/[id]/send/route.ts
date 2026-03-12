@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { sanitizeEmail, sanitizePhone, sanitizeText } from "@/lib/security/sanitize";
@@ -94,10 +95,7 @@ export async function POST(
   if (!admin.ok) return admin.response;
 
   if (!admin.organizationId) {
-    return NextResponse.json(
-      { error: "Admin organization not configured" },
-      { status: 400 }
-    );
+    return apiError("Admin organization not configured", 400);
   }
 
   const { id: proposalId } = await params;
@@ -115,10 +113,7 @@ export async function POST(
   const shouldWhatsapp = channels.whatsapp === true;
 
   if (!shouldEmail && !shouldWhatsapp) {
-    return NextResponse.json(
-      { error: "At least one channel must be enabled" },
-      { status: 400 }
-    );
+    return apiError("At least one channel must be enabled", 400);
   }
 
   const supabaseAdmin = admin.adminClient;
@@ -153,15 +148,12 @@ export async function POST(
 
   const proposal = (proposalData as ProposalSendRow | null) || null;
   if (proposalError || !proposal) {
-    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+    return apiError("Proposal not found", 404);
   }
 
   const shareToken = sanitizeText(proposal.share_token, { maxLength: 200 });
   if (!shareToken) {
-    return NextResponse.json(
-      { error: "Proposal share token is missing" },
-      { status: 400 }
-    );
+    return apiError("Proposal share token is missing", 400);
   }
 
   const shareUrl = makeShareUrl(request, shareToken);

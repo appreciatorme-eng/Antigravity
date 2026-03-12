@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import { resolveOrganizationPlan, type SubscriptionTier } from "@/lib/subscriptions/limits";
@@ -206,7 +207,7 @@ export async function guardCostEndpoint(
       },
       { status: 503 }
     );
-    console.error("[cost-guard] Spend metering unavailable:", error);
+    logError("[cost-guard] Spend metering unavailable", error);
 
     return {
       ok: false,
@@ -360,7 +361,7 @@ export async function guardCostEndpoint(
       },
       { status: 503 }
     );
-    console.error("[cost-guard] Spend reservation failed:", error);
+    logError("[cost-guard] Spend reservation failed", error);
 
     return {
       ok: false,

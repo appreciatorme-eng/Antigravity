@@ -5,6 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
+import { logEvent, logError } from '@/lib/observability/logger';
 import type { ItineraryResult } from '@/types/itinerary';
 import {
     generateQueryEmbeddingV2,
@@ -95,7 +96,7 @@ export async function searchTemplates(
     const queryEmbedding = await generateQueryEmbeddingV2(queryText);
 
     if (queryEmbedding.length === 0) {
-        console.log('⚠️ Gemini embeddings not available - skipping RAG search');
+        logEvent('info', 'Gemini embeddings not available - skipping RAG search');
         return null;
     }
 
@@ -118,16 +119,13 @@ export async function searchTemplates(
     });
 
     if (error) {
-        console.error('Template v2 search error:', error);
+        logError('Template v2 search error', error);
         return null;
     }
 
     if (matches && matches.length > 0) {
-        console.log(`🔍 Found ${matches.length} templates from unified knowledge base:`);
-        matches.forEach((match, i) => {
-            console.log(
-                `  ${i + 1}. ${match.name} (Rank: ${toFiniteNumber(match.combined_rank).toFixed(2)}, Similarity: ${toFiniteNumber(match.similarity).toFixed(2)}, Quality: ${match.quality_score})`
-            );
+        logEvent('info', `Found ${matches.length} templates from unified knowledge base`, {
+            matches: matches.map((match, i) => `${i + 1}. ${match.name} (Rank: ${toFiniteNumber(match.combined_rank).toFixed(2)}, Similarity: ${toFiniteNumber(match.similarity).toFixed(2)}, Quality: ${match.quality_score})`),
         });
     }
 
@@ -166,18 +164,18 @@ export async function assembleItinerary(
 
     // If days match exactly, return template as-is (fastest path)
     if (fullTemplate.duration_days === request.days) {
-        console.log(`✅ Exact match! Using template as-is`);
+        logEvent('info', 'Exact match! Using template as-is');
         return formatTemplateAsItinerary(fullTemplate);
     }
 
     // Use GPT-4o-mini to intelligently modify template
     const openai = getOpenAiClient();
     if (!openai) {
-        console.log('⚠️ OpenAI not configured - returning closest template without modification');
+        logEvent('info', 'OpenAI not configured - returning closest template without modification');
         return formatTemplateAsItinerary(fullTemplate);
     }
 
-    console.log(`🤖 Using AI to adapt ${fullTemplate.duration_days}-day template to ${request.days} days...`);
+    logEvent('info', `Using AI to adapt ${fullTemplate.duration_days}-day template to ${request.days} days`);
 
     const assemblyPrompt = `
 You are a travel itinerary expert. You have a high-quality ${fullTemplate.duration_days}-day itinerary
@@ -253,7 +251,7 @@ Return ONLY valid JSON matching this schema:
 
         return assembledItinerary;
     } catch (error) {
-        console.error('AI assembly error:', error);
+        logError('AI assembly error', error);
         // Fallback to template as-is
         return formatTemplateAsItinerary(fullTemplate);
     }

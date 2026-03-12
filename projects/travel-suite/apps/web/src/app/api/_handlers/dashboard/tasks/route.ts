@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -309,10 +310,7 @@ export async function GET() {
         } = await serverClient.auth.getUser();
 
         if (!user) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            );
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabaseAdmin
@@ -322,10 +320,7 @@ export async function GET() {
             .maybeSingle();
 
         if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization" },
-                { status: 403 }
-            );
+            return apiError("No organization", 403);
         }
 
         const orgId = profile.organization_id;

@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { logEvent, logError } from "@/lib/observability/logger";
 
 export interface RateLimitResult {
     success: boolean;
@@ -100,15 +101,16 @@ function warnLocalFallback(prefix: string): void {
         // In production this is a SEV-HIGH operational issue: rate limiting will
         // reset on every cold start, making it trivially bypassable. Surface as
         // an error so it is caught by error monitoring (Sentry etc.).
-        console.error(
+        logError(
             `[rate-limit] CRITICAL: Redis unavailable for prefix "${prefix}". ` +
-            `Falling back to in-memory rate limiting — bypassed on every serverless cold start. ` +
-            `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to fix.`
+            `Falling back to in-memory rate limiting -- bypassed on every serverless cold start. ` +
+            `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to fix.`,
+            null,
         );
     } else {
-        console.warn(
+        logEvent('warn',
             `[rate-limit] Redis not configured for prefix "${prefix}". ` +
-            `Using in-memory fallback (acceptable in dev/test).`
+            `Using in-memory fallback (acceptable in dev/test).`,
         );
     }
 }
@@ -117,9 +119,10 @@ export async function enforceRateLimit(options: RateLimitOptions): Promise<RateL
     const limiter = getUpstashLimiter(options.limit, options.windowMs, options.prefix);
     if (!limiter) {
         if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_FAIL_OPEN !== "true") {
-            console.error(
+            logError(
                 `[rate-limit] FAIL-CLOSED: Redis unavailable for prefix "${options.prefix}". ` +
-                `Rejecting request. Set RATE_LIMIT_FAIL_OPEN=true to allow fallback.`
+                `Rejecting request. Set RATE_LIMIT_FAIL_OPEN=true to allow fallback.`,
+                null,
             );
             return {
                 success: false,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { CampaignType } from "@/lib/reputation/types";
@@ -18,7 +19,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -28,14 +29,10 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaigns, error } = await (supabase as any)
+    const { data: campaigns, error } = await supabase
       .from("reputation_review_campaigns")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -49,7 +46,7 @@ export async function GET() {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation campaigns:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -61,7 +58,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -71,19 +68,13 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
 
     if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
-      return NextResponse.json(
-        { error: "name is required" },
-        { status: 400 }
-      );
+      return apiError("name is required", 400);
     }
 
     if (
@@ -124,8 +115,7 @@ export async function POST(req: Request) {
       stats_reviews_generated: 0,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaign, error } = await (supabase as any)
+    const { data: campaign, error } = await supabase
       .from("reputation_review_campaigns")
       .insert(insertData)
       .select()
@@ -139,6 +129,6 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating reputation campaign:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

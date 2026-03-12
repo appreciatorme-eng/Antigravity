@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, ResponseStatus, SentimentLabel } from "@/lib/reputation/types";
+
+type ReputationReviewRow = Database['public']['Tables']['reputation_reviews']['Row'];
 
 export async function GET(req: Request) {
   try {
@@ -11,7 +15,7 @@ export async function GET(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -21,7 +25,7 @@ export async function GET(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const url = new URL(req.url);
@@ -38,8 +42,7 @@ export async function GET(req: Request) {
 
     const offset = (page - 1) * limit;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("reputation_reviews")
       .select("*", { count: "exact" })
       .eq("organization_id", profile.organization_id);
@@ -81,7 +84,7 @@ export async function GET(req: Request) {
       throw error;
     }
 
-    const reviewIds = (reviews ?? []).map((review: { id: string }) => review.id);
+    const reviewIds = (reviews ?? []).map((review: ReputationReviewRow) => review.id);
     let assetMap = new Map<
       string,
       {
@@ -116,7 +119,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const reviewsWithAssets = (reviews ?? []).map((review: { id: string }) => {
+    const reviewsWithAssets = (reviews ?? []).map((review: ReputationReviewRow) => {
       const asset = assetMap.get(review.id);
       return {
         ...review,
@@ -136,7 +139,7 @@ export async function GET(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation reviews:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -148,7 +151,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -158,24 +161,18 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
 
     if (!body.reviewer_name || typeof body.reviewer_name !== "string") {
-      return NextResponse.json(
-        { error: "reviewer_name is required" },
-        { status: 400 }
-      );
+      return apiError("reviewer_name is required", 400);
     }
 
     const ratingValue = Number(body.rating);
     if (!body.rating || isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
-      return NextResponse.json(
-        { error: "rating must be a number between 1 and 5" },
-        { status: 400 }
-      );
+      return apiError("rating must be a number between 1 and 5", 400);
     }
 
     const insertData = {
@@ -198,8 +195,7 @@ export async function POST(req: Request) {
       requires_attention: false,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
       .insert(insertData)
       .select()
@@ -213,6 +209,6 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating reputation review:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

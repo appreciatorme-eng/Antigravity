@@ -1,9 +1,9 @@
 // seed-demo — one-shot idempotent demo data seeder.
 // POST /api/admin/seed-demo  →  inserts GoBuddy Adventures (Demo) org + all records.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEMO_ORG_ID } from "@/lib/demo/constants";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       process.env.ALLOW_SEED_IN_PROD
     )
   ) {
-    return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+    return apiError("Not available in production", 403);
   }
 
   const admin = await requireAdmin(request, { requireOrganization: false });
@@ -55,17 +55,17 @@ export async function POST(request: NextRequest) {
   }
 
   if (!passesMutationCsrfGuard(request)) {
-    return NextResponse.json({ error: "CSRF validation failed for admin mutation" }, { status: 403 });
+    return apiError("CSRF validation failed for admin mutation", 403);
   }
 
   const expectedCronSecret = process.env.ADMIN_CRON_SECRET?.trim();
   const providedCronSecret = request.headers.get("x-cron-secret")?.trim();
   if (!hasValidSeedDemoCronSecret(expectedCronSecret, providedCronSecret)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return apiError("Forbidden", 403);
   }
 
   try {
-  const supabase = admin.adminClient as any;
+  const supabase = admin.adminClient;
 
   const { data: existing } = await supabase
     .from("organizations")
@@ -77,14 +77,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, message: "Demo org already seeded — skipping." });
   }
 
-  await supabase.from("organizations").insert(buildOrganization());
-  await supabase.from("profiles").insert(buildProfiles());
-  await supabase.from("itineraries").insert(buildItineraries());
-  await supabase.from("trips").insert(buildTrips());
-  await supabase.from("trip_service_costs").insert(buildServiceCosts());
-  await supabase.from("monthly_overhead_expenses").insert(buildOverheadExpenses());
-  await supabase.from("external_drivers").insert(buildExternalDrivers());
-  await supabase.from("workflow_stage_events").insert(buildWorkflowStageEvents());
+  // Fixture data may include columns (e.g. external_drivers.name) that exist in the
+  // live DB but are not yet reflected in the generated Database types. Use an untyped
+  // SupabaseClient for seed inserts to avoid false type errors.
+  const seedClient = supabase as unknown as SupabaseClient;
+  await seedClient.from("organizations").insert(buildOrganization());
+  await seedClient.from("profiles").insert(buildProfiles());
+  await seedClient.from("itineraries").insert(buildItineraries());
+  await seedClient.from("trips").insert(buildTrips());
+  await seedClient.from("trip_service_costs").insert(buildServiceCosts());
+  await seedClient.from("monthly_overhead_expenses").insert(buildOverheadExpenses());
+  await seedClient.from("external_drivers").insert(buildExternalDrivers());
+  await seedClient.from("workflow_stage_events").insert(buildWorkflowStageEvents());
 
   return NextResponse.json({ ok: true, message: "Demo organization seeded successfully with ~150 records." });
   } catch (error) {

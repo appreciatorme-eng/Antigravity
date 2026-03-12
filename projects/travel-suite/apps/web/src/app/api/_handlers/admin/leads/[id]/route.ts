@@ -2,6 +2,7 @@
 // Stage changes emit lead_events audit entries and conversion_events funnel events.
 
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
@@ -43,7 +44,7 @@ export async function GET(
 
   const { id } = await params;
   if (!id || typeof id !== "string") {
-    return NextResponse.json({ error: "Lead ID required" }, { status: 400 });
+    return apiError("Lead ID required", 400);
   }
 
   const { data: lead, error } = await admin.adminClient
@@ -54,7 +55,7 @@ export async function GET(
     .single();
 
   if (error || !lead) {
-    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    return apiError("Lead not found", 404);
   }
 
   return NextResponse.json({ lead });
@@ -69,7 +70,7 @@ export async function PATCH(
 
   const { id } = await params;
   if (!id || typeof id !== "string") {
-    return NextResponse.json({ error: "Lead ID required" }, { status: 400 });
+    return apiError("Lead ID required", 400);
   }
 
   const { data: existing, error: fetchError } = await admin.adminClient
@@ -80,14 +81,14 @@ export async function PATCH(
     .single();
 
   if (fetchError || !existing) {
-    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    return apiError("Lead not found", 404);
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return apiError("Invalid JSON body", 400);
   }
 
   const parsed = UpdateLeadSchema.safeParse(body);
@@ -124,7 +125,7 @@ export async function PATCH(
 
   if (updateError) {
     console.error("[admin/leads/:id] PATCH error:", updateError);
-    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+    return apiError("Failed to update lead", 500);
   }
 
   const leadEventType = stageChanged ? "stage_change" : note ? "note_added" : "stage_change";

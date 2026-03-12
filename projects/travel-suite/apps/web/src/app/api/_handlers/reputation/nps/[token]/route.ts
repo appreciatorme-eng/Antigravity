@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { repFrom } from "@/lib/reputation/db";
@@ -13,7 +14,7 @@ export async function GET(
     const { token } = await params;
 
     if (!token || !UUID_REGEX.test(token)) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+      return apiError("Invalid token", 400);
     }
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -24,7 +25,7 @@ export async function GET(
       prefix: "pub:nps:get",
     });
     if (!rl.success) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      return apiError("Too many requests", 429);
     }
 
     const supabase = await createClient();
@@ -40,27 +41,18 @@ export async function GET(
     }
 
     if (!send) {
-      return NextResponse.json(
-        { error: "Survey not found" },
-        { status: 404 }
-      );
+      return apiError("Survey not found", 404);
     }
 
     // Validate token not expired
     const expiresAt = new Date(send.nps_token_expires_at);
     if (expiresAt < new Date()) {
-      return NextResponse.json(
-        { error: "This survey link has expired" },
-        { status: 410 }
-      );
+      return apiError("This survey link has expired", 410);
     }
 
     // Check if already submitted
     if (send.nps_submitted_at) {
-      return NextResponse.json(
-        { error: "This survey has already been completed" },
-        { status: 409 }
-      );
+      return apiError("This survey has already been completed", 409);
     }
 
     const campaign = send.reputation_review_campaigns;
@@ -110,6 +102,6 @@ export async function GET(
     });
   } catch (error: unknown) {
     console.error("Error loading NPS form data:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return apiError("Internal server error", 500);
   }
 }

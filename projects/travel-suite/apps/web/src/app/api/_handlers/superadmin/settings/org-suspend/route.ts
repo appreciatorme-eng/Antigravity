@@ -1,6 +1,7 @@
 // POST /api/superadmin/settings/org-suspend — suspend or unsuspend an organization.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { getPlatformSetting, setPlatformSetting } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
@@ -13,12 +14,12 @@ export async function POST(request: NextRequest) {
 
     let body: { org_id?: string; action?: string; reason?: string };
     try { body = await request.json(); } catch {
-        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        return apiError("Invalid JSON", 400);
     }
 
-    if (!body.org_id) return NextResponse.json({ error: "org_id is required" }, { status: 400 });
+    if (!body.org_id) return apiError("org_id is required", 400);
     if (body.action !== "suspend" && body.action !== "unsuspend") {
-        return NextResponse.json({ error: "action must be 'suspend' or 'unsuspend'" }, { status: 400 });
+        return apiError("action must be 'suspend' or 'unsuspend'", 400);
     }
 
     try {
@@ -53,6 +54,6 @@ export async function POST(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/settings/org-suspend]", err);
-        return NextResponse.json({ error: "Failed to update org suspension" }, { status: 500 });
+        return apiError("Failed to update org suspension", 500);
     }
 }

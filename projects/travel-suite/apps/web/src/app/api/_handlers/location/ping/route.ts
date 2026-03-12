@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -12,13 +13,13 @@ export async function POST(req: NextRequest) {
     try {
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const token = authHeader.substring(7);
         const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
         if (authError || !authData?.user) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+            return apiError("Invalid token", 401);
         }
 
         const body = await req.json();
@@ -31,10 +32,10 @@ export async function POST(req: NextRequest) {
         const explicitDriverId = body.driverId ? String(body.driverId) : null;
 
         if (!tripId) {
-            return NextResponse.json({ error: "tripId is required" }, { status: 400 });
+            return apiError("tripId is required", 400);
         }
         if (!inRange(latitude, -90, 90) || !inRange(longitude, -180, 180)) {
-            return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
+            return apiError("Invalid coordinates", 400);
         }
 
         const userId = authData.user.id;
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         if (!trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         const isAdmin = profile?.role === "admin";
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
         const isAssignedDriver = isPrimaryTripDriver || hasMappedExternalDriverAssignment;
 
         if (!isAdmin && !isAssignedDriver) {
-            return NextResponse.json({ error: "Driver access required" }, { status: 403 });
+            return apiError("Driver access required", 403);
         }
 
         // Basic write throttling to reduce noisy high-frequency pings.
@@ -117,14 +118,11 @@ export async function POST(req: NextRequest) {
 
         if (insertError) {
             console.error("Location ping insert error:", insertError);
-            return NextResponse.json({ error: "Failed to record location" }, { status: 500 });
+            return apiError("Failed to record location", 500);
         }
 
         return NextResponse.json({ ok: true });
     } catch (error) {
-        return NextResponse.json(
-            { error: safeErrorMessage(error, "Failed to process location ping") },
-            { status: 500 }
-        );
+        return apiError(safeErrorMessage(error, "Failed to process location ping"), 500);
     }
 }

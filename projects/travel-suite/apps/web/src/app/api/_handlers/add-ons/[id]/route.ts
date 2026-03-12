@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
 
@@ -22,7 +23,7 @@ export async function GET(
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     const { data: profile } = await supabase
@@ -32,7 +33,7 @@ export async function GET(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     const { data: addon, error } = await supabase
@@ -43,13 +44,13 @@ export async function GET(
       .single();
 
     if (error || !addon) {
-      return NextResponse.json({ error: 'Add-on not found' }, { status: 404 });
+      return apiError('Add-on not found', 404);
     }
 
     return NextResponse.json({ addon });
   } catch (error) {
     console.error('Error in GET /api/add-ons/[id]:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return apiError('Internal server error', 500);
   }
 }
 
@@ -64,7 +65,7 @@ export async function PUT(
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get organization ID from profile
@@ -75,7 +76,7 @@ export async function PUT(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     const body = await request.json();
@@ -92,7 +93,7 @@ export async function PUT(
     if (body.price !== undefined) {
       const price = parseFloat(body.price);
       if (isNaN(price) || price < 0) {
-        return NextResponse.json({ error: 'Price must be zero or greater' }, { status: 400 });
+        return apiError('Price must be zero or greater', 400);
       }
       updatePayload.price = price;
     }
@@ -112,20 +113,17 @@ export async function PUT(
 
     if (error) {
       console.error('Error updating add-on:', error);
-      return NextResponse.json({ error: "Failed to update add-on" }, { status: 500 });
+      return apiError("Failed to update add-on", 500);
     }
 
     if (!addon) {
-      return NextResponse.json({ error: 'Add-on not found' }, { status: 404 });
+      return apiError('Add-on not found', 404);
     }
 
     return NextResponse.json({ addon });
   } catch (error) {
     console.error('Error in PUT /api/add-ons/[id]:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return apiError('Internal server error', 500);
   }
 }
 
@@ -147,7 +145,7 @@ export async function DELETE(
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get organization ID from profile
@@ -158,7 +156,7 @@ export async function DELETE(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     // Check if add-on has purchases
@@ -187,15 +185,12 @@ export async function DELETE(
 
     if (error) {
       console.error('Error deleting add-on:', error);
-      return NextResponse.json({ error: "Failed to delete add-on" }, { status: 500 });
+      return apiError("Failed to delete add-on", 500);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error in DELETE /api/add-ons/[id]:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return apiError('Internal server error', 500);
   }
 }

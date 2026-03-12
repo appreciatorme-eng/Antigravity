@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
@@ -14,12 +15,12 @@ export async function GET(request: NextRequest) {
     const admin = await requireAdmin(request);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const organizationId = resolveScopedOrgWithDemo(request, admin.organizationId);
     if (!organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const range = resolveAdminDateRange(request.nextUrl.searchParams);

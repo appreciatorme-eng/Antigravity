@@ -1,3 +1,4 @@
+import { logError } from "@/lib/observability/logger";
 
 interface WikimediaThumbnail {
     source?: string;
@@ -30,7 +31,7 @@ export async function getWikimediaImage(query: string): Promise<string | null> {
         const page = pages[0];
         return page.thumbnail?.source ?? null;
     } catch (error) {
-        console.error("Wikimedia API Error:", error);
+        logError("Wikimedia API Error", error);
         return null;
     }
 }

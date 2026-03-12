@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiSuccess } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkWPPConnectHealth } from "@/lib/whatsapp/session-health";
@@ -50,7 +51,7 @@ export async function GET() {
       token: connection?.session_token ?? null,
     });
 
-    return NextResponse.json(health);
+    return apiSuccess(health);
   } catch (error) {
     console.error("[whatsapp/health] unexpected error:", error);
     return NextResponse.json(

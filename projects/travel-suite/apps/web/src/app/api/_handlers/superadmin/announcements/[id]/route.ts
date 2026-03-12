@@ -1,6 +1,7 @@
 // PATCH /api/superadmin/announcements/:id — update a draft announcement.
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 export async function PATCH(
@@ -15,7 +16,7 @@ export async function PATCH(
 
     let body: Record<string, unknown>;
     try { body = await request.json(); } catch {
-        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        return apiError("Invalid JSON", 400);
     }
 
     try {
@@ -26,9 +27,9 @@ export async function PATCH(
             .eq("id", id)
             .single();
 
-        if (!current.data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (!current.data) return apiError("Not found", 404);
         if (current.data.status !== "draft") {
-            return NextResponse.json({ error: "Only draft announcements can be updated" }, { status: 409 });
+            return apiError("Only draft announcements can be updated", 409);
         }
 
         const allowed = ["title", "body", "announcement_type", "target_segment", "target_org_ids", "delivery_channels", "scheduled_at"];
@@ -46,9 +47,9 @@ export async function PATCH(
 
         if (result.error) throw result.error;
 
-        return NextResponse.json(result.data);
+        return apiSuccess(result.data);
     } catch (err) {
         console.error(`[superadmin/announcements/${id} PATCH]`, err);
-        return NextResponse.json({ error: "Failed to update announcement" }, { status: 500 });
+        return apiError("Failed to update announcement", 500);
     }
 }

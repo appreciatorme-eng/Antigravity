@@ -1,14 +1,41 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// GET /api/superadmin/support/tickets — paginated support ticket list with filters.
+// GET /api/superadmin/support/tickets -- paginated support ticket list with filters.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * The live DB has a support_tickets_user_id_fkey relationship that is not present
+ * in the generated Database types. We use an untyped SupabaseClient for the join query.
+ */
+type UntypedClient = SupabaseClient;
+
+type TicketWithProfile = {
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    user_id: string;
+    admin_response: string | null;
+    responded_at: string | null;
+    profiles: {
+        full_name?: string;
+        email?: string;
+        organization_id?: string;
+        organizations?: { name?: string } | null;
+    } | null;
+};
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
 
-    const { adminClient } = auth;
+    const db = auth.adminClient as unknown as UntypedClient;
     const params = request.nextUrl.searchParams;
     const status = params.get("status") ?? "all";
     const priority = params.get("priority") ?? "all";
@@ -17,7 +44,6 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(10, Number(params.get("limit") || 50)));
 
     try {
-        const db = adminClient as any;
         let query = db
             .from("support_tickets")
             .select(
@@ -40,11 +66,8 @@ export async function GET(request: NextRequest) {
             db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
         ]);
 
-        const tickets = (result.data ?? []).map((t: any) => {
-            const profile = t.profiles as {
-                full_name?: string; email?: string; organization_id?: string;
-                organizations?: { name?: string } | null;
-            } | null;
+        const tickets = ((result.data ?? []) as unknown as TicketWithProfile[]).map((t) => {
+            const profile = t.profiles;
             return {
                 id: t.id,
                 title: t.title,
@@ -74,6 +97,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/support/tickets]", err);
-        return NextResponse.json({ error: "Failed to load tickets" }, { status: 500 });
+        return apiError("Failed to load tickets", 500);
     }
 }

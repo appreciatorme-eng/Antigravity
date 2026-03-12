@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from '@/lib/security/safe-error';
 
@@ -8,7 +8,7 @@ export async function GET() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', 401);
         }
 
         const { data: profile } = await supabase
@@ -18,7 +18,7 @@ export async function GET() {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: 'No organization found' }, { status: 400 });
+            return apiError('No organization found', 400);
         }
 
         const { data: connections, error } = await supabase
@@ -28,10 +28,10 @@ export async function GET() {
 
         if (error) throw error;
 
-        return NextResponse.json(connections);
+        return apiSuccess(connections);
     } catch (error: unknown) {
         console.error('Error fetching social connections:', error);
         const message = safeErrorMessage(error, "Request failed");
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiError(message, 500);
     }
 }

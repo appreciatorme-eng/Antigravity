@@ -7,6 +7,7 @@ import 'server-only';
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logError } from '@/lib/observability/logger';
 import type { ExtractedTourData } from './types';
 
 function getGeminiKey(apiKey?: string) {
@@ -160,7 +161,7 @@ ${htmlResult.html.substring(0, 50000)}
 
     return { success: true, data: extractedData };
   } catch (error) {
-    console.error('Error extracting tour from URL:', error);
+    logError('Error extracting tour from URL', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }

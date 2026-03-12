@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/observability/logger";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
@@ -132,7 +133,7 @@ async function dispatch(
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
     }
-    console.error("[api-dispatch] unhandled error:", error);
+    logError("[api-dispatch] unhandled error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

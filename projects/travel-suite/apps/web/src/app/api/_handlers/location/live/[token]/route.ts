@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "node:crypto";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -26,7 +27,7 @@ export async function GET(
     try {
         const { token } = await params;
         if (!/^[a-f0-9]{32}$/i.test(token)) {
-            return NextResponse.json({ error: "Invalid share token format" }, { status: 400 });
+            return apiError("Invalid share token format", 400);
         }
 
         const ipHash = sha256(getClientIp(req));
@@ -41,7 +42,7 @@ export async function GET(
             .gte("created_at", windowStartIso);
 
         if ((recentCount || 0) >= SHARE_RATE_LIMIT_MAX_REQUESTS) {
-            return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+            return apiError("Rate limit exceeded", 429);
         }
 
         void supabaseAdmin.from("trip_location_share_access_logs").insert({
@@ -72,11 +73,11 @@ export async function GET(
             .single();
 
         if (shareError || !share) {
-            return NextResponse.json({ error: "Invalid share token" }, { status: 404 });
+            return apiError("Invalid share token", 404);
         }
 
         if (share.expires_at && new Date(share.expires_at) < new Date()) {
-            return NextResponse.json({ error: "Share link expired" }, { status: 410 });
+            return apiError("Share link expired", 410);
         }
 
         const { data: latestLocation } = await supabaseAdmin
@@ -129,9 +130,6 @@ export async function GET(
             location: latestLocation || null,
         });
     } catch (error) {
-        return NextResponse.json(
-            { error: safeErrorMessage(error, "Failed to fetch location data") },
-            { status: 500 }
-        );
+        return apiError(safeErrorMessage(error, "Failed to fetch location data"), 500);
     }
 }

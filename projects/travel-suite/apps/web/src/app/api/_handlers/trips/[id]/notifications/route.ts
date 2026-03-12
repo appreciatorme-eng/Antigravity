@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -24,12 +25,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
   try {
     const userId = await getAuthUserId(req);
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { id: tripId } = await params;
     if (!tripId) {
-      return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+      return apiError("Missing trip id", 400);
     }
 
     // Fetch from notification_logs

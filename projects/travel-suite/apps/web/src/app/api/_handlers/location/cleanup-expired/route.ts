@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
         const hasServiceRoleBearer = isServiceRoleBearer(authHeader);
 
         if (!hasSecret && !hasSignedSecret && !hasServiceRoleBearer && !admin.userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const nowIso = new Date().toISOString();
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error("Error cleaning up expired locations:", error);
-            return NextResponse.json({ error: "Failed to clean up expired locations" }, { status: 500 });
+            return apiError("Failed to clean up expired locations", 500);
         }
 
         if (admin.userId) {
@@ -85,9 +86,6 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error("Error in POST /api/location/cleanup-expired:", error);
-        return NextResponse.json(
-            { error: "Failed to clean up expired locations" },
-            { status: 500 }
-        );
+        return apiError("Failed to clean up expired locations", 500);
     }
 }

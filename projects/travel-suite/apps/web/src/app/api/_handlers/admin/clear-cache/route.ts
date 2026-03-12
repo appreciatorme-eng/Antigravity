@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getRequestContext, getRequestId, logError } from "@/lib/observability/logger";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -50,27 +51,21 @@ async function clearCacheForRequest(req: NextRequest): Promise<NextResponse> {
         prefix: "api:admin:clear-cache:mutate",
     });
     if (!rateLimit.success) {
-        return NextResponse.json(
-            { error: "Too many cache clear requests. Please retry later." },
-            { status: 429 }
-        );
+        return apiError("Too many cache clear requests. Please retry later.", 429);
     }
 
     if (!passesMutationCsrfGuard(req)) {
-        return NextResponse.json({ error: "CSRF validation failed for admin mutation" }, { status: 403 });
+        return apiError("CSRF validation failed for admin mutation", 403);
     }
 
     const { destination, clearAll } = await parseClearCacheParams(req);
 
     if (admin.isSuperAdmin && !destination && !clearAll) {
-        return NextResponse.json(
-            { error: "Super admin must pass all=true to clear all cache." },
-            { status: 400 }
-        );
+        return apiError("Super admin must pass all=true to clear all cache.", 400);
     }
 
     if (!admin.isSuperAdmin && !admin.organizationId) {
-        return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        return apiError("Admin organization not configured", 400);
     }
 
     try {

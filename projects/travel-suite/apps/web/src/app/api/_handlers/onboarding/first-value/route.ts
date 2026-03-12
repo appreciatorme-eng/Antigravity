@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     } = await serverClient.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const adminClient = createAdminClient();
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      return apiError("Profile not found", 404);
     }
 
     let scopedUserIds: string[] = [user.id];
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       .limit(5000);
 
     if (itinerariesError) {
-      return NextResponse.json({ error: itinerariesError.message }, { status: 500 });
+      return apiError(itinerariesError.message, 500);
     }
 
     const itineraryIds = (itineraries || []).map((itinerary) => itinerary.id);
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
         .limit(5000);
 
       if (sharesError) {
-        return NextResponse.json({ error: sharesError.message }, { status: 500 });
+        return apiError(sharesError.message, 500);
       }
 
       sharedCount = shares?.length || 0;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
@@ -217,7 +218,7 @@ export async function GET(request: NextRequest) {
     const organizationId = admin.organizationId;
 
     if (!organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const dayStart = startOfUtcDay(now);
@@ -264,19 +265,19 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (tripsResult.error) {
-      return NextResponse.json({ error: "Failed to fetch trip data" }, { status: 500 });
+      return apiError("Failed to fetch trip data", 500);
     }
 
     if (invoicesResult.error) {
-      return NextResponse.json({ error: "Failed to fetch invoice data" }, { status: 500 });
+      return apiError("Failed to fetch invoice data", 500);
     }
 
     if (proposalsResult.error) {
-      return NextResponse.json({ error: "Failed to fetch proposal data" }, { status: 500 });
+      return apiError("Failed to fetch proposal data", 500);
     }
 
     if (paidInvoicesResult.error) {
-      return NextResponse.json({ error: "Failed to fetch payment data" }, { status: 500 });
+      return apiError("Failed to fetch payment data", 500);
     }
 
     const followupsResult = await fetchScopedFollowUps({
@@ -287,7 +288,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (followupsResult.error) {
-      return NextResponse.json({ error: "Failed to fetch follow-up data" }, { status: 500 });
+      return apiError("Failed to fetch follow-up data", 500);
     }
 
     const trips = tripsResult.data || [];
@@ -320,11 +321,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (itineraryTitlesResult.error) {
-      return NextResponse.json({ error: "Failed to fetch itinerary data" }, { status: 500 });
+      return apiError("Failed to fetch itinerary data", 500);
     }
 
     if (clientProfilesResult.error) {
-      return NextResponse.json({ error: "Failed to fetch client data" }, { status: 500 });
+      return apiError("Failed to fetch client data", 500);
     }
 
     const itineraryMap = new Map(

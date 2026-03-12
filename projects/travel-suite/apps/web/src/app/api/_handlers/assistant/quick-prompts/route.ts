@@ -43,8 +43,7 @@ async function authenticate(): Promise<
 
 function prefsTable() {
   const admin = createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (admin as any).from("assistant_preferences");
+  return admin.from("assistant_preferences");
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -127,7 +126,7 @@ export async function POST(request: Request) {
           organization_id: auth.orgId,
           user_id: auth.userId,
           preference_key: PREFERENCE_KEY,
-          preference_value: validation.value,
+          preference_value: [...validation.value],
         },
         { onConflict: "organization_id,user_id,preference_key" },
       );

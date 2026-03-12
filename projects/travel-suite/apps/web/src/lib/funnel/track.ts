@@ -2,6 +2,7 @@
 // Errors are logged but never propagate; callers are never blocked.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 import type { ConversionEventType } from "@/lib/leads/types";
 
 interface TrackFunnelEventOptions {
@@ -35,10 +36,10 @@ export function trackFunnelEvent({
   )
     .then(({ error }) => {
       if (error) {
-        console.error(`[funnel] Failed to track ${eventType}:`, error);
+        logError(`[funnel] Failed to track ${eventType}`, error);
       }
     })
     .catch((err: unknown) => {
-      console.error(`[funnel] Exception tracking ${eventType}:`, err);
+      logError(`[funnel] Exception tracking ${eventType}`, err);
     });
 }

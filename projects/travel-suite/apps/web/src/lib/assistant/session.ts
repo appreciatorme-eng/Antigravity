@@ -13,14 +13,11 @@ import "server-only";
  * Immutable patterns: every returned object is freshly constructed;
  * no in-place mutations.
  *
- * NOTE: `assistant_sessions` is not yet in the generated Database
- * types. We cast `ctx.supabase` via `(ctx.supabase as any)` until
- * `supabase gen types` is re-run after the migration is applied.
- * This follows the same pattern used in lib/semantic-cache.ts and
- * lib/subscriptions/limits.ts.
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext, ConversationMessage } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -53,13 +50,9 @@ const MAX_HISTORY_LENGTH = 20;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Untyped accessor for the `assistant_sessions` table.
- * Remove after `supabase gen types` includes the new table.
- */
+/** Accessor for the `assistant_sessions` table. */
 function sessionsTable(ctx: ActionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (ctx.supabase as any).from("assistant_sessions");
+  return ctx.supabase.from("assistant_sessions");
 }
 
 // ---------------------------------------------------------------------------
@@ -88,9 +81,9 @@ export async function getOrCreateSession(
 
   if (!selectError && existing) {
     return {
-      id: existing.id as string,
-      conversationHistory: (existing.conversation_history ?? []) as readonly ConversationMessage[],
-      pendingAction: (existing.pending_action as PendingAction) ?? null,
+      id: existing.id,
+      conversationHistory: (existing.conversation_history ?? []) as unknown as readonly ConversationMessage[],
+      pendingAction: (existing.pending_action as unknown as PendingAction) ?? null,
     };
   }
 
@@ -108,14 +101,14 @@ export async function getOrCreateSession(
     .single();
 
   if (insertError || !created) {
-    console.error("[assistant/session] create error:", insertError?.message);
+    logError("[assistant/session] create error", insertError);
     throw new Error(
       `Failed to create assistant session: ${safeErrorMessage(insertError, "unknown error")}`,
     );
   }
 
   return {
-    id: created.id as string,
+    id: created.id,
     conversationHistory: [],
     pendingAction: null,
   };
@@ -137,12 +130,12 @@ export async function updateSessionHistory(
   const trimmedHistory = history.slice(-MAX_HISTORY_LENGTH);
 
   const { error } = await sessionsTable(ctx)
-    .update({ conversation_history: trimmedHistory })
+    .update({ conversation_history: trimmedHistory as unknown as Json })
     .eq("id", sessionId)
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] updateSessionHistory error:", error.message);
+    logError("[assistant/session] updateSessionHistory error", error);
     throw new Error(
       `Failed to update session history: ${safeErrorMessage(error, "database error")}`,
     );
@@ -163,12 +156,12 @@ export async function setPendingAction(
   action: PendingAction,
 ): Promise<void> {
   const { error } = await sessionsTable(ctx)
-    .update({ pending_action: action })
+    .update({ pending_action: action as unknown as Json })
     .eq("id", sessionId)
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] setPendingAction error:", error.message);
+    logError("[assistant/session] setPendingAction error", error);
     throw new Error(
       `Failed to set pending action: ${safeErrorMessage(error, "database error")}`,
     );
@@ -188,7 +181,7 @@ export async function clearPendingAction(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] clearPendingAction error:", error.message);
+    logError("[assistant/session] clearPendingAction error", error);
     throw new Error(
       `Failed to clear pending action: ${safeErrorMessage(error, "database error")}`,
     );
@@ -212,5 +205,5 @@ export async function getPendingAction(
     return null;
   }
 
-  return (data.pending_action as PendingAction) ?? null;
+  return (data.pending_action as unknown as PendingAction) ?? null;
 }

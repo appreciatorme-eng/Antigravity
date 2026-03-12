@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { toNumber } from "@/lib/admin/insights";
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const monthStart = monthStartISO();
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
     if (orgRes.error || usageRes.error) {
       const err = orgRes.error || usageRes.error;
       if (!isSchemaDriftError(err?.message || undefined)) {
-        return NextResponse.json({ error: "Failed to load AI usage" }, { status: 500 });
+        return apiError("Failed to load AI usage", 500);
       }
 
       return NextResponse.json({

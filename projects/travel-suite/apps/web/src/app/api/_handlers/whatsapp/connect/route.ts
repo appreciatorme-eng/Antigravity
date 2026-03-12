@@ -3,6 +3,7 @@
 // Idempotent: safe to call multiple times — existing sessions are reused.
 // createWahaSession now returns a Bearer token stored in whatsapp_connections.
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -20,10 +21,10 @@ export async function POST() {
         const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
         const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
         if (!webhookSecret) {
-            return NextResponse.json({ error: "Webhook secret is not configured" }, { status: 503 });
+            return apiError("Webhook secret is not configured", 503);
         }
         if (!appUrl) {
-            return NextResponse.json({ error: "App URL is not configured" }, { status: 503 });
+            return apiError("App URL is not configured", 503);
         }
 
         const supabase = await createClient();
@@ -32,7 +33,7 @@ export async function POST() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const rateLimit = await enforceRateLimit({

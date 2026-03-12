@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { daysUntil, normalizeStatus, safeTitle } from "@/lib/admin/insights";
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     if (!admin.ok) return admin.response;
 
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const { searchParams } = new URL(req.url);
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error || notificationRes.error || tripRes.error || clientRes.error) {
-      return NextResponse.json({ error: "Failed to build ops copilot queue" }, { status: 500 });
+      return apiError("Failed to build ops copilot queue", 500);
     }
 
     const actions: CopilotAction[] = [];

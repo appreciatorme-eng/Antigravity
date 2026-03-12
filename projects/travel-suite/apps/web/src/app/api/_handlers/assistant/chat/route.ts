@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { handleMessage } from "@/lib/assistant/orchestrator";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     // 2. Get organization ID from profile
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
     });
 
     // 6. Return orchestrator response
-    return NextResponse.json(response);
+    return apiSuccess(response);
   } catch (error) {
     console.error("Assistant chat error:", error);
     return NextResponse.json(

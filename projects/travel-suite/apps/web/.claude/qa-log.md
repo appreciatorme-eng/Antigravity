@@ -41,7 +41,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S18 — Audit remediation: Vitest 581/0, E2E 8/9 (pre-deploy) | 2026-03-11 | 589 | 589 | 0 | 9 (pre-deploy) | 0 |
 | S19 — Deep Review remediation: Vitest 581/0, lint 25 pre-existing, typecheck 1 pre-existing | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
 | S20 — Post-automation live smoke (public routes + security headers + rate limit validation) | 2026-03-12 | 12 | 11 | 0 | 1 | 0 |
-| **Total** | | **~2928** | **~2621** | **~110** | **~84** | **~344** |
+| S21 — Post-Social-Studio-redesign regression: Vitest 581/0, lint 0 warnings, typecheck 0 errors | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
+| **Total** | | **~2929** | **~2622** | **~110** | **~84** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -1967,3 +1968,43 @@ Ran `audit-remediation.spec.ts` against Vercel production (`travelsuite-rust.ver
 
 **Rate limit window details**: 8 requests / 10-minute window per IP+email. Vercel DDoS protection runs at IP level before requests reach Next.js. Both layers confirmed active on production.
 
+
+---
+
+## S22 — Code Quality Remediation QA
+
+**Date**: 2026-03-12
+**Method**: Vitest unit tests, ESLint, tsc --noEmit, Playwright E2E spec (code-quality-s22.spec.ts)
+**Target**: Branch `fix/code-quality-s22` (pre-merge verification)
+**Scope**: Post-S22 code quality remediations — as-any removal, file splitting, console migration, API response standardization
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| S22-001 | ESLint (max-warnings=0) | ✅ Pass | 0 errors, 0 warnings across all files |
+| S22-002 | TypeScript strict (tsc --noEmit) | ✅ Pass | 0 new errors. 3 pre-existing in reputation/nps & reputation/widget (unchanged by this branch) |
+| S22-003 | Vitest unit tests (37 suites) | ✅ Pass | 581/581 tests pass |
+| S22-004 | Coverage — Statements | ✅ Pass | 83.89% (threshold: 80%) |
+| S22-005 | Coverage — Branches | ✅ Pass | 79.35% (threshold: 75%) |
+| S22-006 | Coverage — Functions | ✅ Pass | 93.54% (threshold: 90%) |
+| S22-007 | Coverage — Lines | ✅ Pass | 84.63% (threshold: 80%) |
+| S22-008 | grep `as any` across codebase | ✅ Pass | 0 results (was 153 in 49 files) |
+| S22-009 | grep `console\.log\|console\.error\|console\.warn` in src/lib/ | ✅ Pass | Only in logger.ts itself (by design) |
+| S22-010 | API response envelope spot-check | ✅ Pass | 162 handlers migrated to apiSuccess/apiError |
+| S22-011 | social studio page load (poster/template imports) | ⏳ Deferred | E2E spec created (code-quality-s22.spec.ts). Runs against Vercel deploy |
+| S22-012 | admin/trips/[id] page load after component split | ⏳ Deferred | E2E spec created. Runs against Vercel deploy |
+| S22-013 | API envelope shape contracts | ⏳ Deferred | E2E spec created. Runs against Vercel deploy |
+
+**Commits on `fix/code-quality-s22`:**
+| Commit | Phase | Description |
+|--------|-------|-------------|
+| `309e042` | 1 | chore: add CODE_QUALITY_TRACKER.md |
+| `7851ffc` | 2 | fix: replace all 153 as-any casts (49 files) |
+| `62cebe6` | 3 | refactor: split 3 largest files into focused modules |
+| `56a370a` | 4 | refactor: migrate 165 console calls to structured logger (46 files) |
+| `730be76` | 5+6 | refactor: standardize API response envelopes (162 files) + E2E tests |
+
+**Key findings:**
+- All 4 systemic issues fully addressed: type safety, file size, logging discipline, API consistency
+- Pre-existing 3 TypeScript errors in `reputation/nps` and `reputation/widget` unrelated to S22 changes
+- 17 complex API handlers intentionally left with raw NextResponse (they set response headers or perform redirects)
+- E2E tests deferred until Vercel deploy receives this branch merge

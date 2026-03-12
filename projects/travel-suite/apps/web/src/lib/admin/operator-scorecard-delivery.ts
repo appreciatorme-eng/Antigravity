@@ -2,6 +2,7 @@ import "server-only";
 
 import React from "react";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
+import { logError } from "@/lib/observability/logger";
 import { env } from "@/lib/config/env";
 import { sendOperatorScorecardNotification } from "@/lib/email/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -150,9 +151,8 @@ export async function deliverMonthlyOperatorScorecards(args: {
       }
     } catch (error) {
       results.failed += 1;
-      console.error("[operator-scorecards] delivery failed:", {
+      logError("[operator-scorecards] delivery failed", error, {
         organizationId: organization.id,
-        error,
       });
     }
   }

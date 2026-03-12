@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -8,8 +9,6 @@ const UpdateSchema = z.object({
   description: z.string().nullable().optional(),
   amount: z.number().min(0).optional(),
 });
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 function extractId(req: NextRequest): string {
   const segments = new URL(req.url).pathname.split("/");
@@ -21,11 +20,11 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .select("id, description, amount, category, month_start, organization_id, created_at, updated_at")
@@ -35,13 +34,13 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/overheads/[id]:GET] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     if (!data) {
-      return NextResponse.json({ error: "Overhead not found" }, { status: 404 });
+      return apiError("Overhead not found", 404);
     }
 
-    return NextResponse.json(data);
+    return apiSuccess(data);
   } catch (error) {
     console.error("[/api/admin/pricing/overheads/[id]:GET] Unhandled error:", error);
     return Response.json(
@@ -56,13 +55,13 @@ export async function PATCH(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
     const body = await req.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      return apiError("Invalid JSON", 400);
     }
 
     const parsed = UpdateSchema.safeParse(body);
@@ -73,7 +72,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
@@ -89,7 +88,7 @@ export async function PATCH(req: NextRequest) {
         { status: error ? 500 : 404 }
       );
     }
-    return NextResponse.json(data);
+    return apiSuccess(data);
   } catch (error) {
     console.error("[/api/admin/pricing/overheads/[id]:PATCH] Unhandled error:", error);
     return Response.json(
@@ -104,11 +103,11 @@ export async function DELETE(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { error } = await db
       .from("monthly_overhead_expenses")
       .delete()
@@ -117,7 +116,7 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/overheads/[id]:DELETE] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     return NextResponse.json({ success: true });
   } catch (error) {

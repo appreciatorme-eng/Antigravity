@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import {
     convertCurrency,
     getExchangeRates,
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
             prefix: "pub:currency",
         });
         if (!rateLimit.success) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+            return apiError("Too many requests", 429);
         }
 
         // Get available currencies
@@ -69,10 +70,7 @@ export async function GET(request: NextRequest) {
 
             const currencies = await getAvailableCurrencies();
             if (!currencies) {
-                return NextResponse.json(
-                    { error: "Could not fetch currency list" },
-                    { status: 500 }
-                );
+                return apiError("Could not fetch currency list", 500);
             }
 
             await setCachedJson(cacheKey, currencies, CURRENCY_LIST_TTL_SECONDS);
@@ -90,10 +88,7 @@ export async function GET(request: NextRequest) {
 
             const rates = await getExchangeRates(normalizedBase);
             if (!rates) {
-                return NextResponse.json(
-                    { error: `Could not fetch rates for: ${normalizedBase}` },
-                    { status: 404 }
-                );
+                return apiError(`Could not fetch rates for: ${normalizedBase}`, 404);
             }
 
             await setCachedJson(cacheKey, rates, CURRENCY_RATES_TTL_SECONDS);
@@ -104,10 +99,7 @@ export async function GET(request: NextRequest) {
         if (amount && from && to) {
             const numAmount = parseFloat(amount);
             if (isNaN(numAmount) || numAmount < 0) {
-                return NextResponse.json(
-                    { error: "Invalid amount" },
-                    { status: 400 }
-                );
+                return apiError("Invalid amount", 400);
             }
 
             const normalizedFrom = normalizeCurrencyCode(from);
@@ -121,10 +113,7 @@ export async function GET(request: NextRequest) {
 
             const conversion = await convertCurrency(numAmount, normalizedFrom, normalizedTo);
             if (!conversion) {
-                return NextResponse.json(
-                    { error: `Could not convert ${normalizedFrom} to ${normalizedTo}` },
-                    { status: 404 }
-                );
+                return apiError(`Could not convert ${normalizedFrom} to ${normalizedTo}`, 404);
             }
 
             const payload: ConversionResponse = {
@@ -152,9 +141,6 @@ export async function GET(request: NextRequest) {
         );
     } catch (error) {
         console.error("Currency API error:", error);
-        return NextResponse.json(
-            { error: "Failed to process currency request" },
-            { status: 500 }
-        );
+        return apiError("Failed to process currency request", 500);
     }
 }

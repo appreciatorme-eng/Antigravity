@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { deliverMonthlyOperatorScorecards } from "@/lib/admin/operator-scorecard-delivery";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const organizationId = request.nextUrl.searchParams.get("organizationId") || undefined;

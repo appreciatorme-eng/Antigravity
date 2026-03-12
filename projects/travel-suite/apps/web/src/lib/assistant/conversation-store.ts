@@ -10,6 +10,7 @@ import "server-only";
  * Immutable patterns throughout. Never throws -- returns empty on error.
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "./types";
 
 // Types
@@ -38,8 +39,7 @@ export interface ConversationDetail {
 
 // Helper
 function convTable(ctx: ActionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (ctx.supabase as any).from("assistant_conversations");
+  return ctx.supabase.from("assistant_conversations");
 }
 
 // Save a message pair (user + assistant) to a conversation
@@ -80,7 +80,7 @@ export async function saveConversationMessages(
 
     await convTable(ctx).insert(rows);
   } catch (error) {
-    console.error("Failed to save conversation:", error);
+    logError("Failed to save conversation", error);
   }
 }
 

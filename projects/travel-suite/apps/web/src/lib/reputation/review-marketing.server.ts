@@ -44,8 +44,7 @@ async function getReviewForOrganization(
   reviewId: string,
   organizationId: string
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation_reviews is present in live schema but not in generated typings
-  const { data: review, error } = await (supabase as any)
+  const { data: review, error } = await supabase
     .from("reputation_reviews")
     .select("id, organization_id, rating, comment, title, reviewer_name, platform, destination, trip_type")
     .eq("id", reviewId)

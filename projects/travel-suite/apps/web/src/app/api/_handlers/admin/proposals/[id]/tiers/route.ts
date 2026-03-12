@@ -2,6 +2,7 @@
 // PATCH sets operator-defined prices per tier; GET returns current tier_pricing.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
@@ -35,10 +36,7 @@ export async function GET(
     const admin = await requireAdmin(request);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json(
-        { error: "Admin organization not configured" },
-        { status: 400 }
-      );
+      return apiError("Admin organization not configured", 400);
     }
 
     const { id: proposalId } = await params;
@@ -51,7 +49,7 @@ export async function GET(
       .maybeSingle();
 
     if (error || !proposal) {
-      return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+      return apiError("Proposal not found", 404);
     }
 
     const tierPricing = parseTierPricing(proposal.tier_pricing);
@@ -83,10 +81,7 @@ export async function PATCH(
     const admin = await requireAdmin(request);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json(
-        { error: "Admin organization not configured" },
-        { status: 400 }
-      );
+      return apiError("Admin organization not configured", 400);
     }
 
     const { id: proposalId } = await params;
@@ -135,10 +130,10 @@ export async function PATCH(
 
     if (error) {
       console.error("[/api/admin/proposals/[id]/tiers:PATCH] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Validation failed") }, { status: 400 });
+      return apiError(safeErrorMessage(error, "Validation failed"), 400);
     }
     if (!updated) {
-      return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+      return apiError("Proposal not found", 404);
     }
 
     return NextResponse.json({

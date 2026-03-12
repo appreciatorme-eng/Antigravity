@@ -1,6 +1,7 @@
-// GET /api/superadmin/analytics/feature-usage — cross-org feature usage aggregate.
+// GET /api/superadmin/analytics/feature-usage -- cross-org feature usage aggregate.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function daysAgo(n: number): string {
@@ -16,8 +17,7 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { adminClient } = auth;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = adminClient as any;
+    const db = adminClient;
     const range = request.nextUrl.searchParams.get("range") || "30d";
     const days = rangeToMs(range);
     const since = daysAgo(days);
@@ -52,10 +52,11 @@ export async function GET(request: NextRequest) {
             .gte("created_at", since)
             .limit(500);
 
+        type OrgJoinRow = { organization_id: string | null; organizations: { name?: string; subscription_tier?: string } | null };
         const orgCounts: Record<string, { name: string; tier: string; trips: number }> = {};
-        for (const row of (topOrgsResult.data ?? [])) {
+        for (const row of ((topOrgsResult.data ?? []) as unknown as OrgJoinRow[])) {
             const orgId = row.organization_id as string;
-            const org = row.organizations as { name?: string; subscription_tier?: string } | null;
+            const org = row.organizations;
             if (!orgCounts[orgId]) {
                 orgCounts[orgId] = { name: org?.name ?? orgId, tier: org?.subscription_tier ?? "free", trips: 0 };
             }
@@ -79,6 +80,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/analytics/feature-usage]", err);
-        return NextResponse.json({ error: "Failed to load feature usage" }, { status: 500 });
+        return apiError("Failed to load feature usage", 500);
     }
 }

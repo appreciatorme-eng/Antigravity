@@ -13,6 +13,7 @@ import "server-only";
  * ------------------------------------------------------------------ */
 
 import { getCachedJson, setCachedJson, deleteCachedByPrefix } from "@/lib/cache/upstash";
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext, OrchestratorResponse } from "../types";
 import { findAction } from "../actions/registry";
 import type { WorkflowDefinition } from "./definitions";
@@ -63,7 +64,7 @@ export async function saveWorkflowState(
       WORKFLOW_TTL_SECONDS,
     );
   } catch (error) {
-    console.error("Failed to save workflow state:", error);
+    logError("Failed to save workflow state", error);
   }
 }
 

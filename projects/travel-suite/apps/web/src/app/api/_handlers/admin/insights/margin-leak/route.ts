@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { clamp, medianPrice, normalizeStatus, safeTitle, toNumber } from "@/lib/admin/insights";
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
     if (!admin.ok) return admin.response;
 
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const parsed = QuerySchema.safeParse({
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error) {
-      return NextResponse.json({ error: "Failed to analyze margin leak" }, { status: 500 });
+      return apiError("Failed to analyze margin leak", 500);
     }
 
     const proposals = proposalRes.data || [];

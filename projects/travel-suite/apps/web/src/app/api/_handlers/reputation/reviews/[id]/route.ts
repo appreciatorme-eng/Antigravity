@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(
@@ -15,7 +17,7 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -25,11 +27,10 @@ export async function GET(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
       .select("*")
       .eq("id", id)
@@ -41,14 +42,14 @@ export async function GET(
     }
 
     if (!review) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
+      return apiError("Review not found", 404);
     }
 
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation review:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -64,7 +65,7 @@ export async function PATCH(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -74,7 +75,7 @@ export async function PATCH(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
@@ -95,10 +96,7 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return apiError("No valid fields to update", 400);
     }
 
     // Auto-set response metadata when marking as responded
@@ -107,10 +105,9 @@ export async function PATCH(
       updateData.response_posted_by = user.id;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
-      .update(updateData)
+      .update(updateData as Database['public']['Tables']['reputation_reviews']['Update'])
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
       .select()
@@ -121,7 +118,7 @@ export async function PATCH(
     }
 
     if (!review) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
+      return apiError("Review not found", 404);
     }
 
     revalidateTag("reputation", "max");
@@ -129,6 +126,6 @@ export async function PATCH(
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error updating reputation review:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

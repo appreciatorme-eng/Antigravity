@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-
-type AdminClient = ReturnType<typeof createAdminClient>;
 
 const AvailabilityQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -15,12 +12,6 @@ const AvailabilityCreateSchema = z.object({
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   reason: z.string().trim().max(240).optional(),
 });
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function untypedFrom(client: AdminClient, table: string): any {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (client as any).from(table);
-}
 
 
 export async function GET(request: Request) {
@@ -43,7 +34,8 @@ export async function GET(request: Request) {
     }
 
     const admin = adminResult.adminClient;
-    const { data, error } = await untypedFrom(admin, "operator_unavailability")
+    const { data, error } = await admin
+      .from("operator_unavailability")
       .select("id, start_date, end_date, reason, created_at")
       .eq("organization_id", adminResult.organizationId!)
       .lte("start_date", parsed.data.to)
@@ -55,20 +47,14 @@ export async function GET(request: Request) {
       return apiError("Failed to load blocked dates", 500);
     }
 
-    const rows = Array.isArray(data) ? data : [];
+    const rows = data ?? [];
     return apiSuccess(
       rows.map((row) => ({
-        id: String((row as Record<string, unknown>).id),
-        startDate: String((row as Record<string, unknown>).start_date),
-        endDate: String((row as Record<string, unknown>).end_date),
-        reason:
-          typeof (row as Record<string, unknown>).reason === "string"
-            ? String((row as Record<string, unknown>).reason)
-            : null,
-        createdAt:
-          typeof (row as Record<string, unknown>).created_at === "string"
-            ? String((row as Record<string, unknown>).created_at)
-            : null,
+        id: row.id,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        reason: row.reason,
+        createdAt: row.created_at,
       })),
     );
   } catch (error) {
@@ -95,7 +81,8 @@ export async function POST(request: Request) {
       return apiError("End date must be on or after the start date", 400);
     }
 
-    const { data, error } = await untypedFrom(admin.adminClient, "operator_unavailability")
+    const { data, error } = await admin.adminClient
+      .from("operator_unavailability")
       .insert({
         organization_id: admin.organizationId!,
         start_date: parsed.data.start_date,
@@ -111,17 +98,11 @@ export async function POST(request: Request) {
     }
 
     return apiSuccess({
-      id: String((data as Record<string, unknown>).id),
-      startDate: String((data as Record<string, unknown>).start_date),
-      endDate: String((data as Record<string, unknown>).end_date),
-      reason:
-        typeof (data as Record<string, unknown>).reason === "string"
-          ? String((data as Record<string, unknown>).reason)
-          : null,
-      createdAt:
-        typeof (data as Record<string, unknown>).created_at === "string"
-          ? String((data as Record<string, unknown>).created_at)
-          : null,
+      id: data.id,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      reason: data.reason,
+      createdAt: data.created_at,
     });
   } catch (error) {
     console.error("[availability] unexpected POST error:", error);
@@ -141,7 +122,8 @@ export async function DELETE(request: Request) {
       return apiError("Blocked date id is required", 400);
     }
 
-    const { error } = await untypedFrom(admin.adminClient, "operator_unavailability")
+    const { error } = await admin.adminClient
+      .from("operator_unavailability")
       .delete()
       .eq("id", id)
       .eq("organization_id", admin.organizationId!);

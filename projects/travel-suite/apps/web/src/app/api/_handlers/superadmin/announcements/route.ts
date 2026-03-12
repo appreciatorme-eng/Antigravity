@@ -1,6 +1,7 @@
 // GET + POST /api/superadmin/announcements — list all and create new announcements.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/announcements GET]", err);
-        return NextResponse.json({ error: "Failed to load announcements" }, { status: 500 });
+        return apiError("Failed to load announcements", 500);
     }
 }
 
@@ -39,12 +40,12 @@ export async function POST(request: NextRequest) {
 
     let body: Record<string, unknown>;
     try { body = await request.json(); } catch {
-        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        return apiError("Invalid JSON", 400);
     }
 
     const { title, body: msgBody, announcement_type, target_segment, target_org_ids, delivery_channels } = body;
     if (!title || !msgBody || !announcement_type) {
-        return NextResponse.json({ error: "title, body, announcement_type are required" }, { status: 400 });
+        return apiError("title, body, announcement_type are required", 400);
     }
 
     try {
@@ -69,9 +70,9 @@ export async function POST(request: NextRequest) {
             announcement_id: result.data.id, title,
         });
 
-        return NextResponse.json(result.data, { status: 201 });
+        return apiSuccess(result.data, 201);
     } catch (err) {
         console.error("[superadmin/announcements POST]", err);
-        return NextResponse.json({ error: "Failed to create announcement" }, { status: 500 });
+        return apiError("Failed to create announcement", 500);
     }
 }

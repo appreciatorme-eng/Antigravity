@@ -5,6 +5,7 @@
  * ------------------------------------------------------------------ */
 
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 
 import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -50,7 +51,7 @@ export async function GET(): Promise<Response> {
       } = await supabase.auth.getUser();
 
       if (!user) {
-          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          return apiError("Unauthorized", 401);
       }
 
       const { data: profile } = await supabase

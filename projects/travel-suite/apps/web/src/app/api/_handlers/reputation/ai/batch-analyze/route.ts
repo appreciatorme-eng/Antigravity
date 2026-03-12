@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -132,15 +133,12 @@ function validateCronAuth(req: Request): boolean {
 
 export async function POST(req: Request) {
   if (!validateCronAuth(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
-    return NextResponse.json(
-      { error: "AI service is not configured" },
-      { status: 503 }
-    );
+    return apiError("AI service is not configured", 503);
   }
 
   const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -154,8 +152,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     // Fetch unanalyzed reviews across all organizations
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rawReviews, error: fetchError } = await (supabase as any)
+    const { data: rawReviews, error: fetchError } = await supabase
       .from("reputation_reviews")
       .select("id, organization_id, comment, title, rating")
       .is("sentiment_score", null)
@@ -228,8 +225,7 @@ export async function POST(req: Request) {
         const analysis = parseAnalysisResponse(responseText);
 
         // Update the review
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
           .from("reputation_reviews")
           .update({
             sentiment_score: analysis.sentiment_score,

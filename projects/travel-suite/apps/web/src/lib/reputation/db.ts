@@ -1,6 +1,7 @@
-// Typed Supabase accessor for reputation tables not yet in generated database.types.ts.
-// Consolidates all (supabase as any) casts to a single ESLint-disabled site.
+// Typed Supabase accessor for reputation tables.
+// Consolidates table access to a single site with proper Database typing.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import type {
   ReputationReview,
   ReputationBrandVoice,
@@ -35,13 +36,15 @@ type TableMap = {
   reputation_connections: ReputationPlatformConnection;
 };
 
-// Single cast point — all reputation table access goes through this helper.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const rawDb = (supabase: SupabaseClient): any => supabase;
+type TypedClient = SupabaseClient<Database>;
+type PublicTableName = keyof Database["public"]["Tables"] & string;
 
+// Reputation tables are now present in the generated Database types.
+// This helper casts the unparameterized SupabaseClient to the Database-typed
+// client so that .from() resolves table schemas correctly.
 export function repFrom<T extends keyof TableMap>(
   supabase: SupabaseClient,
-  table: T
-): ReturnType<typeof supabase.from> {
-  return rawDb(supabase).from(table);
+  table: T & PublicTableName
+) {
+  return (supabase as TypedClient).from(table);
 }

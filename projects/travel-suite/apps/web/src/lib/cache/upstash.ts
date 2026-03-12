@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Redis } from "@upstash/redis";
+import { logError } from "@/lib/observability/logger";
 
 let redisClient: Redis | null | undefined;
 const localJsonCache = new Map<string, { value: unknown; expiresAt: number }>();
@@ -59,7 +60,7 @@ export async function getCachedJson<T>(key: string): Promise<T | null> {
     const value = await client.get<T>(key);
     return value ?? null;
   } catch (error) {
-    console.error("Upstash get cache failed:", error);
+    logError("Upstash get cache failed", error);
     return null;
   }
 }
@@ -84,7 +85,7 @@ export async function setCachedJson<T>(
   try {
     await client.set(key, value, { ex: ttlSeconds });
   } catch (error) {
-    console.error("Upstash set cache failed:", error);
+    logError("Upstash set cache failed", error);
   }
 }
 
@@ -104,7 +105,7 @@ export async function deleteCachedByPrefix(
         deleted += limited.length;
       }
     } catch (error) {
-      console.error("Upstash delete cache failed:", error);
+      logError("Upstash delete cache failed", error);
     }
   }
 

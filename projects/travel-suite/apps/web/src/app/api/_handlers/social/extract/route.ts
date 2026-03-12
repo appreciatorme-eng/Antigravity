@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
@@ -30,17 +31,17 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await serverClient.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { image } = await req.json(); // base64 image
 
     if (!image) {
-      return NextResponse.json({ error: "No image provided" }, { status: 400 });
+      return apiError("No image provided", 400);
     }
 
     if (typeof image !== "string" || image.length > 10_000_000) {
-      return NextResponse.json({ error: "Image too large (max 10MB base64)" }, { status: 413 });
+      return apiError("Image too large (max 10MB base64)", 413);
     }
 
     const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
@@ -88,10 +89,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     const response = JSON.parse(result.response.text());
-    return NextResponse.json(response);
+    return apiSuccess(response);
 
   } catch (error) {
     console.error("Extraction Error:", error);
-    return NextResponse.json({ error: "Failed to extract content" }, { status: 500 });
+    return apiError("Failed to extract content", 500);
   }
 }

@@ -1,6 +1,7 @@
 // POST /api/superadmin/announcements/:id/send — send a draft announcement to target users.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { sendNotificationToUser } from "@/lib/notifications";
@@ -23,12 +24,12 @@ export async function POST(
             .single();
 
         if (!announcementResult.data) {
-            return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+            return apiError("Announcement not found", 404);
         }
 
         const ann = announcementResult.data;
         if (ann.status === "sent") {
-            return NextResponse.json({ error: "Already sent" }, { status: 409 });
+            return apiError("Already sent", 409);
         }
 
         // Build recipient query based on target_segment
@@ -91,6 +92,6 @@ export async function POST(
         return NextResponse.json({ sent: sentCount, total_recipients: recipients.length });
     } catch (err) {
         console.error(`[superadmin/announcements/${id}/send]`, err);
-        return NextResponse.json({ error: "Failed to send announcement" }, { status: 500 });
+        return apiError("Failed to send announcement", 500);
     }
 }

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 
 import { createClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 type SharedCacheSource =
   | "org_exact"
@@ -249,7 +250,7 @@ export async function getSharedCachedItinerary(input: SharedCacheLookupInput) {
 
     return null;
   } catch (error) {
-    console.error("Shared itinerary cache lookup failed:", error);
+    logError("Shared itinerary cache lookup failed", error);
     return null;
   }
 }
@@ -303,7 +304,7 @@ export async function promoteSharedItineraryCache(input: SharedCachePromotionInp
 
     return data.id;
   } catch (error) {
-    console.error("Shared itinerary cache promotion failed:", error);
+    logError("Shared itinerary cache promotion failed", error);
     return null;
   }
 }
@@ -324,7 +325,7 @@ export async function getSharedCacheStats(days = 30, organizationId?: string | n
 
   const { data, error } = await query;
   if (error) {
-    console.error("Shared itinerary cache stats lookup failed:", error);
+    logError("Shared itinerary cache stats lookup failed", error);
     return null;
   }
 

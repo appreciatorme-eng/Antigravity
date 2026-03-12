@@ -59,8 +59,7 @@ export default function ProposalAddOnsSelector({
     try {
       const supabase = createClient();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('proposal_add_ons')
         .select('*')
         .eq('proposal_id', proposalId)
@@ -68,8 +67,7 @@ export default function ProposalAddOnsSelector({
 
       if (error) throw error;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const formatted: ProposalAddOn[] = (data || []).map((item: any) => ({
+      const formatted: ProposalAddOn[] = (data || []).map((item) => ({
         id: item.id,
         proposal_id: item.proposal_id,
         add_on_id: item.add_on_id || null,
@@ -117,16 +115,14 @@ export default function ProposalAddOnsSelector({
       const nextSelected = !addOn.is_selected;
 
       if (isTransportCategory(addOn.category) && nextSelected) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
           .from('proposal_add_ons')
           .update({ is_selected: false })
           .eq('proposal_id', proposalId)
           .ilike('category', 'transport');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('proposal_add_ons')
         .update({ is_selected: nextSelected })
         .eq('id', addOn.id);

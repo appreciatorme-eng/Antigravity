@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -54,7 +55,7 @@ export async function sendNotificationToUser(payload: NotificationPayload): Prom
         });
 
         if (error) {
-            console.error("Error invoking send-notification function:", error);
+            logError("Error invoking send-notification function", error);
             return { success: false, error: error.message };
         }
 
@@ -73,7 +74,7 @@ export async function sendNotificationToUser(payload: NotificationPayload): Prom
         return { success: true };
     } catch (error: unknown) {
         const message = getErrorMessage(error);
-        console.error("Error sending notification:", message);
+        logError("Error sending notification", error);
         return { success: false, error: message };
     }
 }

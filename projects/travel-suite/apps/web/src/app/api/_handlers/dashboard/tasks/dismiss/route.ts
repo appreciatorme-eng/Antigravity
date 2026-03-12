@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -32,10 +33,7 @@ export async function POST(request: NextRequest) {
         } = await serverClient.auth.getUser();
 
         if (!user) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            );
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabaseAdmin
@@ -45,20 +43,14 @@ export async function POST(request: NextRequest) {
             .maybeSingle();
 
         if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization" },
-                { status: 403 }
-            );
+            return apiError("No organization", 403);
         }
 
         const orgId = profile.organization_id;
 
         const rawBody = await request.json().catch(() => null);
         if (!isValidDismissBody(rawBody)) {
-            return NextResponse.json(
-                { error: "Invalid request body. Required: taskId, taskType, entityId" },
-                { status: 400 }
-            );
+            return apiError("Invalid request body. Required: taskId, taskType, entityId", 400);
         }
 
         const taskId = sanitizeText(rawBody.taskId, { maxLength: 200 });
@@ -66,10 +58,7 @@ export async function POST(request: NextRequest) {
         const entityId = sanitizeText(rawBody.entityId, { maxLength: 100 });
 
         if (!taskId || !taskType || !entityId) {
-            return NextResponse.json(
-                { error: "taskId, taskType, and entityId must be non-empty strings" },
-                { status: 400 }
-            );
+            return apiError("taskId, taskType, and entityId must be non-empty strings", 400);
         }
 
         const { error } = await supabaseAdmin
@@ -90,10 +79,7 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error("Failed to dismiss task:", error);
-            return NextResponse.json(
-                { error: "Failed to dismiss task" },
-                { status: 500 }
-            );
+            return apiError("Failed to dismiss task", 500);
         }
 
         return NextResponse.json({ success: true });

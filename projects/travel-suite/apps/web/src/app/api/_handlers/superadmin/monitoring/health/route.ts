@@ -1,6 +1,7 @@
 // GET /api/superadmin/monitoring/health — platform health checks with queue depths.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
 import { env } from "@/lib/config/env";
@@ -110,6 +111,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/monitoring/health]", err);
-        return NextResponse.json({ error: "Failed to run health checks" }, { status: 500 });
+        return apiError("Failed to run health checks", 500);
     }
 }

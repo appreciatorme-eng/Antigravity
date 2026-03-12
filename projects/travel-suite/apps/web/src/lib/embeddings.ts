@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { logEvent, logError } from "@/lib/observability/logger";
 import {
   EMBEDDING_MODEL_V2,
   EMBEDDING_VERSION_V2,
@@ -19,7 +20,7 @@ import {
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!isEmbeddingV2Configured()) {
-    console.warn(
+    logEvent('warn',
       "[embeddings] GOOGLE_GEMINI_API_KEY not configured - embeddings disabled",
     );
     return [];
@@ -56,7 +57,7 @@ export async function embedTemplate(templateId: string) {
   const embedding = await generateEmbedding(searchableText);
 
   if (embedding.length === 0) {
-    console.warn(
+    logEvent('warn',
       `[embeddings] Skipping embedding for template ${templateId} - Gemini key not configured`,
     );
     return null;
@@ -112,8 +113,8 @@ export async function embedAllTemplates() {
     throw error || new Error("No templates found");
   }
 
-  console.log(
-    `🔄 Starting batch v2 embedding generation for ${templates.length} templates...`,
+  logEvent('info',
+    `Starting batch v2 embedding generation for ${templates.length} templates`,
   );
 
   const errors: Array<{ id: string; name: string; error: string }> = [];
@@ -123,8 +124,8 @@ export async function embedAllTemplates() {
     try {
       await embedTemplate(template.id);
       processed++;
-      console.log(
-        `✅ [${processed}/${templates.length}] Embedded (v2): ${template.name}`,
+      logEvent('info',
+        `[${processed}/${templates.length}] Embedded (v2): ${template.name}`,
       );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -133,15 +134,15 @@ export async function embedAllTemplates() {
         name: template.name,
         error: errorMessage,
       });
-      console.error(
-        `❌ Failed to embed template ${template.name} with v2 embeddings:`,
+      logError(
+        `Failed to embed template ${template.name} with v2 embeddings`,
         err,
       );
     }
   }
 
-  console.log(
-    `✨ V2 embedding batch complete: ${processed} processed, ${errors.length} errors`,
+  logEvent('info',
+    `V2 embedding batch complete: ${processed} processed, ${errors.length} errors`,
   );
 
   return {

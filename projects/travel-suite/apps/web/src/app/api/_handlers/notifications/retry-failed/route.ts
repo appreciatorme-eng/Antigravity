@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { isCronSecretBearer } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
             const token = authHeader.substring(7);
             const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
             if (authError || !authData?.user) {
-                return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+                return apiError("Invalid token", 401);
             }
 
             const { data: profile } = await supabaseAdmin
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
                 .maybeSingle();
 
             if (profile?.role !== "admin" && profile?.role !== "super_admin") {
-                return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+                return apiError("Admin access required", 403);
             }
 
             adminUserId = authData.user.id;
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error("Error retrying failed notifications:", error);
-            return NextResponse.json({ error: "Failed to retry notifications" }, { status: 500 });
+            return apiError("Failed to retry notifications", 500);
         }
 
         if (adminUserId) {
@@ -69,10 +70,7 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error("Error in POST /api/notifications/retry-failed:", error);
-        return NextResponse.json(
-            { error: "Failed to retry notifications" },
-            { status: 500 }
-        );
+        return apiError("Failed to retry notifications", 500);
     }
 }
 

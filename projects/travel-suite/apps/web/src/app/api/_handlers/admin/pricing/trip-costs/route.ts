@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -17,20 +18,18 @@ const CreateSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const url = new URL(req.url);
     const tripId = url.searchParams.get("trip_id");
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     let query = db
       .from("trip_service_costs")
       .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_by, created_at")
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query;
     if (error) {
       console.error("[/api/admin/pricing/trip-costs:GET] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return NextResponse.json({ costs: data || [] });
@@ -62,12 +61,12 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const body = await req.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      return apiError("Invalid JSON body", 400);
     }
 
     const parsed = CreateSchema.safeParse(body);
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .insert({
@@ -91,10 +90,10 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/trip-costs:POST] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return apiSuccess(data, 201);
   } catch (error) {
     console.error("[/api/admin/pricing/trip-costs:POST] Unhandled error:", error);
     return Response.json(

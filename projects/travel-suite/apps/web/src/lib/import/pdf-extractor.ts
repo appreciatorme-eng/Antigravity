@@ -8,6 +8,7 @@ import 'server-only';
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logError } from '@/lib/observability/logger';
 import type { ExtractedTourData } from './types';
 
 function getGeminiKey(apiKey?: string) {
@@ -137,7 +138,7 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
       data: extractedData,
     };
   } catch (error) {
-    console.error('Error extracting tour from PDF:', error);
+    logError('Error extracting tour from PDF', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

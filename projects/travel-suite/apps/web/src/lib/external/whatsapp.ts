@@ -1,5 +1,6 @@
 import "server-only";
 
+import { logError } from "@/lib/observability/logger";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 
 function normalizeText(value: string, maxLength: number): string {
@@ -34,9 +35,7 @@ export async function sendItineraryToWhatsApp(
     const result = await sendWhatsAppText(phoneNumber, message);
 
     if (!result.success) {
-        console.error("[WhatsApp] Failed to send itinerary message", {
-            error: result.error,
-        });
+        logError("[WhatsApp] Failed to send itinerary message", result.error);
     }
 
     return result.success;

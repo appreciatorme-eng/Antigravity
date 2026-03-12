@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { logEvent, logError } from '@/lib/observability/logger';
 
 // Server-side Supabase client for cache operations
 function getCacheClient() {
@@ -12,7 +13,7 @@ function getCacheClient() {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
     if (!supabaseUrl || !serviceRoleKey) {
-        console.warn('Supabase cache client unavailable - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing');
+        logEvent('warn', 'Supabase cache client unavailable - NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing');
         return null;
     }
 
@@ -49,13 +50,13 @@ export async function getCachedItinerary(
         });
 
         if (error) {
-            console.error('Cache lookup error:', error);
+            logError('Cache lookup error', error);
             return null;
         }
 
         return data;
     } catch (err) {
-        console.error('Cache lookup exception:', err);
+        logError('Cache lookup exception', err);
         return null;
     }
 }
@@ -87,13 +88,13 @@ export async function saveItineraryToCache(
         });
 
         if (error) {
-            console.error('Cache save error:', error);
+            logError('Cache save error', error);
             return null;
         }
 
         return data; // Returns the cache_id
     } catch (err) {
-        console.error('Cache save exception:', err);
+        logError('Cache save exception', err);
         return null;
     }
 }
@@ -112,13 +113,13 @@ export async function getCacheStats(days: number = 30): Promise<unknown> {
         });
 
         if (error) {
-            console.error('Cache stats error:', error);
+            logError('Cache stats error', error);
             return null;
         }
 
         return data?.[0] || null;
     } catch (err) {
-        console.error('Cache stats exception:', err);
+        logError('Cache stats exception', err);
         return null;
     }
 }

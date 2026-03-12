@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -93,12 +94,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         const { id: tripId } = await params;
 
         if (!tripId || tripId === "undefined") {
-            return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+            return apiError("Missing trip id", 400);
         }
 
         const uuidRegex = /^[0-9a-fA-F-]{36}$/;
         if (!uuidRegex.test(tripId)) {
-            return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
+            return apiError("Invalid trip id", 400);
         }
 
         let tripQuery = supabaseAdmin
@@ -136,7 +137,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         if (auth.isStaff) {
             if (auth.role !== "super_admin") {
                 if (!auth.organizationId) {
-                    return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+                    return apiError("Admin organization not configured", 400);
                 }
                 tripQuery = tripQuery.eq("organization_id", auth.organizationId);
             }
@@ -147,7 +148,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         const { data: tripData, error: tripError } = await tripQuery.single();
 
         if (tripError || !tripData) {
-            return NextResponse.json({ error: safeErrorMessage(tripError, "Trip not found") }, { status: 404 });
+            return apiError(safeErrorMessage(tripError, "Trip not found"), 404);
         }
 
         const itinerary = Array.isArray(tripData.itineraries)
@@ -175,7 +176,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         }
 
         if (!tripData.organization_id) {
-            return NextResponse.json({ error: "Trip organization is not configured" }, { status: 400 });
+            return apiError("Trip organization is not configured", 400);
         }
 
         const { data: driversData } = await supabaseAdmin
@@ -352,7 +353,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             invoiceSummary,
         });
     } catch (error) {
-        return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+        return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 }
 
@@ -362,17 +363,17 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
         if ("error" in auth) return auth.error;
 
         if (!auth.isStaff) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return apiError("Forbidden", 403);
         }
 
         const { id: tripId } = await params;
         if (!tripId || tripId === "undefined") {
-            return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+            return apiError("Missing trip id", 400);
         }
 
         const uuidRegex = /^[0-9a-fA-F-]{36}$/;
         if (!uuidRegex.test(tripId)) {
-            return NextResponse.json({ error: "Invalid trip id" }, { status: 400 });
+            return apiError("Invalid trip id", 400);
         }
 
         let tripLookup = supabaseAdmin
@@ -382,14 +383,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
 
         if (auth.role !== "super_admin") {
             if (!auth.organizationId) {
-                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+                return apiError("Admin organization not configured", 400);
             }
             tripLookup = tripLookup.eq("organization_id", auth.organizationId);
         }
 
         const { data: trip, error: tripError } = await tripLookup.maybeSingle();
         if (tripError || !trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         const cleanupTargets = [
@@ -423,7 +424,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
             .eq("id", tripId);
 
         if (deleteTripError) {
-            return NextResponse.json({ error: "Failed to delete trip" }, { status: 500 });
+            return apiError("Failed to delete trip", 500);
         }
 
         if (trip.itinerary_id) {
@@ -442,6 +443,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
 
         return NextResponse.json({ success: true });
     } catch {
-        return NextResponse.json({ error: "Failed to delete trip" }, { status: 500 });
+        return apiError("Failed to delete trip", 500);
     }
 }

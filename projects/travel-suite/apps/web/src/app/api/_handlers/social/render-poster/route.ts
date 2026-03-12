@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { renderPoster } from "@/lib/social/poster-renderer";
 import type { LayoutType, AspectRatio } from "@/lib/social/types";
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   try {
@@ -53,19 +54,19 @@ export async function POST(req: NextRequest) {
     // Validate layoutType
     const layoutType = body?.layoutType as LayoutType;
     if (!layoutType || !VALID_LAYOUTS.has(layoutType)) {
-      return NextResponse.json({ error: "Invalid layoutType" }, { status: 400 });
+      return apiError("Invalid layoutType", 400);
     }
 
     // Validate aspectRatio
     const aspectRatio = (body?.aspectRatio || "square") as AspectRatio;
     if (!VALID_ASPECTS.has(aspectRatio)) {
-      return NextResponse.json({ error: "Invalid aspectRatio" }, { status: 400 });
+      return apiError("Invalid aspectRatio", 400);
     }
 
     // Validate format
     const format = (body?.format || "png") as "png" | "jpeg" | "webp";
     if (!VALID_FORMATS.has(format)) {
-      return NextResponse.json({ error: "Invalid format" }, { status: 400 });
+      return apiError("Invalid format", 400);
     }
 
     const result = await renderPoster({
@@ -98,6 +99,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error("[render-poster] Error:", err);
-    return NextResponse.json({ error: "Poster render failed" }, { status: 500 });
+    return apiError("Poster render failed", 500);
   }
 }

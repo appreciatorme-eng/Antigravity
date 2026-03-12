@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -43,10 +44,7 @@ export async function GET(request: NextRequest) {
         } = await serverClient.auth.getUser();
 
         if (!user) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            );
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabaseAdmin
@@ -56,10 +54,7 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
 
         if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization" },
-                { status: 403 }
-            );
+            return apiError("No organization", 403);
         }
 
         const orgId = profile.organization_id;
@@ -89,10 +84,7 @@ export async function GET(request: NextRequest) {
 
         if (error) {
             logError("Driver search DB query failed", error, requestContext);
-            return NextResponse.json(
-                { error: "Failed to search drivers" },
-                { status: 500 }
-            );
+            return apiError("Failed to search drivers", 500);
         }
 
         if (!drivers || drivers.length === 0) {
@@ -161,9 +153,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (error) {
         logError("Driver search endpoint crashed", error, requestContext);
-        return NextResponse.json(
-            { error: safeErrorMessage(error, "Failed to search drivers") },
-            { status: 500 }
-        );
+        return apiError(safeErrorMessage(error, "Failed to search drivers"), 500);
     }
 }

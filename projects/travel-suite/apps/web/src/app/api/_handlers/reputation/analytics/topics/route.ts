@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const url = new URL(req.url);
@@ -43,8 +44,7 @@ export async function GET(req: Request) {
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split("T")[0];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: reviews, error } = await (supabase as any)
+    const { data: reviews, error } = await supabase
       .from("reputation_reviews")
       .select("ai_topics, sentiment_score")
       .eq("organization_id", profile.organization_id)
@@ -82,6 +82,6 @@ export async function GET(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation topics:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

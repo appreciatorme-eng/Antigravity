@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { Redis } from "@upstash/redis";
+import { logError } from "@/lib/observability/logger";
 import { safeEqual } from "./safe-equal";
 
 export interface CronAuthOptions {
@@ -88,19 +89,17 @@ async function claimReplayKey(key: string, replayWindowMs: number): Promise<bool
         } catch {
             if (process.env.NODE_ENV === "production") {
                 // SEV-HIGH: Redis error mid-request — replay keys will reset on cold start.
-                console.error(
-                    "[cron-auth] CRITICAL: Redis error during replay detection — falling back to in-memory. " +
-                    "Replay keys reset per cold start in serverless. " +
-                    "Investigate UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN health."
+                logError(
+                    "[cron-auth] CRITICAL: Redis error during replay detection -- falling back to in-memory. Replay keys reset per cold start in serverless. Investigate UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN health.",
+                    null,
                 );
             }
         }
     } else if (process.env.NODE_ENV === "production") {
         // SEV-HIGH: Redis not configured in production — replay protection is instance-local only.
-        console.error(
-            "[cron-auth] CRITICAL: Redis not configured — replay detection uses in-memory fallback. " +
-            "Replay keys reset per cold start. " +
-            "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed replay detection."
+        logError(
+            "[cron-auth] CRITICAL: Redis not configured -- replay detection uses in-memory fallback. Replay keys reset per cold start. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed replay detection.",
+            null,
         );
     }
 
