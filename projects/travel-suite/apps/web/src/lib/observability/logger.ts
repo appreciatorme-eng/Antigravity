@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -62,7 +61,15 @@ export function logError(message: string, error: unknown, context: LogContext = 
 }
 
 export function getRequestId(request: NextRequest): string {
-    return request.headers.get("x-request-id")?.trim() || randomUUID();
+    const existingRequestId = request.headers.get("x-request-id")?.trim();
+    if (existingRequestId) return existingRequestId;
+
+    // Keep logger runtime-safe for both Edge and Node.js.
+    if (globalThis.crypto?.randomUUID) {
+        return globalThis.crypto.randomUUID();
+    }
+
+    return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function getRequestContext(request: NextRequest, requestId: string): LogContext {
