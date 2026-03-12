@@ -40,7 +40,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S17 — Missing handlers, BUG-014, unit tests, cron E2E (879 pass / 0 fail / 17 skip) | 2026-03-11 | 879 | 879 | 0 | 0 | 17 |
 | S18 — Audit remediation: Vitest 581/0, E2E 8/9 (pre-deploy) | 2026-03-11 | 589 | 589 | 0 | 9 (pre-deploy) | 0 |
 | S19 — Deep Review remediation: Vitest 581/0, lint 25 pre-existing, typecheck 1 pre-existing | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
-| **Total** | | **~2916** | **~2610** | **~110** | **~83** | **~344** |
+| S20 — Post-automation live smoke (public routes + security headers + rate limit validation) | 2026-03-12 | 12 | 11 | 0 | 1 | 0 |
+| **Total** | | **~2928** | **~2621** | **~110** | **~84** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
@@ -1931,3 +1932,38 @@ Ran `audit-remediation.spec.ts` against Vercel production (`travelsuite-rust.ver
 | `tests/unit/lib/api-dispatch.test.ts` | Fix tests for CORS + CSRF changes |
 | `tests/unit/routes/payment-create-order-route.test.ts` | Fix Zod error case |
 | `tests/unit/security/rate-limit.test.ts` | Fix fail-closed test |
+
+---
+
+## Test Results — Session 20 (S20) — Post-Automation Live Smoke Test
+
+**Date**: 2026-03-12
+**Method**: curl (public routes) + playwright-cli browser (auth UI)
+**Target**: https://travelsuite-rust.vercel.app
+**Scope**: Public routes, security headers, auth redirects, rate limiting validation
+**Context**: Post S19 deep review remediation + automation pipeline setup (S20 is first test after merging CI changes)
+
+| ID | Test | Status | Notes |
+|----|------|--------|-------|
+| S20-001 | Homepage loads (200) | ✅ Pass | HTTP 200, 18KB, ~285ms |
+| S20-002 | Auth page loads (200) | ✅ Pass | HTTP 200, ~400ms. Title: "GoBuddy Adventures \| Premium Tour Operator Suite" |
+| S20-003 | Auth UI renders correctly | ✅ Pass | playwright-cli: Email field, Password field, Sign In button, Google OAuth visible |
+| S20-004 | Unauth /admin → 307 redirect | ✅ Pass | HTTP 307 → /auth?next=%2Fadmin |
+| S20-005 | Unauth /trips → 307 redirect | ✅ Pass | HTTP 307 → /auth?next=%2Ftrips |
+| S20-006 | Unauth /god → 307 redirect | ✅ Pass | HTTP 307 → /auth?next=%2Fgod |
+| S20-007 | Security headers present | ✅ Pass | CSP, HSTS, X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Permissions-Policy, Referrer-Policy all present |
+| S20-008 | HSTS max-age ≥ 1 year | ✅ Pass | `strict-transport-security: max-age=63072000; includeSubDomains` (2 years) |
+| S20-009 | Rate limit error shown in UI | ✅ Pass | Auth form shows "⚠️ Too many requests. Please retry later." correctly — error state in UI working |
+| S20-010 | Vercel DDoS protection active | ✅ Pass | IP-level rate limiting by Vercel before requests reach Next.js (429 with Retry-After). Dual-layer protection confirmed |
+| S20-011 | Rate limit identifier uses IP+email | ✅ Pass | `identifier: ${getRequestIp(request)}:${email}` — per-user-per-IP bucket prevents cross-user DoS |
+| S20-012 | Authenticated routes (login + CRUD) | ⏳ Partial | Rate limited by Vercel DDoS protection from test IP — deferred to S21. Reference S17 Playwright E2E (879/0/17) for auth flow coverage |
+
+**Key findings:**
+- **Dual-layer rate limiting working**: Our custom Upstash rate limiter (8 req/10min per IP+email) sits on top of Vercel's own IP-based DDoS protection. Both triggered during this session.
+- **Security headers complete**: All 6 headers present on every response (CSP, HSTS, XFO, XCTO, Permissions-Policy, Referrer-Policy).
+- **Auth redirects working**: All 3 protected routes correctly redirect to /auth with `next=` parameter for post-login redirect.
+- **UI error states working**: Rate limit errors display correctly in the auth form (not just 429 JSON).
+- **Note for future sessions**: When testing from a fresh IP or after rate limit window expires, run S21 with full authenticated flow (login → dashboard → CRUD → logout).
+
+**Rate limit window details**: 8 requests / 10-minute window per IP+email. Vercel DDoS protection runs at IP level before requests reach Next.js. Both layers confirmed active on production.
+
