@@ -3,355 +3,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import {
-    ArrowLeft,
-    Calendar,
-    MapPin,
-    User,
-    Car,
-    Hotel,
-    Clock,
-    Phone,
-    MessageCircle,
-    Link2,
-    Save,
-    Bell,
-    Plus,
-    Trash,
-    CopyPlus,
-} from "lucide-react";
 import ItineraryMap from "@/components/map/ItineraryMap";
-import { getDriverWhatsAppLink, formatDriverAssignmentMessage, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
-import { GlassModal } from "@/components/glass/GlassModal";
+import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
 import { useToast } from "@/components/ui/toast";
 import type { Json } from "@/lib/database.types";
-
-interface Driver {
-    id: string;
-    full_name: string;
-    phone: string | null;
-    vehicle_type: string | null;
-    vehicle_plate: string | null;
-    photo_url?: string | null;
-}
-
-interface DriverAssignment {
-    id?: string;
-    day_number: number;
-    external_driver_id: string | null;
-    pickup_time: string;
-    pickup_location: string;
-    notes: string;
-}
-
-interface Accommodation {
-    id?: string;
-    day_number: number;
-    hotel_name: string;
-    address: string;
-    check_in_time: string;
-    contact_phone: string;
-}
-
-interface Activity {
-    title: string;
-    start_time?: string;
-    end_time?: string;
-    duration_minutes: number;
-    location?: string;
-    coordinates?: {
-        lat: number;
-        lng: number;
-    };
-    description?: string;
-}
-
-interface Day {
-    day_number: number;
-    theme: string;
-    activities: Activity[];
-}
-
-interface HotelSuggestion {
-    name: string;
-    address: string;
-    phone?: string;
-    lat: number;
-    lng: number;
-    distanceKm: number;
-}
-
-function isValidTime(value?: string) {
-    return !!value && /^\d{2}:\d{2}$/.test(value);
-}
-
-function timeToMinutes(value: string) {
-    const [h, m] = value.split(":").map(Number);
-    return h * 60 + m;
-}
-
-function minutesToTime(totalMinutes: number) {
-    const clamped = Math.max(0, Math.min(totalMinutes, (24 * 60) - 30));
-    const h = Math.floor(clamped / 60);
-    const m = clamped % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function roundToNearestThirty(totalMinutes: number) {
-    return Math.round(totalMinutes / 30) * 30;
-}
-
-function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const earthRadiusKm = 6371;
-    const dLat = toRad(b.lat - a.lat);
-    const dLng = toRad(b.lng - a.lng);
-    const lat1 = toRad(a.lat);
-    const lat2 = toRad(b.lat);
-
-    const h =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-    return earthRadiusKm * c;
-}
-
-function estimateTravelMinutes(previous?: Activity, current?: Activity) {
-    if (!previous || !current) return 0;
-    if (previous.location && current.location && previous.location.trim() === current.location.trim()) {
-        return 0;
-    }
-
-    if (previous.coordinates && current.coordinates) {
-        const distanceKm = haversineKm(previous.coordinates, current.coordinates);
-        const averageCitySpeedKmh = 28;
-        const driveMinutes = (distanceKm / averageCitySpeedKmh) * 60;
-        const buffered = Math.round(driveMinutes + 10); // buffer for parking/transfers
-        return Math.max(10, Math.min(buffered, 180));
-    }
-
-    // Fallback when coordinates are not available yet
-    return 20;
-}
-
-function inferExploreDurationMinutes(activity: Activity) {
-    const text = `${activity.title || ""} ${activity.location || ""}`.toLowerCase();
-    if (!text.trim()) return 90;
-
-    if (/(flight|airport|transfer|pickup|drop)/.test(text)) return 45;
-    if (/(walk|market|bazaar|street)/.test(text)) return 120;
-    if (/(museum|fort|palace|temple|tomb|mosque|cathedral|monument|heritage)/.test(text)) return 90;
-    if (/(meal|lunch|dinner|breakfast|food|restaurant|cafe|tea)/.test(text)) return 60;
-    if (/(sunset|sunrise|golden hour|viewpoint|photo)/.test(text)) return 60;
-    if (/(shopping)/.test(text)) return 90;
-
-    return 75;
-}
-
-function enrichDayDurations(day: Day) {
-    return {
-        ...day,
-        activities: day.activities.map((activity) => ({
-            ...activity,
-            // Keep explicitly customized values, but replace legacy/default 60-minute placeholders.
-            duration_minutes: (() => {
-                const duration = Number(activity.duration_minutes) || 0;
-                if (duration > 0 && duration !== 60) return duration;
-                return inferExploreDurationMinutes(activity);
-            })(),
-        })),
-    };
-}
-
-function optimizeActivitiesForRoute(activities: Activity[]) {
-    if (activities.length <= 2) return activities;
-
-    const anchor = activities[0];
-    const remaining = activities.slice(1);
-    const withCoordinates = remaining.filter((activity) => !!activity.coordinates);
-    const withoutCoordinates = remaining.filter((activity) => !activity.coordinates);
-
-    if (withCoordinates.length <= 1) {
-        return activities;
-    }
-
-    const orderedByRoute: Activity[] = [];
-    const unvisited = [...withCoordinates];
-
-    let currentPoint = anchor.coordinates ?? unvisited[0]?.coordinates;
-    if (!currentPoint) return activities;
-
-    while (unvisited.length > 0) {
-        let nearestIndex = 0;
-        let nearestDistance = Number.POSITIVE_INFINITY;
-
-        for (let i = 0; i < unvisited.length; i++) {
-            const candidate = unvisited[i];
-            if (!candidate.coordinates) continue;
-            const distance = haversineKm(currentPoint, candidate.coordinates);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestIndex = i;
-            }
-        }
-
-        const [next] = unvisited.splice(nearestIndex, 1);
-        orderedByRoute.push(next);
-        if (next.coordinates) {
-            currentPoint = next.coordinates;
-        }
-    }
-
-    const routeDistanceKm = (route: Activity[]) => {
-        if (route.length <= 1) return 0;
-
-        let total = 0;
-        if (anchor.coordinates && route[0]?.coordinates) {
-            total += haversineKm(anchor.coordinates, route[0].coordinates);
-        }
-
-        for (let i = 1; i < route.length; i++) {
-            const prev = route[i - 1].coordinates;
-            const current = route[i].coordinates;
-            if (prev && current) {
-                total += haversineKm(prev, current);
-            }
-        }
-
-        return total;
-    };
-
-    // 2-opt improvement pass for a better shortest-path approximation.
-    const improvedRoute = [...orderedByRoute];
-    if (improvedRoute.length >= 4) {
-        let improved = true;
-        while (improved) {
-            improved = false;
-            for (let i = 0; i < improvedRoute.length - 2; i++) {
-                for (let k = i + 1; k < improvedRoute.length - 1; k++) {
-                    const candidate = [
-                        ...improvedRoute.slice(0, i),
-                        ...improvedRoute.slice(i, k + 1).reverse(),
-                        ...improvedRoute.slice(k + 1),
-                    ];
-                    if (routeDistanceKm(candidate) + 0.001 < routeDistanceKm(improvedRoute)) {
-                        improvedRoute.splice(0, improvedRoute.length, ...candidate);
-                        improved = true;
-                    }
-                }
-            }
-        }
-    }
-
-    return [anchor, ...improvedRoute, ...withoutCoordinates];
-}
-
-function buildDaySchedule(day: Day) {
-    const optimizedActivities = optimizeActivitiesForRoute(day.activities);
-    const firstStart = isValidTime(optimizedActivities[0]?.start_time) ? optimizedActivities[0]!.start_time! : "09:00";
-    const dayEnd = (24 * 60) - 30;
-    let cursor = Math.max(0, Math.min(roundToNearestThirty(timeToMinutes(firstStart)), dayEnd));
-
-    const activities = optimizedActivities.map((activity, index) => {
-        const travelMinutes = index > 0 ? estimateTravelMinutes(optimizedActivities[index - 1], activity) : 0;
-        const proposedStart = index === 0
-            ? (isValidTime(activity.start_time) ? timeToMinutes(activity.start_time!) : cursor)
-            : cursor + travelMinutes;
-        const roundedStart = roundToNearestThirty(proposedStart);
-        const startMinutes = Math.max(cursor, Math.min(roundedStart, dayEnd));
-        const suggestedDuration = inferExploreDurationMinutes(activity);
-        const duration = Math.max(30, Number(activity.duration_minutes) || suggestedDuration);
-        let endMinutes = roundToNearestThirty(startMinutes + duration);
-        if (endMinutes <= startMinutes) {
-            endMinutes = startMinutes + 30;
-        }
-        endMinutes = Math.min(endMinutes, dayEnd);
-        cursor = endMinutes;
-
-        return {
-            ...activity,
-            start_time: minutesToTime(startMinutes),
-            end_time: minutesToTime(endMinutes),
-            duration_minutes: duration,
-        };
-    });
-
-    return {
-        ...day,
-        activities,
-    };
-}
-
-interface Trip {
-    id: string;
-    status: string;
-    start_date: string | null;
-    end_date: string | null;
-    destination: string;
-    profiles: {
-        id: string;
-        full_name: string;
-        email: string;
-        phone?: string | null;
-    } | null;
-    itineraries: {
-        id: string;
-        trip_title: string;
-        duration_days: number;
-        destination?: string | null;
-        raw_data: {
-            days: Day[];
-        };
-    } | null;
-}
-
-interface ReminderDayStatus {
-    pending: number;
-    processing: number;
-    sent: number;
-    failed: number;
-    lastScheduledFor: string | null;
-}
-
-interface DriverLocationSnapshot {
-    latitude: number;
-    longitude: number;
-    recorded_at: string;
-    speed?: number | null;
-    heading?: number | null;
-    accuracy?: number | null;
-}
-
-interface TripDetailApiPayload {
-    trip: Trip;
-    drivers?: Driver[];
-    assignments?: Record<number, DriverAssignment>;
-    accommodations?: Record<number, Accommodation>;
-    reminderStatusByDay?: Record<number, ReminderDayStatus>;
-    busyDriversByDay?: Record<number, string[]>;
-    latestDriverLocation?: DriverLocationSnapshot | null;
-}
-
-type ErrorPayload = {
-    error?: string;
-};
-
-interface OverpassElement {
-    tags?: Record<string, string | undefined>;
-    lat?: number | string;
-    lon?: number | string;
-    center?: {
-        lat?: number | string;
-        lon?: number | string;
-    };
-}
-
-interface OverpassResponse {
-    elements?: OverpassElement[];
-}
+import {
+    TripHeader,
+    DayTabs,
+    DriverAssignmentCard,
+    AccommodationCard,
+    DayActivities,
+} from "./_components";
+import type {
+    Trip,
+    Driver,
+    DriverAssignment,
+    Accommodation,
+    Activity,
+    Day,
+    HotelSuggestion,
+    ReminderDayStatus,
+    DriverLocationSnapshot,
+    TripDetailApiPayload,
+    ErrorPayload,
+    OverpassResponse,
+} from "./_components/types";
+import {
+    enrichDayDurations,
+    buildDaySchedule,
+    minutesToTime,
+    haversineKm,
+} from "./_components/utils";
 
 export default function TripDetailPage() {
     const params = useParams();
@@ -373,24 +55,17 @@ export default function TripDetailPage() {
     const [busyDriversByDay, setBusyDriversByDay] = useState<Record<number, string[]>>({});
     const [latestDriverLocation, setLatestDriverLocation] = useState<DriverLocationSnapshot | null>(null);
 
-    // Notification state
-    const [notificationOpen, setNotificationOpen] = useState(false);
-    const [notificationTitle, setNotificationTitle] = useState("Trip Update");
-    const [notificationBody, setNotificationBody] = useState("");
-    const [notificationEmail, setNotificationEmail] = useState("");
-    const [useEmailTarget, setUseEmailTarget] = useState(false);
     const { toast } = useToast();
     const geocodeCacheRef = useRef(new Map<string, { lat: number; lng: number }>());
     const hotelSearchDebounceRef = useRef<Record<number, number | null>>({});
     const timeOptions = useMemo(
-        () => Array.from({ length: 48 }, (_, i) => {
-            const minutes = i * 30;
-            return minutesToTime(minutes);
-        }),
+        () => Array.from({ length: 48 }, (_, i) => minutesToTime(i * 30)),
         []
     );
 
     const supabase = createClient();
+
+    // --- Data fetching ---
 
     const fetchData = useCallback(async () => {
         if (!tripId) return;
@@ -405,9 +80,7 @@ export default function TripDetailPage() {
             headers.Authorization = `Bearer ${session.access_token}`;
         }
 
-        const response = await fetch(`/api/admin/trips/${tripId}`, {
-            headers,
-        });
+        const response = await fetch(`/api/admin/trips/${tripId}`, { headers });
 
         if (!response.ok) {
             let error: ErrorPayload = {};
@@ -431,7 +104,6 @@ export default function TripDetailPage() {
         setReminderStatusByDay(payload.reminderStatusByDay || {});
         setBusyDriversByDay(payload.busyDriversByDay || {});
         setLatestDriverLocation(payload.latestDriverLocation || null);
-
         setLoading(false);
     }, [supabase, tripId]);
 
@@ -445,11 +117,8 @@ export default function TripDetailPage() {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 const response = await fetch(`/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`, {
-                    headers: {
-                        Authorization: `Bearer ${session?.access_token || ""}`,
-                    },
+                    headers: { Authorization: `Bearer ${session?.access_token || ""}` },
                 });
-
                 if (!response.ok) return;
                 const payload = await response.json();
                 setLiveLocationUrl(payload?.share?.live_url || "");
@@ -457,7 +126,6 @@ export default function TripDetailPage() {
                 // non-blocking
             }
         };
-
         void loadExistingShare();
     }, [activeDay, tripId, supabase.auth]);
 
@@ -469,6 +137,41 @@ export default function TripDetailPage() {
             });
         };
     }, []);
+
+    // --- Geocoding ---
+
+    const geocodeLocation = async (location: string, destinationHint?: string) => {
+        const query = [location, destinationHint].filter(Boolean).join(", ");
+        if (!query.trim()) return undefined;
+
+        const cached = geocodeCacheRef.current.get(query);
+        if (cached) return cached;
+
+        try {
+            const url = new URL("https://nominatim.openstreetmap.org/search");
+            url.searchParams.set("format", "json");
+            url.searchParams.set("limit", "1");
+            url.searchParams.set("q", query);
+
+            const response = await fetch(url.toString(), {
+                headers: { "Accept": "application/json" },
+            });
+            if (!response.ok) return undefined;
+            const data = await response.json();
+            if (!Array.isArray(data) || data.length === 0) return undefined;
+
+            const lat = Number(data[0].lat);
+            const lng = Number(data[0].lon);
+            if (Number.isNaN(lat) || Number.isNaN(lng)) return undefined;
+
+            const coords = { lat, lng };
+            geocodeCacheRef.current.set(query, coords);
+            return coords;
+        } catch (error) {
+            console.error("Geocode error:", error);
+            return undefined;
+        }
+    };
 
     useEffect(() => {
         const activeDayData = itineraryDays.find((d) => d.day_number === activeDay);
@@ -485,6 +188,8 @@ export default function TripDetailPage() {
             }
         });
     }, [activeDay, itineraryDays, trip?.destination]);
+
+    // --- Updaters ---
 
     const updateAssignment = (dayNumber: number, field: keyof DriverAssignment, value: string) => {
         setAssignments((prev) => ({
@@ -557,41 +262,6 @@ export default function TripDetailPage() {
         );
     };
 
-    const geocodeLocation = async (location: string, destinationHint?: string) => {
-        const query = [location, destinationHint].filter(Boolean).join(", ");
-        if (!query.trim()) return undefined;
-
-        const cached = geocodeCacheRef.current.get(query);
-        if (cached) return cached;
-
-        try {
-            const url = new URL("https://nominatim.openstreetmap.org/search");
-            url.searchParams.set("format", "json");
-            url.searchParams.set("limit", "1");
-            url.searchParams.set("q", query);
-
-            const response = await fetch(url.toString(), {
-                headers: {
-                    "Accept": "application/json",
-                },
-            });
-            if (!response.ok) return undefined;
-            const data = await response.json();
-            if (!Array.isArray(data) || data.length === 0) return undefined;
-
-            const lat = Number(data[0].lat);
-            const lng = Number(data[0].lon);
-            if (Number.isNaN(lat) || Number.isNaN(lng)) return undefined;
-
-            const coords = { lat, lng };
-            geocodeCacheRef.current.set(query, coords);
-            return coords;
-        } catch (error) {
-            console.error("Geocode error:", error);
-            return undefined;
-        }
-    };
-
     const handleLocationBlur = async (dayNumber: number, activityIndex: number, location?: string) => {
         const cleanLocation = (location || "").trim();
         if (!cleanLocation) {
@@ -603,6 +273,37 @@ export default function TripDetailPage() {
             updateActivityCoordinates(dayNumber, activityIndex, coords);
         }
     };
+
+    const addActivity = (dayNumber: number) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    return buildDaySchedule({
+                        ...day,
+                        activities: [
+                            ...day.activities,
+                            { title: "New Activity", start_time: "", duration_minutes: 90, location: "" },
+                        ],
+                    });
+                }
+                return day;
+            })
+        );
+    };
+
+    const removeActivity = (dayNumber: number, activityIndex: number) => {
+        setItineraryDays((prev) =>
+            prev.map((day) => {
+                if (day.day_number === dayNumber) {
+                    const newActivities = day.activities.filter((_, index) => index !== activityIndex);
+                    return buildDaySchedule({ ...day, activities: newActivities });
+                }
+                return day;
+            })
+        );
+    };
+
+    // --- Hotels ---
 
     const fillAccommodationFromSuggestion = (dayNumber: number, suggestion: HotelSuggestion) => {
         updateAccommodation(dayNumber, "hotel_name", suggestion.name);
@@ -705,42 +406,12 @@ out center tags 80;
         }
     };
 
-    const addActivity = (dayNumber: number) => {
-        setItineraryDays((prev) =>
-            prev.map((day) => {
-                if (day.day_number === dayNumber) {
-                    return buildDaySchedule({
-                        ...day,
-                        activities: [
-                            ...day.activities,
-                            { title: "New Activity", start_time: "", duration_minutes: 90, location: "" },
-                        ],
-                    });
-                }
-                return day;
-            })
-        );
-    };
-
-    const removeActivity = (dayNumber: number, activityIndex: number) => {
-        setItineraryDays((prev) =>
-            prev.map((day) => {
-                if (day.day_number === dayNumber) {
-                    const newActivities = day.activities.filter(
-                        (_, index) => index !== activityIndex
-                    );
-                    return buildDaySchedule({ ...day, activities: newActivities });
-                }
-                return day;
-            })
-        );
-    };
+    // --- Save ---
 
     const saveChanges = async () => {
         setSaving(true);
 
         try {
-            // Save driver assignments
             for (const [dayNumber, assignment] of Object.entries(assignments)) {
                 if (assignment.external_driver_id) {
                     const data = {
@@ -763,7 +434,6 @@ out center tags 80;
                 }
             }
 
-            // Save accommodations
             for (const [dayNumber, accommodation] of Object.entries(accommodations)) {
                 if (accommodation.hotel_name) {
                     const data = {
@@ -786,7 +456,6 @@ out center tags 80;
                 }
             }
 
-            // Save itinerary updates
             if (trip?.itineraries?.id) {
                 await supabase
                     .from("itineraries")
@@ -796,7 +465,6 @@ out center tags 80;
                     .eq("id", trip.itineraries.id);
             }
 
-            // Refresh data
             await fetchData();
             toast({
                 title: "Changes saved",
@@ -815,60 +483,7 @@ out center tags 80;
         setSaving(false);
     };
 
-    const sendNotificationToClient = async () => {
-        if (!trip?.profiles?.id && !notificationEmail.trim()) return;
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const payload: Record<string, unknown> = {
-                tripId,
-                type: "itinerary_update",
-                title: notificationTitle,
-                body: notificationBody || `Your trip to ${trip?.destination || "Unknown Destination"} has been updated with new details.`,
-            };
-
-            if (useEmailTarget) {
-                payload.email = notificationEmail.trim();
-            } else {
-                payload.userId = trip?.profiles?.id;
-            }
-
-            const response = await fetch("/api/notifications/send", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                toast({
-                    title: "Notification sent",
-                    description: "Update was sent to the client.",
-                    variant: "success",
-                });
-                setNotificationOpen(false);
-                setNotificationBody("");
-                setNotificationEmail("");
-                setUseEmailTarget(false);
-            } else {
-                const error = await response.json();
-                toast({
-                    title: "Notification failed",
-                    description: `Failed to send notification: ${error.error || "Unknown error"}`,
-                    variant: "error",
-                });
-            }
-        } catch (error) {
-            console.error("Error sending notification:", error);
-            toast({
-                title: "Notification failed",
-                description: "Error sending notification",
-                variant: "error",
-            });
-        }
-    };
+    // --- Live location ---
 
     const createLiveLocationShare = async () => {
         if (!tripId) return;
@@ -930,9 +545,7 @@ out center tags 80;
                 `/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`,
                 {
                     method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${session?.access_token || ""}`,
-                    },
+                    headers: { Authorization: `Bearer ${session?.access_token || ""}` },
                 }
             );
 
@@ -961,6 +574,8 @@ out center tags 80;
         }
     };
 
+    // --- WhatsApp ---
+
     const getWhatsAppLinkForDay = (dayNumber: number) => {
         const assignment = assignments[dayNumber];
         if (!assignment?.external_driver_id) return null;
@@ -985,32 +600,10 @@ out center tags 80;
                 : "";
 
         const message = `${baseMessage}${liveLinkSuffix}`;
-
         return getDriverWhatsAppLink(driver.phone, message);
     };
 
-    const formatDate = (dateString: string) => {
-        if (!dateString) return "";
-        return new Date(dateString).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        });
-    };
-
-    const clientWhatsAppLink = trip?.profiles?.phone
-        ? getDriverWhatsAppLink(
-            trip.profiles.phone,
-            formatClientWhatsAppMessage({
-                clientName: trip.profiles?.full_name || "there",
-                tripTitle: trip.itineraries?.trip_title,
-                destination: trip.destination,
-                startDate: trip.start_date ? formatDate(trip.start_date) : "",
-                body: notificationBody || "",
-            })
-        )
-        : null;
+    // --- Render ---
 
     if (loading) {
         return (
@@ -1030,599 +623,70 @@ out center tags 80;
 
     const days = trip.itineraries?.raw_data?.days || [];
     const durationDays = trip.itineraries?.duration_days || days.length || 1;
+    const activeDayData = itineraryDays.find((d) => d.day_number === activeDay);
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href="/admin/trips"
-                        className="p-2 hover:bg-white/40 dark:bg-white/5 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft className="h-5 w-5 text-text-secondary" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-[var(--font-display)] text-secondary dark:text-white">
-                            {trip.itineraries?.trip_title || trip.destination}
-                        </h1>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-text-secondary">
-                            <span className="flex items-center gap-1">
-                                <User className="h-4 w-4" />
-                                {trip.profiles?.full_name}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {formatDate(trip.start_date || "")}
-                            </span>
-                            <span>{durationDays} days</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Link
-                        href={`/admin/trips/${trip.id}/clone`}
-                        className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors text-text-secondary"
-                    >
-                        <CopyPlus className="h-4 w-4" />
-                        Clone Trip
-                    </Link>
-                    <button
-                        onClick={createLiveLocationShare}
-                        disabled={creatingLiveLink}
-                        className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors text-text-secondary disabled:opacity-60"
-                    >
-                        <Link2 className="h-4 w-4" />
-                        {creatingLiveLink ? "Creating..." : "Live Link"}
-                    </button>
-                    <GlassButton variant="secondary" onClick={() => setNotificationOpen(true)}>
-                        <Bell className="h-4 w-4" />
-                        Notify Client
-                    </GlassButton>
-                    <GlassModal
-                        isOpen={notificationOpen}
-                        onClose={() => setNotificationOpen(false)}
-                        title="Send Notification"
-                        description="Send a push notification to the client regarding this trip. You can target by email to ensure it matches the mobile login."
-                    >
-                        <div className="grid gap-4">
-                            <label className="flex items-center gap-2 text-sm text-text-secondary">
-                                <input
-                                    type="checkbox"
-                                    checked={useEmailTarget}
-                                    onChange={(e) => {
-                                        setUseEmailTarget(e.target.checked);
-                                        if (e.target.checked && !notificationEmail) {
-                                            setNotificationEmail(trip.profiles?.email || "");
-                                        }
-                                    }}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                />
-                                Send by email instead of user ID
-                            </label>
-                            {useEmailTarget && (
-                                <GlassInput
-                                    label="Client Email"
-                                    type="email"
-                                    value={notificationEmail}
-                                    onChange={(e) => setNotificationEmail(e.target.value)}
-                                    placeholder={trip.profiles?.email || "client@example.com"}
-                                />
-                            )}
-                            <GlassInput
-                                label="Title"
-                                value={notificationTitle}
-                                onChange={(e) => setNotificationTitle(e.target.value)}
-                                placeholder="Notification Title"
-                            />
-                            <GlassTextarea
-                                label="Message"
-                                value={notificationBody}
-                                onChange={(e) => setNotificationBody(e.target.value)}
-                                placeholder={`Your trip to ${trip.destination} has been updated...`}
-                                rows={3}
-                            />
-                            <div className="flex justify-end mt-4">
-                                <GlassButton variant="primary" onClick={sendNotificationToClient}>
-                                    Send Notification
-                                </GlassButton>
-                            </div>
-                        </div>
-                    </GlassModal>
-                    {clientWhatsAppLink ? (
-                        <a
-                            href={clientWhatsAppLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-secondary dark:text-white rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
-                        >
-                            <MessageCircle className="h-4 w-4" />
-                            WhatsApp Client
-                        </a>
-                    ) : (
-                        <button
-                            disabled
-                            className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-primary rounded-lg cursor-not-allowed"
-                            title="Client phone not available"
-                        >
-                            <MessageCircle className="h-4 w-4" />
-                            WhatsApp Client
-                        </button>
-                    )}
-                    {liveLocationUrl ? (
-                        <>
-                            <a
-                                href={liveLocationUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-secondary dark:text-white rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
-                                title="Open live location page"
-                            >
-                                <MapPin className="h-4 w-4" />
-                                Open Live
-                            </a>
-                            <button
-                                onClick={revokeLiveLocationShare}
-                                className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 text-text-secondary rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors"
-                                title="Disable active live links"
-                            >
-                                Revoke Live
-                            </button>
-                        </>
-                    ) : null}
-                    <button
-                        onClick={saveChanges}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-secondary dark:bg-white/20 text-white rounded-lg hover:bg-secondary/90 dark:hover:bg-white/30 transition-colors disabled:opacity-50"
-                    >
-                        <Save className="h-4 w-4" />
-                        {saving ? "Saving..." : "Save Changes"}
-                    </button>
-                </div>
-            </div>
+            <TripHeader
+                trip={trip}
+                durationDays={durationDays}
+                saving={saving}
+                liveLocationUrl={liveLocationUrl}
+                creatingLiveLink={creatingLiveLink}
+                onSave={saveChanges}
+                onCreateLiveLink={createLiveLocationShare}
+                onRevokeLiveLink={revokeLiveLocationShare}
+            />
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
-                    {/* Day Tabs */}
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                        {Array.from({ length: durationDays }, (_, i) => i + 1).map((day) => (
-                            <button
-                                key={day}
-                                onClick={() => setActiveDay(day)}
-                                className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${activeDay === day
-                                    ? "bg-primary text-white"
-                                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                    }`}
-                            >
-                                Day {day}
-                                {assignments[day]?.external_driver_id && (
-                                    <span className="ml-2 w-2 h-2 bg-green-400 rounded-full inline-block"></span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
+                    <DayTabs
+                        durationDays={durationDays}
+                        activeDay={activeDay}
+                        assignments={assignments}
+                        onDayChange={setActiveDay}
+                    />
 
-                    {/* Day Details */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Assignment and Accommodation blocks here... I'll just keep them as is but wrapped */}
-                        {/* Driver Assignment */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Car className="h-5 w-5 text-primary" />
-                                <h2 className="text-lg font-semibold">Driver Assignment</h2>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Select Driver
-                                    </label>
-                                    <select
-                                        value={assignments[activeDay]?.external_driver_id || ""}
-                                        onChange={(e) =>
-                                            updateAssignment(activeDay, "external_driver_id", e.target.value)
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                    >
-                                        <option value="">No driver assigned</option>
-                                        {drivers.map((driver) => {
-                                            const isBusy = (busyDriversByDay[activeDay] || []).includes(driver.id);
-                                            return (
-                                                <option
-                                                    key={driver.id}
-                                                    value={driver.id}
-                                                    disabled={isBusy}
-                                                    className={isBusy ? "text-red-500" : ""}
-                                                >
-                                                    {driver.full_name}
-                                                    {driver.vehicle_type ? ` - ${driver.vehicle_type}` : ""}
-                                                    {driver.vehicle_plate ? ` (${driver.vehicle_plate})` : ""}
-                                                    {isBusy ? " (Unavailable - Assigned to another trip)" : ""}
-                                                </option>
-                                            );
-                                        })}
-                                    </select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            <Clock className="h-3 w-3 inline mr-1" />
-                                            Pickup Time
-                                        </label>
-                                        <input
-                                            type="time"
-                                            value={assignments[activeDay]?.pickup_time || ""}
-                                            onChange={(e) =>
-                                                updateAssignment(activeDay, "pickup_time", e.target.value)
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            <MapPin className="h-3 w-3 inline mr-1" />
-                                            Pickup Location
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={assignments[activeDay]?.pickup_location || ""}
-                                            onChange={(e) =>
-                                                updateAssignment(activeDay, "pickup_location", e.target.value)
-                                            }
-                                            placeholder="Hotel lobby, airport..."
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Notes for Driver
-                                    </label>
-                                    <textarea
-                                        value={assignments[activeDay]?.notes || ""}
-                                        onChange={(e) => updateAssignment(activeDay, "notes", e.target.value)}
-                                        placeholder="Special instructions..."
-                                        rows={2}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                    />
-                                </div>
-
-                                {assignments[activeDay]?.external_driver_id && (
-                                    <div className="pt-4 border-t border-gray-100">
-                                        <a
-                                            href={getWhatsAppLinkForDay(activeDay) || "#"}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                                        >
-                                            <MessageCircle className="h-4 w-4" />
-                                            Send to Driver via WhatsApp
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Accommodation */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Hotel className="h-5 w-5 text-secondary" />
-                                <h2 className="text-lg font-semibold">Accommodation</h2>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Hotel Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={accommodations[activeDay]?.hotel_name || ""}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            updateAccommodation(activeDay, "hotel_name", value);
-
-                                            const existingTimer = hotelSearchDebounceRef.current[activeDay];
-                                            if (existingTimer) {
-                                                window.clearTimeout(existingTimer);
-                                            }
-
-                                            if (value.trim().length >= 3) {
-                                                hotelSearchDebounceRef.current[activeDay] = window.setTimeout(() => {
-                                                    void fetchNearbyHotels(activeDay, value.trim());
-                                                }, 350);
-                                            }
-                                        }}
-                                        onFocus={() => {
-                                            if (!hotelSuggestions[activeDay]?.length) {
-                                                void fetchNearbyHotels(activeDay);
-                                            }
-                                        }}
-                                        placeholder="Enter hotel name"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                    />
-                                    <div className="mt-2 flex items-center justify-between gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => void fetchNearbyHotels(activeDay)}
-                                            className="text-xs font-medium text-primary hover:underline"
-                                        >
-                                            {hotelLoadingByDay[activeDay] ? "Finding nearby hotels..." : "Auto-pick nearest hotel"}
-                                        </button>
-                                        {hotelSuggestions[activeDay]?.length ? (
-                                            <span className="text-xs text-gray-500">
-                                                {hotelSuggestions[activeDay].length} nearby options
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                    {hotelSuggestions[activeDay]?.length ? (
-                                        <div className="mt-2 max-h-36 overflow-auto rounded-lg border border-gray-200 bg-white">
-                                            {hotelSuggestions[activeDay].map((hotel, i) => (
-                                                <button
-                                                    key={`${hotel.name}-${hotel.lat}-${hotel.lng}-${i}`}
-                                                    type="button"
-                                                    onClick={() => fillAccommodationFromSuggestion(activeDay, hotel)}
-                                                    className="w-full border-b border-gray-100 px-3 py-2 text-left last:border-b-0 hover:bg-gray-50"
-                                                >
-                                                    <div className="text-sm font-medium text-gray-900">{hotel.name}</div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {hotel.address} • {hotel.distanceKm.toFixed(1)} km
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : null}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Address
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={accommodations[activeDay]?.address || ""}
-                                        onChange={(e) =>
-                                            updateAccommodation(activeDay, "address", e.target.value)
-                                        }
-                                        placeholder="Hotel address"
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Check-in Time
-                                        </label>
-                                        <input
-                                            type="time"
-                                            value={accommodations[activeDay]?.check_in_time || "15:00"}
-                                            onChange={(e) =>
-                                                updateAccommodation(activeDay, "check_in_time", e.target.value)
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            <Phone className="h-3 w-3 inline mr-1" />
-                                            Contact Phone
-                                        </label>
-                                        <input
-                                            type="tel"
-                                            value={accommodations[activeDay]?.contact_phone || ""}
-                                            onChange={(e) =>
-                                                updateAccommodation(activeDay, "contact_phone", e.target.value)
-                                            }
-                                            placeholder="+1 234 567 8900"
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <DriverAssignmentCard
+                            activeDay={activeDay}
+                            assignment={assignments[activeDay]}
+                            drivers={drivers}
+                            busyDriverIds={busyDriversByDay[activeDay] || []}
+                            whatsAppLink={getWhatsAppLinkForDay(activeDay)}
+                            onUpdateAssignment={updateAssignment}
+                        />
+                        <AccommodationCard
+                            activeDay={activeDay}
+                            accommodation={accommodations[activeDay]}
+                            hotelSuggestions={hotelSuggestions[activeDay] || []}
+                            hotelLoading={hotelLoadingByDay[activeDay] || false}
+                            onUpdateAccommodation={updateAccommodation}
+                            onFillFromSuggestion={fillAccommodationFromSuggestion}
+                            onFetchNearbyHotels={fetchNearbyHotels}
+                        />
                     </div>
 
-                    {/* Day Activities (Editable) */}
-                    {itineraryDays.find((d) => d.day_number === activeDay) && (
-                        <div className="bg-white rounded-xl border border-gray-100 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex-1 mr-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Day Theme
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={
-                                            itineraryDays.find((d) => d.day_number === activeDay)?.theme ||
-                                            ""
-                                        }
-                                        onChange={(e) => updateDayTheme(activeDay, e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold"
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => addActivity(activeDay)}
-                                    className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    Add Activity
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-3">
-                                    <p className="text-[10px] uppercase tracking-wide text-primary">Reminder Queue</p>
-                                    {reminderStatusByDay[activeDay] ? (
-                                        <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">P {reminderStatusByDay[activeDay].pending}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">W {reminderStatusByDay[activeDay].processing}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">S {reminderStatusByDay[activeDay].sent}</span>
-                                            <span className="rounded bg-white border border-white/20 dark:border-white/10 px-2 py-1 text-center">F {reminderStatusByDay[activeDay].failed}</span>
-                                        </div>
-                                    ) : (
-                                        <p className="mt-2 text-xs text-text-secondary">No reminders queued for this day yet.</p>
-                                    )}
-                                </div>
-
-                                <div className="rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-3">
-                                    <p className="text-[10px] uppercase tracking-wide text-primary">Driver Ping</p>
-                                    {latestDriverLocation?.recorded_at ? (
-                                        <>
-                                            <p className="mt-2 text-xs text-secondary dark:text-white">
-                                                Last ping: {new Date(latestDriverLocation.recorded_at).toLocaleString()}
-                                            </p>
-                                            <p className="text-xs text-text-secondary">
-                                                {latestDriverLocation.latitude.toFixed(5)}, {latestDriverLocation.longitude.toFixed(5)}
-                                            </p>
-                                            {Date.now() - new Date(latestDriverLocation.recorded_at).getTime() > 10 * 60 * 1000 ? (
-                                                <p className="mt-1 text-xs font-semibold text-rose-600">Stale: no recent location in last 10 min</p>
-                                            ) : (
-                                                <p className="mt-1 text-xs font-semibold text-emerald-600">Live: recent location available</p>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <p className="mt-2 text-xs text-text-secondary">No driver location ping received yet.</p>
-                                    )}
-                                </div>
-                                {itineraryDays
-                                    .find((d) => d.day_number === activeDay)
-                                    ?.activities.map((activity, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg group"
-                                        >
-                                            <div className="mt-3 w-2 h-2 bg-primary rounded-full flex-shrink-0"></div>
-                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
-                                                <div className="md:col-span-2">
-                                                    <input
-                                                        type="text"
-                                                        value={activity.title}
-                                                        onChange={(e) =>
-                                                            updateActivity(
-                                                                activeDay,
-                                                                index,
-                                                                "title",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5"
-                                                        placeholder="Activity title"
-                                                    />
-                                                    <div className="mt-2 flex items-center gap-2">
-                                                        <MapPin className="w-3.5 h-3.5 text-primary" />
-                                                        <input
-                                                            type="text"
-                                                            value={activity.location || ""}
-                                                            onChange={(e) =>
-                                                                updateActivity(
-                                                                    activeDay,
-                                                                    index,
-                                                                    "location",
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            onBlur={(e) =>
-                                                                handleLocationBlur(activeDay, index, e.target.value)
-                                                            }
-                                                            className="w-full bg-transparent border-b border-transparent focus:border-primary focus:outline-none px-1 py-0.5 text-sm text-text-secondary"
-                                                            placeholder="Location (auto-mapped)"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="w-[210px] rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-2">
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-primary mb-1">Start</p>
-                                                            {index === 0 ? (
-                                                                <select
-                                                                    value={activity.start_time || "09:00"}
-                                                                    onChange={(e) =>
-                                                                        updateActivity(
-                                                                            activeDay,
-                                                                            index,
-                                                                            "start_time",
-                                                                            e.target.value
-                                                                        )
-                                                                    }
-                                                                    className="w-full rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-[primary]/25"
-                                                                >
-                                                                    {timeOptions.map((time) => (
-                                                                        <option key={time} value={time}>
-                                                                            {time}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : (
-                                                                <div className="rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white text-center">
-                                                                    {activity.start_time || "--:--"}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[10px] uppercase tracking-wide text-primary mb-1">End</p>
-                                                            <div className="rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white text-center">
-                                                                {activity.end_time || "--:--"}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="w-[132px] rounded-lg border border-white/20 dark:border-white/10 bg-white/40 dark:bg-white/5 p-2">
-                                                    <p className="text-[10px] uppercase tracking-wide text-primary mb-1">Duration</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <select
-                                                            value={activity.duration_minutes}
-                                                            onChange={(e) =>
-                                                                updateActivity(
-                                                                    activeDay,
-                                                                    index,
-                                                                    "duration_minutes",
-                                                                    parseInt(e.target.value, 10) || 60
-                                                                )
-                                                            }
-                                                            className="w-full rounded-md border border-white/20 dark:border-white/10 bg-white px-2 py-1.5 text-sm font-mono tabular-nums text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-[primary]/25"
-                                                        >
-                                                            {[30, 45, 60, 75, 90, 120, 150, 180].map((mins) => (
-                                                                <option key={mins} value={mins}>
-                                                                    {mins}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        <span className="text-xs text-text-secondary">mins</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => removeActivity(activeDay, index)}
-                                                className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-
-                                {itineraryDays.find((d) => d.day_number === activeDay)?.activities.length === 0 && (
-                                    <div className="text-center py-6 text-gray-400 text-sm">
-                                        No activities planned for this day.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    <DayActivities
+                        activeDay={activeDay}
+                        activeDayData={activeDayData}
+                        reminderStatus={reminderStatusByDay[activeDay]}
+                        latestDriverLocation={latestDriverLocation}
+                        timeOptions={timeOptions}
+                        onUpdateDayTheme={updateDayTheme}
+                        onUpdateActivity={updateActivity}
+                        onAddActivity={addActivity}
+                        onRemoveActivity={removeActivity}
+                        onLocationBlur={handleLocationBlur}
+                    />
                 </div>
 
                 <div className="hidden xl:block h-[calc(100vh-100px)] sticky top-6">
                     <ItineraryMap
-                        activities={
-                            itineraryDays
-                                .find(d => d.day_number === activeDay)
-                                ?.activities || []
-                        }
+                        activities={activeDayData?.activities || []}
                     />
                 </div>
             </div>
         </div>
-    )
+    );
 }
