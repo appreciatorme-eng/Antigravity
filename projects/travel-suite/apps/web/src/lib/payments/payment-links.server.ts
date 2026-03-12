@@ -326,8 +326,15 @@ export async function recordPaymentLinkEvent(
     metadata?: Record<string, string>;
     razorpayPaymentId?: string | null;
     baseUrl?: string;
+    _callerVerified?: boolean;
   },
 ) {
+  if ((args.event === "paid" || args.event === "cancelled") && !args._callerVerified) {
+    throw new Error(
+      `Payment state "${args.event}" must come through verified webhook — use _callerVerified: true from signature-checked callers only`
+    );
+  }
+
   const { data, error } = await admin
     .from("payment_links")
     .select(PAYMENT_LINK_COLUMNS)

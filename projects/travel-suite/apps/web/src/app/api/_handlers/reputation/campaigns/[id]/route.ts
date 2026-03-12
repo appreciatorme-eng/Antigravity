@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+
+type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 
 export async function GET(
   _req: Request,
@@ -29,12 +32,13 @@ export async function GET(
       return apiError("No organization found", 400);
     }
 
-    const { data: campaign, error } = await supabase
+    const { data: campaignData, error } = await supabase
       .from("reputation_review_campaigns")
-      .select("*")
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
       .maybeSingle();
+    const campaign = campaignData as unknown as CampaignRow | null;
 
     if (error) {
       throw error;
@@ -108,13 +112,14 @@ export async function PATCH(
       return apiError("No valid fields to update", 400);
     }
 
-    const { data: campaign, error } = await supabase
+    const { data: campaignData, error } = await supabase
       .from("reputation_review_campaigns")
       .update(updateData as Database['public']['Tables']['reputation_review_campaigns']['Update'])
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
-      .select()
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .single();
+    const campaign = campaignData as unknown as CampaignRow | null;
 
     if (error) {
       throw error;
@@ -157,13 +162,14 @@ export async function DELETE(
       return apiError("No organization found", 400);
     }
 
-    const { data: campaign, error } = await supabase
+    const { data: campaignData, error } = await supabase
       .from("reputation_review_campaigns")
       .update({ status: "archived" })
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
-      .select()
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .single();
+    const campaign = campaignData as unknown as CampaignRow | null;
 
     if (error) {
       throw error;

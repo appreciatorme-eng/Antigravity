@@ -25,6 +25,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { useToast } from "@/components/ui/toast";
+import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
 import SearchableCreatableMultiSelect from "@/components/forms/SearchableCreatableMultiSelect";
 import {
     fetchMarketplaceOptionCatalog,
@@ -139,7 +140,7 @@ export default function MarketplaceSettingsPage() {
                 const dynamicClient = supabase as unknown as MarketplaceSettingsLookupClient;
                 const { data: marketProfile } = await dynamicClient
                     .from("marketplace_profiles")
-                    .select("*")
+                    .select(MARKETPLACE_PROFILE_SELECT)
                     .eq("organization_id", profile.organization_id)
                     .single();
 

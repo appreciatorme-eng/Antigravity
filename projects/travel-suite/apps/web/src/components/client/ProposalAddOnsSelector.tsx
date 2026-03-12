@@ -11,6 +11,7 @@ import {
   Info,
   Car,
 } from 'lucide-react';
+import { PROPOSAL_ADD_ON_SELECT } from '@/lib/business/selects';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { useToast } from '@/components/ui/toast';
@@ -61,13 +62,14 @@ export default function ProposalAddOnsSelector({
 
       const { data, error } = await supabase
         .from('proposal_add_ons')
-        .select('*')
+        .select(PROPOSAL_ADD_ON_SELECT)
         .eq('proposal_id', proposalId)
         .order('category', { ascending: true });
+      const rows = (data as unknown as ProposalAddOn[] | null) ?? [];
 
       if (error) throw error;
 
-      const formatted: ProposalAddOn[] = (data || []).map((item) => ({
+      const formatted: ProposalAddOn[] = rows.map((item) => ({
         id: item.id,
         proposal_id: item.proposal_id,
         add_on_id: item.add_on_id || null,

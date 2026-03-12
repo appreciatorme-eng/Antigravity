@@ -3,6 +3,8 @@ import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/supabase/database.types";
+import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 function omitFields<T extends Record<string, unknown>, K extends keyof T>(
     value: T,
@@ -14,6 +16,11 @@ function omitFields<T extends Record<string, unknown>, K extends keyof T>(
     }
     return clone as Omit<T, K>;
 }
+
+type ItineraryRow = Database["public"]["Tables"]["itineraries"]["Row"];
+type ItineraryInsert = Database["public"]["Tables"]["itineraries"]["Insert"];
+type TripRow = Database["public"]["Tables"]["trips"]["Row"];
+type TripInsert = Database["public"]["Tables"]["trips"]["Insert"];
 
 export async function POST(req: Request, { params }: { params: Promise<{ id?: string }> }) {
     try {
@@ -48,7 +55,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         // Fetch original trip
         let tripQuery = supabaseAdmin
             .from("trips")
-            .select("*")
+            .select(TRIP_SELECT)
             .eq("id", tripId);
 
         if (role !== "super_admin") {
@@ -61,33 +68,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         }
 
         const { data: originalTrip, error: tripError } = await tripQuery.single();
+        const originalTripRow = originalTrip as unknown as TripRow | null;
 
-        if (tripError || !originalTrip) {
+        if (tripError || !originalTripRow) {
             return apiError("Trip not found or access denied.", 404);
         }
 
         let newItineraryId: string | null = null;
 
         // Fetch and clone the original itinerary
-        if (originalTrip.itinerary_id) {
+        if (originalTripRow.itinerary_id) {
             const { data: originalItinerary, error: itinError } = await supabaseAdmin
                 .from("itineraries")
-                .select("*")
-                .eq("id", originalTrip.itinerary_id)
+                .select(ITINERARY_SELECT)
+                .eq("id", originalTripRow.itinerary_id)
                 .single();
+            const originalItineraryRow = originalItinerary as unknown as ItineraryRow | null;
 
-            if (!itinError && originalItinerary) {
+            if (!itinError && originalItineraryRow) {
                 // Strip the exact matched ID to force an insert
                 const clonedItineraryData = omitFields<
-                    typeof originalItinerary,
+                    ItineraryRow,
                     "id" | "created_at" | "updated_at"
-                >(originalItinerary, ["id", "created_at", "updated_at"]);
+                >(originalItineraryRow, ["id", "created_at", "updated_at"]);
 
                 clonedItineraryData.trip_title = `Copy of ${clonedItineraryData.trip_title}`;
+                const itineraryInsert: ItineraryInsert = clonedItineraryData;
 
                 const { data: newItinerary, error: insertItinError } = await supabaseAdmin
                     .from("itineraries")
-                    .insert(clonedItineraryData)
+                    .insert(itineraryInsert)
                     .select("id")
                     .single();
 
@@ -99,12 +109,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
 
         // Create the new trip
         const clonedTripData = omitFields<
-            typeof originalTrip,
+            TripRow,
             "id" | "created_at" | "updated_at"
-        >(originalTrip, ["id", "created_at", "updated_at"]);
+        >(originalTripRow, ["id", "created_at", "updated_at"]);
 
         clonedTripData.itinerary_id = newItineraryId;
         clonedTripData.status = "pending"; // Reset to initial status for the cloned trip
+        const tripInsert: TripInsert = clonedTripData;
 
         // Optionally clear dates to avoid conflicts or let them reset
         // clonedTripData.start_date = null;
@@ -112,7 +123,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
 
         const { data: newTrip, error: insertTripError } = await supabaseAdmin
             .from("trips")
-            .insert(clonedTripData)
+            .insert(tripInsert)
             .select("id")
             .single();
 

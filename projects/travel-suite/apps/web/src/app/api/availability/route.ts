@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 const AvailabilityQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -69,6 +70,9 @@ export async function POST(request: Request) {
     if (!admin.ok) {
       return admin.response;
     }
+    if (!passesMutationCsrfGuard(request)) {
+      return apiError("CSRF validation failed for admin mutation", 403);
+    }
 
     const parsed = AvailabilityCreateSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -115,6 +119,9 @@ export async function DELETE(request: Request) {
     const admin = await requireAdmin(request);
     if (!admin.ok) {
       return admin.response;
+    }
+    if (!passesMutationCsrfGuard(request)) {
+      return apiError("CSRF validation failed for admin mutation", 403);
     }
 
     const id = new URL(request.url).searchParams.get("id");

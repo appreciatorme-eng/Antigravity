@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sanitizeText } from "@/lib/security/sanitize";
 
 type ReferralRow = {
@@ -215,7 +216,7 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      return apiError(insertError.message, 500);
+      return apiError(safeErrorMessage(insertError, "Failed to apply referral code"), 500);
     }
 
     return NextResponse.json({

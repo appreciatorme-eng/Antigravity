@@ -8,8 +8,12 @@
 
 import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
+import { ADD_ON_SELECT } from "@/lib/business/selects";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
+import type { Database } from '@/lib/database.types';
+
+type AddOnRow = Database["public"]["Tables"]["add_ons"]["Row"];
 
 export async function GET(request: Request) {
   try {
@@ -39,7 +43,7 @@ export async function GET(request: Request) {
     // Build query
     let query = supabase
       .from('add_ons')
-      .select('*')
+      .select(ADD_ON_SELECT)
       .eq('organization_id', profile.organization_id)
       .order('created_at', { ascending: false });
 
@@ -48,7 +52,8 @@ export async function GET(request: Request) {
       query = query.eq('category', category);
     }
 
-    const { data: addOns, error } = await query;
+    const { data: addOnsData, error } = await query;
+    const addOns = addOnsData as unknown as AddOnRow[] | null;
 
     if (error) {
       console.error('Error fetching add-ons:', error);
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
     }
 
     // Create new add-on
-    const { data: addon, error } = await supabase
+    const { data: addonData, error } = await supabase
       .from('add_ons')
       .insert({
         organization_id: profile.organization_id,
@@ -112,8 +117,9 @@ export async function POST(request: Request) {
         duration: body.duration || null,
         is_active: true,
       })
-      .select()
+      .select(ADD_ON_SELECT)
       .single();
+    const addon = addonData as unknown as AddOnRow | null;
 
     if (error) {
       console.error('Error creating add-on:', error);

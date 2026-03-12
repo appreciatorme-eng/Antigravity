@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { REPUTATION_BRAND_VOICE_SELECT } from "@/lib/reputation/selects";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -42,11 +43,12 @@ export async function GET() {
     const organizationId = profile.organization_id;
 
     // Fetch existing brand voice
-    const { data: existing } = await supabase
+    const { data: existingData } = await supabase
       .from("reputation_brand_voice")
-      .select("*")
+      .select(REPUTATION_BRAND_VOICE_SELECT)
       .eq("organization_id", organizationId)
       .maybeSingle();
+    const existing = existingData as unknown as ReputationBrandVoice | null;
 
     if (existing) {
       return NextResponse.json({ brandVoice: existing });
@@ -67,19 +69,21 @@ export async function GET() {
       escalation_threshold: 2,
     };
 
-    const { data: created, error: insertError } = await supabase
+    const { data: createdData, error: insertError } = await supabase
       .from("reputation_brand_voice")
       .insert(defaultVoice)
-      .select()
+      .select(REPUTATION_BRAND_VOICE_SELECT)
       .single();
+    const created = createdData as unknown as ReputationBrandVoice | null;
 
     if (insertError) {
       // If insert fails (race condition), try to fetch again
-      const { data: retryFetch } = await supabase
+      const { data: retryFetchData } = await supabase
         .from("reputation_brand_voice")
-        .select("*")
+        .select(REPUTATION_BRAND_VOICE_SELECT)
         .eq("organization_id", organizationId)
         .maybeSingle();
+      const retryFetch = retryFetchData as unknown as ReputationBrandVoice | null;
 
       if (retryFetch) {
         return NextResponse.json({ brandVoice: retryFetch });
@@ -208,17 +212,18 @@ export async function PUT(req: Request) {
     let brandVoice: ReputationBrandVoice;
 
     if (existing) {
-      const { data: updated, error: updateError } = await supabase
+      const { data: updatedData, error: updateError } = await supabase
         .from("reputation_brand_voice")
         .update(updateData as Database['public']['Tables']['reputation_brand_voice']['Update'])
         .eq("organization_id", organizationId)
-        .select()
+        .select(REPUTATION_BRAND_VOICE_SELECT)
         .single();
+      const updated = updatedData as unknown as ReputationBrandVoice | null;
 
-      if (updateError) {
+      if (updateError || !updated) {
         throw updateError;
       }
-      brandVoice = updated as ReputationBrandVoice;
+      brandVoice = updated;
     } else {
       const defaultWithUpdates = {
         organization_id: organizationId,
@@ -235,16 +240,17 @@ export async function PUT(req: Request) {
         ...updateData,
       };
 
-      const { data: created, error: insertError } = await supabase
+      const { data: createdData, error: insertError } = await supabase
         .from("reputation_brand_voice")
         .insert(defaultWithUpdates as Database['public']['Tables']['reputation_brand_voice']['Insert'])
-        .select()
+        .select(REPUTATION_BRAND_VOICE_SELECT)
         .single();
+      const created = createdData as unknown as ReputationBrandVoice | null;
 
-      if (insertError) {
+      if (insertError || !created) {
         throw insertError;
       }
-      brandVoice = created as ReputationBrandVoice;
+      brandVoice = created;
     }
 
     return NextResponse.json({ brandVoice });

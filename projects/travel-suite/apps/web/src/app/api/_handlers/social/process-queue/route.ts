@@ -3,6 +3,26 @@ import { apiError } from "@/lib/api-response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const SOCIAL_QUEUE_PROCESS_SELECT = [
+    "attempts",
+    "id",
+    "platform",
+    "platform_post_id",
+    "post_id",
+    "scheduled_for",
+    "social_posts!inner(id)",
+    "social_connections!inner(platform_page_id)",
+].join(", ");
+
+type SocialQueueProcessRow = {
+    attempts: number | null;
+    id: string;
+    platform: string;
+    platform_post_id: string | null;
+    post_id: string;
+    scheduled_for: string | null;
+};
+
 function isMockSocialPublishingEnabled(): boolean {
     const explicit = process.env.SOCIAL_PUBLISH_MOCK_ENABLED?.trim().toLowerCase();
     if (explicit === "true") return true;
@@ -50,30 +70,23 @@ export async function POST(req: Request) {
 
         const { data: pendingItems, error: fetchError } = await supabaseAdmin
             .from("social_post_queue")
-            .select(`
-                *,
-                social_posts!inner (
-                   *
-                ),
-                social_connections!inner (
-                    platform_page_id
-                )
-            `)
+            .select(SOCIAL_QUEUE_PROCESS_SELECT)
             .eq("status", "pending")
             .lt("scheduled_for", new Date().toISOString())
             .lt("attempts", maxAttempts)
             .order("scheduled_for", { ascending: true })
             .limit(10);
+        const queueItems = (pendingItems as unknown as SocialQueueProcessRow[] | null) ?? [];
 
         if (fetchError) throw fetchError;
 
-        if (!pendingItems || pendingItems.length === 0) {
+        if (queueItems.length === 0) {
             return NextResponse.json({ message: "No pending items" });
         }
 
         const results: Array<{ id: string; status: string; error?: string; retry_at?: string }> = [];
 
-        for (const item of pendingItems) {
+        for (const item of queueItems) {
             const claimTime = new Date().toISOString();
             const { data: claimedRows } = await supabaseAdmin
                 .from("social_post_queue")
@@ -116,7 +129,7 @@ export async function POST(req: Request) {
                         status: "sent",
                         platform_post_id: platformPostId,
                         platform_post_url: platformPostUrl,
-                        attempts: item.attempts + 1,
+                        attempts: (item.attempts ?? 0) + 1,
                         updated_at: new Date().toISOString(),
                     })
                     .eq("id", item.id)
@@ -149,7 +162,7 @@ export async function POST(req: Request) {
                         status: exhausted ? "failed" : "pending",
                         error_message: internalMessage,
                         attempts: attemptNumber,
-                        scheduled_for: retryAt || item.scheduled_for,
+                        scheduled_for: retryAt ?? item.scheduled_for ?? undefined,
                         updated_at: new Date().toISOString(),
                     })
                     .eq("id", item.id)

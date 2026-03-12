@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
+import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
 
     let connectionsQuery = supabase
       .from("reputation_platform_connections")
-      .select("*")
+      .select(REPUTATION_PLATFORM_CONNECTION_SELECT)
       .eq("organization_id", profile.organization_id)
       .eq("platform", "google_business")
       .eq("sync_enabled", true);
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
       throw connectionsError;
     }
 
-    const connections = (rawConnections ?? []) as SyncConnectionRecord[];
+    const connections = (rawConnections ?? []) as unknown as SyncConnectionRecord[];
     if (connections.length === 0) {
       return NextResponse.json(
         {

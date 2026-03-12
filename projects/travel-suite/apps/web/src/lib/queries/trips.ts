@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { DEMO_TRIPS } from '@/lib/demo/data';
 
+const UPDATED_TRIP_STATUS_SELECT = 'id, status';
+
 export const tripsKeys = {
     all: ['trips'] as const,
     lists: () => [...tripsKeys.all, 'list'] as const,
@@ -85,7 +87,7 @@ export function useUpdateTripStatus() {
                 .from('trips')
                 .update({ status })
                 .eq('id', id)
-                .select()
+                .select(UPDATED_TRIP_STATUS_SELECT)
                 .single();
 
             if (error) throw error;

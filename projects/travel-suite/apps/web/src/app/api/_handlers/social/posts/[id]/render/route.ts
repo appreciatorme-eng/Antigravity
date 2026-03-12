@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { SOCIAL_POST_SELECT } from "@/lib/social/selects";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SocialPostRow = Database["public"]["Tables"]["social_posts"]["Row"];
 
 // Polyfill missing Blob dependencies if needed by running in edge or letting node standard blob handle it
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -48,13 +52,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             .getPublicUrl(storagePath);
 
         // Update the post record with the public URL
-        const { data: post, error: updateError } = await supabase
+        const { data: postData, error: updateError } = await supabase
             .from("social_posts")
             .update({ rendered_image_url: publicUrl })
             .eq("id", id)
             .eq("organization_id", profile.organization_id)
-            .select()
+            .select(SOCIAL_POST_SELECT)
             .single();
+        const post = postData as unknown as SocialPostRow | null;
 
         if (updateError) throw updateError;
 

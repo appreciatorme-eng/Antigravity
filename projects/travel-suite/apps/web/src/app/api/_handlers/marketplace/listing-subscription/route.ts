@@ -22,6 +22,25 @@ const cancelListingSubscriptionSchema = z.object({
 type MarketplaceListingSubscriptionRow =
   Database["public"]["Tables"]["marketplace_listing_subscriptions"]["Row"];
 
+const MARKETPLACE_LISTING_SUBSCRIPTION_SELECT = [
+  "amount_paise",
+  "boost_score",
+  "cancelled_at",
+  "created_at",
+  "created_by",
+  "currency",
+  "current_period_end",
+  "id",
+  "marketplace_profile_id",
+  "organization_id",
+  "plan_id",
+  "razorpay_order_id",
+  "razorpay_payment_id",
+  "started_at",
+  "status",
+  "updated_at",
+].join(", ");
+
 async function getAuthContext() {
   const supabase = await createClient();
   const {
@@ -53,34 +72,36 @@ async function normalizeCurrentSubscription(
 ): Promise<MarketplaceListingSubscriptionRow | null> {
   const { data, error } = await admin
     .from("marketplace_listing_subscriptions")
-    .select("*")
+    .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  const subscription = data as unknown as MarketplaceListingSubscriptionRow | null;
 
   if (error) {
     throw error;
   }
 
-  if (!data) {
+  if (!subscription) {
     return null;
   }
 
   if (
-    data.status === "active" &&
-    data.current_period_end &&
-    new Date(data.current_period_end).getTime() < Date.now()
+    subscription.status === "active" &&
+    subscription.current_period_end &&
+    new Date(subscription.current_period_end).getTime() < Date.now()
   ) {
-    const { data: expired, error: updateError } = await admin
+    const { data: expiredData, error: updateError } = await admin
       .from("marketplace_listing_subscriptions")
       .update({
         status: "expired",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", data.id)
-      .select("*")
+      .eq("id", subscription.id)
+      .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .single();
+    const expired = expiredData as unknown as MarketplaceListingSubscriptionRow | null;
 
     if (updateError) {
       throw updateError;
@@ -100,7 +121,7 @@ async function normalizeCurrentSubscription(
     return expired;
   }
 
-  return data;
+  return subscription;
 }
 
 export async function GET() {
@@ -193,7 +214,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    const { data: subscription, error: insertError } = await admin
+    const { data: subscriptionData, error: insertError } = await admin
       .from("marketplace_listing_subscriptions")
       .insert({
         organization_id: organizationId,
@@ -206,10 +227,11 @@ export async function POST(request: NextRequest) {
         razorpay_order_id: order.id,
         created_by: user.id,
       })
-      .select("*")
+      .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .single();
+    const subscription = subscriptionData as unknown as MarketplaceListingSubscriptionRow | null;
 
-    if (insertError) {
+    if (insertError || !subscription) {
       return apiError("Failed to create listing upgrade", 500);
     }
 

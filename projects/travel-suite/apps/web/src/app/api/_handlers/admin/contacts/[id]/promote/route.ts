@@ -139,7 +139,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
         },
       });
       if (createError || !created?.user?.id) {
-        return withRequestId({ error: createError?.message || 'Failed to create user' }, requestId, { status: 400 });
+        return withRequestId(
+          { error: safeErrorMessage(createError, 'Failed to create user') },
+          requestId,
+          { status: 400 }
+        );
       }
       profileId = created.user.id;
     }
@@ -161,7 +165,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
       .eq('id', profileId);
 
     if (updateError) {
-      return withRequestId({ error: updateError.message }, requestId, { status: 400 });
+      return withRequestId(
+        { error: safeErrorMessage(updateError, 'Failed to promote contact') },
+        requestId,
+        { status: 400 }
+      );
     }
 
     await admin.adminClient

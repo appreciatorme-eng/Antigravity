@@ -11,6 +11,12 @@ const routes = createCatchAllHandlers([
   ["export", () => import("@/app/api/_handlers/assistant/export/route")],
   ["quick-prompts", () => import("@/app/api/_handlers/assistant/quick-prompts/route")],
   ["usage", () => import("@/app/api/_handlers/assistant/usage/route")],
-]);
+], {
+  rateLimit: {
+    limit: 100,
+    windowMs: 5 * 60 * 1000,
+    prefix: "api:assistant",
+  },
+});
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

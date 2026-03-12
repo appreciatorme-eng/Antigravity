@@ -4,6 +4,9 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import type { Database } from "@/lib/supabase/database.types";
+import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 const TRIPS_READ_RATE_LIMIT_MAX = 120;
 const TRIPS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -69,6 +72,8 @@ function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof get
 }
 
 type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
+type ItineraryRow = Database["public"]["Tables"]["itineraries"]["Row"];
+type TripRow = Database["public"]["Tables"]["trips"]["Row"];
 
 function attachRateLimitHeaders(
     response: NextResponse,
@@ -230,6 +235,12 @@ export async function POST(req: NextRequest) {
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
         }
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json(
+                { error: "CSRF validation failed for admin mutation" },
+                { status: 403 }
+            );
+        }
 
         const demoBlocked = blockDemoMutation(req);
         if (demoBlocked) return demoBlocked;
@@ -305,10 +316,11 @@ export async function POST(req: NextRequest) {
         const { data: itineraryData, error: itineraryError } = await admin.adminClient
             .from("itineraries")
             .insert(itineraryPayload)
-            .select()
+            .select(ITINERARY_SELECT)
             .single();
+        const itineraryRow = itineraryData as unknown as ItineraryRow | null;
 
-        if (itineraryError || !itineraryData) {
+        if (itineraryError || !itineraryRow) {
             return NextResponse.json({ error: "Failed to create itinerary" }, { status: 400 });
         }
 
@@ -320,16 +332,17 @@ export async function POST(req: NextRequest) {
                 start_date: startDate,
                 end_date: endDate,
                 status: "pending",
-                itinerary_id: itineraryData.id,
+                itinerary_id: itineraryRow.id,
             })
-            .select()
+            .select(TRIP_SELECT)
             .single();
+        const tripRow = tripData as unknown as TripRow | null;
 
-        if (tripError || !tripData) {
+        if (tripError || !tripRow) {
             return NextResponse.json({ error: "Failed to create trip" }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, tripId: tripData.id, itineraryId: itineraryData.id });
+        return NextResponse.json({ success: true, tripId: tripRow.id, itineraryId: itineraryRow.id });
     } catch {
         return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
     }

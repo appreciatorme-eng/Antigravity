@@ -7,6 +7,7 @@ import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { jsonWithRequestId as withRequestId } from '@/lib/api/response';
 import { resolveDemoOrg, blockDemoMutation } from '@/lib/auth/demo-org-resolver';
+import { passesMutationCsrfGuard } from '@/lib/security/admin-mutation-csrf';
 
 type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 const CONTACTS_LIST_RATE_LIMIT_MAX = 120;
@@ -146,6 +147,13 @@ export async function POST(req: NextRequest) {
         { error: admin.response.status === 401 ? 'Unauthorized' : 'Forbidden' },
         requestId,
         { status: admin.response.status || 401 },
+      );
+    }
+    if (!passesMutationCsrfGuard(req)) {
+      return withRequestId(
+        { error: 'CSRF validation failed for admin mutation' },
+        requestId,
+        { status: 403 },
       );
     }
 

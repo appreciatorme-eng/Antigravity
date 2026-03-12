@@ -65,6 +65,16 @@ type ProfileRoleLookup = {
 const CHATBOT_STATES = ["new", "qualifying", "proposal_ready", "handed_off"] as const;
 const MAX_AI_REPLIES = 5;
 const RECENT_HUMAN_REPLY_WINDOW_MS = 10 * 60 * 1000;
+const CHATBOT_SESSION_SELECT = [
+  "ai_reply_count",
+  "context",
+  "handed_off_at",
+  "id",
+  "organization_id",
+  "phone",
+  "state",
+  "updated_at",
+].join(", ");
 
 const ChatbotResponseSchema = z.object({
   reply: z.string().trim().min(1).max(400),
@@ -220,17 +230,18 @@ async function getOrCreateChatbotSession(
 
   const { data: existing, error: selectError } = await admin
     .from("whatsapp_chatbot_sessions")
-    .select("*")
+    .select(CHATBOT_SESSION_SELECT)
     .eq("organization_id", organizationId)
     .eq("phone", normalizedPhone)
     .maybeSingle();
+  const existingSession = existing as unknown as ChatbotSessionRow | null;
 
   if (selectError) {
     throw selectError;
   }
 
-  if (existing) {
-    return existing;
+  if (existingSession) {
+    return existingSession;
   }
 
   const { data: created, error: insertError } = await admin
@@ -250,14 +261,19 @@ async function getOrCreateChatbotSession(
         lastMissing: [],
       },
     })
-    .select("*")
+    .select(CHATBOT_SESSION_SELECT)
     .single();
+  const createdSession = created as unknown as ChatbotSessionRow | null;
 
   if (insertError) {
     throw insertError;
   }
 
-  return created;
+  if (!createdSession) {
+    throw new Error("Failed to create chatbot session");
+  }
+
+  return createdSession;
 }
 
 export async function isWhatsAppChatbotEnabled() {

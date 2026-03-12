@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     if (organizationError) {
       return NextResponse.json(
-        { error: organizationError.message },
+        { error: safeErrorMessage(organizationError, "Failed to validate organization") },
         { status: 500 },
       );
     }

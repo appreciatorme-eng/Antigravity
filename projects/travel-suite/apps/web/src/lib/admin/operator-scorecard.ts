@@ -60,6 +60,20 @@ type ReviewRecord = {
 };
 
 const APPROVED_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
+const CACHE_EVENT_SELECT = "event_type, cache_source, created_at";
+const SCORECARD_SELECT = [
+  "created_at",
+  "emailed_at",
+  "id",
+  "last_error",
+  "month_key",
+  "organization_id",
+  "payload",
+  "pdf_generated_at",
+  "score",
+  "status",
+  "updated_at",
+].join(", ");
 
 export interface OperatorScorecardMetrics {
   revenueInr: number;
@@ -380,7 +394,7 @@ async function loadCacheEvents(admin: AdminClient, organizationId: string, start
 
   const { data, error } = await typedAdmin
     .from("shared_itinerary_cache_events")
-    .select("*")
+    .select(CACHE_EVENT_SELECT)
     .eq("organization_id", organizationId)
     .gte("created_at", startISO)
     .lt("created_at", endISO);
@@ -559,7 +573,7 @@ export async function upsertOperatorScorecard(args: {
       },
       { onConflict: "organization_id,month_key" },
     )
-    .select("*")
+    .select(SCORECARD_SELECT)
     .single();
 
   if (error || !data) {

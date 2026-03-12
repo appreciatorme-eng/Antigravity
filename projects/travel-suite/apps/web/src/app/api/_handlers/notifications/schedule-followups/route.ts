@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
-import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
-import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
-import { isAdminBearerToken } from "@/lib/security/admin-bearer-auth";
+import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
@@ -78,16 +76,12 @@ function normalizeClientData(row: CompletedTripRow) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const headerSecret = request.headers.get("x-notification-cron-secret") || "";
-
-    const secretAuthorized = isCronSecretHeader(headerSecret);
-    const bearerCronAuthorized = isCronSecretBearer(authHeader);
-    const serviceRoleAuthorized = isServiceRoleBearer(authHeader);
-    const adminAuthorized = await isAdminBearerToken(authHeader);
-
-    if (!secretAuthorized && !bearerCronAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
-      return apiError("Unauthorized", 401);
+    const cronAuth = await authorizeCronRequest(request, {
+      secretHeaderNames: ["x-notification-cron-secret", "x-cron-secret"],
+      replayWindowMs: 10 * 60 * 1000,
+    });
+    if (!cronAuth.authorized) {
+      return apiError(cronAuth.reason, cronAuth.status);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -119,7 +113,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (tripsError) {
-      return apiError(tripsError.message, 500);
+      return apiError(safeErrorMessage(tripsError, "Failed to schedule follow-ups"), 500);
     }
 
     const rows = (completedTrips || []) as unknown as CompletedTripRow[];
@@ -137,7 +131,7 @@ export async function POST(request: NextRequest) {
       .in("notification_type", followUpTypes);
 
     if (existingError) {
-      return apiError(existingError.message, 500);
+      return apiError(safeErrorMessage(existingError, "Failed to schedule follow-ups"), 500);
     }
 
     const existingSet = new Set<string>();
@@ -194,7 +188,7 @@ export async function POST(request: NextRequest) {
         .from("notification_queue")
         .insert(insertRows);
       if (insertError) {
-        return apiError(insertError.message, 500);
+        return apiError(safeErrorMessage(insertError, "Failed to schedule follow-ups"), 500);
       }
     }
 

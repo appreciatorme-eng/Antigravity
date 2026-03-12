@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { InvoiceDocument, type InvoicePdfData } from "@/components/pdf/InvoiceDocument";
 import { requireAdmin } from "@/lib/auth/admin";
-import { normalizeInvoiceMetadata } from "@/lib/invoices/module";
+import { INVOICE_SELECT, normalizeInvoiceMetadata } from "@/lib/invoices/module";
 import {
   verifyInvoiceAccessSignature,
 } from "@/lib/invoices/public-link";
@@ -40,25 +40,26 @@ function mapInvoiceToPdfData(invoice: InvoiceRow): InvoicePdfData {
 }
 
 async function loadInvoice(adminClient: ReturnType<typeof createAdminClient>, id: string) {
-  const byId = await adminClient
+  const { data: byIdData, error: byIdError } = await adminClient
     .from("invoices")
-    .select("*")
+    .select(INVOICE_SELECT)
     .eq("id", id)
     .maybeSingle();
 
-  if (byId.error) throw byId.error;
-  if (byId.data) return byId.data;
+  if (byIdError) throw byIdError;
+  const byId = byIdData as InvoiceRow | null;
+  if (byId) return byId;
 
-  const byTrip = await adminClient
+  const { data: byTripData, error: byTripError } = await adminClient
     .from("invoices")
-    .select("*")
+    .select(INVOICE_SELECT)
     .eq("trip_id", id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (byTrip.error) throw byTrip.error;
-  return byTrip.data;
+  if (byTripError) throw byTripError;
+  return byTripData as InvoiceRow | null;
 }
 
 export const runtime = "nodejs";

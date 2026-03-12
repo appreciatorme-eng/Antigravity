@@ -9,6 +9,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  INSERTED_TEMPLATE_DAY_SELECT,
+  TEMPLATE_ACCOMMODATION_SELECT,
+  TEMPLATE_ACTIVITY_SELECT,
+  TEMPLATE_DAY_SELECT,
+  TOUR_TEMPLATE_SELECT,
+} from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
 
 interface TemplateDay {
@@ -43,6 +50,17 @@ interface TemplateAccommodation {
   image_url: string;
 }
 
+interface TemplateSummary {
+  name: string;
+  destination: string | null;
+  duration_days: number | null;
+  description: string | null;
+  hero_image_url: string | null;
+  base_price: number | null;
+  tags: string[] | null;
+  is_public: boolean | null;
+}
+
 export default function EditTemplatePage() {
   const params = useParams();
   const router = useRouter();
@@ -73,11 +91,12 @@ export default function EditTemplatePage() {
       // Load template
       const { data: template, error: templateError } = await supabase
         .from('tour_templates')
-        .select('*')
+        .select(TOUR_TEMPLATE_SELECT)
         .eq('id', templateId)
         .single();
+      const templateRow = template as unknown as TemplateSummary | null;
 
-      if (templateError || !template) {
+      if (templateError || !templateRow) {
         console.error('Error loading template:', templateError);
         toast({
           title: 'Template not found',
@@ -89,48 +108,56 @@ export default function EditTemplatePage() {
       }
 
       // Set basic info
-      setName(template.name);
-      setDestination(template.destination || '');
-      setDurationDays(template.duration_days || 5);
-      setDescription(template.description || '');
-      setHeroImageUrl(template.hero_image_url || '');
-      setBasePrice(template.base_price || 0);
-      setTags(template.tags || []);
-      setIsPublic(template.is_public || false);
+      setName(templateRow.name);
+      setDestination(templateRow.destination || '');
+      setDurationDays(templateRow.duration_days || 5);
+      setDescription(templateRow.description || '');
+      setHeroImageUrl(templateRow.hero_image_url || '');
+      setBasePrice(templateRow.base_price || 0);
+      setTags(templateRow.tags || []);
+      setIsPublic(templateRow.is_public || false);
 
       // Load days
       const { data: daysData, error: daysError } = await supabase
         .from('template_days')
-        .select('*')
+        .select(TEMPLATE_DAY_SELECT)
         .eq('template_id', templateId)
         .order('day_number', { ascending: true });
+      const templateDays = (daysData as unknown as Array<{
+        id: string;
+        day_number: number;
+        title: string | null;
+        description: string | null;
+      }> | null) ?? [];
 
       if (daysError) {
         console.error('Error loading days:', daysError);
-      } else if (daysData) {
+      } else if (templateDays.length > 0) {
         // Load activities and accommodations for each day
         const loadedDays = await Promise.all(
-          daysData.map(async (day) => {
+          templateDays.map(async (day) => {
             // Load activities
             const { data: activities } = await supabase
               .from('template_activities')
-              .select('*')
+              .select(TEMPLATE_ACTIVITY_SELECT)
               .eq('template_day_id', day.id)
               .order('display_order', { ascending: true });
+            const templateActivities = (activities as unknown as TemplateActivity[] | null) ?? [];
 
             // Load accommodation
             const { data: accommodations } = await supabase
               .from('template_accommodations')
-              .select('*')
+              .select(TEMPLATE_ACCOMMODATION_SELECT)
               .eq('template_day_id', day.id)
               .single();
+            const templateAccommodation = accommodations as unknown as TemplateAccommodation | null;
 
             return {
               id: day.id,
               day_number: day.day_number,
               title: day.title || '',
               description: day.description || '',
-              activities: (activities || []).map((a) => ({
+              activities: templateActivities.map((a) => ({
                 id: a.id,
                 time: a.time || '09:00 AM',
                 title: a.title,
@@ -142,15 +169,15 @@ export default function EditTemplatePage() {
                 is_premium: a.is_premium || false,
                 display_order: a.display_order || 0,
               })),
-              accommodation: accommodations
+              accommodation: templateAccommodation
                 ? {
-                    id: accommodations.id,
-                    hotel_name: accommodations.hotel_name,
-                    star_rating: accommodations.star_rating || 3,
-                    room_type: accommodations.room_type || '',
-                    price_per_night: accommodations.price_per_night || 0,
-                    amenities: accommodations.amenities || [],
-                    image_url: accommodations.image_url || '',
+                    id: templateAccommodation.id,
+                    hotel_name: templateAccommodation.hotel_name,
+                    star_rating: templateAccommodation.star_rating || 3,
+                    room_type: templateAccommodation.room_type || '',
+                    price_per_night: templateAccommodation.price_per_night || 0,
+                    amenities: templateAccommodation.amenities || [],
+                    image_url: templateAccommodation.image_url || '',
                   }
                 : null,
             };
@@ -234,7 +261,7 @@ export default function EditTemplatePage() {
             title: day.title,
             description: day.description,
           })
-          .select()
+          .select(INSERTED_TEMPLATE_DAY_SELECT)
           .single();
 
         if (dayError) {

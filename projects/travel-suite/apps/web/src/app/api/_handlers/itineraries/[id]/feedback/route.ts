@@ -192,7 +192,7 @@ export async function POST(
 
         if (updateError) {
             console.error("Error updating feedback:", updateError);
-            return apiError(updateError.message, 500);
+            return apiError(safeErrorMessage(updateError, "Failed to update feedback"), 500);
         }
 
         return NextResponse.json({ success: true, comments: updatedComments });

@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Bell,
-    CheckCircle2,
-    XCircle,
     Clock,
     Search,
     RefreshCcw,
@@ -17,87 +15,18 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-
-interface NotificationLog {
-    id: string;
-    trip_id: string | null;
-    recipient_id: string | null;
-    recipient_phone: string | null;
-    recipient_type: string | null;
-    notification_type: string;
-    title: string | null;
-    body: string | null;
-    status: string | null;
-    error_message: string | null;
-    sent_at: string | null;
-    created_at: string | null;
-    profiles: {
-        full_name: string | null;
-        email: string | null;
-    } | null;
-}
-
-interface QueueHealth {
-    pending: number;
-    processing: number;
-    sent: number;
-    failed: number;
-    upcomingHour: number;
-}
-
-interface DeliveryRow {
-    id: string;
-    queue_id: string | null;
-    trip_id: string | null;
-    channel: "whatsapp" | "push" | "email";
-    status: "queued" | "processing" | "sent" | "failed" | "skipped" | "retrying";
-    attempt_number: number;
-    error_message: string | null;
-    created_at: string;
-}
-
-interface DeliveryResponse {
-    rows: DeliveryRow[];
-    pagination: {
-        total: number;
-        limit: number;
-        offset: number;
-    };
-    summary: {
-        counts_by_status: Record<string, number>;
-    };
-}
-
-interface WhatsAppHealthSummary {
-    total_driver_profiles: number;
-    drivers_with_phone: number;
-    drivers_missing_phone: number;
-    active_trips_with_driver: number;
-    stale_active_driver_trips: number;
-    location_pings_last_1h: number;
-    location_pings_last_24h: number;
-    unmapped_external_drivers: number;
-}
-
-interface WhatsAppHealthPing {
-    driver_id: string;
-    driver_name: string;
-    trip_id: string | null;
-    recorded_at: string | null;
-    age_minutes: number | null;
-    status: "fresh" | "stale";
-}
-
-interface WhatsAppHealthPayload {
-    summary: WhatsAppHealthSummary;
-    latest_pings: WhatsAppHealthPing[];
-    drivers_missing_phone_list: Array<{
-        id: string;
-        full_name: string | null;
-        email: string | null;
-        phone?: string | null;
-    }>;
-}
+import {
+    type DeliveryResponse,
+    type DeliveryRow,
+    filterNotificationLogs,
+    formatNotificationDate,
+    getNotificationStatusIcon,
+    type NotificationLog,
+    normalizePhone,
+    NOTIFICATION_LOG_SELECT,
+    type QueueHealth,
+    type WhatsAppHealthPayload,
+} from "./shared";
 
 export default function NotificationLogsPage() {
     const supabase = createClient();
@@ -135,13 +64,7 @@ export default function NotificationLogsPage() {
         try {
             let query = supabase
                 .from("notification_logs")
-                .select(`
-                    *,
-                    profiles:recipient_id (
-                        full_name,
-                        email
-                    )
-                `)
+                .select(NOTIFICATION_LOG_SELECT)
                 .order("created_at", { ascending: false });
 
             if (statusFilter !== "all") {
@@ -151,7 +74,7 @@ export default function NotificationLogsPage() {
             const { data, error } = await query;
 
             if (error) throw error;
-            setLogs(data || []);
+            setLogs((data as unknown as NotificationLog[] | null) ?? []);
 
             const now = new Date();
             const inOneHourIso = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
@@ -260,32 +183,7 @@ export default function NotificationLogsPage() {
         return () => window.clearTimeout(timer);
     }, [actionMessage, actionError]);
 
-    const getStatusIcon = (status: string | null) => {
-        switch (status) {
-            case "sent":
-            case "delivered":
-                return <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />;
-            case "failed":
-                return <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />;
-            case "pending":
-                return <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />;
-            default:
-                return null;
-        }
-    };
-
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleString();
-    };
-
-    const filteredLogs = logs.filter(log =>
-        log.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.body?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const normalizePhone = (phone?: string | null) => (phone ? phone.replace(/\D/g, "") : "");
+    const filteredLogs = filterNotificationLogs(logs, searchTerm);
 
     const getWhatsAppLink = (phone?: string | null, message?: string | null) => {
         const cleanPhone = normalizePhone(phone);
@@ -719,7 +617,7 @@ export default function NotificationLogsPage() {
                                         <td className="py-3 pr-3 px-4 text-xs text-text-secondary max-w-[320px] truncate">
                                             {row.error_message || "-"}
                                         </td>
-                                        <td className="py-3 pr-3 px-4 text-text-secondary">{formatDate(row.created_at)}</td>
+                                        <td className="py-3 pr-3 px-4 text-text-secondary">{formatNotificationDate(row.created_at)}</td>
                                         <td className="py-3 px-4">
                                             {(row.status === "failed" || row.status === "retrying") && row.queue_id ? (
                                                 <GlassButton
@@ -906,7 +804,7 @@ export default function NotificationLogsPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    {getStatusIcon(log.status)}
+                                                    {getNotificationStatusIcon(log.status)}
                                                     <span className={`text-sm font-medium ${
                                                         log.status === 'sent' ? 'text-emerald-600 dark:text-emerald-400' :
                                                         log.status === 'failed' ? 'text-rose-600 dark:text-rose-400' :
@@ -923,7 +821,7 @@ export default function NotificationLogsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-text-secondary">
-                                                {formatDate(log.sent_at || log.created_at)}
+                                                {formatNotificationDate(log.sent_at || log.created_at)}
                                             </td>
                                         </tr>
                                     );

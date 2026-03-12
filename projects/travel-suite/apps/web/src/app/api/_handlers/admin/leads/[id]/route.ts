@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { CRM_CONTACT_SELECT } from "@/lib/business/selects";
 import {
   LEAD_STAGES,
   BUDGET_TIERS,
@@ -13,6 +14,9 @@ import {
   type LeadStage,
   type BudgetTier,
 } from "@/lib/leads/types";
+import type { Database } from "@/lib/database.types";
+
+type LeadRow = Database["public"]["Tables"]["crm_contacts"]["Row"];
 
 const UpdateLeadSchema = z.object({
   full_name: z.string().min(1).max(200).optional(),
@@ -115,13 +119,14 @@ export async function PATCH(
     updateData.closed_at = new Date().toISOString();
   }
 
-  const { data: lead, error: updateError } = await admin.adminClient
+  const { data: leadData, error: updateError } = await admin.adminClient
     .from("crm_contacts")
     .update(updateData)
     .eq("id", id)
     .eq("organization_id", admin.organizationId!)
-    .select()
+    .select(CRM_CONTACT_SELECT)
     .single();
+  const lead = leadData as unknown as LeadRow | null;
 
   if (updateError) {
     console.error("[admin/leads/:id] PATCH error:", updateError);

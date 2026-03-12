@@ -18,6 +18,35 @@ import type {
 type PaymentPlanRow = Database["public"]["Tables"]["proposal_payment_plans"]["Row"];
 type MilestoneRow  = Database["public"]["Tables"]["proposal_payment_milestones"]["Row"];
 
+const PROPOSAL_PAYMENT_PLAN_SELECT = [
+  "created_at",
+  "deposit_percent",
+  "id",
+  "notes",
+  "organization_id",
+  "proposal_id",
+  "updated_at",
+].join(", ");
+
+const PROPOSAL_PAYMENT_MILESTONE_SELECT = [
+  "amount_fixed",
+  "amount_percent",
+  "created_at",
+  "due_date",
+  "id",
+  "label",
+  "organization_id",
+  "paid_at",
+  "plan_id",
+  "proposal_id",
+  "razorpay_payment_link_id",
+  "razorpay_payment_link_url",
+  "sent_at",
+  "sort_order",
+  "status",
+  "updated_at",
+].join(", ");
+
 const MilestoneSchema = z.object({
   label:          z.string().min(1).max(120),
   amount_percent: z.number().int().min(1).max(100).optional(),
@@ -127,7 +156,7 @@ export async function GET(
 
   const { data: plan } = await supabase
     .from("proposal_payment_plans")
-    .select("*")
+    .select(PROPOSAL_PAYMENT_PLAN_SELECT)
     .eq("proposal_id", proposalId)
     .maybeSingle() as { data: PaymentPlanRow | null };
 
@@ -141,7 +170,7 @@ export async function GET(
 
   const { data: milestones } = await supabase
     .from("proposal_payment_milestones")
-    .select("*")
+    .select(PROPOSAL_PAYMENT_MILESTONE_SELECT)
     .eq("plan_id", plan.id)
     .order("sort_order", { ascending: true }) as { data: MilestoneRow[] | null };
 
@@ -255,13 +284,14 @@ async function handleCreatePlan(
   const { data: insertedMilestones, error: milestoneError } = await supabase
     .from("proposal_payment_milestones")
     .insert(milestoneRows)
-    .select();
+    .select(PROPOSAL_PAYMENT_MILESTONE_SELECT);
+  const insertedMilestoneRows = insertedMilestones as unknown as MilestoneRow[] | null;
 
   if (milestoneError) {
     return apiError("Failed to create milestones", 500);
   }
 
-  return NextResponse.json({ success: true, plan_id: planId, milestones: insertedMilestones });
+  return NextResponse.json({ success: true, plan_id: planId, milestones: insertedMilestoneRows ?? [] });
 }
 
 async function handleSendMilestone(
@@ -282,7 +312,7 @@ async function handleSendMilestone(
 
   const { data: milestone } = await supabase
     .from("proposal_payment_milestones")
-    .select("*")
+    .select(PROPOSAL_PAYMENT_MILESTONE_SELECT)
     .eq("id", milestone_id)
     .eq("proposal_id", proposal.id)
     .eq("organization_id", organizationId)

@@ -29,6 +29,8 @@ import {
     Receipt,
     Coins,
 } from "lucide-react";
+
+const SIDEBAR_PROFILE_SELECT = "full_name, role";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavCounts } from "@/components/layout/useNavCounts";
@@ -257,7 +259,7 @@ export default function Sidebar({ className }: SidebarProps) {
             if (user) {
                 const { data: profileData } = await supabase
                     .from("profiles")
-                    .select("*")
+                    .select(SIDEBAR_PROFILE_SELECT)
                     .eq("id", user.id)
                     .single();
                 setProfile(profileData);

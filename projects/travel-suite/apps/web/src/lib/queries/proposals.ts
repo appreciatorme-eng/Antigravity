@@ -6,6 +6,72 @@ import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { DEMO_PROPOSALS } from '@/lib/demo/data';
 
+const PROPOSAL_LIST_SELECT = [
+    'approved_at',
+    'approved_by',
+    'client_id',
+    'client_selected_price',
+    'created_at',
+    'expires_at',
+    'id',
+    'organization_id',
+    'share_token',
+    'status',
+    'template_id',
+    'title',
+    'total_price',
+    'updated_at',
+    'version',
+    'viewed_at',
+    'clients(full_name, email)',
+    'tour_templates(name)',
+].join(', ');
+const PROPOSAL_DETAIL_SELECT = [
+    'approved_at',
+    'approved_by',
+    'client_id',
+    'client_selected_price',
+    'created_at',
+    'expires_at',
+    'id',
+    'organization_id',
+    'share_token',
+    'status',
+    'template_id',
+    'title',
+    'total_price',
+    'updated_at',
+    'version',
+    'viewed_at',
+    'clients(full_name, email)',
+    'proposal_sections(id)',
+    'tour_templates(id, name, destination)',
+].join(', ');
+type ProposalListRow = {
+    approved_at: string | null;
+    approved_by: string | null;
+    client_id: string;
+    client_selected_price: number | null;
+    clients: { full_name?: string; email?: string } | null;
+    created_at: string | null;
+    expires_at: string | null;
+    id: string;
+    organization_id: string;
+    share_token: string;
+    status: string | null;
+    template_id: string | null;
+    title: string;
+    total_price: number | null;
+    tour_templates: { name?: string } | null;
+    updated_at: string | null;
+    version: number | null;
+    viewed_at: string | null;
+};
+type ProposalDetailRow = ProposalListRow & {
+    proposal_sections: Array<{ id: string }> | null;
+    tour_templates: { id?: string; name?: string; destination?: string | null } | null;
+};
+
 export const proposalsKeys = {
     all: ['proposals'] as const,
     lists: () => [...proposalsKeys.all, 'list'] as const,
@@ -42,7 +108,7 @@ export function useProposals(statusFilter: string = 'all') {
 
             let query = supabase
                 .from('proposals')
-                .select(`*, clients(full_name, email), tour_templates(name)`)
+                .select(PROPOSAL_LIST_SELECT)
                 .eq('organization_id', profile.organization_id)
                 .order('created_at', { ascending: false });
 
@@ -51,9 +117,10 @@ export function useProposals(statusFilter: string = 'all') {
             }
 
             const { data, error } = await query;
+            const proposalRows = (data as unknown as ProposalListRow[] | null) ?? [];
             if (error) throw error;
 
-            const formattedProposals = (data || []).map((proposal) => {
+            const formattedProposals = proposalRows.map((proposal) => {
                 const clients = proposal.clients as { full_name?: string; email?: string } | null;
                 const tourTemplates = proposal.tour_templates as { name?: string } | null;
                 return {
@@ -86,17 +153,12 @@ export function useProposal(id: string) {
             const supabase = createClient();
             const { data, error } = await supabase
                 .from('proposals')
-                .select(`
-          *,
-          clients(*),
-          proposal_sections(*),
-          tour_templates(*)
-        `)
+                .select(PROPOSAL_DETAIL_SELECT)
                 .eq('id', id)
                 .single();
 
             if (error) throw error;
-            return data;
+            return (data as unknown as ProposalDetailRow | null) ?? null;
         },
         enabled: !!id,
     });

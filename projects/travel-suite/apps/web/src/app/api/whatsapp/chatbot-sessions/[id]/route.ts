@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { markChatbotSessionHandedOff } from "@/lib/whatsapp/chatbot-flow";
 
 const PatchChatbotSessionSchema = z.object({
@@ -16,6 +17,9 @@ export async function PATCH(
     const admin = await requireAdmin(request);
     if (!admin.ok) {
       return apiError("Unauthorized", admin.response.status || 401);
+    }
+    if (!passesMutationCsrfGuard(request)) {
+      return apiError("CSRF validation failed for admin mutation", 403);
     }
 
     if (!admin.organizationId) {

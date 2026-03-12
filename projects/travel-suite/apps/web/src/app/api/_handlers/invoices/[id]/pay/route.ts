@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import { RecordInvoicePaymentSchema } from "@/lib/invoices/module";
+import type { Database } from "@/lib/database.types";
+import {
+  INVOICE_PAYMENT_SELECT,
+  INVOICE_SELECT,
+  RecordInvoicePaymentSchema,
+} from "@/lib/invoices/module";
+
+type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
+type InvoicePaymentRow = Database["public"]["Tables"]["invoice_payments"]["Row"];
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -21,13 +29,14 @@ export async function POST(
     const { id } = await params;
     const adminClient = auth.adminClient;
 
-    const { data: invoice, error: invoiceError } = await adminClient
+    const { data: invoiceData, error: invoiceError } = await adminClient
       .from("invoices")
-      .select("*")
+      .select(INVOICE_SELECT)
       .eq("id", id)
       .eq("organization_id", auth.organizationId!)
       .maybeSingle();
 
+    const invoice = invoiceData as InvoiceRow | null;
     if (invoiceError) {
       console.error("Failed to fetch invoice for payment:", invoiceError);
       return jsonError("Failed to fetch invoice", 500);
@@ -54,7 +63,7 @@ export async function POST(
     const paymentStatus = parsed.data.status || "completed";
     const amount = roundCurrency(parsed.data.amount);
 
-    const { data: payment, error: paymentError } = await adminClient
+    const { data: paymentData, error: paymentError } = await adminClient
       .from("invoice_payments")
       .insert({
         organization_id: auth.organizationId!,
@@ -68,9 +77,10 @@ export async function POST(
         payment_date: paymentDate,
         created_by: auth.userId,
       })
-      .select("*")
+      .select(INVOICE_PAYMENT_SELECT)
       .single();
 
+    const payment = paymentData as InvoicePaymentRow | null;
     if (paymentError) {
       if (paymentError.code === "23505") {
         return jsonError("Payment reference already exists", 409);
@@ -94,7 +104,7 @@ export async function POST(
         ? "paid"
         : "partially_paid";
 
-    const { data: updatedInvoice, error: invoiceUpdateError } = await adminClient
+    const { data: updatedInvoiceData, error: invoiceUpdateError } = await adminClient
       .from("invoices")
       .update({
         paid_amount: updatedPaidAmount,
@@ -108,17 +118,18 @@ export async function POST(
       })
       .eq("id", id)
       .eq("organization_id", auth.organizationId!)
-      .select("*")
+      .select(INVOICE_SELECT)
       .single();
 
+    const updatedInvoice = updatedInvoiceData as InvoiceRow | null;
     if (invoiceUpdateError || !updatedInvoice) {
       console.error("Failed to update invoice after payment:", invoiceUpdateError);
       return jsonError("Failed to finalize invoice payment", 500);
     }
 
-    const { data: payments, error: paymentsError } = await adminClient
+    const { data: paymentsData, error: paymentsError } = await adminClient
       .from("invoice_payments")
-      .select("*")
+      .select(INVOICE_PAYMENT_SELECT)
       .eq("invoice_id", id)
       .eq("organization_id", auth.organizationId!)
       .order("payment_date", { ascending: false });
@@ -127,6 +138,7 @@ export async function POST(
       console.error("Failed to fetch invoice payments:", paymentsError);
       return jsonError("Failed to fetch invoice payments", 500);
     }
+    const payments = paymentsData as unknown as InvoicePaymentRow[] | null;
 
     return NextResponse.json({
       payment,
@@ -144,4 +156,3 @@ export async function POST(
     );
   }
 }
-

@@ -29,6 +29,8 @@ import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { useToast } from '@/components/ui/toast';
 
+const PROPOSAL_VERSION_SELECT = 'created_at, id, snapshot, version_number';
+
 interface Proposal {
   id: string;
   title: string;
@@ -336,7 +338,7 @@ export default function AdminProposalViewPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('proposal_versions')
-        .select('*')
+        .select(PROPOSAL_VERSION_SELECT)
         .eq('proposal_id', proposalId)
         .order('version', { ascending: false });
 

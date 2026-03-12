@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { CRM_CONTACT_SELECT } from "@/lib/business/selects";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { parseLeadMessage } from "@/lib/leads/intent-parser";
 import {
   LEAD_STAGES,
@@ -12,6 +14,9 @@ import {
   type LeadStage,
   type BudgetTier,
 } from "@/lib/leads/types";
+import type { Database } from "@/lib/database.types";
+
+type LeadRow = Database["public"]["Tables"]["crm_contacts"]["Row"];
 
 const CreateLeadSchema = z.object({
   full_name: z.string().min(1).max(200),
@@ -49,7 +54,7 @@ export async function GET(req: Request) {
 
   let query = admin.adminClient
     .from("crm_contacts")
-    .select("*", { count: "exact" })
+    .select(CRM_CONTACT_SELECT, { count: "exact" })
     .eq("organization_id", admin.organizationId!)
     .order("last_activity_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -61,7 +66,8 @@ export async function GET(req: Request) {
     query = query.eq("assigned_to", assigned_to);
   }
 
-  const { data: leads, error, count } = await query;
+  const { data: leadsData, error, count } = await query;
+  const leads = leadsData as unknown as LeadRow[] | null;
 
   if (error) {
     console.error("[admin/leads] GET error:", error);
@@ -74,6 +80,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin(req, { requireOrganization: true });
   if (!admin.ok) return admin.response;
+  if (!passesMutationCsrfGuard(req)) {
+    return NextResponse.json(
+      { error: "CSRF validation failed for admin mutation" },
+      { status: 403 }
+    );
+  }
 
   let body: unknown;
   try {
@@ -132,13 +144,14 @@ export async function POST(req: Request) {
     created_by: admin.userId,
   };
 
-  const { data: lead, error } = await admin.adminClient
+  const { data: leadData, error } = await admin.adminClient
     .from("crm_contacts")
     .insert(insertData)
-    .select()
+    .select(CRM_CONTACT_SELECT)
     .single();
+  const lead = leadData as unknown as LeadRow | null;
 
-  if (error) {
+  if (error || !lead) {
     console.error("[admin/leads] POST error:", error);
     return apiError("Failed to create lead", 500);
   }

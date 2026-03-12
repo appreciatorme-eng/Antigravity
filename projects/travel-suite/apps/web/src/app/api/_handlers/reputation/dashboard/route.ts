@@ -2,6 +2,7 @@ import { apiSuccess, apiError } from "@/lib/api-response";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { calculateHealthScore } from "@/lib/reputation/score-calculator";
 import { PLATFORM_LABELS, PLATFORM_COLORS } from "@/lib/reputation/constants";
@@ -18,9 +19,9 @@ const getCachedReputationDashboard = unstable_cache(
     const supabase = createAdminClient();
 
     // Admin client is typed with Database generic, reputation_reviews is in generated types
-    const { data: allReviews, error } = await supabase
+    const { data: allReviewsData, error } = await supabase
       .from("reputation_reviews")
-      .select("*")
+      .select(REPUTATION_REVIEW_SELECT)
       .eq("organization_id", organizationId)
       .order("review_date", { ascending: false });
 
@@ -29,7 +30,7 @@ const getCachedReputationDashboard = unstable_cache(
     }
 
     // DB row `platform` is string; ReputationReview uses the narrower ReputationPlatform union
-    const reviews = (allReviews ?? []) as unknown as ReputationReview[];
+    const reviews = (allReviewsData ?? []) as unknown as ReputationReview[];
 
     const totalReviews = reviews.length;
     const overallRating =

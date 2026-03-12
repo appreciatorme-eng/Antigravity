@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import type { Database, Json } from "@/lib/database.types";
 import { normalizeMarketplaceOptionList } from "@/lib/marketplace-options";
+import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -114,7 +115,7 @@ export async function GET() {
           .maybeSingle(),
         admin
           .from("marketplace_profiles")
-          .select("*")
+          .select(MARKETPLACE_PROFILE_SELECT)
           .eq("organization_id", profile.organization_id)
           .maybeSingle(),
       ]);
@@ -128,6 +129,7 @@ export async function GET() {
       console.error("[settings/marketplace] failed to load marketplace profile:", marketplaceError);
       return apiError("Failed to load marketplace settings", 500);
     }
+    const marketplaceProfileRow = marketplaceProfile as unknown as MarketplaceProfileRow | null;
 
     return apiSuccess({
       organization: organization ?? {
@@ -136,7 +138,7 @@ export async function GET() {
         logo_url: null,
         subscription_tier: null,
       },
-      profile: normalizeMarketplaceProfile(marketplaceProfile ?? null),
+      profile: normalizeMarketplaceProfile(marketplaceProfileRow),
     });
   } catch (error) {
     console.error("[settings/marketplace] unexpected error:", error);

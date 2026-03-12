@@ -23,6 +23,12 @@ const routes = createCatchAllHandlers([
   ["reviews", () => import("@/app/api/_handlers/reputation/reviews/route")],
   ["widget/config", () => import("@/app/api/_handlers/reputation/widget/config/route")],
   ["widget/:token", () => import("@/app/api/_handlers/reputation/widget/[token]/route")],
-]);
+], {
+  rateLimit: {
+    limit: 200,
+    windowMs: 5 * 60 * 1000,
+    prefix: "api:reputation",
+  },
+});
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

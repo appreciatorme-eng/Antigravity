@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 
 const supabaseAdmin = createAdminClient();
 
@@ -181,7 +182,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
 
         const { data: driversData } = await supabaseAdmin
             .from("external_drivers")
-            .select("*")
+            .select(EXTERNAL_DRIVER_SELECT)
             .eq("is_active", true)
             .eq("organization_id", tripData.organization_id)
             .order("full_name");

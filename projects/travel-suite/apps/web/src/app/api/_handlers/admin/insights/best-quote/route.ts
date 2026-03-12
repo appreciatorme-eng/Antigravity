@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { medianPrice, safeTitle, toNumber } from "@/lib/admin/insights";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const BodySchema = z.object({
   proposalId: z.string().uuid().optional(),
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       .order("price", { ascending: true });
 
     if (addOnError) {
-      return apiError(addOnError.message, 500);
+      return apiError(safeErrorMessage(addOnError, "Failed to load add-ons"), 500);
     }
 
     const addOns = (addOnData || []) as AddOnRow[];
@@ -191,4 +192,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

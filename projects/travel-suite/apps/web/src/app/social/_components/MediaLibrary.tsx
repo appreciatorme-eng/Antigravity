@@ -21,6 +21,15 @@ interface Props {
 }
 
 type MediaTab = "all" | "whatsapp" | "uploads";
+type MediaLibraryRow = Omit<MediaItem, "publicUrl">;
+const SOCIAL_MEDIA_LIBRARY_SELECT = [
+    "caption",
+    "created_at",
+    "file_path",
+    "id",
+    "source",
+    "source_contact_phone",
+].join(", ");
 
 export const MediaLibrary = ({ onSelectImage }: Props) => {
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -34,12 +43,13 @@ export const MediaLibrary = ({ onSelectImage }: Props) => {
             const supabase = createClient();
             const { data, error } = await supabase
                 .from("social_media_library")
-                .select("*")
+                .select(SOCIAL_MEDIA_LIBRARY_SELECT)
                 .order("created_at", { ascending: false });
+            const mediaRows = (data as unknown as MediaLibraryRow[] | null) ?? [];
 
             if (error) throw error;
 
-            const itemsWithUrl = await Promise.all((data || []).map(async (item) => {
+            const itemsWithUrl = await Promise.all(mediaRows.map(async (item) => {
                 const { data: { publicUrl } } = supabase.storage
                     .from("social-media")
                     .getPublicUrl(item.file_path);

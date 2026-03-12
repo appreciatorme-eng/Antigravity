@@ -6,9 +6,24 @@
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent, logError } from '@/lib/observability/logger';
-import type { Json } from '@/lib/database.types';
+import type { Database, Json } from '@/lib/database.types';
 
 let cachedOpenAiClient: OpenAI | null | undefined;
+const PDF_IMPORT_PROCESS_SELECT = ['file_name', 'file_url', 'id'].join(', ');
+const PDF_IMPORT_PUBLISH_SELECT = ['extracted_data', 'id', 'status'].join(', ');
+const PUBLISHED_TOUR_TEMPLATE_SELECT = 'id';
+type PdfImportProcessRow = Pick<
+    Database['public']['Tables']['pdf_imports']['Row'],
+    'file_name' | 'file_url' | 'id'
+>;
+type PdfImportPublishRow = Pick<
+    Database['public']['Tables']['pdf_imports']['Row'],
+    'extracted_data' | 'id' | 'status'
+>;
+type PublishedTourTemplateRow = Pick<
+    Database['public']['Tables']['tour_templates']['Row'],
+    'id'
+>;
 
 function getOpenAiClient(): OpenAI | null {
     if (cachedOpenAiClient !== undefined) {
@@ -309,18 +324,19 @@ export async function processPDFImport(pdfImportId: string) {
         // Get PDF import details
         const { data: pdfImport, error: fetchError } = await supabase
             .from('pdf_imports')
-            .select('*')
+            .select(PDF_IMPORT_PROCESS_SELECT)
             .eq('id', pdfImportId)
             .single();
+        const pdfImportRow = pdfImport as unknown as PdfImportProcessRow | null;
 
-        if (fetchError || !pdfImport) {
+        if (fetchError || !pdfImportRow) {
             throw new Error(`PDF import not found: ${pdfImportId}`);
         }
 
-        logEvent('info', `Processing PDF import: ${pdfImport.file_name}`);
+        logEvent('info', `Processing PDF import: ${pdfImportRow.file_name}`);
 
         // Extract template from PDF
-        const result = await extractTemplateFromPDF(pdfImport.file_url);
+        const result = await extractTemplateFromPDF(pdfImportRow.file_url);
 
         if (result.success && result.template) {
             // Save successful extraction
@@ -384,24 +400,25 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
         // Get PDF import with extracted data
         const { data: pdfImport, error: fetchError } = await supabase
             .from('pdf_imports')
-            .select('*')
+            .select(PDF_IMPORT_PUBLISH_SELECT)
             .eq('id', pdfImportId)
             .eq('organization_id', organizationId) // Security check
             .single();
+        const pdfImportRow = pdfImport as unknown as PdfImportPublishRow | null;
 
-        if (fetchError || !pdfImport) {
+        if (fetchError || !pdfImportRow) {
             throw new Error('PDF import not found or access denied');
         }
 
-        if (pdfImport.status !== 'approved') {
+        if (pdfImportRow.status !== 'approved') {
             throw new Error('PDF import must be approved before publishing');
         }
 
-        if (!pdfImport.extracted_data) {
+        if (!pdfImportRow.extracted_data) {
             throw new Error('No extracted data available');
         }
 
-        const template = pdfImport.extracted_data as unknown as ExtractedTemplate;
+        const template = pdfImportRow.extracted_data as unknown as ExtractedTemplate;
 
         // Create tour template
         const { data: tourTemplate, error: insertError } = await supabase
@@ -421,26 +438,27 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
                 // Days, activities, accommodations would be inserted separately
                 // in related tables (template_days, template_activities, etc.)
             })
-            .select()
+            .select(PUBLISHED_TOUR_TEMPLATE_SELECT)
             .single();
+        const publishedTemplate = tourTemplate as unknown as PublishedTourTemplateRow | null;
 
-        if (insertError) {
+        if (insertError || !publishedTemplate) {
             throw insertError;
         }
 
-        logEvent('info', `Published template: ${tourTemplate.id}`);
+        logEvent('info', `Published template: ${publishedTemplate.id}`);
 
         // Update PDF import status
         await supabase
             .from('pdf_imports')
             .update({
                 status: 'published',
-                published_template_id: tourTemplate.id,
+                published_template_id: publishedTemplate.id,
                 published_at: new Date().toISOString()
             })
             .eq('id', pdfImportId);
 
-        return tourTemplate;
+        return publishedTemplate;
 
     } catch (error) {
         logError('publishPDFImport error', error);

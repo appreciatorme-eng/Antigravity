@@ -53,8 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate token not expired
-    const expiresAt = new Date(send.nps_token_expires_at);
-    if (expiresAt < new Date()) {
+    if (!send.nps_token_expires_at || new Date(send.nps_token_expires_at) < new Date()) {
       return apiError("This survey link has expired", 410);
     }
 

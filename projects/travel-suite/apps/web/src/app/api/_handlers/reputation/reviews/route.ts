@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, ResponseStatus, SentimentLabel } from "@/lib/reputation/types";
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from("reputation_reviews")
-      .select("*", { count: "exact" })
+      .select(REPUTATION_REVIEW_SELECT, { count: "exact" })
       .eq("organization_id", profile.organization_id);
 
     if (platform) {
@@ -78,13 +79,14 @@ export async function GET(req: Request) {
       .order(sortBy, { ascending })
       .range(offset, offset + limit - 1);
 
-    const { data: reviews, error, count } = await query;
+    const { data: reviewsData, error, count } = await query;
+    const reviews = reviewsData as unknown as ReputationReviewRow[] | null;
 
     if (error) {
       throw error;
     }
 
-    const reviewIds = (reviews ?? []).map((review: ReputationReviewRow) => review.id);
+    const reviewIds = (reviews ?? []).map((review) => review.id);
     let assetMap = new Map<
       string,
       {
@@ -195,11 +197,12 @@ export async function POST(req: Request) {
       requires_attention: false,
     };
 
-    const { data: review, error } = await supabase
+    const { data: reviewData, error } = await supabase
       .from("reputation_reviews")
       .insert(insertData)
-      .select()
+      .select(REPUTATION_REVIEW_SELECT)
       .single();
+    const review = reviewData as unknown as ReputationReviewRow | null;
 
     if (error) {
       throw error;

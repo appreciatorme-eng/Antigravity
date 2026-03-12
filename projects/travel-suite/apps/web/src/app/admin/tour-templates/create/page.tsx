@@ -12,6 +12,10 @@ import {
   Upload,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  INSERTED_TEMPLATE_DAY_SELECT,
+  INSERTED_TEMPLATE_SELECT,
+} from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
 
 interface TemplateDay {
@@ -250,7 +254,7 @@ export default function CreateTemplatePage() {
           tags: tags.length > 0 ? tags : null,
           created_by: user.id,
         })
-        .select()
+        .select(INSERTED_TEMPLATE_SELECT)
         .single();
 
       if (templateError) {
@@ -273,7 +277,7 @@ export default function CreateTemplatePage() {
             title: day.title,
             description: day.description,
           })
-          .select()
+          .select(INSERTED_TEMPLATE_DAY_SELECT)
           .single();
 
         if (dayError) {

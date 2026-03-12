@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_SNAPSHOT_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, TrendDataPoint } from "@/lib/reputation/types";
 import type { Database } from "@/lib/supabase/database.types";
@@ -47,12 +48,13 @@ export async function GET(req: Request) {
     const orgId = profile.organization_id;
 
     // Try snapshots first
-    const { data: snapshots, error: snapError } = await supabase
+    const { data: snapshotsData, error: snapError } = await supabase
       .from("reputation_snapshots")
-      .select("*")
+      .select(REPUTATION_SNAPSHOT_SELECT)
       .eq("organization_id", orgId)
       .gte("snapshot_date", startDateStr)
       .order("snapshot_date", { ascending: true });
+    const snapshots = snapshotsData as unknown as SnapshotRow[] | null;
 
     if (snapError) {
       throw snapError;

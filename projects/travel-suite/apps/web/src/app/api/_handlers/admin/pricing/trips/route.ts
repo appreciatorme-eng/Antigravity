@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { TRIP_SERVICE_COST_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import type { Database } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
       .order("start_date", { ascending: true });
 
     if (tripErr) {
-      return apiError(tripErr.message, 500);
+      return apiError(safeErrorMessage(tripErr, "Failed to load trips"), 500);
     }
 
     const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'start_date' | 'end_date' | 'status' | 'pax_count' | 'client_id' | 'gst_pct' | 'tcs_pct'>[];
@@ -58,10 +60,10 @@ export async function GET(req: NextRequest) {
     if (tripIds.length > 0) {
       const { data } = await db
         .from("trip_service_costs")
-        .select("*")
+        .select(TRIP_SERVICE_COST_SELECT)
         .eq("organization_id", orgId)
         .in("trip_id", tripIds);
-      allCosts = (data || []) as TripServiceCostRow[];
+      allCosts = (data || []) as unknown as TripServiceCostRow[];
     }
 
     // Fetch client names in one query

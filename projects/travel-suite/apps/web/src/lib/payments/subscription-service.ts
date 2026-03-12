@@ -17,6 +17,36 @@ import type {
   PaymentExecutionOptions,
 } from './payment-types';
 import { OPEN_SUBSCRIPTION_STATUSES } from './payment-types';
+import type { Database } from '@/lib/database.types';
+
+type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
+
+export const SUBSCRIPTION_SELECT = [
+  "amount",
+  "billing_cycle",
+  "cancel_at_period_end",
+  "cancelled_at",
+  "created_at",
+  "currency",
+  "current_period_end",
+  "current_period_start",
+  "failed_payment_count",
+  "gst_amount",
+  "id",
+  "last_payment_attempt_at",
+  "metadata",
+  "next_billing_date",
+  "organization_id",
+  "payment_method_id",
+  "plan_id",
+  "razorpay_plan_id",
+  "razorpay_subscription_id",
+  "status",
+  "total_amount",
+  "trial_end",
+  "trial_start",
+  "updated_at",
+].join(", ");
 
 /**
  * Create a subscription for an organization
@@ -73,7 +103,7 @@ export async function createSubscription(
     const currentPeriodStart = now;
     const currentPeriodEnd = new Date(now.getTime() + periodDays * MS_PER_DAY);
 
-    const { data: subscription, error } = await supabase
+    const { data: subscriptionData, error } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: options.organizationId,
@@ -92,8 +122,9 @@ export async function createSubscription(
         trial_start: null,
         trial_end: null,
       })
-      .select()
+      .select(SUBSCRIPTION_SELECT)
       .single();
+    const subscription = subscriptionData as unknown as SubscriptionRow | null;
 
     if (error) {
       throw new PaymentServiceError({
@@ -102,6 +133,14 @@ export async function createSubscription(
         message: error.message,
         tags: { context, organization_id: options.organizationId, severity: 'high' },
         cause: error,
+      });
+    }
+    if (!subscription) {
+      throw new PaymentServiceError({
+        code: 'payments_db_error',
+        operation: 'create_subscription',
+        message: 'Subscription row missing after insert',
+        tags: { context, organization_id: options.organizationId, severity: 'high' },
       });
     }
 
@@ -144,11 +183,12 @@ export async function cancelSubscription(
   try {
     const supabase = await getPaymentClient(context);
 
-    const { data: subscription, error: subscriptionError } = await supabase
+    const { data: subscriptionData, error: subscriptionError } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', subscriptionId)
       .single();
+    const subscription = subscriptionData as unknown as SubscriptionRow | null;
 
     if (subscriptionError) {
       throw new PaymentServiceError({
@@ -251,13 +291,14 @@ export async function getCurrentSubscription(
   try {
     const supabase = await getPaymentClient(context);
 
-    const { data: subscription, error } = await supabase
+    const { data: subscriptionData, error } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(SUBSCRIPTION_SELECT)
       .eq('organization_id', organizationId)
       .in('status', OPEN_SUBSCRIPTION_STATUSES as unknown as string[])
       .order('created_at', { ascending: false })
       .limit(5);
+    const subscription = subscriptionData as unknown as SubscriptionRow[] | null;
 
     if (error) {
       throw new PaymentServiceError({

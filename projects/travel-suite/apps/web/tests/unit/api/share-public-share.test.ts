@@ -5,6 +5,8 @@ import {
   parseCommentArray,
 } from "../../../src/app/api/_handlers/share/[token]/public-share";
 
+const futureExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
 it("sanitizes comment arrays and drops invalid entries", () => {
   const comments = parseCommentArray([
     {
@@ -34,7 +36,7 @@ it("builds a public response without exposing email or phone data", () => {
     id: "share-1",
     itinerary_id: "iti-1",
     client_comments: [],
-    expires_at: "2026-03-09T00:00:00.000Z",
+    expires_at: futureExpiry,
     status: "viewed",
     approved_by: null,
     approved_at: null,

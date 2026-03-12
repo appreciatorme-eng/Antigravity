@@ -7,179 +7,22 @@ import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { useToast } from "@/components/ui/toast";
 import {
-  Sun,
-  Zap,
-  AlertTriangle,
-  RefreshCw,
-  ChevronRight,
-  IndianRupee,
-  CalendarDays,
-  Sparkles,
-  ShieldAlert,
-  TrendingUp,
-  TrendingDown,
-  MessageSquare,
-  Clock,
-  BadgeCheck,
-  Gift,
-  FileEdit,
-  Plane,
-  Target,
+  Sun, Zap, AlertTriangle, RefreshCw, ChevronRight, IndianRupee, CalendarDays,
+  Sparkles, ShieldAlert, TrendingUp, TrendingDown, MessageSquare, Clock,
+  BadgeCheck, Gift, FileEdit, Plane, Target,
 } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ActionItem = {
-  id: string;
-  type: string;
-  priority: number;
-  title: string;
-  description: string;
-  due_at: string | null;
-  href: string;
-  reason: string;
-};
-
-type ActionQueueData = {
-  summary?: {
-    expiring_proposals: number;
-    unpaid_invoices: number;
-    stalled_trips: number;
-  };
-  queue?: ActionItem[];
-};
-
-type LeakItem = {
-  proposal_id: string;
-  title: string;
-  leak_score: number;
-  discount_pct: number;
-  listed_price_usd: number;
-  selected_price_usd: number;
-  recommendation: string;
-};
-
-type MarginLeakData = {
-  leaks?: LeakItem[];
-};
-
-type UpsellRec = {
-  add_on_id: string;
-  name: string;
-  score: number;
-  price_usd: number;
-  category?: string;
-};
-
-type SmartUpsellData = {
-  recommendations?: Array<{
-    trip_id: string;
-    trip_title: string;
-    destination?: string;
-    stage: string;
-    days_to_departure?: number | null;
-    start_date?: string;
-    recommendations: UpsellRec[];
-  }>;
-};
-
-type AutoRequoteData = {
-  candidates?: Array<{
-    proposal_id: string;
-    title: string;
-    requote_score: number;
-    suggested_delta_pct: number;
-  }>;
-};
-
-type DailyBriefData = {
-  top_actions?: Array<{
-    id: string;
-    title: string;
-    priority: number;
-    href: string;
-  }>;
-  metrics_snapshot?: {
-    proposal_count_30d: number;
-    conversion_rate_30d: number;
-    paid_revenue_30d_usd: number;
-  };
-};
-
-type WinLossData = {
-  totals?: {
-    proposals: number;
-    wins: number;
-    losses: number;
-    win_rate: number;
-  };
-  patterns?: Array<{
-    key: string;
-    label: string;
-    count: number;
-    share_pct: number;
-    insight: string;
-    action: string;
-  }>;
-};
-
-type AiUsageData = {
-  tier?: string;
-  utilization?: { requests_pct: number; spend_pct: number };
-  usage?: { ai_requests: number; estimated_cost_usd: number; rag_hits: number; cache_hits: number; fallback_count: number };
-  caps?: { monthly_request_cap: number; monthly_spend_cap_usd: number };
-  degraded_mode_recommended?: boolean;
-};
-
-type BatchJobsData = {
-  jobs?: Array<{ id: string; status: string | null; created_at: string | null; payload?: { job_type?: string } }>;
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Format a USD/INR amount in Indian currency style */
-const fmt = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
-
-/** Map action type + priority → human sentence */
-function humanSentence(action: ActionItem): string {
-  if (action.type === "invoice") {
-    return `Payment for "${action.title}" is overdue — collect it now.`;
-  }
-  if (action.priority >= 90) {
-    return `"${action.title}" expires very soon — reach out immediately!`;
-  }
-  if (action.type === "trip") {
-    return `"${action.title}" hasn't been updated in a while — check in with the client.`;
-  }
-  return `"${action.title}" — they may be waiting to hear from you. Time to follow up!`;
-}
-
-/** Map action type → emoji */
-function actionEmoji(action: ActionItem): string {
-  if (action.type === "invoice") return "💸";
-  if (action.type === "trip") return "✈️";
-  if (action.priority >= 90) return "⚠️";
-  return "💬";
-}
-
-/** Map trip stage → friendly label */
-function stageLabel(stage: string): string {
-  switch (stage) {
-    case "early": return "✅ Perfect time to offer extras";
-    case "mid": return "🕐 Good time to upsell";
-    case "last_minute": return "🚀 Final chance — they depart soon!";
-    case "active": return "🌍 Currently travelling";
-    default: return "💡 Upsell opportunity";
-  }
-}
-
-/** Get greeting based on time of day */
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
+import {
+  actionEmoji,
+  type ActionQueueData, type AiUsageData, type AutoRequoteData,
+  type BatchJobsData, type DailyBriefData,
+  fmt,
+  getGreeting,
+  humanSentence,
+  type MarginLeakData,
+  type SmartUpsellData,
+  stageLabel,
+  type WinLossData,
+} from "./shared";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 

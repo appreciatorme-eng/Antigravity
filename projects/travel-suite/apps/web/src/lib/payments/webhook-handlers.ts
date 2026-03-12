@@ -6,6 +6,19 @@ import { logPaymentEvent } from './payment-logger';
 import { notifyOrganizationSubscriptionPaused } from './payment-notifications';
 import { createInvoice } from './invoice-service';
 import type { PaymentExecutionContext, PaymentExecutionOptions } from './payment-types';
+import type { Database } from '@/lib/database.types';
+
+const WEBHOOK_SUBSCRIPTION_SELECT = [
+  'amount',
+  'billing_cycle',
+  'id',
+  'organization_id',
+  'plan_id',
+].join(', ');
+type WebhookSubscriptionRow = Pick<
+  Database['public']['Tables']['subscriptions']['Row'],
+  'amount' | 'billing_cycle' | 'id' | 'organization_id' | 'plan_id'
+>;
 
 /**
  * Handle subscription charged event from webhook
@@ -23,9 +36,10 @@ export async function handleSubscriptionCharged(
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(WEBHOOK_SUBSCRIPTION_SELECT)
       .eq('razorpay_subscription_id', razorpaySubscriptionId)
       .single();
+    const subscriptionRow = subscription as unknown as WebhookSubscriptionRow | null;
 
     if (subscriptionError) {
       throw new PaymentServiceError({
@@ -37,7 +51,7 @@ export async function handleSubscriptionCharged(
       });
     }
 
-    if (!subscription) {
+    if (!subscriptionRow) {
       throw new PaymentServiceError({
         code: 'payments_not_found',
         operation: 'handle_subscription_charged',
@@ -46,7 +60,7 @@ export async function handleSubscriptionCharged(
       });
     }
 
-    const periodLengthDays = subscription.billing_cycle === 'annual' ? 365 : 30;
+    const periodLengthDays = subscriptionRow.billing_cycle === 'annual' ? 365 : 30;
     const currentPeriodStart = new Date();
     const currentPeriodEnd = new Date(
       currentPeriodStart.getTime() + periodLengthDays * 24 * 60 * 60 * 1000
@@ -63,23 +77,23 @@ export async function handleSubscriptionCharged(
         razorpay_payment_id: paymentId,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', subscription.id);
+      .eq('id', subscriptionRow.id);
 
     if (subscriptionUpdateError) {
       throw new PaymentServiceError({
         code: 'payments_db_error',
         operation: 'handle_subscription_charged',
         message: subscriptionUpdateError.message,
-        tags: { context, subscription_id: subscription.id, severity: 'high' },
+        tags: { context, subscription_id: subscriptionRow.id, severity: 'high' },
         cause: subscriptionUpdateError,
       });
     }
 
     await createInvoice(
       {
-        organizationId: subscription.organization_id,
-        amount: subscription.amount,
-        description: `Subscription payment - ${subscription.plan_id}`,
+        organizationId: subscriptionRow.organization_id,
+        amount: subscriptionRow.amount,
+        description: `Subscription payment - ${subscriptionRow.plan_id}`,
       },
       { context }
     );
@@ -87,8 +101,8 @@ export async function handleSubscriptionCharged(
     await logPaymentEvent(
       supabase,
       {
-        organizationId: subscription.organization_id,
-        subscriptionId: subscription.id,
+        organizationId: subscriptionRow.organization_id,
+        subscriptionId: subscriptionRow.id,
         eventType: 'subscription.charged',
         externalId: paymentId,
         amount,

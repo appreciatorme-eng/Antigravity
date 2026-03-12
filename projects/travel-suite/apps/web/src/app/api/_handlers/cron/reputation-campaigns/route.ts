@@ -6,18 +6,13 @@
  * ('trip_completed', 'trip_day_2') and calls triggerCampaignSendsForOrg
  * for each, using the service-role client so no user session is needed.
  *
- * Auth: CRON_SECRET / NOTIFICATION_CRON_SECRET header or bearer
- * (same pattern as cron/assistant-briefing).
+ * Auth uses the shared cron authorization helper with replay detection.
  * ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import {
-  isCronSecretBearer,
-  isCronSecretHeader,
-} from "@/lib/security/cron-auth";
+import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { triggerCampaignSendsForOrg } from "@/lib/reputation/campaign-trigger";
 
 type QueryErrorLike = { message: string } | null;
@@ -34,17 +29,12 @@ type UntypedSupabase = {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const headerSecret =
-      request.headers.get("x-cron-secret") ||
-      request.headers.get("x-notification-cron-secret") ||
-      "";
-
-    if (
-      !isCronSecretHeader(headerSecret) &&
-      !isCronSecretBearer(authHeader)
-    ) {
-      return apiError("Unauthorized", 401);
+    const cronAuth = await authorizeCronRequest(request, {
+      secretHeaderNames: ["x-cron-secret", "x-notification-cron-secret"],
+      replayWindowMs: 10 * 60 * 1000,
+    });
+    if (!cronAuth.authorized) {
+      return NextResponse.json({ error: cronAuth.reason }, { status: cronAuth.status });
     }
 
     const supabase = createAdminClient();

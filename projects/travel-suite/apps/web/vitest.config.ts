@@ -20,16 +20,18 @@ export default defineConfig({
       provider: "v8",
       all: false,
       include: [
-        // Core lib — directories / files that have dedicated test suites
+        // Core lib
         "src/lib/api-dispatch.ts",
         "src/lib/api/**/*.ts",
         "src/lib/auth/**/*.ts",
         "src/lib/leads/**/*.ts",
         "src/lib/payments/errors.ts",
         "src/lib/payments/payment-utils.ts",
-        // Individual security files that are directly unit-tested
+        // Security modules with direct unit coverage
+        "src/lib/security/admin-bearer-auth.ts",
         "src/lib/security/admin-mutation-csrf.ts",
         "src/lib/security/cron-auth.ts",
+        "src/lib/security/public-rate-limit.ts",
         "src/lib/security/rate-limit.ts",
         "src/lib/security/safe-equal.ts",
         "src/lib/security/safe-error.ts",
@@ -40,13 +42,13 @@ export default defineConfig({
         "src/lib/security/whatsapp-webhook-config.ts",
         "src/lib/share/**/*.ts",
         "src/middleware.ts",
-        // Handler files that have corresponding route tests
-        // (marketplace, proposals/create, share/[token]/route, waha/route excluded: too complex to unit-test without integration infra)
+        // Handler files with unit coverage
         "src/app/api/_handlers/admin/seed-demo/guards.ts",
         "src/app/api/_handlers/admin/seed-demo/route.ts",
         "src/app/api/_handlers/drivers/search/route.ts",
         "src/app/api/_handlers/notifications/process-queue/batch.ts",
         "src/app/api/_handlers/payments/create-order/route.ts",
+        "src/app/api/_handlers/payments/track/[token]/route.ts",
         "src/app/api/_handlers/share/public-share.ts",
         "src/app/api/_handlers/webhooks/waha/secret.ts",
       ],

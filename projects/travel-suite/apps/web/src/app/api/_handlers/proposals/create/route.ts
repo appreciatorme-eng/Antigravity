@@ -6,6 +6,7 @@ import type { Database } from "@/lib/database.types";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { captureServerAnalyticsEvent } from "@/lib/analytics/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const PROPOSAL_CREATE_RATE_LIMIT_MAX = 20;
 const PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (cloneError || !proposalId) {
-      return apiError(cloneError?.message || "Failed to create proposal", 400);
+      return apiError(safeErrorMessage(cloneError, "Failed to create proposal"), 400);
     }
 
     const { data: activeAddOns } = await admin.adminClient

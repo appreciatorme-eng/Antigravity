@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { MONTHLY_OVERHEAD_EXPENSE_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/database.types";
+
+type MonthlyOverheadRow = Database["public"]["Tables"]["monthly_overhead_expenses"]["Row"];
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -41,12 +45,13 @@ export async function GET(req: NextRequest) {
     const monthStart = `${year}-${String(mon).padStart(2, "0")}-01`;
 
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: expenseData, error } = await db
       .from("monthly_overhead_expenses")
-      .select("*")
+      .select(MONTHLY_OVERHEAD_EXPENSE_SELECT)
       .eq("organization_id", orgId)
       .eq("month_start", monthStart)
       .order("category", { ascending: true });
+    const data = expenseData as unknown as MonthlyOverheadRow[] | null;
 
     if (error) {
       console.error("[/api/admin/pricing/overheads:GET] DB error:", error);
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: expenseData, error } = await db
       .from("monthly_overhead_expenses")
       .upsert(
         {
@@ -98,8 +103,9 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "organization_id,month_start,category" }
       )
-      .select()
+      .select(MONTHLY_OVERHEAD_EXPENSE_SELECT)
       .single();
+    const data = expenseData as unknown as MonthlyOverheadRow | null;
 
     if (error) {
       console.error("[/api/admin/pricing/overheads:POST] DB error:", error);

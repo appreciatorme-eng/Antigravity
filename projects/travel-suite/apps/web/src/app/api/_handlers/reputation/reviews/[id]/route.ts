@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -30,12 +31,13 @@ export async function GET(
       return apiError("No organization found", 400);
     }
 
-    const { data: review, error } = await supabase
+    const { data: reviewData, error } = await supabase
       .from("reputation_reviews")
-      .select("*")
+      .select(REPUTATION_REVIEW_SELECT)
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
       .single();
+    const review = reviewData as unknown as Database["public"]["Tables"]["reputation_reviews"]["Row"] | null;
 
     if (error) {
       throw error;
@@ -105,13 +107,14 @@ export async function PATCH(
       updateData.response_posted_by = user.id;
     }
 
-    const { data: review, error } = await supabase
+    const { data: reviewData, error } = await supabase
       .from("reputation_reviews")
       .update(updateData as Database['public']['Tables']['reputation_reviews']['Update'])
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
-      .select()
+      .select(REPUTATION_REVIEW_SELECT)
       .single();
+    const review = reviewData as unknown as Database["public"]["Tables"]["reputation_reviews"]["Row"] | null;
 
     if (error) {
       throw error;

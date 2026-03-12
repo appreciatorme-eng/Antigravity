@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-- **Framework**: Next.js 15 (App Router, Server Components)
+- **Framework**: Next.js 16 (App Router, Server Components)
 - **Language**: TypeScript (strict)
 - **Database**: Supabase (PostgreSQL, 113 tables, RLS enabled)
 - **Payments**: Razorpay (INR currency, Indian market)
@@ -16,7 +16,7 @@
 ```
 projects/travel-suite/
   apps/
-    web/          ← Next.js 15 app (primary codebase)
+    web/          ← Next.js 16 app (primary codebase)
     agents/       ← Python AI agents
     mobile/       ← React Native
     rag-assistant/
@@ -66,11 +66,15 @@ npm run qa            # playwright-cli (interactive browser)
 
 ## API Routing Pattern
 
-All API routes use a **catch-all dispatcher** — not individual route files:
+All API routes use **catch-all dispatchers** — not individual route files:
 
 ```
-src/app/api/[...path]/route.ts        ← public routes
-src/app/api/admin/[...path]/route.ts  ← admin routes (auth required)
+src/app/api/[...path]/route.ts              ← public routes
+src/app/api/admin/[...path]/route.ts        ← admin routes (auth required)
+src/app/api/assistant/[...path]/route.ts    ← assistant routes
+src/app/api/reputation/[...path]/route.ts   ← reputation routes
+src/app/api/social/[...path]/route.ts       ← social routes
+src/app/api/superadmin/[...path]/route.ts   ← superadmin routes
 ```
 
 Route handlers live in `src/app/api/_handlers/` and are registered in the catch-all via `createCatchAllHandlers()` from `src/lib/api-dispatch.ts`. To add a new endpoint, add a handler file and register it in the route array — don't create a new `route.ts`.
@@ -128,7 +132,12 @@ Reviews and code intelligence run automatically — no manual invocation needed.
 | Purpose | Path |
 |---------|------|
 | API dispatcher | `src/lib/api-dispatch.ts` |
-| Catch-all route | `src/app/api/[...path]/route.ts` |
+| Public catch-all route | `src/app/api/[...path]/route.ts` |
+| Admin catch-all route | `src/app/api/admin/[...path]/route.ts` |
+| Assistant catch-all route | `src/app/api/assistant/[...path]/route.ts` |
+| Reputation catch-all route | `src/app/api/reputation/[...path]/route.ts` |
+| Social catch-all route | `src/app/api/social/[...path]/route.ts` |
+| Superadmin catch-all route | `src/app/api/superadmin/[...path]/route.ts` |
 | Auth middleware | `src/middleware.ts` |
 | Rate limiting | `src/lib/security/rate-limit.ts` |
 | CSRF guard | `src/lib/security/admin-mutation-csrf.ts` |

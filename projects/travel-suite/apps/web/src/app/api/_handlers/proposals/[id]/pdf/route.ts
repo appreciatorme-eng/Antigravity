@@ -11,6 +11,7 @@ import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
+import { PROPOSAL_ADD_ON_SELECT } from '@/lib/business/selects';
 import type { Database } from '@/lib/database.types';
 
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
@@ -73,6 +74,20 @@ type ProposalQueryRow = Database['public']['Tables']['proposals']['Row'] & {
 };
 
 type ProposalAddOnRow = Database['public']['Tables']['proposal_add_ons']['Row'];
+const PROPOSAL_PDF_SELECT = [
+  'client_selected_price',
+  'created_at',
+  'expires_at',
+  'id',
+  'organization_id',
+  'status',
+  'title',
+  'total_price',
+  'clients(profiles(full_name, email))',
+  'organizations(name, logo_url, primary_color)',
+  'tour_templates(destination)',
+  'proposal_days(day_number, title, description, proposal_activities(id, title, description, time, location, price, is_optional, is_selected), proposal_accommodations(id, hotel_name, room_type, check_in_date, check_out_date, price_per_night, is_selected))',
+].join(', ');
 
 export async function GET(
   request: Request,
@@ -112,32 +127,7 @@ export async function GET(
 
     let proposalQuery = supabase
       .from('proposals')
-      .select(`
-        *,
-        clients (
-          profiles (
-            full_name,
-            email
-          )
-        ),
-        organizations (
-          name,
-          logo_url,
-          primary_color
-        ),
-        tour_templates (
-          destination
-        ),
-        proposal_days(
-          *,
-          proposal_activities(
-            *
-          ),
-          proposal_accommodations(
-            *
-          )
-        )
-      `)
+      .select(PROPOSAL_PDF_SELECT)
       .eq('id', id);
 
     if (shareToken) {
@@ -147,13 +137,14 @@ export async function GET(
     }
 
     const { data: proposal, error } = await proposalQuery.single();
+    const proposalRow = (proposal as unknown as ProposalQueryRow | null) ?? null;
 
-    if (error || !proposal) {
+    if (error || !proposalRow) {
       return apiError('Proposal not found', 404);
     }
 
-    if (shareToken && proposal.expires_at) {
-      const expiresAt = new Date(proposal.expires_at);
+    if (shareToken && proposalRow.expires_at) {
+      const expiresAt = new Date(proposalRow.expires_at);
       if (Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
         return apiError('Share link has expired', 410);
       }
@@ -161,10 +152,9 @@ export async function GET(
 
     const { data: proposalAddOns } = await supabase
       .from('proposal_add_ons')
-      .select('*')
+      .select(PROPOSAL_ADD_ON_SELECT)
       .eq('proposal_id', id);
 
-    const proposalRow = proposal as ProposalQueryRow;
     const clientProfile = normalizeRelation(proposalRow.clients?.profiles || null);
     const proposalOrganization = normalizeRelation(proposalRow.organizations) || userOrganization;
     const templateDestination = normalizeRelation(proposalRow.tour_templates)?.destination || 'Destination';
@@ -243,7 +233,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${sanitizeFileName(proposal.title)}_Proposal.pdf"`,
+        'Content-Disposition': `attachment; filename="${sanitizeFileName(proposalRow.title)}_Proposal.pdf"`,
       },
     });
   } catch (error) {

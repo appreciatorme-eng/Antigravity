@@ -3,6 +3,20 @@ import { randomUUID } from "crypto";
 import type { Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
 
+export const SHARE_PUBLIC_STATE_SELECT = [
+  "id",
+  "itinerary_id",
+  "client_comments",
+  "expires_at",
+  "status",
+  "approved_by",
+  "approved_at",
+  "client_preferences",
+  "wishlist_items",
+  "self_service_status",
+  "offline_pack_ready",
+].join(", ");
+
 export type ShareComment = {
   id: string;
   author: string;

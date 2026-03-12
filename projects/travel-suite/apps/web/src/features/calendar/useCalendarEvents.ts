@@ -22,6 +22,37 @@ export const calendarKeys = {
   events: (month: number, year: number) =>
     [...calendarKeys.all, "events", year, month] as const,
 };
+const SOCIAL_POST_CALENDAR_SELECT = [
+  "caption_facebook",
+  "caption_instagram",
+  "created_at",
+  "id",
+  "source",
+  "status",
+  "template_id",
+].join(", ");
+const CONCIERGE_REQUEST_CALENDAR_SELECT = [
+  "client_id",
+  "created_at",
+  "id",
+  "message",
+  "response",
+  "status",
+  "trip_id",
+  "type",
+  "clients(full_name, organization_id)",
+].join(", ");
+const PERSONAL_EVENT_SELECT = [
+  "all_day",
+  "category",
+  "description",
+  "end_time",
+  "id",
+  "location",
+  "start_time",
+  "status",
+  "title",
+].join(", ");
 
 // ---------------------------------------------------------------------------
 // Auth helper
@@ -353,7 +384,7 @@ async function fetchSocialPosts(
 ): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from("social_posts")
-    .select("*")
+    .select(SOCIAL_POST_CALENDAR_SELECT)
     .eq("organization_id", orgId)
     .gte("created_at", windowStart)
     .lte("created_at", windowEnd);
@@ -406,7 +437,7 @@ async function fetchConciergeRequests(
 ): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from("concierge_requests")
-    .select("*, clients(full_name, organization_id)")
+    .select(CONCIERGE_REQUEST_CALENDAR_SELECT)
     .gte("created_at", windowStart)
     .lte("created_at", windowEnd);
 
@@ -459,7 +490,7 @@ async function fetchPersonalEvents(
   windowEnd: string,
 ): Promise<CalendarEvent[]> {
   const { data, error } = await untypedFrom(supabase, "calendar_events")
-    .select("*")
+    .select(PERSONAL_EVENT_SELECT)
     .eq("organization_id", orgId)
     .gte("start_time", windowStart)
     .lte("start_time", windowEnd);

@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/notifications";
 import { getNextInvoiceNumber } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/supabase/database.types";
+import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 // Define strict types for the database entities we're working with
 type ProposalDay = {
@@ -24,6 +26,24 @@ type ProposalActivity = {
     price: number;
     is_selected: boolean;
 };
+
+type ItineraryRow = Database["public"]["Tables"]["itineraries"]["Row"];
+type TripRow = Database["public"]["Tables"]["trips"]["Row"];
+type ProposalConvertRow = Pick<
+    Database["public"]["Tables"]["proposals"]["Row"],
+    "client_id" | "client_selected_price" | "share_token" | "title" | "total_price"
+> & {
+    tour_templates: { destination?: string | null } | { destination?: string | null }[] | null;
+};
+
+const PROPOSAL_CONVERT_SELECT = [
+    "client_id",
+    "client_selected_price",
+    "share_token",
+    "title",
+    "total_price",
+    "tour_templates(destination)",
+].join(", ");
 
 const supabaseAdmin = createAdminClient();
 
@@ -104,15 +124,13 @@ export async function POST(
         // 1. Fetch Proposal with all related data
         const { data: proposal, error: proposalError } = await supabaseAdmin
             .from("proposals")
-            .select(`
-                *,
-                tour_templates(destination)
-            `)
+            .select(PROPOSAL_CONVERT_SELECT)
             .eq("id", proposalId)
             .eq("organization_id", admin.organizationId)
             .single();
+        const proposalRow = proposal as unknown as ProposalConvertRow | null;
 
-        if (proposalError || !proposal) {
+        if (proposalError || !proposalRow) {
             return apiError("Proposal not found", 404);
         }
 
@@ -166,12 +184,12 @@ export async function POST(
             };
         });
 
-        if (!proposal.client_id) {
+        if (!proposalRow.client_id) {
             return apiError("Proposal client is not set", 400);
         }
 
         const destination = normalizeTemplateDestination(
-            proposal.tour_templates as { destination?: string | null } | { destination?: string | null }[] | null
+            proposalRow.tour_templates
         );
         const durationDays = Math.max(1, days.length);
         const endDate = new Date(startDate);
@@ -179,27 +197,28 @@ export async function POST(
 
         // 4. Create Itinerary Record
         const itineraryPayload = {
-            user_id: proposal.client_id,
-            trip_title: proposal.title,
+            user_id: proposalRow.client_id,
+            trip_title: proposalRow.title,
             destination,
-            summary: `Created from proposal: ${proposal.title}`,
+            summary: `Created from proposal: ${proposalRow.title}`,
             duration_days: durationDays,
             raw_data: {
-                trip_title: proposal.title,
+                trip_title: proposalRow.title,
                 destination,
                 days: itineraryDays,
                 duration_days: durationDays,
-                summary: `Created from proposal: ${proposal.title}`
+                summary: `Created from proposal: ${proposalRow.title}`
             },
         };
 
         const { data: itineraryData, error: insertItineraryError } = await supabaseAdmin
             .from("itineraries")
             .insert(itineraryPayload)
-            .select()
+            .select(ITINERARY_SELECT)
             .single();
+        const insertedItinerary = itineraryData as unknown as ItineraryRow | null;
 
-        if (insertItineraryError || !itineraryData) {
+        if (insertItineraryError || !insertedItinerary) {
             throw new Error(insertItineraryError?.message || "Failed to create itinerary");
         }
 
@@ -207,17 +226,18 @@ export async function POST(
         const { data: tripData, error: insertTripError } = await supabaseAdmin
             .from("trips")
             .insert({
-                client_id: proposal.client_id,
+                client_id: proposalRow.client_id,
                 organization_id: admin.organizationId,
                 start_date: startDate.toISOString().split('T')[0],
                 end_date: endDate.toISOString().split('T')[0],
                 status: "confirmed", // Auto-confirm since it came from an approved proposal
-                itinerary_id: itineraryData.id,
+                itinerary_id: insertedItinerary.id,
             })
-            .select()
+            .select(TRIP_SELECT)
             .single();
+        const insertedTrip = tripData as unknown as TripRow | null;
 
-        if (insertTripError || !tripData) {
+        if (insertTripError || !insertedTrip) {
             throw new Error(insertTripError?.message || "Failed to create trip");
         }
 
@@ -231,13 +251,13 @@ export async function POST(
         let invoiceId: string | null = null;
         try {
             const invoiceNumber = await getNextInvoiceNumber(supabaseAdmin, admin.organizationId);
-            const totalAmount = Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+            const totalAmount = Number(proposalRow.client_selected_price ?? proposalRow.total_price ?? 0);
             const { data: invoiceData } = await supabaseAdmin
                 .from("invoices")
                 .insert({
                     organization_id: admin.organizationId,
-                    client_id: proposal.client_id || null,
-                    trip_id: tripData.id,
+                    client_id: proposalRow.client_id || null,
+                    trip_id: insertedTrip.id,
                     invoice_number: invoiceNumber,
                     status: "draft",
                     total_amount: totalAmount,
@@ -258,7 +278,7 @@ export async function POST(
             supabaseAdmin
                 .from("profiles")
                 .select("full_name, email")
-                .eq("id", proposal.client_id)
+                .eq("id", proposalRow.client_id)
                 .maybeSingle(),
             supabaseAdmin
                 .from("profiles")
@@ -272,8 +292,8 @@ export async function POST(
                 .maybeSingle(),
         ]);
 
-        const tripUrl = proposal.share_token
-            ? `${new URL(req.url).origin}/portal/${proposal.share_token}`
+        const tripUrl = proposalRow.share_token
+            ? `${new URL(req.url).origin}/portal/${proposalRow.share_token}`
             : null;
         const operatorName = operatorProfile?.full_name || organization?.name || "Antigravity Travel";
         const operatorEmail = operatorProfile?.email || null;
@@ -302,13 +322,13 @@ export async function POST(
                 totalPaid: null,
                 operatorName,
                 operatorEmail,
-                tripUrl: `${new URL(req.url).origin}/admin/trips/${tripData.id}`,
+                tripUrl: `${new URL(req.url).origin}/admin/trips/${insertedTrip.id}`,
             });
         }
 
         return NextResponse.json({
             success: true,
-            tripId: tripData.id,
+            tripId: insertedTrip.id,
             invoiceId,
             message: "Proposal successfully converted to trip"
         });

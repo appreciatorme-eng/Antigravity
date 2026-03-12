@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { INVOICE_PROFILE_SELECT } from "@/lib/invoices/module";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import type { Database } from "@/lib/database.types";
 
 const supabaseAdmin = createAdminClient();
 const CLIENTS_READ_RATE_LIMIT_MAX = 120;
 const CLIENTS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const CLIENTS_WRITE_RATE_LIMIT_MAX = 60;
 const CLIENTS_WRITE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+
+const CLIENT_RECORD_SELECT = [
+    "created_at",
+    "id",
+    "organization_id",
+    "updated_at",
+    "user_id",
+].join(", ");
 
 const lifecycleTemplateByStage: Record<string, string> = {
     lead: "lifecycle_lead",
@@ -119,6 +130,12 @@ export async function POST(req: Request) {
         const admin = await requireAdmin(req, { requireOrganization: false });
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json(
+                { error: "CSRF validation failed for admin mutation" },
+                { status: 403 }
+            );
         }
 
         const demoBlocked = blockDemoMutation(req);
@@ -446,16 +463,18 @@ export async function DELETE(req: Request) {
             }
         }
 
-        const { data: profileSnapshot } = await supabaseAdmin
+        const { data: profileSnapshotData } = await supabaseAdmin
             .from("profiles")
-            .select("*")
+            .select(INVOICE_PROFILE_SELECT)
             .eq("id", clientId)
             .maybeSingle();
-        const { data: clientSnapshot } = await supabaseAdmin
+        const profileSnapshot = profileSnapshotData as unknown as Database["public"]["Tables"]["profiles"]["Row"] | null;
+        const { data: clientSnapshotData } = await supabaseAdmin
             .from("clients")
-            .select("*")
+            .select(CLIENT_RECORD_SELECT)
             .eq("id", clientId)
             .maybeSingle();
+        const clientSnapshot = clientSnapshotData as unknown as Database["public"]["Tables"]["clients"]["Row"] | null;
 
         const { error: profileDeleteError } = await supabaseAdmin
             .from("profiles")

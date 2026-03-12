@@ -5,6 +5,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
 import {
     MARKETPLACE_VERIFY_CACHE_TTL_SECONDS,
     buildMarketplacePendingCacheKey,
@@ -143,7 +144,7 @@ export async function GET(request: NextRequest) {
         let query = admin.adminClient
             .from("marketplace_profiles")
             .select(`
-                *,
+                ${MARKETPLACE_PROFILE_SELECT},
                 organization:organizations(name, logo_url)
             `)
             .eq("verification_status", "pending");
@@ -263,7 +264,7 @@ export async function POST(request: NextRequest) {
             .from("marketplace_profiles")
             .update(verificationPayload as never)
             .eq("organization_id", orgId)
-            .select()
+            .select(MARKETPLACE_PROFILE_SELECT)
             .single();
         data = (primaryUpdate.data as Record<string, unknown> | null) || null;
         error = primaryUpdate.error ? { message: primaryUpdate.error.message } : null;
@@ -276,7 +277,7 @@ export async function POST(request: NextRequest) {
                     is_verified: status === "verified",
                 })
                 .eq("organization_id", orgId)
-                .select()
+                .select(MARKETPLACE_PROFILE_SELECT)
                 .single();
 
             data = (legacyUpdate.data as Record<string, unknown> | null) || null;

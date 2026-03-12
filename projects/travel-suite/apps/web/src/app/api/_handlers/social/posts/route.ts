@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { SOCIAL_POST_SELECT } from "@/lib/social/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SocialPostRow = Database["public"]["Tables"]["social_posts"]["Row"];
 
 const CreatePostSchema = z.object({
     template_id: z.string().min(1).optional(),
@@ -34,11 +38,12 @@ export async function GET() {
             return apiError("No organization found", 400);
         }
 
-        const { data: posts, error } = await supabase
+        const { data: postsData, error } = await supabase
             .from("social_posts")
-            .select("*")
+            .select(SOCIAL_POST_SELECT)
             .eq("organization_id", profile.organization_id)
             .order("created_at", { ascending: false });
+        const posts = postsData as unknown as SocialPostRow[] | null;
 
         if (error) throw error;
 
@@ -92,11 +97,12 @@ export async function POST(req: Request) {
             source: source || 'manual',
             rendered_image_url,
         };
-        const { data: post, error } = await supabase
+        const { data: postData, error } = await supabase
             .from("social_posts")
             .insert(insertPayload)
-            .select()
+            .select(SOCIAL_POST_SELECT)
             .single();
+        const post = postData as unknown as SocialPostRow | null;
 
         if (error) throw error;
 

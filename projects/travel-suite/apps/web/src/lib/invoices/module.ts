@@ -110,6 +110,109 @@ export type NormalizedInvoiceMetadata = {
   client_snapshot: ClientSnapshot | null;
 };
 
+export const INVOICE_SELECT = [
+  "balance_amount",
+  "cgst",
+  "client_id",
+  "created_at",
+  "created_by",
+  "currency",
+  "due_date",
+  "gstin",
+  "id",
+  "igst",
+  "invoice_number",
+  "issued_at",
+  "metadata",
+  "organization_id",
+  "paid_amount",
+  "paid_at",
+  "place_of_supply",
+  "razorpay_invoice_id",
+  "razorpay_payment_id",
+  "sac_code",
+  "sgst",
+  "status",
+  "subtotal",
+  "subtotal_amount",
+  "tax_amount",
+  "tds_amount",
+  "total_amount",
+  "trip_id",
+  "updated_at",
+].join(", ");
+
+export const INVOICE_PAYMENT_SELECT = [
+  "amount",
+  "created_at",
+  "created_by",
+  "currency",
+  "id",
+  "invoice_id",
+  "method",
+  "notes",
+  "organization_id",
+  "payment_date",
+  "reference",
+  "status",
+].join(", ");
+
+export const INVOICE_ORGANIZATION_SELECT = [
+  "ai_monthly_request_cap",
+  "ai_monthly_spend_cap_usd",
+  "billing_address",
+  "billing_state",
+  "created_at",
+  "gstin",
+  "id",
+  "logo_url",
+  "name",
+  "owner_id",
+  "primary_color",
+  "razorpay_customer_id",
+  "slug",
+  "subscription_tier",
+  "updated_at",
+].join(", ");
+
+export const INVOICE_PROFILE_SELECT = [
+  "avatar_url",
+  "bio",
+  "budget_max",
+  "budget_min",
+  "client_info",
+  "client_tag",
+  "created_at",
+  "dietary_requirements",
+  "driver_info",
+  "email",
+  "full_name",
+  "home_airport",
+  "id",
+  "interests",
+  "last_contacted_at",
+  "lead_status",
+  "lifecycle_stage",
+  "marketing_opt_in",
+  "mobility_needs",
+  "notes",
+  "onboarding_step",
+  "organization_id",
+  "phase_notifications_enabled",
+  "phone",
+  "phone_normalized",
+  "phone_whatsapp",
+  "preferred_destination",
+  "referral_code",
+  "referral_source",
+  "role",
+  "source_channel",
+  "travel_style",
+  "travelers_count",
+  "updated_at",
+  "welcome_email_sent_at",
+].join(", ");
+
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -287,4 +390,3 @@ export async function getNextInvoiceNumber(
 
   return `${prefix}-${String(next).padStart(4, "0")}`;
 }
-

@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     const { data: imports, error: fetchError, count } = await query;
     if (fetchError) {
       return NextResponse.json(
-        { success: false, error: fetchError.message },
+        { success: false, error: safeErrorMessage(fetchError, "Failed to load PDF imports") },
         { status: 500 },
       );
     }

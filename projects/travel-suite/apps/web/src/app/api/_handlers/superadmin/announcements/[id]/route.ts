@@ -4,6 +4,23 @@ import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
+const PLATFORM_ANNOUNCEMENT_SELECT = [
+    "announcement_type",
+    "body",
+    "created_at",
+    "delivery_channels",
+    "id",
+    "recipient_count",
+    "scheduled_at",
+    "sent_at",
+    "sent_by",
+    "status",
+    "target_org_ids",
+    "target_segment",
+    "title",
+    "updated_at",
+].join(", ");
+
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -42,7 +59,7 @@ export async function PATCH(
             .from("platform_announcements")
             .update(updates)
             .eq("id", id)
-            .select()
+            .select(PLATFORM_ANNOUNCEMENT_SELECT)
             .single();
 
         if (result.error) throw result.error;

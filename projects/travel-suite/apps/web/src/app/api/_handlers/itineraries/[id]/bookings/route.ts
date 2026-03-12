@@ -172,7 +172,11 @@ export async function POST(
       .eq("user_id", user.id);
 
     if (updateError) {
-      return withRequestId({ error: updateError.message }, requestId, { status: 400 });
+      return withRequestId(
+        { error: safeErrorMessage(updateError, "Failed to update itinerary bookings") },
+        requestId,
+        { status: 400 }
+      );
     }
 
     return withRequestId({
