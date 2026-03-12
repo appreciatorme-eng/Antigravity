@@ -1,5 +1,16 @@
 # Antigravity — GoBuddy Travel Suite
 
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router, Server Components)
+- **Language**: TypeScript (strict)
+- **Database**: Supabase (PostgreSQL, 113 tables, RLS enabled)
+- **Payments**: Razorpay (INR currency, Indian market)
+- **Auth**: Supabase Auth (email/password + magic link)
+- **Hosting**: Vercel (Hobby plan)
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **State**: React hooks + Supabase realtime subscriptions
+
 ## Project Structure
 
 ```
@@ -52,6 +63,24 @@ npm run qa            # playwright-cli (interactive browser)
 2. `preview_logs` → parse `http://antigravity.localhost:PORT`
 3. `npx playwright-cli goto <url>` → `npx playwright-cli snapshot`
 4. `Read` the YAML from `.playwright-cli/page-*.yml`
+
+## API Routing Pattern
+
+All API routes use a **catch-all dispatcher** — not individual route files:
+
+```
+src/app/api/[...path]/route.ts        ← public routes
+src/app/api/admin/[...path]/route.ts  ← admin routes (auth required)
+```
+
+Route handlers live in `src/app/api/_handlers/` and are registered in the catch-all via `createCatchAllHandlers()` from `src/lib/api-dispatch.ts`. To add a new endpoint, add a handler file and register it in the route array — don't create a new `route.ts`.
+
+## Environment Variables
+
+- Set in **Vercel dashboard** (not `.env` files in repo)
+- Key vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `WHATSAPP_API_TOKEN`, `OPENAI_API_KEY`
+- Cron secret: `CRON_SECRET` (verified in cron handlers)
+- Rate limiting: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (fail-closed without these)
 
 ## Key Files
 
