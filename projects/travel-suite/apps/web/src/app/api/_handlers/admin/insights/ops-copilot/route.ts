@@ -93,12 +93,6 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error || notificationRes.error || tripRes.error || clientRes.error) {
-      const err =
-        proposalRes.error ||
-        invoiceRes.error ||
-        notificationRes.error ||
-        tripRes.error ||
-        clientRes.error;
       return NextResponse.json({ error: "Failed to build ops copilot queue" }, { status: 500 });
     }
 

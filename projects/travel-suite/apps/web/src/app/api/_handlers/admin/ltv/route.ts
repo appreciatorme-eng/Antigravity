@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     const range = resolveAdminDateRange(request.nextUrl.searchParams);
-    const { data, error } = await admin.adminClient
+    const { data } = await admin.adminClient
       .from("payment_links")
       .select("client_name, client_email, amount_paise")
       .eq("organization_id", organizationId)

@@ -112,6 +112,7 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         try {
           return await fetch(request.clone());
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (_networkError) {
           // Persist the failed mutation in IndexedDB for later replay
           try {
@@ -128,6 +129,7 @@ self.addEventListener('fetch', (event) => {
               body,
               timestamp: Date.now(),
             });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (_idbError) {
             // IDB unavailable — still return the offline indicator
           }
@@ -229,6 +231,7 @@ self.addEventListener('message', (event) => {
             } else {
               failed++;
             }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (_networkError) {
             failed++;
           }

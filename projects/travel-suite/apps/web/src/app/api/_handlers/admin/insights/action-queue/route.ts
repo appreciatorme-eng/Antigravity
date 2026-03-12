@@ -64,7 +64,6 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error || tripRes.error) {
-      const err = proposalRes.error || invoiceRes.error || tripRes.error;
       return NextResponse.json({ error: "Failed to build action queue" }, { status: 500 });
     }
 

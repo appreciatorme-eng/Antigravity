@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Send,
   Building,
-  Loader2,
   Sparkles,
   AlertCircle,
 } from 'lucide-react';

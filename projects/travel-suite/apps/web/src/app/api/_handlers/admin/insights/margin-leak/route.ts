@@ -45,7 +45,6 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error) {
-      const err = proposalRes.error || invoiceRes.error;
       return NextResponse.json({ error: "Failed to analyze margin leak" }, { status: 500 });
     }
 

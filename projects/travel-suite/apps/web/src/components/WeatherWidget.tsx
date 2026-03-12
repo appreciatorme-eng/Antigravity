@@ -64,7 +64,7 @@ export default function WeatherWidget({ destination, days = 7, compact = false }
 
                 const data = await res.json();
                 setWeather(data);
-            } catch (err) {
+            } catch {
                 if (abortController.signal.aborted) return;
                 setError("Could not load weather data");
             } finally {

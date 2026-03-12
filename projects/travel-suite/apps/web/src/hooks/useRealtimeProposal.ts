@@ -56,8 +56,11 @@ export function useRealtimeProposal({
   const onProposalUpdateRef = useRef(onProposalUpdate);
   const onActivityUpdateRef = useRef(onActivityUpdate);
   const onCommentAddedRef = useRef(onCommentAdded);
+  // eslint-disable-next-line react-hooks/refs
   onProposalUpdateRef.current = onProposalUpdate;
+  // eslint-disable-next-line react-hooks/refs
   onActivityUpdateRef.current = onActivityUpdate;
+  // eslint-disable-next-line react-hooks/refs
   onCommentAddedRef.current = onCommentAdded;
 
   useEffect(() => {
@@ -172,6 +175,7 @@ export function useRealtimeProposals({
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   const onProposalUpdateRef = useRef(onProposalUpdate);
+  // eslint-disable-next-line react-hooks/refs
   onProposalUpdateRef.current = onProposalUpdate;
 
   useEffect(() => {

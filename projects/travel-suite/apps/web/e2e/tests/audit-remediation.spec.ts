@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { test as authTest } from '../fixtures/auth';
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://127.0.0.1:3100';
 
 test.describe('Audit Remediation — Security Headers', () => {
   test('HSTS header is present on all responses', async ({ request }) => {

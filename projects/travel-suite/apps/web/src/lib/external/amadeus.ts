@@ -57,7 +57,6 @@ export async function getAmadeusToken() {
   );
 
   if (!response.ok) {
-    const error = await response.json();
     throw new Error("Amadeus authentication failed");
   }
 
@@ -108,7 +107,6 @@ export async function searchAmadeusLocations(
   );
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
     throw new Error("Amadeus location search failed");
   }
 

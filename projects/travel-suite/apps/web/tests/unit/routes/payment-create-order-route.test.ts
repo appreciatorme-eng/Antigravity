@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PaymentServiceError } from "../../../src/lib/payments/errors";
+import { beforeEach, expect, it, vi } from "vitest";
 
 const createClientMock = vi.fn();
 const createOrderMock = vi.fn();

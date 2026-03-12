@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       driversResult,
       clientsResult,
       tripsResult,
-      notificationsResult,
+      ,
       proposalsResult,
       invoicesResult,
       tripSeriesResult,

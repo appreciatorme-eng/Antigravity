@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logError } from '@/lib/observability/logger';
 import {
-  PaymentServiceError,
   toPaymentServiceError,
   type PaymentErrorCode,
   type PaymentOperation,
