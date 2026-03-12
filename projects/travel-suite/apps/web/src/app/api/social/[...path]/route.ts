@@ -24,6 +24,12 @@ const routes = createCatchAllHandlers([
   ["reviews", () => import("@/app/api/_handlers/social/reviews/route")],
   ["schedule", () => import("@/app/api/_handlers/social/schedule/route")],
   ["smart-poster", () => import("@/app/api/_handlers/social/smart-poster/route")],
-]);
+], {
+  rateLimit: {
+    limit: 150,
+    windowMs: 5 * 60 * 1000,
+    prefix: "api:social",
+  },
+});
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;
