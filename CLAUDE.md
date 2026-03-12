@@ -106,6 +106,23 @@ Use these instead of monolithic review prompts. They leverage Axon (code graph),
 - Both leaflet + maplibre-gl needed (different use cases)
 - Polling intervals are contextual (not magic numbers)
 
+## Automation
+
+Reviews and code intelligence run automatically — no manual invocation needed.
+
+| Layer | Trigger | What Runs |
+|-------|---------|-----------|
+| **Stop Hook** | Session ends with uncommitted changes | `/review` prompt, Axon reindex suggestion, Engram summary reminder |
+| **PostToolUse Hook** | Every Write/Edit tool call | Tracks changed files for Axon reindex threshold (≥5 files) |
+| **Scheduled Task** | Monday 9 AM (`weekly-code-review`) | `/review-deep` with full Axon sweep, scorecard saved to Engram |
+| **CI: security-audit** | PR to main (web changes) | `npm audit --audit-level=high` + `npm run test:coverage` |
+| **CI: dep-review** | PR to main | `dependency-review-action` — blocks known-vulnerable deps |
+| **Dependabot** | Weekly (Monday) | Auto-creates PRs for patch/minor npm updates |
+
+**Hook files:** `~/.claude/hooks/auto-review.sh` (Stop), `~/.claude/hooks/axon-tracker.sh` (PostToolUse)
+**Config:** `~/.claude/settings.json` → `hooks.Stop` + `hooks.PostToolUse`
+**Dev server:** `preview_start("web-dev")` via `.claude/launch.json`
+
 ## Key Files
 
 | Purpose | Path |
