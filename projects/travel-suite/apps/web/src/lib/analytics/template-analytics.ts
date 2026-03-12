@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { logError } from '@/lib/observability/logger';
 
 export interface TemplateAnalytics {
   template_id: string;
@@ -53,13 +54,13 @@ export async function trackTemplateView(
     });
 
     if (error) {
-      console.error('Error tracking template view:', error);
+      logError('Error tracking template view', error);
       return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error tracking template view:', error);
+    logError('Error tracking template view', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -92,13 +93,13 @@ export async function trackTemplateUsage(
     });
 
     if (error) {
-      console.error('Error tracking template usage:', error);
+      logError('Error tracking template usage', error);
       return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error tracking template usage:', error);
+    logError('Error tracking template usage', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -122,13 +123,13 @@ export async function getTemplateAnalytics(
     });
 
     if (error) {
-      console.error('Error getting template analytics:', error);
+      logError('Error getting template analytics', error);
       return { success: false, error: error.message };
     }
 
     return { success: true, data: data as unknown as TemplateAnalytics };
   } catch (error) {
-    console.error('Error getting template analytics:', error);
+    logError('Error getting template analytics', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -154,13 +155,13 @@ export async function getTopTemplatesByUsage(
     });
 
     if (error) {
-      console.error('Error getting top templates:', error);
+      logError('Error getting top templates', error);
       return { success: false, error: error.message };
     }
 
     return { success: true, data: data as unknown as TopTemplate[] };
   } catch (error) {
-    console.error('Error getting top templates:', error);
+    logError('Error getting top templates', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -238,7 +239,7 @@ export async function getTemplateViewTimeline(
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error getting template view timeline:', error);
+    logError('Error getting template view timeline', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

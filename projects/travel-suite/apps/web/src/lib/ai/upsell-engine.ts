@@ -11,6 +11,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { logError } from '@/lib/observability/logger';
 
 // Types
 export interface Client {
@@ -300,7 +301,7 @@ export class UpsellEngine {
       .limit(10);
 
     if (error) {
-      console.error('Error fetching trending add-ons:', error);
+      logError('Error fetching trending add-ons', error);
       return [];
     }
 
@@ -337,7 +338,7 @@ export class UpsellEngine {
       .single();
 
     if (error) {
-      console.error('Error fetching client:', error);
+      logError('Error fetching client', error);
       return null;
     }
 
@@ -352,7 +353,7 @@ export class UpsellEngine {
       .eq('is_active', true);
 
     if (error) {
-      console.error('Error fetching add-ons:', error);
+      logError('Error fetching add-ons', error);
       return [];
     }
 
@@ -367,7 +368,7 @@ export class UpsellEngine {
       .single();
 
     if (error) {
-      console.error('Error fetching trip:', error);
+      logError('Error fetching trip', error);
       return null;
     }
 
@@ -382,7 +383,7 @@ export class UpsellEngine {
       .order('purchased_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching purchased add-ons:', error);
+      logError('Error fetching purchased add-ons', error);
       return [];
     }
 

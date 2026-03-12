@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { logError } from '@/lib/observability/logger';
 
 /**
  * Reorder activities within a day (template or proposal)
@@ -32,7 +33,7 @@ export async function updateActivityDisplayOrders(
     // Check for errors
     const errors = results.filter((r) => r.error);
     if (errors.length > 0) {
-      console.error('Errors updating display orders:', errors);
+      logError('Errors updating display orders', errors);
       return {
         success: false,
         error: `Failed to update ${errors.length} activities`,
@@ -41,7 +42,7 @@ export async function updateActivityDisplayOrders(
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating activity display orders:', error);
+    logError('Error updating activity display orders', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

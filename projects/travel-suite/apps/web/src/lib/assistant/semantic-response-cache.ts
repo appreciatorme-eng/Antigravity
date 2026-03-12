@@ -13,6 +13,7 @@ import "server-only";
 
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { generateSemanticEmbeddingV2 } from "@/lib/embeddings-v2";
+import { logError } from "@/lib/observability/logger";
 import type { OrchestratorResponse } from "./types";
 import { shouldSkipCache } from "./response-cache";
 
@@ -97,7 +98,7 @@ async function getEmbedding(
   try {
     return await generateSemanticEmbeddingV2(text);
   } catch (error: unknown) {
-    console.error("Semantic cache embedding error:", error);
+    logError("Semantic cache embedding error", error);
     return null;
   }
 }
@@ -149,7 +150,7 @@ export async function getSemanticCachedResponse(
 
     return null;
   } catch (error: unknown) {
-    console.error("Semantic cache get error:", error);
+    logError("Semantic cache get error", error);
     return null;
   }
 }
@@ -193,6 +194,6 @@ export async function setSemanticCachedResponse(
 
     await setCachedJson(key, updated, SEMANTIC_TTL_SECONDS);
   } catch (error: unknown) {
-    console.error("Semantic cache set error:", error);
+    logError("Semantic cache set error", error);
   }
 }

@@ -10,6 +10,7 @@ import "server-only";
  *
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext } from "./types";
@@ -106,13 +107,13 @@ export async function setPreference(
       );
 
     if (error) {
-      console.error("[assistant/preferences] setPreference error:", error.message);
+      logError("[assistant/preferences] setPreference error", error);
       return { success: false, error: safeErrorMessage(error, "Failed to save preference") };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[assistant/preferences] setPreference unhandled:", err);
+    logError("[assistant/preferences] setPreference unhandled", err);
     return {
       success: false,
       error: safeErrorMessage(err, "Failed to save preference"),
@@ -133,13 +134,13 @@ export async function deletePreference(
       .eq("preference_key", key);
 
     if (error) {
-      console.error("[assistant/preferences] deletePreference error:", error.message);
+      logError("[assistant/preferences] deletePreference error", error);
       return { success: false, error: safeErrorMessage(error, "Failed to delete preference") };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("[assistant/preferences] deletePreference unhandled:", err);
+    logError("[assistant/preferences] deletePreference unhandled", err);
     return {
       success: false,
       error: safeErrorMessage(err, "Failed to delete preference"),

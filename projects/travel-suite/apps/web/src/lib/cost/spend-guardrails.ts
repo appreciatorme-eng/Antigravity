@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { logEvent } from "@/lib/observability/logger";
 import type { SubscriptionTier } from "@/lib/subscriptions/limits";
 
 export type CostCategory = "amadeus" | "image_search" | "ai_image" | "ai_poster" | "ai_text";
@@ -78,9 +79,8 @@ function getRedisClient(): Redis | null {
 function requireDistributedSpendStore(operation: string): Redis | null {
   const redis = getRedisClient();
   if (!redis && isProductionRuntime()) {
-    console.warn(
-      `[spend-guardrails] Redis not configured for ${operation}, falling back to local in-memory tracking. ` +
-      `Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed metering.`
+    logEvent('warn',
+      `[spend-guardrails] Redis not configured for ${operation}, falling back to local in-memory tracking. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for distributed metering.`,
     );
   }
   return redis;

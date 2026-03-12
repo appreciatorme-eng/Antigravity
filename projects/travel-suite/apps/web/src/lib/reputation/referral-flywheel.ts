@@ -3,6 +3,7 @@
  * Called fire-and-forget from the NPS submit handler after a promoter score.
  */
 
+import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchWithRetry } from "@/lib/network/retry";
 
@@ -133,7 +134,7 @@ export async function firePromoterFollowup(input: PromoterFollowupInput): Promis
       rewardAmountInr
     );
   } catch (err) {
-    console.error("[referral-flywheel] firePromoterFollowup failed:", err);
+    logError("[referral-flywheel] firePromoterFollowup failed", err);
   }
 }
 

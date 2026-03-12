@@ -15,6 +15,7 @@ import "server-only";
  *
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext, ConversationMessage } from "./types";
@@ -100,7 +101,7 @@ export async function getOrCreateSession(
     .single();
 
   if (insertError || !created) {
-    console.error("[assistant/session] create error:", insertError?.message);
+    logError("[assistant/session] create error", insertError);
     throw new Error(
       `Failed to create assistant session: ${safeErrorMessage(insertError, "unknown error")}`,
     );
@@ -134,7 +135,7 @@ export async function updateSessionHistory(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] updateSessionHistory error:", error.message);
+    logError("[assistant/session] updateSessionHistory error", error);
     throw new Error(
       `Failed to update session history: ${safeErrorMessage(error, "database error")}`,
     );
@@ -160,7 +161,7 @@ export async function setPendingAction(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] setPendingAction error:", error.message);
+    logError("[assistant/session] setPendingAction error", error);
     throw new Error(
       `Failed to set pending action: ${safeErrorMessage(error, "database error")}`,
     );
@@ -180,7 +181,7 @@ export async function clearPendingAction(
     .eq("organization_id", ctx.organizationId);
 
   if (error) {
-    console.error("[assistant/session] clearPendingAction error:", error.message);
+    logError("[assistant/session] clearPendingAction error", error);
     throw new Error(
       `Failed to clear pending action: ${safeErrorMessage(error, "database error")}`,
     );

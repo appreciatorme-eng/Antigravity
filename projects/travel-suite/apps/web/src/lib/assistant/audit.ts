@@ -11,6 +11,7 @@ import "server-only";
  *
  * ------------------------------------------------------------------ */
 
+import { logError } from "@/lib/observability/logger";
 import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext } from "./types";
 
@@ -62,10 +63,10 @@ export async function logAuditEvent(
       });
 
     if (error) {
-      console.error("Assistant audit log insert error:", error.message);
+      logError("Assistant audit log insert error", error);
     }
   } catch (error: unknown) {
     // Best-effort -- never let audit logging break the main flow
-    console.error("Assistant audit log error:", error);
+    logError("Assistant audit log error", error);
   }
 }

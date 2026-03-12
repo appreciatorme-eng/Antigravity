@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { logEvent, logError } from '@/lib/observability/logger';
 
 interface Coordinate {
     lat: number;
@@ -30,7 +31,7 @@ async function trackCacheHit(): Promise<void> {
         const supabase = createClient(supabaseUrl, supabaseKey);
         await supabase.rpc('increment_geocoding_cache_hit');
     } catch (error) {
-        console.error('Failed to track cache hit (non-blocking):', error);
+        logError('Failed to track cache hit (non-blocking)', error);
     }
 }
 
@@ -43,7 +44,7 @@ async function canMakeApiCall(): Promise<boolean> {
 
     if (!supabaseUrl || !supabaseKey) {
         // Allow geocoding even without Supabase tracking
-        console.warn('Supabase not configured - skipping API limit check, allowing geocoding');
+        logEvent('warn', 'Supabase not configured - skipping API limit check, allowing geocoding');
         return true;
     }
 
@@ -52,14 +53,14 @@ async function canMakeApiCall(): Promise<boolean> {
         const { data, error } = await supabase.rpc('can_make_geocoding_api_call');
 
         if (error) {
-            console.error('Error checking API limit:', error);
+            logError('Error checking API limit', error);
             // Allow geocoding even if limit check fails
             return true;
         }
 
         return data === true;
     } catch (error) {
-        console.error('Failed to check API limit:', error);
+        logError('Failed to check API limit', error);
         // Allow geocoding even if limit check fails
         return true;
     }
@@ -74,7 +75,7 @@ async function trackApiCall(): Promise<boolean> {
 
     if (!supabaseUrl || !supabaseKey) {
         // Allow geocoding even without Supabase tracking
-        console.warn('Supabase not configured - skipping API call tracking');
+        logEvent('warn', 'Supabase not configured - skipping API call tracking');
         return true;
     }
 
@@ -83,14 +84,14 @@ async function trackApiCall(): Promise<boolean> {
         const { data, error } = await supabase.rpc('increment_geocoding_api_call');
 
         if (error) {
-            console.error('Error tracking API call (non-blocking):', error);
+            logError('Error tracking API call (non-blocking)', error);
             // Allow geocoding even if tracking fails
             return true;
         }
 
         return data === true;
     } catch (error) {
-        console.error('Failed to track API call (non-blocking):', error);
+        logError('Failed to track API call (non-blocking)', error);
         // Allow geocoding even if tracking fails
         return true;
     }
@@ -174,21 +175,21 @@ async function geocodeWithMapbox(
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
     if (!mapboxToken) {
-        console.warn('NEXT_PUBLIC_MAPBOX_TOKEN not configured');
+        logEvent('warn', 'NEXT_PUBLIC_MAPBOX_TOKEN not configured');
         return null;
     }
 
     // Check if we can make API calls this month
     const allowed = await canMakeApiCall();
     if (!allowed) {
-        console.warn('⚠️ Geocoding API limit reached for this month (90k requests). Using cache only.');
+        logEvent('warn', 'Geocoding API limit reached for this month (90k requests). Using cache only.');
         return null;
     }
 
     // Track the API call BEFORE making it
     const tracked = await trackApiCall();
     if (!tracked) {
-        console.warn('⚠️ Could not track API call - aborting to stay within limits');
+        logEvent('warn', 'Could not track API call - aborting to stay within limits');
         return null;
     }
 
@@ -203,7 +204,7 @@ async function geocodeWithMapbox(
         const response = await fetch(url);
 
         if (!response.ok) {
-            console.error(`Mapbox geocoding failed: ${response.status}`);
+            logEvent('error', 'Mapbox geocoding failed', { status: response.status });
             return null;
         }
 
@@ -216,14 +217,14 @@ async function geocodeWithMapbox(
         const feature = data.features[0];
         const [lng, lat] = feature.center;
 
-        console.log(`📍 Geocoded: "${location}" → [${lat}, ${lng}]`);
+        logEvent('info', `Geocoded: "${location}" -> [${lat}, ${lng}]`);
 
         return {
             coordinates: { lat, lng },
             formattedAddress: feature.place_name,
         };
     } catch (error) {
-        console.error('Mapbox geocoding error:', error);
+        logError('Mapbox geocoding error', error);
         return null;
     }
 }
@@ -331,7 +332,7 @@ export async function getGeocodingUsageStats(): Promise<{
         const { data, error } = await supabase.rpc('get_geocoding_usage_stats').single();
 
         if (error) {
-            console.error('Error getting usage stats:', error);
+            logError('Error getting usage stats', error);
             return null;
         }
 
@@ -353,7 +354,7 @@ export async function getGeocodingUsageStats(): Promise<{
             lastApiCallAt: statsData.last_api_call_at,
         };
     } catch (error) {
-        console.error('Failed to get usage stats:', error);
+        logError('Failed to get usage stats', error);
         return null;
     }
 }

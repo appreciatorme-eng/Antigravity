@@ -1,3 +1,5 @@
+import { logError } from "@/lib/observability/logger";
+
 const DEV_FALLBACK_URL = "http://127.0.0.1:54321";
 const DEV_FALLBACK_ANON_KEY = "dev-anon-key";
 let warnedFallback = false;
@@ -39,9 +41,9 @@ export function getSupabasePublicRuntimeConfig(context: string): {
   ].filter(Boolean);
 
   if (!allowDevFallback()) {
-    console.error(
-      `[supabase/env] Missing required env vars for ${context}: ${missing.join(", ")}. ` +
-        "Refusing to start with dev fallback in production/preview environment."
+    logError(
+      `[supabase/env] Missing required env vars for ${context}: ${missing.join(", ")}. Refusing to start with dev fallback in production/preview environment.`,
+      null,
     );
     throw new Error(
       `Missing ${missing.join(", ")} — required for ${context}`
@@ -50,9 +52,9 @@ export function getSupabasePublicRuntimeConfig(context: string): {
 
   if (!warnedFallback) {
     warnedFallback = true;
-    console.error(
-      `[supabase/env] Missing ${missing.join(", ")} for ${context}. ` +
-        "Using local dev fallback. Set ALLOW_SUPABASE_DEV_FALLBACK=false to disable."
+    logError(
+      `[supabase/env] Missing ${missing.join(", ")} for ${context}. Using local dev fallback. Set ALLOW_SUPABASE_DEV_FALLBACK=false to disable.`,
+      null,
     );
   }
 

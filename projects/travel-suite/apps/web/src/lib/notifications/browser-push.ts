@@ -5,6 +5,8 @@
  * Works with Chrome, Firefox, Safari, Edge
  */
 
+import { logEvent, logError } from '@/lib/observability/logger';
+
 export type NotificationType = 'comment' | 'approval' | 'view' | 'update' | 'message';
 
 export interface PushNotification {
@@ -44,7 +46,7 @@ export function getNotificationPermission(): NotificationPermission {
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!isNotificationSupported()) {
-    console.warn('Notifications not supported in this browser');
+    logEvent('warn', 'Notifications not supported in this browser');
     return 'denied';
   }
 
@@ -60,7 +62,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
     const permission = await Notification.requestPermission();
     return permission;
   } catch (error) {
-    console.error('Error requesting notification permission:', error);
+    logError('Error requesting notification permission', error);
     return 'denied';
   }
 }
@@ -72,7 +74,7 @@ export async function showNotification(notification: PushNotification): Promise<
   const permission = getNotificationPermission();
 
   if (permission !== 'granted') {
-    console.warn('Notification permission not granted');
+    logEvent('warn', 'Notification permission not granted');
     return false;
   }
 
@@ -110,7 +112,7 @@ export async function showNotification(notification: PushNotification): Promise<
 
     return true;
   } catch (error) {
-    console.error('Error showing notification:', error);
+    logError('Error showing notification', error);
     return false;
   }
 }
@@ -285,7 +287,7 @@ export function getNotificationPreferences(): NotificationPreferences {
       return JSON.parse(stored);
     }
   } catch (error) {
-    console.error('Error reading notification preferences:', error);
+    logError('Error reading notification preferences', error);
   }
 
   // Default preferences
@@ -302,7 +304,7 @@ export function saveNotificationPreferences(preferences: NotificationPreferences
   try {
     localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
   } catch (error) {
-    console.error('Error saving notification preferences:', error);
+    logError('Error saving notification preferences', error);
   }
 }
 

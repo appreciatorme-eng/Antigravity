@@ -20,6 +20,7 @@ import {
   setCachedJson,
   deleteCachedByPrefix,
 } from "@/lib/cache/upstash";
+import { logError } from "@/lib/observability/logger";
 import type { OrchestratorResponse } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -171,7 +172,7 @@ export async function getCachedResponse(
     const key = buildCacheKey(orgId, message);
     return await getCachedJson<OrchestratorResponse>(key);
   } catch (error: unknown) {
-    console.error("Response cache get error:", error);
+    logError("Response cache get error", error);
     return null;
   }
 }
@@ -203,7 +204,7 @@ export async function setCachedResponse(
     const key = buildCacheKey(orgId, message);
     await setCachedJson(key, response, RESPONSE_CACHE_TTL_SECONDS);
   } catch (error: unknown) {
-    console.error("Response cache set error:", error);
+    logError("Response cache set error", error);
   }
 }
 
@@ -220,6 +221,6 @@ export async function invalidateOrgCache(orgId: string): Promise<void> {
     const prefix = `${KEY_PREFIX}:${orgId}:`;
     await deleteCachedByPrefix(prefix);
   } catch (error: unknown) {
-    console.error("Response cache invalidation error:", error);
+    logError("Response cache invalidation error", error);
   }
 }

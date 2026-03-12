@@ -2,6 +2,7 @@
 // Writes update DB → invalidate Redis → log to platform_audit_log.
 
 import { Redis } from "@upstash/redis";
+import { logEvent } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 
@@ -76,7 +77,7 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
         return cached;
       }
     } catch (err) {
-      console.warn(`[platform-settings] Redis read failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis read failed for key="${key}"`, { err });
     }
   }
 
@@ -86,7 +87,7 @@ export async function getPlatformSetting(key: string): Promise<JsonValue | null>
     try {
       await redis.set(redisKey(key), value, { ex: REDIS_TTL_SECONDS });
     } catch (err) {
-      console.warn(`[platform-settings] Redis write failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis write failed for key="${key}"`, { err });
     }
   }
 
@@ -112,7 +113,7 @@ export async function setPlatformSetting(
     try {
       await redis.del(redisKey(key));
     } catch (err) {
-      console.warn(`[platform-settings] Redis invalidation failed for key="${key}":`, err);
+      logEvent('warn', `[platform-settings] Redis invalidation failed for key="${key}"`, { err });
     }
   }
 

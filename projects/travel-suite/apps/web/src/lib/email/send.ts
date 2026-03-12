@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { render } from "@react-email/render";
 import type { ReactElement } from "react";
+import { logError } from "@/lib/observability/logger";
 import { FROM_ADDRESS, FROM_NAME, resend } from "@/lib/email/resend";
 
 export interface EmailAttachment {
@@ -16,7 +17,7 @@ export async function sendEmail(params: {
   attachments?: EmailAttachment[];
 }): Promise<boolean> {
   if (!resend) {
-    console.error("[email] RESEND_API_KEY is not configured");
+    logError("[email] RESEND_API_KEY is not configured", null);
     return false;
   }
 
@@ -35,7 +36,7 @@ export async function sendEmail(params: {
     });
     return true;
   } catch (error) {
-    console.error("[email] Failed to send:", error);
+    logError("[email] Failed to send", error);
     Sentry.captureException(error, {
       extra: { to: params.to, subject: params.subject },
     });

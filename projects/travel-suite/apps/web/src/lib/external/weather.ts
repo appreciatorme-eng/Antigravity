@@ -6,6 +6,7 @@
  * @see https://open-meteo.com
  */
 import { fetchWithRetry } from "@/lib/network/retry";
+import { logEvent, logError } from "@/lib/observability/logger";
 import { z } from "zod";
 
 export interface WeatherForecast {
@@ -91,19 +92,19 @@ async function geocodeLocation(locationName: string): Promise<{ lat: number; lon
         );
 
         if (!response.ok) {
-            console.error(`Geocoding failed for ${locationName}:`, response.status);
+            logError(`Geocoding failed for ${locationName}`, response.status);
             return null;
         }
 
         const data = await response.json();
         const parsed = OpenMeteoGeocodeSchema.safeParse(data);
         if (!parsed.success) {
-            console.error(`Invalid geocoding payload for ${locationName}:`, parsed.error.flatten());
+            logError(`Invalid geocoding payload for ${locationName}`, parsed.error.flatten());
             return null;
         }
 
         if (!parsed.data.results || parsed.data.results.length === 0) {
-            console.warn(`No geocoding results for: ${locationName}`);
+            logEvent('warn', `No geocoding results for: ${locationName}`);
             return null;
         }
 
@@ -114,7 +115,7 @@ async function geocodeLocation(locationName: string): Promise<{ lat: number; lon
             name: result.name,
         };
     } catch (error) {
-        console.error(`Geocoding error for ${locationName}:`, error);
+        logError(`Geocoding error for ${locationName}`, error);
         return null;
     }
 }
@@ -135,14 +136,14 @@ async function fetchWeatherForecast(
         );
 
         if (!response.ok) {
-            console.error(`Weather API failed:`, response.status);
+            logError('Weather API failed', response.status);
             return [];
         }
 
         const data = await response.json();
         const parsed = OpenMeteoForecastSchema.safeParse(data);
         if (!parsed.success) {
-            console.error("Invalid weather payload:", parsed.error.flatten());
+            logError("Invalid weather payload", parsed.error.flatten());
             return [];
         }
 
@@ -172,7 +173,7 @@ async function fetchWeatherForecast(
 
         return forecasts;
     } catch (error) {
-        console.error(`Weather fetch error:`, error);
+        logError('Weather fetch error', error);
         return [];
     }
 }

@@ -3,6 +3,8 @@
  * Uses Mapbox Geocoding API with caching to minimize API calls
  */
 
+import { logEvent, logError } from '@/lib/observability/logger';
+
 interface Coordinate {
     lat: number;
     lng: number;
@@ -65,7 +67,7 @@ export async function geocodeLocation(
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
     if (!mapboxToken) {
-        console.warn('NEXT_PUBLIC_MAPBOX_TOKEN not configured. Geocoding disabled.');
+        logEvent('warn', 'NEXT_PUBLIC_MAPBOX_TOKEN not configured. Geocoding disabled.');
         return null;
     }
 
@@ -81,14 +83,14 @@ export async function geocodeLocation(
         const response = await fetch(url);
 
         if (!response.ok) {
-            console.error(`Mapbox geocoding failed: ${response.status} ${response.statusText}`);
+            logEvent('error', 'Mapbox geocoding failed', { status: response.status, statusText: response.statusText });
             return null;
         }
 
         const data = await response.json();
 
         if (!data.features || data.features.length === 0) {
-            console.warn(`No geocoding results found for: ${location}`);
+            logEvent('warn', `No geocoding results found for: ${location}`);
             return null;
         }
 
@@ -104,7 +106,7 @@ export async function geocodeLocation(
 
         return result;
     } catch (error) {
-        console.error('Geocoding error:', error);
+        logError('Geocoding error', error);
         return null;
     }
 }

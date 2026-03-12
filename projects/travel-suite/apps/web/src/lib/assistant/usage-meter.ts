@@ -12,6 +12,7 @@ import "server-only";
  * ------------------------------------------------------------------ */
 
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
+import { logError } from "@/lib/observability/logger";
 import {
   PLAN_CATALOG,
   type CanonicalPlanId,
@@ -110,7 +111,7 @@ async function fetchUsageFromDb(
 
     return data?.ai_requests ?? 0;
   } catch (error: unknown) {
-    console.error("usage-meter: failed to read usage from DB", error);
+    logError("usage-meter: failed to read usage from DB", error);
     return 0;
   }
 }
@@ -163,14 +164,14 @@ async function flushIncrementToDb(
         );
 
       if (upsertResult.error) {
-        console.error(
+        logError(
           "usage-meter: DB flush upsert fallback failed",
           upsertResult.error,
         );
       }
     }
   } catch (error: unknown) {
-    console.error("usage-meter: DB flush failed", error);
+    logError("usage-meter: DB flush failed", error);
   }
 }
 
@@ -219,7 +220,7 @@ export async function checkUsageAllowed(
 
     return { allowed, used, limit, remaining, tier, planId };
   } catch (error: unknown) {
-    console.error("usage-meter: checkUsageAllowed failed", error);
+    logError("usage-meter: checkUsageAllowed failed", error);
     // Fail open -- do not block the user on metering errors
     return {
       allowed: true,
@@ -280,7 +281,7 @@ export async function incrementUsage(
       );
     }
   } catch (error: unknown) {
-    console.error("usage-meter: incrementUsage failed", error);
+    logError("usage-meter: incrementUsage failed", error);
   }
 }
 
@@ -348,7 +349,7 @@ export async function getUsageStats(ctx: ActionContext): Promise<{
       tier,
     };
   } catch (error: unknown) {
-    console.error("usage-meter: getUsageStats failed", error);
+    logError("usage-meter: getUsageStats failed", error);
     return {
       month: currentMonthKey(),
       messageCount: 0,

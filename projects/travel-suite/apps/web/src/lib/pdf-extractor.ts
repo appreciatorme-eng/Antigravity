@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
+import { logEvent, logError } from '@/lib/observability/logger';
 import type { Json } from '@/lib/database.types';
 
 let cachedOpenAiClient: OpenAI | null | undefined;
@@ -80,7 +81,7 @@ export async function extractTemplateFromPDF(pdfUrl: string): Promise<Extraction
     }
 
     try {
-        console.log('📄 Starting PDF extraction:', pdfUrl);
+        logEvent('info', 'Starting PDF extraction', { pdfUrl });
 
         // For now, we'll use GPT-4o with text extraction
         // In production, you'd use a PDF-to-image converter first
@@ -192,7 +193,7 @@ Return ONLY the JSON object, no other text.
         });
 
         const rawResponse = response.choices[0]?.message?.content || '';
-        console.log('🤖 GPT-4o response received, parsing...');
+        logEvent('info', 'GPT-4o response received, parsing...');
 
         // Parse JSON response
         let template: ExtractedTemplate;
@@ -205,7 +206,7 @@ Return ONLY the JSON object, no other text.
 
             template = JSON.parse(jsonText);
         } catch (parseError) {
-            console.error('❌ JSON parsing error:', parseError);
+            logError('JSON parsing error', parseError);
             return {
                 success: false,
                 confidence: 0,
@@ -227,7 +228,7 @@ Return ONLY the JSON object, no other text.
         // Calculate confidence score based on completeness
         const confidence = calculateConfidence(template);
 
-        console.log(`✅ Extraction complete: ${template.name} (${confidence.toFixed(2)} confidence)`);
+        logEvent('info', `Extraction complete: ${template.name}`, { confidence: confidence.toFixed(2) });
 
         return {
             success: true,
@@ -237,7 +238,7 @@ Return ONLY the JSON object, no other text.
         };
 
     } catch (error) {
-        console.error('❌ PDF extraction error:', error);
+        logError('PDF extraction error', error);
         return {
             success: false,
             confidence: 0,
@@ -316,7 +317,7 @@ export async function processPDFImport(pdfImportId: string) {
             throw new Error(`PDF import not found: ${pdfImportId}`);
         }
 
-        console.log(`📋 Processing PDF import: ${pdfImport.file_name}`);
+        logEvent('info', `Processing PDF import: ${pdfImport.file_name}`);
 
         // Extract template from PDF
         const result = await extractTemplateFromPDF(pdfImport.file_url);
@@ -336,7 +337,7 @@ export async function processPDFImport(pdfImportId: string) {
                 throw updateError;
             }
 
-            console.log(`✅ PDF extraction successful: ${result.confidence.toFixed(2)} confidence`);
+            logEvent('info', `PDF extraction successful`, { confidence: result.confidence.toFixed(2) });
             return result;
 
         } else {
@@ -353,12 +354,12 @@ export async function processPDFImport(pdfImportId: string) {
                 throw updateError;
             }
 
-            console.error(`❌ PDF extraction failed: ${result.error}`);
+            logEvent('error', `PDF extraction failed`, { extractionError: result.error });
             return result;
         }
 
     } catch (error) {
-        console.error('❌ processPDFImport error:', error);
+        logError('processPDFImport error', error);
 
         // Update PDF import with error
         await supabase
@@ -427,7 +428,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
             throw insertError;
         }
 
-        console.log(`✅ Published template: ${tourTemplate.id}`);
+        logEvent('info', `Published template: ${tourTemplate.id}`);
 
         // Update PDF import status
         await supabase
@@ -442,7 +443,7 @@ export async function publishPDFImport(pdfImportId: string, organizationId: stri
         return tourTemplate;
 
     } catch (error) {
-        console.error('❌ publishPDFImport error:', error);
+        logError('publishPDFImport error', error);
         throw error;
     }
 }

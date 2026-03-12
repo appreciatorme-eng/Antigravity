@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
 import type { Database, Json } from "@/lib/database.types";
 import { isFeatureEnabled } from "@/lib/platform/settings";
+import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertWhatsAppProposalDraftFromCollected, getProposalDraftSummariesForSessions } from "@/lib/whatsapp/proposal-drafts.server";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
@@ -500,7 +501,7 @@ export async function processChatbotMessage(
         sourceContext: nextContext as Json,
       });
     } catch (proposalDraftError) {
-      console.error("[whatsapp/chatbot-flow] failed to create proposal draft:", proposalDraftError);
+      logError("[whatsapp/chatbot-flow] failed to create proposal draft", proposalDraftError);
     }
   }
 

@@ -2,6 +2,7 @@
 // All super_admin actions must call this for an immutable audit trail.
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 import type { Json } from "@/lib/supabase/database.types";
 
 export type AuditCategory =
@@ -29,7 +30,7 @@ export async function logPlatformAction(
       ip_address: ipAddress ?? null,
     });
   } catch (err) {
-    console.error("[platform-audit] Failed to write audit log:", err);
+    logError("[platform-audit] Failed to write audit log", err);
   }
 }
 
@@ -54,7 +55,7 @@ export async function logPlatformActionWithTarget(
       ip_address: ipAddress ?? null,
     });
   } catch (err) {
-    console.error("[platform-audit] Failed to write audit log:", err);
+    logError("[platform-audit] Failed to write audit log", err);
   }
 }
 
