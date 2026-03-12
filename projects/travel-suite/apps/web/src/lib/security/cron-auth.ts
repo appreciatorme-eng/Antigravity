@@ -5,6 +5,7 @@ import { safeEqual } from "./safe-equal";
 
 export interface CronAuthOptions {
     secretHeaderName?: string;
+    secretHeaderNames?: string[];
     idempotencyHeaderName?: string;
     maxClockSkewMs?: number;
     replayWindowMs?: number;
@@ -177,7 +178,12 @@ export async function authorizeCronRequest(
     request: Request,
     options: CronAuthOptions = {}
 ): Promise<CronAuthResult> {
-    const secretHeaderName = options.secretHeaderName || "x-cron-secret";
+    const secretHeaderNames = (options.secretHeaderNames?.length
+        ? options.secretHeaderNames
+        : [options.secretHeaderName || "x-cron-secret"]
+    )
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
     const idempotencyHeaderName = options.idempotencyHeaderName || "x-cron-idempotency-key";
     const maxClockSkewMs = options.maxClockSkewMs ?? DEFAULT_MAX_CLOCK_SKEW_MS;
     const replayWindowMs = options.replayWindowMs ?? DEFAULT_REPLAY_WINDOW_MS;
@@ -191,7 +197,10 @@ export async function authorizeCronRequest(
     }
 
     const authHeader = request.headers.get("authorization");
-    const headerSecret = request.headers.get(secretHeaderName);
+    const headerSecret =
+        secretHeaderNames
+            .map((headerName) => request.headers.get(headerName))
+            .find((value): value is string => Boolean(value?.trim())) ?? null;
 
     let mode: "bearer" | "header" | "signature" | null = null;
 

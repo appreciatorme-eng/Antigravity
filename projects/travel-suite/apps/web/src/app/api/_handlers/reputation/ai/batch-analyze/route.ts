@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import {
   reserveDailySpendUsd,
   getEstimatedRequestCostUsd,
@@ -106,34 +107,12 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function validateCronAuth(req: Request): boolean {
-  // Check for Vercel cron secret or internal API key
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return true;
-  }
-
-  // Check x-api-key header as fallback
-  const apiKey = req.headers.get("x-api-key");
-  const internalApiKey = process.env.INTERNAL_API_KEY;
-
-  if (internalApiKey && apiKey === internalApiKey) {
-    return true;
-  }
-
-  // In development, allow without auth
-  if (process.env.NODE_ENV === "development") {
-    return true;
-  }
-
-  return false;
-}
-
 export async function POST(req: Request) {
-  if (!validateCronAuth(req)) {
-    return apiError("Unauthorized", 401);
+  const cronAuth = await authorizeCronRequest(req, {
+    replayWindowMs: 10 * 60 * 1000,
+  });
+  if (!cronAuth.authorized) {
+    return apiError(cronAuth.reason, cronAuth.status);
   }
 
   const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
@@ -198,16 +177,16 @@ export async function POST(req: Request) {
         }
 
         // Cost guard per review
-        const costPerRequest = getEstimatedRequestCostUsd("ai_image");
+        const costPerRequest = getEstimatedRequestCostUsd("ai_text");
         const planCap = getPlanDailySpendCapUsd(
-          "ai_image",
+          "ai_text",
           tier as "free" | "pro" | "enterprise"
         );
-        const emergencyCap = await getEmergencyDailySpendCapUsd("ai_image");
+        const emergencyCap = await getEmergencyDailySpendCapUsd("ai_text");
 
         const reservation = await reserveDailySpendUsd(
           review.organization_id,
-          "ai_image",
+          "ai_text",
           costPerRequest,
           { planCapUsd: planCap, emergencyCapUsd: emergencyCap }
         );
