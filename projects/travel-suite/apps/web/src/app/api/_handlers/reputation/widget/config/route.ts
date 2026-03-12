@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_WIDGET_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/supabase/database.types";
 import type { WidgetType, WidgetTheme } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+
+type WidgetRow = Database["public"]["Tables"]["reputation_widgets"]["Row"];
 
 const VALID_WIDGET_TYPES: WidgetType[] = [
   "carousel",
@@ -36,11 +39,12 @@ export async function GET() {
       return apiError("No organization found", 400);
     }
 
-    const { data: widgets, error } = await supabase
+    const { data: widgetsData, error } = await supabase
       .from("reputation_widgets")
-      .select("*")
+      .select(REPUTATION_WIDGET_SELECT)
       .eq("organization_id", profile.organization_id)
       .order("created_at", { ascending: false });
+    const widgets = widgetsData as unknown as WidgetRow[] | null;
 
     if (error) {
       throw error;
@@ -122,11 +126,12 @@ export async function POST(req: Request) {
       custom_footer: body.custom_footer || null,
     };
 
-    const { data: widget, error } = await supabase
+    const { data: widgetData, error } = await supabase
       .from("reputation_widgets")
       .insert(insertData)
-      .select()
+      .select(REPUTATION_WIDGET_SELECT)
       .single();
+    const widget = widgetData as unknown as WidgetRow | null;
 
     if (error) {
       throw error;
@@ -240,7 +245,10 @@ export async function PUT(req: Request) {
 
     query = widgetId ? query.eq("id", widgetId) : query.eq("is_active", true);
 
-    const { data: widget, error } = await query.select().maybeSingle();
+    const { data: widgetData, error } = await query
+      .select(REPUTATION_WIDGET_SELECT)
+      .maybeSingle();
+    const widget = widgetData as unknown as WidgetRow | null;
 
     if (error) {
       throw error;

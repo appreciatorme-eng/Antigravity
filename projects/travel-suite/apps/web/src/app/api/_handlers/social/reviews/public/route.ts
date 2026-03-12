@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SOCIAL_REVIEW_SELECT } from "@/lib/social/selects";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SocialReviewRow = Database["public"]["Tables"]["social_reviews"]["Row"];
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -177,7 +181,7 @@ export async function POST(req: NextRequest) {
             return withRateLimitHeaders(duplicateResponse, limiter);
         }
 
-        const { data: review, error } = await supabaseAdmin
+        const { data: reviewData, error } = await supabaseAdmin
             .from("social_reviews")
             .insert({
                 organization_id: organizationId,
@@ -188,8 +192,9 @@ export async function POST(req: NextRequest) {
                 comment,
                 source: "client_portal",
             })
-            .select()
+            .select(SOCIAL_REVIEW_SELECT)
             .single();
+        const review = reviewData as unknown as SocialReviewRow | null;
 
         if (error) throw error;
 

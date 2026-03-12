@@ -13,6 +13,20 @@ import {
 } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
+const MARKETPLACE_INQUIRY_SELECT = [
+    "created_at",
+    "id",
+    "message",
+    "read_at",
+    "receiver_org_id",
+    "sender_org_id",
+    "status",
+    "subject",
+    "updated_at",
+].join(", ");
+const MARKETPLACE_RECEIVED_INQUIRY_SELECT = `${MARKETPLACE_INQUIRY_SELECT}, sender:organizations!sender_org_id(name, logo_url)`;
+const MARKETPLACE_SENT_INQUIRY_SELECT = `${MARKETPLACE_INQUIRY_SELECT}, receiver:organizations!receiver_org_id(name, logo_url)`;
+
 const UpdateInquirySchema = z.object({
     id: z.string().min(6).max(80),
     status: z.string().min(2).max(30).optional(),
@@ -25,6 +39,10 @@ type MarketplaceInquiryWithOrg = Database["public"]["Tables"]["marketplace_inqui
     sender?: OrganizationSummary | OrganizationSummary[] | null;
     receiver?: OrganizationSummary | OrganizationSummary[] | null;
 };
+type MarketplaceInquiryRow = Pick<
+    Database["public"]["Tables"]["marketplace_inquiries"]["Row"],
+    "created_at" | "id" | "message" | "read_at" | "receiver_org_id" | "sender_org_id" | "status" | "subject" | "updated_at"
+>;
 
 export async function GET(request: NextRequest) {
     const startedAt = Date.now();
@@ -64,10 +82,7 @@ export async function GET(request: NextRequest) {
         // Fetch received inquiries
         let receivedQuery = supabase
             .from("marketplace_inquiries")
-            .select(`
-                *,
-                sender:organizations!sender_org_id(name, logo_url)
-            `)
+            .select(MARKETPLACE_RECEIVED_INQUIRY_SELECT)
             .eq("receiver_org_id", orgId)
             .order("created_at", { ascending: false });
         if (cursorReceived) {
@@ -79,10 +94,7 @@ export async function GET(request: NextRequest) {
         // Fetch sent inquiries
         let sentQuery = supabase
             .from("marketplace_inquiries")
-            .select(`
-                *,
-                receiver:organizations!receiver_org_id(name, logo_url)
-            `)
+            .select(MARKETPLACE_SENT_INQUIRY_SELECT)
             .eq("sender_org_id", orgId)
             .order("created_at", { ascending: false });
         if (cursorSent) {
@@ -91,8 +103,8 @@ export async function GET(request: NextRequest) {
         const { data: sentData, error: sentError } = await sentQuery.limit(limit);
         if (sentError) throw sentError;
 
-        const received = (receivedData || []) as MarketplaceInquiryWithOrg[];
-        const sent = (sentData || []) as MarketplaceInquiryWithOrg[];
+        const received = ((receivedData as unknown) as MarketplaceInquiryWithOrg[] | null) ?? [];
+        const sent = ((sentData as unknown) as MarketplaceInquiryWithOrg[] | null) ?? [];
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace inquiries list fetched", {
             ...requestContext,
@@ -184,8 +196,9 @@ export async function PATCH(request: NextRequest) {
             .update(updates)
             .eq("id", parsed.data.id)
             .or(`receiver_org_id.eq.${profile.organization_id},sender_org_id.eq.${profile.organization_id}`)
-            .select()
+            .select(MARKETPLACE_INQUIRY_SELECT)
             .single();
+        const inquiry = data as unknown as MarketplaceInquiryRow | null;
 
         if (error) {
             if (error.code === "PGRST116") {
@@ -193,14 +206,14 @@ export async function PATCH(request: NextRequest) {
             }
             throw error;
         }
-        if (!data) {
+        if (!inquiry) {
             return withRequestId({ error: "Inquiry not found" }, requestId, { status: 404 });
         }
         const durationMs = Date.now() - startedAt;
         logEvent("info", "Marketplace inquiry updated", {
             ...requestContext,
             user_id: user.id,
-            inquiry_id: data?.id,
+            inquiry_id: inquiry.id,
             status: updates.status || null,
             mark_read: Boolean(updates.read_at),
             durationMs,
@@ -208,12 +221,12 @@ export async function PATCH(request: NextRequest) {
         void captureOperationalMetric("api.marketplace.inquiries.update", {
             request_id: requestId,
             user_id: user.id,
-            inquiry_id: data?.id || null,
+            inquiry_id: inquiry.id,
             status: updates.status || null,
             mark_read: Boolean(updates.read_at),
             duration_ms: durationMs,
         });
-        return withRequestId(data, requestId);
+        return withRequestId(inquiry, requestId);
     } catch (error: unknown) {
         const message = safeErrorMessage(error, "Failed to update marketplace inquiry");
         logError("Marketplace inquiry update failed", error, requestContext);

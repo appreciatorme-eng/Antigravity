@@ -16,6 +16,33 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 import ClientEditButton from "./ClientEditButton";
 
+const CLIENT_PROFILE_SELECT = [
+    "budget_max",
+    "budget_min",
+    "client_tag",
+    "created_at",
+    "dietary_preferences",
+    "dietary_requirements",
+    "email",
+    "full_name",
+    "home_airport",
+    "id",
+    "interests",
+    "language_preference",
+    "lead_status",
+    "lifecycle_stage",
+    "medical_notes",
+    "mobility_requirements",
+    "notes",
+    "organization_id",
+    "phone",
+    "preferred_destination",
+    "referral_source",
+    "source_channel",
+    "travel_style",
+    "travelers_count",
+].join(", ");
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const formatINR = (n: number | null | undefined) => {
@@ -220,12 +247,13 @@ export default async function ClientProfilePage({
         // First try the profiles table directly
         const { data, error: profileError } = await supabase
             .from("profiles")
-            .select("*")
+            .select(CLIENT_PROFILE_SELECT)
             .eq("id", id)
             .single();
+        const directProfile = data as unknown as ClientProfile | null;
 
-        if (!profileError && data) {
-            profile = data;
+        if (!profileError && directProfile) {
+            profile = directProfile;
         } else if (profileError) {
             console.warn("Direct profile fetch failed:", profileError.message);
             // If RLS blocked the direct profile fetch, try through the clients table
@@ -245,12 +273,13 @@ export default async function ClientProfilePage({
             // using a broader approach
             const { data: profileRetry } = await supabase
                 .from("profiles")
-                .select("*")
+                .select(CLIENT_PROFILE_SELECT)
                 .eq("id", clientRow.id)
                 .maybeSingle();
+            const retriedProfile = profileRetry as unknown as ClientProfile | null;
 
-            if (profileRetry) {
-                profile = profileRetry;
+            if (retriedProfile) {
+                profile = retriedProfile;
             } else {
                 // Build a minimal profile from the client record
                 profile = {

@@ -1,10 +1,28 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/database.types";
 import { normalizeInvoiceMetadata } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const supabaseAdmin = createAdminClient();
+const TRIP_INVOICE_SELECT = [
+    "balance_amount",
+    "created_at",
+    "due_date",
+    "id",
+    "invoice_number",
+    "issued_at",
+    "metadata",
+    "paid_amount",
+    "status",
+    "total_amount",
+    "trip_id",
+].join(", ");
+type TripInvoiceRow = Pick<
+    Database["public"]["Tables"]["invoices"]["Row"],
+    "balance_amount" | "created_at" | "due_date" | "id" | "invoice_number" | "issued_at" | "metadata" | "paid_amount" | "status" | "total_amount" | "trip_id"
+>;
 
 async function getAuthUserId(req: Request): Promise<string | null> {
     const authHeader = req.headers.get("authorization");
@@ -64,9 +82,10 @@ export async function GET(
         // Fetch invoices for this trip
         const { data: invoices, error } = await supabaseAdmin
             .from("invoices")
-            .select("*")
+            .select(TRIP_INVOICE_SELECT)
             .eq("trip_id", tripId)
             .order("created_at", { ascending: false });
+        const invoiceRows = (invoices as unknown as TripInvoiceRow[] | null) ?? [];
 
         if (error) {
             console.error("Failed to fetch trip invoices:", error);
@@ -77,7 +96,7 @@ export async function GET(
         }
 
         // Fetch payments for these invoices
-        const invoiceIds = (invoices || []).map((inv) => inv.id);
+        const invoiceIds = invoiceRows.map((inv) => inv.id);
         let paymentsMap: Record<
             string,
             Array<{
@@ -121,7 +140,7 @@ export async function GET(
             }
         }
 
-        const normalized = (invoices || []).map((invoice) => {
+        const normalized = invoiceRows.map((invoice) => {
             const metadata = normalizeInvoiceMetadata(invoice.metadata);
             return {
                 id: invoice.id,

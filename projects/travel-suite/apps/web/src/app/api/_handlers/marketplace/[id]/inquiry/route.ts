@@ -5,6 +5,7 @@ import { z } from "zod";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import type { Database } from "@/lib/database.types";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
 import {
@@ -19,6 +20,21 @@ const InquiryCreateSchema = z.object({
     message: z.string().min(1).max(5000),
 });
 const supabaseAdmin = createAdminClient();
+const MARKETPLACE_INQUIRY_SELECT = [
+    "created_at",
+    "id",
+    "message",
+    "read_at",
+    "receiver_org_id",
+    "sender_org_id",
+    "status",
+    "subject",
+    "updated_at",
+].join(", ");
+type MarketplaceInquiryRow = Pick<
+    Database["public"]["Tables"]["marketplace_inquiries"]["Row"],
+    "created_at" | "id" | "message" | "read_at" | "receiver_org_id" | "sender_org_id" | "status" | "subject" | "updated_at"
+>;
 
 function normalizeRelation<T>(value: T | T[] | null | undefined): T | null {
     if (!value) return null;
@@ -156,8 +172,9 @@ export async function POST(
                 message,
                 status: "pending"
             })
-            .select()
+            .select(MARKETPLACE_INQUIRY_SELECT)
             .single();
+        const inquiry = data as unknown as MarketplaceInquiryRow | null;
 
         if (error) throw error;
 
@@ -205,7 +222,7 @@ export async function POST(
             };
         }
 
-        const inquiryId = typeof data?.id === "string" ? data.id : "";
+        const inquiryId = typeof inquiry?.id === "string" ? inquiry.id : "";
         if (inquiryId) {
             await trackInquiryNotification(
                 inquiryId,
@@ -240,7 +257,7 @@ export async function POST(
         });
 
         return withRequestId({
-            ...data,
+            ...inquiry,
             notification,
         }, requestId);
     } catch (error: unknown) {

@@ -13,6 +13,32 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { logError } from '@/lib/observability/logger';
 
+const UPSELL_CLIENT_SELECT = [
+  'id',
+  'organization_id',
+  'tags',
+  'preferences',
+  'lifecycle_stage',
+].join(', ');
+const UPSELL_ADD_ON_SELECT = [
+  'id',
+  'name',
+  'description',
+  'price',
+  'category',
+  'image_url',
+  'duration',
+  'organization_id',
+  'is_active',
+].join(', ');
+const UPSELL_TRIP_SELECT = [
+  'id',
+  'destination',
+  'start_date',
+  'end_date',
+  'status',
+].join(', ');
+
 // Types
 export interface Client {
   id: string;
@@ -333,7 +359,7 @@ export class UpsellEngine {
   private async getClient(clientId: string): Promise<Client | null> {
     const { data, error } = await this.supabase
       .from('clients')
-      .select('*, organization_id')
+      .select(UPSELL_CLIENT_SELECT)
       .eq('id', clientId)
       .single();
 
@@ -342,13 +368,13 @@ export class UpsellEngine {
       return null;
     }
 
-    return (data as Client | null) ?? null;
+    return (data as unknown as Client | null) ?? null;
   }
 
   private async getAvailableAddOns(organizationId: string): Promise<AddOn[]> {
     const { data, error } = await this.supabase
       .from('add_ons')
-      .select('*')
+      .select(UPSELL_ADD_ON_SELECT)
       .eq('organization_id', organizationId)
       .eq('is_active', true);
 
@@ -357,13 +383,13 @@ export class UpsellEngine {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as AddOn[] | null) || [];
   }
 
   private async getTrip(tripId: string): Promise<Trip | null> {
     const { data, error } = await this.supabase
       .from('trips')
-      .select('*')
+      .select(UPSELL_TRIP_SELECT)
       .eq('id', tripId)
       .single();
 
@@ -372,7 +398,7 @@ export class UpsellEngine {
       return null;
     }
 
-    return data;
+    return (data as unknown as Trip | null) ?? null;
   }
 
   private async getPurchasedAddOns(clientId: string): Promise<PurchasedAddOnRow[]> {

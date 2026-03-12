@@ -5,6 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { calendarKeys } from "./useCalendarEvents";
 
+const CALENDAR_TRIP_STATUS_SELECT = "id, status";
+const CALENDAR_INVOICE_PAYMENT_SELECT = "amount, id, invoice_id, method, payment_date, status";
+const CALENDAR_CONCIERGE_RESPONSE_SELECT = "id, response, status";
+const CALENDAR_EVENT_SELECT = [
+  "all_day",
+  "category",
+  "created_by",
+  "description",
+  "end_time",
+  "id",
+  "location",
+  "organization_id",
+  "start_time",
+  "status",
+  "title",
+  "updated_at",
+].join(", ");
+
 // ---------------------------------------------------------------------------
 // Auth helper (mirrors useCalendarEvents)
 // ---------------------------------------------------------------------------
@@ -79,7 +97,7 @@ export function useCalendarActions() {
         .from("trips")
         .update({ status })
         .eq("id", tripId)
-        .select()
+        .select(CALENDAR_TRIP_STATUS_SELECT)
         .single();
 
       if (error) throw error;
@@ -146,7 +164,7 @@ export function useCalendarActions() {
           status: "completed",
           organization_id: orgId,
         })
-        .select()
+        .select(CALENDAR_INVOICE_PAYMENT_SELECT)
         .single();
 
       if (error) throw error;
@@ -236,7 +254,7 @@ export function useCalendarActions() {
         .from("concierge_requests")
         .update({ response, status: "resolved" })
         .eq("id", id)
-        .select()
+        .select(CALENDAR_CONCIERGE_RESPONSE_SELECT)
         .single();
 
       if (error) throw error;
@@ -289,7 +307,7 @@ export function useCalendarActions() {
           category: input.category,
           status: "active",
         })
-        .select()
+        .select(CALENDAR_EVENT_SELECT)
         .single();
 
       if (error) throw error;
@@ -324,7 +342,7 @@ export function useCalendarActions() {
       const { data, error } = await untypedFrom(supabase, "calendar_events")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", id)
-        .select()
+        .select(CALENDAR_EVENT_SELECT)
         .single();
 
       if (error) throw error;

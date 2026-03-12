@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { TRIP_SERVICE_COST_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/database.types";
+
+type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Row"];
 
 const CreateSchema = z.object({
   trip_id: z.string().uuid(),
@@ -78,15 +82,16 @@ export async function POST(req: NextRequest) {
     }
 
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: costData, error } = await db
       .from("trip_service_costs")
       .insert({
         ...parsed.data,
         organization_id: admin.organizationId,
         created_by: admin.userId,
       })
-      .select()
+      .select(TRIP_SERVICE_COST_SELECT)
       .single();
+    const data = costData as unknown as TripServiceCostRow | null;
 
     if (error) {
       console.error("[/api/admin/pricing/trip-costs:POST] DB error:", error);

@@ -20,6 +20,25 @@ const verifyListingSubscriptionSchema = z.object({
 type MarketplaceListingSubscriptionRow =
   Database["public"]["Tables"]["marketplace_listing_subscriptions"]["Row"];
 
+const MARKETPLACE_LISTING_SUBSCRIPTION_SELECT = [
+  "amount_paise",
+  "boost_score",
+  "cancelled_at",
+  "created_at",
+  "created_by",
+  "currency",
+  "current_period_end",
+  "id",
+  "marketplace_profile_id",
+  "organization_id",
+  "plan_id",
+  "razorpay_order_id",
+  "razorpay_payment_id",
+  "started_at",
+  "status",
+  "updated_at",
+].join(", ");
+
 async function getAuthContext() {
   const supabase = await createClient();
   const {
@@ -85,12 +104,13 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
-    const { data: subscription, error: subscriptionError } = await admin
+    const { data: subscriptionData, error: subscriptionError } = await admin
       .from("marketplace_listing_subscriptions")
-      .select("*")
+      .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .eq("id", parsed.data.subscriptionId)
       .eq("organization_id", organizationId)
       .maybeSingle();
+    const subscription = subscriptionData as unknown as MarketplaceListingSubscriptionRow | null;
 
     if (subscriptionError || !subscription) {
       return apiError("Listing upgrade not found", 404);
@@ -110,14 +130,15 @@ export async function POST(request: NextRequest) {
       return apiError("Invalid payment signature", 401);
     }
 
-    const { data: currentActive } = await admin
+    const { data: currentActiveData } = await admin
       .from("marketplace_listing_subscriptions")
-      .select("*")
+      .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .eq("organization_id", organizationId)
       .eq("status", "active")
       .order("current_period_end", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const currentActive = currentActiveData as unknown as MarketplaceListingSubscriptionRow | null;
 
     const currentPeriodEnd = resolveCurrentPeriodEnd(
       subscription.plan_id as MarketplaceListingPlanId,
@@ -157,7 +178,7 @@ export async function POST(request: NextRequest) {
       .eq("organization_id", organizationId)
       .eq("status", "active");
 
-    const { data: updatedSubscription, error: updateError } = await admin
+    const { data: updatedSubscriptionData, error: updateError } = await admin
       .from("marketplace_listing_subscriptions")
       .update({
         marketplace_profile_id: marketplaceProfile.id,
@@ -168,8 +189,9 @@ export async function POST(request: NextRequest) {
         updated_at: startedAt,
       })
       .eq("id", subscription.id)
-      .select("*")
+      .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .single();
+    const updatedSubscription = updatedSubscriptionData as unknown as MarketplaceListingSubscriptionRow | null;
 
     if (updateError || !updatedSubscription) {
       return apiError("Failed to finalize marketplace plan", 500);

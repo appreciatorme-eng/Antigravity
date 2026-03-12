@@ -11,12 +11,14 @@ import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { SUBSCRIPTION_SELECT } from '@/lib/payments/subscription-service';
 import { z } from 'zod';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
 import { sanitizeEmail, sanitizeText } from '@/lib/security/sanitize';
+import type { Database } from '@/lib/database.types';
 
 const PlanRequestSchema = z
   .object({
@@ -59,6 +61,8 @@ interface UntypedSupabaseClient {
 interface SubscriptionPlanAmountRow {
   amount: number | string | null;
 }
+
+type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 
 function getEnvPlanAmount(planId: 'pro_monthly' | 'pro_annual' | 'enterprise') {
   const envKey = `SUBSCRIPTION_PRICE_${planId.toUpperCase()}`;
@@ -206,11 +210,12 @@ export async function POST(request: NextRequest) {
       billingState: safeBillingState,
     });
 
-    const { data: subscription } = await supabase
+    const { data: subscriptionData } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', subscriptionId)
       .single();
+    const subscription = subscriptionData as unknown as SubscriptionRow | null;
 
     return NextResponse.json({ subscription }, { status: 201 });
   } catch (error) {

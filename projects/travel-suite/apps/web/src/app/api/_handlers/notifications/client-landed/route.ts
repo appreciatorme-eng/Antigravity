@@ -8,6 +8,17 @@ import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/noti
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 
 const supabaseAdmin = createAdminClient();
+const CLIENT_LANDED_ASSIGNMENT_SELECT = `
+    day_number,
+    external_driver_id,
+    id,
+    notes,
+    pickup_location,
+    pickup_time,
+    external_drivers(full_name, phone)
+`;
+const CLIENT_LANDED_ACCOMMODATION_SELECT =
+    "address, check_in_time, contact_phone, day_number, hotel_name, id";
 
 export async function POST(request: NextRequest) {
     try {
@@ -79,10 +90,7 @@ export async function POST(request: NextRequest) {
         // Get today's driver assignment
         const { data: assignmentRaw } = await supabaseAdmin
             .from("trip_driver_assignments")
-            .select(`
-                *,
-                external_drivers(*)
-            `)
+            .select(CLIENT_LANDED_ASSIGNMENT_SELECT)
             .eq("trip_id", tripId)
             .eq("day_number", dayNumber)
             .single();
@@ -104,7 +112,7 @@ export async function POST(request: NextRequest) {
         // Get today's accommodation
         const { data: accommodation } = await supabaseAdmin
             .from("trip_accommodations")
-            .select("*")
+            .select(CLIENT_LANDED_ACCOMMODATION_SELECT)
             .eq("trip_id", tripId)
             .eq("day_number", dayNumber)
             .single();

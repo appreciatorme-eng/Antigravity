@@ -11,6 +11,7 @@ import {
   Package,
   Loader2,
 } from 'lucide-react';
+import { ADD_ON_SELECT, PROPOSAL_ADD_ON_SELECT } from '@/lib/business/selects';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassInput } from '@/components/glass/GlassInput';
@@ -78,15 +79,16 @@ export default function ProposalAddOnsManager({
     try {
       const { data: proposalRows, error: proposalRowsError } = await supabase
         .from('proposal_add_ons')
-        .select('*')
+        .select(PROPOSAL_ADD_ON_SELECT)
         .eq('proposal_id', proposalId)
         .order('category', { ascending: true });
+      const proposalAddOnRows = (proposalRows as unknown as ProposalAddOn[] | null) ?? [];
 
       if (proposalRowsError) {
         throw proposalRowsError;
       }
 
-      const formattedProposalRows: ProposalAddOn[] = (proposalRows || []).map((row) => ({
+      const formattedProposalRows: ProposalAddOn[] = proposalAddOnRows.map((row) => ({
         id: row.id,
         proposal_id: row.proposal_id,
         add_on_id: row.add_on_id || null,
@@ -102,15 +104,16 @@ export default function ProposalAddOnsManager({
 
       const { data: addOnsData, error: addOnsError } = await supabase
         .from('add_ons')
-        .select('*')
+        .select(ADD_ON_SELECT)
         .eq('is_active', true)
         .order('name');
+      const availableAddOnRows = (addOnsData as unknown as AddOn[] | null) ?? [];
 
       if (addOnsError) {
         throw addOnsError;
       }
 
-      const formattedAvailable: AddOn[] = (addOnsData || []).map((addon) => ({
+      const formattedAvailable: AddOn[] = availableAddOnRows.map((addon) => ({
         id: addon.id,
         name: addon.name,
         description: addon.description,

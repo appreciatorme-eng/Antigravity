@@ -5,6 +5,28 @@ import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import type { Database } from "@/lib/database.types";
+
+const PLATFORM_ANNOUNCEMENT_SELECT = [
+    "announcement_type",
+    "body",
+    "created_at",
+    "delivery_channels",
+    "id",
+    "recipient_count",
+    "scheduled_at",
+    "sent_at",
+    "sent_by",
+    "status",
+    "target_org_ids",
+    "target_segment",
+    "title",
+    "updated_at",
+].join(", ");
+type PlatformAnnouncementRow = Pick<
+    Database["public"]["Tables"]["platform_announcements"]["Row"],
+    "announcement_type" | "body" | "created_at" | "delivery_channels" | "id" | "recipient_count" | "scheduled_at" | "sent_at" | "sent_by" | "status" | "target_org_ids" | "target_segment" | "title" | "updated_at"
+>;
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -17,7 +39,7 @@ export async function GET(request: NextRequest) {
     try {
         const result = await adminClient
             .from("platform_announcements")
-            .select("*", { count: "exact" })
+            .select(PLATFORM_ANNOUNCEMENT_SELECT, { count: "exact" })
             .order("created_at", { ascending: false })
             .range(page * limit, (page + 1) * limit - 1);
 
@@ -68,16 +90,17 @@ export async function POST(request: NextRequest) {
                 status: "draft",
                 sent_by: userId,
             })
-            .select()
+            .select(PLATFORM_ANNOUNCEMENT_SELECT)
             .single();
+        const announcement = result.data as unknown as PlatformAnnouncementRow | null;
 
         if (result.error) throw result.error;
 
         await logPlatformAction(userId, "announcement_created", "announcement", {
-            announcement_id: result.data.id, title,
+            announcement_id: announcement?.id, title,
         });
 
-        return apiSuccess(result.data, 201);
+        return apiSuccess(announcement, 201);
     } catch (err) {
         console.error("[superadmin/announcements POST]", err);
         return apiError("Failed to create announcement", 500);

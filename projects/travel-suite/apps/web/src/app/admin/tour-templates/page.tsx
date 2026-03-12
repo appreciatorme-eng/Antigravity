@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { TOUR_TEMPLATE_SELECT } from '@/lib/tour-templates/selects';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassInput } from '@/components/glass/GlassInput';
@@ -81,7 +82,7 @@ export default function TourTemplatesPage() {
       // Load templates
       let query = supabase
         .from('tour_templates')
-        .select('*')
+        .select(TOUR_TEMPLATE_SELECT)
         .eq('organization_id', profile.organization_id)
         .order('created_at', { ascending: false });
 
@@ -90,13 +91,14 @@ export default function TourTemplatesPage() {
       }
 
       const { data, error } = await query;
+      const templateRows = (data as unknown as TourTemplate[] | null) ?? [];
 
       if (error) {
         console.error('Error loading templates:', error);
       } else {
         // Load counts for each template
         const templatesWithCounts = await Promise.all(
-          (data || []).map(async (template) => {
+          templateRows.map(async (template) => {
             const { data: days, count: daysCount } = await supabase
               .from('template_days')
               .select('id', { count: 'exact' })

@@ -32,6 +32,19 @@ import { useToast } from "@/components/ui/toast";
 import { WhatsAppConnectModal } from "@/components/whatsapp/WhatsAppConnectModal";
 import { cn } from "@/lib/utils";
 
+const ORGANIZATION_SETTINGS_SELECT = [
+    "billing_address",
+    "billing_state",
+    "gstin",
+    "id",
+    "itinerary_template",
+    "logo_url",
+    "name",
+    "primary_color",
+    "slug",
+    "subscription_tier",
+].join(", ");
+
 interface Organization {
     id: string;
     name: string;
@@ -53,6 +66,11 @@ interface Organization {
         email: string;
     };
 }
+
+type OrganizationSettingsRow = Omit<Organization, "billing_address" | "itinerary_template"> & {
+    billing_address?: unknown;
+    itinerary_template?: string | null;
+};
 
 interface WorkflowRule {
     lifecycle_stage: string;
@@ -291,13 +309,17 @@ export default function SettingsPage() {
         try {
             const { data, error } = await supabase
                 .from("organizations")
-                .select("*")
+                .select(ORGANIZATION_SETTINGS_SELECT)
                 .single();
 
             if (error) throw error;
-            const orgRecord = data as Record<string, unknown>;
+            const organizationRow = data as unknown as OrganizationSettingsRow | null;
+            if (!organizationRow) {
+                throw new Error("Organization not found");
+            }
+            const orgRecord = organizationRow as unknown as Record<string, unknown>;
             setOrganization({
-                ...data,
+                ...organizationRow,
                 itinerary_template: normalizeItineraryTemplateId(
                     typeof orgRecord.itinerary_template === "string"
                         ? orgRecord.itinerary_template

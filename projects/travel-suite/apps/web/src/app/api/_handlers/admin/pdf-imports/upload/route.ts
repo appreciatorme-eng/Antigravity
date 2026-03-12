@@ -7,6 +7,7 @@ import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const PDF_IMPORTS_UPLOAD_RATE_LIMIT_MAX = 30;
 const PDF_IMPORTS_UPLOAD_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const PDF_IMPORT_UPLOAD_SELECT = "created_at, file_name, id, status";
 
 function normalizeFileName(value: string): string {
   const safe = sanitizeText(value, { maxLength: 120 });
@@ -170,7 +171,7 @@ export async function POST(req: NextRequest) {
         status: "uploaded",
         created_by: admin.userId,
       })
-      .select()
+      .select(PDF_IMPORT_UPLOAD_SELECT)
       .single();
 
     if (insertError) {

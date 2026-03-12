@@ -1,10 +1,12 @@
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/database.types";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Car, Phone, Languages, User, Link2, CalendarDays, MapPin, ShieldCheck } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 
 type AssignmentTrip = {
     start_date: string | null;
@@ -20,6 +22,7 @@ type DriverAssignment = {
     pickup_location: string | null;
     trip?: AssignmentTrip | AssignmentTrip[] | null;
 };
+type ExternalDriverRow = Database["public"]["Tables"]["external_drivers"]["Row"];
 
 export default async function DriverDetailsPage({
     params,
@@ -30,11 +33,12 @@ export default async function DriverDetailsPage({
     const supabase = await createClient();
 
     // 1. Fetch External Driver Details
-    const { data: driver } = await supabase
+    const { data: driverData } = await supabase
         .from("external_drivers")
-        .select("*")
+        .select(EXTERNAL_DRIVER_SELECT)
         .eq("id", id)
         .single();
+    const driver = driverData as unknown as ExternalDriverRow | null;
 
     if (!driver) return notFound();
 

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ConnectionPlatform } from "@/lib/reputation/types";
+import type { Database } from "@/lib/supabase/database.types";
+
+type ConnectionRow = Database["public"]["Tables"]["reputation_platform_connections"]["Row"];
 
 export async function GET() {
   try {
@@ -25,11 +29,12 @@ export async function GET() {
       return apiError("No organization found", 400);
     }
 
-    const { data: connections, error } = await supabase
+    const { data: connectionsData, error } = await supabase
       .from("reputation_platform_connections")
-      .select("*")
+      .select(REPUTATION_PLATFORM_CONNECTION_SELECT)
       .eq("organization_id", profile.organization_id)
       .order("created_at", { ascending: false });
+    const connections = connectionsData as unknown as ConnectionRow[] | null;
 
     if (error) {
       throw error;
@@ -107,11 +112,12 @@ export async function POST(req: Request) {
       sync_enabled: true,
     };
 
-    const { data: connection, error } = await supabase
+    const { data: connectionData, error } = await supabase
       .from("reputation_platform_connections")
       .insert(insertData)
-      .select()
+      .select(REPUTATION_PLATFORM_CONNECTION_SELECT)
       .single();
+    const connection = connectionData as unknown as ConnectionRow | null;
 
     if (error) {
       throw error;

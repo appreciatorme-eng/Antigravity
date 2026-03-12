@@ -11,6 +11,10 @@ import {
 } from "@/lib/cost/spend-guardrails";
 import { REPUTATION_TIER_LIMITS } from "@/lib/reputation/constants";
 import { repFrom } from "@/lib/reputation/db";
+import {
+  REPUTATION_BRAND_VOICE_SELECT,
+  REPUTATION_REVIEW_SELECT,
+} from "@/lib/reputation/selects";
 import type {
   AIResponseResult,
   BrandVoiceTone,
@@ -117,10 +121,11 @@ async function getOrCreateBrandVoice(
   supabase: Parameters<typeof repFrom>[0],
   organizationId: string
 ): Promise<ReputationBrandVoice> {
-  const { data: existing } = await repFrom(supabase, "reputation_brand_voice")
-    .select("*")
+  const { data: existingData } = await repFrom(supabase, "reputation_brand_voice")
+    .select(REPUTATION_BRAND_VOICE_SELECT)
     .eq("organization_id", organizationId)
     .maybeSingle();
+  const existing = existingData as unknown as ReputationBrandVoice | null;
 
   if (existing) {
     return existing as ReputationBrandVoice;
@@ -141,10 +146,11 @@ async function getOrCreateBrandVoice(
     escalation_threshold: 2,
   };
 
-  const { data: created, error } = await repFrom(supabase, "reputation_brand_voice")
+  const { data: createdData, error } = await repFrom(supabase, "reputation_brand_voice")
     .insert(defaultVoice)
-    .select()
+    .select(REPUTATION_BRAND_VOICE_SELECT)
     .single();
+  const created = createdData as unknown as ReputationBrandVoice | null;
 
   if (error) {
     // Return a fallback object if insert fails (e.g. race condition)
@@ -221,11 +227,12 @@ export async function POST(req: Request) {
     }
 
     // Fetch the review
-    const { data: review, error: reviewError } = await repFrom(supabase, "reputation_reviews")
-      .select("*")
+    const { data: reviewData, error: reviewError } = await repFrom(supabase, "reputation_reviews")
+      .select(REPUTATION_REVIEW_SELECT)
       .eq("id", reviewId)
       .eq("organization_id", organizationId)
       .single();
+    const review = reviewData as unknown as ReputationReview | null;
 
     if (reviewError || !review) {
       return apiError("Review not found", 404);

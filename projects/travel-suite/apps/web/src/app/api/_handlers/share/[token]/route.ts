@@ -11,6 +11,7 @@ import {
   buildPublicShareResponse,
   parseCommentArray,
   parseStringArray,
+  SHARE_PUBLIC_STATE_SELECT,
   type SharePreferences,
   type ShareRow,
 } from './public-share';
@@ -121,11 +122,11 @@ export async function GET(
 
     const { data: shareData, error: shareError } = await supabaseAdmin
       .from('shared_itineraries')
-      .select('*')
+      .select(SHARE_PUBLIC_STATE_SELECT)
       .eq('share_code', token)
       .single();
 
-    const share = shareData;
+    const share = shareData as ShareRow | null;
     if (shareError || !share) {
       return apiError('Share not found', 404);
     }

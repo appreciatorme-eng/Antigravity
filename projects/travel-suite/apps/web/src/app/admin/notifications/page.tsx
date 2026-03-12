@@ -68,6 +68,22 @@ interface DeliveryResponse {
     };
 }
 
+const NOTIFICATION_LOG_SELECT = [
+    "body",
+    "created_at",
+    "error_message",
+    "id",
+    "notification_type",
+    "profiles:recipient_id(full_name, email)",
+    "recipient_id",
+    "recipient_phone",
+    "recipient_type",
+    "sent_at",
+    "status",
+    "title",
+    "trip_id",
+].join(", ");
+
 interface WhatsAppHealthSummary {
     total_driver_profiles: number;
     drivers_with_phone: number;
@@ -135,13 +151,7 @@ export default function NotificationLogsPage() {
         try {
             let query = supabase
                 .from("notification_logs")
-                .select(`
-                    *,
-                    profiles:recipient_id (
-                        full_name,
-                        email
-                    )
-                `)
+                .select(NOTIFICATION_LOG_SELECT)
                 .order("created_at", { ascending: false });
 
             if (statusFilter !== "all") {
@@ -151,7 +161,7 @@ export default function NotificationLogsPage() {
             const { data, error } = await query;
 
             if (error) throw error;
-            setLogs(data || []);
+            setLogs((data as unknown as NotificationLog[] | null) ?? []);
 
             const now = new Date();
             const inOneHourIso = new Date(now.getTime() + 60 * 60 * 1000).toISOString();

@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  REPUTATION_WIDGET_PUBLIC_REVIEW_SELECT,
+  REPUTATION_WIDGET_SELECT,
+} from "@/lib/reputation/selects";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { repFrom } from "@/lib/reputation/db";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { ReputationWidget, ReputationReview } from "@/lib/reputation/types";
+
+type PublicWidgetReviewRow = {
+  id: string;
+  platform: ReputationReview["platform"];
+  reviewer_name: string;
+  reviewer_avatar_url: string | null;
+  rating: number;
+  title: string | null;
+  comment: string | null;
+  review_date: string;
+  destination: string | null;
+  is_verified_client: boolean | null;
+};
 
 function corsHeaders(): HeadersInit {
   return {
@@ -53,10 +70,11 @@ export async function GET(
     const supabase = await createClient();
 
     // Look up widget by embed_token
-    const { data: widget, error: widgetError } = await repFrom(supabase, "reputation_widgets")
-      .select("*")
+    const { data: widgetData, error: widgetError } = await repFrom(supabase, "reputation_widgets")
+      .select(REPUTATION_WIDGET_SELECT)
       .eq("embed_token", token)
       .maybeSingle();
+    const widget = widgetData as unknown as ReputationWidget | null;
 
     if (widgetError) {
       throw widgetError;
@@ -80,7 +98,7 @@ export async function GET(
 
     // Fetch reviews matching widget filters
     let query = repFrom(supabase, "reputation_reviews")
-      .select("*")
+      .select(REPUTATION_WIDGET_PUBLIC_REVIEW_SELECT)
       .eq("organization_id", typedWidget.organization_id)
       .gte("rating", typedWidget.min_rating_to_show)
       .order("review_date", { ascending: false })
@@ -102,7 +120,8 @@ export async function GET(
       query = query.in("destination", typedWidget.destinations_filter);
     }
 
-    const { data: reviews, error: reviewsError } = await query;
+    const { data: reviewsData, error: reviewsError } = await query;
+    const reviews = reviewsData as unknown as PublicWidgetReviewRow[] | null;
 
     if (reviewsError) {
       throw reviewsError;

@@ -5,6 +5,28 @@ import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { sendNotificationToUser } from "@/lib/notifications";
+import type { Database } from "@/lib/database.types";
+
+const PLATFORM_ANNOUNCEMENT_SELECT = [
+    "announcement_type",
+    "body",
+    "created_at",
+    "delivery_channels",
+    "id",
+    "recipient_count",
+    "scheduled_at",
+    "sent_at",
+    "sent_by",
+    "status",
+    "target_org_ids",
+    "target_segment",
+    "title",
+    "updated_at",
+].join(", ");
+type PlatformAnnouncementRow = Pick<
+    Database["public"]["Tables"]["platform_announcements"]["Row"],
+    "announcement_type" | "body" | "created_at" | "delivery_channels" | "id" | "recipient_count" | "scheduled_at" | "sent_at" | "sent_by" | "status" | "target_org_ids" | "target_segment" | "title" | "updated_at"
+>;
 
 export async function POST(
     request: NextRequest,
@@ -19,15 +41,14 @@ export async function POST(
     try {
         const announcementResult = await adminClient
             .from("platform_announcements")
-            .select("*")
+            .select(PLATFORM_ANNOUNCEMENT_SELECT)
             .eq("id", id)
             .single();
+        const ann = announcementResult.data as unknown as PlatformAnnouncementRow | null;
 
-        if (!announcementResult.data) {
+        if (!ann) {
             return apiError("Announcement not found", 404);
         }
-
-        const ann = announcementResult.data;
         if (ann.status === "sent") {
             return apiError("Already sent", 409);
         }

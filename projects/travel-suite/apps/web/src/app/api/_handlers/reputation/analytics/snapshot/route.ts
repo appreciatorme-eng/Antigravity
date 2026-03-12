@@ -3,11 +3,15 @@ import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { calculateHealthScore } from "@/lib/reputation/score-calculator";
+import { REPUTATION_REVIEW_SELECT, REPUTATION_SNAPSHOT_SELECT } from "@/lib/reputation/selects";
 import type {
   ReputationPlatform,
   ReputationReview,
   ReputationHealthScoreFactors,
 } from "@/lib/reputation/types";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SnapshotRow = Database["public"]["Tables"]["reputation_snapshots"]["Row"];
 
 const PLATFORMS: ReputationPlatform[] = [
   "google",
@@ -59,13 +63,14 @@ export async function GET() {
       return apiError("No organization found", 400);
     }
 
-    const { data: snapshot, error: snapshotError } = await supabase
+    const { data: snapshotData, error: snapshotError } = await supabase
       .from("reputation_snapshots")
-      .select("*")
+      .select(REPUTATION_SNAPSHOT_SELECT)
       .eq("organization_id", profile.organization_id)
       .order("snapshot_date", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const snapshot = snapshotData as unknown as SnapshotRow | null;
 
     if (snapshotError) {
       throw snapshotError;
@@ -104,9 +109,9 @@ export async function POST() {
     const today = new Date().toISOString().split("T")[0];
 
     // Fetch all reviews for the org
-    const { data: allReviews, error: reviewsError } = await supabase
+    const { data: allReviewsData, error: reviewsError } = await supabase
       .from("reputation_reviews")
-      .select("*")
+      .select(REPUTATION_REVIEW_SELECT)
       .eq("organization_id", orgId);
 
     if (reviewsError) {
@@ -114,7 +119,7 @@ export async function POST() {
     }
 
     // DB row `platform` is string; ReputationReview uses the narrower ReputationPlatform union
-    const reviews = (allReviews ?? []) as unknown as ReputationReview[];
+    const reviews = (allReviewsData ?? []) as unknown as ReputationReview[];
     const totalReviews = reviews.length;
 
     // Per-platform stats
@@ -202,7 +207,7 @@ export async function POST() {
       .eq("organization_id", orgId)
       .eq("review_submitted", true);
 
-    const snapshotData = {
+    const nextSnapshot = {
       organization_id: orgId,
       snapshot_date: today,
       google_rating: platformStats["google"].rating,
@@ -229,15 +234,16 @@ export async function POST() {
     };
 
     // Upsert: if a snapshot for today already exists, update it
-    const { data: snapshot, error: upsertError } = await supabase
+    const { data: snapshotRowData, error: upsertError } = await supabase
       .from("reputation_snapshots")
-      .upsert(snapshotData, {
+      .upsert(nextSnapshot, {
         onConflict: "organization_id,snapshot_date",
       })
-      .select()
+      .select(REPUTATION_SNAPSHOT_SELECT)
       .single();
+    const snapshot = snapshotRowData as unknown as SnapshotRow | null;
 
-    if (upsertError) {
+    if (upsertError || !snapshot) {
       throw upsertError;
     }
 

@@ -7,6 +7,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { captureOperationalMetric } from "@/lib/observability/metrics";
 import { jsonWithRequestId as withRequestId } from "@/lib/api/response";
+import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
 import {
     getRequestContext,
     getRequestId,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
+const MARKETPLACE_PROFILE_LIST_SELECT = `${MARKETPLACE_PROFILE_SELECT}, organization:organizations(name, logo_url)`;
 
 type MarketplaceReviewRow = {
     rating: number | null;
@@ -233,10 +235,7 @@ export async function GET(req: NextRequest) {
 
         let supabaseQuery = supabaseAdmin
             .from("marketplace_profiles")
-            .select(`
-                *,
-                organization:organizations(name, logo_url)
-            `);
+            .select(MARKETPLACE_PROFILE_LIST_SELECT);
         // Note: marketplace_reviews has no direct FK to marketplace_profiles
         // (both use organizations as the join bridge). Reviews are fetched in a
         // second query after profile IDs are known and merged in JS below.
@@ -546,7 +545,7 @@ export async function PATCH(req: NextRequest) {
         const { data, error } = await supabaseAdmin
             .from("marketplace_profiles")
             .upsert(updates, { onConflict: "organization_id" })
-            .select()
+            .select(MARKETPLACE_PROFILE_SELECT)
             .single();
 
         if (error) throw error;

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
+  INVOICE_PAYMENT_SELECT,
+  INVOICE_SELECT,
   UpdateInvoiceSchema,
   calculateInvoiceTotals,
   calculateTaxBreakdown,
@@ -10,6 +12,8 @@ import {
 import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
 
+type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
+type InvoicePaymentRow = Database["public"]["Tables"]["invoice_payments"]["Row"];
 type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"];
 type InvoiceStatus = NonNullable<InvoiceUpdate["status"]>;
 
@@ -37,14 +41,15 @@ async function loadInvoiceForOrg(
 ) {
   if (!UUID_REGEX.test(id)) return { invoice: null, error: null };
 
-  const { data: invoice, error } = await adminClient
+  const { data: invoiceData, error } = await adminClient
     .from("invoices")
-    .select("*")
+    .select(INVOICE_SELECT)
     .eq("id", id)
     .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error) return { invoice: null, error };
+  const invoice = invoiceData as InvoiceRow | null;
   return { invoice, error: null };
 }
 
@@ -66,9 +71,9 @@ export async function GET(
     }
     if (!invoice) return jsonError("Invoice not found", 404);
 
-    const { data: payments, error: paymentsError } = await adminClient
+    const { data: paymentsData, error: paymentsError } = await adminClient
       .from("invoice_payments")
-      .select("*")
+      .select(INVOICE_PAYMENT_SELECT)
       .eq("invoice_id", id)
       .eq("organization_id", auth.organizationId!)
       .order("payment_date", { ascending: false });
@@ -77,6 +82,7 @@ export async function GET(
       console.error("Failed to fetch invoice payments:", paymentsError);
       return jsonError("Failed to fetch invoice payments", 500);
     }
+    const payments = paymentsData as unknown as InvoicePaymentRow[] | null;
 
     const normalized = normalizeInvoiceMetadata(invoice.metadata);
     return NextResponse.json({
@@ -189,14 +195,15 @@ export async function PUT(
     };
     updates.metadata = nextMetadata;
 
-    const { data: updatedInvoice, error: updateError } = await adminClient
+    const { data: updatedInvoiceData, error: updateError } = await adminClient
       .from("invoices")
       .update(updates)
       .eq("id", id)
       .eq("organization_id", auth.organizationId!)
-      .select("*")
+      .select(INVOICE_SELECT)
       .single();
 
+    const updatedInvoice = updatedInvoiceData as InvoiceRow | null;
     if (updateError || !updatedInvoice) {
       console.error("Failed to update invoice:", updateError);
       return jsonError("Failed to update invoice", 500);

@@ -12,6 +12,7 @@ import { parseLeadMessage } from "@/lib/leads/intent-parser";
 import { BUDGET_TIERS, type BudgetTier } from "@/lib/leads/types";
 
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? "";
+const CONVERTED_LEAD_SELECT = "budget_tier, converted_profile_id, destination, id";
 
 function verifyInternalToken(request: NextRequest): boolean {
   if (!INTERNAL_API_SECRET) {
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       departure_month: intentDepartureMonth,
       last_activity_at: new Date().toISOString(),
     })
-    .select()
+    .select(CONVERTED_LEAD_SELECT)
     .single();
 
   if (error) {

@@ -16,6 +16,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  TEMPLATE_ACCOMMODATION_SELECT,
+  TEMPLATE_ACTIVITY_SELECT,
+  TEMPLATE_DAY_SELECT,
+  TOUR_TEMPLATE_SELECT,
+} from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
 
 interface TourTemplate {
@@ -89,48 +95,51 @@ export default function ViewTemplatePage() {
       // Load template
       const { data: templateData, error: templateError } = await supabase
         .from('tour_templates')
-        .select('*')
+        .select(TOUR_TEMPLATE_SELECT)
         .eq('id', templateId)
         .single();
+      const templateRow = templateData as unknown as TourTemplate | null;
 
-      if (templateError || !templateData) {
+      if (templateError || !templateRow) {
         console.error('Error loading template:', templateError);
         setLoading(false);
         return;
       }
 
       setTemplate({
-        ...templateData,
-        status: templateData.status || 'draft',
-        is_public: templateData.is_public || false,
-        created_at: templateData.created_at || new Date().toISOString(),
-        updated_at: templateData.updated_at || new Date().toISOString(),
+        ...templateRow,
+        status: templateRow.status || 'draft',
+        is_public: templateRow.is_public || false,
+        created_at: templateRow.created_at || new Date().toISOString(),
+        updated_at: templateRow.updated_at || new Date().toISOString(),
       });
 
       // Load days
       const { data: daysData, error: daysError } = await supabase
         .from('template_days')
-        .select('*')
+        .select(TEMPLATE_DAY_SELECT)
         .eq('template_id', templateId)
         .order('day_number', { ascending: true });
+      const templateDays = (daysData as unknown as TemplateDay[] | null) ?? [];
 
       if (daysError) {
         console.error('Error loading days:', daysError);
       } else {
-        setDays(daysData || []);
+        setDays(templateDays);
 
         // Load activities for each day
-        const dayIds = (daysData || []).map((d) => d.id);
+        const dayIds = templateDays.map((d) => d.id);
         if (dayIds.length > 0) {
           const { data: activitiesData } = await supabase
             .from('template_activities')
-            .select('*')
+            .select(TEMPLATE_ACTIVITY_SELECT)
             .in('template_day_id', dayIds)
             .order('display_order', { ascending: true });
+          const templateActivities = (activitiesData as unknown as TemplateActivity[] | null) ?? [];
 
           // Group activities by day
           const activitiesByDay: Record<string, TemplateActivity[]> = {};
-          (activitiesData || []).forEach((activity) => {
+          templateActivities.forEach((activity) => {
             if (!activitiesByDay[activity.template_day_id]) {
               activitiesByDay[activity.template_day_id] = [];
             }
@@ -147,12 +156,13 @@ export default function ViewTemplatePage() {
           // Load accommodations
           const { data: accommodationsData } = await supabase
             .from('template_accommodations')
-            .select('*')
+            .select(TEMPLATE_ACCOMMODATION_SELECT)
             .in('template_day_id', dayIds);
+          const templateAccommodations = (accommodationsData as unknown as TemplateAccommodation[] | null) ?? [];
 
           // Map accommodations by day
           const accommodationsByDay: Record<string, TemplateAccommodation> = {};
-          (accommodationsData || []).forEach((acc) => {
+          templateAccommodations.forEach((acc) => {
             accommodationsByDay[acc.template_day_id] = {
               ...acc,
               star_rating: acc.star_rating || 0,

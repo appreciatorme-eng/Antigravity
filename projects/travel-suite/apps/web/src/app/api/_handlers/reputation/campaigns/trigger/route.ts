@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import {
+  REPUTATION_CAMPAIGN_SEND_SELECT,
+  REPUTATION_REVIEW_CAMPAIGN_SELECT,
+} from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
 import type { Database } from "@/lib/supabase/database.types";
+
+type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
+type CampaignSendRow = Database["public"]["Tables"]["reputation_campaign_sends"]["Row"];
 
 /** Fields selected from the clients table -- not all columns exist in generated types */
 type ClientContactFields = { name: string | null; phone: string | null; email: string | null };
@@ -30,12 +37,13 @@ export async function POST() {
     }
 
     // Fetch active campaigns for this org
-    const { data: campaigns, error: campaignsError } = await supabase
+    const { data: campaignsData, error: campaignsError } = await supabase
       .from("reputation_review_campaigns")
-      .select("*")
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .eq("organization_id", profile.organization_id)
       .eq("status", "active")
       .in("trigger_event", ["trip_completed", "trip_day_2"]);
+    const campaigns = campaignsData as unknown as CampaignRow[] | null;
 
     if (campaignsError) {
       throw campaignsError;
@@ -113,7 +121,7 @@ export async function POST() {
           Date.now() + 7 * 24 * 60 * 60 * 1000
         ).toISOString();
 
-        const sendData = {
+        const sendPayload = {
           organization_id: profile.organization_id,
           campaign_id: campaign.id,
           trip_id: trip.id,
@@ -128,11 +136,12 @@ export async function POST() {
           review_submitted: false,
         };
 
-        const { data: send, error: sendError } = await supabase
+        const { data: sendRowData, error: sendError } = await supabase
           .from("reputation_campaign_sends")
-          .insert(sendData)
-          .select()
+          .insert(sendPayload)
+          .select(REPUTATION_CAMPAIGN_SEND_SELECT)
           .single();
+        const send = sendRowData as unknown as CampaignSendRow | null;
 
         if (sendError) {
           console.error(

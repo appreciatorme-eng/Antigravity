@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { validateExtractedTour, type ExtractedTourData } from '@/lib/import/types';
+import {
+  INSERTED_TEMPLATE_DAY_SELECT,
+  INSERTED_TEMPLATE_SELECT,
+} from '@/lib/tour-templates/selects';
 import ImportPreview from '@/components/import/ImportPreview';
 import { useToast } from '@/components/ui/toast';
 import { Upload, Link as LinkIcon, Loader2, FileText, Globe, AlertCircle } from 'lucide-react';
@@ -188,7 +192,7 @@ export default function ImportTourPage() {
           created_by: user.id,
           status: 'active',
         })
-        .select()
+        .select(INSERTED_TEMPLATE_SELECT)
         .single();
 
       if (templateError) throw templateError;
@@ -203,7 +207,7 @@ export default function ImportTourPage() {
             title: day.title,
             description: day.description,
           })
-          .select()
+          .select(INSERTED_TEMPLATE_DAY_SELECT)
           .single();
 
         if (dayError) throw dayError;

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { TRIP_SERVICE_COST_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/database.types";
+
+type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Row"];
 
 const UpdateSchema = z.object({
   category: z.enum(["hotels", "vehicle", "flights", "visa", "insurance", "train", "bus", "other"]).optional(),
@@ -31,12 +35,13 @@ export async function GET(req: NextRequest) {
 
     const id = extractId(req);
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: costData, error } = await db
       .from("trip_service_costs")
-      .select("*")
+      .select(TRIP_SERVICE_COST_SELECT)
       .eq("id", id)
       .eq("organization_id", admin.organizationId)
       .single();
+    const data = costData as unknown as TripServiceCostRow | null;
 
     if (error || !data) {
       return apiError("Not found", 404);
@@ -74,13 +79,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: costData, error } = await db
       .from("trip_service_costs")
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("organization_id", admin.organizationId)
-      .select()
+      .select(TRIP_SERVICE_COST_SELECT)
       .single();
+    const data = costData as unknown as TripServiceCostRow | null;
 
     if (error || !data) {
       console.error("[/api/admin/pricing/trip-costs/[id]:PATCH] DB error:", error);

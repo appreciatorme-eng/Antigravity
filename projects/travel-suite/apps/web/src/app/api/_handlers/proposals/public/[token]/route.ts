@@ -158,6 +158,102 @@ type PublicAddOn = {
   is_selected: boolean;
 };
 
+type ProposalDayRow = {
+  id: string;
+  proposal_id: string;
+  day_number: number;
+  title: string | null;
+  description: string | null;
+  is_approved: boolean | null;
+};
+
+type ProposalActivityRow = {
+  id: string;
+  proposal_day_id: string;
+  time: string | null;
+  title: string;
+  description: string | null;
+  location: string | null;
+  image_url: string | null;
+  price: number | null;
+  is_optional: boolean | null;
+  is_premium: boolean | null;
+  is_selected: boolean | null;
+  display_order: number | null;
+};
+
+type ProposalAccommodationRow = {
+  id: string;
+  proposal_day_id: string;
+  hotel_name: string;
+  star_rating: number | null;
+  room_type: string | null;
+  price_per_night: number | null;
+  amenities: string[] | null;
+  image_url: string | null;
+};
+
+type ProposalAddOnRow = {
+  id: string;
+  proposal_id: string;
+  add_on_id: string | null;
+  name: string;
+  description: string | null;
+  category: string;
+  image_url: string | null;
+  unit_price: number;
+  quantity: number;
+  is_selected: boolean;
+};
+
+const PROPOSAL_DAY_PUBLIC_SELECT = [
+  "id",
+  "proposal_id",
+  "day_number",
+  "title",
+  "description",
+  "is_approved",
+].join(", ");
+
+const PROPOSAL_ACTIVITY_PUBLIC_SELECT = [
+  "id",
+  "proposal_day_id",
+  "time",
+  "title",
+  "description",
+  "location",
+  "image_url",
+  "price",
+  "is_optional",
+  "is_premium",
+  "is_selected",
+  "display_order",
+].join(", ");
+
+const PROPOSAL_ACCOMMODATION_PUBLIC_SELECT = [
+  "id",
+  "proposal_day_id",
+  "hotel_name",
+  "star_rating",
+  "room_type",
+  "price_per_night",
+  "amenities",
+  "image_url",
+].join(", ");
+
+const PROPOSAL_ADD_ON_PUBLIC_SELECT = [
+  "id",
+  "proposal_id",
+  "add_on_id",
+  "name",
+  "description",
+  "category",
+  "image_url",
+  "unit_price",
+  "quantity",
+  "is_selected",
+].join(", ");
+
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
 const IDENTIFIER_REGEX = /^[A-Za-z0-9_-]{6,120}$/;
 const PUBLIC_PROPOSAL_ACTION_RATE_LIMIT_MAX = Number(
@@ -376,11 +472,12 @@ async function buildPublicPayload(shareToken: string) {
 
   const { data: daysData } = await supabaseAdmin
     .from('proposal_days')
-    .select('*')
+    .select(PROPOSAL_DAY_PUBLIC_SELECT)
     .eq('proposal_id', proposal.id)
     .order('day_number', { ascending: true });
+  const publicDayRows = (daysData ?? null) as ProposalDayRow[] | null;
 
-  const days: PublicDay[] = (daysData || []).map((day) => ({
+  const days: PublicDay[] = (publicDayRows || []).map((day) => ({
     id: day.id,
     proposal_id: day.proposal_id,
     day_number: day.day_number,
@@ -397,11 +494,12 @@ async function buildPublicPayload(shareToken: string) {
   if (dayIds.length > 0) {
     const { data: activitiesData } = await supabaseAdmin
       .from('proposal_activities')
-      .select('*')
+      .select(PROPOSAL_ACTIVITY_PUBLIC_SELECT)
       .in('proposal_day_id', dayIds)
       .order('display_order', { ascending: true });
+    const activityRows = (activitiesData ?? null) as ProposalActivityRow[] | null;
 
-    for (const activity of activitiesData || []) {
+    for (const activity of activityRows || []) {
       const dayId = activity.proposal_day_id;
       if (!activitiesByDay[dayId]) activitiesByDay[dayId] = [];
       activitiesByDay[dayId].push({
@@ -422,10 +520,11 @@ async function buildPublicPayload(shareToken: string) {
 
     const { data: accommodationsData } = await supabaseAdmin
       .from('proposal_accommodations')
-      .select('*')
+      .select(PROPOSAL_ACCOMMODATION_PUBLIC_SELECT)
       .in('proposal_day_id', dayIds);
+    const accommodationRows = (accommodationsData ?? null) as ProposalAccommodationRow[] | null;
 
-    for (const accommodation of accommodationsData || []) {
+    for (const accommodation of accommodationRows || []) {
       accommodationsByDay[accommodation.proposal_day_id] = {
         id: accommodation.id,
         proposal_day_id: accommodation.proposal_day_id,
@@ -455,11 +554,12 @@ async function buildPublicPayload(shareToken: string) {
 
   const { data: addOnsData } = await supabaseAdmin
     .from('proposal_add_ons')
-    .select('*')
+    .select(PROPOSAL_ADD_ON_PUBLIC_SELECT)
     .eq('proposal_id', proposal.id)
     .order('category', { ascending: true });
+  const addOnRows = (addOnsData ?? null) as ProposalAddOnRow[] | null;
 
-  const addOns: PublicAddOn[] = (addOnsData || []).map((addOn) => ({
+  const addOns: PublicAddOn[] = (addOnRows || []).map((addOn) => ({
     id: addOn.id,
     proposal_id: addOn.proposal_id,
     add_on_id: addOn.add_on_id || null,

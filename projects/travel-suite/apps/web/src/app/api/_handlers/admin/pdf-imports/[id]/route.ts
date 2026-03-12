@@ -17,6 +17,26 @@ type PdfImportRow = {
   file_url?: string | null;
   [key: string]: unknown;
 };
+const PDF_IMPORT_DETAIL_SELECT = [
+  "created_at",
+  "created_by",
+  "extracted_data",
+  "extraction_confidence",
+  "extraction_error",
+  "file_hash",
+  "file_name",
+  "file_size_bytes",
+  "file_url",
+  "id",
+  "organization_id",
+  "published_at",
+  "published_template_id",
+  "review_notes",
+  "reviewed_at",
+  "reviewed_by",
+  "status",
+  "updated_at",
+].join(", ");
 
 function hasOrgAccess(admin: AdminContext, organizationId: string | null): boolean {
   if (!organizationId) return false;
@@ -30,7 +50,7 @@ async function loadPdfImportForAccess(
 ): Promise<{ row: PdfImportRow } | { response: NextResponse }> {
   const { data: row, error } = await admin.adminClient
     .from("pdf_imports")
-    .select("*")
+    .select(PDF_IMPORT_DETAIL_SELECT)
     .eq("id", id)
     .maybeSingle();
 

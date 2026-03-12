@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
   CreateInvoiceSchema,
+  INVOICE_ORGANIZATION_SELECT,
+  INVOICE_PROFILE_SELECT,
+  INVOICE_SELECT,
   buildClientSnapshot,
   buildOrganizationSnapshot,
   calculateInvoiceTotals,
@@ -13,6 +16,8 @@ import {
 import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
 
+type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
+type OrganizationRow = Database["public"]["Tables"]["organizations"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"];
 
@@ -36,7 +41,7 @@ export async function GET(request: NextRequest) {
     const adminClient = auth.adminClient;
     let query = adminClient
       .from("invoices")
-      .select("*", { count: "exact" })
+      .select(INVOICE_SELECT, { count: "exact" })
       .eq("organization_id", auth.organizationId!)
       .order("created_at", { ascending: false })
       .range(pageOffset, pageOffset + pageSize - 1);
@@ -44,11 +49,12 @@ export async function GET(request: NextRequest) {
     if (status) query = query.eq("status", status);
     if (clientId) query = query.eq("client_id", clientId);
 
-    const { data: invoices, error, count } = await query;
+    const { data: invoicesData, error, count } = await query;
     if (error) {
       console.error("Failed to list invoices:", error);
       return jsonError("Failed to fetch invoices", 500);
     }
+    const invoices = invoicesData as unknown as InvoiceRow[] | null;
 
     const normalized =
       invoices?.map((invoice) => {
@@ -96,27 +102,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: organization, error: organizationError } = await adminClient
+    const { data: organizationData, error: organizationError } = await adminClient
       .from("organizations")
-      .select("*")
+      .select(INVOICE_ORGANIZATION_SELECT)
       .eq("id", organizationId)
       .single();
 
+    const organization = organizationData as OrganizationRow | null;
     if (organizationError || !organization) {
       return jsonError("Organization not found", 404);
     }
 
     let clientProfile: ProfileRow | null = null;
     if (parsed.data.client_id) {
-      const { data: profile, error: profileError } = await adminClient
+      const { data: profileData, error: profileError } = await adminClient
         .from("profiles")
-        .select("*")
+        .select(INVOICE_PROFILE_SELECT)
         .eq("id", parsed.data.client_id)
         .maybeSingle();
 
       if (profileError) {
         return jsonError("Failed to resolve client profile", 500);
       }
+      const profile = profileData as ProfileRow | null;
       if (!profile || profile.organization_id !== organizationId) {
         return jsonError("Client not found in your organization", 404);
       }
@@ -154,7 +162,7 @@ export async function POST(request: NextRequest) {
     const status: NonNullable<InvoiceInsert["status"]> = parsed.data.status || "issued";
     const nowIso = new Date().toISOString();
 
-    const { data: createdInvoice, error: insertError } = await adminClient
+    const { data: createdInvoiceData, error: insertError } = await adminClient
       .from("invoices")
       .insert({
         organization_id: organizationId,
@@ -180,14 +188,18 @@ export async function POST(request: NextRequest) {
         metadata,
         created_by: auth.userId,
       })
-      .select("*")
+      .select(INVOICE_SELECT)
       .single();
 
+    const createdInvoice = createdInvoiceData as InvoiceRow | null;
     if (insertError) {
       if (insertError.code === "23505") {
         return jsonError("Duplicate invoice number. Please retry.", 409);
       }
       console.error("Failed to create invoice:", insertError);
+      return jsonError("Failed to create invoice", 500);
+    }
+    if (!createdInvoice) {
       return jsonError("Failed to create invoice", 500);
     }
 

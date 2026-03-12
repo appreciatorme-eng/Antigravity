@@ -1,5 +1,24 @@
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
+
+const SUPPORT_TICKET_SELECT = [
+    "admin_response",
+    "category",
+    "created_at",
+    "description",
+    "id",
+    "organization_id",
+    "priority",
+    "responded_at",
+    "responded_by",
+    "status",
+    "title",
+    "updated_at",
+    "user_id",
+].join(", ");
+
+type SupportTicketRow = Database["public"]["Tables"]["support_tickets"]["Row"];
 
 export async function POST(req: Request) {
     try {
@@ -28,7 +47,7 @@ export async function POST(req: Request) {
             return apiError("Missing required fields", 400);
         }
 
-        const { data, error } = await supabase
+        const { data: ticketData, error } = await supabase
             .from("support_tickets")
             .insert({
                 organization_id: profile.organization_id,
@@ -39,8 +58,9 @@ export async function POST(req: Request) {
                 priority,
                 status: 'Open'
             })
-            .select()
+            .select(SUPPORT_TICKET_SELECT)
             .single();
+        const data = ticketData as unknown as SupportTicketRow | null;
 
         if (error) {
             console.error("Error creating ticket:", error);
@@ -73,11 +93,12 @@ export async function GET() {
             return apiError("No organization found", 400);
         }
 
-        const { data, error } = await supabase
+        const { data: ticketsData, error } = await supabase
             .from("support_tickets")
-            .select("*")
+            .select(SUPPORT_TICKET_SELECT)
             .eq("organization_id", profile.organization_id)
             .order("created_at", { ascending: false });
+        const data = ticketsData as unknown as SupportTicketRow[] | null;
 
         if (error) {
             console.error("Error fetching tickets:", error);

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { MONTHLY_OVERHEAD_EXPENSE_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { Database } from "@/lib/database.types";
+
+type MonthlyOverheadRow = Database["public"]["Tables"]["monthly_overhead_expenses"]["Row"];
 
 const UpdateSchema = z.object({
   category: z.string().min(1).optional(),
@@ -73,13 +77,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     const db = admin.adminClient;
-    const { data, error } = await db
+    const { data: expenseData, error } = await db
       .from("monthly_overhead_expenses")
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
       .eq("id", id)
       .eq("organization_id", admin.organizationId)
-      .select()
+      .select(MONTHLY_OVERHEAD_EXPENSE_SELECT)
       .single();
+    const data = expenseData as unknown as MonthlyOverheadRow | null;
 
     if (error || !data) {
       console.error("[/api/admin/pricing/overheads/[id]:PATCH] DB error:", error);

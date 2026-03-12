@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Database } from "@/lib/database.types";
+import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
@@ -163,9 +164,10 @@ export default function DriversPage() {
             const orgId = await ensureOrganizationId();
             const { data, error } = await supabase
                 .from("external_drivers")
-                .select("*")
+                .select(EXTERNAL_DRIVER_SELECT)
                 .eq("organization_id", orgId)
                 .order("created_at", { ascending: false });
+            const driverRows = (data as unknown as ExternalDriver[] | null) ?? [];
 
             if (error) {
                 console.error("Error fetching drivers:", error);
@@ -173,7 +175,7 @@ export default function DriversPage() {
                 return;
             }
 
-            const list = data || [];
+            const list = driverRows;
             setDrivers(list);
 
             const driverIds = list.map((driver) => driver.id);

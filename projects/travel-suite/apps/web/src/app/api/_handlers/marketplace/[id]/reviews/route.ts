@@ -13,6 +13,8 @@ import {
 } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
+const MARKETPLACE_REVIEW_SELECT = "comment, created_at, id, rating, reviewer_org_id, target_org_id";
+const MARKETPLACE_REVIEW_LIST_SELECT = `${MARKETPLACE_REVIEW_SELECT}, reviewer:organizations!reviewer_org_id(name, logo_url)`;
 
 async function getAuthContext(req: Request) {
     const authHeader = req.headers.get("authorization");
@@ -69,10 +71,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
         const { data, error } = await supabaseAdmin
             .from("marketplace_reviews")
-            .select(`
-                *,
-                reviewer:organizations!reviewer_org_id(name, logo_url)
-            `)
+            .select(MARKETPLACE_REVIEW_LIST_SELECT)
             .eq("target_org_id", targetOrgId)
             .order("created_at", { ascending: false });
 
@@ -165,7 +164,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 comment: comment || null,
                 created_at: new Date().toISOString()
             })
-            .select()
+            .select(MARKETPLACE_REVIEW_SELECT)
             .single();
 
         if (error) throw error;

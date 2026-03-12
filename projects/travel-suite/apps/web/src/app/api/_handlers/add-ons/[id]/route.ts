@@ -10,8 +10,12 @@
 
 import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
+import { ADD_ON_SELECT } from "@/lib/business/selects";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
+import type { Database } from '@/lib/database.types';
+
+type AddOnRow = Database["public"]["Tables"]["add_ons"]["Row"];
 
 export async function GET(
   request: Request,
@@ -103,13 +107,14 @@ export async function PUT(
     if (body.is_active !== undefined) updatePayload.is_active = body.is_active;
 
     // Update add-on
-    const { data: addon, error } = await supabase
+    const { data: addonData, error } = await supabase
       .from('add_ons')
       .update(updatePayload)
       .eq('id', id)
       .eq('organization_id', profile.organization_id) // Security: ensure user owns this add-on
-      .select()
+      .select(ADD_ON_SELECT)
       .single();
+    const addon = addonData as unknown as AddOnRow | null;
 
     if (error) {
       console.error('Error updating add-on:', error);

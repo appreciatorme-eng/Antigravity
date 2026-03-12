@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
+import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { CampaignType } from "@/lib/reputation/types";
+import type { Database } from "@/lib/supabase/database.types";
+
+type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 
 const VALID_CAMPAIGN_TYPES: CampaignType[] = [
   "post_trip",
@@ -32,11 +36,12 @@ export async function GET() {
       return apiError("No organization found", 400);
     }
 
-    const { data: campaigns, error } = await supabase
+    const { data: campaignsData, error } = await supabase
       .from("reputation_review_campaigns")
-      .select("*")
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .eq("organization_id", profile.organization_id)
       .order("created_at", { ascending: false });
+    const campaigns = campaignsData as unknown as CampaignRow[] | null;
 
     if (error) {
       throw error;
@@ -115,11 +120,12 @@ export async function POST(req: Request) {
       stats_reviews_generated: 0,
     };
 
-    const { data: campaign, error } = await supabase
+    const { data: campaignData, error } = await supabase
       .from("reputation_review_campaigns")
       .insert(insertData)
-      .select()
+      .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .single();
+    const campaign = campaignData as unknown as CampaignRow | null;
 
     if (error) {
       throw error;

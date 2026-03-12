@@ -10,10 +10,14 @@ import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { SUBSCRIPTION_SELECT } from '@/lib/payments/subscription-service';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
+import type { Database } from '@/lib/database.types';
+
+type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,11 +75,12 @@ export async function POST(request: NextRequest) {
     );
 
     // Fetch updated subscription
-    const { data: subscription } = await supabase
+    const { data: subscriptionData } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(SUBSCRIPTION_SELECT)
       .eq('id', currentSubscription.id)
       .single();
+    const subscription = subscriptionData as unknown as SubscriptionRow | null;
 
     return NextResponse.json({ subscription });
   } catch (error) {

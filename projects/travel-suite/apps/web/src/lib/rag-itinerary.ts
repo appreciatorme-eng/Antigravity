@@ -66,6 +66,15 @@ interface TourTemplateRow {
     days?: TemplateDayRow[] | null;
 }
 
+const RAG_TEMPLATE_DETAIL_SELECT = [
+    'description',
+    'destination',
+    'duration_days',
+    'id',
+    'name',
+    'days:template_days(day_number, title, activities:template_activities(time, title, description, location, price, duration, transport, image_url))',
+].join(', ');
+
 type RAGAssembledItinerary = ItineraryResult & Record<string, unknown> & {
     source: 'rag_assembly' | 'rag_template_exact';
     base_template_id: string;
@@ -147,13 +156,7 @@ export async function assembleItinerary(
     // Fetch full template with days and activities
     const { data: fullTemplateData } = await supabase
         .from('tour_templates')
-        .select(`
-            *,
-            days:template_days(
-                *,
-                activities:template_activities(*)
-            )
-        `)
+        .select(RAG_TEMPLATE_DETAIL_SELECT)
         .eq('id', baseTemplate.template_id)
         .order('day_number', { foreignTable: 'template_days', ascending: true })
         .order('display_order', { foreignTable: 'template_days.template_activities', ascending: true })

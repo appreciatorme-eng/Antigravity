@@ -6,12 +6,24 @@ import { getPaymentClient, resolveCompanyState, wrapPaymentError } from './payme
 import { logPaymentEvent } from './payment-logger';
 import { ensureCustomer } from './customer-service';
 import { calculateGST } from '../tax/gst-calculator';
+import type { Database } from '@/lib/database.types';
 import type {
   CreateInvoiceOptions,
   RecordPaymentOptions,
   PaymentExecutionContext,
   PaymentExecutionOptions,
 } from './payment-types';
+
+const CREATED_INVOICE_SELECT = 'id';
+const RECORD_PAYMENT_INVOICE_SELECT = [
+  'id',
+  'organization_id',
+  'total_amount',
+].join(', ');
+type InvoicePaymentSourceRow = Pick<
+  Database['public']['Tables']['invoices']['Row'],
+  'id' | 'organization_id' | 'total_amount'
+>;
 
 /**
  * Create an invoice
@@ -98,7 +110,7 @@ export async function createInvoice(
         razorpay_invoice_id: razorpayInvoice.id,
         due_date: (options.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).toISOString(),
       })
-      .select()
+      .select(CREATED_INVOICE_SELECT)
       .single();
 
     if (error) {
@@ -172,9 +184,10 @@ export async function recordPayment(
 
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('*')
+      .select(RECORD_PAYMENT_INVOICE_SELECT)
       .eq('id', options.invoiceId)
       .single();
+    const invoiceRow = invoice as unknown as InvoicePaymentSourceRow | null;
 
     if (invoiceError) {
       throw new PaymentServiceError({
@@ -186,7 +199,7 @@ export async function recordPayment(
       });
     }
 
-    if (!invoice) {
+    if (!invoiceRow) {
       throw new PaymentServiceError({
         code: 'payments_not_found',
         operation: 'record_payment',
@@ -200,7 +213,7 @@ export async function recordPayment(
     const { error: paymentError } = await supabase
       .from('invoice_payments')
       .insert({
-        organization_id: invoice.organization_id,
+        organization_id: invoiceRow.organization_id,
         invoice_id: options.invoiceId,
         amount: options.amount,
         method: options.paymentMethod,
@@ -226,7 +239,7 @@ export async function recordPayment(
     }
 
     const newStatus =
-      options.amount >= (invoice.total_amount || 0) ? 'paid' : 'partially_paid';
+      options.amount >= (invoiceRow.total_amount || 0) ? 'paid' : 'partially_paid';
 
     const { error: updateError } = await supabase
       .from('invoices')
@@ -249,7 +262,7 @@ export async function recordPayment(
     await logPaymentEvent(
       supabase,
       {
-        organizationId: invoice.organization_id,
+        organizationId: invoiceRow.organization_id,
         invoiceId: options.invoiceId,
         eventType: 'payment.success',
         externalId: options.razorpayPaymentId,
