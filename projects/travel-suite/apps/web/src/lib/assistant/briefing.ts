@@ -127,9 +127,7 @@ export async function getEligibleOrgsForBriefing(): Promise<
   try {
     const supabase = createAdminClient();
 
-    // assistant_preferences is not in generated types -- cast through `any`.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: prefRows, error: prefError } = await (supabase as any)
+    const { data: prefRows, error: prefError } = await supabase
       .from("assistant_preferences")
       .select("organization_id, user_id")
       .eq("preference_key", "morning_briefing_enabled")
@@ -139,12 +137,7 @@ export async function getEligibleOrgsForBriefing(): Promise<
       return [];
     }
 
-    const typedRows = prefRows as ReadonlyArray<{
-      organization_id: string;
-      user_id: string;
-    }>;
-
-    const userIds = typedRows.map((r) => r.user_id);
+    const userIds = prefRows.map((r) => r.user_id);
 
     // Fetch profiles with a WhatsApp-capable phone number.
     const { data: profileRows, error: profileError } = await supabase
@@ -163,7 +156,7 @@ export async function getEligibleOrgsForBriefing(): Promise<
 
     // Collect unique org IDs for name lookup.
     const orgIds = [
-      ...new Set(typedRows.map((r) => r.organization_id)),
+      ...new Set(prefRows.map((r) => r.organization_id)),
     ];
 
     const { data: orgRows, error: orgError } = await supabase
@@ -180,7 +173,7 @@ export async function getEligibleOrgsForBriefing(): Promise<
     // Join preferences + profiles + org names.
     const results: EligibleOrg[] = [];
 
-    for (const pref of typedRows) {
+    for (const pref of prefRows) {
       const phone = phoneByUserId.get(pref.user_id);
       if (!phone) continue;
 

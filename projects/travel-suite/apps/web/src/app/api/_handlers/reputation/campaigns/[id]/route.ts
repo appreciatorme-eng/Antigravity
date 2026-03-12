@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(
@@ -30,8 +31,7 @@ export async function GET(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaign, error } = await (supabase as any)
+    const { data: campaign, error } = await supabase
       .from("reputation_review_campaigns")
       .select("*")
       .eq("id", id)
@@ -119,10 +119,9 @@ export async function PATCH(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaign, error } = await (supabase as any)
+    const { data: campaign, error } = await supabase
       .from("reputation_review_campaigns")
-      .update(updateData)
+      .update(updateData as Database['public']['Tables']['reputation_review_campaigns']['Update'])
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
       .select()
@@ -175,8 +174,7 @@ export async function DELETE(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaign, error } = await (supabase as any)
+    const { data: campaign, error } = await supabase
       .from("reputation_review_campaigns")
       .update({ status: "archived" })
       .eq("id", id)

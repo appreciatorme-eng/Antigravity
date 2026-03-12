@@ -24,8 +24,7 @@ export async function GET() {
       return NextResponse.json({ error: "No organization found" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: connections, error } = await (supabase as any)
+    const { data: connections, error } = await supabase
       .from("reputation_platform_connections")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -96,8 +95,7 @@ export async function POST(req: Request) {
     }
 
     // Check for duplicate connection
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("reputation_platform_connections")
       .select("id")
       .eq("organization_id", profile.organization_id)
@@ -120,8 +118,7 @@ export async function POST(req: Request) {
       sync_enabled: true,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: connection, error } = await (supabase as any)
+    const { data: connection, error } = await supabase
       .from("reputation_platform_connections")
       .insert(insertData)
       .select()
@@ -167,8 +164,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "id query parameter is required" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("reputation_platform_connections")
       .delete()
       .eq("id", connectionId)

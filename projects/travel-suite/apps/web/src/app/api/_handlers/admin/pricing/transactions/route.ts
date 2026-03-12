@@ -5,8 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 type CostRow = {
   id: string;
   trip_id: string;
@@ -44,7 +42,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
     }
 
-    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
+    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
 
     const url = new URL(req.url);
     const search = url.searchParams.get("search")?.trim() || "";
@@ -52,7 +50,7 @@ export async function GET(req: NextRequest) {
     const vendor = url.searchParams.get("vendor")?.trim() || "";
     const sort = VALID_SORTS.has(url.searchParams.get("sort") || "") ? url.searchParams.get("sort")! : "date";
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
 
     let query = db
       .from("trip_service_costs")

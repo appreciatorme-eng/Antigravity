@@ -58,8 +58,7 @@ export async function GET() {
       return NextResponse.json({ error: "No organization found" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: snapshot, error: snapshotError } = await (supabase as any)
+    const { data: snapshot, error: snapshotError } = await supabase
       .from("reputation_snapshots")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -104,8 +103,7 @@ export async function POST() {
     const today = new Date().toISOString().split("T")[0];
 
     // Fetch all reviews for the org
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: allReviews, error: reviewsError } = await (supabase as any)
+    const { data: allReviews, error: reviewsError } = await supabase
       .from("reputation_reviews")
       .select("*")
       .eq("organization_id", orgId);
@@ -114,7 +112,8 @@ export async function POST() {
       throw reviewsError;
     }
 
-    const reviews: ReputationReview[] = allReviews ?? [];
+    // DB row `platform` is string; ReputationReview uses the narrower ReputationPlatform union
+    const reviews = (allReviews ?? []) as unknown as ReputationReview[];
     const totalReviews = reviews.length;
 
     // Per-platform stats
@@ -190,15 +189,13 @@ export async function POST() {
     const healthScore = calculateHealthScore(healthFactors);
 
     // Review request stats (from campaign sends)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: requestsSent } = await (supabase as any)
+    const { count: requestsSent } = await supabase
       .from("reputation_campaign_sends")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("status", "sent");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: requestsConverted } = await (supabase as any)
+    const { count: requestsConverted } = await supabase
       .from("reputation_campaign_sends")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
@@ -231,8 +228,7 @@ export async function POST() {
     };
 
     // Upsert: if a snapshot for today already exists, update it
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: snapshot, error: upsertError } = await (supabase as any)
+    const { data: snapshot, error: upsertError } = await supabase
       .from("reputation_snapshots")
       .upsert(snapshotData, {
         onConflict: "organization_id,snapshot_date",

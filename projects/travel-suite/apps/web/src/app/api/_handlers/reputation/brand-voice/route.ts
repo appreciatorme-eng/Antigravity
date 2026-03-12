@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -40,8 +41,7 @@ export async function GET() {
     const organizationId = profile.organization_id;
 
     // Fetch existing brand voice
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("reputation_brand_voice")
       .select("*")
       .eq("organization_id", organizationId)
@@ -66,8 +66,7 @@ export async function GET() {
       escalation_threshold: 2,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: created, error: insertError } = await (supabase as any)
+    const { data: created, error: insertError } = await supabase
       .from("reputation_brand_voice")
       .insert(defaultVoice)
       .select()
@@ -75,8 +74,7 @@ export async function GET() {
 
     if (insertError) {
       // If insert fails (race condition), try to fetch again
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: retryFetch } = await (supabase as any)
+      const { data: retryFetch } = await supabase
         .from("reputation_brand_voice")
         .select("*")
         .eq("organization_id", organizationId)
@@ -224,8 +222,7 @@ export async function PUT(req: Request) {
     updateData.updated_at = new Date().toISOString();
 
     // Upsert: update if exists, insert default + updates if not
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("reputation_brand_voice")
       .select("id")
       .eq("organization_id", organizationId)
@@ -234,10 +231,9 @@ export async function PUT(req: Request) {
     let brandVoice: ReputationBrandVoice;
 
     if (existing) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: updated, error: updateError } = await (supabase as any)
+      const { data: updated, error: updateError } = await supabase
         .from("reputation_brand_voice")
-        .update(updateData)
+        .update(updateData as Database['public']['Tables']['reputation_brand_voice']['Update'])
         .eq("organization_id", organizationId)
         .select()
         .single();
@@ -262,10 +258,9 @@ export async function PUT(req: Request) {
         ...updateData,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: created, error: insertError } = await (supabase as any)
+      const { data: created, error: insertError } = await supabase
         .from("reputation_brand_voice")
-        .insert(defaultWithUpdates)
+        .insert(defaultWithUpdates as Database['public']['Tables']['reputation_brand_voice']['Insert'])
         .select()
         .single();
 

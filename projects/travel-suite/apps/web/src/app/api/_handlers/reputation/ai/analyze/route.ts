@@ -138,8 +138,7 @@ export async function POST(req: Request) {
 
     // If reviewId is provided, fetch the review
     if (reviewId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: review, error: reviewError } = await (supabase as any)
+      const { data: review, error: reviewError } = await supabase
         .from("reputation_reviews")
         .select("id, comment, rating, organization_id")
         .eq("id", reviewId)
@@ -200,8 +199,7 @@ export async function POST(req: Request) {
 
     // Update the review in DB if we have a reviewId
     if (targetReviewId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await supabase
         .from("reputation_reviews")
         .update({
           sentiment_score: analysis.sentiment_score,

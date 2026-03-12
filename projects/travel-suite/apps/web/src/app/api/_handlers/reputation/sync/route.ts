@@ -3,6 +3,8 @@ import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 
 const GOOGLE_PLACES_API_KEY = env.google.placesApiKey;
 
@@ -66,8 +68,7 @@ function deriveSentimentLabel(rating: number): "positive" | "neutral" | "negativ
 }
 
 async function setConnectionSyncState(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation sync tables are not in generated types yet.
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   connectionId: string,
   fields: {
     last_synced_at?: string | null;
@@ -127,8 +128,7 @@ export async function POST(request: Request) {
       connectionId?: string;
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- organization_settings is available in Supabase but not fully typed here.
-    const { data: orgSettings } = await (supabase as any)
+    const { data: orgSettings } = await supabase
       .from("organization_settings")
       .select("google_places_enabled")
       .eq("organization_id", profile.organization_id)
@@ -144,8 +144,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation sync tables are not in generated types yet.
-    let connectionsQuery = (supabase as any)
+    let connectionsQuery = supabase
       .from("reputation_platform_connections")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -224,8 +223,7 @@ export async function POST(request: Request) {
 
         let existingReviewMap = new Map<string, ExistingReviewRecord>();
         if (reviewIds.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation review table is not fully represented in generated types yet.
-          const { data: existingReviews, error: existingError } = await (supabase as any)
+          const { data: existingReviews, error: existingError } = await supabase
             .from("reputation_reviews")
             .select(
               "id, platform_review_id, response_posted_at, response_posted_by, response_status, response_text, is_featured",
@@ -283,8 +281,7 @@ export async function POST(request: Request) {
           };
 
           if (existingReview) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation review table is not fully represented in generated types yet.
-            const { error: updateError } = await (supabase as any)
+            const { error: updateError } = await supabase
               .from("reputation_reviews")
               .update(baseReviewPayload)
               .eq("id", existingReview.id)
@@ -298,8 +295,7 @@ export async function POST(request: Request) {
             continue;
           }
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation review table is not fully represented in generated types yet.
-          const { error: insertError } = await (supabase as any)
+          const { error: insertError } = await supabase
             .from("reputation_reviews")
             .insert({
               ...baseReviewPayload,

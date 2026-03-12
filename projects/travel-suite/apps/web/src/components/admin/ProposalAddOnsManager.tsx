@@ -76,8 +76,7 @@ export default function ProposalAddOnsManager({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: proposalRows, error: proposalRowsError } = await (supabase as any)
+      const { data: proposalRows, error: proposalRowsError } = await supabase
         .from('proposal_add_ons')
         .select('*')
         .eq('proposal_id', proposalId)
@@ -87,8 +86,7 @@ export default function ProposalAddOnsManager({
         throw proposalRowsError;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const formattedProposalRows: ProposalAddOn[] = (proposalRows || []).map((row: any) => ({
+      const formattedProposalRows: ProposalAddOn[] = (proposalRows || []).map((row) => ({
         id: row.id,
         proposal_id: row.proposal_id,
         add_on_id: row.add_on_id || null,
@@ -158,8 +156,7 @@ export default function ProposalAddOnsManager({
 
       const shouldSelect = transport ? !selectedTransportExists : false;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from('proposal_add_ons').insert({
+      const { error } = await supabase.from('proposal_add_ons').insert({
         proposal_id: proposalId,
         add_on_id: addon.id,
         name: addon.name,
@@ -197,8 +194,7 @@ export default function ProposalAddOnsManager({
 
     setSaving(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('proposal_add_ons')
         .delete()
         .eq('id', proposalAddOnId);
@@ -228,16 +224,14 @@ export default function ProposalAddOnsManager({
       const nextValue = !proposalAddOn.is_selected;
 
       if (isTransportCategory(proposalAddOn.category) && nextValue) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
           .from('proposal_add_ons')
           .update({ is_selected: false })
           .eq('proposal_id', proposalId)
           .ilike('category', 'transport');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('proposal_add_ons')
         .update({ is_selected: nextValue })
         .eq('id', proposalAddOn.id);

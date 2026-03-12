@@ -43,8 +43,7 @@ export async function GET(req: Request) {
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split("T")[0];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: reviews, error } = await (supabase as any)
+    const { data: reviews, error } = await supabase
       .from("reputation_reviews")
       .select("ai_topics, sentiment_score")
       .eq("organization_id", profile.organization_id)

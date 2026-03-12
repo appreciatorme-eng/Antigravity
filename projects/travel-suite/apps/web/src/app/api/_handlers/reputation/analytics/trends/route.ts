@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, TrendDataPoint } from "@/lib/reputation/types";
+import type { Database } from "@/lib/supabase/database.types";
+
+type SnapshotRow = Database['public']['Tables']['reputation_snapshots']['Row'];
 
 const PERIOD_DAYS: Record<string, number> = {
   "7d": 7,
@@ -43,8 +46,7 @@ export async function GET(req: Request) {
     const orgId = profile.organization_id;
 
     // Try snapshots first
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: snapshots, error: snapError } = await (supabase as any)
+    const { data: snapshots, error: snapError } = await supabase
       .from("reputation_snapshots")
       .select("*")
       .eq("organization_id", orgId)
@@ -56,11 +58,11 @@ export async function GET(req: Request) {
     }
 
     if (snapshots && snapshots.length > 0) {
-      const trends: TrendDataPoint[] = snapshots.map((s: Record<string, unknown>) => ({
+      const trends: TrendDataPoint[] = snapshots.map((s: SnapshotRow) => ({
         date: s.snapshot_date,
-        rating: s.overall_rating,
-        reviewCount: s.total_review_count,
-        healthScore: s.health_score,
+        rating: s.overall_rating ?? 0,
+        reviewCount: s.total_review_count ?? 0,
+        healthScore: s.health_score ?? 0,
         positive: Number(s.positive_count ?? 0),
         neutral: Number(s.neutral_count ?? 0),
         negative: Number(s.negative_count ?? 0),
@@ -70,8 +72,7 @@ export async function GET(req: Request) {
     }
 
     // Fallback: compute from reputation_reviews grouped by date
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let reviewQuery = (supabase as any)
+    let reviewQuery = supabase
       .from("reputation_reviews")
       .select("rating, review_date, sentiment_label")
       .eq("organization_id", orgId)

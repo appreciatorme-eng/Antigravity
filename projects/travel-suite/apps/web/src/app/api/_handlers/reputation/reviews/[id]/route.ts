@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(
@@ -28,8 +29,7 @@ export async function GET(
       return NextResponse.json({ error: "No organization found" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
       .select("*")
       .eq("id", id)
@@ -107,10 +107,9 @@ export async function PATCH(
       updateData.response_posted_by = user.id;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
-      .update(updateData)
+      .update(updateData as Database['public']['Tables']['reputation_reviews']['Update'])
       .eq("id", id)
       .eq("organization_id", profile.organization_id)
       .select()

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import type { Database } from "@/lib/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+type TripRow = Database['public']['Tables']['trips']['Row'];
+type TripServiceCostRow = Database['public']['Tables']['trip_service_costs']['Row'];
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
       ? `${year + 1}-01-01`
       : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
     const orgId = admin.organizationId;
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
 
     const { data: monthTrips, error: tripErr } = await db
       .from("trips")
@@ -47,51 +50,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: tripErr.message }, { status: 500 });
     }
 
-    const tripIds = (monthTrips || []).map((t: any) => t.id);
+    const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'start_date' | 'end_date' | 'status' | 'pax_count' | 'client_id' | 'gst_pct' | 'tcs_pct'>[];
+    const tripIds = tripRows.map((t) => t.id);
 
-    type CostRow = {
-      id: string; trip_id: string; category: string; vendor_name: string | null;
-      description: string | null; pax_count: number; cost_amount: number;
-      price_amount: number; commission_pct: number; commission_amount: number;
-      currency: string; notes: string | null;
-      created_by: string | null; created_at: string; updated_at: string;
-      organization_id: string;
-    };
-    let allCosts: CostRow[] = [];
+    let allCosts: TripServiceCostRow[] = [];
     if (tripIds.length > 0) {
       const { data } = await db
         .from("trip_service_costs")
         .select("*")
         .eq("organization_id", orgId)
         .in("trip_id", tripIds);
-      allCosts = (data || []) as CostRow[];
+      allCosts = (data || []) as TripServiceCostRow[];
     }
 
     // Fetch client names in one query
-    const clientIds = [...new Set((monthTrips || []).map((t: any) => t.client_id).filter(Boolean))] as string[];
+    // The live DB clients table has a 'name' column not present in generated types
+    type ClientNameRow = { id: string; name: string | null };
+    const clientIds = [...new Set(tripRows.map((t) => t.client_id).filter(Boolean))] as string[];
     const clientMap = new Map<string, string>();
     if (clientIds.length > 0) {
-      const { data: clients } = await admin.adminClient
+      const { data: clients } = await (admin.adminClient as unknown as SupabaseClient)
         .from("clients")
         .select("id, name")
         .in("id", clientIds);
-      for (const c of (clients || []) as any[]) {
+      for (const c of (clients || []) as unknown as ClientNameRow[]) {
         clientMap.set(c.id, c.name || "Unknown");
       }
     }
 
-    const costsByTrip = new Map<string, CostRow[]>();
+    const costsByTrip = new Map<string, TripServiceCostRow[]>();
     for (const c of allCosts) {
       const arr = costsByTrip.get(c.trip_id) || [];
       arr.push(c);
       costsByTrip.set(c.trip_id, arr);
     }
 
-    const trips = (monthTrips || []).map((t: any) => {
+    const trips = tripRows.map((t) => {
       const tripCosts = costsByTrip.get(t.id) || [];
-      const totalCost = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.cost_amount), 0);
-      const totalPrice = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.price_amount), 0);
-      const totalCommission = tripCosts.reduce((s: number, c: CostRow) => s + Number(c.commission_amount || 0), 0);
+      const totalCost = tripCosts.reduce((s: number, c: TripServiceCostRow) => s + Number(c.cost_amount), 0);
+      const totalPrice = tripCosts.reduce((s: number, c: TripServiceCostRow) => s + Number(c.price_amount), 0);
+      const totalCommission = tripCosts.reduce((s: number, c: TripServiceCostRow) => s + Number(c.commission_amount || 0), 0);
       const gstPct = Number(t.gst_pct ?? 5);
       const tcsPct = Number(t.tcs_pct ?? 1);
       const gstAmount = Math.round(totalPrice * gstPct / 100 * 100) / 100;
@@ -104,7 +102,7 @@ export async function GET(req: NextRequest) {
         end_date: t.end_date,
         status: t.status,
         pax_count: t.pax_count || 1,
-        client_name: clientMap.get(t.client_id) || null,
+        client_name: clientMap.get(t.client_id ?? "") || null,
         costs: tripCosts,
         totalCost,
         totalPrice,

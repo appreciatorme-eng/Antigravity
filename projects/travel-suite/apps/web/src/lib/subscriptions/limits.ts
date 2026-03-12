@@ -182,8 +182,7 @@ export async function resolveOrganizationPlan(
   supabase: SupabaseClient,
   organizationId: string
 ): Promise<{ tier: SubscriptionTier; planId: SubscriptionPlanId }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const activeSubscriptionQuery = (supabase as any)
+  const activeSubscriptionQuery = supabase
     .from("subscriptions")
     .select("plan_id, status, created_at, trial_end, cancel_at_period_end, current_period_end")
     .eq("organization_id", organizationId)
@@ -205,8 +204,7 @@ export async function resolveOrganizationPlan(
     return { tier: normalizeTier(lifecyclePlanId), planId: lifecyclePlanId };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const organizationQuery = (supabase as any)
+  const organizationQuery = supabase
     .from("organizations")
     .select("subscription_tier")
     .eq("id", organizationId)

@@ -154,8 +154,7 @@ export async function POST(req: Request) {
     const supabase = await createClient();
 
     // Fetch unanalyzed reviews across all organizations
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rawReviews, error: fetchError } = await (supabase as any)
+    const { data: rawReviews, error: fetchError } = await supabase
       .from("reputation_reviews")
       .select("id, organization_id, comment, title, rating")
       .is("sentiment_score", null)
@@ -228,8 +227,7 @@ export async function POST(req: Request) {
         const analysis = parseAnalysisResponse(responseText);
 
         // Update the review
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
           .from("reputation_reviews")
           .update({
             sentiment_score: analysis.sentiment_score,

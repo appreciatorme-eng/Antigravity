@@ -79,10 +79,27 @@ export default async function DriverDetailsPage({
         .limit(10);
 
     // Prepare helper data
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profile = link?.profiles as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const appDriverInfo = (profile?.driver_info as any) || {};
+    // profiles is a one-to-one relation (driver_accounts.profile_id -> profiles.id)
+    interface DriverProfile {
+        id: string;
+        email: string | null;
+        full_name: string | null;
+        phone: string | null;
+        bio: string | null;
+        driver_info: DriverInfo | null;
+        avatar_url: string | null;
+    }
+    interface DriverInfo {
+        languages?: string[];
+        license_number?: string;
+        vehicle_details?: {
+            make?: string;
+            model?: string;
+            year?: string | number;
+        };
+    }
+    const profile = link?.profiles as unknown as DriverProfile | null;
+    const appDriverInfo: DriverInfo = profile?.driver_info ?? {};
 
     const profileLanguages = appDriverInfo.languages || [];
     const externalLanguages = driver.languages || [];

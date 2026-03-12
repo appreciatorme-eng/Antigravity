@@ -256,8 +256,7 @@ export async function getEligibleOrgsForDigest(): Promise<
   try {
     const supabase = createAdminClient();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: prefRows, error: prefError } = await (supabase as any)
+    const { data: prefRows, error: prefError } = await supabase
       .from("assistant_preferences")
       .select("organization_id, user_id")
       .eq("preference_key", "weekly_digest_enabled")
@@ -267,12 +266,7 @@ export async function getEligibleOrgsForDigest(): Promise<
       return [];
     }
 
-    const typedRows = prefRows as ReadonlyArray<{
-      organization_id: string;
-      user_id: string;
-    }>;
-
-    const userIds = typedRows.map((r) => r.user_id);
+    const userIds = prefRows.map((r) => r.user_id);
 
     const { data: profileRows, error: profileError } = await supabase
       .from("profiles")
@@ -286,7 +280,7 @@ export async function getEligibleOrgsForDigest(): Promise<
       profileRows.map((p) => [p.id, p.phone_normalized ?? ""]),
     );
 
-    const orgIds = [...new Set(typedRows.map((r) => r.organization_id))];
+    const orgIds = [...new Set(prefRows.map((r) => r.organization_id))];
 
     const { data: orgRows, error: orgError } = await supabase
       .from("organizations")
@@ -298,7 +292,7 @@ export async function getEligibleOrgsForDigest(): Promise<
     const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
 
     const results: EligibleDigestOrg[] = [];
-    for (const pref of typedRows) {
+    for (const pref of prefRows) {
       const phone = phoneByUserId.get(pref.user_id);
       if (!phone) continue;
       results.push({

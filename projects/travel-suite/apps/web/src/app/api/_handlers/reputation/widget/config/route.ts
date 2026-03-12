@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import type { WidgetType, WidgetTheme } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -34,8 +35,7 @@ export async function GET() {
       return NextResponse.json({ error: "No organization found" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: widgets, error } = await (supabase as any)
+    const { data: widgets, error } = await supabase
       .from("reputation_widgets")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -127,8 +127,7 @@ export async function POST(req: Request) {
       custom_footer: body.custom_footer || null,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: widget, error } = await (supabase as any)
+    const { data: widget, error } = await supabase
       .from("reputation_widgets")
       .insert(insertData)
       .select()
@@ -245,10 +244,9 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("reputation_widgets")
-      .update(updateData)
+      .update(updateData as Database['public']['Tables']['reputation_widgets']['Update'])
       .eq("organization_id", profile.organization_id);
 
     query = widgetId ? query.eq("id", widgetId) : query.eq("is_active", true);

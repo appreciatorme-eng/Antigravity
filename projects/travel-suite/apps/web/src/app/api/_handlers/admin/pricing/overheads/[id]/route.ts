@@ -9,8 +9,6 @@ const UpdateSchema = z.object({
   amount: z.number().min(0).optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 function extractId(req: NextRequest): string {
   const segments = new URL(req.url).pathname.split("/");
   return segments[segments.length - 1];
@@ -25,7 +23,7 @@ export async function GET(req: NextRequest) {
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .select("id, description, amount, category, month_start, organization_id, created_at, updated_at")
@@ -73,7 +71,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
@@ -108,7 +106,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { error } = await db
       .from("monthly_overhead_expenses")
       .delete()

@@ -1,8 +1,37 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// GET /api/superadmin/support/tickets/:id — full ticket detail with user and org info.
+// GET /api/superadmin/support/tickets/:id -- full ticket detail with user and org info.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * The live DB has a support_tickets_user_id_fkey relationship that is not present
+ * in the generated Database types. We use an untyped SupabaseClient for the join query.
+ */
+type UntypedClient = SupabaseClient;
+
+type TicketDetailRow = {
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    priority: string;
+    status: string;
+    admin_response: string | null;
+    responded_at: string | null;
+    responded_by: string | null;
+    created_at: string;
+    updated_at: string;
+    user_id: string;
+    profiles: {
+        full_name?: string;
+        email?: string;
+        phone?: string;
+        role?: string;
+        organization_id?: string;
+        organizations?: { id?: string; name?: string; slug?: string; subscription_tier?: string } | null;
+    } | null;
+};
 
 export async function GET(
     request: NextRequest,
@@ -12,10 +41,10 @@ export async function GET(
     if (!auth.ok) return auth.response;
 
     const { id } = await params;
-    const { adminClient } = auth;
+    const db = auth.adminClient as unknown as UntypedClient;
 
     try {
-        const result = await (adminClient as any)
+        const result = await db
             .from("support_tickets")
             .select(
                 "*, profiles!support_tickets_user_id_fkey(full_name, email, phone, role, " +
@@ -28,12 +57,8 @@ export async function GET(
             return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
         }
 
-        const t = result.data;
-        const profile = t.profiles as {
-            full_name?: string; email?: string; phone?: string; role?: string;
-            organization_id?: string;
-            organizations?: { id?: string; name?: string; slug?: string; subscription_tier?: string } | null;
-        } | null;
+        const t = result.data as unknown as TicketDetailRow;
+        const profile = t.profiles;
 
         return NextResponse.json({
             ticket: {

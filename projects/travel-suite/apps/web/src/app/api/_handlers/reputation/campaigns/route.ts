@@ -34,8 +34,7 @@ export async function GET() {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaigns, error } = await (supabase as any)
+    const { data: campaigns, error } = await supabase
       .from("reputation_review_campaigns")
       .select("*")
       .eq("organization_id", profile.organization_id)
@@ -124,8 +123,7 @@ export async function POST(req: Request) {
       stats_reviews_generated: 0,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: campaign, error } = await (supabase as any)
+    const { data: campaign, error } = await supabase
       .from("reputation_review_campaigns")
       .insert(insertData)
       .select()

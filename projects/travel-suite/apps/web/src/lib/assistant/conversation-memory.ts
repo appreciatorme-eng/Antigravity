@@ -26,8 +26,7 @@ function buildMemoryKey(orgId: string, userId: string): string {
 }
 
 function convTable(ctx: ActionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (ctx.supabase as any).from("assistant_conversations");
+  return ctx.supabase.from("assistant_conversations");
 }
 
 interface MemoryRow {

@@ -9,13 +9,9 @@ import "server-only";
  * This module is best-effort: errors are caught and logged to stderr
  * so that audit failures never break the main conversation flow.
  *
- * NOTE: `assistant_audit_log` is not yet in the generated Database
- * types. We cast `ctx.supabase` via `(ctx.supabase as any)` until
- * `supabase gen types` is re-run after the migration is applied.
- * This follows the same pattern used in lib/semantic-cache.ts and
- * lib/subscriptions/limits.ts.
  * ------------------------------------------------------------------ */
 
+import type { Json } from "@/lib/supabase/database.types";
 import type { ActionContext } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -52,8 +48,7 @@ export async function logAuditEvent(
   event: AuditEvent,
 ): Promise<void> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (ctx.supabase as any)
+    const { error } = await ctx.supabase
       .from("assistant_audit_log")
       .insert({
         organization_id: ctx.organizationId,
@@ -62,8 +57,8 @@ export async function logAuditEvent(
         channel: ctx.channel,
         event_type: event.eventType,
         action_name: event.actionName,
-        action_params: event.actionParams,
-        action_result: event.actionResult,
+        action_params: event.actionParams as Json,
+        action_result: event.actionResult as Json,
       });
 
     if (error) {

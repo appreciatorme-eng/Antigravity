@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, ResponseStatus, SentimentLabel } from "@/lib/reputation/types";
+
+type ReputationReviewRow = Database['public']['Tables']['reputation_reviews']['Row'];
 
 export async function GET(req: Request) {
   try {
@@ -38,8 +41,7 @@ export async function GET(req: Request) {
 
     const offset = (page - 1) * limit;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
+    let query = supabase
       .from("reputation_reviews")
       .select("*", { count: "exact" })
       .eq("organization_id", profile.organization_id);
@@ -81,7 +83,7 @@ export async function GET(req: Request) {
       throw error;
     }
 
-    const reviewIds = (reviews ?? []).map((review: { id: string }) => review.id);
+    const reviewIds = (reviews ?? []).map((review: ReputationReviewRow) => review.id);
     let assetMap = new Map<
       string,
       {
@@ -116,7 +118,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const reviewsWithAssets = (reviews ?? []).map((review: { id: string }) => {
+    const reviewsWithAssets = (reviews ?? []).map((review: ReputationReviewRow) => {
       const asset = assetMap.get(review.id);
       return {
         ...review,
@@ -198,8 +200,7 @@ export async function POST(req: Request) {
       requires_attention: false,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: review, error } = await (supabase as any)
+    const { data: review, error } = await supabase
       .from("reputation_reviews")
       .insert(insertData)
       .select()

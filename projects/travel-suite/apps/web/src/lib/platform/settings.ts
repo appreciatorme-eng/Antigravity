@@ -56,8 +56,7 @@ function redisKey(key: string): string {
 }
 
 async function fetchFromSupabase(key: string): Promise<JsonValue | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("platform_settings")
     .select("value")
@@ -99,8 +98,7 @@ export async function setPlatformSetting(
   value: JsonValue,
   actorId: string
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
 
   await adminClient.from("platform_settings").upsert({
     key,
@@ -196,8 +194,7 @@ export async function isOrgSuspended(orgId: string): Promise<boolean> {
 }
 
 export async function getAllPlatformSettings(): Promise<Record<string, JsonValue>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adminClient = createAdminClient() as any;
+  const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("platform_settings")
     .select("key, value, description, updated_by, updated_at, created_at")
@@ -205,6 +202,5 @@ export async function getAllPlatformSettings(): Promise<Record<string, JsonValue
 
   if (!data) return {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return Object.fromEntries(data.map((row: any) => [row.key, row.value as JsonValue]));
+  return Object.fromEntries(data.map((row) => [row.key, row.value as JsonValue]));
 }

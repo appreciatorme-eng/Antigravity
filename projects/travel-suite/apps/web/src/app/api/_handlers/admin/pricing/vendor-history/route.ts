@@ -8,8 +8,6 @@ const QuerySchema = z.object({
   category: z.string().min(1),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
@@ -32,7 +30,7 @@ export async function GET(req: NextRequest) {
       trip_id: string; created_at: string;
     };
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .select("vendor_name, category, cost_amount, trip_id, created_at")

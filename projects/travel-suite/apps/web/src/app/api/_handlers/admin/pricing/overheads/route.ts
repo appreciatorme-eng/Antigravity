@@ -15,8 +15,6 @@ const CreateSchema = z.object({
   amount: z.number().min(0),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
@@ -25,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
     }
 
-    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
+    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
 
     const url = new URL(req.url);
     const parsed = QuerySchema.safeParse({
@@ -41,7 +39,7 @@ export async function GET(req: NextRequest) {
     const [year, mon] = monthStr.split("-").map(Number);
     const monthStart = `${year}-${String(mon).padStart(2, "0")}-01`;
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .select("*")
@@ -88,7 +86,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("monthly_overhead_expenses")
       .upsert(

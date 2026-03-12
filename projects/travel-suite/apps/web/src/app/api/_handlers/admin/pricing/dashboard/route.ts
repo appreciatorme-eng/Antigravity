@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
+import type { Database } from "@/lib/database.types";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+type TripRow = Database['public']['Tables']['trips']['Row'];
+type CostRow = { trip_id: string; category: string; cost_amount: number; price_amount: number; commission_amount: number };
+type OverheadAmountRow = { amount: number | null };
 
 export async function GET(req: NextRequest) {
   try {
@@ -33,8 +36,8 @@ export async function GET(req: NextRequest) {
     const nextMonth = mon === 12
       ? `${year + 1}-01-01`
       : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
-    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
-    const db = admin.adminClient as any;
+    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
+    const db = admin.adminClient;
 
     const { data: monthTrips } = await db
       .from("trips")
@@ -43,9 +46,9 @@ export async function GET(req: NextRequest) {
       .gte("start_date", monthStart)
       .lt("start_date", nextMonth);
 
-    const tripIds = (monthTrips || []).map((t: any) => t.id);
+    const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'pax_count' | 'status'>[];
+    const tripIds = tripRows.map((t) => t.id);
 
-    type CostRow = { trip_id: string; category: string; cost_amount: number; price_amount: number; commission_amount: number };
     let costs: CostRow[] = [];
     if (tripIds.length > 0) {
       const { data } = await db
@@ -63,7 +66,7 @@ export async function GET(req: NextRequest) {
       .eq("month_start", monthStart);
 
     const totalOverhead = (overheadData || []).reduce(
-      (s: number, e: any) => s + Number(e.amount), 0
+      (s: number, e: OverheadAmountRow) => s + Number(e.amount), 0
     );
 
     const totalInvestment = costs.reduce((s, c) => s + Number(c.cost_amount), 0);
@@ -99,8 +102,9 @@ export async function GET(req: NextRequest) {
       existing.revenue += Number(c.price_amount);
       tripProfitMap.set(c.trip_id, existing);
     }
-    const topProfitableTrips = (monthTrips || [])
-      .map((t: any) => {
+    type ProfitableTrip = { tripId: string; tripTitle: string; destination: string | null; profit: number; paxCount: number | null; revenue: number; cost: number };
+    const topProfitableTrips = tripRows
+      .map((t) => {
         const p = tripProfitMap.get(t.id) || { cost: 0, revenue: 0 };
         return {
           tripId: t.id,
@@ -112,7 +116,7 @@ export async function GET(req: NextRequest) {
           cost: p.cost,
         };
       })
-      .sort((a: any, b: any) => b.profit - a.profit)
+      .sort((a: ProfitableTrip, b: ProfitableTrip) => b.profit - a.profit)
       .slice(0, 5);
 
     const monthlyTrend = [];
@@ -130,7 +134,7 @@ export async function GET(req: NextRequest) {
         .gte("start_date", mStart)
         .lt("start_date", mEndStr);
 
-      const mTripIds = (mTrips || []).map((t: any) => t.id);
+      const mTripIds = (mTrips || []).map((t: Pick<TripRow, 'id'>) => t.id);
       let mRevenue = 0, mCost = 0;
       if (mTripIds.length > 0) {
         const { data: mCosts } = await db
@@ -138,7 +142,7 @@ export async function GET(req: NextRequest) {
           .select("cost_amount, price_amount")
           .eq("organization_id", orgId)
           .in("trip_id", mTripIds);
-        for (const c of (mCosts || []) as any[]) {
+        for (const c of (mCosts || []) as { cost_amount: number | null; price_amount: number | null }[]) {
           mCost += Number(c.cost_amount);
           mRevenue += Number(c.price_amount);
         }
@@ -150,7 +154,7 @@ export async function GET(req: NextRequest) {
         .eq("organization_id", orgId)
         .eq("month_start", mStart);
       const mOverhead = (mOh || []).reduce(
-        (s: number, e: any) => s + Number(e.amount), 0
+        (s: number, e: OverheadAmountRow) => s + Number(e.amount), 0
       );
 
       monthlyTrend.push({

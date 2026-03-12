@@ -38,8 +38,7 @@ export interface ConversationDetail {
 
 // Helper
 function convTable(ctx: ActionContext) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (ctx.supabase as any).from("assistant_conversations");
+  return ctx.supabase.from("assistant_conversations");
 }
 
 // Save a message pair (user + assistant) to a conversation

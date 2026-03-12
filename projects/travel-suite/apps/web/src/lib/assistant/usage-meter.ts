@@ -101,15 +101,14 @@ async function fetchUsageFromDb(
   monthStart: string,
 ): Promise<number> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (ctx.supabase as any)
+    const { data } = await ctx.supabase
       .from("organization_ai_usage")
       .select("ai_requests")
       .eq("organization_id", ctx.organizationId)
       .eq("month_start", monthStart)
       .maybeSingle();
 
-    return (data?.ai_requests as number) ?? 0;
+    return data?.ai_requests ?? 0;
   } catch (error: unknown) {
     console.error("usage-meter: failed to read usage from DB", error);
     return 0;
@@ -132,8 +131,11 @@ async function flushIncrementToDb(
   try {
     const monthStart = currentMonthStart();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (ctx.supabase as any).rpc(
+    // RPC not yet in generated Database types -- cast through unknown
+    type UpsertRpc = {
+      rpc: (fn: string, params: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+    };
+    const { error } = await (ctx.supabase as unknown as UpsertRpc).rpc(
       "upsert_organization_ai_usage",
       {
         p_organization_id: ctx.organizationId,
@@ -147,8 +149,7 @@ async function flushIncrementToDb(
 
     if (error) {
       // Fallback: try a plain upsert if the RPC does not exist yet
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const upsertResult = await (ctx.supabase as any)
+      const upsertResult = await ctx.supabase
         .from("organization_ai_usage")
         .upsert(
           {
@@ -322,15 +323,14 @@ export async function getUsageStats(ctx: ActionContext): Promise<{
     // Read estimated cost from DB (not tracked in Redis)
     let estimatedCostUsd = 0;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (ctx.supabase as any)
+      const { data } = await ctx.supabase
         .from("organization_ai_usage")
         .select("estimated_cost_usd")
         .eq("organization_id", ctx.organizationId)
         .eq("month_start", currentMonthStart())
         .maybeSingle();
 
-      estimatedCostUsd = parseFloat(data?.estimated_cost_usd ?? "0") || 0;
+      estimatedCostUsd = data?.estimated_cost_usd ?? 0;
     } catch {
       // Non-critical -- default to 0
     }

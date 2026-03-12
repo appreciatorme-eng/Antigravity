@@ -17,8 +17,6 @@ const CreateSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
@@ -30,7 +28,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const tripId = url.searchParams.get("trip_id");
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     let query = db
       .from("trip_service_costs")
       .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_by, created_at")
@@ -78,7 +76,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .insert({

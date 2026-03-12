@@ -15,8 +15,6 @@ const UpdateSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 function extractId(req: NextRequest): string {
   const segments = new URL(req.url).pathname.split("/");
   return segments[segments.length - 1];
@@ -31,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .select("*")
@@ -74,7 +72,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { data, error } = await db
       .from("trip_service_costs")
       .update({ ...parsed.data, updated_at: new Date().toISOString() })
@@ -109,7 +107,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const id = extractId(req);
-    const db = admin.adminClient as any;
+    const db = admin.adminClient;
     const { error } = await db
       .from("trip_service_costs")
       .delete()

@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Platform audit logger — writes to platform_audit_log table.
 // All super_admin actions must call this for an immutable audit trail.
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
 
 export type AuditCategory =
   | "kill_switch"
@@ -20,12 +20,12 @@ export async function logPlatformAction(
   ipAddress?: string
 ): Promise<void> {
   try {
-    const adminClient = createAdminClient() as any;
+    const adminClient = createAdminClient();
     await adminClient.from("platform_audit_log").insert({
       actor_id: actorId,
       action,
       category,
-      details,
+      details: details as Json,
       ip_address: ipAddress ?? null,
     });
   } catch (err) {
@@ -43,14 +43,14 @@ export async function logPlatformActionWithTarget(
   ipAddress?: string
 ): Promise<void> {
   try {
-    const adminClient = createAdminClient() as any;
+    const adminClient = createAdminClient();
     await adminClient.from("platform_audit_log").insert({
       actor_id: actorId,
       action,
       category,
       target_type: targetType,
       target_id: targetId,
-      details,
+      details: details as Json,
       ip_address: ipAddress ?? null,
     });
   } catch (err) {

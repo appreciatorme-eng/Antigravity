@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
+import type { Database } from "@/lib/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+type TripRow = Database['public']['Tables']['trips']['Row'];
+type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
+type ProposalRow = Database['public']['Tables']['proposals']['Row'];
+type NotificationLogRow = Database['public']['Tables']['notification_logs']['Row'];
+
+type RecentTripWithItinerary = Pick<TripRow, 'id' | 'status' | 'created_at'> & {
+  itineraries: { trip_title: string | null; destination: string | null } | { trip_title: string | null; destination: string | null }[] | null;
+};
 
 const APPROVED_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed"]);
 const ACTIVE_TRIP_STATUSES = new Set(["active", "in_progress", "planned", "confirmed"]);
@@ -17,8 +26,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
     }
 
-    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId);
-    const db = admin.adminClient as any;
+    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
+    const db = admin.adminClient;
     const yearAgoISO = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 
     const [
@@ -81,14 +90,15 @@ export async function GET(req: NextRequest) {
         .from("notification_queue")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending"),
-      db
+      // marketplace_listing_views is a live DB view not present in generated types
+      (db as unknown as SupabaseClient)
         .from("marketplace_listing_views")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", orgId),
     ]);
 
-    const tripRows = (tripsResult.data || []) as Array<{ id: string; status: string | null }>;
-    const activeTrips = tripRows.filter((t: any) =>
+    const tripRows = (tripsResult.data || []) as Array<Pick<TripRow, 'id' | 'status'>>;
+    const activeTrips = tripRows.filter((t) =>
       ACTIVE_TRIP_STATUSES.has((t.status || "").toLowerCase())
     ).length;
 
@@ -100,7 +110,7 @@ export async function GET(req: NextRequest) {
       ])
     );
 
-    for (const invoice of (invoicesResult.data || []) as any[]) {
+    for (const invoice of (invoicesResult.data || []) as Pick<InvoiceRow, 'created_at' | 'total_amount' | 'status'>[]) {
       if ((invoice.status || "").toLowerCase() !== "paid") continue;
       const mk = monthKeyFromDate(invoice.created_at);
       if (!mk) continue;
@@ -108,7 +118,7 @@ export async function GET(req: NextRequest) {
       if (pt) pt.revenue += Number(invoice.total_amount || 0);
     }
 
-    for (const trip of (tripSeriesResult.data || []) as any[]) {
+    for (const trip of (tripSeriesResult.data || []) as Pick<TripRow, 'created_at' | 'status'>[]) {
       if (!BOOKING_TRIP_STATUSES.has((trip.status || "").toLowerCase())) continue;
       const mk = monthKeyFromDate(trip.created_at);
       if (!mk) continue;
@@ -116,7 +126,7 @@ export async function GET(req: NextRequest) {
       if (pt) pt.bookings += 1;
     }
 
-    for (const proposal of (proposalsResult.data || []) as any[]) {
+    for (const proposal of (proposalsResult.data || []) as Pick<ProposalRow, 'created_at' | 'status'>[]) {
       const mk = monthKeyFromDate(proposal.created_at);
       if (!mk) continue;
       const pt = monthMap.get(mk);
@@ -127,17 +137,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    type MonthPoint = { monthKey: string; label: string; revenue: number; bookings: number; proposals: number; conversions: number; conversionRate: number };
     const series = monthKeys
       .map((mk) => monthMap.get(mk))
-      .filter(Boolean)
-      .map((row: any) => ({
+      .filter((row): row is MonthPoint => Boolean(row))
+      .map((row) => ({
         ...row,
         conversionRate: row.proposals > 0 ? Number(((row.conversions / row.proposals) * 100).toFixed(1)) : 0,
       }));
 
-    const activities: any[] = [];
+    type ActivityItem = { id: string; type: string; title: string; description: string; timestamp: string; status: string };
+    const activities: ActivityItem[] = [];
 
-    for (const trip of (recentTripsResult.data || []) as any[]) {
+    for (const trip of (recentTripsResult.data || []) as RecentTripWithItinerary[]) {
       const itinerary = Array.isArray(trip.itineraries) ? trip.itineraries[0] : trip.itineraries;
       activities.push({
         id: trip.id,
@@ -149,7 +161,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    for (const notif of (recentNotifiesResult.data || []) as any[]) {
+    for (const notif of (recentNotifiesResult.data || []) as Pick<NotificationLogRow, 'id' | 'title' | 'body' | 'sent_at' | 'status'>[]) {
       activities.push({
         id: notif.id,
         type: "notification",
@@ -175,7 +187,7 @@ export async function GET(req: NextRequest) {
         totalClients: Number(clientsResult.count || 0),
         activeTrips,
         pendingNotifications: Number(pendingNotificationsResult.count || 0),
-        marketplaceViews: Number(marketplaceResult.count || 0),
+        marketplaceViews: Number((marketplaceResult as unknown as { count: number | null }).count || 0),
         marketplaceInquiries: 0,
         conversionRate: "0.0",
       },
