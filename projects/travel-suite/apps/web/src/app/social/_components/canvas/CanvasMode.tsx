@@ -90,22 +90,6 @@ export function CanvasMode({
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      if (aiPosterUrl) {
-        const response = await fetch(aiPosterUrl);
-        if (!response.ok) throw new Error("Failed to fetch AI poster");
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.download = `AI-Poster-${template.name.replace(/\s+/g, "-")}.png`;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success("AI Poster downloaded!");
-        return;
-      }
-
       const node = document.getElementById(`canvas-export-${template.id}`);
       if (!node) return;
       const { toPng } = await import("html-to-image");
@@ -115,8 +99,9 @@ export function CanvasMode({
         width: 1080,
         height: 1080,
       });
+      const label = aiPosterUrl ? "AI-" : "";
       const link = document.createElement("a");
-      link.download = `${template.name.replace(/\s+/g, "-")}.png`;
+      link.download = `${label}${template.name.replace(/\s+/g, "-")}.png`;
       link.href = dataUrl;
       link.click();
       toast.success("Downloaded!");
@@ -130,22 +115,6 @@ export function CanvasMode({
   const handleHdExport = async () => {
     setHdExporting(true);
     try {
-      if (aiPosterUrl) {
-        const response = await fetch(aiPosterUrl);
-        if (!response.ok) throw new Error("Failed to fetch AI poster");
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.download = `AI-Poster-${template.name.replace(/\s+/g, "-")}-HD.png`;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success("AI Poster HD downloaded!");
-        return;
-      }
-
       const response = await fetch("/api/social/render-poster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,9 +194,8 @@ export function CanvasMode({
               )}
             </h2>
             <p className="text-xs text-slate-500">
-              {aiPosterUrl
-                ? "AI-generated poster — download directly"
-                : `${template.layout.replace("Layout", "")} · ${template.category}`}
+              {aiPosterUrl ? "AI background · " : ""}
+              {`${template.layout.replace("Layout", "")} · ${template.category}`}
             </p>
           </div>
         </div>

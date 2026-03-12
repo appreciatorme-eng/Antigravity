@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import {
   ChevronLeft,
@@ -47,24 +46,6 @@ export function CanvasPreviewPane({
 
   return (
     <div className="lg:col-span-3 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 p-8 overflow-auto">
-      {aiPosterUrl && (
-        <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-purple-900/20 dark:to-fuchsia-900/20 border border-purple-200 dark:border-purple-800">
-          <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
-            AI-Generated Poster — text &amp; design baked into the image
-          </span>
-          {onClearAiPoster && (
-            <button
-              onClick={onClearAiPoster}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-300 bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/40 transition-colors"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Switch to Template
-            </button>
-          )}
-        </div>
-      )}
-
       {showPhoneMockup ? (
         <div className="relative w-[220px] bg-black rounded-[36px] p-[6px] shadow-2xl border-2 border-slate-700 mx-auto">
           <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-16 h-3.5 bg-black rounded-full z-10 border border-slate-600" />
@@ -76,24 +57,16 @@ export function CanvasPreviewPane({
               </span>
             </div>
             <div className="overflow-hidden" style={{ width: 208, height: 208 }}>
-              {aiPosterUrl ? (
-                <img
-                  src={aiPosterUrl}
-                  alt="AI-generated poster"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div
-                  className={`origin-top-left ${renderBg(template)} overflow-hidden`}
-                  style={{
-                    width: 1080,
-                    height: 1080,
-                    transform: `scale(${208 / 1080})`,
-                  }}
-                >
-                  {renderLayout(template, templateData)}
-                </div>
-              )}
+              <div
+                className={`origin-top-left ${renderBg(template)} overflow-hidden`}
+                style={{
+                  width: 1080,
+                  height: 1080,
+                  transform: `scale(${208 / 1080})`,
+                }}
+              >
+                {renderLayout(template, templateData)}
+              </div>
             </div>
             <div className="px-3 py-2 bg-white space-y-0.5">
               <div className="flex gap-3 text-sm">
@@ -103,21 +76,6 @@ export function CanvasPreviewPane({
               </div>
               <p className="text-[9px] font-bold text-slate-700">142 likes</p>
             </div>
-          </div>
-        </div>
-      ) : aiPosterUrl ? (
-        <div
-          className="relative overflow-hidden rounded-2xl shadow-2xl border border-purple-300 dark:border-purple-700"
-          style={{ width: PREVIEW_WIDTH, height: PREVIEW_WIDTH }}
-        >
-          <img
-            src={aiPosterUrl}
-            alt="AI-generated poster"
-            className="w-full h-full object-contain"
-          />
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-purple-600/90 backdrop-blur-sm text-white text-xs font-bold rounded-lg shadow-lg">
-            <Sparkles className="w-3 h-3" />
-            AI Poster
           </div>
         </div>
       ) : (
@@ -135,10 +93,27 @@ export function CanvasPreviewPane({
           >
             {renderLayout(template, templateData)}
           </div>
+
+          {aiPosterUrl && (
+            <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-purple-600/90 backdrop-blur-sm text-white text-xs font-bold rounded-lg shadow-lg pointer-events-none">
+              <Sparkles className="w-3 h-3" />
+              AI Background
+            </div>
+          )}
+
+          {aiPosterUrl && onClearAiPoster && (
+            <button
+              onClick={onClearAiPoster}
+              className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-slate-700 text-xs font-bold rounded-lg shadow-lg border border-slate-200 hover:bg-white transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset bg
+            </button>
+          )}
         </div>
       )}
 
-      {!aiPosterUrl && backgrounds.length > 1 && (
+      {backgrounds.length > 1 && (
         <div className="flex items-center gap-3 mt-6">
           <button
             onClick={onGoToPrevBackground}

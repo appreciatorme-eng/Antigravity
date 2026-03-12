@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
-import { Megaphone } from "lucide-react";
+import { CheckCircle2, Circle, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { matchDestination } from "@/lib/social/destination-images";
@@ -227,6 +227,10 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         setCanvasTemplate(template);
     }, []);
 
+    const step1Done = !!(templateData.destination && templateData.price);
+    const step2Done = !!(aiPosterUrl || availableBackgrounds.length > 1);
+    const step3Done = !!canvasTemplate;
+
     return (
         <div className="space-y-5 animate-fade-in-up pb-20 mt-4">
             {/* Header */}
@@ -242,6 +246,43 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
                         Create stunning, auto-branded social media posters — choose a background, pick a template, export.
                     </p>
                 </div>
+            </div>
+
+            {/* 3-Step Workflow Guide */}
+            <div className="flex items-center gap-2 px-1">
+                {[
+                    { n: 1, label: "Fill content", sub: "Destination, price, offer", done: step1Done },
+                    { n: 2, label: "Pick background", sub: "Photo, AI, or upload", done: step2Done },
+                    { n: 3, label: "Choose template", sub: "Click any card below", done: step3Done },
+                ].map((step, i) => (
+                    <div key={step.n} className="flex items-center gap-2 flex-1">
+                        <div className={`flex items-center gap-2.5 flex-1 px-3 py-2.5 rounded-xl border transition-all ${
+                            step.done
+                                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                        }`}>
+                            <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                                step.done
+                                    ? "bg-emerald-500 text-white"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}>
+                                {step.done
+                                    ? <CheckCircle2 className="w-4 h-4" />
+                                    : <Circle className="w-4 h-4" />
+                                }
+                            </div>
+                            <div className="min-w-0">
+                                <p className={`text-xs font-bold truncate ${step.done ? "text-emerald-700 dark:text-emerald-300" : "text-slate-600 dark:text-slate-300"}`}>
+                                    {step.n}. {step.label}
+                                </p>
+                                <p className="text-[10px] text-slate-400 truncate">{step.sub}</p>
+                            </div>
+                        </div>
+                        {i < 2 && (
+                            <div className={`w-6 h-0.5 shrink-0 rounded-full transition-all ${step.done ? "bg-emerald-300 dark:bg-emerald-700" : "bg-slate-200 dark:bg-slate-700"}`} />
+                        )}
+                    </div>
+                ))}
             </div>
 
             {/* Platform Status Bar */}
