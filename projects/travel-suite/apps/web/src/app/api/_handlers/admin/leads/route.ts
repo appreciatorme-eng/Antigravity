@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { parseLeadMessage } from "@/lib/leads/intent-parser";
 import {
   LEAD_STAGES,
@@ -74,6 +75,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const admin = await requireAdmin(req, { requireOrganization: true });
   if (!admin.ok) return admin.response;
+  if (!passesMutationCsrfGuard(req)) {
+    return NextResponse.json(
+      { error: "CSRF validation failed for admin mutation" },
+      { status: 403 }
+    );
+  }
 
   let body: unknown;
   try {

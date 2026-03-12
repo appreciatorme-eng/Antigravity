@@ -5,6 +5,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 const supabaseAdmin = createAdminClient();
 const CLIENTS_READ_RATE_LIMIT_MAX = 120;
@@ -119,6 +120,12 @@ export async function POST(req: Request) {
         const admin = await requireAdmin(req, { requireOrganization: false });
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json(
+                { error: "CSRF validation failed for admin mutation" },
+                { status: 403 }
+            );
         }
 
         const demoBlocked = blockDemoMutation(req);

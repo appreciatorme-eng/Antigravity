@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -35,6 +36,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
+    if (!passesMutationCsrfGuard(request)) {
+        return NextResponse.json(
+            { error: "CSRF validation failed for admin mutation" },
+            { status: 403 }
+        );
+    }
 
     const { adminClient, userId } = auth;
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { embedAllTemplates } from "@/lib/embeddings";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 type AdminAuth = Awaited<ReturnType<typeof requireAdmin>>;
 
@@ -36,6 +37,12 @@ async function auditAdminAction(
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin(req, { requireOrganization: false });
   if (!admin.ok) return admin.response;
+  if (!passesMutationCsrfGuard(req)) {
+    return NextResponse.json(
+      { error: "CSRF validation failed for admin mutation" },
+      { status: 403 }
+    );
+  }
 
   try {
     await auditAdminAction(

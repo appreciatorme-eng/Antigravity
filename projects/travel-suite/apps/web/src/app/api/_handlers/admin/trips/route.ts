@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 
 const TRIPS_READ_RATE_LIMIT_MAX = 120;
 const TRIPS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -229,6 +230,12 @@ export async function POST(req: NextRequest) {
         const admin = await requireAdmin(req, { requireOrganization: false });
         if (!admin.ok) {
             return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json(
+                { error: "CSRF validation failed for admin mutation" },
+                { status: 403 }
+            );
         }
 
         const demoBlocked = blockDemoMutation(req);
