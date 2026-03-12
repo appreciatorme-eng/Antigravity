@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
@@ -38,9 +39,9 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return apiError("Not found", 404);
     }
-    return NextResponse.json(data);
+    return apiSuccess(data);
   } catch (error) {
     console.error("[/api/admin/pricing/trip-costs/[id]:GET] Unhandled error:", error);
     return Response.json(
@@ -55,13 +56,13 @@ export async function PATCH(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
     const body = await req.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      return apiError("Invalid JSON", 400);
     }
 
     const parsed = UpdateSchema.safeParse(body);
@@ -88,7 +89,7 @@ export async function PATCH(req: NextRequest) {
         { status: error ? 500 : 404 }
       );
     }
-    return NextResponse.json(data);
+    return apiSuccess(data);
   } catch (error) {
     console.error("[/api/admin/pricing/trip-costs/[id]:PATCH] Unhandled error:", error);
     return Response.json(
@@ -103,7 +104,7 @@ export async function DELETE(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const id = extractId(req);
@@ -116,7 +117,7 @@ export async function DELETE(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/trip-costs/[id]:DELETE] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     return NextResponse.json({ success: true });
   } catch (error) {

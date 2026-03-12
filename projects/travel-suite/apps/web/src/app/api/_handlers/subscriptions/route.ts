@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -103,7 +104,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     const { data: profile } = await supabase
@@ -113,7 +114,7 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     const subscription = await paymentService.getCurrentSubscription(profile.organization_id);
@@ -127,7 +128,7 @@ export async function GET() {
         { status: paymentErrorHttpStatus(error) }
       );
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return apiError('Internal server error', 500);
   }
 }
 
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     const { data: profile } = await supabase
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     const existingSubscription = await paymentService.getCurrentSubscription(profile.organization_id);
@@ -220,9 +221,6 @@ export async function POST(request: NextRequest) {
         { status: paymentErrorHttpStatus(error) }
       );
     }
-    return NextResponse.json(
-      { error: "Subscription operation failed" },
-      { status: 500 }
-    );
+    return apiError("Subscription operation failed", 500);
   }
 }

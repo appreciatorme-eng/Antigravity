@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getGeocodingUsageStats } from "@/lib/geocoding-with-cache";
 
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         console.error("Geocoding usage stats error:", error);
-        return NextResponse.json({ error: "Failed to retrieve usage statistics" }, { status: 500 });
+        return apiError("Failed to retrieve usage statistics", 500);
     }
 }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (!profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      return apiError("Profile not found", 404);
     }
     if (!profile.organization_id) {
       return NextResponse.json(
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return apiError("Internal Server Error", 500);
   }
 }
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as { referralCode?: string };
     const referralCode = sanitizeText(body.referralCode, { maxLength: 80 });
     if (!referralCode) {
-      return NextResponse.json({ error: "Referral code required" }, { status: 400 });
+      return apiError("Referral code required", 400);
     }
 
     const { data: referrerProfile } = await admin.adminClient
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!referrerProfile) {
-      return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+      return apiError("Invalid referral code", 400);
     }
 
     if (referrerProfile.id === admin.userId) {
@@ -214,7 +215,7 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         );
       }
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
+      return apiError(insertError.message, 500);
     }
 
     return NextResponse.json({
@@ -222,6 +223,6 @@ export async function POST(req: NextRequest) {
       message: "Referral code applied successfully",
     });
   } catch {
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+    return apiError("Server Error", 500);
   }
 }

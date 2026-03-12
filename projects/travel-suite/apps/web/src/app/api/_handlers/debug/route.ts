@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { getCityCenter } from '@/lib/geocoding-with-cache';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { requireAdmin } from '@/lib/auth/admin';
@@ -17,7 +18,7 @@ function isDebugEndpointEnabled() {
  */
 export async function GET(req: NextRequest) {
   if (!isDebugEndpointEnabled()) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return apiError('Not found', 404);
   }
 
   const admin = await requireAdmin(req, { requireOrganization: false });

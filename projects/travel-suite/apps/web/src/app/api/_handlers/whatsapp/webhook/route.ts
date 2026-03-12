@@ -12,6 +12,7 @@
  * ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse, after } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
         return new NextResponse(challenge ?? "", { status: 200 });
     }
 
-    return NextResponse.json({ error: "Verification failed" }, { status: 403 });
+    return apiError("Verification failed", 403);
 }
 
 export async function POST(request: NextRequest) {
@@ -93,14 +94,14 @@ export async function POST(request: NextRequest) {
     try {
         const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
         if (contentLength > 1_048_576) {
-            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+            return apiError("Payload too large", 413);
         }
 
         const allowUnsignedWebhook = isUnsignedWebhookAllowed();
         const rawBody = await request.text();
 
         if (rawBody.length > 1_048_576) {
-            return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+            return apiError("Payload too large", 413);
         }
         const signatureHeader = request.headers.get("x-hub-signature-256");
         const signatureValid = verifySignature(rawBody, signatureHeader);
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
                 signature_present: !!signatureHeader,
                 webhook_signature_mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
             });
-            return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+            return apiError("Invalid webhook signature", 401);
         }
 
         const payload = JSON.parse(rawBody) as unknown;
@@ -231,10 +232,7 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         logError("WhatsApp webhook processing failed", error, requestContext);
-        return NextResponse.json(
-            { error: "Internal webhook processing error" },
-            { status: 500 }
-        );
+        return apiError("Internal webhook processing error", 500);
     }
 }
 

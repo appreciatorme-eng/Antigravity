@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -132,15 +133,12 @@ function validateCronAuth(req: Request): boolean {
 
 export async function POST(req: Request) {
   if (!validateCronAuth(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
-    return NextResponse.json(
-      { error: "AI service is not configured" },
-      { status: 503 }
-    );
+    return apiError("AI service is not configured", 503);
   }
 
   const genAI = new GoogleGenerativeAI(geminiApiKey);

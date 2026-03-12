@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { unstable_cache } from "next/cache";
 import type { Database } from "@/lib/database.types";
 import { buildRevenueSeries } from "@/lib/admin/dashboard-metrics";
@@ -136,12 +137,12 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const organizationId = resolveScopedOrgWithDemo(req, admin.organizationId);
     if (!organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const range = resolveAdminDateRange(req.nextUrl.searchParams, "90d");
@@ -155,7 +156,7 @@ export async function GET(req: NextRequest) {
       range.granularity,
     );
 
-    return NextResponse.json(response);
+    return apiSuccess(response);
   } catch (error) {
     console.error("[/api/admin/revenue:GET] Unhandled error:", error);
     return NextResponse.json(

@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { revalidateTag } from 'next/cache';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
@@ -160,10 +161,7 @@ export async function POST(request: NextRequest) {
         payment_operation: 'verify_webhook_signature',
         payment_alert_severity: 'high',
       });
-      return NextResponse.json(
-        { error: 'Missing webhook signature', code: 'payments_webhook_signature_invalid' },
-        { status: 400 }
-      );
+      return apiError('Missing webhook signature', 400, 'payments_webhook_signature_invalid');
     }
 
     // Get raw body for signature verification
@@ -177,16 +175,13 @@ export async function POST(request: NextRequest) {
         payment_operation: 'verify_webhook_signature',
         payment_alert_severity: 'high',
       });
-      return NextResponse.json(
-        { error: 'Invalid signature', code: 'payments_webhook_signature_invalid' },
-        { status: 401 }
-      );
+      return apiError('Invalid signature', 401, 'payments_webhook_signature_invalid');
     }
 
     // Parse webhook payload
     const parsed = JSON.parse(body) as unknown;
     if (!parsed || typeof parsed !== 'object') {
-      return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
+      return apiError('Invalid webhook payload', 400);
     }
 
     const eventType = asString((parsed as Record<string, unknown>).event);
@@ -195,7 +190,7 @@ export async function POST(request: NextRequest) {
       payloadRaw && typeof payloadRaw === 'object' ? (payloadRaw as RazorpayWebhookPayload) : {};
 
     if (!eventType) {
-      return NextResponse.json({ error: 'Missing event type' }, { status: 400 });
+      return apiError('Missing event type', 400);
     }
 
     logEvent('info', 'Razorpay webhook received', {
@@ -260,10 +255,7 @@ export async function POST(request: NextRequest) {
       payment_alert_severity: 'critical',
     });
 
-    return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 500 }
-    );
+    return apiError('Webhook processing failed', 500);
   }
 }
 

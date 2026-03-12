@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req, { requireOrganization: true });
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const organizationId = admin.organizationId;
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req, { requireOrganization: true });
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const organizationId = admin.organizationId;
@@ -124,14 +125,11 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!profile) {
-      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+      return apiError("Client not found", 404);
     }
 
     if (profile.organization_id === organizationId) {
-      return NextResponse.json(
-        { error: "Cannot issue reward to a member of your own organization" },
-        { status: 400 }
-      );
+      return apiError("Cannot issue reward to a member of your own organization", 400);
     }
 
     const result = await issueReferralReward({
@@ -143,7 +141,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return apiError(result.error ?? "Internal error", 500);
     }
 
     return NextResponse.json({

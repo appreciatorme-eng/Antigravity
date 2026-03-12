@@ -1,6 +1,7 @@
 // GET /api/superadmin/analytics/feature-usage -- cross-org feature usage aggregate.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function daysAgo(n: number): string {
@@ -79,6 +80,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/analytics/feature-usage]", err);
-        return NextResponse.json({ error: "Failed to load feature usage" }, { status: 500 });
+        return apiError("Failed to load feature usage", 500);
     }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import { PDFParse } from 'pdf-parse';
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     try {
         const groqApiKey = process.env.GROQ_API_KEY;
         if (!groqApiKey) {
-            return NextResponse.json({ error: 'AI extraction service is not configured' }, { status: 503 });
+            return apiError('AI extraction service is not configured', 503);
         }
         const groq = new Groq({ apiKey: groqApiKey });
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', 401);
         }
 
         const rateLimitResult = await enforceRateLimit({
@@ -64,23 +65,23 @@ export async function POST(req: Request) {
             prefix: 'auth:import:pdf',
         });
         if (!rateLimitResult.success) {
-            return NextResponse.json({ error: 'Too many import requests. Please try again later.' }, { status: 429 });
+            return apiError('Too many import requests. Please try again later.', 429);
         }
 
         let formData: FormData;
         try {
             formData = await req.formData();
         } catch {
-            return NextResponse.json({ error: 'PDF file is required (multipart/form-data)' }, { status: 400 });
+            return apiError('PDF file is required (multipart/form-data)', 400);
         }
         const fileEntry = formData.get('file');
         if (!(fileEntry instanceof File)) {
-            return NextResponse.json({ error: 'PDF file is required' }, { status: 400 });
+            return apiError('PDF file is required', 400);
         }
         const file = fileEntry;
 
         if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-            return NextResponse.json({ error: 'Only PDF files are supported' }, { status: 400 });
+            return apiError('Only PDF files are supported', 400);
         }
 
         // Extract raw buffer from file upload
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
         const rawText = pdfData.text.replace(/\s+/g, ' ').trim();
 
         if (!rawText || rawText.length < 50) {
-            return NextResponse.json({ error: 'Could not extract useful text from this PDF. It might be entirely images.' }, { status: 422 });
+            return apiError('Could not extract useful text from this PDF. It might be entirely images.', 422);
         }
 
         const truncatedText = rawText.slice(0, 20000);
@@ -124,6 +125,6 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         console.error("PDF Import Error:", error);
         const message = safeErrorMessage(error, "Request failed");
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiError(message, 500);
     }
 }

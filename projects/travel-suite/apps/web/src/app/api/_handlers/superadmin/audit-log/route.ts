@@ -1,6 +1,7 @@
 // GET /api/superadmin/audit-log — paginated platform audit log entries.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 export async function GET(request: NextRequest) {
@@ -48,6 +49,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/audit-log]", err);
-        return NextResponse.json({ error: "Failed to load audit log" }, { status: 500 });
+        return apiError("Failed to load audit log", 500);
     }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import { z } from 'zod';
 import Groq from "groq-sdk";
@@ -228,14 +229,14 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await serverClient.auth.getUser();
 
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return apiError("Unauthorized", 401);
     }
 
     // 2. Rate Limiting Check
     if (ratelimit) {
         const { success } = await ratelimit.limit(user.id);
         if (!success) {
-            return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 });
+            return apiError("Rate limit exceeded. Try again later.", 429);
         }
     }
 
@@ -243,7 +244,7 @@ export async function POST(req: NextRequest) {
     try {
         body = await req.json();
     } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+        return apiError("Invalid JSON body", 400);
     }
 
     const parsed = RequestSchema.safeParse(body);
@@ -474,7 +475,7 @@ export async function POST(req: NextRequest) {
                     "A lightweight itinerary was generated because AI low-cost mode is enabled for this environment.";
             }
             void trackOrgAiUsage(user.id, "fallback", 0);
-            return NextResponse.json(fallback);
+            return apiSuccess(fallback);
         }
 
         const itinerarySchema: Schema = {

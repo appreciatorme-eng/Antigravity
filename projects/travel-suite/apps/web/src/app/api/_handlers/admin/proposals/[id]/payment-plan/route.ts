@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -106,7 +107,7 @@ export async function GET(
   const admin = await requireAdmin(request, { requireOrganization: true });
   if (!admin.ok) return admin.response;
   if (!admin.organizationId) {
-    return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+    return apiError("Admin organization not configured", 400);
   }
 
   const { id: proposalId } = await params;
@@ -121,7 +122,7 @@ export async function GET(
     .maybeSingle();
 
   if (proposalError || !proposal) {
-    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+    return apiError("Proposal not found", 404);
   }
 
   const { data: plan } = await supabase
@@ -158,7 +159,7 @@ export async function POST(
   const admin = await requireAdmin(request, { requireOrganization: true });
   if (!admin.ok) return admin.response;
   if (!admin.organizationId) {
-    return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+    return apiError("Admin organization not configured", 400);
   }
 
   const { id: proposalId } = await params;
@@ -174,7 +175,7 @@ export async function POST(
     .maybeSingle();
 
   if (proposalError || !proposal) {
-    return NextResponse.json({ error: "Proposal not found" }, { status: 404 });
+    return apiError("Proposal not found", 404);
   }
 
   if (body?.action === "send-milestone") {
@@ -233,7 +234,7 @@ async function handleCreatePlan(
       .single();
 
     if (planError || !newPlan) {
-      return NextResponse.json({ error: "Failed to create payment plan" }, { status: 500 });
+      return apiError("Failed to create payment plan", 500);
     }
 
     planId = newPlan.id;
@@ -257,7 +258,7 @@ async function handleCreatePlan(
     .select();
 
   if (milestoneError) {
-    return NextResponse.json({ error: "Failed to create milestones" }, { status: 500 });
+    return apiError("Failed to create milestones", 500);
   }
 
   return NextResponse.json({ success: true, plan_id: planId, milestones: insertedMilestones });
@@ -288,14 +289,11 @@ async function handleSendMilestone(
     .maybeSingle() as { data: MilestoneRow | null };
 
   if (!milestone) {
-    return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
+    return apiError("Milestone not found", 404);
   }
 
   if (milestone.status === "paid" || milestone.status === "cancelled") {
-    return NextResponse.json(
-      { error: `Milestone is already ${milestone.status}` },
-      { status: 400 }
-    );
+    return apiError(`Milestone is already ${milestone.status}`, 400);
   }
 
   const totalAmountInr = Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
@@ -306,12 +304,12 @@ async function handleSendMilestone(
   } else if (milestone.amount_fixed != null) {
     milestoneAmountInr = Number(milestone.amount_fixed);
   } else {
-    return NextResponse.json({ error: "Milestone has no amount configured" }, { status: 400 });
+    return apiError("Milestone has no amount configured", 400);
   }
 
   const amountInPaise = Math.round(milestoneAmountInr * 100);
   if (amountInPaise < 100) {
-    return NextResponse.json({ error: "Milestone amount must be at least ₹1" }, { status: 400 });
+    return apiError("Milestone amount must be at least ₹1", 400);
   }
 
   let clientName = "Traveler";

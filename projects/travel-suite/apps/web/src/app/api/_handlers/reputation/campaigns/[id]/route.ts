@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -15,7 +16,7 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -25,10 +26,7 @@ export async function GET(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
     const { data: campaign, error } = await supabase
@@ -43,17 +41,14 @@ export async function GET(
     }
 
     if (!campaign) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+      return apiError("Campaign not found", 404);
     }
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching reputation campaign:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -69,7 +64,7 @@ export async function PATCH(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -79,10 +74,7 @@ export async function PATCH(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
@@ -113,10 +105,7 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return apiError("No valid fields to update", 400);
     }
 
     const { data: campaign, error } = await supabase
@@ -132,17 +121,14 @@ export async function PATCH(
     }
 
     if (!campaign) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+      return apiError("Campaign not found", 404);
     }
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error updating reputation campaign:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -158,7 +144,7 @@ export async function DELETE(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -168,10 +154,7 @@ export async function DELETE(
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json(
-        { error: "No organization found" },
-        { status: 400 }
-      );
+      return apiError("No organization found", 400);
     }
 
     const { data: campaign, error } = await supabase
@@ -187,16 +170,13 @@ export async function DELETE(
     }
 
     if (!campaign) {
-      return NextResponse.json(
-        { error: "Campaign not found" },
-        { status: 404 }
-      );
+      return apiError("Campaign not found", 404);
     }
 
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error archiving reputation campaign:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

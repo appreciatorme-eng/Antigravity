@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
 import { createClient } from "@/lib/supabase/server";
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     if (!GOOGLE_PLACES_API_KEY) {
@@ -339,6 +340,6 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("[reputation/sync] sync failed:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

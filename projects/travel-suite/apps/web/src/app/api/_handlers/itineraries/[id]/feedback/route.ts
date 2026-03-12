@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -64,12 +65,12 @@ export async function POST(
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { id } = await params;
         if (!id) {
-            return NextResponse.json({ error: "Missing itinerary id" }, { status: 400 });
+            return apiError("Missing itinerary id", 400);
         }
 
         // Validate ownership
@@ -81,7 +82,7 @@ export async function POST(
             .single();
 
         if (itinError || !itinerary) {
-            return NextResponse.json({ error: "Itinerary not found" }, { status: 404 });
+            return apiError("Itinerary not found", 404);
         }
 
         // Parse and validate request body
@@ -104,10 +105,7 @@ export async function POST(
             .single();
 
         if (shareError || !share) {
-            return NextResponse.json(
-                { error: "No shared itinerary found for this plan" },
-                { status: 404 }
-            );
+            return apiError("No shared itinerary found for this plan", 404);
         }
 
         const existingComments = parseComments(share.client_comments);
@@ -121,7 +119,7 @@ export async function POST(
             case "resolve_comment": {
                 const found = existingComments.some((c) => c.id === action.comment_id);
                 if (!found) {
-                    return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+                    return apiError("Comment not found", 404);
                 }
                 updatedComments = existingComments.map((c) =>
                     c.id === action.comment_id
@@ -134,7 +132,7 @@ export async function POST(
             case "unresolve_comment": {
                 const found = existingComments.some((c) => c.id === action.comment_id);
                 if (!found) {
-                    return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+                    return apiError("Comment not found", 404);
                 }
                 updatedComments = existingComments.map((c) => {
                     if (c.id !== action.comment_id) return c;
@@ -148,14 +146,14 @@ export async function POST(
             case "reply_comment": {
                 const found = existingComments.some((c) => c.id === action.comment_id);
                 if (!found) {
-                    return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+                    return apiError("Comment not found", 404);
                 }
                 const sanitizedReply = sanitizeText(action.reply, {
                     maxLength: 2000,
                     preserveNewlines: true,
                 });
                 if (!sanitizedReply) {
-                    return NextResponse.json({ error: "Reply cannot be empty" }, { status: 400 });
+                    return apiError("Reply cannot be empty", 400);
                 }
                 updatedComments = existingComments.map((c) =>
                     c.id === action.comment_id
@@ -176,7 +174,7 @@ export async function POST(
             }
 
             default:
-                return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+                return apiError("Unknown action", 400);
         }
 
         // Write back the updated comments
@@ -194,13 +192,13 @@ export async function POST(
 
         if (updateError) {
             console.error("Error updating feedback:", updateError);
-            return NextResponse.json({ error: updateError.message }, { status: 500 });
+            return apiError(updateError.message, 500);
         }
 
         return NextResponse.json({ success: true, comments: updatedComments });
     } catch (error) {
         console.error("Internal error in feedback endpoint:", error);
         const message = safeErrorMessage(error, "Request failed");
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiError(message, 500);
     }
 }

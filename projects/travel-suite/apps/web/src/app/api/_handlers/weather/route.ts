@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { getWeatherForLocation, getWeatherForLocations, type LocationWeather } from "@/lib/external/weather";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
             prefix: "pub:weather",
         });
         if (!rateLimit.success) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+            return apiError("Too many requests", 429);
         }
 
         // Single location
@@ -56,10 +57,7 @@ export async function GET(request: NextRequest) {
             const weather = await getWeatherForLocation(location, forecastDays);
 
             if (!weather) {
-                return NextResponse.json(
-                    { error: `Could not find weather data for: ${location}` },
-                    { status: 404 }
-                );
+                return apiError(`Could not find weather data for: ${location}`, 404);
             }
 
             await setCachedJson(cacheKey, weather, WEATHER_TTL_SECONDS);
@@ -71,17 +69,11 @@ export async function GET(request: NextRequest) {
             const locationList = locations.split(",").map(l => l.trim()).filter(Boolean);
 
             if (locationList.length === 0) {
-                return NextResponse.json(
-                    { error: "No valid locations provided" },
-                    { status: 400 }
-                );
+                return apiError("No valid locations provided", 400);
             }
 
             if (locationList.length > 10) {
-                return NextResponse.json(
-                    { error: "Maximum 10 locations per request" },
-                    { status: 400 }
-                );
+                return apiError("Maximum 10 locations per request", 400);
             }
 
             const normalizedLocations = [...locationList].map(normalizedLocationKey).sort();
@@ -102,15 +94,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(payload, { headers: WEATHER_CACHE_HEADERS });
         }
 
-        return NextResponse.json(
-            { error: "Provide 'location' or 'locations' query parameter" },
-            { status: 400 }
-        );
+        return apiError("Provide 'location' or 'locations' query parameter", 400);
     } catch (error) {
         console.error("Weather API error:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch weather data" },
-            { status: 500 }
-        );
+        return apiError("Failed to fetch weather data", 500);
     }
 }

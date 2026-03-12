@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
@@ -102,11 +103,11 @@ export async function GET(
     }
 
     if (!user && !shareToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     if (!shareToken && !userOrganizationId) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     let proposalQuery = supabase
@@ -148,13 +149,13 @@ export async function GET(
     const { data: proposal, error } = await proposalQuery.single();
 
     if (error || !proposal) {
-      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
+      return apiError('Proposal not found', 404);
     }
 
     if (shareToken && proposal.expires_at) {
       const expiresAt = new Date(proposal.expires_at);
       if (Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() < Date.now()) {
-        return NextResponse.json({ error: 'Share link has expired' }, { status: 410 });
+        return apiError('Share link has expired', 410);
       }
     }
 
@@ -247,9 +248,6 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error in GET /api/proposals/[id]/pdf:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate PDF' },
-      { status: 500 }
-    );
+    return apiError('Failed to generate PDF', 500);
   }
 }

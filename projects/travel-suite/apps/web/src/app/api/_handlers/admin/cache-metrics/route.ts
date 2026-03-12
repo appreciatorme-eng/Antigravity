@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 
 import { getSharedCacheStats } from "@/lib/shared-itinerary-cache";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const organizationId = resolveScopedOrgWithDemo(req, admin.organizationId);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
       month: url.searchParams.get("month") || undefined,
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid params" }, { status: 400 });
+      return apiError("Invalid params", 400);
     }
 
     const now = new Date();
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/overheads:GET] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return NextResponse.json({ expenses: data || [] });
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const demoBlocked = blockDemoMutation(req);
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      return apiError("Invalid JSON", 400);
     }
 
     const parsed = CreateSchema.safeParse(body);
@@ -102,10 +103,10 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/overheads:POST] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return apiSuccess(data, 201);
   } catch (error) {
     console.error("[/api/admin/pricing/overheads:POST] Unhandled error:", error);
     return Response.json(

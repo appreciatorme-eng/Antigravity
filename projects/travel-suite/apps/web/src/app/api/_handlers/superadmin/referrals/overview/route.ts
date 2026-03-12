@@ -1,6 +1,7 @@
 // GET /api/superadmin/referrals/overview -- B2B + client flywheel referral summary.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -134,6 +135,6 @@ export async function GET(request: NextRequest) {
         });
     } catch (err) {
         console.error("[superadmin/referrals/overview]", err);
-        return NextResponse.json({ error: "Failed to load referrals overview" }, { status: 500 });
+        return apiError("Failed to load referrals overview", 500);
     }
 }

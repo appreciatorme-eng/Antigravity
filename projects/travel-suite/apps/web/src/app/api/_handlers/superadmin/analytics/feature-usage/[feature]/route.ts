@@ -1,6 +1,7 @@
 // GET /api/superadmin/analytics/feature-usage/:feature — per-org drill-down for a feature.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 type FeatureTableName =
@@ -51,7 +52,7 @@ export async function GET(
     const { feature } = await params;
     const featureCfg = FEATURE_MAP[feature];
     if (!featureCfg) {
-        return NextResponse.json({ error: `Unknown feature: ${feature}` }, { status: 400 });
+        return apiError(`Unknown feature: ${feature}`, 400);
     }
 
     const { adminClient } = auth;
@@ -96,6 +97,6 @@ export async function GET(
         return NextResponse.json({ feature, range, total, rows });
     } catch (err) {
         console.error(`[superadmin/analytics/feature-usage/${feature}]`, err);
-        return NextResponse.json({ error: "Failed to load feature drill-down" }, { status: 500 });
+        return apiError("Failed to load feature drill-down", 500);
     }
 }

@@ -1,6 +1,7 @@
 // GET /api/superadmin/support/tickets/:id -- full ticket detail with user and org info.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -54,7 +55,7 @@ export async function GET(
             .single();
 
         if (!result.data) {
-            return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+            return apiError("Ticket not found", 404);
         }
 
         const t = result.data as unknown as TicketDetailRow;
@@ -90,6 +91,6 @@ export async function GET(
         });
     } catch (err) {
         console.error(`[superadmin/support/tickets/${id}]`, err);
-        return NextResponse.json({ error: "Failed to load ticket" }, { status: 500 });
+        return apiError("Failed to load ticket", 500);
     }
 }

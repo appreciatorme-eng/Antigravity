@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const url = new URL(req.url);
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
       category: url.searchParams.get("category") || "",
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "vendor and category params required" }, { status: 400 });
+      return apiError("vendor and category params required", 400);
     }
 
     type HistoryRow = {
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("[/api/admin/pricing/vendor-history:GET] DB error:", error);
-      return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+      return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     const rows = (data || []) as HistoryRow[];

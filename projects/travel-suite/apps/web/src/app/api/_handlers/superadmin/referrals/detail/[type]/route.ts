@@ -1,6 +1,7 @@
 // GET /api/superadmin/referrals/detail/:type -- paginated referral events by type (b2b|client).
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -47,7 +48,7 @@ export async function GET(
 
     const { type } = await params;
     if (type !== "b2b" && type !== "client") {
-        return NextResponse.json({ error: "type must be 'b2b' or 'client'" }, { status: 400 });
+        return apiError("type must be 'b2b' or 'client'", 400);
     }
 
     const db = auth.adminClient as unknown as UntypedClient;
@@ -137,6 +138,6 @@ export async function GET(
         });
     } catch (err) {
         console.error(`[superadmin/referrals/detail/${type}]`, err);
-        return NextResponse.json({ error: "Failed to load referral details" }, { status: 500 });
+        return apiError("Failed to load referral details", 500);
     }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
 import { isCronSecretBearer, isCronSecretHeader } from "@/lib/security/cron-auth";
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     const adminAuthorized = await isAdminBearerToken(authHeader);
 
     if (!secretAuthorized && !bearerCronAuthorized && !serviceRoleAuthorized && !adminAuthorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (tripsError) {
-      return NextResponse.json({ error: tripsError.message }, { status: 500 });
+      return apiError(tripsError.message, 500);
     }
 
     const rows = (completedTrips || []) as unknown as CompletedTripRow[];
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
       .in("notification_type", followUpTypes);
 
     if (existingError) {
-      return NextResponse.json({ error: existingError.message }, { status: 500 });
+      return apiError(existingError.message, 500);
     }
 
     const existingSet = new Set<string>();
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
         .from("notification_queue")
         .insert(insertRows);
       if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
+        return apiError(insertError.message, 500);
       }
     }
 
@@ -204,10 +205,7 @@ export async function POST(request: NextRequest) {
       skipped_existing: skippedExisting,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, "Failed to schedule follow-ups") },
-      { status: 500 }
-    );
+    return apiError(safeErrorMessage(error, "Failed to schedule follow-ups"), 500);
   }
 }
 

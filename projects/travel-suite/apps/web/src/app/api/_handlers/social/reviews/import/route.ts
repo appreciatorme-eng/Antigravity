@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -8,7 +9,7 @@ export async function POST() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', 401);
         }
 
         const { data: profile } = await supabase
@@ -18,7 +19,7 @@ export async function POST() {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: 'No organization found' }, { status: 400 });
+            return apiError('No organization found', 400);
         }
 
         const orgId: string = profile.organization_id;
@@ -81,6 +82,6 @@ export async function POST() {
     } catch (error: unknown) {
         console.error('Error importing reviews:', error);
         const message = safeErrorMessage(error, "Request failed");
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiError(message, 500);
     }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ConnectionPlatform } from "@/lib/reputation/types";
@@ -11,7 +12,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -21,7 +22,7 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const { data: connections, error } = await supabase
@@ -38,7 +39,7 @@ export async function GET() {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error fetching platform connections:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -67,31 +68,22 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
 
     const platform = body.platform as ConnectionPlatform | undefined;
     if (!platform || !VALID_PLATFORMS.includes(platform)) {
-      return NextResponse.json(
-        { error: `platform must be one of: ${VALID_PLATFORMS.join(", ")}` },
-        { status: 400 }
-      );
+      return apiError(`platform must be one of: ${VALID_PLATFORMS.join(", ")}`, 400);
     }
 
     if (!body.platform_account_id || typeof body.platform_account_id !== "string") {
-      return NextResponse.json(
-        { error: "platform_account_id is required" },
-        { status: 400 }
-      );
+      return apiError("platform_account_id is required", 400);
     }
 
     if (!body.platform_account_name || typeof body.platform_account_name !== "string") {
-      return NextResponse.json(
-        { error: "platform_account_name is required" },
-        { status: 400 }
-      );
+      return apiError("platform_account_name is required", 400);
     }
 
     // Check for duplicate connection
@@ -103,10 +95,7 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (existing) {
-      return NextResponse.json(
-        { error: "A connection for this platform already exists" },
-        { status: 409 }
-      );
+      return apiError("A connection for this platform already exists", 409);
     }
 
     const insertData = {
@@ -132,7 +121,7 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error creating platform connection:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -144,7 +133,7 @@ export async function DELETE(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -154,14 +143,14 @@ export async function DELETE(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const url = new URL(req.url);
     const connectionId = url.searchParams.get("id");
 
     if (!connectionId) {
-      return NextResponse.json({ error: "id query parameter is required" }, { status: 400 });
+      return apiError("id query parameter is required", 400);
     }
 
     const { error } = await supabase
@@ -178,6 +167,6 @@ export async function DELETE(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
     console.error("Error deleting platform connection:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decodeSocialTokenWithMigration, encryptSocialToken } from "@/lib/security/social-token-crypto";
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
         const metaAppId = process.env.META_APP_ID?.trim();
         const metaAppSecret = process.env.META_APP_SECRET?.trim();
         if (!metaAppId || !metaAppSecret) {
-            return NextResponse.json({ error: "Meta OAuth credentials are not configured" }, { status: 500 });
+            return apiError("Meta OAuth credentials are not configured", 500);
         }
 
         const supabaseAdmin = createAdminClient();
@@ -107,9 +108,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, processed: results.length, results });
     } catch (error: unknown) {
         console.error("Error refreshing social tokens:", error);
-        return NextResponse.json(
-            { error: "Token refresh failed" },
-            { status: 500 }
-        );
+        return apiError("Token refresh failed", 500);
     }
 }

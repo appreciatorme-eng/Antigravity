@@ -2,6 +2,7 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import * as cheerio from 'cheerio';
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
     try {
         const groqApiKey = process.env.GROQ_API_KEY;
         if (!groqApiKey) {
-            return NextResponse.json({ error: 'AI extraction service is not configured' }, { status: 503 });
+            return apiError('AI extraction service is not configured', 503);
         }
         const groq = new Groq({ apiKey: groqApiKey });
 
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return apiError('Unauthorized', 401);
         }
 
         const rateLimitResult = await enforceRateLimit({
@@ -119,29 +120,29 @@ export async function POST(req: Request) {
             prefix: 'auth:import:url',
         });
         if (!rateLimitResult.success) {
-            return NextResponse.json({ error: 'Too many import requests. Please try again later.' }, { status: 429 });
+            return apiError('Too many import requests. Please try again later.', 429);
         }
 
         const parsedBody = await req.json().catch(() => null);
         const url = typeof parsedBody?.url === 'string' ? parsedBody.url.trim() : '';
 
         if (!url) {
-            return NextResponse.json({ error: 'Valid URL is required' }, { status: 400 });
+            return apiError('Valid URL is required', 400);
         }
 
         let parsedUrl: URL;
         try {
             parsedUrl = new URL(url);
         } catch {
-            return NextResponse.json({ error: 'URL format is invalid' }, { status: 400 });
+            return apiError('URL format is invalid', 400);
         }
 
         if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-            return NextResponse.json({ error: 'Only http/https URLs are supported' }, { status: 400 });
+            return apiError('Only http/https URLs are supported', 400);
         }
 
         if (!(await isSafePublicUrl(parsedUrl))) {
-            return NextResponse.json({ error: 'URL not allowed' }, { status: 422 });
+            return apiError('URL not allowed', 422);
         }
 
         // 1. Fetch & parse HTML
@@ -154,7 +155,7 @@ export async function POST(req: Request) {
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: `Failed to fetch URL: ${response.statusText}` }, { status: 400 });
+            return apiError(`Failed to fetch URL: ${response.statusText}`, 400);
         }
 
         const html = await response.text();
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
         const rawText = $('body').text().replace(/\s+/g, ' ').trim();
 
         if (!rawText || rawText.length < 50) {
-            return NextResponse.json({ error: 'Could not extract useful text from this URL' }, { status: 422 });
+            return apiError('Could not extract useful text from this URL', 422);
         }
 
         const truncatedText = rawText.slice(0, 20000);
@@ -196,6 +197,6 @@ export async function POST(req: Request) {
     } catch (error: unknown) {
         console.error("URL Import Error:", error);
         const message = safeErrorMessage(error, "Request failed");
-        return NextResponse.json({ error: message }, { status: 500 });
+        return apiError(message, 500);
     }
 }

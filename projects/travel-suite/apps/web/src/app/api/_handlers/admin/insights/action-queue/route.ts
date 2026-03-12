@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { buildRevenueRiskActionQueue } from "@/lib/admin/action-queue";
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (!admin.ok) return admin.response;
 
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const parsed = QuerySchema.safeParse({
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (proposalRes.error || invoiceRes.error || tripRes.error) {
-      return NextResponse.json({ error: "Failed to build action queue" }, { status: 500 });
+      return apiError("Failed to build action queue", 500);
     }
 
     const queue = buildRevenueRiskActionQueue({

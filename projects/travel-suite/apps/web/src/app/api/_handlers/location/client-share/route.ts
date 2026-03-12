@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -13,19 +14,19 @@ export async function GET(req: NextRequest) {
     try {
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const token = authHeader.substring(7);
         const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
         if (authError || !authData?.user) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+            return apiError("Invalid token", 401);
         }
 
         const tripId = req.nextUrl.searchParams.get("tripId") || "";
         const dayNumber = Number(req.nextUrl.searchParams.get("dayNumber") || 0) || null;
         if (!tripId) {
-            return NextResponse.json({ error: "tripId is required" }, { status: 400 });
+            return apiError("tripId is required", 400);
         }
 
         const { data: trip } = await supabaseAdmin
@@ -35,11 +36,11 @@ export async function GET(req: NextRequest) {
             .maybeSingle();
 
         if (!trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         if (trip.client_id !== authData.user.id) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return apiError("Forbidden", 403);
         }
 
         const nowIso = new Date().toISOString();
@@ -84,10 +85,7 @@ export async function GET(req: NextRequest) {
             .single();
 
         if (insertError || !inserted) {
-            return NextResponse.json(
-                { error: "Failed to create share" },
-                { status: 500 }
-            );
+            return apiError("Failed to create share", 500);
         }
 
         return NextResponse.json({
@@ -98,9 +96,6 @@ export async function GET(req: NextRequest) {
             reused: false,
         });
     } catch (error) {
-        return NextResponse.json(
-            { error: safeErrorMessage(error, "Failed to process location share") },
-            { status: 500 }
-        );
+        return apiError(safeErrorMessage(error, "Failed to process location share"), 500);
     }
 }

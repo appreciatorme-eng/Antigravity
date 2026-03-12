@@ -14,6 +14,7 @@
 import { createHmac } from "node:crypto";
 
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
@@ -78,7 +79,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
         event = JSON.parse(rawBody) as WppEvent;
     } catch {
-        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        return apiError("Invalid JSON", 400);
     }
 
     const admin = createAdminClient();

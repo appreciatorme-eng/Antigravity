@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import type { Database } from "@/lib/database.types";
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const url = new URL(req.url);
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       month: url.searchParams.get("month") || undefined,
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid params" }, { status: 400 });
+      return apiError("Invalid params", 400);
     }
 
     const now = new Date();
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       .order("start_date", { ascending: true });
 
     if (tripErr) {
-      return NextResponse.json({ error: tripErr.message }, { status: 500 });
+      return apiError(tripErr.message, 500);
     }
 
     const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'start_date' | 'end_date' | 'status' | 'pax_count' | 'client_id' | 'gst_pct' | 'tcs_pct'>[];

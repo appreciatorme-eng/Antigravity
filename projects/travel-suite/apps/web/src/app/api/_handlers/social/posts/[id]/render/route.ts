@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 
 // Polyfill missing Blob dependencies if needed by running in edge or letting node standard blob handle it
@@ -8,7 +9,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) return apiError("Unauthorized", 401);
 
         const { data: profile } = await supabase
             .from("profiles")
@@ -17,13 +18,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "No org" }, { status: 400 });
+            return apiError("No org", 400);
         }
 
         const { dataUrl, filename } = await req.json();
 
         if (!dataUrl) {
-            return NextResponse.json({ error: "Missing dataUrl" }, { status: 400 });
+            return apiError("Missing dataUrl", 400);
         }
 
         // Convert base64 to buffer
@@ -60,6 +61,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ post });
     } catch (error) {
         console.error("Render upload error:", error);
-        return NextResponse.json({ error: "An internal error occurred" }, { status: 500 });
+        return apiError("An internal error occurred", 500);
     }
 }

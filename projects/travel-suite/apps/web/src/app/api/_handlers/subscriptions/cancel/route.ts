@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get user's organization
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+      return apiError('Organization not found', 404);
     }
 
     // Parse request body
@@ -60,10 +61,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!currentSubscription) {
-      return NextResponse.json(
-        { error: 'No active subscription found' },
-        { status: 404 }
-      );
+      return apiError('No active subscription found', 404);
     }
 
     // Cancel subscription
@@ -88,9 +86,6 @@ export async function POST(request: NextRequest) {
         { status: paymentErrorHttpStatus(error) }
       );
     }
-    return NextResponse.json(
-      { error: "Failed to cancel subscription" },
-      { status: 500 }
-    );
+    return apiError("Failed to cancel subscription", 500);
   }
 }

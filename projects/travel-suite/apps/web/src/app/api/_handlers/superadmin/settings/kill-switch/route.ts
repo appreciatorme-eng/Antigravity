@@ -1,6 +1,7 @@
 // POST /api/superadmin/settings/kill-switch — update a platform_settings key (maintenance, feature flags, spend limits).
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { setPlatformSetting, type JsonValue } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     let body: { key?: string; value?: unknown };
     try { body = await request.json(); } catch {
-        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        return apiError("Invalid JSON", 400);
     }
 
     if (!body.key || !ALLOWED_KEYS.includes(body.key as AllowedKey)) {
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.value === undefined || body.value === null) {
-        return NextResponse.json({ error: "value is required" }, { status: 400 });
+        return apiError("value is required", 400);
     }
 
     try {
@@ -43,6 +44,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ key: body.key, updated: true });
     } catch (err) {
         console.error("[superadmin/settings/kill-switch]", err);
-        return NextResponse.json({ error: "Failed to update setting" }, { status: 500 });
+        return apiError("Failed to update setting", 500);
     }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizePhone, sanitizeText } from "@/lib/security/sanitize";
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     const { data: rows, error } = await query;
     if (error) {
-      return NextResponse.json({ error: "Failed to normalize driver phones" }, { status: 500 });
+      return apiError("Failed to normalize driver phones", 500);
     }
 
     const candidates = (rows || []).filter((row) => !!sanitizePhone(row.phone));

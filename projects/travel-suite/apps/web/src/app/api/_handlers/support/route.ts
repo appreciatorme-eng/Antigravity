@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
@@ -7,7 +7,7 @@ export async function POST(req: Request) {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
         if (userError || !user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         // Get organization ID
@@ -18,14 +18,14 @@ export async function POST(req: Request) {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "No organization found" }, { status: 400 });
+            return apiError("No organization found", 400);
         }
 
         const body = await req.json();
         const { title, description, category, priority } = body;
 
         if (!title || !description || !category || !priority) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            return apiError("Missing required fields", 400);
         }
 
         const { data, error } = await supabase
@@ -44,13 +44,13 @@ export async function POST(req: Request) {
 
         if (error) {
             console.error("Error creating ticket:", error);
-            return NextResponse.json({ error: "Failed to create support ticket" }, { status: 500 });
+            return apiError("Failed to create support ticket", 500);
         }
 
-        return NextResponse.json(data);
+        return apiSuccess(data);
     } catch (error) {
         console.error("Support ticket creation error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return apiError("Internal Server Error", 500);
     }
 }
 
@@ -60,7 +60,7 @@ export async function GET() {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
         if (userError || !user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabase
@@ -70,7 +70,7 @@ export async function GET() {
             .single();
 
         if (!profile?.organization_id) {
-            return NextResponse.json({ error: "No organization found" }, { status: 400 });
+            return apiError("No organization found", 400);
         }
 
         const { data, error } = await supabase
@@ -81,12 +81,12 @@ export async function GET() {
 
         if (error) {
             console.error("Error fetching tickets:", error);
-            return NextResponse.json({ error: "Failed to fetch support tickets" }, { status: 500 });
+            return apiError("Failed to fetch support tickets", 500);
         }
 
-        return NextResponse.json(data);
+        return apiSuccess(data);
     } catch (error) {
         console.error("Support ticket fetch error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return apiError("Internal Server Error", 500);
     }
 }

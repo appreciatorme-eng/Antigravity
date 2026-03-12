@@ -7,6 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
 
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get organization ID from profile
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     // Get query parameters
@@ -51,16 +52,13 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('Error fetching add-ons:', error);
-      return NextResponse.json({ error: "Failed to fetch add-ons" }, { status: 500 });
+      return apiError("Failed to fetch add-ons", 500);
     }
 
     return NextResponse.json({ addOns });
   } catch (error) {
     console.error('Error in GET /api/add-ons:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return apiError('Internal server error', 500);
   }
 }
 
@@ -71,7 +69,7 @@ export async function POST(request: Request) {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError('Unauthorized', 401);
     }
 
     // Get organization ID from profile
@@ -82,7 +80,7 @@ export async function POST(request: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      return apiError('No organization found', 404);
     }
 
     const body = await request.json();
@@ -94,17 +92,11 @@ export async function POST(request: Request) {
     const price = parseFloat(body.price);
 
     if (!name || isNaN(price) || !body.category) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, price, category' },
-        { status: 400 }
-      );
+      return apiError('Missing required fields: name, price, category', 400);
     }
 
     if (price < 0) {
-      return NextResponse.json(
-        { error: 'Price must be zero or greater' },
-        { status: 400 }
-      );
+      return apiError('Price must be zero or greater', 400);
     }
 
     // Create new add-on
@@ -125,15 +117,12 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Error creating add-on:', error);
-      return NextResponse.json({ error: "Failed to create add-on" }, { status: 500 });
+      return apiError("Failed to create add-on", 500);
     }
 
     return NextResponse.json({ addon }, { status: 201 });
   } catch (error) {
     console.error('Error in POST /api/add-ons:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return apiError('Internal server error', 500);
   }
 }

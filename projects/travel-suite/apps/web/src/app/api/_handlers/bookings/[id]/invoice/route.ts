@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { InvoiceDocument, type InvoicePdfData } from "@/components/pdf/InvoiceDocument";
 import { requireAdmin } from "@/lib/auth/admin";
 import { normalizeInvoiceMetadata } from "@/lib/invoices/module";
@@ -74,7 +75,7 @@ export async function GET(
     const invoice = await loadInvoice(adminClient, id);
 
     if (!invoice) {
-      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+      return apiError("Invoice not found", 404);
     }
 
     let authorized = false;
@@ -91,7 +92,7 @@ export async function GET(
       const auth = await requireAdmin(request, { requireOrganization: true });
       if (!auth.ok) return auth.response;
       if (!auth.isSuperAdmin && auth.organizationId !== invoice.organization_id) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return apiError("Forbidden", 403);
       }
     }
 

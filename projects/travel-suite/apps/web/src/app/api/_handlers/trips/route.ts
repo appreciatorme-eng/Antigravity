@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -165,7 +166,7 @@ export async function GET(req: NextRequest) {
         const { data: { user } } = await serverClient.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { data: profile } = await supabaseAdmin
@@ -216,7 +217,7 @@ export async function GET(req: NextRequest) {
 
             const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
-            if (error) return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
+            if (error) return apiError("Failed to process trip", 400);
 
             const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
                 const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
@@ -276,10 +277,7 @@ export async function GET(req: NextRequest) {
                 : profile?.organization_id || null;
 
         if (!scopedOrganizationId) {
-            return NextResponse.json(
-                { error: "Admin organization not configured. Super admins must provide organization_id." },
-                { status: 400 }
-            );
+            return apiError("Admin organization not configured. Super admins must provide organization_id.", 400);
         }
 
         let query = supabaseAdmin
@@ -318,7 +316,7 @@ export async function GET(req: NextRequest) {
         const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
 
         if (error) {
-            return NextResponse.json({ error: "Failed to process trip" }, { status: 400 });
+            return apiError("Failed to process trip", 400);
         }
 
         const rawTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
@@ -375,6 +373,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ trips, nextCursor, hasMore: nextCursor !== null });
     } catch (error) {
         console.error("Error fetching trips:", error);
-        return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
+        return apiError("Failed to process trip", 500);
     }
 }

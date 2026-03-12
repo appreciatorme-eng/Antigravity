@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -10,14 +11,14 @@ export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const token = authHeader.substring(7);
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
         if (authError || !user) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+            return apiError("Invalid token", 401);
         }
 
         const rateLimit = await enforceRateLimit({
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
             prefix: "auth:email:welcome",
         });
         if (!rateLimit.success) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+            return apiError("Too many requests", 429);
         }
 
         const { data: profile, error: profileError } = await supabaseAdmin
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (profileError) {
-            return NextResponse.json({ error: safeErrorMessage(profileError, "Failed to load profile") }, { status: 400 });
+            return apiError(safeErrorMessage(profileError, "Failed to load profile"), 400);
         }
 
         if (profile?.welcome_email_sent_at) {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
 
         const toEmail = profile?.email || user.email;
         if (!toEmail) {
-            return NextResponse.json({ error: "Missing email" }, { status: 400 });
+            return apiError("Missing email", 400);
         }
 
         const result = await sendWelcomeEmail({
@@ -64,6 +65,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: result.success, skipped: result.skipped, reason: result.reason });
     } catch (error: unknown) {
         console.error("Welcome email error:", error);
-        return NextResponse.json({ error: safeErrorMessage(error, "Failed to send welcome email") }, { status: 500 });
+        return apiError(safeErrorMessage(error, "Failed to send welcome email"), 500);
     }
 }

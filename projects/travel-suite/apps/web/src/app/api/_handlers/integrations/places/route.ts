@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/config/env";
@@ -121,7 +122,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const organizationId = await getOrganizationId(user.id);
@@ -158,12 +159,12 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const organizationId = await getOrganizationId(user.id);
     if (!organizationId) {
-      return NextResponse.json({ error: "No organization found" }, { status: 403 });
+      return apiError("No organization found", 403);
     }
 
     const body = (await request.json().catch(() => ({}))) as PlacesRequestBody;

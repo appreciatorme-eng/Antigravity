@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { WidgetType, WidgetTheme } from "@/lib/reputation/types";
@@ -22,7 +23,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -32,7 +33,7 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const { data: widgets, error } = await supabase
@@ -49,7 +50,7 @@ export async function GET() {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error fetching widgets:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -71,24 +72,18 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
 
     // Validate required fields
     if (!body.name || typeof body.name !== "string") {
-      return NextResponse.json(
-        { error: "name is required" },
-        { status: 400 }
-      );
+      return apiError("name is required", 400);
     }
 
     if (!body.widget_type || !VALID_WIDGET_TYPES.includes(body.widget_type)) {
-      return NextResponse.json(
-        { error: `widget_type must be one of: ${VALID_WIDGET_TYPES.join(", ")}` },
-        { status: 400 }
-      );
+      return apiError(`widget_type must be one of: ${VALID_WIDGET_TYPES.join(", ")}`, 400);
     }
 
     const theme: WidgetTheme = VALID_THEMES.includes(body.theme)
@@ -141,7 +136,7 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error creating widget:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -153,7 +148,7 @@ export async function PUT(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -163,7 +158,7 @@ export async function PUT(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const body = await req.json();
@@ -178,17 +173,11 @@ export async function PUT(req: Request) {
           : null;
 
     if (body.widget_type !== undefined && !VALID_WIDGET_TYPES.includes(body.widget_type)) {
-      return NextResponse.json(
-        { error: `widget_type must be one of: ${VALID_WIDGET_TYPES.join(", ")}` },
-        { status: 400 }
-      );
+      return apiError(`widget_type must be one of: ${VALID_WIDGET_TYPES.join(", ")}`, 400);
     }
 
     if (theme === null) {
-      return NextResponse.json(
-        { error: `theme must be one of: ${VALID_THEMES.join(", ")}` },
-        { status: 400 }
-      );
+      return apiError(`theme must be one of: ${VALID_THEMES.join(", ")}`, 400);
     }
 
     const updateData = {
@@ -241,7 +230,7 @@ export async function PUT(req: Request) {
     };
 
     if (Object.keys(updateData).length === 1) {
-      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+      return apiError("No valid fields to update", 400);
     }
 
     let query = supabase
@@ -258,13 +247,13 @@ export async function PUT(req: Request) {
     }
 
     if (!widget) {
-      return NextResponse.json({ error: "Widget not found" }, { status: 404 });
+      return apiError("Widget not found", 404);
     }
 
     return NextResponse.json({ widget });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error updating widget:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

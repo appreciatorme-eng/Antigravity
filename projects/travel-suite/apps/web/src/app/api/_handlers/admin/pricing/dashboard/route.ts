@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Organization not configured" }, { status: 400 });
+      return apiError("Organization not configured", 400);
     }
 
     const url = new URL(req.url);
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
       month: url.searchParams.get("month") || undefined,
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid month format (YYYY-MM)" }, { status: 400 });
+      return apiError("Invalid month format (YYYY-MM)", 400);
     }
 
     const now = new Date();

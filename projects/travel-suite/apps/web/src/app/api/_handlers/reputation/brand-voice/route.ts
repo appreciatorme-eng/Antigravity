@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
@@ -25,7 +26,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -35,7 +36,7 @@ export async function GET() {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const organizationId = profile.organization_id;
@@ -91,7 +92,7 @@ export async function GET() {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error fetching brand voice:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }
 
@@ -103,7 +104,7 @@ export async function PUT(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -113,7 +114,7 @@ export async function PUT(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const organizationId = profile.organization_id;
@@ -124,20 +125,14 @@ export async function PUT(req: Request) {
 
     if (body.tone !== undefined) {
       if (!VALID_TONES.includes(body.tone)) {
-        return NextResponse.json(
-          { error: `Invalid tone. Must be one of: ${VALID_TONES.join(", ")}` },
-          { status: 400 }
-        );
+        return apiError(`Invalid tone. Must be one of: ${VALID_TONES.join(", ")}`, 400);
       }
       updateData.tone = body.tone;
     }
 
     if (body.language_preference !== undefined) {
       if (!VALID_LANGUAGES.includes(body.language_preference)) {
-        return NextResponse.json(
-          { error: `Invalid language preference. Must be one of: ${VALID_LANGUAGES.join(", ")}` },
-          { status: 400 }
-        );
+        return apiError(`Invalid language preference. Must be one of: ${VALID_LANGUAGES.join(", ")}`, 400);
       }
       updateData.language_preference = body.language_preference;
     }
@@ -158,30 +153,21 @@ export async function PUT(req: Request) {
 
     if (body.key_phrases !== undefined) {
       if (!isStringArray(body.key_phrases)) {
-        return NextResponse.json(
-          { error: "key_phrases must be an array of strings" },
-          { status: 400 }
-        );
+        return apiError("key_phrases must be an array of strings", 400);
       }
       updateData.key_phrases = body.key_phrases;
     }
 
     if (body.avoid_phrases !== undefined) {
       if (!isStringArray(body.avoid_phrases)) {
-        return NextResponse.json(
-          { error: "avoid_phrases must be an array of strings" },
-          { status: 400 }
-        );
+        return apiError("avoid_phrases must be an array of strings", 400);
       }
       updateData.avoid_phrases = body.avoid_phrases;
     }
 
     if (body.sample_responses !== undefined) {
       if (!isStringArray(body.sample_responses)) {
-        return NextResponse.json(
-          { error: "sample_responses must be an array of strings" },
-          { status: 400 }
-        );
+        return apiError("sample_responses must be an array of strings", 400);
       }
       updateData.sample_responses = body.sample_responses;
     }
@@ -193,10 +179,7 @@ export async function PUT(req: Request) {
     if (body.auto_respond_min_rating !== undefined) {
       const rating = Number(body.auto_respond_min_rating);
       if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-        return NextResponse.json(
-          { error: "auto_respond_min_rating must be between 1 and 5" },
-          { status: 400 }
-        );
+        return apiError("auto_respond_min_rating must be between 1 and 5", 400);
       }
       updateData.auto_respond_min_rating = rating;
     }
@@ -204,19 +187,13 @@ export async function PUT(req: Request) {
     if (body.escalation_threshold !== undefined) {
       const threshold = Number(body.escalation_threshold);
       if (!Number.isFinite(threshold) || threshold < 1 || threshold > 5) {
-        return NextResponse.json(
-          { error: "escalation_threshold must be between 1 and 5" },
-          { status: 400 }
-        );
+        return apiError("escalation_threshold must be between 1 and 5", 400);
       }
       updateData.escalation_threshold = threshold;
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return apiError("No valid fields to update", 400);
     }
 
     updateData.updated_at = new Date().toISOString();
@@ -274,6 +251,6 @@ export async function PUT(req: Request) {
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error updating brand voice:", error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(message, 500);
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
 
 type AdminContext = Extract<RequireAdminResult, { ok: true }>;
@@ -35,12 +36,12 @@ export async function GET(req: NextRequest) {
         const dayNumber = dayNumberRaw ? Number(dayNumberRaw) : null;
 
         if (!tripId) {
-            return NextResponse.json({ error: "tripId is required" }, { status: 400 });
+            return apiError("tripId is required", 400);
         }
 
         const trip = await getScopedTrip(admin, tripId);
         if (!trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         let query = admin.adminClient
@@ -69,10 +70,7 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         console.error("Error in GET /api/location/share:", error);
-        return NextResponse.json(
-            { error: "Failed to process location share" },
-            { status: 500 }
-        );
+        return apiError("Failed to process location share", 500);
     }
 }
 
@@ -87,12 +85,12 @@ export async function POST(req: NextRequest) {
         const expiresHours = Math.max(1, Math.min(Number(body.expiresHours || 24), 168));
 
         if (!tripId) {
-            return NextResponse.json({ error: "tripId is required" }, { status: 400 });
+            return apiError("tripId is required", 400);
         }
 
         const trip = await getScopedTrip(admin, tripId);
         if (!trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         const existingQuery = admin.adminClient
@@ -136,7 +134,7 @@ export async function POST(req: NextRequest) {
 
         if (error || !data) {
             console.error("Error creating location share:", error);
-            return NextResponse.json({ error: "Failed to process location share" }, { status: 500 });
+            return apiError("Failed to process location share", 500);
         }
 
         return NextResponse.json({
@@ -148,10 +146,7 @@ export async function POST(req: NextRequest) {
         });
     } catch (error) {
         console.error("Error in POST /api/location/share:", error);
-        return NextResponse.json(
-            { error: "Failed to process location share" },
-            { status: 500 }
-        );
+        return apiError("Failed to process location share", 500);
     }
 }
 
@@ -165,10 +160,7 @@ export async function DELETE(req: NextRequest) {
         const shareId = req.nextUrl.searchParams.get("shareId") || "";
 
         if (!tripId && !shareId) {
-            return NextResponse.json(
-                { error: "shareId or tripId is required" },
-                { status: 400 }
-            );
+            return apiError("shareId or tripId is required", 400);
         }
 
         let scopedTripId = tripId;
@@ -180,7 +172,7 @@ export async function DELETE(req: NextRequest) {
                 .maybeSingle();
 
             if (shareError || !share) {
-                return NextResponse.json({ error: "Share not found" }, { status: 404 });
+                return apiError("Share not found", 404);
             }
 
             scopedTripId = share.trip_id || "";
@@ -188,7 +180,7 @@ export async function DELETE(req: NextRequest) {
 
         const trip = await getScopedTrip(admin, scopedTripId);
         if (!trip) {
-            return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+            return apiError("Trip not found", 404);
         }
 
         let query = admin.adminClient.from("trip_location_shares").update({
@@ -208,7 +200,7 @@ export async function DELETE(req: NextRequest) {
         const { data, error } = await query.select("id");
         if (error) {
             console.error("Error revoking location share:", error);
-            return NextResponse.json({ error: "Failed to process location share" }, { status: 500 });
+            return apiError("Failed to process location share", 500);
         }
 
         await admin.adminClient.from("notification_logs").insert({
@@ -228,9 +220,6 @@ export async function DELETE(req: NextRequest) {
         });
     } catch (error) {
         console.error("Error in DELETE /api/location/share:", error);
-        return NextResponse.json(
-            { error: "Failed to process location share" },
-            { status: 500 }
-        );
+        return apiError("Failed to process location share", 500);
     }
 }

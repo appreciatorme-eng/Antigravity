@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError } from "@/lib/api-response";
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
@@ -255,7 +256,7 @@ export async function GET() {
       prefix: 'auth:onboarding',
     });
     if (!rateLimitResult.success) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      return apiError('Too many requests', 429);
     }
 
     const safeUserEmail = sanitizeEmail(auth.user.email);
@@ -298,10 +299,7 @@ export async function GET() {
         : null,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, 'Failed to load onboarding status') },
-      { status: 500 }
-    );
+    return apiError(safeErrorMessage(error, 'Failed to load onboarding status'), 500);
   }
 }
 
@@ -317,7 +315,7 @@ export async function POST(request: Request) {
       prefix: 'auth:onboarding',
     });
     if (!rateLimitResult.success) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      return apiError('Too many requests', 429);
     }
 
     const body = await request.json();
@@ -340,7 +338,7 @@ export async function POST(request: Request) {
     const specialties = sanitizeStringArray(body.specialties, { maxLength: 80, maxItems: 40 });
 
     if (!companyName) {
-      return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
+      return apiError('Company name is required', 400);
     }
 
     const profile = await ensureProfile(auth.user.id, safeUserEmail);
@@ -416,10 +414,7 @@ export async function POST(request: Request) {
       }
 
       if (orgInsertError || !insertedOrg) {
-        return NextResponse.json(
-          { error: safeErrorMessage(orgInsertError, 'Failed to create organization') },
-          { status: 400 }
-        );
+        return apiError(safeErrorMessage(orgInsertError, 'Failed to create organization'), 400);
       }
 
       organizationId = insertedOrg.id;
@@ -427,7 +422,7 @@ export async function POST(request: Request) {
     }
 
     if (!organizationId) {
-      return NextResponse.json({ error: 'Organization setup failed' }, { status: 500 });
+      return apiError('Organization setup failed', 500);
     }
 
     const organizationUpdatePayload = {
@@ -454,7 +449,7 @@ export async function POST(request: Request) {
     }
 
     if (organizationUpdateError) {
-      return NextResponse.json({ error: safeErrorMessage(organizationUpdateError, 'Failed to update organization') }, { status: 400 });
+      return apiError(safeErrorMessage(organizationUpdateError, 'Failed to update organization'), 400);
     }
 
     const { error: profileUpdateError } = await supabaseAdmin
@@ -472,7 +467,7 @@ export async function POST(request: Request) {
       .eq('id', auth.user.id);
 
     if (profileUpdateError) {
-      return NextResponse.json({ error: safeErrorMessage(profileUpdateError, 'Failed to update profile') }, { status: 400 });
+      return apiError(safeErrorMessage(profileUpdateError, 'Failed to update profile'), 400);
     }
 
     const { data: existingMarketplace } = await supabaseAdmin
@@ -496,7 +491,7 @@ export async function POST(request: Request) {
       );
 
     if (marketplaceError) {
-      return NextResponse.json({ error: safeErrorMessage(marketplaceError, 'Failed to update marketplace profile') }, { status: 400 });
+      return apiError(safeErrorMessage(marketplaceError, 'Failed to update marketplace profile'), 400);
     }
 
     return NextResponse.json({
@@ -506,9 +501,6 @@ export async function POST(request: Request) {
       next: '/admin',
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: safeErrorMessage(error, 'Onboarding setup failed') },
-      { status: 500 }
-    );
+    return apiError(safeErrorMessage(error, 'Onboarding setup failed'), 500);
   }
 }

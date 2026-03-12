@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -12,13 +13,13 @@ export async function GET(
         } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { id } = await params;
 
         if (!id) {
-            return NextResponse.json({ error: "Missing itinerary id" }, { status: 400 });
+            return apiError("Missing itinerary id", 400);
         }
 
         const { data, error } = await supabase
@@ -30,17 +31,17 @@ export async function GET(
 
         if (error) {
             console.error("Error fetching itinerary:", error);
-            return NextResponse.json({ error: "Failed to fetch itinerary" }, { status: 500 });
+            return apiError("Failed to fetch itinerary", 500);
         }
 
         if (!data) {
-            return NextResponse.json({ error: "Itinerary not found" }, { status: 404 });
+            return apiError("Itinerary not found", 404);
         }
 
         return NextResponse.json({ itinerary: data });
     } catch (error) {
         console.error("Internal Error fetching itinerary:", error);
-        return NextResponse.json({ error: "Failed to fetch itinerary" }, { status: 500 });
+        return apiError("Failed to fetch itinerary", 500);
     }
 }
 
@@ -55,13 +56,13 @@ export async function PATCH(
         } = await supabase.auth.getUser();
 
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return apiError("Unauthorized", 401);
         }
 
         const { id } = await params;
 
         if (!id) {
-            return NextResponse.json({ error: "Missing itinerary id" }, { status: 400 });
+            return apiError("Missing itinerary id", 400);
         }
 
         const body = await request.json();
@@ -78,7 +79,7 @@ export async function PATCH(
         }
 
         if (Object.keys(updates).length === 0) {
-            return NextResponse.json({ error: "No fields to update provided." }, { status: 400 });
+            return apiError("No fields to update provided.", 400);
         }
 
         const { data, error } = await supabase
@@ -91,12 +92,12 @@ export async function PATCH(
 
         if (error) {
             console.error("Error updating itinerary:", error);
-            return NextResponse.json({ error: "Failed to update itinerary" }, { status: 400 });
+            return apiError("Failed to update itinerary", 400);
         }
 
         return NextResponse.json({ itinerary: data });
     } catch (error) {
         console.error("Internal Error updating itinerary:", error);
-        return NextResponse.json({ error: "Failed to update itinerary" }, { status: 500 });
+        return apiError("Failed to update itinerary", 500);
     }
 }

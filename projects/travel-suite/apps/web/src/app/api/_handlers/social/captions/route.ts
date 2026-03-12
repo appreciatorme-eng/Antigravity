@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiSuccess, apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await serverClient.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { templateData, tone, platform } = await req.json();
@@ -105,10 +106,10 @@ export async function POST(req: NextRequest) {
 
     const result = await model.generateContent(prompt);
     const response = JSON.parse(result.response.text());
-    return NextResponse.json(response);
+    return apiSuccess(response);
 
   } catch (error) {
     console.error("Caption Error:", error);
-    return NextResponse.json({ error: "Failed to generate captions" }, { status: 500 });
+    return apiError("Failed to generate captions", 500);
   }
 }

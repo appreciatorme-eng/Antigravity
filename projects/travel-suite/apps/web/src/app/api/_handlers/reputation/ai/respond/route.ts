@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
@@ -166,7 +167,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const { data: profile } = await supabase
@@ -176,7 +177,7 @@ export async function POST(req: Request) {
       .single();
 
     if (!profile?.organization_id) {
-      return NextResponse.json({ error: "No organization found" }, { status: 400 });
+      return apiError("No organization found", 400);
     }
 
     const organizationId = profile.organization_id;
@@ -216,7 +217,7 @@ export async function POST(req: Request) {
     };
 
     if (!reviewId || typeof reviewId !== "string") {
-      return NextResponse.json({ error: "reviewId is required" }, { status: 400 });
+      return apiError("reviewId is required", 400);
     }
 
     // Fetch the review
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
       .single();
 
     if (reviewError || !review) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
+      return apiError("Review not found", 404);
     }
 
     const typedReview = review as ReputationReview;
@@ -245,10 +246,7 @@ export async function POST(req: Request) {
 
     const reviewText = typedReview.comment ?? typedReview.title ?? "";
     if (!reviewText.trim()) {
-      return NextResponse.json(
-        { error: "Review has no text content to generate a response for" },
-        { status: 400 }
-      );
+      return apiError("Review has no text content to generate a response for", 400);
     }
 
     // Cost guard
@@ -262,10 +260,7 @@ export async function POST(req: Request) {
     });
 
     if (!reservation.allowed) {
-      return NextResponse.json(
-        { error: "Daily AI spend limit reached. Please try again tomorrow." },
-        { status: 429 }
-      );
+      return apiError("Daily AI spend limit reached. Please try again tomorrow.", 429);
     }
 
     // Fetch brand voice config
@@ -275,10 +270,7 @@ export async function POST(req: Request) {
     const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
     if (!geminiApiKey) {
-      return NextResponse.json(
-        { error: "AI service is not configured" },
-        { status: 503 }
-      );
+      return apiError("AI service is not configured", 503);
     }
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
@@ -302,6 +294,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ response: aiResponse });
   } catch (error: unknown) {
     console.error("Error generating AI response:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return apiError("Internal server error", 500);
   }
 }

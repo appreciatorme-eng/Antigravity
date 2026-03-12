@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { acknowledgeCostAlert } from "@/lib/cost/alert-ack";
@@ -98,6 +99,6 @@ export async function POST(request: NextRequest) {
       acknowledged_by: acknowledged.acknowledgedBy,
     });
   } catch (error) {
-    return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+    return apiError(safeErrorMessage(error, "Request failed"), 500);
   }
 }

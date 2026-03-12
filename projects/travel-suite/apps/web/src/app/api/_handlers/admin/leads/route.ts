@@ -2,6 +2,7 @@
 // Requires admin auth. All writes also emit conversion_events for funnel tracking.
 
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { parseLeadMessage } from "@/lib/leads/intent-parser";
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
 
   if (error) {
     console.error("[admin/leads] GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });
+    return apiError("Failed to fetch leads", 500);
   }
 
   return NextResponse.json({ leads: leads ?? [], total: count ?? 0, page, limit });
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return apiError("Invalid JSON body", 400);
   }
 
   const parsed = CreateLeadSchema.safeParse(body);
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
 
   if (error) {
     console.error("[admin/leads] POST error:", error);
-    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+    return apiError("Failed to create lead", 500);
   }
 
   const initialNote = input.raw_message

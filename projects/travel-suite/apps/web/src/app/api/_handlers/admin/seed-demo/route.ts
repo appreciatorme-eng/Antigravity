@@ -2,6 +2,7 @@
 // POST /api/admin/seed-demo  →  inserts GoBuddy Adventures (Demo) org + all records.
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEMO_ORG_ID } from "@/lib/demo/constants";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       process.env.ALLOW_SEED_IN_PROD
     )
   ) {
-    return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+    return apiError("Not available in production", 403);
   }
 
   const admin = await requireAdmin(request, { requireOrganization: false });
@@ -54,13 +55,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (!passesMutationCsrfGuard(request)) {
-    return NextResponse.json({ error: "CSRF validation failed for admin mutation" }, { status: 403 });
+    return apiError("CSRF validation failed for admin mutation", 403);
   }
 
   const expectedCronSecret = process.env.ADMIN_CRON_SECRET?.trim();
   const providedCronSecret = request.headers.get("x-cron-secret")?.trim();
   if (!hasValidSeedDemoCronSecret(expectedCronSecret, providedCronSecret)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return apiError("Forbidden", 403);
   }
 
   try {

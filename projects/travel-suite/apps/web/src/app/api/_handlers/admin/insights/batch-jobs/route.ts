@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError } from "@/lib/api-response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const { data, error } = await admin.adminClient
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
           unavailable_reason: "notification queue schema not available in this environment",
         });
       }
-      return NextResponse.json({ error: "Failed to list batch jobs" }, { status: 500 });
+      return apiError("Failed to list batch jobs", 500);
     }
 
     return NextResponse.json({ jobs: data || [] });
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     const admin = await requireAdmin(req);
     if (!admin.ok) return admin.response;
     if (!admin.organizationId) {
-      return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+      return apiError("Admin organization not configured", 400);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
           { status: 503 }
         );
       }
-      return NextResponse.json({ error: "Failed to enqueue job" }, { status: 500 });
+      return apiError("Failed to enqueue job", 500);
     }
 
     return NextResponse.json({
