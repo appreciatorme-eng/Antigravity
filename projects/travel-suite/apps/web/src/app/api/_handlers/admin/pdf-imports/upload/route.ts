@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       await admin.adminClient.storage.from("pdf-imports").remove([fileName]);
       return NextResponse.json(
-        { success: false, error: insertError.message },
+        { success: false, error: safeErrorMessage(insertError, "Failed to save PDF import") },
         { status: 500 },
       );
     }

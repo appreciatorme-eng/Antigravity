@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import type { Database } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
       .order("start_date", { ascending: true });
 
     if (tripErr) {
-      return apiError(tripErr.message, 500);
+      return apiError(safeErrorMessage(tripErr, "Failed to load trips"), 500);
     }
 
     const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'start_date' | 'end_date' | 'status' | 'pax_count' | 'client_id' | 'gst_pct' | 'tcs_pct'>[];

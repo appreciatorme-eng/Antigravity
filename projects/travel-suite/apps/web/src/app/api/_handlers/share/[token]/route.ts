@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, apiSuccess } from '@/lib/api/response';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 import { sanitizeText } from '@/lib/security/sanitize';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Json } from '@/lib/database.types';
@@ -229,7 +230,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
       return apiSuccess({ success: true, comment: newComment });
     }
@@ -252,7 +253,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
 
       return apiSuccess({ success: true });
@@ -272,7 +273,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
 
       return apiSuccess({ success: true, preferences });
@@ -304,7 +305,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
 
       return apiSuccess({ success: true, wishlist_items: updatedWishlist });
@@ -334,7 +335,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
 
       return apiSuccess({ success: true, wishlist_items: updatedWishlist });
@@ -350,7 +351,7 @@ export async function POST(
         .eq('id', share.id);
 
       if (updateError) {
-        return apiError(updateError.message, 400);
+        return apiError(safeErrorMessage(updateError, 'Failed to update share'), 400);
       }
 
       return apiSuccess({ success: true, offline_pack_ready: true });

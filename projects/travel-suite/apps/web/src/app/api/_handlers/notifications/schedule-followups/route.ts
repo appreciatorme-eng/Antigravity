@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       .limit(limit);
 
     if (tripsError) {
-      return apiError(tripsError.message, 500);
+      return apiError(safeErrorMessage(tripsError, "Failed to schedule follow-ups"), 500);
     }
 
     const rows = (completedTrips || []) as unknown as CompletedTripRow[];
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       .in("notification_type", followUpTypes);
 
     if (existingError) {
-      return apiError(existingError.message, 500);
+      return apiError(safeErrorMessage(existingError, "Failed to schedule follow-ups"), 500);
     }
 
     const existingSet = new Set<string>();
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         .from("notification_queue")
         .insert(insertRows);
       if (insertError) {
-        return apiError(insertError.message, 500);
+        return apiError(safeErrorMessage(insertError, "Failed to schedule follow-ups"), 500);
       }
     }
 

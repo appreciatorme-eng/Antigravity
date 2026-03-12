@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
 import { createClient } from '@/lib/supabase/server';
+import { safeErrorMessage } from '@/lib/security/safe-error';
 
 interface AddOnSaleRelation {
   name: string | null;
@@ -65,7 +66,7 @@ export async function GET() {
 
     if (salesError) {
       console.error('Error fetching sales:', salesError);
-      return apiError(salesError.message, 500);
+      return apiError(safeErrorMessage(salesError, 'Failed to load add-on stats'), 500);
     }
 
     // Calculate total revenue

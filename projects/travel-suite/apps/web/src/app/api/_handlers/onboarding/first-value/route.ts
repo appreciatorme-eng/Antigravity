@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       .limit(5000);
 
     if (itinerariesError) {
-      return apiError(itinerariesError.message, 500);
+      return apiError(safeErrorMessage(itinerariesError, "Failed to load onboarding progress"), 500);
     }
 
     const itineraryIds = (itineraries || []).map((itinerary) => itinerary.id);
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         .limit(5000);
 
       if (sharesError) {
-        return apiError(sharesError.message, 500);
+        return apiError(safeErrorMessage(sharesError, "Failed to load onboarding progress"), 500);
       }
 
       sharedCount = shares?.length || 0;
