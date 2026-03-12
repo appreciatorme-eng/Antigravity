@@ -39,7 +39,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S16 — God mode E2E (13 tests × 5 browsers = 65), audit-log BUG-079 fix, clone RPC verified (849 pass / 0 fail / 22 skip) | 2026-03-11 | 849 | 849 | 0 | 0 | 22 |
 | S17 — Missing handlers, BUG-014, unit tests, cron E2E (879 pass / 0 fail / 17 skip) | 2026-03-11 | 879 | 879 | 0 | 0 | 17 |
 | S18 — Audit remediation: Vitest 581/0, E2E 8/9 (pre-deploy) | 2026-03-11 | 589 | 589 | 0 | 9 (pre-deploy) | 0 |
-| **Total** | | **~2335** | **~2029** | **~110** | **~83** | **~344** |
+| S19 — Deep Review remediation: Vitest 581/0, lint 25 pre-existing, typecheck 1 pre-existing | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
+| **Total** | | **~2916** | **~2610** | **~110** | **~83** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
