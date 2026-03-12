@@ -352,12 +352,11 @@ export default function AdminDashboard() {
         () => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", notation: "compact", maximumFractionDigits: 1 }),
         []
     );
-    const formatCompactCurrency = (value: number) => compactCurrencyFormatter.format(value);
 
     const statCards = useMemo(() => [
         {
             label: "Recovered Revenue",
-            value: loading ? "---" : formatCompactCurrency(stats.recoveredRevenue),
+            value: loading ? "---" : compactCurrencyFormatter.format(stats.recoveredRevenue),
             trend: stats.paidLinks > 0 ? `${stats.paidLinks} paid links` : "",
             trendUp: true,
             icon: TrendingUp,
@@ -410,7 +409,7 @@ export default function AdminDashboard() {
             description: "Open proposals still awaiting a client decision",
             href: "/proposals"
         },
-    ], [loading, stats]);
+    ], [loading, stats, compactCurrencyFormatter]);
 
     return (
         <div className="space-y-10 pb-20">
