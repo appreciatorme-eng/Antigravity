@@ -82,6 +82,30 @@ Route handlers live in `src/app/api/_handlers/` and are registered in the catch-
 - Cron secret: `CRON_SECRET` (verified in cron handlers)
 - Rate limiting: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (fail-closed without these)
 
+## Code Review Commands
+
+Use these instead of monolithic review prompts. They leverage Axon (code graph), Engram (persistent memory), and Supabase MCP (DB advisors) for targeted, incremental reviews.
+
+| Command | When to Use | Scope |
+|---------|-------------|-------|
+| `/review` | After every feature branch, before PR | Changed files only (git diff + Axon) |
+| `/review-security` | New API endpoints, auth changes | Security-focused, changed files |
+| `/review-perf` | New queries, heavy components | Performance-focused, changed files |
+| `/review-deep` | Before major releases | Full codebase, Engram-filtered |
+
+**How it works:**
+1. Scopes to changed files via `git diff` + `axon_detect_changes`
+2. Runs deterministic checks first (lint, typecheck, static analysis, Supabase advisors)
+3. AI reviews only changed symbols against project-specific checklists
+4. Filters out previously reviewed/accepted findings via Engram memory
+5. Persists each finding to Engram for future session awareness
+
+**Accepted decisions** (seeded in Engram — will not be re-flagged):
+- CSP unsafe-inline (Next.js requirement)
+- No circuit breaker / dead letter queue (Vercel Hobby — stateless)
+- Both leaflet + maplibre-gl needed (different use cases)
+- Polling intervals are contextual (not magic numbers)
+
 ## Key Files
 
 | Purpose | Path |
@@ -91,7 +115,12 @@ Route handlers live in `src/app/api/_handlers/` and are registered in the catch-
 | Auth middleware | `src/middleware.ts` |
 | Rate limiting | `src/lib/security/rate-limit.ts` |
 | CSRF guard | `src/lib/security/admin-mutation-csrf.ts` |
+| Timing-safe compare | `src/lib/security/safe-equal.ts` |
+| Structured logger | `src/lib/observability/logger.ts` |
 | Supabase admin | `src/lib/supabase/admin.ts` |
+| Generated DB types | `src/lib/supabase/database.types.ts` |
 | API responses | `src/lib/api/response.ts` (`apiSuccess`, `apiError`) |
+| API response helpers | `src/lib/api-response.ts` (typed envelope) |
 | QA log | `.claude/qa-log.md` |
 | Audit tracker | `AUDIT_REMEDIATION_TRACKER.md` |
+| Deep review tracker | `DEEP_REVIEW_TRACKER.md` |
