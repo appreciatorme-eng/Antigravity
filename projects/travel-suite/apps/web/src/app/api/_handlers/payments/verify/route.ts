@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { sendPaymentReceipt } from "@/lib/email/notifications";
+import { DEFAULT_PAYMENT_RECEIPT_GST_LABEL } from "@/lib/payments/payment-receipt-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getPaymentLinkByToken,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
         bookingReference: updatedLink.proposalTitle || updatedLink.token,
         paidAt: paidAtLabel,
         operatorName: updatedLink.organizationName || "Antigravity Travel",
-        gstLabel: "5% GST (HSN 998551)",
+        gstLabel: DEFAULT_PAYMENT_RECEIPT_GST_LABEL,
         invoiceUrl: null,
       });
     }

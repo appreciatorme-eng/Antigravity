@@ -17,6 +17,7 @@ import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
 import { sendPaymentReceipt } from '@/lib/email/notifications';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
+import { DEFAULT_PAYMENT_RECEIPT_GST_LABEL } from '@/lib/payments/payment-receipt-config';
 import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import { buildInvoiceDownloadUrl } from '@/lib/invoices/public-link';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -327,7 +328,7 @@ async function handlePaymentCaptured(
           bookingReference: invoiceRow.invoice_number || invoiceId,
           paidAt: paidAtLabel,
           operatorName: organization?.name || 'Antigravity Travel',
-          gstLabel: '5% GST (HSN 998551)',
+          gstLabel: DEFAULT_PAYMENT_RECEIPT_GST_LABEL,
           invoiceUrl: buildInvoiceDownloadUrl(requestOrigin, invoiceId, payment.id),
         });
       }
