@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getPaymentLinkByToken,
@@ -8,8 +9,10 @@ import {
 } from "@/lib/payments/payment-links.server";
 
 const tokenSchema = z.string().min(8).max(200);
+const TRACKING_EVENTS = ["created", "sent", "viewed", "reminder_sent", "expired"] as const;
+
 const eventSchema = z.object({
-  event: z.enum(["created", "sent", "viewed", "reminder_sent", "paid", "expired", "cancelled"]),
+  event: z.enum(TRACKING_EVENTS),
   metadata: z.record(z.string(), z.string()).optional(),
 });
 
@@ -32,7 +35,7 @@ export async function GET(
 
     return apiSuccess(link);
   } catch (error) {
-    console.error("[payments/track/:token] load failed:", error);
+    logError("[payments/track/:token] load failed", error);
     return apiError("Failed to load payment status", 500);
   }
 }
@@ -69,7 +72,7 @@ export async function POST(
 
     return apiSuccess(link);
   } catch (error) {
-    console.error("[payments/track/:token] update failed:", error);
+    logError("[payments/track/:token] update failed", error);
     return apiError("Failed to update payment status", 500);
   }
 }

@@ -109,17 +109,17 @@ export async function GET(
     }
 
     // Return only safe public fields from reviews
-    const publicReviews = (reviews ?? []).map((r: ReputationReview) => ({
-      id: r.id,
-      platform: r.platform,
-      reviewer_name: r.reviewer_name,
-      reviewer_avatar_url: r.reviewer_avatar_url,
-      rating: r.rating,
-      title: r.title,
-      comment: r.comment,
-      review_date: r.review_date,
-      destination: r.destination,
-      is_verified_client: r.is_verified_client,
+    const publicReviews = (reviews ?? []).map((review) => ({
+      id: review.id,
+      platform: review.platform as ReputationReview["platform"],
+      reviewer_name: review.reviewer_name,
+      reviewer_avatar_url: review.reviewer_avatar_url,
+      rating: review.rating,
+      title: review.title,
+      comment: review.comment,
+      review_date: review.review_date,
+      destination: review.destination,
+      is_verified_client: review.is_verified_client,
     }));
 
     const responseData = {

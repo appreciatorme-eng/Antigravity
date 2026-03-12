@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         razorpay_order_id: parsed.data.razorpay_order_id,
       },
       baseUrl: new URL(request.url).origin,
+      _callerVerified: true,
     });
 
     if (!updatedLink) {
