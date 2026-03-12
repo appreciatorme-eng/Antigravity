@@ -8,189 +8,31 @@ import {
   Pencil,
   Trash2,
   MessageCircle,
-  Printer,
-  FileDown,
   CheckCircle2,
   XCircle,
-  ChevronDown,
   X,
-  Send,
   ClipboardList,
   BarChart2,
   FileCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type DietaryPreference = 'Veg' | 'Non-Veg' | 'Jain' | 'Vegan' | 'No preference'
-
-interface Traveler {
-  id: string
-  fullName: string
-  whatsapp: string
-  dietary: DietaryPreference
-  passport: string
-  age: string
-  notes: string
-  docs: {
-    passport: boolean
-    visa: boolean
-    insurance: boolean
-  }
-}
-
-const DIETARY_OPTIONS: DietaryPreference[] = ['Veg', 'Non-Veg', 'Jain', 'Vegan', 'No preference']
-
-const DIETARY_COLORS: Record<DietaryPreference, string> = {
-  Veg: 'bg-green-500/15 text-green-400 border-green-500/25',
-  'Non-Veg': 'bg-rose-500/15 text-rose-400 border-rose-500/25',
-  Jain: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25',
-  Vegan: 'bg-teal-500/15 text-teal-400 border-teal-500/25',
-  'No preference': 'bg-slate-500/15 text-slate-400 border-slate-500/25',
-}
-
-const MESSAGE_TEMPLATES = [
-  'Your trip is confirmed! Please ensure all documents are ready.',
-  'Reminder: Departure is tomorrow. Assemble at hotel lobby by 08:00.',
-  'Important update regarding your itinerary. Please check details.',
-  'Your driver has been assigned. We will share contact details shortly.',
-  'Please confirm receipt of your travel insurance documents.',
-]
-
-const DEFAULT_TRAVELERS: Traveler[] = [
-  {
-    id: 'sample-1',
-    fullName: 'Rajesh Sharma',
-    whatsapp: '+919876543210',
-    dietary: 'Veg',
-    passport: 'P1234567',
-    age: '42',
-    notes: 'Window seat preferred',
-    docs: { passport: true, visa: true, insurance: false },
-  },
-  {
-    id: 'sample-2',
-    fullName: 'Priya Mehta',
-    whatsapp: '+919876543211',
-    dietary: 'Jain',
-    passport: 'P7654321',
-    age: '38',
-    notes: 'Strictly Jain meals, no root vegetables',
-    docs: { passport: true, visa: false, insurance: false },
-  },
-  {
-    id: 'sample-3',
-    fullName: 'Arjun Nair',
-    whatsapp: '+919876543212',
-    dietary: 'Non-Veg',
-    passport: '',
-    age: '55',
-    notes: 'Requires wheelchair assistance at airports',
-    docs: { passport: false, visa: false, insurance: true },
-  },
-]
-
-// ---------------------------------------------------------------------------
-// Helper utilities
-// ---------------------------------------------------------------------------
-
-function generateId(): string {
-  return `t-${crypto.randomUUID()}`
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
-
-function avatarColor(name: string): string {
-  const colors = [
-    'from-emerald-500 to-teal-600',
-    'from-blue-500 to-indigo-600',
-    'from-purple-500 to-pink-600',
-    'from-amber-500 to-orange-600',
-    'from-rose-500 to-red-600',
-    'from-cyan-500 to-sky-600',
-  ]
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  return colors[Math.abs(hash) % colors.length]
-}
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function GlassInput({
-  label,
-  required,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; required?: boolean }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-        {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
-      </label>
-      <input
-        {...props}
-        className={cn(
-          'w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-2.5',
-          'text-sm font-medium text-white placeholder:text-slate-500',
-          'focus:outline-none focus:ring-2 focus:ring-[#00d084]/40 focus:border-[#00d084]/50',
-          'transition-all duration-200',
-          props.className
-        )}
-      />
-    </div>
-  )
-}
-
-function SelectInput({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  options: string[]
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-        {label}
-      </label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            'w-full appearance-none bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-2.5 pr-9',
-            'text-sm font-medium text-white',
-            'focus:outline-none focus:ring-2 focus:ring-[#00d084]/40 focus:border-[#00d084]/50',
-            'transition-all duration-200'
-          )}
-        >
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-      </div>
-    </div>
-  )
-}
+import {
+  avatarColor,
+  DEFAULT_TRAVELERS,
+  DIETARY_COLORS,
+  DIETARY_OPTIONS,
+  type DietaryPreference,
+  generateId,
+  getInitials,
+  GlassInput,
+  MESSAGE_TEMPLATES,
+  SelectInput,
+  type Traveler,
+} from './group-manager-shared'
+import {
+  ManifestModal,
+  WhatsAppBroadcastModal,
+} from './GroupManagerModals'
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -762,281 +604,26 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
         )}
       </div>
 
-      {/* ===== MANIFEST MODAL ===== */}
-      <AnimatePresence>
-        {showManifest && (
-          <motion.div
-            key="manifest-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowManifest(false) }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 8 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-3xl bg-[#0a1628] border border-slate-700/60 rounded-2xl overflow-hidden shadow-2xl"
-            >
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/40">
-                <div>
-                  <h3 className="text-base font-bold text-white">Group Manifest</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {tripName || 'Trip'} — {travelers.length} Traveler{travelers.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-700/60 text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    Print
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00d084]/15 text-[#00d084] text-[10px] font-black uppercase tracking-widest border border-[#00d084]/25 hover:bg-[#00d084]/25 transition-colors"
-                  >
-                    <FileDown className="w-3.5 h-3.5" />
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowManifest(false)}
-                    className="w-9 h-9 rounded-xl bg-slate-700/60 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Manifest table */}
-              <div ref={manifestRef} className="overflow-x-auto max-h-[60vh]">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-700/40 bg-slate-800/40">
-                      {['Sr.', 'Name', 'Age', 'Dietary', 'Passport', 'Notes'].map((col) => (
-                        <th
-                          key={col}
-                          className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400"
-                        >
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700/30">
-                    {travelers.map((t, i) => (
-                      <tr key={t.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="px-4 py-3 text-slate-400 font-mono text-xs">{i + 1}</td>
-                        <td className="px-4 py-3 font-semibold text-white">{t.fullName}</td>
-                        <td className="px-4 py-3 text-slate-300">{t.age || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border',
-                              DIETARY_COLORS[t.dietary]
-                            )}
-                          >
-                            {t.dietary}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-slate-300">
-                          {t.passport || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs max-w-[180px] truncate">
-                          {t.notes || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== WHATSAPP BROADCAST MODAL ===== */}
-      <AnimatePresence>
-        {showWhatsAppModal && (
-          <motion.div
-            key="wa-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowWhatsAppModal(false) }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 8 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-lg bg-[#0a1628] border border-slate-700/60 rounded-2xl overflow-hidden shadow-2xl"
-            >
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/40">
-                <div>
-                  <h3 className="text-base font-bold text-white">WhatsApp Broadcast</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Send a message to selected travelers
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowWhatsAppModal(false)}
-                  className="w-9 h-9 rounded-xl bg-slate-700/60 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-                {/* Traveler selection */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Select Travelers
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const withWA = travelers.filter((t) => t.whatsapp).map((t) => t.id)
-                        if (selectedForWA.size === withWA.length) {
-                          setSelectedForWA(new Set())
-                        } else {
-                          setSelectedForWA(new Set(withWA))
-                        }
-                      }}
-                      className="text-[10px] font-black uppercase tracking-widest text-[#00d084] hover:text-[#00d084]/80 transition-colors"
-                    >
-                      {selectedForWA.size === travelers.filter((t) => t.whatsapp).length
-                        ? 'Deselect All'
-                        : 'Select All'}
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {travelers
-                      .filter((t) => t.whatsapp)
-                      .map((t) => (
-                        <label
-                          key={t.id}
-                          className={cn(
-                            'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
-                            selectedForWA.has(t.id)
-                              ? 'bg-green-500/10 border-green-500/30'
-                              : 'bg-slate-800/40 border-slate-700/50 hover:border-slate-600'
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedForWA.has(t.id)}
-                            onChange={() => {
-                              const next = new Set(selectedForWA)
-                              if (next.has(t.id)) next.delete(t.id)
-                              else next.add(t.id)
-                              setSelectedForWA(next)
-                            }}
-                            className="w-4 h-4 accent-[#00d084]"
-                          />
-                          <div
-                            className={cn(
-                              'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white flex-shrink-0',
-                              'bg-gradient-to-br',
-                              avatarColor(t.fullName)
-                            )}
-                          >
-                            {getInitials(t.fullName)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white">{t.fullName}</p>
-                            <p className="text-[10px] text-slate-400">{t.whatsapp}</p>
-                          </div>
-                        </label>
-                      ))}
-                    {travelers.filter((t) => t.whatsapp).length === 0 && (
-                      <p className="text-sm text-slate-500 text-center py-3">
-                        No travelers with WhatsApp numbers added.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Message template */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Message Template
-                  </span>
-                  <div className="space-y-2">
-                    {MESSAGE_TEMPLATES.map((tpl) => (
-                      <label
-                        key={tpl}
-                        className={cn(
-                          'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all text-sm',
-                          waMessage === tpl && !waCustom
-                            ? 'bg-[#00d084]/10 border-[#00d084]/30 text-white'
-                            : 'bg-slate-800/40 border-slate-700/50 text-slate-300 hover:border-slate-600'
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name="wa-template"
-                          checked={waMessage === tpl && !waCustom}
-                          onChange={() => { setWaMessage(tpl); setWaCustom('') }}
-                          className="mt-0.5 accent-[#00d084]"
-                        />
-                        {tpl}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom message */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Custom Message (overrides template)
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Type a custom message..."
-                    value={waCustom}
-                    onChange={(e) => setWaCustom(e.target.value)}
-                    className={cn(
-                      'w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-2.5',
-                      'text-sm font-medium text-white placeholder:text-slate-500 resize-none',
-                      'focus:outline-none focus:ring-2 focus:ring-[#00d084]/40 focus:border-[#00d084]/50',
-                      'transition-all duration-200'
-                    )}
-                  />
-                </div>
-
-                {/* Send button */}
-                <button
-                  type="button"
-                  onClick={handleOpenWhatsApp}
-                  disabled={selectedForWA.size === 0}
-                  className={cn(
-                    'w-full flex items-center justify-center gap-2 py-3 rounded-xl',
-                    'text-[10px] font-black uppercase tracking-widest transition-all',
-                    selectedForWA.size > 0
-                      ? 'bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/20'
-                      : 'bg-slate-700/60 text-slate-500 cursor-not-allowed'
-                  )}
-                >
-                  <Send className="w-4 h-4" />
-                  Open WhatsApp for {selectedForWA.size} Traveler{selectedForWA.size !== 1 ? 's' : ''}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ManifestModal
+        manifestRef={manifestRef}
+        onClose={() => setShowManifest(false)}
+        onPrint={handlePrint}
+        showManifest={showManifest}
+        travelers={travelers}
+        tripName={tripName}
+      />
+      <WhatsAppBroadcastModal
+        onClose={() => setShowWhatsAppModal(false)}
+        onSend={handleOpenWhatsApp}
+        selectedForWA={selectedForWA}
+        setSelectedForWA={setSelectedForWA}
+        setWaCustom={setWaCustom}
+        setWaMessage={setWaMessage}
+        showWhatsAppModal={showWhatsAppModal}
+        travelers={travelers}
+        waCustom={waCustom}
+        waMessage={waMessage}
+      />
     </div>
   )
 }

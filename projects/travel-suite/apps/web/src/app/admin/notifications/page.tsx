@@ -20,9 +20,8 @@ import {
     type DeliveryRow,
     filterNotificationLogs,
     formatNotificationDate,
-    getNotificationStatusIcon,
+    NotificationLogsTable,
     type NotificationLog,
-    normalizePhone,
     NOTIFICATION_LOG_SELECT,
     type QueueHealth,
     type WhatsAppHealthPayload,
@@ -184,15 +183,6 @@ export default function NotificationLogsPage() {
     }, [actionMessage, actionError]);
 
     const filteredLogs = filterNotificationLogs(logs, searchTerm);
-
-    const getWhatsAppLink = (phone?: string | null, message?: string | null) => {
-        const cleanPhone = normalizePhone(phone);
-        if (!cleanPhone) return null;
-        const text = encodeURIComponent(
-            message || whatsAppMessage || "Hi! We have an update for you from Travel Suite."
-        );
-        return `https://wa.me/${cleanPhone}?text=${text}`;
-    };
 
     const runQueueNow = async () => {
         try {
@@ -735,102 +725,11 @@ export default function NotificationLogsPage() {
                 )}
             </GlassCard>
 
-            {/* Notification Logs Table */}
-            <GlassCard padding="none" rounded="2xl" className="overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-white/40 dark:bg-white/5 border-b border-white/40 dark:border-white/5 text-text-secondary text-sm">
-                                <th className="px-6 py-4 font-medium">Recipient</th>
-                                <th className="px-6 py-4 font-medium">WhatsApp</th>
-                                <th className="px-6 py-4 font-medium">Type</th>
-                                <th className="px-6 py-4 font-medium">Content</th>
-                                <th className="px-6 py-4 font-medium">Status</th>
-                                <th className="px-6 py-4 font-medium">Sent At</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/20 dark:divide-white/5">
-                            {loading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-24"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-12"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-16"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-48"></div><div className="h-3 bg-white/40 dark:bg-white/10 rounded w-32 mt-2"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-16"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-white/40 dark:bg-white/10 rounded w-20"></div></td>
-                                    </tr>
-                                ))
-                            ) : filteredLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-text-secondary">
-                                        No notification logs found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredLogs.map((log) => {
-                                    const whatsappLink = getWhatsAppLink(log.recipient_phone, log.body || log.title);
-                                    return (
-                                        <tr key={log.id} className="hover:bg-white/20 dark:hover:bg-white/5 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-secondary dark:text-white">{log.profiles?.full_name || 'System User'}</div>
-                                                <div className="text-xs text-text-secondary uppercase tracking-wider mt-0.5">{log.recipient_type}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {whatsappLink ? (
-                                                    <a
-                                                        href={whatsappLink}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center gap-1"
-                                                    >
-                                                        <GlassBadge variant="success" size="sm">
-                                                            <MessageCircle className="w-3 h-3" />
-                                                            WhatsApp
-                                                        </GlassBadge>
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-xs text-text-secondary/40">—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <GlassBadge variant="info" size="sm">
-                                                    {log.notification_type.replace('_', ' ')}
-                                                </GlassBadge>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-secondary dark:text-white font-medium truncate max-w-xs">{log.title}</div>
-                                                <div className="text-xs text-text-secondary line-clamp-1 max-w-xs">{log.body}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    {getNotificationStatusIcon(log.status)}
-                                                    <span className={`text-sm font-medium ${
-                                                        log.status === 'sent' ? 'text-emerald-600 dark:text-emerald-400' :
-                                                        log.status === 'failed' ? 'text-rose-600 dark:text-rose-400' :
-                                                        log.status === 'pending' ? 'text-amber-600 dark:text-amber-400' :
-                                                        'text-text-secondary'
-                                                    }`}>
-                                                        {(log.status || 'unknown').charAt(0).toUpperCase() + (log.status || 'unknown').slice(1)}
-                                                    </span>
-                                                </div>
-                                                {log.error_message && (
-                                                    <div className="text-[10px] text-rose-400 dark:text-rose-500 mt-1 max-w-[150px] truncate" title={log.error_message}>
-                                                        {log.error_message}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-text-secondary">
-                                                {formatNotificationDate(log.sent_at || log.created_at)}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </GlassCard>
+            <NotificationLogsTable
+                filteredLogs={filteredLogs}
+                loading={loading}
+                whatsAppMessage={whatsAppMessage}
+            />
         </div>
     );
 }

@@ -9,182 +9,31 @@ import {
   Clock,
   Star,
   Home,
-  MessageCircle,
   CheckCircle,
-  CreditCard,
   ChevronDown,
   ChevronUp,
   Download,
-  AlertCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/components/ui/toast';
 import { z } from 'zod';
-
-interface Proposal {
-  id: string;
-  title: string;
-  total_price: number;
-  client_selected_price?: number | null;
-  status: string;
-  expires_at: string | null;
-  // Joined data
-  template_name?: string;
-  destination?: string;
-  duration_days?: number;
-  description?: string;
-  hero_image_url?: string;
-}
-
-interface ProposalAddOn {
-  id: string;
-  proposal_id: string;
-  add_on_id: string | null;
-  name: string;
-  description: string | null;
-  category: string;
-  image_url: string | null;
-  unit_price: number;
-  quantity: number;
-  is_selected: boolean;
-}
-
-interface ProposalDay {
-  id: string;
-  proposal_id: string;
-  day_number: number;
-  title: string | null;
-  description: string | null;
-  is_approved: boolean;
-}
-
-interface ProposalActivity {
-  id: string;
-  proposal_day_id: string;
-  time: string | null;
-  title: string;
-  description: string | null;
-  location: string | null;
-  image_url: string | null;
-  price: number;
-  is_optional: boolean;
-  is_premium: boolean;
-  is_selected: boolean;
-  display_order: number;
-}
-
-interface ProposalAccommodation {
-  id: string;
-  proposal_day_id: string;
-  hotel_name: string;
-  star_rating: number;
-  room_type: string | null;
-  price_per_night: number;
-  amenities: string[] | null;
-  image_url: string | null;
-}
-
-interface ProposalComment {
-  id: string;
-  proposal_day_id: string | null;
-  author_name: string;
-  comment: string;
-  created_at: string;
-}
-
-interface PublicProposalPayload {
-  proposal: Proposal;
-  days: ProposalDay[];
-  activitiesByDay: Record<string, ProposalActivity[]>;
-  accommodationsByDay: Record<string, ProposalAccommodation>;
-  comments: ProposalComment[];
-  addOns: ProposalAddOn[];
-}
-
-const ProposalSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  total_price: z.coerce.number(),
-  client_selected_price: z.coerce.number().nullable().optional(),
-  status: z.string(),
-  expires_at: z.string().nullable(),
-  template_name: z.string().optional(),
-  destination: z.string().optional(),
-  duration_days: z.coerce.number().optional(),
-  description: z.string().nullable().optional(),
-  hero_image_url: z.string().nullable().optional(),
-});
-
-const ProposalAddOnSchema = z.object({
-  id: z.string(),
-  proposal_id: z.string(),
-  add_on_id: z.string().nullable(),
-  name: z.string(),
-  description: z.string().nullable(),
-  category: z.string(),
-  image_url: z.string().nullable(),
-  unit_price: z.coerce.number(),
-  quantity: z.coerce.number(),
-  is_selected: z.boolean(),
-});
-
-const ProposalDaySchema = z.object({
-  id: z.string(),
-  proposal_id: z.string(),
-  day_number: z.coerce.number(),
-  title: z.string().nullable(),
-  description: z.string().nullable(),
-  is_approved: z.boolean(),
-});
-
-const ProposalActivitySchema = z.object({
-  id: z.string(),
-  proposal_day_id: z.string(),
-  time: z.string().nullable(),
-  title: z.string(),
-  description: z.string().nullable(),
-  location: z.string().nullable(),
-  image_url: z.string().nullable(),
-  price: z.coerce.number(),
-  is_optional: z.boolean(),
-  is_premium: z.boolean(),
-  is_selected: z.boolean(),
-  display_order: z.coerce.number(),
-});
-
-const ProposalAccommodationSchema = z.object({
-  id: z.string(),
-  proposal_day_id: z.string(),
-  hotel_name: z.string(),
-  star_rating: z.coerce.number(),
-  room_type: z.string().nullable(),
-  price_per_night: z.coerce.number(),
-  amenities: z.array(z.string()).nullable(),
-  image_url: z.string().nullable(),
-});
-
-const ProposalCommentSchema = z.object({
-  id: z.string(),
-  proposal_day_id: z.string().nullable(),
-  author_name: z.string(),
-  comment: z.string(),
-  created_at: z.string(),
-});
-
-const PublicProposalPayloadSchema = z.object({
-  proposal: ProposalSchema,
-  days: z.array(ProposalDaySchema),
-  activitiesByDay: z.record(z.string(), z.array(ProposalActivitySchema)),
-  accommodationsByDay: z.record(z.string(), ProposalAccommodationSchema),
-  comments: z.array(ProposalCommentSchema),
-  addOns: z.array(ProposalAddOnSchema),
-});
-
-const PublicActionResponseSchema = z.object({
-  error: z.string().optional(),
-  client_selected_price: z.coerce.number().optional(),
-  status: z.string().optional(),
-});
+import {
+  ProposalApprovalSection,
+  ProposalCommentsSection,
+  ProposalErrorState,
+  ProposalLoadingState,
+} from './sections';
+import {
+  type Proposal,
+  type ProposalAccommodation,
+  type ProposalActivity,
+  type ProposalAddOn,
+  type ProposalComment,
+  type ProposalDay,
+  type PublicProposalPayload,
+  PublicActionResponseSchema,
+  PublicProposalPayloadSchema,
+} from './shared';
 
 export default function PublicProposalPage() {
   const params = useParams();
@@ -460,37 +309,11 @@ export default function PublicProposalPage() {
       : null;
 
   if (loading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-[#f5efe6]"
-        role="status"
-        aria-live="polite"
-      >
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#9c7c46] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-lg text-gray-600">Loading your proposal...</div>
-        </div>
-      </div>
-    );
+    return <ProposalLoadingState />;
   }
 
   if (error || !proposal) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-[#f5efe6] p-4"
-        role="alert"
-        aria-live="assertive"
-      >
-        <div className="max-w-md w-full bg-white rounded-2xl border border-red-200 p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Proposal Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || 'The proposal link is invalid or has expired.'}</p>
-          <p className="text-sm text-gray-500">
-            Please contact your tour operator for a new link.
-          </p>
-        </div>
-      </div>
-    );
+    return <ProposalErrorState error={error || 'The proposal link is invalid or has expired.'} />;
   }
 
   return (
@@ -877,148 +700,28 @@ export default function PublicProposalPage() {
           </div>
         </div>
 
-        {/* Comment Section */}
-        <div className="bg-white rounded-2xl border border-[#eadfcd] p-8">
-          <h3 className="text-xl font-semibold text-[#1b140a] mb-4 flex items-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            Questions or Comments?
-          </h3>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  value={commentName}
-                  onChange={(e) => setCommentName(e.target.value)}
-                  placeholder="John Smith"
-                  className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={commentEmail}
-                  onChange={(e) => setCommentEmail(e.target.value)}
-                  placeholder="john@example.com"
-                  className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#6f5b3e] mb-2">
-                Your Comment *
-              </label>
-              <textarea
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                rows={4}
-                placeholder="Ask a question or leave a comment..."
-                className="w-full px-4 py-2 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={submitComment}
-              disabled={submittingComment}
-              className="px-6 py-3 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors disabled:opacity-50"
-            >
-              {submittingComment ? 'Submitting...' : 'Submit Comment'}
-            </button>
-          </div>
-
-          {/* Previous Comments */}
-          {comments.length > 0 && (
-            <div className="mt-8 pt-8 border-t border-[#eadfcd]">
-              <h4 className="font-semibold text-[#1b140a] mb-4">Previous Comments</h4>
-              <div className="space-y-4">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="p-4 bg-[#f8f1e6] rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-[#1b140a]">{comment.author_name}</span>
-                      <span className="text-xs text-[#bda87f]">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#6f5b3e]">{comment.comment}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <ProposalCommentsSection
+          commentEmail={commentEmail}
+          commentName={commentName}
+          commentText={commentText}
+          comments={comments}
+          onCommentEmailChange={setCommentEmail}
+          onCommentNameChange={setCommentName}
+          onCommentTextChange={setCommentText}
+          onSubmitComment={submitComment}
+          submittingComment={submittingComment}
+        />
 
         {/* Approval Actions */}
         {proposal.status !== 'approved' && (
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200 p-8">
-            <div className="text-center">
-              <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                Ready to confirm this itinerary?
-              </h3>
-              <p className="text-gray-600">
-                Approve now and optionally ask the operator to share a payment link.
-              </p>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="text-left">
-                <label htmlFor="approval-name" className="block text-sm font-medium text-[#1b140a] mb-2">
-                  Full name *
-                </label>
-                <input
-                  id="approval-name"
-                  type="text"
-                  value={approvalName}
-                  onChange={(event) => setApprovalName(event.target.value)}
-                  placeholder="Enter your full name"
-                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46] focus:border-transparent"
-                />
-              </div>
-
-              <div className="text-left">
-                <label htmlFor="approval-email" className="block text-sm font-medium text-[#1b140a] mb-2">
-                  Email (optional)
-                </label>
-                <input
-                  id="approval-email"
-                  type="email"
-                  value={approvalEmail}
-                  onChange={(event) => setApprovalEmail(event.target.value)}
-                  placeholder="Enter your email"
-                  className="w-full px-4 py-3 border border-[#eadfcd] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9c7c46] focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => approveProposal(false)}
-                disabled={submittingApproval}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <CheckCircle className="w-4 h-4" />
-                {submittingApproval ? 'Submitting...' : 'Approve Proposal'}
-              </button>
-              <button
-                type="button"
-                onClick={() => approveProposal(true)}
-                disabled={submittingApproval}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#1b140a] text-white text-sm font-semibold rounded-lg hover:bg-[#342715] transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <CreditCard className="w-4 h-4" />
-                {submittingApproval ? 'Submitting...' : 'Approve & Request Payment'}
-              </button>
-            </div>
-          </div>
+          <ProposalApprovalSection
+            approvalEmail={approvalEmail}
+            approvalName={approvalName}
+            onApprovalEmailChange={setApprovalEmail}
+            onApprovalNameChange={setApprovalName}
+            onApprove={approveProposal}
+            submittingApproval={submittingApproval}
+          />
         )}
       </div>
 

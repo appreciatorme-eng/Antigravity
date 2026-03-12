@@ -1,264 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { safeErrorMessage } from "@/lib/security/safe-error";
-import {
-  getCachedJson,
-  isJsonCacheConfigured,
-  setCachedJson,
-} from "@/lib/cache/upstash";
+import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { loadCostAlertAckMap } from "@/lib/cost/alert-ack";
 import {
   buildCostOverviewCacheKey,
   buildCostOverviewStaleCacheKey,
   COST_OVERVIEW_CACHE_TTL_SECONDS,
   COST_OVERVIEW_STALE_CACHE_TTL_SECONDS,
-  invalidateCostOverviewCache,
 } from "@/lib/cost/overview-cache";
+import { getEmergencyDailySpendCapUsd, type CostCategory } from "@/lib/cost/spend-guardrails";
 import {
-  getEmergencyDailySpendCapUsd,
-  setEmergencyDailySpendCapUsd,
-  type CostCategory,
-} from "@/lib/cost/spend-guardrails";
-
-const CATEGORIES: CostCategory[] = ["amadeus", "image_search", "ai_image"];
-
-const UpdateEmergencyCapSchema = z.object({
-  category: z.enum(["amadeus", "image_search", "ai_image"]),
-  capUsd: z.number().positive(),
-});
-
-type ParsedMeteringBody = {
-  category: CostCategory | null;
-  tier: string | null;
-  reason: string | null;
-  remainingDaily: number | null;
-  organizationId: string | null;
-  estimatedCostUsd: number | null;
-  dailySpendUsd: number | null;
-  planCapUsd: number | null;
-  emergencyCapUsd: number | null;
-};
-
-function parseBodyNumber(value: string | undefined): number | null {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function parseCostMeteringBody(body: string | null): ParsedMeteringBody {
-  if (!body) {
-    return {
-      category: null,
-      tier: null,
-      reason: null,
-      remainingDaily: null,
-      organizationId: null,
-      estimatedCostUsd: null,
-      dailySpendUsd: null,
-      planCapUsd: null,
-      emergencyCapUsd: null,
-    };
-  }
-
-  const parts = body.split("|").map((part) => part.trim());
-  const category = parts[0];
-  const kv = new Map<string, string>();
-
-  for (const part of parts.slice(1)) {
-    const [key, ...rest] = part.split("=");
-    if (!key || rest.length === 0) continue;
-    kv.set(key.trim(), rest.join("=").trim());
-  }
-
-  const normalizedCategory = CATEGORIES.includes(category as CostCategory)
-    ? (category as CostCategory)
-    : null;
-
-  return {
-    category: normalizedCategory,
-    tier: kv.get("tier") || null,
-    reason: kv.get("reason") || null,
-    remainingDaily: parseBodyNumber(kv.get("remaining_daily")),
-    organizationId: kv.get("organization_id") || null,
-    estimatedCostUsd: parseBodyNumber(kv.get("estimated_cost_usd")),
-    dailySpendUsd: parseBodyNumber(kv.get("daily_spend_usd")),
-    planCapUsd: parseBodyNumber(kv.get("plan_cap_usd")),
-    emergencyCapUsd: parseBodyNumber(kv.get("emergency_cap_usd")),
-  };
-}
-
-function monthStartISO(date = new Date()): string {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10);
-}
-
-function daysAgoISO(days: number): string {
-  const now = new Date();
-  const since = new Date(now.getTime() - days * 24 * 60 * 60_000);
-  return since.toISOString();
-}
-
-function normalizeOrganizationScope(value: string | null): string | null {
-  const candidate = (value || "").trim();
-  return candidate.length > 0 ? candidate : null;
-}
-
-const USD_TO_INR = 83;
-const COST_SPIKE_MULTIPLIER = 1.8;
-const MIN_COST_SPIKE_USD = 5;
-const AUTH_FAILURE_ALERT_THRESHOLD = 5;
-const CAP_HIT_ALERT_THRESHOLD = 0.25;
-
-type OperationalAlertCategory = "cost_spike" | "auth_failures" | "cap_hit_rate";
-
-type AlertRunbook = {
-  id: string;
-  version: string;
-  url: string;
-  owner: string;
-  response_sla_minutes: number;
-};
-
-const ALERT_RUNBOOKS: Record<OperationalAlertCategory, AlertRunbook> = {
-  cost_spike: {
-    id: "spend-spike-response",
-    version: "2026-03-01",
-    url: "/admin/cost#spend-spike-response",
-    owner: "Platform Ops",
-    response_sla_minutes: 30,
-  },
-  cap_hit_rate: {
-    id: "cap-hit-triage",
-    version: "2026-03-01",
-    url: "/admin/cost#cap-hit-triage",
-    owner: "Revenue Operations",
-    response_sla_minutes: 60,
-  },
-  auth_failures: {
-    id: "auth-failures",
-    version: "2026-03-01",
-    url: "/admin/security#auth-failures",
-    owner: "Security",
-    response_sla_minutes: 15,
-  },
-};
-
-type CategoryAggregate = {
-  allowed_requests: number;
-  denied_requests: number;
-  estimated_cost_usd: number;
-  last_daily_spend_usd: number;
-  last_plan_cap_usd: number;
-  last_emergency_cap_usd: number;
-};
-
-type OrganizationAggregate = {
-  organization_id: string;
-  organization_name: string;
-  tier: string;
-  categories: Record<CostCategory, CategoryAggregate>;
-  total_estimated_cost_usd: number;
-  ai_monthly_requests: number;
-  ai_monthly_estimated_cost_usd: number;
-};
-
-type OperationalAlert = {
-  id: string;
-  severity: "high" | "medium";
-  category: OperationalAlertCategory;
-  organization_id: string;
-  organization_name: string;
-  title: string;
-  description: string;
-  metric_value: string;
-  owner: string;
-  runbook: AlertRunbook;
-  acknowledged: boolean;
-  acknowledged_at: string | null;
-  acknowledged_by: string | null;
-  detected_at: string;
-};
-
-type WeeklyMarginReportRow = {
-  organization_id: string;
-  organization_name: string;
-  tier: string;
-  revenue_inr: number;
-  variable_cost_usd: number;
-  variable_cost_inr: number;
-  gross_margin_pct: number;
-  cap_denial_rate_pct: number;
-  recommendation: string;
-};
-
-type CostOverviewPayload = {
-  period: {
-    days: number;
-    since: string;
-  };
-  scope: {
-    mode: "organization" | "global";
-    organization_id: string | null;
-    actor_role: "admin" | "super_admin";
-  };
-  emergency_caps_usd: Record<CostCategory, number>;
-  alerts: OperationalAlert[];
-  weekly_margin_report: WeeklyMarginReportRow[];
-  organizations: OrganizationAggregate[];
-};
-
-type CostOverviewCacheEnvelope = {
-  cached_at: string;
-  payload: CostOverviewPayload;
-};
-
-type CostOverviewCacheMeta = {
-  enabled: boolean;
-  status: "hit" | "miss" | "stale_fallback";
-  cached_at: string;
-  age_seconds: number;
-  ttl_seconds: number;
-};
-
-function parseKvBody(body: string | null): Map<string, string> {
-  const kv = new Map<string, string>();
-  if (!body) return kv;
-  const parts = body.split("|").map((part) => part.trim());
-  for (const part of parts) {
-    const [key, ...rest] = part.split("=");
-    if (!key || rest.length === 0) continue;
-    kv.set(key.trim(), rest.join("=").trim());
-  }
-  return kv;
-}
-
-function toInr(usd: number): number {
-  return Number((usd * USD_TO_INR).toFixed(2));
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return safeErrorMessage(error, "Request failed");
-  return "Request failed";
-}
-
-function toCacheMeta(
-  status: CostOverviewCacheMeta["status"],
-  cachedAt: string,
-  ttlSeconds: number,
-): CostOverviewCacheMeta {
-  const ageSeconds = Math.max(
-    0,
-    Math.round((Date.now() - new Date(cachedAt).getTime()) / 1000),
-  );
-  return {
-    enabled: isJsonCacheConfigured(),
-    status,
-    cached_at: cachedAt,
-    age_seconds: Number.isFinite(ageSeconds) ? ageSeconds : 0,
-    ttl_seconds: ttlSeconds,
-  };
-}
+  ALERT_RUNBOOKS,
+  type CostOverviewCacheEnvelope,
+  type CostOverviewPayload,
+  costAlertThresholds,
+  CATEGORIES,
+  daysAgoISO,
+  getErrorMessage,
+  handleEmergencyCapPost,
+  monthStartISO,
+  normalizeOrganizationScope,
+  type OperationalAlert,
+  parseCostMeteringBody,
+  parseKvBody,
+  toCacheMeta,
+  toInr,
+  type WeeklyMarginReportRow,
+  type OrganizationAggregate,
+} from "./shared";
 
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
@@ -694,8 +463,8 @@ export async function GET(request: NextRequest) {
       weeklyDenialsByOrg.set(item.organizationId, denialEntry);
 
       if (
-        item.previous24hSpendUsd >= MIN_COST_SPIKE_USD &&
-        item.last24hSpendUsd >= item.previous24hSpendUsd * COST_SPIKE_MULTIPLIER
+        item.previous24hSpendUsd >= costAlertThresholds.MIN_COST_SPIKE_USD &&
+        item.last24hSpendUsd >= item.previous24hSpendUsd * costAlertThresholds.COST_SPIKE_MULTIPLIER
       ) {
         alerts.push({
           id: `cost-spike-${item.organizationId}-${item.category}`,
@@ -719,10 +488,7 @@ export async function GET(request: NextRequest) {
         item.total24hRequests > 0
           ? item.denied24hRequests / item.total24hRequests
           : 0;
-      if (
-        item.total24hRequests >= 20 &&
-        denialRate24h >= CAP_HIT_ALERT_THRESHOLD
-      ) {
+      if (item.total24hRequests >= 20 && denialRate24h >= costAlertThresholds.CAP_HIT_ALERT_THRESHOLD) {
         alerts.push({
           id: `cap-hit-${item.organizationId}-${item.category}`,
           severity: denialRate24h >= 0.4 ? "high" : "medium",
@@ -764,13 +530,13 @@ export async function GET(request: NextRequest) {
     }
 
     for (const [organizationId, failures] of authFailuresByOrg.entries()) {
-      if (failures < AUTH_FAILURE_ALERT_THRESHOLD) continue;
+      if (failures < costAlertThresholds.AUTH_FAILURE_ALERT_THRESHOLD) continue;
       const aggregate = ensureOrganization(organizationId);
 
       alerts.push({
         id: `auth-failures-${organizationId}`,
         severity:
-          failures >= AUTH_FAILURE_ALERT_THRESHOLD * 2 ? "high" : "medium",
+          failures >= costAlertThresholds.AUTH_FAILURE_ALERT_THRESHOLD * 2 ? "high" : "medium",
         category: "auth_failures",
         organization_id: organizationId,
         organization_name: aggregate.organization_name,
@@ -1027,46 +793,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin.ok) return admin.response;
-
-  if (!admin.isSuperAdmin) {
-    return NextResponse.json(
-      { error: "Only super admins can update emergency caps" },
-      { status: 403 },
-    );
-  }
-
   const body = await request.json().catch(() => null);
-  const parsed = UpdateEmergencyCapSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Invalid emergency cap payload",
-        details: parsed.error.flatten(),
-      },
-      { status: 400 },
-    );
-  }
-
-  const normalizedCap = await setEmergencyDailySpendCapUsd(
-    parsed.data.category,
-    parsed.data.capUsd,
-  );
-
-  const nowIso = new Date().toISOString();
-  await admin.adminClient.from("notification_logs").insert({
-    recipient_id: admin.userId,
-    recipient_type: "admin",
-    notification_type: "cost_guardrail_config",
-    title: "Emergency spend cap updated",
-    body: `${parsed.data.category}|cap_usd=${normalizedCap.toFixed(4)}|actor_id=${admin.userId}|actor_role=${admin.role}`,
-    status: "sent",
-    sent_at: nowIso,
-  });
-
-  void invalidateCostOverviewCache();
-
-  return NextResponse.json({
-    category: parsed.data.category,
-    cap_usd: normalizedCap,
-  });
+  return handleEmergencyCapPost(admin, body);
 }
