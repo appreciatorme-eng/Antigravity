@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 import { CustomerLogos } from "@/components/marketing/CustomerLogos";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
