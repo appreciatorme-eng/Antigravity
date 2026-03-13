@@ -104,13 +104,13 @@ export async function GET() {
     // Get total count of add-ons
     const { count: totalAddOns } = await supabase
       .from('add_ons')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('organization_id', profile.organization_id);
 
     // Get active add-ons count
     const { count: activeAddOns } = await supabase
       .from('add_ons')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('organization_id', profile.organization_id)
       .eq('is_active', true);
 

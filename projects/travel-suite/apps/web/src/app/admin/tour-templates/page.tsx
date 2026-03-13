@@ -109,7 +109,7 @@ export default function TourTemplatesPage() {
               const dayIds = days.map((d) => d.id);
               const { count } = await supabase
                 .from('template_activities')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact', head: true })
                 .in('template_day_id', dayIds);
               activitiesCount = count || 0;
             }

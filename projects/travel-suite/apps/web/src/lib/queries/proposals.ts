@@ -135,7 +135,7 @@ export function useProposals(statusFilter: string = 'all') {
                 formattedProposals.map(async (proposal) => {
                     const { count } = await supabase
                         .from('proposal_comments')
-                        .select('*', { count: 'exact', head: true })
+                        .select('id', { count: 'exact', head: true })
                         .eq('proposal_id', proposal.id);
                     return { ...proposal, comments_count: count || 0 };
                 })

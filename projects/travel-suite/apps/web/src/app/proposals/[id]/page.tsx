@@ -124,7 +124,7 @@ export default function AdminProposalViewPage() {
     try {
       const { count: daysCount } = await supabase
         .from('proposal_days')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('proposal_id', proposalId);
 
       // Get all activities for this proposal
@@ -138,18 +138,18 @@ export default function AdminProposalViewPage() {
 
         const { count: activitiesCount } = await supabase
           .from('proposal_activities')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .in('proposal_day_id', dayIds);
 
         const { count: selectedCount } = await supabase
           .from('proposal_activities')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .in('proposal_day_id', dayIds)
           .eq('is_selected', true);
 
         const { count: optionalCount } = await supabase
           .from('proposal_activities')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .in('proposal_day_id', dayIds)
           .eq('is_optional', true);
 

@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     let query = admin.adminClient
       .from("pdf_imports")
-      .select("*", { count: "exact" })
+      .select("id, organization_id, file_name, file_url, file_size_bytes, file_hash, status, extracted_data, extraction_confidence, extraction_error, reviewed_by, reviewed_at, review_notes, published_template_id, published_at, created_at, updated_at, created_by", { count: "exact" })
       .eq("organization_id", scopedOrg.organizationId)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
