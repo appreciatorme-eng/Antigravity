@@ -1,53 +1,33 @@
 // POST /api/whatsapp/disconnect
 // Closes the WPPConnect session for the caller's org and marks the DB row disconnected.
-// Fetches session_token from DB for WPPConnect Bearer auth before closing.
+// Requires admin role — any member could otherwise reset the shared org session.
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
     disconnectWahaSession,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
-        const supabase = await createClient();
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const auth = await requireAdmin(request, { requireOrganization: true });
+        if (!auth.ok) return auth.response;
 
-        if (!user) {
-            return apiError("Unauthorized", 401);
-        }
+        const { organizationId, adminClient } = auth;
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", user.id)
-            .single();
+        const sessionName = sessionNameFromOrgId(organizationId!);
 
-        if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization found" },
-                { status: 400 },
-            );
-        }
-
-        const sessionName = sessionNameFromOrgId(profile.organization_id);
-        const admin = createAdminClient();
-
-        // Fetch token before updating the row
-        const { data: connection } = await admin
+        const { data: connection } = await adminClient
             .from("whatsapp_connections")
             .select("session_token")
-            .eq("organization_id", profile.organization_id)
+            .eq("organization_id", organizationId!)
             .single();
 
         await disconnectWahaSession(sessionName, connection?.session_token ?? undefined);
 
-        await admin
+        const { error: updateError } = await adminClient
             .from("whatsapp_connections")
             .update({
                 status: "disconnected",
@@ -56,7 +36,12 @@ export async function POST() {
                 connected_at: null,
                 session_token: null,
             })
-            .eq("organization_id", profile.organization_id);
+            .eq("organization_id", organizationId!);
+
+        if (updateError) {
+            console.error("[whatsapp/disconnect] failed to update connection:", updateError);
+            return apiError("Failed to update connection status", 500);
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

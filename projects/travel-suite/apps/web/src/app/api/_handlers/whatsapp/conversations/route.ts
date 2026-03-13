@@ -2,13 +2,12 @@
  * GET /api/whatsapp/conversations
  * Returns real WhatsApp conversations grouped by contact (wa_id).
  * Reads from whatsapp_webhook_events filtered to the caller's org session.
+ * Requires admin role — the unified inbox contains full org conversation history.
  * ------------------------------------------------------------------ */
 
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
-
+import { requireAdmin } from "@/lib/auth/admin";
 import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getChatbotSessionsForPhones } from "@/lib/whatsapp/chatbot-flow";
 
@@ -43,36 +42,25 @@ function phoneCandidates(waId: string): string[] {
 // GET
 // ---------------------------------------------------------------------------
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   try {
+      const auth = await requireAdmin(request, { requireOrganization: true });
+      if (!auth.ok) return auth.response;
+
+      const { organizationId, adminClient } = auth;
+      const orgId = organizationId!;
+
+      // Resolve caller timezone from their auth metadata for display formatting
       const supabase = await createClient();
-      const {
-          data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-          return apiError("Unauthorized", 401);
-      }
-
-      const { data: profile } = await supabase
-          .from("profiles")
-          .select("organization_id")
-          .eq("id", user.id)
-          .single();
-
-      if (!profile?.organization_id) {
-          return NextResponse.json({ conversations: [] });
-      }
-
-      const orgId = profile.organization_id as string;
+      const { data: { user } } = await supabase.auth.getUser();
       const userTimezone = resolveAppTimezone(
-        typeof user.user_metadata?.timezone === "string" ? user.user_metadata.timezone : null
+        typeof user?.user_metadata?.timezone === "string" ? user.user_metadata.timezone : null
       );
+
       const sessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
-      const admin = createAdminClient();
 
       // Fetch the last 300 text events for this org's session (newest first)
-      const { data: events, error } = await admin
+      const { data: events, error } = await adminClient
           .from("whatsapp_webhook_events")
           .select("id, received_at, wa_id, event_type, metadata")
           .filter("metadata->>session", "eq", sessionName)
@@ -108,7 +96,7 @@ export async function GET(): Promise<Response> {
       const waIds = Array.from(grouped.keys());
       const phones = Array.from(new Set(waIds.flatMap((id) => phoneCandidates(id))));
 
-      const { data: profiles } = await admin
+      const { data: profiles } = await adminClient
           .from("profiles")
           .select("id, full_name, phone_normalized, role")
           .in("phone_normalized", phones);

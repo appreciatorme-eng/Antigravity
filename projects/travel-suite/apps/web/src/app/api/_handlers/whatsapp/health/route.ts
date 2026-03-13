@@ -1,39 +1,19 @@
 import { NextResponse } from "next/server";
 import { apiSuccess } from "@/lib/api-response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { checkWPPConnectHealth } from "@/lib/whatsapp/session-health";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (!user) {
-      return NextResponse.json({ connected: false, sessionName: null, error: "Unauthorized" }, { status: 401 });
-    }
+    const { organizationId, adminClient } = auth;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (!profile?.organization_id) {
-      return NextResponse.json({
-        connected: false,
-        sessionName: null,
-        error: "Organization not configured",
-      });
-    }
-
-    const admin = createAdminClient();
-    const { data: connection, error } = await admin
+    const { data: connection, error } = await adminClient
       .from("whatsapp_connections")
       .select("session_name, session_token")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId!)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();

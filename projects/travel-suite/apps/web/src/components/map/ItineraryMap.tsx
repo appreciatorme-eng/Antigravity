@@ -16,10 +16,14 @@ import {
     useMap,
 } from "react-leaflet";
 
+// Leaflet type augmentation: _getIconUrl is a runtime property not in @types/leaflet
+interface LeafletIconDefaultPrototype extends L.Icon.Default {
+    _getIconUrl?: () => string;
+}
+
 // Fix Leaflet's default icon paths in Next.js / Webpack
 if (typeof window !== "undefined") {
-    // @ts-expect-error _getIconUrl exists at runtime
-    delete L.Icon.Default.prototype._getIconUrl;
+    delete (L.Icon.Default.prototype as LeafletIconDefaultPrototype)._getIconUrl;
     L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
         iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -77,7 +81,11 @@ function haversineKm(a: [number, number], b: [number, number]) {
 
 function totalDistanceKm(route: [number, number][]) {
     let total = 0;
-    for (let i = 0; i < route.length - 1; i++) total += haversineKm(route[i]!, route[i + 1]!);
+    for (let i = 0; i < route.length - 1; i++) {
+        const a = route[i];
+        const b = route[i + 1];
+        if (a && b) total += haversineKm(a, b);
+    }
     return total;
 }
 
@@ -91,11 +99,16 @@ function optimizeRouteIndices(points: [number, number][], startIndex = 0): numbe
     const order: number[] = [startIndex];
 
     while (unvisited.size) {
-        const last = order[order.length - 1]!;
+        const last = order[order.length - 1];
+        if (last === undefined) break;
         let bestIdx: number | null = null;
         let bestDist = Infinity;
+        const lastPoint = points[last];
+        if (!lastPoint) break;
         for (const idx of unvisited) {
-            const d = haversineKm(points[last]!, points[idx]!);
+            const pt = points[idx];
+            if (!pt) continue;
+            const d = haversineKm(lastPoint, pt);
             if (d < bestDist) { bestDist = d; bestIdx = idx; }
         }
         if (bestIdx === null) break;
@@ -111,10 +124,11 @@ function optimizeRouteIndices(points: [number, number][], startIndex = 0): numbe
             improved = false;
             for (let i = 1; i < order.length - 2; i++) {
                 for (let k = i + 1; k < order.length - 1; k++) {
-                    const a = points[order[i - 1]!]!;
-                    const b = points[order[i]!]!;
-                    const c = points[order[k]!]!;
-                    const d = points[order[k + 1]!]!;
+                    const a = points[order[i - 1] ?? -1];
+                    const b = points[order[i] ?? -1];
+                    const c = points[order[k] ?? -1];
+                    const d = points[order[k + 1] ?? -1];
+                    if (!a || !b || !c || !d) continue;
                     if (haversineKm(a, c) + haversineKm(b, d) + 1e-9 < haversineKm(a, b) + haversineKm(c, d)) {
                         order.splice(i, k - i + 1, ...order.slice(i, k + 1).reverse());
                         improved = true;

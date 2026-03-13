@@ -1,7 +1,7 @@
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { calculateHealthScore } from "@/lib/reputation/score-calculator";
@@ -135,28 +135,12 @@ const getCachedReputationDashboard = unstable_cache(
   { revalidate: 300, tags: ["reputation"] },
 );
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (!user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
-    const dashboardData = await getCachedReputationDashboard(profile.organization_id);
+    const dashboardData = await getCachedReputationDashboard(auth.organizationId!);
     return apiSuccess(dashboardData);
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");

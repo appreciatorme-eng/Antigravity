@@ -1,42 +1,23 @@
 // POST /api/whatsapp/test-message
 // Sends a test message from the connected session to the operator's own number.
-// Fetches session_token from DB — WPPConnect requires Bearer auth for send-message.
+// Requires admin role — any member could otherwise trigger real outbound messages.
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
-        const supabase = await createClient();
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const auth = await requireAdmin(request, { requireOrganization: true });
+        if (!auth.ok) return auth.response;
 
-        if (!user) {
-            return apiError("Unauthorized", 401);
-        }
+        const { organizationId, userId, adminClient } = auth;
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization found" },
-                { status: 400 },
-            );
-        }
-
-        const admin = createAdminClient();
-        const { data: connection } = await admin
+        const { data: connection } = await adminClient
             .from("whatsapp_connections")
             .select("session_name, session_token, phone_number, status")
-            .eq("organization_id", profile.organization_id)
+            .eq("organization_id", organizationId!)
             .single();
 
         if (
@@ -58,6 +39,8 @@ export async function POST() {
             phoneDigits,
             "✅ TravelSuite test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
         );
+
+        console.info("[whatsapp/test-message] sent by admin", { userId, organizationId });
 
         return NextResponse.json({
             success: true,

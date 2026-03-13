@@ -1,39 +1,22 @@
-// GET /api/whatsapp/status?sessionName=org_xxx
+// GET /api/whatsapp/status
 // Returns the current WPPConnect session status mapped to a frontend shape.
-// Fetches session_token from DB — WPPConnect requires Bearer auth for all calls.
+// Requires admin role — response includes phone number and display name.
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { getWahaStatus } from "@/lib/whatsapp-waha.server";
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
     try {
-        const supabase = await createClient();
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const auth = await requireAdmin(request, { requireOrganization: true });
+        if (!auth.ok) return auth.response;
 
-        if (!user) {
-            return apiError("Unauthorized", 401);
-        }
+        const { organizationId, adminClient } = auth;
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            return NextResponse.json({ status: "disconnected" });
-        }
-
-        const requestedSessionName = req.nextUrl.searchParams.get("sessionName");
-        const admin = createAdminClient();
-        let connectionQuery = admin
+        const requestedSessionName = request.nextUrl.searchParams.get("sessionName");
+        let connectionQuery = adminClient
             .from("whatsapp_connections")
             .select("session_name, session_token, status, phone_number, display_name")
-            .eq("organization_id", profile.organization_id);
+            .eq("organization_id", organizationId!);
 
         if (requestedSessionName) {
             connectionQuery = connectionQuery.eq("session_name", requestedSessionName);
