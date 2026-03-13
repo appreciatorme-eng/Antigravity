@@ -3,7 +3,6 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const bulkSchema = z.object({
   action: z.enum(["approve", "archive"]),
@@ -54,15 +53,17 @@ export async function POST(request: NextRequest) {
 
     const allowedIds = new Set((proposals || []).map((proposal) => proposal.id));
     const now = new Date().toISOString();
-    const processed: string[] = [];
     const errors: string[] = [];
 
-    for (const proposalId of parsed.data.ids) {
-      if (!allowedIds.has(proposalId)) {
-        errors.push(`${proposalId}: not found in your workspace`);
-        continue;
-      }
+    const notFound = parsed.data.ids.filter((id) => !allowedIds.has(id));
+    for (const id of notFound) {
+      errors.push(`${id}: not found in your workspace`);
+    }
 
+    const allowedIdsList = parsed.data.ids.filter((id) => allowedIds.has(id));
+    const processed: string[] = [];
+
+    if (allowedIdsList.length > 0) {
       const updatePayload =
         parsed.data.action === "approve"
           ? {
@@ -80,14 +81,13 @@ export async function POST(request: NextRequest) {
         .from("proposals")
         .update(updatePayload)
         .eq("organization_id", profile.organization_id)
-        .eq("id", proposalId);
+        .in("id", allowedIdsList);
 
       if (error) {
-        errors.push(`${proposalId}: ${safeErrorMessage(error, "Request failed")}`);
-        continue;
+        throw error;
       }
 
-      processed.push(proposalId);
+      processed.push(...allowedIdsList);
     }
 
     return apiSuccess({
