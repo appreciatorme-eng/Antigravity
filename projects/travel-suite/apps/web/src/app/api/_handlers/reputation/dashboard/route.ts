@@ -23,7 +23,8 @@ const getCachedReputationDashboard = unstable_cache(
       .from("reputation_reviews")
       .select(REPUTATION_REVIEW_SELECT)
       .eq("organization_id", organizationId)
-      .order("review_date", { ascending: false });
+      .order("review_date", { ascending: false })
+      .limit(500);
 
     if (error) {
       throw error;

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, expect, it, vi } from "vitest";
 
 const createClientMock = vi.fn();
+const createAdminClientMock = vi.fn();
 const createOrderMock = vi.fn();
 const enforceRateLimitMock = vi.fn();
 const getIntegrationDisabledMessageMock = vi.fn(() => "Payments disabled");
@@ -9,6 +10,10 @@ const isPaymentsIntegrationEnabledMock = vi.fn(() => true);
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: createClientMock,
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: createAdminClientMock,
 }));
 
 vi.mock("@/lib/payments/payment-service", () => ({
@@ -31,10 +36,27 @@ async function loadRoute() {
   return import("../../../src/app/api/_handlers/payments/create-order/route");
 }
 
+function makeAdminProfileClient(orgId: string | null = "org-1") {
+  return {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) },
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: orgId ? { id: "user-1", role: "admin", organization_id: orgId } : null,
+            error: orgId ? null : { message: "not found" },
+          }),
+        }),
+      }),
+    }),
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   isPaymentsIntegrationEnabledMock.mockReturnValue(true);
   enforceRateLimitMock.mockResolvedValue({ success: true });
+  createAdminClientMock.mockReturnValue(makeAdminProfileClient());
 });
 
 it("returns a normalized unauthorized error envelope", async () => {
@@ -56,7 +78,6 @@ it("returns a normalized unauthorized error envelope", async () => {
 
   expect(response.status).toBe(401);
   expect(payload).toEqual({
-    data: null,
     error: "Unauthorized",
   });
 });
@@ -163,8 +184,9 @@ it("returns 429 when rate limit is exceeded", async () => {
   expect(response.status).toBe(429);
 });
 
-it("returns 404 when organization_id is missing from profile", async () => {
+it("returns 403 when profile is not found", async () => {
   createClientMock.mockResolvedValue(makeAuthenticatedClient(null));
+  createAdminClientMock.mockReturnValue(makeAdminProfileClient(null));
 
   const { POST } = await loadRoute();
   const response = await POST(
@@ -175,7 +197,7 @@ it("returns 404 when organization_id is missing from profile", async () => {
     })
   );
 
-  expect(response.status).toBe(404);
+  expect(response.status).toBe(403);
 });
 
 it("returns 400 when amount is zero", async () => {

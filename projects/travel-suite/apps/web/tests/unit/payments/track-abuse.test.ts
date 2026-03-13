@@ -63,6 +63,9 @@ async function loadTrackRoute() {
     getPaymentLinkByToken: getPaymentLinkByTokenMock,
     recordPaymentLinkEvent: recordPaymentLinkEventMock,
   }));
+  vi.doMock("@/lib/security/rate-limit", () => ({
+    enforceRateLimit: vi.fn().mockResolvedValue({ success: true }),
+  }));
 
   return import("../../../src/app/api/_handlers/payments/track/[token]/route");
 }

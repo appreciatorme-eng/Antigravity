@@ -4,8 +4,7 @@
 // createWahaSession now returns a Bearer token stored in whatsapp_connections.
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
     createWahaSession,
     getWahaQR,
@@ -16,7 +15,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 const WHATSAPP_CONNECT_RATE_LIMIT_MAX = 5;
 const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-export async function POST() {
+export async function POST(request: Request) {
     try {
         const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
         const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -27,17 +26,13 @@ export async function POST() {
             return apiError("App URL is not configured", 503);
         }
 
-        const supabase = await createClient();
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
+        const auth = await requireAdmin(request, { requireOrganization: true });
+        if (!auth.ok) return auth.response;
 
-        if (!user) {
-            return apiError("Unauthorized", 401);
-        }
+        const { userId, organizationId, adminClient } = auth;
 
         const rateLimit = await enforceRateLimit({
-            identifier: user.id,
+            identifier: userId,
             limit: WHATSAPP_CONNECT_RATE_LIMIT_MAX,
             windowMs: WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS,
             prefix: "api:whatsapp:connect",
@@ -49,27 +44,13 @@ export async function POST() {
             );
         }
 
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            return NextResponse.json(
-                { error: "No organization found" },
-                { status: 400 },
-            );
-        }
-
-        const { organization_id: orgId } = profile;
+        const orgId = organizationId!;
         const sessionName = sessionNameFromOrgId(orgId);
         const webhookUrl = `${appUrl}/api/webhooks/waha`;
 
-        // Returns WPPConnect Bearer token — must be stored for subsequent calls
         const token = await createWahaSession(orgId, webhookUrl);
 
-        const admin = createAdminClient();
+        const admin = adminClient;
         await admin.from("whatsapp_connections").upsert(
             {
                 organization_id: orgId,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import {
   getPaymentLinkByToken,
   recordPaymentLinkEvent,
@@ -21,6 +22,10 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await enforceRateLimit({ identifier: ip, limit: 60, windowMs: 60_000, prefix: "api:payments:track:get" });
+    if (!rl.success) return apiError("Too many requests", 429);
+
     const { token } = await params;
     const parsedToken = tokenSchema.safeParse(token);
     if (!parsedToken.success) {
@@ -45,6 +50,10 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rl = await enforceRateLimit({ identifier: ip, limit: 20, windowMs: 60_000, prefix: "api:payments:track:post" });
+    if (!rl.success) return apiError("Too many requests", 429);
+
     const { token } = await params;
     const parsedToken = tokenSchema.safeParse(token);
     if (!parsedToken.success) {

@@ -4,7 +4,7 @@
 
 import type { TemplateDataForRender } from "./types";
 import type { SatoriNode } from "./poster-renderer-types";
-import { buildGenericFooter } from "./poster-premium-blocks";
+import { buildGenericFooter } from "./poster-generic-footer";
 
 // ---------------------------------------------------------------------------
 // PremiumCollageLayout

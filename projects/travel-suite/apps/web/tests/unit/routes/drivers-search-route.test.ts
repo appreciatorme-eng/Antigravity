@@ -98,7 +98,7 @@ it("returns 401 when no authenticated user", async () => {
     expect(response.status).toBe(401);
 });
 
-it("returns 403 when user has no organization", async () => {
+it("returns 400 when user has no organization", async () => {
     createServerClientMock.mockResolvedValue({
         auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1" } } }) },
     });
@@ -108,7 +108,7 @@ it("returns 403 when user has no organization", async () => {
 
     const { GET } = await loadRoute();
     const response = await GET(makeRequest());
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(400);
 });
 
 it("returns paginated driver list with correct shape", async () => {

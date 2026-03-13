@@ -1,9 +1,8 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import type { Database, Json } from "@/lib/database.types";
+import { requireAdmin } from "@/lib/auth/admin";
 import { normalizeMarketplaceOptionList } from "@/lib/marketplace-options";
 import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 type MarketplaceProfileRow = Database["public"]["Tables"]["marketplace_profiles"]["Row"];
 
@@ -78,45 +77,25 @@ function normalizeMarketplaceProfile(profile: MarketplaceProfileRow | null) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (userError || !user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const admin = createAdminClient();
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error("[settings/marketplace] failed to load profile:", profileError);
-      return apiError("Failed to load marketplace settings", 500);
-    }
-
-    if (!profile?.organization_id) {
-      return apiError("Organization not found", 404);
-    }
+    const { organizationId, adminClient } = auth;
+    const admin = adminClient;
 
     const [{ data: organization, error: organizationError }, { data: marketplaceProfile, error: marketplaceError }] =
       await Promise.all([
         admin
           .from("organizations")
           .select("id, name, logo_url, subscription_tier")
-          .eq("id", profile.organization_id)
+          .eq("id", organizationId!)
           .maybeSingle(),
         admin
           .from("marketplace_profiles")
           .select(MARKETPLACE_PROFILE_SELECT)
-          .eq("organization_id", profile.organization_id)
+          .eq("organization_id", organizationId!)
           .maybeSingle(),
       ]);
 
@@ -133,7 +112,7 @@ export async function GET() {
 
     return apiSuccess({
       organization: organization ?? {
-        id: profile.organization_id,
+        id: organizationId!,
         name: "Organization",
         logo_url: null,
         subscription_tier: null,

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess } from "@/lib/api-response";
 import { unstable_cache } from "next/cache";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
 
 function sessionNameFromOrgId(orgId: string): string {
@@ -88,23 +88,16 @@ const getCachedNavCounts = unstable_cache(
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
     const { isDemoMode, demoOrgId } = resolveDemoOrg(request);
-    const organizationId = isDemoMode ? demoOrgId : profile?.organization_id;
+
+    let organizationId: string | null | undefined;
+    if (isDemoMode) {
+      organizationId = demoOrgId;
+    } else {
+      const auth = await requireAdmin(request, { requireOrganization: true });
+      if (!auth.ok) return auth.response;
+      organizationId = auth.organizationId;
+    }
 
     if (!organizationId) {
       return NextResponse.json({

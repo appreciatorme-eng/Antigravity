@@ -2,8 +2,8 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import type { Database } from "@/lib/database.types";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
 
 type AdminProfileRow = Pick<
@@ -93,37 +93,16 @@ function dedupeContacts(recipients: BroadcastContact[]) {
   });
 }
 
-async function resolveBroadcastContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+async function resolveBroadcastContext(request: Request) {
+  const auth = await requireAdmin(request, { requireOrganization: true });
+  if (!auth.ok) return { response: auth.response };
 
-  if (userError || !user) {
-    return { response: apiError("Unauthorized", 401) };
-  }
+  const { userId, organizationId, adminClient } = auth;
 
-  const admin = createAdminClient();
-  const { data: actor, error: actorError } = await admin
-    .from("profiles")
-    .select("id, organization_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (actorError) {
-    console.error("[whatsapp/broadcast] failed to load actor profile:", actorError);
-    return { response: apiError("Failed to load broadcast context", 500) };
-  }
-
-  if (!actor?.organization_id) {
-    return { response: apiError("Organization not found", 404) };
-  }
-
-  const { data: connection, error: connectionError } = await admin
+  const { data: connection, error: connectionError } = await adminClient
     .from("whatsapp_connections")
     .select("session_name, session_token, status")
-    .eq("organization_id", actor.organization_id)
+    .eq("organization_id", organizationId!)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -134,9 +113,9 @@ async function resolveBroadcastContext() {
   }
 
   return {
-    admin,
-    actorId: actor.id,
-    organizationId: actor.organization_id,
+    admin: adminClient,
+    actorId: userId,
+    organizationId: organizationId!,
     connection,
   };
 }
@@ -326,9 +305,9 @@ async function resolveRecipients(
   return loadActiveTripRecipients(admin, organizationId);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const context = await resolveBroadcastContext();
+    const context = await resolveBroadcastContext(request);
     if ("response" in context) {
       return context.response;
     }
@@ -362,7 +341,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const context = await resolveBroadcastContext();
+    const context = await resolveBroadcastContext(request);
     if ("response" in context) {
       return context.response;
     }

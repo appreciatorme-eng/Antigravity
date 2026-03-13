@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -89,28 +89,12 @@ function buildVehicleDescription(
     return parts.join(" - ");
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const serverClient = await createServerClient();
-        const {
-            data: { user },
-        } = await serverClient.auth.getUser();
+        const auth = await requireAdmin(request, { requireOrganization: true });
+        if (!auth.ok) return auth.response;
 
-        if (!user) {
-            return apiError("Unauthorized", 401);
-        }
-
-        const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("role, organization_id")
-            .eq("id", user.id)
-            .maybeSingle();
-
-        if (!profile?.organization_id) {
-            return apiError("No organization", 403);
-        }
-
-        const orgId = profile.organization_id;
+        const orgId = auth.organizationId!;
         const today = new Date().toISOString().slice(0, 10);
 
         const { data: trips, error } = await supabaseAdmin

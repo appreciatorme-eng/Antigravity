@@ -457,7 +457,8 @@ function Step3CreateAndNotify({
 
       if (mode === 'draft') {
         // Save to localStorage
-        const drafts = JSON.parse(localStorage.getItem('bookingDrafts') || '[]');
+        let drafts: unknown[] = [];
+        try { drafts = JSON.parse(localStorage.getItem('bookingDrafts') || '[]'); } catch { drafts = []; }
         drafts.unshift({
           ...state,
           total: Math.round(total),

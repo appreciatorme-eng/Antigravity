@@ -1,9 +1,9 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { PLAN_CATALOG, type CanonicalPlanId } from "@/lib/billing/plan-catalog";
 import { isPaymentsIntegrationEnabled } from "@/lib/integrations";
+import { requireAdmin } from "@/lib/auth/admin";
 import { paymentService } from "@/lib/payments/payment-service";
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function mapPlanIdToTier(planId: CanonicalPlanId): "free" | "pro" | "enterprise" {
@@ -12,22 +12,18 @@ function mapPlanIdToTier(planId: CanonicalPlanId): "free" | "pro" | "enterprise"
   return "pro";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
+
+    const { userId, organizationId, adminClient } = auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiError("Unauthorized", 401);
-    }
-
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, full_name, email, organization_id")
-      .eq("id", user.id)
+      .select("id, full_name, email")
+      .eq("id", userId)
       .maybeSingle();
 
     if (profileError) {
@@ -35,28 +31,24 @@ export async function GET() {
       return apiError("Failed to load billing profile", 500);
     }
 
-    if (!profile?.organization_id) {
-      return apiError("Organization not found", 404);
-    }
-
-    const adminSupabase = createAdminClient();
+    const adminSupabase = adminClient;
     const [{ data: organization, error: orgError }, subscription, resolvedPlan, clientCountRes, proposalCountRes, teamCountRes] =
       await Promise.all([
         adminSupabase
           .from("organizations")
           .select("id, name, billing_state, subscription_tier")
-          .eq("id", profile.organization_id)
+          .eq("id", organizationId!)
           .maybeSingle(),
-        paymentService.getCurrentSubscription(profile.organization_id),
-        resolveOrganizationPlan(adminSupabase, profile.organization_id),
+        paymentService.getCurrentSubscription(organizationId!),
+        resolveOrganizationPlan(adminSupabase, organizationId!),
         supabase
           .from("clients")
           .select("id", { count: "exact", head: true })
-          .eq("organization_id", profile.organization_id),
+          .eq("organization_id", organizationId!),
         supabase
           .from("proposals")
           .select("id", { count: "exact", head: true })
-          .eq("organization_id", profile.organization_id)
+          .eq("organization_id", organizationId!)
           .gte(
             "created_at",
             new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()
@@ -64,7 +56,7 @@ export async function GET() {
         supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
-          .eq("organization_id", profile.organization_id)
+          .eq("organization_id", organizationId!)
           .neq("role", "client"),
       ]);
 
@@ -92,14 +84,14 @@ export async function GET() {
       organization: {
         id: organization.id,
         name: organization.name,
-        billing_email: profile.email || user.email || null,
+        billing_email: profile?.email ?? null,
         billing_state: organization.billing_state,
         subscription_tier: organization.subscription_tier,
       },
       viewer: {
-        id: profile.id,
-        full_name: profile.full_name,
-        email: profile.email || user.email || null,
+        id: profile?.id ?? userId,
+        full_name: profile?.full_name ?? null,
+        email: profile?.email ?? null,
       },
       usage: {
         clients_used: clientCountRes.count || 0,

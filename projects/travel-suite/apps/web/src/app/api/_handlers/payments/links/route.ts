@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createPaymentLinkRecord } from "@/lib/payments/payment-links.server";
 import {
   getIntegrationDisabledMessage,
@@ -28,15 +27,10 @@ export async function POST(request: NextRequest) {
       return apiError(getIntegrationDisabledMessage("payments"), 503, { disabled: true });
     }
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (userError || !user) {
-      return apiError("Unauthorized", 401);
-    }
+    const { userId, organizationId, adminClient } = auth;
 
     const body = await request.json().catch(() => null);
     const parsed = createPaymentLinkSchema.safeParse(body);
@@ -46,16 +40,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const admin = createAdminClient();
-    const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || !profile?.organization_id) {
-      return apiError("Organization not found", 404);
-    }
+    const admin = adminClient;
 
     const payload = { ...parsed.data };
 
@@ -64,7 +49,7 @@ export async function POST(request: NextRequest) {
         .from("proposals")
         .select("id, client_id, total_price, client_selected_price, title")
         .eq("id", payload.proposalId)
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", organizationId!)
         .maybeSingle();
 
       if (!proposal) {
@@ -86,6 +71,7 @@ export async function POST(request: NextRequest) {
         .from("profiles")
         .select("full_name, email, phone, phone_whatsapp")
         .eq("id", payload.clientId)
+        .eq("organization_id", organizationId!)
         .maybeSingle();
 
       if (clientProfile) {
@@ -101,8 +87,8 @@ export async function POST(request: NextRequest) {
 
     const { link, order } = await createPaymentLinkRecord(admin, {
       ...payload,
-      organizationId: profile.organization_id,
-      createdBy: user.id,
+      organizationId: organizationId!,
+      createdBy: userId,
       baseUrl: new URL(request.url).origin,
     });
 

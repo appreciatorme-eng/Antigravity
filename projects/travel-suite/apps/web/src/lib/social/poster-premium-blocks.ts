@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
-// Premium text JSX -- router + generic footer utility
+// Premium text JSX -- router
 //
 // Individual layout builders live in:
 //   poster-premium-layouts-a.ts  (WaveDivider, CircleAccent, FloatingCard)
 //   poster-premium-layouts-b.ts  (PremiumCollage, BannerRibbon, SplitWave)
+// Generic footer utility lives in poster-generic-footer.ts (avoids circular dep)
 // ---------------------------------------------------------------------------
 
 import type { LayoutType, TemplateDataForRender } from "./types";
@@ -13,37 +14,7 @@ import { buildPosterJsx } from "./poster-standard-blocks";
 import { buildWaveDividerText, buildCircleAccentText, buildFloatingCardText } from "./poster-premium-layouts-a";
 import { buildPremiumCollageText, buildBannerRibbonText, buildSplitWaveText } from "./poster-premium-layouts-b";
 
-// ---------------------------------------------------------------------------
-// Generic footer used by several premium layouts
-// ---------------------------------------------------------------------------
-
-export function buildGenericFooter(data: TemplateDataForRender, width: number, bgColor: string): SatoriNode {
-  const parts: string[] = [];
-  if (data.contactNumber) parts.push(data.contactNumber);
-  if (data.email) parts.push(data.email);
-  if (data.website) parts.push(data.website);
-  if (parts.length === 0) return { type: "div", props: { style: { display: "flex" }, children: null } };
-
-  return {
-    type: "div",
-    props: {
-      style: {
-        position: "absolute", bottom: 0, left: 0, width,
-        display: "flex", flexDirection: "row" as const,
-        alignItems: "center", justifyContent: "center",
-        gap: 20, padding: "14px 32px",
-        backgroundColor: bgColor,
-      },
-      children: parts.map((p) => ({
-        type: "div",
-        props: {
-          style: { fontFamily: "Inter", fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.9)" },
-          children: p,
-        },
-      })),
-    },
-  };
-}
+export { buildGenericFooter } from "./poster-generic-footer";
 
 // ---------------------------------------------------------------------------
 // Premium text router

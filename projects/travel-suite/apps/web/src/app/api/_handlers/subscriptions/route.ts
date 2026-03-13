@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from '@/lib/auth/admin';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -149,28 +150,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { userId, organizationId, adminClient } = auth;
 
-    if (userError || !user) {
-      return apiError('Unauthorized', 401);
-    }
+    const { data: org } = await adminClient
+      .from('organizations')
+      .select('name, billing_state')
+      .eq('id', organizationId!)
+      .maybeSingle();
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id, organizations(name, billing_email, billing_state)')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError('Organization not found', 404);
-    }
-
-    const existingSubscription = await paymentService.getCurrentSubscription(profile.organization_id);
+    const existingSubscription = await paymentService.getCurrentSubscription(organizationId!);
     if (existingSubscription) {
       return NextResponse.json(
         {
@@ -184,8 +175,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const org = (profile as { organizations?: { name?: string | null; billing_email?: string | null; billing_state?: string | null } | null }).organizations;
-
     const body = await request.json();
     const parsed = PlanRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -195,13 +184,15 @@ export async function POST(request: NextRequest) {
       );
     }
     const { plan_id, billing_cycle } = parsed.data;
+    const supabase = await createClient();
     const amount = await resolvePlanAmount(supabase, plan_id, billing_cycle);
-    const safeBillingState = sanitizeText(org?.billing_state, { maxLength: 64 }) || undefined;
-    const safeCustomerEmail = sanitizeEmail(org?.billing_email) || sanitizeEmail(user.email) || '';
-    const safeCustomerName = sanitizeText(org?.name, { maxLength: 120 }) || 'Travel Suite';
+    const safeBillingState = sanitizeText(org?.billing_state ?? null, { maxLength: 64 }) || undefined;
+    const { data: { user: authUser } } = await adminClient.auth.admin.getUserById(userId);
+    const safeCustomerEmail = sanitizeEmail(authUser?.email ?? null) || '';
+    const safeCustomerName = sanitizeText(org?.name ?? null, { maxLength: 120 }) || 'Travel Suite';
 
     const subscriptionId = await paymentService.createSubscription({
-      organizationId: profile.organization_id,
+      organizationId: organizationId!,
       planId: plan_id,
       billingCycle: billing_cycle,
       amount,

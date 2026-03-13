@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from '@/lib/auth/admin';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -32,36 +33,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
+
+    const { organizationId } = auth;
     const supabase = await createClient();
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiError('Unauthorized', 401);
-    }
-
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError('Organization not found', 404);
-    }
-
-    // Parse request body
     const body = await request.json();
     const { cancel_at_period_end = true } = body;
 
-    // Get current subscription
     const currentSubscription = await paymentService.getCurrentSubscription(
-      profile.organization_id
+      organizationId!
     );
 
     if (!currentSubscription) {

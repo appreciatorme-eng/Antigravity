@@ -6,6 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { requireAdmin } from '@/lib/auth/admin';
 import { createClient } from '@/lib/supabase/server';
 import { paymentService } from '@/lib/payments/payment-service';
 import { PaymentServiceError, paymentErrorHttpStatus } from '@/lib/payments/errors';
@@ -39,20 +40,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiError('Unauthorized', 401);
-    }
+    const { userId, organizationId } = auth;
 
     const rateLimit = await enforceRateLimit({
-      identifier: user.id,
+      identifier: userId,
       limit: CREATE_ORDER_RATE_LIMIT_MAX,
       windowMs: CREATE_ORDER_RATE_LIMIT_WINDOW_MS,
       prefix: 'api:payments:create-order',
@@ -61,16 +55,7 @@ export async function POST(request: NextRequest) {
       return apiError('Too many payment order requests. Please retry later.', 429);
     }
 
-    // Get user's organization
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError('Organization not found', 404);
-    }
+    const supabase = await createClient();
 
     const rawBody = await request.json().catch(() => null);
     if (!rawBody || typeof rawBody !== 'object') {
@@ -94,7 +79,7 @@ export async function POST(request: NextRequest) {
         .from('invoices')
         .select('id, organization_id, total_amount, status')
         .eq('id', invoice_id)
-        .eq('organization_id', profile.organization_id)
+        .eq('organization_id', organizationId!)
         .maybeSingle();
 
       if (invoiceError || !invoice) {
@@ -114,7 +99,7 @@ export async function POST(request: NextRequest) {
         .from('subscriptions')
         .select('id, organization_id')
         .eq('id', subscription_id)
-        .eq('organization_id', profile.organization_id)
+        .eq('organization_id', organizationId!)
         .maybeSingle();
 
       if (subscriptionError || !subscription) {
@@ -126,7 +111,7 @@ export async function POST(request: NextRequest) {
     const order = await paymentService.createOrder(
       amount,
       currency,
-      profile.organization_id,
+      organizationId!,
       {
         ...orderNotes,
         ...(invoice_id ? { invoice_id } : {}),

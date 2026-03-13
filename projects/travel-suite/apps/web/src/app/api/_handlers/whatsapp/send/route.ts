@@ -1,8 +1,7 @@
 import crypto from "node:crypto";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
 
 const SendWhatsAppSchema = z.object({
@@ -13,15 +12,10 @@ const SendWhatsAppSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (userError || !user) {
-      return apiError("Unauthorized", 401);
-    }
+    const { userId, organizationId, adminClient } = auth;
 
     const body = await request.json();
     const parsed = SendWhatsAppSchema.safeParse(body);
@@ -31,26 +25,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, organization_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error("[whatsapp/send] failed to load profile:", profileError);
-      return apiError("Failed to prepare message send", 500);
-    }
-
-    if (!profile?.organization_id) {
-      return apiError("Organization not found", 404);
-    }
-
-    const admin = createAdminClient();
+    const admin = adminClient;
     const { data: connection, error: connectionError } = await admin
       .from("whatsapp_connections")
       .select("session_name, session_token, status")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId!)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -106,7 +85,7 @@ export async function POST(request: Request) {
         direction: "out",
         body_preview: parsed.data.message,
         subject: parsed.data.subject || null,
-        sent_by: profile.id,
+        sent_by: userId,
       },
       processing_status: "processed",
       processed_at: sentAt,

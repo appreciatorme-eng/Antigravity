@@ -21,22 +21,6 @@ export interface DispatcherRateLimitConfig {
 }
 
 function extractRateLimitIdentifier(req: NextRequest): string {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth.startsWith("Bearer ")) {
-        const token = auth.slice(7);
-        const parts = token.split(".");
-        if (parts.length === 3) {
-            try {
-                const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-                const decoded = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
-                if (typeof decoded?.sub === "string" && decoded.sub.length > 0) {
-                    return `user:${decoded.sub}`;
-                }
-            } catch {
-                // fall through to IP fallback
-            }
-        }
-    }
     const ip =
         req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
         req.headers.get("x-real-ip") ||

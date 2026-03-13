@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,20 +27,33 @@ export default function ConfirmDangerModal({
     onCancel,
     loading = false,
 }: ConfirmDangerModalProps) {
+    useEffect(() => {
+        if (!open) return;
+        const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+        document.addEventListener("keydown", handleKey);
+        return () => document.removeEventListener("keydown", handleKey);
+    }, [open, onCancel]);
+
     if (!open) return null;
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" onClick={onCancel} />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="confirm-danger-title"
+                aria-describedby="confirm-danger-desc"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
                 <div className="bg-gray-900 border border-red-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
                     <div className="flex items-start gap-4">
                         <div className="w-10 h-10 bg-red-500/15 rounded-full flex items-center justify-center flex-shrink-0">
                             <AlertTriangle className="w-5 h-5 text-red-400" />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold text-white">{title}</h3>
-                            <p className="text-sm text-gray-400 mt-1">{message}</p>
+                            <h3 id="confirm-danger-title" className="text-base font-bold text-white">{title}</h3>
+                            <p id="confirm-danger-desc" className="text-sm text-gray-400 mt-1">{message}</p>
                         </div>
                     </div>
                     <div className="flex gap-3 mt-6 justify-end">
