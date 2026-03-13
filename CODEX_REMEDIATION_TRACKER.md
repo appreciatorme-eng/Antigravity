@@ -71,6 +71,8 @@
 | Commit | Description |
 |--------|-------------|
 | _(this file)_ | `chore: create codex remediation tracker` |
+| `42eb485` | `fix: remediate Codex audit findings (F-001–F-023)` |
+| `bebb1fd` | `test: add E2E tests for Codex audit remediation` |
 
 ---
 
@@ -81,4 +83,4 @@
 | Lint | ✅ 0 warnings |
 | Typecheck | ✅ 0 errors |
 | Unit/Integration | ✅ 600/600 passed (85.4% stmts, 80.78% branches, 95.55% funcs) |
-| E2E | ⏳ |
+| E2E | ✅ remediation-codex.spec.ts (20 tests) |
