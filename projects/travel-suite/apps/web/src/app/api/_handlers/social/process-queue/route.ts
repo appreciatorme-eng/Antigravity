@@ -85,6 +85,7 @@ export async function POST(req: Request) {
         }
 
         const results: Array<{ id: string; status: string; error?: string; retry_at?: string }> = [];
+        const sentPostIds = new Set<string>();
 
         for (const item of queueItems) {
             const claimTime = new Date().toISOString();
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
                         .eq("id", item.id)
                         .eq("status", "processing");
 
+                    sentPostIds.add(item.post_id);
                     results.push({ id: item.id, status: "already_sent" });
                     continue;
                 }
@@ -135,16 +137,7 @@ export async function POST(req: Request) {
                     .eq("id", item.id)
                     .eq("status", "processing");
 
-                const { count } = await supabaseAdmin
-                    .from("social_post_queue")
-                    .select("id", { count: "exact", head: true })
-                    .eq("post_id", item.post_id)
-                    .in("status", ["pending", "processing"]);
-
-                if (count === 0) {
-                    await supabaseAdmin.from("social_posts").update({ status: "published" }).eq("id", item.post_id);
-                }
-
+                sentPostIds.add(item.post_id);
                 results.push({ id: item.id, status: "success" });
             } catch (err: unknown) {
                 const internalMessage = err instanceof Error ? err.message : "Unknown publish error";
@@ -174,6 +167,25 @@ export async function POST(req: Request) {
                     error: "Failed to process queue item",
                     retry_at: retryAt,
                 });
+            }
+        }
+
+        if (sentPostIds.size > 0) {
+            const postIdList = [...sentPostIds];
+            const { data: remaining } = await supabaseAdmin
+                .from("social_post_queue")
+                .select("post_id")
+                .in("post_id", postIdList)
+                .in("status", ["pending", "processing"]);
+
+            const stillPending = new Set((remaining ?? []).map((r: { post_id: string }) => r.post_id));
+            const fullyPublished = postIdList.filter((id) => !stillPending.has(id));
+
+            if (fullyPublished.length > 0) {
+                await supabaseAdmin
+                    .from("social_posts")
+                    .update({ status: "published" })
+                    .in("id", fullyPublished);
             }
         }
 

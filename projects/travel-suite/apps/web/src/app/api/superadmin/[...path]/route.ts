@@ -5,6 +5,12 @@ import { createCatchAllHandlers } from "@/lib/api-dispatch";
 
 export const maxDuration = 60;
 
+const SUPERADMIN_RATE_LIMIT = {
+    limit: 100,
+    windowMs: 5 * 60 * 1000,
+    prefix: "api:superadmin:dispatch",
+};
+
 const routes = createCatchAllHandlers([
   ["me", () => import("@/app/api/_handlers/superadmin/me/route")],
   ["overview", () => import("@/app/api/_handlers/superadmin/overview/route")],
@@ -30,6 +36,6 @@ const routes = createCatchAllHandlers([
   ["monitoring/health", () => import("@/app/api/_handlers/superadmin/monitoring/health/route")],
   ["monitoring/queues", () => import("@/app/api/_handlers/superadmin/monitoring/queues/route")],
   ["audit-log", () => import("@/app/api/_handlers/superadmin/audit-log/route")],
-]);
+], { rateLimit: SUPERADMIN_RATE_LIMIT });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

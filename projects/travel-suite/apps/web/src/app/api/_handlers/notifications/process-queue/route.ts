@@ -69,27 +69,43 @@ function toJsonObject(value: unknown): { [key: string]: Json | undefined } {
     return {};
 }
 
-async function resolveOrganizationIdForQueueItem(item: QueueItem): Promise<string | null> {
-    if (item.trip_id) {
-        const { data: trip } = await supabaseAdmin
-            .from("trips")
-            .select("organization_id")
-            .eq("id", item.trip_id)
-            .maybeSingle();
-        const tripRow = trip as { organization_id?: string | null } | null;
-        if (tripRow?.organization_id) return tripRow.organization_id;
-    }
+async function batchResolveOrganizationIds(
+    items: QueueItem[]
+): Promise<Map<string, string | null>> {
+    const tripIds = [...new Set(items.filter((i) => i.trip_id).map((i) => i.trip_id!))];
+    const userIds = [...new Set(items.filter((i) => !i.trip_id && i.user_id).map((i) => i.user_id!))];
 
-    if (item.user_id) {
-        const { data: profile } = await supabaseAdmin
-            .from("profiles")
-            .select("organization_id")
-            .eq("id", item.user_id)
-            .maybeSingle();
-        if (profile?.organization_id) return profile.organization_id;
-    }
+    const [tripRows, profileRows] = await Promise.all([
+        tripIds.length > 0
+            ? supabaseAdmin.from("trips").select("id,organization_id").in("id", tripIds)
+            : Promise.resolve({ data: [] }),
+        userIds.length > 0
+            ? supabaseAdmin.from("profiles").select("id,organization_id").in("id", userIds)
+            : Promise.resolve({ data: [] }),
+    ]);
 
-    return null;
+    const orgByTripId = new Map(
+        ((tripRows.data ?? []) as { id: string; organization_id: string | null }[]).map(
+            (r) => [r.id, r.organization_id]
+        )
+    );
+    const orgByUserId = new Map(
+        ((profileRows.data ?? []) as { id: string; organization_id: string | null }[]).map(
+            (r) => [r.id, r.organization_id]
+        )
+    );
+
+    const result = new Map<string, string | null>();
+    for (const item of items) {
+        if (item.trip_id && orgByTripId.has(item.trip_id)) {
+            result.set(item.id, orgByTripId.get(item.trip_id) ?? null);
+        } else if (item.user_id && orgByUserId.has(item.user_id)) {
+            result.set(item.id, orgByUserId.get(item.user_id) ?? null);
+        } else {
+            result.set(item.id, null);
+        }
+    }
+    return result;
 }
 
 async function trackDeliveryStatus(params: {
@@ -227,10 +243,11 @@ type QueueProcessOutcome = "sent" | "failed" | "skipped";
 
 async function processQueueRow(params: {
     row: QueueItem;
+    organizationId: string | null;
     requestUrl: string;
     requestContext: Record<string, unknown>;
 }): Promise<QueueProcessOutcome> {
-    const { row, requestUrl, requestContext } = params;
+    const { row, organizationId, requestUrl, requestContext } = params;
 
     const { data: claimedRows } = await supabaseAdmin
         .from("notification_queue")
@@ -244,7 +261,6 @@ async function processQueueRow(params: {
     }
 
     const attempts = Number(row.attempts || 0) + 1;
-    const organizationId = await resolveOrganizationIdForQueueItem(row);
     const payload = toRecord(row.payload);
     const templateKey = getStringPayloadValue(payload, "template_key");
     const templateVars =
@@ -490,12 +506,14 @@ export async function POST(request: NextRequest) {
         }
 
         const rows = (dueRows || []) as QueueItem[];
+        const orgIdMap = await batchResolveOrganizationIds(rows);
         const results = await processInBatches({
             items: rows,
             batchSize: NOTIFICATION_BATCH_SIZE,
             worker: (row) =>
                 processQueueRow({
                     row,
+                    organizationId: orgIdMap.get(row.id) ?? null,
                     requestUrl: request.url,
                     requestContext,
                 }),
