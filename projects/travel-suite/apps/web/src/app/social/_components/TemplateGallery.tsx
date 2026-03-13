@@ -1,97 +1,26 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { toPng } from "html-to-image";
-import { Download, Eye, Instagram, Linkedin, Lock, Loader2, Search, X, Zap, Smartphone, Square, Maximize2, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { getTemplatesByCategory, templates, searchTemplates, canAccessTemplate } from "@/lib/social/template-registry";
-import { CenterLayout, ElegantLayout, SplitLayout, BottomLayout, ReviewLayout, CarouselSlideLayout, ServiceShowcaseLayout, HeroServicesLayout, InfoSplitLayout, GradientHeroLayout, DiagonalSplitLayout, MagazineCoverLayout, DuotoneLayout, BoldTypographyLayout, CollageGridLayout, TriPanelLayout, PolaroidScatterLayout, WindowGalleryLayout, MosaicStripLayout, WaveDividerLayout, CircleAccentLayout, FloatingCardLayout, PremiumCollageLayout, BannerRibbonLayout, SplitWaveLayout } from "@/components/social/templates/layouts/LayoutRenderer";
+import { templates, getTemplatesByCategory, searchTemplates } from "@/lib/social/template-registry";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import { PublishKitDrawer } from "./PublishKitDrawer";
-
-// Aspect ratio dimension map
-const RATIO_DIMS: Record<string, { w: number; h: number; label: string }> = {
-    square:   { w: 1080, h: 1080, label: "1:1" },
-    portrait: { w: 1080, h: 1350, label: "4:5" },
-    story:    { w: 1080, h: 1920, label: "Story" },
-};
-
-function toTemplateTier(userTier: string | null | undefined): string {
-    if (!userTier) return "Starter";
-    const normalized = userTier.toLowerCase();
-    if (normalized === "enterprise") return "Enterprise";
-    if (normalized === "business" || normalized === "premium") return "Business";
-    if (normalized === "pro") return "Pro";
-    return "Starter";
-}
-
-// localStorage keys
-const FAVORITES_KEY = "social-studio-favorites";
-const RECENT_KEY = "social-studio-recent";
-const MAX_RECENT = 8;
-
-// ── Intersection Observer hook for lazy rendering ─────────────────────
-function useIntersectionObserver(options?: IntersectionObserverInit) {
-    const ref = useRef<HTMLDivElement>(null);
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        const element = ref.current;
-        if (!element) return;
-
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) {
-                setIsVisible(true);
-                observer.unobserve(element);
-            }
-        }, options);
-
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, [options]);
-
-    return { ref, isVisible };
-}
-
-// Stable observer options (defined outside component to avoid re-creation)
-const OBSERVER_OPTIONS: IntersectionObserverInit = { rootMargin: "200px" };
-
-// ── LazyTemplateCard wrapper ──────────────────────────────────────────
-interface LazyTemplateCardProps {
-    children: (isVisible: boolean) => React.ReactNode;
-    previewH: number;
-    className?: string;
-}
-
-function LazyTemplateCard({ children, previewH, className }: LazyTemplateCardProps) {
-    const { ref, isVisible } = useIntersectionObserver(OBSERVER_OPTIONS);
-
-    return (
-        <div ref={ref} className={className}>
-            {isVisible ? (
-                children(true)
-            ) : (
-                <div className="flex flex-col h-full">
-                    {/* Skeleton preview area */}
-                    <div
-                        className="relative w-full overflow-hidden border-b border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 animate-pulse"
-                        style={{ height: previewH }}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 dark:via-white/10 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
-                    </div>
-                    {/* Skeleton footer */}
-                    <div className="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 mt-auto space-y-2">
-                        <div className="h-4 w-3/4 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                        <div className="h-3 w-1/2 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+import {
+    TemplateSearchBar,
+    TemplateCategoryFilter,
+    PreviewPanel,
+    TemplateGrid,
+    FestivalBanner,
+    TemplateStrip,
+    RATIO_DIMS,
+    toTemplateTier,
+    FAVORITES_KEY,
+    RECENT_KEY,
+    MAX_RECENT,
+} from "./template-gallery";
+import type { AspectRatio } from "./template-gallery";
 
 interface Props {
     templateData: TemplateDataForRender;
@@ -108,7 +37,7 @@ export const TemplateGallery = ({
 }: Props) => {
     const [activeCategory, setActiveCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState("");
-    const [aspectRatio, setAspectRatio] = useState<"square" | "portrait" | "story">("square");
+    const [aspectRatio, setAspectRatio] = useState<AspectRatio>("square");
     const [drawerTemplate, setDrawerTemplate] = useState<SocialTemplate | null>(null);
     const [downloading, setDownloading] = useState<string | null>(null);
     const [hdExporting, setHdExporting] = useState<string | null>(null);
@@ -164,14 +93,11 @@ export const TemplateGallery = ({
     const templateUserTier = useMemo(() => toTemplateTier(userTier), [userTier]);
 
     // Filtered template list
-    let PRESET_TEMPLATES: SocialTemplate[];
-    if (searchQuery.trim()) {
-        PRESET_TEMPLATES = searchTemplates(searchQuery.trim());
-    } else if (activeCategory === "All") {
-        PRESET_TEMPLATES = templates;
-    } else {
-        PRESET_TEMPLATES = getTemplatesByCategory(activeCategory);
-    }
+    const filteredTemplates = useMemo(() => {
+        if (searchQuery.trim()) return searchTemplates(searchQuery.trim());
+        if (activeCategory === "All") return templates;
+        return getTemplatesByCategory(activeCategory);
+    }, [searchQuery, activeCategory]);
 
     // ── Derived: recent & favorite template objects ──────────────────
     const recentTemplates = useMemo(() => {
@@ -184,7 +110,6 @@ export const TemplateGallery = ({
         return templates.filter(t => favorites.has(t.id));
     }, [favorites]);
 
-    // Show sections only on unfiltered "All" view
     const showSpecialSections = activeCategory === "All" && !searchQuery;
 
     // ── Wrapped onTemplateSelect that also tracks recents ────────────
@@ -193,7 +118,8 @@ export const TemplateGallery = ({
         onTemplateSelect?.(preset);
     }, [addToRecent, onTemplateSelect]);
 
-    const downloadImage = async (elementId: string, filename: string, templateId: string) => {
+    // ── Image download (client-side png export) ─────────────────────
+    const downloadImage = useCallback(async (elementId: string, filename: string, templateId: string) => {
         try {
             setDownloading(templateId);
             const node = document.getElementById(elementId);
@@ -215,8 +141,9 @@ export const TemplateGallery = ({
         } finally {
             setDownloading(null);
         }
-    };
+    }, [dims.w, dims.h]);
 
+    // ── Save draft to backend ───────────────────────────────────────
     const handleSaveDraft = async (templateId: string, caption: string) => {
         const res = await fetch("/api/social/posts", {
             method: "POST",
@@ -232,7 +159,8 @@ export const TemplateGallery = ({
         if (!res.ok) throw new Error("Save failed");
     };
 
-    const handleHdExport = async (templateId: string, preset: SocialTemplate) => {
+    // ── Server-side HD export ───────────────────────────────────────
+    const handleHdExport = useCallback(async (templateId: string, preset: SocialTemplate) => {
         setHdExporting(templateId);
         try {
             const res = await fetch("/api/social/render-poster", {
@@ -270,574 +198,105 @@ export const TemplateGallery = ({
         } finally {
             setHdExporting(null);
         }
-    };
+    }, [templateData, aspectRatio]);
 
-    const renderLayout = (preset: SocialTemplate) => {
-        const p = { templateData, preset };
-        switch (preset.layout) {
-            case "ElegantLayout":           return <ElegantLayout {...p} />;
-            case "SplitLayout":             return <SplitLayout {...p} />;
-            case "BottomLayout":            return <BottomLayout {...p} />;
-            case "ReviewLayout":            return <ReviewLayout {...p} />;
-            case "CarouselSlideLayout":     return <CarouselSlideLayout {...p} />;
-            case "ServiceShowcaseLayout":   return <ServiceShowcaseLayout {...p} />;
-            case "HeroServicesLayout":      return <HeroServicesLayout {...p} />;
-            case "InfoSplitLayout":         return <InfoSplitLayout {...p} />;
-            case "GradientHeroLayout":      return <GradientHeroLayout {...p} />;
-            case "DiagonalSplitLayout":     return <DiagonalSplitLayout {...p} />;
-            case "MagazineCoverLayout":     return <MagazineCoverLayout {...p} />;
-            case "DuotoneLayout":           return <DuotoneLayout {...p} />;
-            case "BoldTypographyLayout":    return <BoldTypographyLayout {...p} />;
-            case "CollageGridLayout":       return <CollageGridLayout {...p} />;
-            case "TriPanelLayout":          return <TriPanelLayout {...p} />;
-            case "PolaroidScatterLayout":   return <PolaroidScatterLayout {...p} />;
-            case "WindowGalleryLayout":     return <WindowGalleryLayout {...p} />;
-            case "MosaicStripLayout":       return <MosaicStripLayout {...p} />;
-            case "WaveDividerLayout":       return <WaveDividerLayout {...p} />;
-            case "CircleAccentLayout":      return <CircleAccentLayout {...p} />;
-            case "FloatingCardLayout":      return <FloatingCardLayout {...p} />;
-            case "PremiumCollageLayout":     return <PremiumCollageLayout {...p} />;
-            case "BannerRibbonLayout":      return <BannerRibbonLayout {...p} />;
-            case "SplitWaveLayout":         return <SplitWaveLayout {...p} />;
-            default:                        return <CenterLayout {...p} />;
-        }
-    };
-
-    const renderBg = (preset: SocialTemplate) => {
-        const selfBgLayouts = [
-            "ServiceShowcaseLayout", "HeroServicesLayout", "InfoSplitLayout",
-            "GradientHeroLayout", "DiagonalSplitLayout", "MagazineCoverLayout",
-            "DuotoneLayout", "BoldTypographyLayout",
-            "CollageGridLayout", "TriPanelLayout", "PolaroidScatterLayout",
-            "WindowGalleryLayout", "MosaicStripLayout",
-            "WaveDividerLayout", "CircleAccentLayout", "FloatingCardLayout",
-            "PremiumCollageLayout", "BannerRibbonLayout", "SplitWaveLayout",
-        ];
-        if (selfBgLayouts.includes(preset.layout)) return "";
-        // CarouselSlideLayout has its own built-in background
-        if (preset.layout === "CarouselSlideLayout") return "";
-        // Use template-specific palette if available
-        if (preset.palette) return `${preset.palette.bg} ${preset.palette.text}`;
-        if (preset.colorScheme === "dark")  return "bg-slate-900 text-white";
-        if (preset.colorScheme === "light") return "bg-white text-slate-900";
-        return "bg-gradient-to-br from-indigo-500 to-purple-600 text-white";
-    };
-
-    // Responsive preview: measure actual card width and scale 1080px canvas to fill it
-    const gridRef = useRef<HTMLDivElement>(null);
-    const [cardWidth, setCardWidth] = useState(0);
-
-    const measureCard = useCallback(() => {
-        if (!gridRef.current) return;
-        const firstCard = gridRef.current.querySelector<HTMLElement>("[data-template-card]");
-        if (firstCard) setCardWidth(firstCard.offsetWidth);
+    // ── Filter handlers ─────────────────────────────────────────────
+    const handleSearchChange = useCallback((value: string) => {
+        setSearchQuery(value);
+        if (value) setActiveCategory("All");
     }, []);
 
-    useEffect(() => {
-        measureCard();
-        const ro = new ResizeObserver(measureCard);
-        if (gridRef.current) ro.observe(gridRef.current);
-        return () => ro.disconnect();
-    }, [measureCard]);
+    const handleCategoryChange = useCallback((cat: string) => {
+        setActiveCategory(cat);
+        setSearchQuery("");
+    }, []);
 
-    const previewWidth = cardWidth || 300;
-    const scale = previewWidth / dims.w;
-    const previewH = dims.h * scale;
+    const handlePreviewDownload = useCallback((templateId: string, templateName: string) => {
+        downloadImage(`export-${templateId}`, `${templateName.replace(/\s+/g, "-")}.png`, templateId);
+    }, [downloadImage]);
+
+    const handleFilterFestival = useCallback(() => {
+        handleCategoryChange("Festival");
+    }, [handleCategoryChange]);
 
     return (
         <div className="space-y-5 animate-fade-in-up">
 
-            {/* ── Festival Urgency Banner ─────────────────────────────────── */}
-            <AnimatePresence>
-                {upcomingFestivals.length > 0 && !searchQuery && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl cursor-pointer hover:border-amber-400 transition-colors group"
-                        onClick={() => { setActiveCategory("Festival"); setSearchQuery(""); }}
-                    >
-                        <span className="text-2xl shrink-0">🎉</span>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-bold text-amber-800 dark:text-amber-300 text-sm truncate">
-                                {upcomingFestivals[0].name}
-                                {(() => {
-                                    const days = Math.ceil((new Date(upcomingFestivals[0].date).getTime() - Date.now()) / 86400000);
-                                    return days > 0 ? ` is in ${days} day${days !== 1 ? "s" : ""}` : " is today!";
-                                })()}
-                                {upcomingFestivals.length > 1 && ` (+${upcomingFestivals.length - 1} more upcoming)`}
-                            </p>
-                            <p className="text-amber-600 dark:text-amber-400 text-xs font-medium mt-0.5">
-                                Festival templates are ready — tap to filter →
-                            </p>
-                        </div>
-                        <Zap className="w-5 h-5 text-amber-500 shrink-0 group-hover:scale-110 transition-transform" />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <FestivalBanner
+                festivals={upcomingFestivals}
+                searchQuery={searchQuery}
+                onFilterFestival={handleFilterFestival}
+            />
 
-            {/* ── Search ─────────────────────────────────────────────────── */}
-            <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                    type="text"
-                    placeholder="Search templates… Dubai, Holi, Family, Flash Sale"
-                    value={searchQuery}
-                    onChange={e => { setSearchQuery(e.target.value); if (e.target.value) setActiveCategory("All"); }}
-                    className="w-full pl-10 pr-10 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 font-medium"
-                />
-                {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">
-                        <X className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
+            <TemplateSearchBar
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+            />
 
-            {/* ── Categories + Aspect Ratio ──────────────────────────────── */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {["All", "Festival", "Destination", "Package Type", "Season", "Promotion", "Review", "Carousel", "Informational"].map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => { setActiveCategory(cat); setSearchQuery(""); }}
-                            className={`px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
-                                activeCategory === cat && !searchQuery
-                                    ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                            }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
+            <TemplateCategoryFilter
+                activeCategory={activeCategory}
+                searchQuery={searchQuery}
+                aspectRatio={aspectRatio}
+                templateCount={filteredTemplates.length}
+                onCategoryChange={handleCategoryChange}
+                onAspectRatioChange={setAspectRatio}
+            />
 
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 shrink-0">
-                    {(["square", "portrait", "story"] as const).map(r => (
-                        <button
-                            key={r}
-                            onClick={() => setAspectRatio(r)}
-                            title={`${RATIO_DIMS[r].label} — ${RATIO_DIMS[r].w}×${RATIO_DIMS[r].h}`}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                aspectRatio === r
-                                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                                    : "text-slate-500"
-                            }`}
-                        >
-                            {r === "square"   && <Square className="w-3 h-3" />}
-                            {r === "portrait" && <div className="w-2 h-3 border-[1.5px] border-current rounded-[2px]" />}
-                            {r === "story"    && <Smartphone className="w-3 h-3" />}
-                            {RATIO_DIMS[r].label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <PreviewPanel
+                previewTemplate={previewTemplate}
+                templateData={templateData}
+                dims={dims}
+                downloading={downloading}
+                hdExporting={hdExporting}
+                phoneMockupId={phoneMockupId}
+                onClose={() => setPreviewTemplate(null)}
+                onDownload={handlePreviewDownload}
+                onHdExport={handleHdExport}
+                onPhoneMockupToggle={setPhoneMockupId}
+                onOpenInEditor={onTemplateSelect ? handleTemplateSelect : undefined}
+            />
 
-            <p className="text-xs text-slate-400 font-medium -mt-1">
-                {PRESET_TEMPLATES.length} template{PRESET_TEMPLATES.length !== 1 ? "s" : ""}
-                {searchQuery ? ` for "${searchQuery}"` : activeCategory !== "All" ? ` in ${activeCategory}` : " total"}
-            </p>
-
-            {/* ── Quick Preview Panel ─────────────────────────────── */}
-            <AnimatePresence>
-                {previewTemplate && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
-                            {/* Header */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Eye className="w-5 h-5 text-indigo-500" />
-                                    <div>
-                                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                                            Preview: {previewTemplate.name}
-                                        </h3>
-                                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
-                                            {previewTemplate.layout.replace("Layout", "")} · {previewTemplate.category}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setPhoneMockupId(phoneMockupId === previewTemplate.id ? null : previewTemplate.id)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
-                                    >
-                                        <Smartphone className="w-3.5 h-3.5" /> Phone
-                                    </button>
-                                    <button
-                                        onClick={() => setPreviewTemplate(null)}
-                                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Preview content */}
-                            <div className="flex gap-5 items-start justify-center">
-                                {/* Large preview (540px = 50% of 1080) */}
-                                <div
-                                    className={`relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 ${renderBg(previewTemplate)}`}
-                                    style={{ width: 540, height: dims.h * (540 / dims.w), flexShrink: 0 }}
-                                >
-                                    <div
-                                        className={`origin-top-left overflow-hidden ${renderBg(previewTemplate)} relative`}
-                                        style={{ width: dims.w, height: dims.h, transform: `scale(${540 / dims.w})` }}
-                                    >
-                                        {renderLayout(previewTemplate)}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex items-center gap-3 justify-center pt-1">
-                                <button
-                                    onClick={() => downloadImage(`export-${previewTemplate.id}`, `${previewTemplate.name.replace(/\s+/g, "-")}.png`, previewTemplate.id)}
-                                    disabled={downloading === previewTemplate.id}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors disabled:opacity-50"
-                                >
-                                    {downloading === previewTemplate.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                                    Download
-                                </button>
-                                <button
-                                    onClick={() => handleHdExport(previewTemplate.id, previewTemplate)}
-                                    disabled={hdExporting === previewTemplate.id}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                                >
-                                    {hdExporting === previewTemplate.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                                    HD Export
-                                </button>
-                                {onTemplateSelect && (
-                                    <button
-                                        onClick={() => { handleTemplateSelect(previewTemplate); setPreviewTemplate(null); }}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-900 transition-colors"
-                                    >
-                                        <Maximize2 className="w-4 h-4" />
-                                        Open in Editor
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* ── Recently Used Section ────────────────────────────────── */}
             {showSpecialSections && recentTemplates.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">Recently Used</h3>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {recentTemplates.map(preset => (
-                            <button
-                                key={`recent-${preset.id}`}
-                                onClick={() => handleTemplateSelect(preset)}
-                                className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md transition-all shrink-0 group/recent"
-                                style={{ width: 200 }}
-                            >
-                                {/* Mini color swatch */}
-                                <div
-                                    className={`w-10 h-10 rounded-lg shrink-0 overflow-hidden ${renderBg(preset)}`}
-                                >
-                                    <div
-                                        className={`origin-top-left ${renderBg(preset)} overflow-hidden`}
-                                        style={{ width: dims.w, height: dims.h, transform: `scale(${40 / dims.w})` }}
-                                    >
-                                        {renderLayout(preset)}
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-w-0 text-left">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate group-hover/recent:text-indigo-600 dark:group-hover/recent:text-indigo-400 transition-colors">
-                                        {preset.name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide truncate">
-                                        {preset.category}
-                                    </p>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <TemplateStrip
+                    title="Recently Used"
+                    variant="recent"
+                    items={recentTemplates}
+                    templateData={templateData}
+                    dims={dims}
+                    onSelect={handleTemplateSelect}
+                />
             )}
 
-            {/* ── Favorites Section ───────────────────────────────────── */}
             {showSpecialSections && favorites.size > 0 && favoriteTemplates.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 flex items-center gap-1.5">
-                        <Star className="w-3.5 h-3.5 text-amber-500" /> Favorites
-                    </h3>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {favoriteTemplates.map(preset => (
-                            <button
-                                key={`fav-${preset.id}`}
-                                onClick={() => handleTemplateSelect(preset)}
-                                className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/50 rounded-xl hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-md transition-all shrink-0 group/fav"
-                                style={{ width: 200 }}
-                            >
-                                {/* Mini color swatch */}
-                                <div
-                                    className={`w-10 h-10 rounded-lg shrink-0 overflow-hidden ${renderBg(preset)}`}
-                                >
-                                    <div
-                                        className={`origin-top-left ${renderBg(preset)} overflow-hidden`}
-                                        style={{ width: dims.w, height: dims.h, transform: `scale(${40 / dims.w})` }}
-                                    >
-                                        {renderLayout(preset)}
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-w-0 text-left">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate group-hover/fav:text-amber-600 dark:group-hover/fav:text-amber-400 transition-colors">
-                                        {preset.name}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide truncate">
-                                        {preset.category}
-                                    </p>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <TemplateStrip
+                    title="Favorites"
+                    variant="favorite"
+                    items={favoriteTemplates}
+                    templateData={templateData}
+                    dims={dims}
+                    onSelect={handleTemplateSelect}
+                />
             )}
 
-            {/* ── Template Grid ───────────────────────────────────────────── */}
-            <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-                {PRESET_TEMPLATES.map((preset, idx) => {
-                    const locked = !canAccessTemplate(preset.tier, templateUserTier);
-                    const isLoading = downloading === preset.id;
-                    const isFavorited = favorites.has(preset.id);
+            <TemplateGrid
+                templates={filteredTemplates}
+                templateData={templateData}
+                templateUserTier={templateUserTier}
+                dims={dims}
+                favorites={favorites}
+                downloading={downloading}
+                hdExporting={hdExporting}
+                phoneMockupId={phoneMockupId}
+                previewTemplateId={previewTemplate?.id ?? null}
+                onTemplateSelect={onTemplateSelect ? handleTemplateSelect : undefined}
+                onToggleFavorite={toggleFavorite}
+                onDownload={downloadImage}
+                onHdExport={handleHdExport}
+                onPhoneMockupToggle={setPhoneMockupId}
+                onPreviewToggle={setPreviewTemplate}
+                onDrawerOpen={setDrawerTemplate}
+            />
 
-                    return (
-                        <LazyTemplateCard
-                            key={preset.id}
-                            previewH={previewH}
-                            className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 flex flex-col"
-                        >
-                            {(isVisible) => (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 16 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: Math.min(idx, 12) * 0.035 }}
-                                    onClick={() => !locked && handleTemplateSelect(preset)}
-                                    data-template-card
-                                    className={`group relative flex flex-col h-full hover:shadow-xl transition-all duration-300 ${!locked && onTemplateSelect ? "cursor-pointer" : ""}`}
-                                >
-                                    {/* OFFSCREEN HIGH-RES RENDER (only when visible) */}
-                                    {isVisible && (
-                                        <div
-                                            id={`export-${preset.id}`}
-                                            className={`absolute -z-50 overflow-hidden pointer-events-none ${renderBg(preset)} flex flex-col`}
-                                            style={{ width: dims.w, height: dims.h, left: -9999, top: 0 }}
-                                        >
-                                            {renderLayout(preset)}
-                                        </div>
-                                    )}
-
-                                    {/* VISUAL PREVIEW (scaled CSS — fills card width) */}
-                                    <div
-                                        className="relative w-full overflow-hidden border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50"
-                                        style={{ height: previewH }}
-                                    >
-                                        <div
-                                            className={`pointer-events-none origin-top-left overflow-hidden ${renderBg(preset)} flex flex-col absolute top-0 left-0`}
-                                            style={{ width: dims.w, height: dims.h, transform: `scale(${scale})` }}
-                                        >
-                                            {renderLayout(preset)}
-                                        </div>
-
-                                        {/* Tier lock */}
-                                        {locked && (
-                                            <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
-                                                <div className="bg-white dark:bg-slate-800 rounded-2xl px-5 py-4 text-center shadow-xl mx-4">
-                                                    <Lock className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-                                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{preset.tier} Plan</p>
-                                                    <p className="text-xs text-slate-500 mt-0.5">Upgrade to unlock</p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Hover actions */}
-                                        {!locked && (
-                                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px] z-20">
-                                                {onTemplateSelect ? (
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                                                            <Maximize2 className="w-6 h-6 text-white" />
-                                                        </div>
-                                                        <span className="text-white font-bold text-sm">Open in Editor</span>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Button
-                                                            size="sm"
-                                                            className="bg-white text-black hover:bg-slate-100 font-bold shadow-xl"
-                                                            onClick={(e) => { e.stopPropagation(); setDrawerTemplate(preset); }}
-                                                        >
-                                                            <Instagram className="w-4 h-4 mr-1.5" /> Use This
-                                                        </Button>
-                                                        <button
-                                                            title="Preview in phone"
-                                                            onClick={(e) => { e.stopPropagation(); setPhoneMockupId(phoneMockupId === preset.id ? null : preset.id); }}
-                                                            className="p-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-colors"
-                                                        >
-                                                            <Smartphone className="w-4 h-4 text-white" />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Phone mockup overlay */}
-                                    <AnimatePresence>
-                                        {phoneMockupId === preset.id && (
-                                            <motion.div
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                className="absolute inset-0 bg-black/85 z-30 flex items-center justify-center p-4"
-                                                onClick={() => setPhoneMockupId(null)}
-                                            >
-                                                <div
-                                                    className="relative w-[190px] bg-black rounded-[32px] p-[5px] shadow-2xl border-[2px] border-slate-700"
-                                                    onClick={e => e.stopPropagation()}
-                                                >
-                                                    {/* Notch */}
-                                                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-3 bg-black rounded-full z-10 border border-slate-600" />
-                                                    <div className="rounded-[27px] overflow-hidden bg-white">
-                                                        {/* Fake IG header */}
-                                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border-b border-slate-100">
-                                                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 shrink-0" />
-                                                            <span className="text-[8px] font-bold text-slate-700 truncate flex-1">
-                                                                {templateData?.companyName || "your_agency"}
-                                                            </span>
-                                                            <span className="text-[7px] text-blue-500 font-bold shrink-0">Follow</span>
-                                                        </div>
-                                                        {/* Post */}
-                                                        <div
-                                                            className={`overflow-hidden relative ${renderBg(preset)}`}
-                                                            style={{ width: 180, height: 180 }}
-                                                        >
-                                                            <div
-                                                                className={`origin-top-left ${renderBg(preset)} overflow-hidden`}
-                                                                style={{ width: dims.w, height: dims.h, transform: `scale(${180 / dims.w})` }}
-                                                            >
-                                                                {renderLayout(preset)}
-                                                            </div>
-                                                        </div>
-                                                        {/* IG actions */}
-                                                        <div className="px-3 py-2 bg-white space-y-0.5">
-                                                            <div className="flex gap-2.5 text-sm">
-                                                                <span>♥</span><span>💬</span><span>✈</span>
-                                                            </div>
-                                                            <p className="text-[8px] font-bold text-slate-700">142 likes</p>
-                                                            <p className="text-[7px] text-slate-500 line-clamp-2">
-                                                                <span className="font-bold">{templateData?.companyName || "your_agency"}</span>{" "}
-                                                                ✈️ {templateData?.destination} from {templateData?.price}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex justify-center mt-1 mb-0.5">
-                                                        <div className="w-10 h-1 bg-slate-600 rounded-full" />
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    className="absolute top-3 right-3 p-2 bg-white/20 rounded-xl text-white hover:bg-white/30"
-                                                    onClick={() => setPhoneMockupId(null)}
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Card footer */}
-                                    <div className="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{preset.name}</p>
-                                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide mt-0.5">
-                                                {preset.layout.replace("Layout", "")} · {preset.category}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            {locked ? (
-                                                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                                    {preset.tier}
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); toggleFavorite(preset.id); }}
-                                                        className={`p-1.5 rounded-lg transition-colors ${
-                                                            isFavorited
-                                                                ? "text-amber-500 bg-amber-50 dark:bg-amber-900/30"
-                                                                : "text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                        }`}
-                                                        title={isFavorited ? "Remove from favorites" : "Add to favorites"}
-                                                    >
-                                                        <Star className={`w-4 h-4 ${isFavorited ? "fill-current" : ""}`} />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setPreviewTemplate(previewTemplate?.id === preset.id ? null : preset); }}
-                                                        className={`p-1.5 rounded-lg transition-colors ${
-                                                            previewTemplate?.id === preset.id
-                                                                ? "text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-900/30"
-                                                                : "text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                        }`}
-                                                        title="Quick Preview"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); downloadImage(`export-${preset.id}`, `${preset.name.replace(/\s+/g, "-")}.png`, preset.id); }}
-                                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                                                        title="Download"
-                                                    >
-                                                        {isLoading
-                                                            ? <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                                                            : <Download className="w-4 h-4" />
-                                                        }
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleHdExport(preset.id, preset);
-                                                        }}
-                                                        disabled={hdExporting === preset.id}
-                                                        className="p-1.5 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
-                                                        title="HD Export (Server Rendered)"
-                                                    >
-                                                        {hdExporting === preset.id ? (
-                                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                                        ) : (
-                                                            <Zap className="w-4 h-4" />
-                                                        )}
-                                                    </button>
-                                                    <div className="flex gap-0.5 opacity-40">
-                                                        <Instagram className="w-3.5 h-3.5 text-pink-500" />
-                                                        <Linkedin className="w-3.5 h-3.5 text-blue-600" />
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </LazyTemplateCard>
-                    );
-                })}
-            </div>
-
-            {PRESET_TEMPLATES.length === 0 && (
-                <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                    <p className="text-slate-500 font-bold text-lg">No templates found</p>
-                    <p className="text-slate-400 text-sm mt-1 font-medium">Try a different search term or category.</p>
-                </div>
-            )}
-
-            {/* Publish Kit Drawer */}
             <PublishKitDrawer
                 isOpen={!!drawerTemplate}
                 onClose={() => setDrawerTemplate(null)}
