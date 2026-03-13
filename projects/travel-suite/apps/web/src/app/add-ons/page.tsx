@@ -3,28 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import {
-  Plus,
-  Search,
-  DollarSign,
-  Package,
-  TrendingUp,
-  Activity,
-  Edit,
-  Trash2,
-  Power,
-  PowerOff,
-} from "lucide-react";
-import { GlassCard } from "@/components/glass/GlassCard";
-import { GlassButton } from "@/components/glass/GlassButton";
-import { GlassInput } from "@/components/glass/GlassInput";
-import {
-  GlassBadge,
-  type GlassBadgeProps,
-} from "@/components/glass/GlassBadge";
-import { GlassModal, GlassConfirmModal } from "@/components/glass/GlassModal";
-import { GlassTextarea, GlassSelect } from "@/components/glass/GlassInput";
+import { Package } from "lucide-react";
+import { GlassConfirmModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
+
+import type { AddOn, AddOnFormData, Stats } from "./_components/types";
+import { EMPTY_FORM_DATA, PACKAGE_TEMPLATES } from "./_components/types";
+import { StatsHeader } from "./_components/StatsHeader";
+import { CategoryFilter } from "./_components/CategoryFilter";
+import { AddOnsGrid } from "./_components/AddOnsGrid";
+import { AddOnFormModal } from "./_components/AddOnFormModal";
 
 /**
  * Add-ons Management Page (Upsell Engine)
@@ -36,103 +24,29 @@ import { useToast } from "@/components/ui/toast";
  * - Toggle active/inactive status
  */
 
-interface AddOn {
-  id: string;
-  organization_id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  category: string;
-  image_url: string | null;
-  duration: string | null;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface Stats {
-  totalRevenue: number;
-  totalSales: number;
-  topAddOn: string;
-  totalAddOns: number;
-  activeAddOns: number;
-}
-
-type BadgeVariant = NonNullable<GlassBadgeProps["variant"]>;
-
-const CATEGORY_BADGE_VARIANTS: Record<string, BadgeVariant> = {
-  Activities: "primary",
-  Dining: "warning",
-  Transport: "info",
-  Upgrades: "success",
+const DEFAULT_STATS: Stats = {
+  totalRevenue: 0,
+  totalSales: 0,
+  topAddOn: "None",
+  totalAddOns: 0,
+  activeAddOns: 0,
 };
 
-const getCategoryColor = (category: string): BadgeVariant =>
-  CATEGORY_BADGE_VARIANTS[category] || "default";
+const DEFAULT_CATEGORIES = ["All", "Activities", "Dining", "Transport", "Upgrades"];
 
-const PACKAGE_TEMPLATES: Record<
-  string,
-  {
-    name: string;
-    description: string;
-    price: string;
-    category: string;
-    duration: string;
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
   }
-> = {
-  ai_credits: {
-    name: "AI Credits Pack",
-    description: "Prepaid AI generation capacity for peak proposal workflows.",
-    price: "2999",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  whatsapp_volume: {
-    name: "WhatsApp Volume Pack",
-    description:
-      "Higher reminder volume for collections and quote follow-up automation.",
-    price: "1999",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  premium_templates: {
-    name: "Premium Templates Pack",
-    description:
-      "High-conversion proposal templates designed for upsell moments.",
-    price: "1499",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  ai_credits_starter: {
-    name: "AI Starter Credits",
-    description: "1,000 prepaid AI requests for controlled overage spending.",
-    price: "2999",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  ai_credits_growth: {
-    name: "AI Growth Credits",
-    description: "5,000 prepaid AI requests for high-volume teams.",
-    price: "11999",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  media_credits_growth: {
-    name: "Media Search Credits",
-    description:
-      "Prepaid credits for stock discovery and media lookup operations.",
-    price: "2499",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-  automation_recovery: {
-    name: "Collections Automation Pack",
-    description:
-      "Outcome-focused automation actions for payment and quote recovery.",
-    price: "4999",
-    category: "Upgrades",
-    duration: "Monthly",
-  },
-};
+  return headers;
+}
 
 export default function AddOnsPage() {
   const searchParams = useSearchParams();
@@ -140,22 +54,8 @@ export default function AddOnsPage() {
   const [loading, setLoading] = useState(true);
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const [filteredAddOns, setFilteredAddOns] = useState<AddOn[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalRevenue: 0,
-    totalSales: 0,
-    topAddOn: "None",
-    totalAddOns: 0,
-    activeAddOns: 0,
-  });
-
-  const [categories, setCategories] = useState<string[]>([
-    "All",
-    "Activities",
-    "Dining",
-    "Transport",
-    "Upgrades",
-  ]);
-  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -168,17 +68,7 @@ export default function AddOnsPage() {
   const [addOnToDelete, setAddOnToDelete] = useState<AddOn | null>(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category: "Activities",
-    image_url: "",
-    duration: "",
-  });
-
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState<AddOnFormData>(EMPTY_FORM_DATA);
   const autoTemplateLoaded = useRef(false);
 
   useEffect(() => {
@@ -198,8 +88,6 @@ export default function AddOnsPage() {
       image_url: "",
       duration: template.duration,
     });
-    setIsCustomCategory(false);
-    setFormErrors({});
     setModalOpen(true);
     autoTemplateLoaded.current = true;
   }, [searchParams]);
@@ -207,17 +95,7 @@ export default function AddOnsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Get session for Auth header
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
+      const headers = await getAuthHeaders();
 
       // Load add-ons
       const response = await fetch("/api/add-ons", { headers });
@@ -260,14 +138,12 @@ export default function AddOnsPage() {
   const filterAddOns = useCallback(() => {
     let filtered = [...addOns];
 
-    // Filter by category
     if (selectedCategory !== "All") {
       filtered = filtered.filter(
         (addon) => addon.category === selectedCategory,
       );
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -288,27 +164,14 @@ export default function AddOnsPage() {
     filterAddOns();
   }, [filterAddOns]);
 
-  function openCreateModal() {
+  const openCreateModal = useCallback(() => {
     setEditingAddOn(null);
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      category: "Activities",
-      image_url: "",
-      duration: "",
-    });
-    setIsCustomCategory(false);
-    setFormErrors({});
+    setFormData(EMPTY_FORM_DATA);
     setModalOpen(true);
-  }
+  }, []);
 
-  function openEditModal(addon: AddOn) {
+  const openEditModal = useCallback((addon: AddOn) => {
     setEditingAddOn(addon);
-
-    const defaultCats = ["Activities", "Dining", "Transport", "Upgrades"];
-    setIsCustomCategory(!defaultCats.includes(addon.category));
-
     setFormData({
       name: addon.name,
       description: addon.description || "",
@@ -317,118 +180,61 @@ export default function AddOnsPage() {
       image_url: addon.image_url || "",
       duration: addon.duration || "",
     });
-    setFormErrors({});
     setModalOpen(true);
-  }
+  }, []);
 
-  function closeModal() {
+  const closeModal = useCallback(() => {
     setModalOpen(false);
     setEditingAddOn(null);
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      category: "Activities",
-      image_url: "",
-      duration: "",
-    });
-    setFormErrors({});
-  }
+    setFormData(EMPTY_FORM_DATA);
+  }, []);
 
-  function validateForm(): boolean {
-    const errors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      errors.name = "Name is required";
-    }
-
-    if (!formData.price.trim()) {
-      errors.price = "Price is required";
-    } else if (
-      isNaN(parseFloat(formData.price)) ||
-      parseFloat(formData.price) <= 0
-    ) {
-      errors.price = "Price must be a positive number";
-    }
-
-    if (!formData.category) {
-      errors.category = "Category is required";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }
-
-  async function saveAddOn() {
-    if (!validateForm()) {
-      return;
-    }
-
-    setSaving(true);
-    try {
+  const saveAddOn = useCallback(
+    async (data: AddOnFormData) => {
       const url = editingAddOn
         ? `/api/add-ons/${editingAddOn.id}`
         : "/api/add-ons";
-
       const method = editingAddOn ? "PUT" : "POST";
 
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(url, {
+          method,
+          headers,
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to save add-on");
+        }
+
+        await loadData();
+        closeModal();
+      } catch (error) {
+        console.error("Error saving add-on:", error);
+        toast({
+          title: "Save failed",
+          description:
+            error instanceof Error ? error.message : "Failed to save add-on",
+          variant: "error",
+        });
       }
+    },
+    [editingAddOn, loadData, closeModal, toast],
+  );
 
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to save add-on");
-      }
-
-      // Reload data
-      await loadData();
-      closeModal();
-    } catch (error) {
-      console.error("Error saving add-on:", error);
-      toast({
-        title: "Save failed",
-        description:
-          error instanceof Error ? error.message : "Failed to save add-on",
-        variant: "error",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function openDeleteConfirm(addon: AddOn) {
+  const openDeleteConfirm = useCallback((addon: AddOn) => {
     setAddOnToDelete(addon);
     setDeleteConfirmOpen(true);
-  }
+  }, []);
 
-  async function confirmDelete() {
+  const confirmDelete = useCallback(async () => {
     if (!addOnToDelete) return;
 
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {};
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/add-ons/${addOnToDelete.id}`, {
         method: "DELETE",
         headers,
@@ -440,7 +246,6 @@ export default function AddOnsPage() {
         throw new Error(data.error || "Failed to delete add-on");
       }
 
-      // Reload data
       await loadData();
       setDeleteConfirmOpen(false);
       setAddOnToDelete(null);
@@ -453,45 +258,37 @@ export default function AddOnsPage() {
         variant: "error",
       });
     }
-  }
+  }, [addOnToDelete, loadData, toast]);
 
-  async function toggleActive(addon: AddOn) {
-    try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
+  const toggleActive = useCallback(
+    async (addon: AddOn) => {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`/api/add-ons/${addon.id}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            ...addon,
+            is_active: !addon.is_active,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update add-on status");
+        }
+
+        await loadData();
+      } catch (error) {
+        console.error("Error toggling active status:", error);
+        toast({
+          title: "Status update failed",
+          description: "Failed to update add-on status",
+          variant: "error",
+        });
       }
-
-      const response = await fetch(`/api/add-ons/${addon.id}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          ...addon,
-          is_active: !addon.is_active,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update add-on status");
-      }
-
-      // Reload data
-      await loadData();
-    } catch (error) {
-      console.error("Error toggling active status:", error);
-      toast({
-        title: "Status update failed",
-        description: "Failed to update add-on status",
-        variant: "error",
-      });
-    }
-  }
+    },
+    [loadData, toast],
+  );
 
   if (loading) {
     return (
@@ -529,338 +326,35 @@ export default function AddOnsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">
-              Total Add-ons
-            </div>
-            <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            {stats.totalAddOns}
-          </div>
-          <div className="text-xs text-text-secondary mt-2">
-            {stats.activeAddOns} active
-          </div>
-        </GlassCard>
+      <StatsHeader stats={stats} />
 
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">
-              Revenue (Month)
-            </div>
-            <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            ${stats.totalRevenue.toFixed(2)}
-          </div>
-          <div className="text-xs text-text-secondary mt-2">
-            From {stats.totalSales} sales
-          </div>
-        </GlassCard>
-
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">
-              Most Popular
-            </div>
-            <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="text-xl font-bold text-purple-600 dark:text-purple-400 truncate">
-            {stats.topAddOn}
-          </div>
-          <div className="text-xs text-text-secondary mt-2">Top seller</div>
-        </GlassCard>
-
-        <GlassCard padding="lg" rounded="2xl">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs uppercase tracking-wide text-primary">
-              Active Sales
-            </div>
-            <Activity className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-          </div>
-          <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            {stats.totalSales}
-          </div>
-          <div className="text-xs text-text-secondary mt-2">This month</div>
-        </GlassCard>
-      </div>
-
-      {/* Category Tabs + Create Button */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <GlassButton
-              key={category}
-              variant={selectedCategory === category ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </GlassButton>
-          ))}
-        </div>
-
-        <GlassButton variant="primary" onClick={openCreateModal}>
-          <Plus className="w-4 h-4" />
-          Add New Add-on
-        </GlassButton>
-      </div>
-
-      {/* Search */}
-      <GlassInput
-        placeholder="Search add-ons..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        icon={Search}
+      <CategoryFilter
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onCreateClick={openCreateModal}
       />
 
-      {/* Add-ons Grid */}
-      {filteredAddOns.length === 0 ? (
-        <GlassCard padding="lg" rounded="2xl" className="text-center py-12">
-          <Package className="w-12 h-12 text-text-secondary mx-auto mb-4" />
-          <h3 className="text-lg font-serif text-secondary dark:text-white mb-2">
-            No add-ons found
-          </h3>
-          <p className="text-text-secondary mb-6">
-            {searchQuery
-              ? "Try adjusting your search or filters"
-              : "Create your first add-on to start upselling"}
-          </p>
-          {!searchQuery && (
-            <GlassButton variant="primary" onClick={openCreateModal}>
-              <Plus className="w-4 h-4" />
-              Create Add-on
-            </GlassButton>
-          )}
-        </GlassCard>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAddOns.map((addon) => (
-            <GlassCard key={addon.id} padding="none" rounded="2xl">
-              {/* Image */}
-              {addon.image_url ? (
-                <div
-                  className="h-48 bg-cover bg-center rounded-t-2xl"
-                  style={{ backgroundImage: `url(${addon.image_url})` }}
-                />
-              ) : (
-                <div className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-2xl flex items-center justify-center">
-                  <Package className="w-12 h-12 text-primary/50" />
-                </div>
-              )}
+      <AddOnsGrid
+        addOns={filteredAddOns}
+        searchQuery={searchQuery}
+        onCreateClick={openCreateModal}
+        onEditClick={openEditModal}
+        onDeleteClick={openDeleteConfirm}
+        onToggleActive={toggleActive}
+      />
 
-              {/* Content */}
-              <div className="p-5 space-y-4">
-                <div>
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-serif text-secondary dark:text-white">
-                      {addon.name}
-                    </h3>
-                    <GlassBadge
-                      variant={getCategoryColor(addon.category)}
-                      size="sm"
-                    >
-                      {addon.category}
-                    </GlassBadge>
-                  </div>
-
-                  {addon.description && (
-                    <p className="text-sm text-text-secondary line-clamp-2">
-                      {addon.description}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-primary">
-                      ${addon.price.toFixed(2)}
-                    </div>
-                    {addon.duration && (
-                      <div className="text-xs text-text-secondary">
-                        {addon.duration}
-                      </div>
-                    )}
-                  </div>
-
-                  <GlassBadge
-                    variant={addon.is_active ? "success" : "default"}
-                    size="sm"
-                  >
-                    {addon.is_active ? "Active" : "Inactive"}
-                  </GlassBadge>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-4 border-t border-white/10">
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    fullWidth
-                    onClick={() => openEditModal(addon)}
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit
-                  </GlassButton>
-
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    fullWidth
-                    onClick={() => toggleActive(addon)}
-                  >
-                    {addon.is_active ? (
-                      <>
-                        <PowerOff className="w-4 h-4" />
-                        Deactivate
-                      </>
-                    ) : (
-                      <>
-                        <Power className="w-4 h-4" />
-                        Activate
-                      </>
-                    )}
-                  </GlassButton>
-
-                  <GlassButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openDeleteConfirm(addon)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </GlassButton>
-                </div>
-              </div>
-            </GlassCard>
-          ))}
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      <GlassModal
+      <AddOnFormModal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editingAddOn ? "Edit Add-on" : "Create New Add-on"}
-        size="lg"
-      >
-        <div className="space-y-4">
-          <GlassInput
-            label="Name"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            error={formErrors.name}
-            placeholder="e.g., Wine Tasting Tour"
-          />
+        onSave={saveAddOn}
+        editingAddOn={editingAddOn}
+        initialFormData={formData}
+        categories={categories}
+      />
 
-          <GlassTextarea
-            label="Description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="Describe the add-on..."
-            rows={3}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <GlassInput
-              label="Price"
-              type="number"
-              required
-              value={formData.price}
-              onChange={(e) =>
-                setFormData({ ...formData, price: e.target.value })
-              }
-              error={formErrors.price}
-              placeholder="0.00"
-            />
-
-            {!isCustomCategory ? (
-              <GlassSelect
-                label="Category"
-                required
-                options={[
-                  ...categories
-                    .filter((c) => c !== "All")
-                    .map((c) => ({ value: c, label: c })),
-                  { value: "custom", label: "Other..." },
-                ]}
-                value={formData.category}
-                onChange={(e) => {
-                  if (e.target.value === "custom") {
-                    setIsCustomCategory(true);
-                    setFormData({ ...formData, category: "" });
-                  } else {
-                    setFormData({ ...formData, category: e.target.value });
-                  }
-                }}
-              />
-            ) : (
-              <div className="space-y-1">
-                <GlassInput
-                  label="Custom Category"
-                  required
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  placeholder="e.g. VIP Service"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCustomCategory(false);
-                    setFormData({ ...formData, category: "Activities" });
-                  }}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Back to list
-                </button>
-              </div>
-            )}
-          </div>
-
-          <GlassInput
-            label="Duration"
-            value={formData.duration}
-            onChange={(e) =>
-              setFormData({ ...formData, duration: e.target.value })
-            }
-            placeholder="e.g., 2 hours"
-            helperText="Optional - How long is this experience?"
-          />
-
-          <GlassInput
-            label="Image URL"
-            value={formData.image_url}
-            onChange={(e) =>
-              setFormData({ ...formData, image_url: e.target.value })
-            }
-            placeholder="https://example.com/image.jpg"
-            helperText="Optional - Provide a URL to an image"
-          />
-
-          <div className="flex gap-3 pt-4">
-            <GlassButton variant="ghost" onClick={closeModal} fullWidth>
-              Cancel
-            </GlassButton>
-            <GlassButton
-              variant="primary"
-              onClick={saveAddOn}
-              loading={saving}
-              fullWidth
-            >
-              {editingAddOn ? "Update Add-on" : "Create Add-on"}
-            </GlassButton>
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* Delete Confirmation Modal */}
       <GlassConfirmModal
         isOpen={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
