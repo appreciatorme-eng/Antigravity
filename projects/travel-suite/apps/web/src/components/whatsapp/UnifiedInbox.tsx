@@ -1,53 +1,18 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAnalytics } from '@/lib/analytics/events';
-import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
-import { createClient } from '@/lib/supabase/client';
-import { GlassButton } from '@/components/glass/GlassButton';
-import { GlassCard } from '@/components/glass/GlassCard';
-import {
-  Search,
-  X,
-  FileText,
-  Mail,
-  MessageCircle,
-  AlertTriangle,
-  RefreshCw,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  MessageThread,
-  type Message,
-} from './MessageThread';
-import type { ActionMode, ChatbotSessionSummary } from './whatsapp.types';
-import {
-  type ChannelConversation,
-  type ChannelType,
-  ALL_MOCK_CONVERSATIONS,
-  MOCK_CLIENT_DETAILS,
-} from './inbox-mock-data';
-import { ActionPickerModal } from './ActionPickerModal';
-import { ContextActionModal, type ContextActionType } from './ContextActionModal';
-import { UnifiedInboxContextPanel } from './UnifiedInboxContextPanel';
-import { WhatsAppConnectModal } from './WhatsAppConnectModal';
+import { AlertTriangle } from 'lucide-react';
 import { ErrorSection } from '@/components/ui/ErrorSection';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { InboxSkeleton } from '@/components/ui/skeletons/InboxSkeleton';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
-import { useUserTimezone } from '@/hooks/useUserTimezone';
-import { useSmartReplySuggestions } from './useSmartReplySuggestions';
-import {
-  type ChannelFilter,
-  type ContextAction,
-  type FilterTab,
-  type SortMode,
-  UnifiedInboxConversationItem,
-} from './unified-inbox-shared';
+import { UnifiedInboxContextPanel } from './UnifiedInboxContextPanel';
+import { useInboxData } from './useInboxData';
+import { ConversationListPanel } from './ConversationListPanel';
+import { ThreadPane } from './ThreadPane';
+import { InboxModals } from './InboxModals';
 
-// ─── MAIN UNIFIED INBOX ───────────────────────────────────────────────────────
+// ---- MAIN UNIFIED INBOX ----
 
 interface UnifiedInboxProps {
   onSendMessage?: (convId: string, message: string) => void;
@@ -57,389 +22,27 @@ interface UnifiedInboxProps {
 
 export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
   const router = useRouter();
-  const analytics = useAnalytics();
   const { isDemoMode } = useDemoMode();
-  const supabase = useMemo(() => createClient(), []);
-  const { timezone } = useUserTimezone();
-  const [conversations, setConversations] = useState<ChannelConversation[]>(
-    isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
-  const [isLoadingConvs, setIsLoadingConvs] = useState(false);
-  const [conversationsError, setConversationsError] = useState<string | null>(null);
-  const [whatsAppStatus, setWhatsAppStatus] = useState<'connected' | 'pending' | 'disconnected' | 'error'>(
-    isDemoMode ? 'connected' : 'disconnected',
-  );
-  const [whatsAppHealthError, setWhatsAppHealthError] = useState<string | null>(null);
-  const [isTakingOverChatbot, setIsTakingOverChatbot] = useState(false);
 
-  const loadLiveConversations = useCallback(async () => {
-    setIsLoadingConvs(true);
-    setConversationsError(null);
-    try {
-      const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
-      const data = (await response.json().catch(() => ({}))) as {
-        conversations?: ChannelConversation[];
-        error?: string;
-      };
+  const inbox = useInboxData({ onSendMessage });
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load conversations');
-      }
+  const isDisconnected = !isDemoMode && inbox.whatsAppStatus !== 'connected';
 
-      const convs = data.conversations ?? [];
-      setConversations(convs);
-      setSelectedId((current) => current || convs[0]?.id || null);
-    } catch (error) {
-      setConversationsError(
-        error instanceof Error ? error.message : 'Unable to load conversations right now.',
-      );
-    } finally {
-      setIsLoadingConvs(false);
-    }
-  }, []);
-
-  const loadWhatsAppHealth = useCallback(async () => {
-    try {
-      const response = await fetch('/api/whatsapp/health', { cache: 'no-store' });
-      const data = (await response.json().catch(() => ({}))) as {
-        connected?: boolean;
-        error?: string | null;
-      };
-      setWhatsAppStatus(data.connected ? 'connected' : 'disconnected');
-      setWhatsAppHealthError(data.error ?? null);
-    } catch {
-      setWhatsAppStatus('error');
-      setWhatsAppHealthError('Unable to reach WhatsApp right now.');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isDemoMode) {
-      setConversations(ALL_MOCK_CONVERSATIONS);
-      setSelectedId('conv_1');
-      setWhatsAppStatus('connected');
-      setConversationsError(null);
-      return;
-    }
-    void loadLiveConversations();
-    void loadWhatsAppHealth();
-  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth]);
-
-  useEffect(() => {
-    if (isDemoMode) return;
-
-    const channel = supabase
-      .channel('inbox-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_webhook_events' },
-        () => {
-          void loadLiveConversations();
-          void loadWhatsAppHealth();
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_connections' },
-        () => {
-          void loadWhatsAppHealth();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth, supabase]);
-  const [search, setSearch] = useState('');
-  const [filterTab, setFilterTab] = useState<FilterTab>('all');
-  const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
-  const [sortMode, setSortMode] = useState<SortMode>('recent');
-  const [isRefreshingProposalDraft, setIsRefreshingProposalDraft] = useState(false);
-
-  const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
-  const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
-  const activeChatbotSession =
-    selectedConversation?.channel === 'whatsapp' ? selectedConversation.chatbotSession ?? null : null;
-  const showChatbotBanner =
-    !isDemoMode &&
-    activeChatbotSession?.state !== undefined &&
-    activeChatbotSession.state !== 'handed_off' &&
-    activeChatbotSession.aiReplyCount > 0;
-  const {
-    suggestions: smartReplySuggestions,
-    loading: smartReplyLoading,
-    clear: clearSmartReplySuggestions,
-    refresh: refreshSmartReplySuggestions,
-  } = useSmartReplySuggestions(
-    selectedConversation,
-    !isDemoMode && selectedChannel === 'whatsapp',
-  );
-
-  const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);
-
-  async function handleTakeOverChatbot(session: ChatbotSessionSummary) {
-    setIsTakingOverChatbot(true);
-    try {
-      const response = await fetch(`/api/whatsapp/chatbot-sessions/${session.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'handed_off' }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
-        data?: { session?: ChatbotSessionSummary };
-        error?: string;
-      };
-
-      if (!response.ok || !payload.data?.session) {
-        throw new Error(payload.error || 'Failed to hand conversation to a human');
-      }
-
-      setConversations((prev) =>
-        prev.map((conversation) =>
-          conversation.id === selectedId
-            ? { ...conversation, chatbotSession: payload.data?.session ?? null }
-            : conversation,
-        ),
-      );
-      toast.success('AI handoff disabled for this conversation');
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to take over this conversation',
-      );
-    } finally {
-      setIsTakingOverChatbot(false);
-    }
-  }
-
-  function handleOpenProposalDraft(draftId: string) {
-    router.push(`/proposals/create?whatsappDraft=${encodeURIComponent(draftId)}`);
-  }
-
-  async function handleRefreshProposalDraft(draftId: string) {
-    setIsRefreshingProposalDraft(true);
-    try {
-      const response = await fetch(`/api/whatsapp/proposal-drafts/${draftId}`, {
-        method: 'POST',
-      });
-      const payload = (await response.json().catch(() => ({}))) as {
-        data?: { draft?: { id?: string } };
-        error?: string;
-      };
-
-      if (!response.ok || !payload.data?.draft?.id) {
-        throw new Error(payload.error || 'Failed to refresh proposal draft');
-      }
-
-      toast.success('Proposal draft refreshed from the latest chat context');
-      handleOpenProposalDraft(payload.data.draft.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to refresh proposal draft');
-    } finally {
-      setIsRefreshingProposalDraft(false);
-    }
-  }
-
-  const filteredAndSorted = useMemo(() => {
-    let list = conversations;
-
-    // Filter by channel
-    if (channelFilter === 'whatsapp') list = list.filter((c) => c.channel === 'whatsapp');
-    else if (channelFilter === 'email') list = list.filter((c) => c.channel === 'email');
-
-    // Filter by tab
-    if (filterTab === 'clients') list = list.filter((c) => c.contact.type === 'client');
-    else if (filterTab === 'drivers') list = list.filter((c) => c.contact.type === 'driver');
-    else if (filterTab === 'leads') list = list.filter((c) => c.contact.type === 'lead');
-    else if (filterTab === 'unread') list = list.filter((c) => c.unreadCount > 0);
-
-    // Search filter
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.contact.name.toLowerCase().includes(q) ||
-          c.contact.phone.includes(q) ||
-          (c.contact.email?.toLowerCase().includes(q) ?? false) ||
-          c.messages.some((m) => m.body?.toLowerCase().includes(q) || m.subject?.toLowerCase().includes(q))
-      );
-    }
-
-    // Sort
-    if (sortMode === 'unread') list = [...list].sort((a, b) => b.unreadCount - a.unreadCount);
-    else if (sortMode === 'priority') {
-      list = [...list].sort((a, b) => {
-        const score = (c: ChannelConversation) => (c.unreadCount > 0 ? 10 : 0) + (c.contact.label === 'payment' ? 5 : 0);
-        return score(b) - score(a);
-      });
-    }
-
-    return list;
-  }, [conversations, channelFilter, filterTab, search, sortMode]);
-
-  async function handleSendMessage(convId: string, message: string, subject?: string) {
-    const conversation = conversations.find((item) => item.id === convId);
-    if (!conversation) return false;
-
-    if (conversation.channel !== 'whatsapp') {
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== convId) return c;
-          const localMsg: Message = {
-            id: `m_${Date.now()}`,
-            type: 'text',
-            direction: 'out',
-            body: message,
-            subject,
-            timestamp: formatLocalTime(new Date(), timezone),
-            status: 'sent',
-          };
-          return { ...c, messages: [...c.messages, localMsg] };
-        }),
-      );
-      onSendMessage?.(convId, message);
-      return true;
-    }
-
-    if (whatsAppStatus !== 'connected') {
-      toast.error('WhatsApp is not connected. Link it from Settings before replying.');
-      setWhatsAppStatus('disconnected');
-      return false;
-    }
-
-    const optimisticId = `pending_${Date.now()}`;
-    const optimisticMessage: Message = {
-      id: optimisticId,
-      type: 'text',
-      direction: 'out',
-      body: message,
-      subject,
-      timestamp: formatLocalTime(new Date(), timezone),
-      status: 'pending',
-    };
-
-    setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, optimisticMessage] } : c)),
-    );
-
-    try {
-      const response = await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: conversation.contact.phone,
-          message,
-          subject,
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok || !payload?.data?.message) {
-        throw new Error(payload?.error || 'Failed to send WhatsApp message');
-      }
-
-      const sentMessage = payload.data.message as Message;
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? {
-                ...c,
-                messages: c.messages.map((msg) => (msg.id === optimisticId ? sentMessage : msg)),
-              }
-            : c,
-        ),
-      );
-      setWhatsAppStatus('connected');
-      analytics.whatsappSent('thread');
-      clearSmartReplySuggestions();
-      onSendMessage?.(convId, message);
-      return true;
-    } catch (error) {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? { ...c, messages: c.messages.filter((msg) => msg.id !== optimisticId) }
-            : c,
-        ),
-      );
-      setWhatsAppStatus('disconnected');
-      toast.error(error instanceof Error ? error.message : 'Failed to send WhatsApp reply');
-      return false;
-    }
-  }
-
-  function handleSelect(id: string) {
-    setSelectedId(id);
-    // Mark as read
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
-    );
-  }
-
-  const [contextModal, setContextModal] = useState<{ type: ContextActionType; tripName?: string; waId?: string } | null>(null);
-  const [ctxActionModal, setCtxActionModal] = useState<ActionMode | null>(null);
-  const [isWaConnectOpen, setIsWaConnectOpen] = useState(false);
-
-  function handleContextAction(action: ContextAction, tripName?: string) {
-    if (!selectedConversation) return;
-    const { contact } = selectedConversation;
-
-    if (action === 'add-to-crm') {
-      const nameParam = encodeURIComponent(contact.name);
-      const phoneParam = encodeURIComponent(contact.phone);
-      const email = MOCK_CLIENT_DETAILS[contact.id]?.email ?? '';
-      toast.success(`${contact.name} added to CRM ✓`, {
-        description: 'Navigating to client profile…',
-      });
-      setTimeout(
-        () => router.push(`/clients?name=${nameParam}&phone=${phoneParam}&email=${encodeURIComponent(email)}&source=inbox`),
-        900,
-      );
-      return;
-    }
-
-    if (action === 'assign-driver') {
-      setCtxActionModal('driver');
-      return;
-    }
-
-    if (action === 'request-payment') {
-      setCtxActionModal('payment');
-      return;
-    }
-
-    if (action === 'create-proposal') {
-      const waId = contact.phone.replace(/[\s+]/g, '');
-      setContextModal({ type: 'create-proposal', waId });
-      return;
-    }
-
-    setContextModal({ type: action as ContextActionType, tripName });
-  }
-
-  const FILTER_TABS: Array<{ key: FilterTab; label: string; count?: number }> = [
-    { key: 'all', label: 'All', count: conversations.length },
-    { key: 'clients', label: 'Clients', count: conversations.filter((c) => c.contact.type === 'client').length },
-    { key: 'drivers', label: 'Drivers', count: conversations.filter((c) => c.contact.type === 'driver').length },
-    { key: 'leads', label: 'Leads', count: conversations.filter((c) => c.contact.type === 'lead').length },
-    { key: 'unread', label: 'Unread', count: totalUnread },
-  ];
-
-  if (isLoadingConvs && !isDemoMode && conversations.length === 0) {
+  if (inbox.isLoadingConvs && !isDemoMode && inbox.conversations.length === 0) {
     return <InboxSkeleton />;
   }
 
   return (
     <div className="relative flex h-full overflow-hidden">
-      {!isDemoMode && whatsAppStatus !== 'connected' && (
+      {/* Global WhatsApp disconnected banner */}
+      {isDisconnected && (
         <div className="absolute inset-x-4 top-4 z-20 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 backdrop-blur">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
             <div>
               <p className="text-sm font-semibold text-amber-100">WhatsApp disconnected</p>
               <p className="text-xs text-amber-100/75">
-                {whatsAppHealthError || 'Reconnect your session in Settings to resume live replies.'}
+                {inbox.whatsAppHealthError || 'Reconnect your session in Settings to resume live replies.'}
               </p>
             </div>
           </div>
@@ -454,344 +57,68 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           </button>
         </div>
       )}
-      {/* ── LEFT: Conversation List ──────────────────────────────────────── */}
-      <div
-        className={`w-[280px] shrink-0 flex flex-col border-r border-white/10 overflow-hidden ${
-          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
-        }`}
-        style={{ background: 'rgba(10,22,40,0.6)' }}
-      >
-        {/* Search */}
-        <div className="shrink-0 p-3 border-b border-white/10">
-          <div className="flex items-center gap-2 bg-white/8 border border-white/12 rounded-xl px-3 py-2">
-            <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search conversations..."
-              className="flex-1 bg-transparent text-xs text-white placeholder-slate-600 outline-none"
-            />
-            {search && (
-              <button onClick={() => setSearch('')}>
-                <X className="w-3 h-3 text-slate-500 hover:text-white transition-colors" />
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Channel filter */}
-        <div className="shrink-0 flex gap-1 px-3 py-2 border-b border-white/10" role="tablist" aria-label="Conversation channel filter">
-          {([
-            { key: 'all' as ChannelFilter, label: 'All', icon: null },
-            { key: 'whatsapp' as ChannelFilter, label: 'WhatsApp', icon: <MessageCircle className="w-3 h-3" /> },
-            { key: 'email' as ChannelFilter, label: 'Email', icon: <Mail className="w-3 h-3" /> },
-          ]).map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => setChannelFilter(key)}
-              role="tab"
-              aria-selected={channelFilter === key}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                channelFilter === key
-                  ? key === 'email'
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    : 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
-              }`}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* LEFT: Conversation List */}
+      <ConversationListPanel
+        conversations={inbox.conversations}
+        selectedId={inbox.selectedId}
+        isLoadingConvs={inbox.isLoadingConvs}
+        conversationsError={inbox.conversationsError}
+        isDemoMode={isDemoMode}
+        isDisconnected={isDisconnected}
+        totalUnread={inbox.totalUnread}
+        onSelect={inbox.handleSelect}
+        onRetry={() => { void inbox.loadLiveConversations(); }}
+        onConnectWhatsApp={() => inbox.setIsWaConnectOpen(true)}
+      />
 
-        {/* Filter tabs */}
-        <div className="shrink-0 flex gap-1 px-3 py-2 overflow-x-auto border-b border-white/10" role="tablist" aria-label="Conversation type filter">
-          {FILTER_TABS.map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => setFilterTab(key)}
-              role="tab"
-              aria-selected={filterTab === key}
-              className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-                filterTab === key
-                  ? 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
-              }`}
-            >
-              {label}
-              {count !== undefined && count > 0 && (
-                <span
-                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
-                    filterTab === key ? 'bg-[#25D366] text-white' : 'bg-white/10 text-slate-400'
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      {/* MIDDLE: Message Thread */}
+      <ThreadPane
+        selectedConversation={inbox.selectedConversation}
+        selectedChannel={inbox.selectedChannel}
+        isDemoMode={isDemoMode}
+        whatsAppStatus={inbox.whatsAppStatus}
+        showChatbotBanner={inbox.showChatbotBanner}
+        activeChatbotSession={inbox.activeChatbotSession}
+        isTakingOverChatbot={inbox.isTakingOverChatbot}
+        isRefreshingProposalDraft={inbox.isRefreshingProposalDraft}
+        onTakeOverChatbot={inbox.handleTakeOverChatbot}
+        onOpenProposalDraft={inbox.handleOpenProposalDraft}
+        onRefreshProposalDraft={inbox.handleRefreshProposalDraft}
+        pendingTemplate={pendingTemplate}
+        onClearPendingTemplate={onClearPendingTemplate}
+        onSendMessage={inbox.handleSendMessage}
+        smartReplySuggestions={inbox.smartReplySuggestions}
+        smartReplyLoading={inbox.smartReplyLoading}
+        onRefreshSmartReplies={() => { void inbox.refreshSmartReplySuggestions(); }}
+      />
 
-        {/* Sort row */}
-        <div className="shrink-0 flex items-center justify-between px-3 py-1.5">
-          <p className="text-[10px] text-slate-300 font-medium">{filteredAndSorted.length} conversations</p>
-          <div className="flex gap-1">
-            {(['recent', 'unread', 'priority'] as SortMode[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSortMode(s)}
-                className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase transition-colors ${
-                  sortMode === s ? 'bg-white/15 text-white' : 'text-slate-600 hover:text-slate-400'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <ErrorSection label="Inbox conversation list">
-            {isLoadingConvs && conversations.length === 0 ? null : filteredAndSorted.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 px-4 py-8 text-center">
-              {isDemoMode ? (
-                <>
-                  <EmptyState
-                    icon="💬"
-                    title="No conversations match your filter"
-                    description="Try a different search or switch back to all channels."
-                  />
-                </>
-              ) : conversationsError ? (
-                <EmptyState
-                  icon="⚠️"
-                  title="Inbox unavailable"
-                  description={conversationsError}
-                  action={{ label: 'Retry', onClick: () => { void loadLiveConversations(); } }}
-                  className="py-8"
-                />
-              ) : (
-                <EmptyState
-                  icon="💬"
-                  title="No conversations yet"
-                  description="Connect WhatsApp or wait for the first inbound message to turn this inbox live."
-                  action={{
-                    label: 'Scan QR to Link WhatsApp',
-                    onClick: () => setIsWaConnectOpen(true),
-                  }}
-                  className="py-8"
-                />
-              )}
-            </div>
-          ) : (
-            filteredAndSorted.map((conv) => (
-              <UnifiedInboxConversationItem
-                key={conv.id}
-                conv={conv}
-                selected={selectedId === conv.id}
-                onClick={() => handleSelect(conv.id)}
-              />
-            ))
-            )}
-          </ErrorSection>
-        </div>
-      </div>
-
-      {/* ── MIDDLE: Message Thread ───────────────────────────────────────── */}
-      <div
-        className={`flex-1 flex flex-col overflow-hidden ${
-          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
-        }`}
-        style={{
-          background:
-            'radial-gradient(ellipse at top, rgba(37,211,102,0.04) 0%, rgba(10,22,40,0.5) 60%)',
-        }}
-      >
-        {!isDemoMode && selectedChannel === 'whatsapp' && whatsAppStatus !== 'connected' && (
-          <div className="shrink-0 flex items-center justify-between gap-4 border-b border-amber-400/20 bg-amber-500/10 px-4 py-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-              <div>
-                <p className="text-sm font-semibold text-amber-200">
-                  {whatsAppStatus === 'pending'
-                    ? 'Finish linking WhatsApp to send replies'
-                    : 'WhatsApp is not connected'}
-                </p>
-                <p className="text-xs text-amber-100/75">
-                  Thread replies will stay local until the session is connected.
-                </p>
-              </div>
-            </div>
-            <a
-              href="/settings?tab=integrations"
-              className="shrink-0 rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-300/10"
-            >
-              Open settings
-            </a>
-          </div>
-        )}
-        {pendingTemplate && (
-          <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-[#25D366]/10 border-b border-[#25D366]/20">
-            <span className="text-base shrink-0">{pendingTemplate.emoji ?? '📋'}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-[#25D366] truncate">Template ready: {pendingTemplate.name}</p>
-              <p className="text-[11px] text-slate-400">
-                {selectedConversation ? 'Template pre-filled below — edit variables and send' : 'Select a conversation to apply this template'}
-              </p>
-            </div>
-            <button
-              onClick={onClearPendingTemplate}
-              className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
-            >
-              <X className="w-3 h-3 text-slate-400" />
-            </button>
-          </div>
-        )}
-        {showChatbotBanner && activeChatbotSession ? (
-          <div className="shrink-0 px-4 py-3 border-b border-white/10">
-            <GlassCard
-              padding="md"
-              rounded="lg"
-              opacity="low"
-              className="border border-violet-400/30 bg-violet-500/10"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-violet-100">
-                    🤖 AI is handling this conversation
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-violet-100/80">
-                    {activeChatbotSession.state === 'proposal_ready'
-                      ? `The assistant gathered trip details and is waiting for a human follow-up. ${activeChatbotSession.aiReplyCount} AI replies sent.${activeChatbotSession.proposalDraftId ? ' A proposal draft is ready to review.' : ''}`
-                      : `${activeChatbotSession.aiReplyCount} AI replies sent so far. Take over to stop further automated replies.`}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  {activeChatbotSession.proposalDraftId ? (
-                    <div className="flex items-center gap-2">
-                      <GlassButton
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
-                        onClick={() => handleOpenProposalDraft(activeChatbotSession.proposalDraftId ?? '')}
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        Open Draft
-                      </GlassButton>
-                      <GlassButton
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        loading={isRefreshingProposalDraft}
-                        className="border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
-                        onClick={() => handleRefreshProposalDraft(activeChatbotSession.proposalDraftId ?? '')}
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Regenerate
-                      </GlassButton>
-                    </div>
-                  ) : null}
-                  <GlassButton
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    loading={isTakingOverChatbot}
-                    className="shrink-0 border-violet-300/40 text-violet-100 hover:bg-violet-200/10"
-                    onClick={() => handleTakeOverChatbot(activeChatbotSession)}
-                  >
-                    Take Over
-                  </GlassButton>
-                </div>
-              </div>
-            </GlassCard>
-          </div>
-        ) : null}
-        <ErrorSection label="Inbox message thread">
-          <MessageThread
-            conversation={selectedConversation}
-            channel={selectedChannel}
-            onSendMessage={handleSendMessage}
-            externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
-            onExternalInputConsumed={onClearPendingTemplate}
-            smartReplies={smartReplySuggestions}
-            smartRepliesLoading={smartReplyLoading}
-            onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
-            onRefreshSmartReplies={() => {
-              void refreshSmartReplySuggestions();
-            }}
-          />
-        </ErrorSection>
-      </div>
-
-      {/* ── RIGHT: Context Panel ─────────────────────────────────────────── */}
+      {/* RIGHT: Context Panel */}
       <div
         className={`w-[240px] shrink-0 border-l border-white/10 overflow-hidden flex flex-col ${
-          !isDemoMode && whatsAppStatus !== 'connected' ? 'pt-20' : ''
+          isDisconnected ? 'pt-20' : ''
         }`}
         style={{ background: 'rgba(10,22,40,0.6)' }}
       >
         <ErrorSection label="Inbox context panel">
           <UnifiedInboxContextPanel
-            conversation={selectedConversation}
-            onContextAction={handleContextAction}
+            conversation={inbox.selectedConversation}
+            onContextAction={inbox.handleContextAction}
           />
         </ErrorSection>
       </div>
 
-      {/* ── Context Panel → ActionPickerModal (Driver / Payment) ─────────── */}
-      {selectedConversation && ctxActionModal && (
-        <ActionPickerModal
-          isOpen
-          mode={ctxActionModal}
-          contact={selectedConversation.contact}
-          channel={selectedChannel}
-          onSend={(msg, subject) => {
-            return handleSendMessage(selectedConversation.id, msg, subject).then((sent) => {
-              if (sent) {
-                const labels: Record<ActionMode, string> = {
-                  itinerary: 'Itinerary',
-                  payment: 'Payment request',
-                  driver: 'Driver details',
-                  location: 'Location request',
-                };
-                toast.success(`${labels[ctxActionModal]} sent to ${selectedConversation.contact.name}`);
-              }
-              return sent;
-            });
-          }}
-          onClose={() => setCtxActionModal(null)}
-        />
-      )}
-
-      {/* ── Context Panel → ContextActionModal (Trip / Quote / Create) ───── */}
-      {selectedConversation && contextModal && (
-        <ContextActionModal
-          isOpen
-          type={contextModal.type}
-          tripName={contextModal.tripName}
-          waId={contextModal.waId}
-          contact={selectedConversation.contact}
-          channel={selectedChannel}
-          onSendMessage={(msg, subject) => {
-            return handleSendMessage(selectedConversation.id, msg, subject).then((sent) => {
-              if (sent) {
-                setContextModal(null);
-              }
-              return sent;
-            });
-          }}
-          onClose={() => setContextModal(null)}
-        />
-      )}
-
-      {/* ── WhatsApp QR Connect ───────────────────────────────────────────── */}
-      <WhatsAppConnectModal
-        isOpen={isWaConnectOpen}
-        onClose={() => setIsWaConnectOpen(false)}
-        onConnected={() => setIsWaConnectOpen(false)}
+      {/* Modals */}
+      <InboxModals
+        selectedConversation={inbox.selectedConversation}
+        selectedChannel={inbox.selectedChannel}
+        ctxActionModal={inbox.ctxActionModal}
+        contextModal={inbox.contextModal}
+        isWaConnectOpen={inbox.isWaConnectOpen}
+        onSendMessage={inbox.handleSendMessage}
+        onCloseCtxAction={() => inbox.setCtxActionModal(null)}
+        onCloseContextModal={() => inbox.setContextModal(null)}
+        onCloseWaConnect={() => inbox.setIsWaConnectOpen(false)}
       />
     </div>
   );
