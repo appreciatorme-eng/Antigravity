@@ -153,6 +153,30 @@ For background verification (lint/typecheck/test): run **once** after all agents
 | Background command — non-zero exit code | Read output file, investigate |
 | Agent completed — new work or errors | Normal response + commit |
 
+## Error Boundary Pattern
+
+All route groups use a **shared re-export** pattern — not duplicated inline components:
+
+```tsx
+// src/components/shared/RouteError.tsx — single source of truth
+// Each route's error.tsx is a one-line re-export:
+export { RouteError as default } from '@/components/shared/RouteError';
+```
+
+When adding a new route group, create `error.tsx` as a one-line re-export. **Never** copy-paste the full error component into each route.
+
+## Component Extraction Rules
+
+- **Minimum size**: Don't extract a component into its own file if it's under 60 lines and used only once. Keep it co-located.
+- **Maximum fragmentation**: Aim for 4-6 sub-components per parent, not 8-10. Each file should justify its existence.
+- **Test before extracting**: Write (or verify) a test for the parent's behavior first. Extract the sub-component. Verify the test still passes.
+
+## API Route Rules
+
+- **No new direct routes**: All new endpoints go through catch-all dispatchers (`src/app/api/[...path]/route.ts` or domain-specific catch-alls). Register handlers via `createCatchAllHandlers()`.
+- **Migrate on touch**: When modifying an existing direct route (`src/app/api/<path>/route.ts`) for any feature work, migrate it into the catch-all as part of that PR.
+- **Direct routes = tech debt**: They bypass the catch-all's built-in rate limiting, CSRF guard, and consistent error handling.
+
 ---
 
 ## Key Files
