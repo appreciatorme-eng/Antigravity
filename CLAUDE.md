@@ -128,6 +128,33 @@ Reviews and code intelligence run automatically — no manual invocation needed.
 **Config:** `~/.claude/settings.json` → `hooks.Stop` + `hooks.PostToolUse`
 **Dev server:** `preview_start("web-dev")` via `.claude/launch.json`
 
+## Duplicate Work Prevention
+
+Before spawning any agent to refactor/extract/slim a file, run these two checks:
+
+```bash
+# 1. Was it already refactored? (skip if last commit is a refactor/extract/integrate)
+git log -1 --pretty=format:"%s" -- <relative-path-from-repo-root>
+
+# 2. Is it already small enough? (skip if already under target line count)
+wc -l <absolute-path>
+```
+
+If either check shows the work is done, **do not spawn the agent**.
+
+For background verification (lint/typecheck/test): run **once** after all agents complete — not inside each individual agent.
+
+### Task Notification Rules (token efficiency)
+
+| Notification type | Action |
+|-------------------|--------|
+| Background command — `exit code 0` in summary | No response, **do not read output file** |
+| Agent completed — work already in git | No response |
+| Background command — non-zero exit code | Read output file, investigate |
+| Agent completed — new work or errors | Normal response + commit |
+
+---
+
 ## Key Files
 
 | Purpose | Path |
