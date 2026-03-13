@@ -42,7 +42,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S19 — Deep Review remediation: Vitest 581/0, lint 25 pre-existing, typecheck 1 pre-existing | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
 | S20 — Post-automation live smoke (public routes + security headers + rate limit validation) | 2026-03-12 | 12 | 11 | 0 | 1 | 0 |
 | S21 — Post-Social-Studio-redesign regression: Vitest 581/0, lint 0 warnings, typecheck 0 errors | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
-| **Total** | | **~2929** | **~2622** | **~110** | **~84** | **~344** |
+| S25 — Remediation S25: Vitest 600/0, lint 0 warnings, typecheck 0 errors. Fixed C-01/C-02/C-03 (rate limiting + N+1), H-04/H-05/H-06/H-08 (RLS + security_invoker + bulk batch), M-03/M-04 (useMemo/useCallback), L-01 (vector schema). E2E: remediation-s25.spec.ts added (pre-deploy) | 2026-03-13 | 600 | 600 | 0 | 0 | 0 |
+| **Total** | | **~3529** | **~3222** | **~110** | **~84** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 
