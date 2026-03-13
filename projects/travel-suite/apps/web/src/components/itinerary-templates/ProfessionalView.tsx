@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info, Plane } from 'lucide-react';
@@ -13,7 +13,7 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
 }) => {
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
-    const toggleDay = (dayNumber: number) => {
+    const toggleDay = useCallback((dayNumber: number) => {
         setExpandedDays(prev => {
             const next = new Set(prev);
             if (next.has(dayNumber)) {
@@ -23,7 +23,7 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
             }
             return next;
         });
-    };
+    }, []);
 
     return (
         <div className="min-h-screen bg-gray-50">

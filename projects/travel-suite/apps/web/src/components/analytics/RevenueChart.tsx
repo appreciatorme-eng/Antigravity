@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   AreaChart,
@@ -48,19 +49,26 @@ function formatTooltipValue(value: number, mode: RevenueMetricMode): string {
 }
 
 export default function RevenueChart({ data, metric, loading = false, onPointSelect }: RevenueChartProps) {
-  const chartData = data.map((point) => ({
-    ...point,
-    revenueLabel: formatTooltipValue(point.revenue, "revenue"),
-    bookingsLabel: `${point.bookings} bookings`,
-  }));
+  const chartData = useMemo(
+    () =>
+      data.map((point) => ({
+        ...point,
+        revenueLabel: formatTooltipValue(point.revenue, "revenue"),
+        bookingsLabel: `${point.bookings} bookings`,
+      })),
+    [data],
+  );
 
-  const handleChartClick = (state: unknown) => {
-    if (!onPointSelect) return;
-    const clickState = state as ChartClickState;
-    const point = clickState.activePayload?.[0]?.payload;
-    if (!point) return;
-    onPointSelect(point);
-  };
+  const handleChartClick = useCallback(
+    (state: unknown) => {
+      if (!onPointSelect) return;
+      const clickState = state as ChartClickState;
+      const point = clickState.activePayload?.[0]?.payload;
+      if (!point) return;
+      onPointSelect(point);
+    },
+    [onPointSelect],
+  );
 
   if (loading) {
     return <div className="h-[300px] w-full mt-4 rounded-2xl bg-gray-50/80 animate-pulse" />;
