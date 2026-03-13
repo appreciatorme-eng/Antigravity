@@ -11,11 +11,11 @@ const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
 );
 
 type HandlerMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-type HandlerFn = (
-  req: NextRequest,
-  ctx: { params: Promise<Record<string, string>> },
-) => Response | Promise<Response>;
-type HandlerModule = Partial<Record<HandlerMethod, unknown>>;
+// ctx is typed as `any` because each handler narrows params differently (e.g. { id: string })
+// while the dispatcher calls them uniformly. Return type is still enforced.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type HandlerFn = (req: NextRequest, ctx: any) => Response | Promise<Response | undefined> | undefined;
+type HandlerModule = Partial<Record<HandlerMethod, HandlerFn>>;
 type RouteEntry = [string, () => Promise<HandlerModule>];
 
 export interface DispatcherRateLimitConfig {
@@ -120,7 +120,10 @@ async function dispatch(
       return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
     }
 
-    return fn(req, { params: Promise.resolve(match.params) });
+    return (
+      (await fn(req, { params: Promise.resolve(match.params) })) ??
+      NextResponse.json({ error: "Handler returned no response" }, { status: 500 })
+    );
   } catch (error) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: "Invalid JSON in request body" }, { status: 400 });
