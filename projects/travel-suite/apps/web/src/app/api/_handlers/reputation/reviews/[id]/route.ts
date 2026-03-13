@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 export async function GET(

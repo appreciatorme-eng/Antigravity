@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendBookingConfirmation } from "@/lib/email/notifications";
 import { getNextInvoiceNumber } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 // Define strict types for the database entities we're working with

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_SNAPSHOT_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, TrendDataPoint } from "@/lib/reputation/types";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type SnapshotRow = Database['public']['Tables']['reputation_snapshots']['Row'];
 

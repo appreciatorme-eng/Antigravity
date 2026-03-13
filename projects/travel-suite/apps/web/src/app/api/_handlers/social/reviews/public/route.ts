@@ -5,7 +5,7 @@ import { SOCIAL_REVIEW_SELECT } from "@/lib/social/selects";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type SocialReviewRow = Database["public"]["Tables"]["social_reviews"]["Row"];
 

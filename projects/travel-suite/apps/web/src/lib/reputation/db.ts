@@ -1,7 +1,7 @@
 // Typed Supabase accessor for reputation tables.
 // Consolidates table access to a single site with proper Database typing.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import type {
   ReputationReview,
   ReputationBrandVoice,

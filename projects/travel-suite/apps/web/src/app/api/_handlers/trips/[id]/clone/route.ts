@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 function omitFields<T extends Record<string, unknown>, K extends keyof T>(

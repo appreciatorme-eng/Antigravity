@@ -5,7 +5,7 @@ import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
 
 const TRIPS_READ_RATE_LIMIT_MAX = 120;

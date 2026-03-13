@@ -17,7 +17,7 @@ import "server-only";
 
 import { logError } from "@/lib/observability/logger";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/database.types";
 import type { ActionContext, ConversationMessage } from "./types";
 
 // ---------------------------------------------------------------------------

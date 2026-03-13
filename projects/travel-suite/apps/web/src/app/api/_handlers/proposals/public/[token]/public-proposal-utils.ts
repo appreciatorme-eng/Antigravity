@@ -212,50 +212,55 @@ export const PUBLIC_PROPOSAL_READ_RATE_LIMIT_WINDOW_MS = Number(
 );
 
 export async function loadOperatorContact(organizationId: string | null, createdBy: string | null) {
-  if (createdBy) {
-    const { data: operatorProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("email, full_name")
-      .eq("id", createdBy)
+  try {
+    if (createdBy) {
+      const { data: operatorProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", createdBy)
+        .maybeSingle();
+
+      if (operatorProfile?.email) {
+        return {
+          email: sanitizeEmail(operatorProfile.email),
+          name: sanitizeText(operatorProfile.full_name, { maxLength: 120 }) || "Operator",
+        };
+      }
+    }
+
+    if (!organizationId) {
+      return null;
+    }
+
+    const { data: organization } = await supabaseAdmin
+      .from("organizations")
+      .select("name, owner_id")
+      .eq("id", organizationId)
       .maybeSingle();
 
-    if (operatorProfile?.email) {
-      return {
-        email: sanitizeEmail(operatorProfile.email),
-        name: sanitizeText(operatorProfile.full_name, { maxLength: 120 }) || "Operator",
-      };
+    if (!organization?.owner_id) {
+      return null;
     }
-  }
 
-  if (!organizationId) {
+    const { data: ownerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", organization.owner_id)
+      .maybeSingle();
+
+    return ownerProfile?.email
+      ? {
+          email: sanitizeEmail(ownerProfile.email),
+          name:
+            sanitizeText(ownerProfile.full_name, { maxLength: 120 }) ||
+            sanitizeText(organization.name, { maxLength: 120 }) ||
+            "Operator",
+        }
+      : null;
+  } catch (err) {
+    console.error("[proposals] loadOperatorContact error:", err);
     return null;
   }
-
-  const { data: organization } = await supabaseAdmin
-    .from("organizations")
-    .select("name, owner_id")
-    .eq("id", organizationId)
-    .maybeSingle();
-
-  if (!organization?.owner_id) {
-    return null;
-  }
-
-  const { data: ownerProfile } = await supabaseAdmin
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", organization.owner_id)
-    .maybeSingle();
-
-  return ownerProfile?.email
-    ? {
-        email: sanitizeEmail(ownerProfile.email),
-        name:
-          sanitizeText(ownerProfile.full_name, { maxLength: 120 }) ||
-          sanitizeText(organization.name, { maxLength: 120 }) ||
-          "Operator",
-      }
-    : null;
 }
 
 export function getRequestIp(request: Request): string {
@@ -407,6 +412,7 @@ export async function recalculateProposalPrice(proposalId: string) {
 }
 
 export async function buildPublicPayload(shareToken: string) {
+  try {
   const loaded = await loadProposalByToken(shareToken);
   if ('error' in loaded) {
     return loaded;
@@ -415,13 +421,17 @@ export async function buildPublicPayload(shareToken: string) {
   const proposal = normalizeProposal(loaded.proposal);
 
   if (!proposal.viewed_at && proposal.status !== 'approved') {
-    await supabaseAdmin
+    const { error: viewedUpdateError } = await supabaseAdmin
       .from('proposals')
       .update({
         viewed_at: new Date().toISOString(),
         status: proposal.status === 'draft' ? 'viewed' : proposal.status,
       })
       .eq('id', proposal.id);
+
+    if (viewedUpdateError) {
+      console.error("[proposals] buildPublicPayload mark-viewed error:", viewedUpdateError);
+    }
 
     proposal.viewed_at = new Date().toISOString();
     if (proposal.status === 'draft') {
@@ -569,4 +579,8 @@ export async function buildPublicPayload(shareToken: string) {
     comments,
     addOns,
   };
+  } catch (err) {
+    console.error("[proposals] buildPublicPayload unexpected error:", err);
+    return { error: "Failed to load proposal", status: 500 as const };
+  }
 }

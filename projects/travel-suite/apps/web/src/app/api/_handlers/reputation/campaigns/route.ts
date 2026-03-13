@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { CampaignType } from "@/lib/reputation/types";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { REPUTATION_BRAND_VOICE_SELECT } from "@/lib/reputation/selects";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";

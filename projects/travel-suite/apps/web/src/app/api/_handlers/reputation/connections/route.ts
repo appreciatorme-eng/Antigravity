@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ConnectionPlatform } from "@/lib/reputation/types";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type ConnectionRow = Database["public"]["Tables"]["reputation_platform_connections"]["Row"];
 

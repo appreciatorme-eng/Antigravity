@@ -7,7 +7,7 @@ import {
 } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 type CampaignSendRow = Database["public"]["Tables"]["reputation_campaign_sends"]["Row"];

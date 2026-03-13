@@ -6,7 +6,7 @@ import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects"
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 const GOOGLE_PLACES_API_KEY = env.google.placesApiKey;
 

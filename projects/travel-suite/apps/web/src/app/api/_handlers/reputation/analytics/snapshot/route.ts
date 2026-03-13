@@ -9,7 +9,7 @@ import type {
   ReputationReview,
   ReputationHealthScoreFactors,
 } from "@/lib/reputation/types";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type SnapshotRow = Database["public"]["Tables"]["reputation_snapshots"]["Row"];
 

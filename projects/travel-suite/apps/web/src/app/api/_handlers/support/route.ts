@@ -1,6 +1,6 @@
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 const SUPPORT_TICKET_SELECT = [
     "admin_response",

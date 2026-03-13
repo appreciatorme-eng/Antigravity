@@ -3,7 +3,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
-import type { Json } from "@/lib/supabase/database.types";
+import type { Json } from "@/lib/database.types";
 
 export type AuditCategory =
   | "kill_switch"

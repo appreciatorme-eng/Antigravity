@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { SOCIAL_REVIEW_SELECT } from "@/lib/social/selects";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 
 type SocialReviewRow = Database["public"]["Tables"]["social_reviews"]["Row"];
 

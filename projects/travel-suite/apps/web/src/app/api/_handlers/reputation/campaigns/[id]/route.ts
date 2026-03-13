@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
