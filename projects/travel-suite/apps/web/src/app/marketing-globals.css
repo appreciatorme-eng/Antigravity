@@ -1,0 +1,62 @@
+/* Marketing-specific design tokens and utilities.
+   Scoped under .marketing-theme to avoid collision with SaaS globals.css. */
+
+.marketing-theme {
+  --color-brand-saffron: #FF9933;
+  --color-brand-aqua: #00F0FF;
+  --color-background-deep: #0A0A0A;
+  --color-background-slate: #171717;
+
+  background-color: var(--color-background-deep);
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.marketing-theme h1,
+.marketing-theme h2,
+.marketing-theme h3,
+.marketing-theme h4,
+.marketing-theme h5,
+.marketing-theme h6 {
+  letter-spacing: -0.025em;
+}
+
+.marketing-theme .glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.marketing-theme .glass-card {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.marketing-theme .text-glow-aqua {
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+.marketing-theme .text-glow-saffron {
+  text-shadow: 0 0 20px rgba(255, 153, 51, 0.4);
+}
+
+/* Scoped scrollbar for marketing sections */
+.marketing-theme::-webkit-scrollbar {
+  width: 8px;
+}
+.marketing-theme::-webkit-scrollbar-track {
+  background: var(--color-background-deep);
+}
+.marketing-theme::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+.marketing-theme::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

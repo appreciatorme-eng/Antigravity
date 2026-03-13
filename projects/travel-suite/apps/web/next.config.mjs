@@ -60,7 +60,7 @@ const cspHeader = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com https://prod.spline.design",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "worker-src 'self' blob:",
   "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
@@ -79,6 +79,12 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60,
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  async redirects() {
+    return [
+      { source: "/welcome", destination: "/", permanent: true },
+      { source: "/login", destination: "/auth", permanent: true },
+    ];
   },
   async headers() {
     return [

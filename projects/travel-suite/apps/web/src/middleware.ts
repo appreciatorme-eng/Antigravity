@@ -35,6 +35,8 @@ const PROTECTED_PREFIXES = [
     "/calendar",
 ];
 
+const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions"];
+
 function isProtectedPath(pathname: string): boolean {
     return PROTECTED_PREFIXES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
@@ -43,6 +45,12 @@ function isProtectedPath(pathname: string): boolean {
 
 function isOnboardingPath(pathname: string): boolean {
     return pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+}
+
+function isMarketingPath(pathname: string): boolean {
+    return MARKETING_PATHS.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`)
+    );
 }
 
 function buildAuthRedirect(request: NextRequest, nextPath: string): URL {
@@ -75,6 +83,11 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const protectedPath = isProtectedPath(pathname);
     const onboardingPath = isOnboardingPath(pathname);
+
+    // Authenticated users on marketing pages → redirect to dashboard.
+    if (user && isMarketingPath(pathname)) {
+        return NextResponse.redirect(new URL("/admin", request.url));
+    }
 
     if (!protectedPath && !onboardingPath) {
         return sessionResponse;
