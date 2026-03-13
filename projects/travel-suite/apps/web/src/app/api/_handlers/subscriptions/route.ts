@@ -99,32 +99,48 @@ async function resolvePlanAmount(
   return DEFAULT_PLAN_AMOUNTS[planId];
 }
 
-export async function GET() {
+/** Fields safe to expose to any org member (excludes provider IDs and internal metadata). */
+const CLIENT_SAFE_FIELDS = new Set([
+  "id",
+  "plan_id",
+  "status",
+  "billing_cycle",
+  "amount",
+  "total_amount",
+  "gst_amount",
+  "currency",
+  "current_period_start",
+  "current_period_end",
+  "next_billing_date",
+  "trial_start",
+  "trial_end",
+  "cancel_at_period_end",
+  "cancelled_at",
+  "created_at",
+  "updated_at",
+]);
+
+function pickSafeFields<T extends Record<string, unknown>>(
+  obj: T | null | undefined,
+): Partial<T> | null {
+  if (!obj) return null;
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    if (CLIENT_SAFE_FIELDS.has(key)) {
+      result[key] = obj[key];
+    }
+  }
+  return result as Partial<T>;
+}
+
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAdmin(request as unknown as import("next/server").NextRequest, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const subscription = await paymentService.getCurrentSubscription(auth.organizationId!);
 
-    if (userError || !user) {
-      return apiError('Unauthorized', 401);
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError('Organization not found', 404);
-    }
-
-    const subscription = await paymentService.getCurrentSubscription(profile.organization_id);
-
-    return NextResponse.json({ subscription });
+    return NextResponse.json({ subscription: pickSafeFields(subscription as unknown as Record<string, unknown>) });
   } catch (error) {
     console.error('Error in GET /api/subscriptions:', error);
     if (error instanceof PaymentServiceError) {

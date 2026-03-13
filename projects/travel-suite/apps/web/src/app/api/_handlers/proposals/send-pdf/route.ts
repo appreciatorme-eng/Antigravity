@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
-import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from "@/lib/auth/admin";
 import { z } from 'zod';
 import {
   getIntegrationDisabledMessage,
@@ -44,17 +44,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createClient();
-
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return apiError('Unauthorized', 401);
-    }
+    const auth = await requireAdmin(
+      request as unknown as import("next/server").NextRequest,
+      { requireOrganization: true },
+    );
+    if (!auth.ok) return auth.response;
 
     const body = await request.json();
     const parsed = SendPdfSchema.safeParse(body);
@@ -67,20 +61,11 @@ export async function POST(request: Request) {
 
     const { proposal_id, client_email, pdf_base64, proposal_title } = parsed.data;
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (!profile?.organization_id) {
-      return apiError('Organization not found', 404);
-    }
-
-    const { data: proposal } = await supabase
+    const { data: proposal } = await auth.adminClient
       .from('proposals')
       .select('id')
       .eq('id', proposal_id)
-      .eq('organization_id', profile.organization_id)
+      .eq('organization_id', auth.organizationId!)
       .maybeSingle();
     if (!proposal) {
       return apiError('Proposal not found', 404);
@@ -118,16 +103,17 @@ export async function POST(request: Request) {
     });
 
     if (!emailResponse.ok) {
-      const errorBody = await emailResponse.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: 'Failed to send email', details: errorBody },
-        { status: 502 }
-      );
+      const rawBody = await emailResponse.json().catch(() => ({}));
+      console.error("[proposals/send-pdf] Resend API failure:", {
+        status: emailResponse.status,
+        body: rawBody,
+      });
+      return apiError("Failed to send email", 502);
     }
 
     // Log event
-    await supabase.from('notification_logs').insert({
-      recipient_id: user.id,
+    await auth.adminClient.from('notification_logs').insert({
+      recipient_id: auth.userId,
       notification_type: 'proposal_pdf_email',
       title: 'Proposal PDF Sent',
       body: `PDF sent to ${client_email} for proposal: ${proposal_title}`,

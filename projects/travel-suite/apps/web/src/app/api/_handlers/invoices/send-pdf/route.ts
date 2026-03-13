@@ -102,9 +102,13 @@ export async function POST(request: Request) {
     });
 
     if (!emailResponse.ok) {
-      const payload = await emailResponse.json().catch(() => ({}));
+      const rawBody = await emailResponse.json().catch(() => ({}));
+      console.error("[invoices/send-pdf] Resend API failure:", {
+        status: emailResponse.status,
+        body: rawBody,
+      });
       return NextResponse.json(
-        { error: "Failed to send email", details: payload },
+        { error: "Failed to send email" },
         { status: 502 }
       );
     }

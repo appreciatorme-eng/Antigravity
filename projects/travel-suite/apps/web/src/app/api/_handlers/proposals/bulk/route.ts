@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 
 const bulkSchema = z.object({
   action: z.enum(["approve", "archive"]),
@@ -11,14 +10,10 @@ const bulkSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) return auth.response;
 
-    if (!user) {
-      return apiError("Unauthorized", 401);
-    }
+    const { userId, organizationId, adminClient } = auth;
 
     const body = await request.json().catch(() => null);
     const parsed = bulkSchema.safeParse(body);
@@ -26,25 +21,16 @@ export async function POST(request: NextRequest) {
       return apiError("Invalid bulk proposal payload", 400);
     }
 
-    const admin = createAdminClient();
-    const { data: profile, error: profileError } = await admin
+    const { data: profile } = await adminClient
       .from("profiles")
-      .select("organization_id, full_name")
-      .eq("id", user.id)
+      .select("full_name")
+      .eq("id", userId)
       .maybeSingle();
 
-    if (profileError) {
-      throw profileError;
-    }
-
-    if (!profile?.organization_id) {
-      return apiError("Organization not found", 404);
-    }
-
-    const { data: proposals, error: proposalsError } = await admin
+    const { data: proposals, error: proposalsError } = await adminClient
       .from("proposals")
       .select("id")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId!)
       .in("id", parsed.data.ids);
 
     if (proposalsError) {
@@ -69,7 +55,7 @@ export async function POST(request: NextRequest) {
           ? {
               status: "approved",
               approved_at: now,
-              approved_by: profile.full_name || user.email || user.id,
+              approved_by: profile?.full_name || userId,
               updated_at: now,
             }
           : {
@@ -77,10 +63,10 @@ export async function POST(request: NextRequest) {
               updated_at: now,
             };
 
-      const { error } = await admin
+      const { error } = await adminClient
         .from("proposals")
         .update(updatePayload)
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", organizationId!)
         .in("id", allowedIdsList);
 
       if (error) {
