@@ -96,6 +96,7 @@ Use these instead of monolithic review prompts. They leverage Axon (code graph),
 | `/review-security` | New API endpoints, auth changes | Security-focused, changed files |
 | `/review-perf` | New queries, heavy components | Performance-focused, changed files |
 | `/review-deep` | Before major releases | Full codebase, Engram-filtered |
+| `/remediate` | After any `/review` command | Reads findings from Engram, creates tracker + branch, fixes by severity, writes E2E tests, merges to main |
 
 **How it works:**
 1. Scopes to changed files via `git diff` + `axon_detect_changes`
