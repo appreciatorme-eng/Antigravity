@@ -84,12 +84,12 @@ export async function POST(req: Request) {
         }
         const { template_id, template_data, caption_instagram, caption_facebook, hashtags, status, source, rendered_image_url } = parsed.data;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const insertPayload: any = {
+        type SocialPostInsert = Database["public"]["Tables"]["social_posts"]["Insert"];
+        const insertPayload: SocialPostInsert = {
             organization_id: profile.organization_id,
             created_by: user.id,
             template_id: template_id ?? '',
-            template_data: template_data ?? {},
+            template_data: (template_data ?? {}) as SocialPostInsert["template_data"],
             caption_instagram,
             caption_facebook,
             hashtags: hashtags ? JSON.stringify(hashtags) : null,

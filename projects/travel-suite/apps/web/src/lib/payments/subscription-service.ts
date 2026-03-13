@@ -216,16 +216,11 @@ export async function cancelSubscription(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updates: any = {
-      cancel_at_period_end: cancelAtPeriodEnd,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (!cancelAtPeriodEnd) {
-      updates.status = 'cancelled';
-      updates.cancelled_at = new Date().toISOString();
-    }
+    type SubscriptionUpdate = Database["public"]["Tables"]["subscriptions"]["Update"];
+    const now = new Date().toISOString();
+    const updates: SubscriptionUpdate = cancelAtPeriodEnd
+      ? { cancel_at_period_end: true, updated_at: now }
+      : { cancel_at_period_end: false, status: 'cancelled', cancelled_at: now, updated_at: now };
 
     const { error: updateError } = await supabase
       .from('subscriptions')
