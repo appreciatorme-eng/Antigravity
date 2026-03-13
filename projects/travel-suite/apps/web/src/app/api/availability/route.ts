@@ -2,6 +2,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const AvailabilityQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -20,6 +21,16 @@ export async function GET(request: Request) {
     const adminResult = await requireAdmin(request);
     if (!adminResult.ok) {
       return adminResult.response;
+    }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: adminResult.userId,
+      limit: 30,
+      windowMs: 60_000,
+      prefix: "api:availability:get",
+    });
+    if (!rateLimit.success) {
+      return apiError("Rate limit exceeded", 429);
     }
 
     const url = new URL(request.url);
@@ -70,6 +81,17 @@ export async function POST(request: Request) {
     if (!admin.ok) {
       return admin.response;
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: 30,
+      windowMs: 60_000,
+      prefix: "api:availability:post",
+    });
+    if (!rateLimit.success) {
+      return apiError("Rate limit exceeded", 429);
+    }
+
     if (!passesMutationCsrfGuard(request)) {
       return apiError("CSRF validation failed for admin mutation", 403);
     }
@@ -120,6 +142,17 @@ export async function DELETE(request: Request) {
     if (!admin.ok) {
       return admin.response;
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: 30,
+      windowMs: 60_000,
+      prefix: "api:availability:delete",
+    });
+    if (!rateLimit.success) {
+      return apiError("Rate limit exceeded", 429);
+    }
+
     if (!passesMutationCsrfGuard(request)) {
       return apiError("CSRF validation failed for admin mutation", 403);
     }

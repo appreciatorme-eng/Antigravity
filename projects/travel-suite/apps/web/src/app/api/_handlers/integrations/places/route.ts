@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { env } from "@/lib/config/env";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
@@ -9,20 +8,13 @@ type PlacesRequestBody = {
   googlePlaceId?: string;
 };
 
-async function getOrganizationId(userId: string) {
-  const supabaseAdmin = createAdminClient();
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", userId)
-    .single();
-
-  return profile?.organization_id ?? null;
-}
+type AdminClient = Extract<
+  Awaited<ReturnType<typeof requireAdmin>>,
+  { ok: true }
+>["adminClient"];
 
 async function getGooglePlaceConnection(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputation connection tables are not fully represented in generated types yet.
-  supabaseAdmin: any,
+  supabaseAdmin: AdminClient,
   organizationId: string,
 ) {
   const { data: connection } = await supabaseAdmin
@@ -38,8 +30,7 @@ async function getGooglePlaceConnection(
 }
 
 async function ensureGooglePlaceConfigured(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- organization settings and reputation tables are not fully typed yet.
-  supabaseAdmin: any,
+  supabaseAdmin: AdminClient,
   organizationId: string,
   googlePlaceId: string,
 ) {
@@ -114,23 +105,20 @@ async function validatePlacesApiKey(placeId?: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const admin = await requireAdmin(request, { requireOrganization: true });
+    if (!admin.ok) {
+      return admin.response;
     }
 
-    const organizationId = await getOrganizationId(user.id);
+    const organizationId = admin.organizationId;
     if (!organizationId) {
-      return NextResponse.json({ enabled: false, googlePlaceId: "" });
+      return apiError("No organization found", 403);
     }
 
-    const supabaseAdmin = createAdminClient();
+    const supabaseAdmin = admin.adminClient;
+
     const [{ data: settings }, connection] = await Promise.all([
       supabaseAdmin
         .from("organization_settings")
@@ -153,16 +141,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const admin = await requireAdmin(request, { requireOrganization: true });
+    if (!admin.ok) {
+      return admin.response;
     }
 
-    const organizationId = await getOrganizationId(user.id);
+    const organizationId = admin.organizationId;
     if (!organizationId) {
       return apiError("No organization found", 403);
     }
@@ -172,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     await validatePlacesApiKey(googlePlaceId);
 
-    const supabaseAdmin = createAdminClient();
+    const supabaseAdmin = admin.adminClient;
     if (googlePlaceId) {
       await ensureGooglePlaceConfigured(supabaseAdmin, organizationId, googlePlaceId);
       return NextResponse.json({

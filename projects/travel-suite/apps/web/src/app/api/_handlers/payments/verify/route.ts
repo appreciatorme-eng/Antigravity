@@ -61,10 +61,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (updatedLink.proposalId) {
-      await admin
+      const { error: proposalUpdateError } = await admin
         .from("proposals")
         .update({ status: "converted" })
         .eq("id", updatedLink.proposalId);
+
+      if (proposalUpdateError) {
+        console.error("[payments/verify] Failed to update proposal status", {
+          proposalId: updatedLink.proposalId,
+          error: proposalUpdateError.message,
+        });
+      }
     }
 
     if (updatedLink.clientEmail) {

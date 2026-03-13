@@ -10,8 +10,12 @@ const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
     .filter(Boolean)
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HandlerModule = Record<string, any>;
+type HandlerMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+type HandlerFn = (
+  req: NextRequest,
+  ctx: { params: Promise<Record<string, string>> },
+) => Response | Promise<Response>;
+type HandlerModule = Partial<Record<HandlerMethod, unknown>>;
 type RouteEntry = [string, () => Promise<HandlerModule>];
 
 export interface DispatcherRateLimitConfig {
@@ -59,13 +63,17 @@ function matchRoute(
   return null;
 }
 
+function isHandlerFn(value: unknown): value is HandlerFn {
+  return typeof value === "function";
+}
+
 async function dispatch(
   req: NextRequest,
-  method: string,
+  method: HandlerMethod,
   pathParts: string[],
   routes: RouteEntry[],
   rl?: DispatcherRateLimitConfig
-): Promise<NextResponse> {
+): Promise<Response> {
   try {
     if (rl) {
         const identifier = extractRateLimitIdentifier(req);
@@ -108,7 +116,7 @@ async function dispatch(
     const handler = await match.loader();
     const fn = handler[method];
 
-    if (typeof fn !== "function") {
+    if (!isHandlerFn(fn)) {
       return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
     }
 

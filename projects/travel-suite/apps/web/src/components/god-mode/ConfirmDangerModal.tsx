@@ -38,7 +38,13 @@ export default function ConfirmDangerModal({
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" onClick={onCancel} aria-hidden="true" />
+            <button
+                type="button"
+                className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm cursor-default"
+                onClick={onCancel}
+                aria-label="Close dialog"
+                tabIndex={-1}
+            />
             <div
                 role="dialog"
                 aria-modal="true"

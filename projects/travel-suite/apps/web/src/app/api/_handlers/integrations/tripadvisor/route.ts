@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api-response";
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from '@/lib/security/safe-error';
 import { getTripAdvisorLocationDetails, getTripAdvisorReviews } from '@/lib/external/tripadvisor.server';
 
@@ -10,11 +9,12 @@ const TRIPADVISOR_API_KEY = process.env.TRIPADVISOR_API_KEY;
 // POST /api/integrations/tripadvisor — save location ID and validate it
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return apiError('Unauthorized', 401);
+        const admin = await requireAdmin(req, { requireOrganization: true });
+        if (!admin.ok) {
+            return admin.response;
+        }
+        if (!admin.organizationId) {
+            return apiError('No organization found', 403);
         }
 
         if (!TRIPADVISOR_API_KEY) {
@@ -28,17 +28,6 @@ export async function POST(req: Request) {
             return apiError('Invalid location ID — must be a numeric TripAdvisor location ID', 400);
         }
 
-        const supabaseAdmin = createAdminClient();
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            return apiError('No organization found', 403);
-        }
-
         // Validate by hitting the TripAdvisor API
         let locationDetails;
         try {
@@ -47,9 +36,10 @@ export async function POST(req: Request) {
             return apiError('Invalid location ID or TripAdvisor API error', 400);
         }
 
+        const supabaseAdmin = admin.adminClient;
         await supabaseAdmin.from('organization_settings').upsert(
             {
-                organization_id: profile.organization_id,
+                organization_id: admin.organizationId,
                 tripadvisor_location_id: locationId,
                 tripadvisor_connected_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -70,34 +60,26 @@ export async function POST(req: Request) {
 }
 
 // GET /api/integrations/tripadvisor — fetch recent reviews for the org
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return apiError('Unauthorized', 401);
+        const admin = await requireAdmin(request, { requireOrganization: true });
+        if (!admin.ok) {
+            return admin.response;
+        }
+        if (!admin.organizationId) {
+            return apiError('No organization found', 403);
         }
 
         if (!TRIPADVISOR_API_KEY) {
             return apiError('TRIPADVISOR_API_KEY not configured', 500);
         }
 
-        const supabaseAdmin = createAdminClient();
-        const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single();
-
-        if (!profile?.organization_id) {
-            return apiError('No organization found', 403);
-        }
+        const supabaseAdmin = admin.adminClient;
 
         const { data: settings } = await supabaseAdmin
             .from('organization_settings')
             .select('tripadvisor_location_id')
-            .eq('organization_id', profile.organization_id)
+            .eq('organization_id', admin.organizationId)
             .single();
 
         if (!settings?.tripadvisor_location_id) {

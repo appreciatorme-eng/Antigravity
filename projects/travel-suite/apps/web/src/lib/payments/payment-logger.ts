@@ -1,5 +1,6 @@
 // Payment audit trail: idempotent event logging to payment_events table.
 
+import type { Json } from "@/lib/database.types";
 import {
   PaymentServiceError,
 } from './errors';
@@ -16,7 +17,7 @@ interface LogPaymentEventOptions {
   status?: string;
   errorCode?: string;
   errorDescription?: string;
-  metadata: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  metadata: Record<string, unknown>;
 }
 
 export async function logPaymentEvent(
@@ -58,7 +59,7 @@ export async function logPaymentEvent(
     status: options.status,
     error_code: options.errorCode,
     error_description: options.errorDescription,
-    metadata: options.metadata,
+    metadata: options.metadata as Json,
   });
 
   if (insertError) {

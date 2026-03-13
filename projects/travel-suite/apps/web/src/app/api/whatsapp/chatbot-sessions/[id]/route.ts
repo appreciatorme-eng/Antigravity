@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { markChatbotSessionHandedOff } from "@/lib/whatsapp/chatbot-flow";
 
 const PatchChatbotSessionSchema = z.object({
@@ -16,8 +17,19 @@ export async function PATCH(
   try {
     const admin = await requireAdmin(request);
     if (!admin.ok) {
-      return apiError("Unauthorized", admin.response.status || 401);
+      return admin.response;
     }
+
+    const rateLimit = await enforceRateLimit({
+      identifier: admin.userId,
+      limit: 30,
+      windowMs: 60_000,
+      prefix: "api:whatsapp:chatbot-sessions:patch",
+    });
+    if (!rateLimit.success) {
+      return apiError("Rate limit exceeded", 429);
+    }
+
     if (!passesMutationCsrfGuard(request)) {
       return apiError("CSRF validation failed for admin mutation", 403);
     }
