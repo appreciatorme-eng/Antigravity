@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Check, Settings, Save } from "lucide-react";
+import { normalizeItineraryTemplateId } from "@/components/pdf/itinerary-types";
 import { createClient } from "@/lib/supabase/client";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassFormSkeleton } from "@/components/glass/GlassSkeleton";
@@ -187,7 +188,9 @@ export default function SettingsPage() {
       const orgRecord = organizationRow as unknown as Record<string, unknown>;
       setOrganization({
         ...organizationRow,
-        itinerary_template: typeof orgRecord.itinerary_template === 'string' ? orgRecord.itinerary_template : null,
+        itinerary_template: normalizeItineraryTemplateId(
+          typeof orgRecord.itinerary_template === 'string' ? orgRecord.itinerary_template : null
+        ),
         gstin: typeof orgRecord.gstin === 'string' ? orgRecord.gstin : null,
         billing_state: typeof orgRecord.billing_state === 'string' ? orgRecord.billing_state : null,
         billing_address: normalizeBillingAddress(orgRecord.billing_address),

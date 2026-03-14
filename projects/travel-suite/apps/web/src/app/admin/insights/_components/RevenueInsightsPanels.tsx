@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BadgeCheck, IndianRupee, TrendingDown, TrendingUp } from 'lucide-react';
+import { BadgeCheck, TrendingDown, TrendingUp } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { fmt, type MarginLeakData } from '../shared';
 

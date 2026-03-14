@@ -1,13 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react';
 import Link from 'next/link';
 import {
-  Calendar,
   Car,
   ChevronRight,
-  Command,
-  MessageSquare,
   Plus,
-  Search,
   Server,
   ShieldCheck,
   Sparkles,

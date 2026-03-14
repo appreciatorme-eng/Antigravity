@@ -1,8 +1,7 @@
-/* eslint-disable jsx-a11y/alt-text */
 import React from 'react';
 import { StyleSheet, Text } from '@react-pdf/renderer';
+import type { ItineraryBranding } from '@/components/pdf/itinerary-types';
 import type { Activity, Day, ItineraryResult } from '@/types/itinerary';
-import type { ItineraryBranding } from '../itinerary-types';
 
 export const PAGE_SIZE = 'A4';
 
