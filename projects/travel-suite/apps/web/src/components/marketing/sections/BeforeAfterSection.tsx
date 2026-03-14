@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Zap, XCircle, CheckCircle2 } from "lucide-react";
+import { FadeInOnScroll } from "@/components/marketing/effects";
 
 const oldWayItems = [
   { text: "Client details scattered across 5 WhatsApp groups", icon: "..." },
@@ -22,6 +23,7 @@ const newWayItems = [
 export function BeforeAfterSection() {
   return (
     <section className="relative z-30 bg-transparent py-16 md:py-24 px-6 md:px-24 mt-10">
+      <FadeInOnScroll>
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -35,7 +37,7 @@ export function BeforeAfterSection() {
           </div>
           <h2 className="text-3xl md:text-5xl font-bold">
             The Old Way vs.{" "}
-            <span className="text-[#00F0FF]">The TravelSuite Way</span>
+            <span className="text-[#00F0FF]">The TravelBuilt Way</span>
           </h2>
         </motion.div>
 
@@ -82,7 +84,7 @@ export function BeforeAfterSection() {
                 <CheckCircle2 size={24} />
               </div>
               <h3 className="text-2xl font-bold text-[#00F0FF]">
-                The TravelSuite Way
+                The TravelBuilt Way
               </h3>
             </div>
             {newWayItems.map((item, i) => (
@@ -101,6 +103,7 @@ export function BeforeAfterSection() {
           </motion.div>
         </div>
       </div>
+      </FadeInOnScroll>
     </section>
   );
 }

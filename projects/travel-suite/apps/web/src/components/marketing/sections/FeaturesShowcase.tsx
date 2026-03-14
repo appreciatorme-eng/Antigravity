@@ -12,24 +12,28 @@ import {
   Compass,
 } from "lucide-react";
 import { CardSwap, Card } from "@/components/marketing/CardSwap";
+import { TiltCard, FadeInOnScroll } from "@/components/marketing/effects";
 
 /* ─── Feature 1: Magic Link Proposals ─── */
 function MagicLinkFeature() {
   return (
     <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-      <div className="space-y-6 reveal-text">
-        <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#00F0FF]">
-          <FileText size={32} />
+      <FadeInOnScroll>
+        <div className="space-y-6 reveal-text">
+          <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#00F0FF]">
+            <FileText size={32} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            The Magic Link <span className="text-[#00F0FF]">Proposals</span>
+          </h2>
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+            Making itineraries used to take hours of typing into Word. Now, create
+            beautiful, interactive web-link proposals in minutes. Clients view
+            photos, day-by-day plans, and accept instantly on their phones.
+          </p>
         </div>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          The Magic Link <span className="text-[#00F0FF]">Proposals</span>
-        </h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
-          Making itineraries used to take hours of typing into Word. Now, create
-          beautiful, interactive web-link proposals in minutes. Clients view
-          photos, day-by-day plans, and accept instantly on their phones.
-        </p>
-      </div>
+      </FadeInOnScroll>
+      <TiltCard>
       <div
         className="relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#00F0FF]/10 to-transparent group"
         style={{ perspective: "1000px" }}
@@ -159,6 +163,7 @@ function MagicLinkFeature() {
           </div>
         </motion.div>
       </div>
+      </TiltCard>
     </div>
   );
 }
@@ -189,20 +194,22 @@ function WhatsAppFeature() {
           </p>
         </motion.div>
       </div>
-      <div className="order-1 md:order-2 space-y-6 reveal-text">
-        <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#FF9933]">
-          <MessageCircle size={32} />
+      <FadeInOnScroll className="order-1 md:order-2">
+        <div className="space-y-6 reveal-text">
+          <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#FF9933]">
+            <MessageCircle size={32} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            The Automated{" "}
+            <span className="text-[#FF9933]">WhatsApp Engine</span>
+          </h2>
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+            Clients calling at 11 PM for their driver&apos;s number? Our engine
+            speaks to them where they are. Automated updates sent straight to
+            their WhatsApp—no manual typing required.
+          </p>
         </div>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          The Automated{" "}
-          <span className="text-[#FF9933]">WhatsApp Engine</span>
-        </h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
-          Clients calling at 11 PM for their driver&apos;s number? Our engine
-          speaks to them where they are. Automated updates sent straight to
-          their WhatsApp—no manual typing required.
-        </p>
-      </div>
+      </FadeInOnScroll>
     </div>
   );
 }
@@ -232,19 +239,21 @@ const addons = [
 function AddonsFeature() {
   return (
     <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-      <div className="space-y-6 reveal-text">
-        <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff99d6]">
-          <ShoppingBag size={32} />
+      <FadeInOnScroll>
+        <div className="space-y-6 reveal-text">
+          <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff99d6]">
+            <ShoppingBag size={32} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            The One-Click <span className="text-[#ff99d6]">Add-ons</span>
+          </h2>
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+            Leaving revenue on the table because you forget to upsell? Give
+            clients the choice to add extras right inside their proposal. With our
+            elegant marketplace, they click, you earn.
+          </p>
         </div>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          The One-Click <span className="text-[#ff99d6]">Add-ons</span>
-        </h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
-          Leaving revenue on the table because you forget to upsell? Give
-          clients the choice to add extras right inside their proposal. With our
-          elegant marketplace, they click, you earn.
-        </p>
-      </div>
+      </FadeInOnScroll>
       <div className="relative h-[500px] w-full flex items-center justify-center -ml-10">
         <CardSwap
           width={320}
@@ -363,19 +372,21 @@ function CRMFeature() {
         </div>
       </div>
 
-      <div className="order-1 md:order-2 space-y-6 reveal-text">
-        <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#A259FF]">
-          <Users size={32} />
+      <FadeInOnScroll className="order-1 md:order-2">
+        <div className="space-y-6 reveal-text">
+          <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#A259FF]">
+            <Users size={32} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            Intelligent <span className="text-[#A259FF]">Client CRM</span>
+          </h2>
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+            Track every lead from initial inquiry to their flight home. Know
+            exactly who needs a follow-up, who just opened your proposal, and who
+            is ready to pay. Your entire travel pipeline, perfectly organized.
+          </p>
         </div>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          Intelligent <span className="text-[#A259FF]">Client CRM</span>
-        </h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
-          Track every lead from initial inquiry to their flight home. Know
-          exactly who needs a follow-up, who just opened your proposal, and who
-          is ready to pay. Your entire travel pipeline, perfectly organized.
-        </p>
-      </div>
+      </FadeInOnScroll>
     </div>
   );
 }
@@ -384,20 +395,22 @@ function CRMFeature() {
 function BuilderFeature() {
   return (
     <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-      <div className="space-y-6 reveal-text">
-        <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff3366]">
-          <Map size={32} />
+      <FadeInOnScroll>
+        <div className="space-y-6 reveal-text">
+          <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff3366]">
+            <Map size={32} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-bold">
+            Smart Drag & Drop <span className="text-[#ff3366]">Builder</span>
+          </h2>
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
+            Stop copying and pasting from Wikipedia! Access a global database of
+            flights, hotels, and activities. Just drag them into the timeline, and
+            we&apos;ll automatically generate the descriptions, photos, and
+            policies.
+          </p>
         </div>
-        <h2 className="text-3xl md:text-5xl font-bold">
-          Smart Drag & Drop <span className="text-[#ff3366]">Builder</span>
-        </h2>
-        <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed tracking-wide">
-          Stop copying and pasting from Wikipedia! Access a global database of
-          flights, hotels, and activities. Just drag them into the timeline, and
-          we&apos;ll automatically generate the descriptions, photos, and
-          policies.
-        </p>
-      </div>
+      </FadeInOnScroll>
 
       <div className="relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-bl from-[#ff3366]/10 to-transparent group">
         <div className="absolute inset-y-12 w-full max-w-sm flex shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">

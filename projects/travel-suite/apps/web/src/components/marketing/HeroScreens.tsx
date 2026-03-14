@@ -12,14 +12,14 @@ import { SplineScene } from '@/components/marketing/SplineScene';
  */
 const screens = [
   // Row 1: two screens at top
-  { src: '/dashboard_ui_mockup_1773059467134.png', alt: 'Dashboard',  top: '4%',  left: '-8%', w: 48, h: 27, rz: -2,  delay: 0.05 },
-  { src: '/analytics_ui_mockup_1773062281103.png', alt: 'Analytics',  top: '2%',  left: '35%', w: 38, h: 22, rz: 2.5, delay: 0.15 },
+  { src: '/marketing/dashboard_ui_mockup_1773059467134.png', alt: 'Dashboard',  top: '4%',  left: '-8%', w: 48, h: 27, rz: -2,  delay: 0.05 },
+  { src: '/marketing/analytics_ui_mockup_1773062281103.png', alt: 'Analytics',  top: '2%',  left: '35%', w: 38, h: 22, rz: 2.5, delay: 0.15 },
   // Row 2: two screens in middle (largest)
-  { src: '/crm_ui_mockup_1773059519930.png',       alt: 'CRM',        top: '33%', left: '-10%',w: 52, h: 30, rz: -1,  delay: 0.1 },
-  { src: '/booking_ui_mockup_1773059498138.png',   alt: 'Bookings',   top: '34%', left: '36%', w: 40, h: 24, rz: 2,   delay: 0.2 },
+  { src: '/marketing/crm_ui_mockup_1773059519930.png',       alt: 'CRM',        top: '33%', left: '-10%',w: 52, h: 30, rz: -1,  delay: 0.1 },
+  { src: '/marketing/booking_ui_mockup_1773059498138.png',   alt: 'Bookings',   top: '34%', left: '36%', w: 40, h: 24, rz: 2,   delay: 0.2 },
   // Row 3: two screens at bottom
-  { src: '/itinerary_ui_mockup_1773062264651.png', alt: 'Itinerary',  top: '65%', left: '-6%', w: 44, h: 25, rz: -1.5,delay: 0.25 },
-  { src: '/invoicing_ui_mockup_1773062297390.png', alt: 'Invoicing',  top: '66%', left: '33%', w: 36, h: 21, rz: 1.5, delay: 0.3 },
+  { src: '/marketing/itinerary_ui_mockup_1773062264651.png', alt: 'Itinerary',  top: '65%', left: '-6%', w: 44, h: 25, rz: -1.5,delay: 0.25 },
+  { src: '/marketing/invoicing_ui_mockup_1773062297390.png', alt: 'Invoicing',  top: '66%', left: '33%', w: 36, h: 21, rz: 1.5, delay: 0.3 },
 ];
 
 interface HeroScreensProps {
@@ -30,12 +30,12 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
   const [splineLoaded, setSplineLoaded] = useState(false);
 
   const mockups = [
-    '/dashboard_ui_mockup_1773059467134.png',
-    '/booking_ui_mockup_1773059498138.png',
-    '/crm_ui_mockup_1773059519930.png',
-    '/itinerary_ui_mockup_1773062264651.png',
-    '/analytics_ui_mockup_1773062281103.png',
-    '/invoicing_ui_mockup_1773062297390.png',
+    '/marketing/dashboard_ui_mockup_1773059467134.png',
+    '/marketing/booking_ui_mockup_1773059498138.png',
+    '/marketing/crm_ui_mockup_1773059519930.png',
+    '/marketing/itinerary_ui_mockup_1773062264651.png',
+    '/marketing/analytics_ui_mockup_1773062281103.png',
+    '/marketing/invoicing_ui_mockup_1773062297390.png',
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Spline app instance has no public type definition

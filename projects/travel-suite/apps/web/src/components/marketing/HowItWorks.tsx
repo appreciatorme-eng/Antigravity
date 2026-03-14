@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { UserPlus, Download, Rocket } from 'lucide-react';
+import { FadeInOnScroll } from '@/components/marketing/effects';
 
 const steps = [
     {
@@ -45,7 +46,7 @@ export function HowItWorks() {
                         transition={{ delay: 0.1 }}
                         className="text-xl text-gray-400 font-light max-w-2xl mx-auto"
                     >
-                        You don&apos;t need to be a tech expert. We&apos;ve built TravelSuite to be as intuitive as sending a text message.
+                        You don&apos;t need to be a tech expert. We&apos;ve built TravelBuilt to be as intuitive as sending a text message.
                     </motion.p>
                 </div>
 
@@ -54,8 +55,8 @@ export function HowItWorks() {
                     <div className="hidden md:block absolute top-[60px] left-[15%] right-[15%] h-px bg-gradient-to-r from-[#00F0FF]/10 via-[#A855F7]/30 to-[#FF9933]/10" />
 
                     {steps.map((step, index) => (
+                        <FadeInOnScroll key={index} delay={index * 0.15}>
                         <motion.div
-                            key={index}
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
@@ -78,6 +79,7 @@ export function HowItWorks() {
                                 {step.description}
                             </p>
                         </motion.div>
+                        </FadeInOnScroll>
                     ))}
                 </div>
             </div>

@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Play } from "lucide-react";
-import { CountUp } from "@/components/marketing/CountUp";
 import { IndiaMap } from "@/components/marketing/IndiaMap";
+import { CounterAnimation } from "@/components/marketing/effects";
 
 /* ─── Live Pulse Dashboard ─── */
 function LivePulseDashboard() {
@@ -65,7 +65,7 @@ function LivePulseDashboard() {
                   </span>
                 </div>
                 <div className="text-5xl font-black text-[#00F0FF]">
-                  <CountUp to={247} duration={3} />
+                  <CounterAnimation end={247} duration={3} />
                 </div>
                 <p className="text-sm text-gray-400 mt-2">
                   proposals sent today
@@ -80,7 +80,7 @@ function LivePulseDashboard() {
                 className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
               >
                 <div className="text-3xl font-bold text-[#FF9933]">
-                  <CountUp to={42} duration={2.5} />
+                  <CounterAnimation end={42} duration={2.5} />
                 </div>
                 <p className="text-sm text-gray-400 mt-1">
                   operators online now
@@ -95,7 +95,7 @@ function LivePulseDashboard() {
                 className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
               >
                 <div className="text-3xl font-bold text-[#00FF88]">
-                  &#8377;<CountUp to={18} duration={2} />L
+                  <CounterAnimation end={18} duration={2} prefix="&#8377;" suffix="L" />
                 </div>
                 <p className="text-sm text-gray-400 mt-1">
                   bookings processed today
@@ -110,7 +110,7 @@ function LivePulseDashboard() {
                 className="p-5 rounded-2xl border border-white/10 bg-white/[0.02]"
               >
                 <div className="text-3xl font-bold text-[#A855F7]">
-                  <CountUp to={10} duration={2} />
+                  <CounterAnimation end={10} duration={2} />
                 </div>
                 <p className="text-sm text-gray-400 mt-1">
                   cities active right now
@@ -177,7 +177,7 @@ function DemoVideo() {
             See It In <span className="text-[#FF9933]">Action</span>
           </h2>
           <p className="text-lg md:text-xl text-gray-400 mt-4">
-            Watch how TravelSuite transforms your daily workflow in 60 seconds.
+            Watch how TravelBuilt transforms your daily workflow in 60 seconds.
           </p>
         </motion.div>
 
@@ -193,7 +193,7 @@ function DemoVideo() {
             <Play size={32} className="text-white ml-1" />
           </div>
           <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center">
-            <p className="text-sm text-gray-400">TravelSuite Product Demo</p>
+            <p className="text-sm text-gray-400">TravelBuilt Product Demo</p>
             <p className="text-sm text-gray-500">1:02</p>
           </div>
         </motion.div>

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Plane, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { TravelBuiltLogo } from './TravelBuiltLogo';
 import { motion } from 'framer-motion';
 
 export function Footer() {
@@ -44,10 +45,7 @@ export function Footer() {
           {/* Brand Column */}
           <div className="lg:col-span-2 space-y-6">
             <Link href="/" className="inline-flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.3)] group-hover:shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all duration-500">
-                <Plane size={20} className="text-white" />
-              </div>
-              <span className="text-2xl font-black tracking-tighter">TRAVEL<span className="text-[#00F0FF]">SUITE</span></span>
+              <TravelBuiltLogo size="md" />
             </Link>
             <p className="text-gray-400 max-w-sm leading-relaxed text-sm">
               The first truly modern operating system for Indian tour operators. Built by operators, for operators. Revolutionizing how itineraries are built and trips are sold.
@@ -91,7 +89,7 @@ export function Footer() {
             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#00F0FF]">
               <Mail size={14} />
             </div>
-            <span>hello@travelsuite.io</span>
+            <span>hello@travelbuilt.com</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-400">
             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#00F0FF]">
@@ -103,7 +101,7 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-gray-500">
-          <p>© {currentYear} Travel Suite Technologies Private Limited. All rights reserved.</p>
+          <p>© {currentYear} TravelBuilt Technologies Private Limited. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <p className="flex items-center gap-2">
               Made with <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="text-red-500">❤️</motion.span> in India

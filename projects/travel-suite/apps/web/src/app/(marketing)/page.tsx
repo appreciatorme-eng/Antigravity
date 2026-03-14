@@ -9,6 +9,7 @@ import { LeadMagnetSection } from "@/components/marketing/LeadMagnetSection";
 import { BeforeAfterSection } from "@/components/marketing/sections/BeforeAfterSection";
 import { ProposalPreviewSection } from "@/components/marketing/sections/ProposalPreviewSection";
 import { FinalCTASection } from "@/components/marketing/sections/FinalCTASection";
+import { SectionDivider } from "@/components/marketing/effects";
 
 // GSAP-dependent sections must be dynamically imported (no SSR)
 const HeroSection = dynamic(
@@ -39,15 +40,18 @@ export default function HomePage() {
   return (
     <main className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
       <HeroSection />
+      <SectionDivider variant="wave" />
       <CustomerLogos />
       <HowItWorks />
       <BeforeAfterSection />
       <FeaturesShowcase />
+      <SectionDivider variant="curve" />
       <ProposalPreviewSection />
       <LivePulseSection />
       <InteractiveDemo />
       <Testimonials />
       <LeadMagnetSection />
+      <SectionDivider variant="wave" flip />
       <FinalCTASection />
     </main>
   );

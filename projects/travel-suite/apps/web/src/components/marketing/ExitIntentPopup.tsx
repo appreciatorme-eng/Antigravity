@@ -62,7 +62,7 @@ export function ExitIntentPopup() {
 
                             <h3 className="text-3xl font-bold mb-4">Leaving so soon?</h3>
                             <p className="text-gray-400 mb-8 max-w-sm mx-auto">
-                                Join 500+ Indian tour operators who are saving 15 hours a week with TravelSuite OS.
+                                Join 500+ Indian tour operators who are saving 15 hours a week with TravelBuilt OS.
                             </p>
 
                             <Link

@@ -141,7 +141,7 @@ export function LeadMagnet() {
                                         </div>
                                         <h4 className="text-2xl font-bold text-white">Check your inbox!</h4>
                                         <p className="text-gray-400">
-                                            We&apos;ve just sent the blueprint to <span className="text-white font-medium">{email}</span>. Look out for an email from the TravelSuite team.
+                                            We&apos;ve just sent the blueprint to <span className="text-white font-medium">{email}</span>. Look out for an email from the TravelBuilt team.
                                         </p>
                                         <div className="pt-4">
                                             <a

@@ -68,7 +68,7 @@ export default function AboutPage() {
             Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#A259FF]">Tour Operators</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            TravelSuite wasn&apos;t born in a boardroom. It was born watching a brother struggle to manage his adventure company with spreadsheets, WhatsApp groups, and sticky notes.
+            TravelBuilt wasn&apos;t born in a boardroom. It was born watching a brother struggle to manage his adventure company with spreadsheets, WhatsApp groups, and sticky notes.
           </p>
         </motion.div>
       </section>
@@ -90,17 +90,17 @@ export default function AboutPage() {
               It Started With a <br /><span className="text-[#FF9933]">Brother&apos;s Business</span>
             </h2>
             <p className="text-lg text-gray-400 leading-relaxed">
-              Anvesh runs <strong className="text-white">Go Buddy Adventures</strong> — a company built on the belief that tourism is a tool for conservation and sustainable development. From luxury trekking packages in the Himalayas to snow expeditions and mountaineering, Go Buddy provides purposeful travel to natural areas.
+              Anvesh runs <strong className="text-white">TravelBuilt</strong> — a company built on the belief that tourism is a tool for conservation and sustainable development. From luxury trekking packages in the Himalayas to snow expeditions and mountaineering, TravelBuilt provides purposeful travel to natural areas.
             </p>
             <p className="text-lg text-gray-400 leading-relaxed">
               But behind the stunning treks and life-changing experiences was chaos — client details scattered across notebooks, itineraries copy-pasted from old emails, payment follow-ups lost in WhatsApp threads. Avi watched his brother drown in admin work when he should have been doing what he loves: <em className="text-white">creating unforgettable journeys.</em>
             </p>
             <p className="text-lg text-gray-400 leading-relaxed">
-              That frustration became the spark. <strong className="text-[#00F0FF]">TravelSuite</strong> was born — not from market research, but from a real operator&apos;s real pain.
+              That frustration became the spark. <strong className="text-[#00F0FF]">TravelBuilt</strong> was born — not from market research, but from a real operator&apos;s real pain.
             </p>
           </motion.div>
 
-          {/* Go Buddy Adventures Visual Card */}
+          {/* TravelBuilt Visual Card */}
           <motion.div
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -116,7 +116,7 @@ export default function AboutPage() {
                     <Mountain size={28} className="text-[#FF9933]" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Go Buddy Adventures</h3>
+                    <h3 className="text-xl font-bold text-white">TravelBuilt</h3>
                     <p className="text-sm text-[#FF9933]">Where It All Began</p>
                   </div>
                 </div>
@@ -185,13 +185,13 @@ export default function AboutPage() {
               A Digital Nomad Meets<br /><span className="text-[#00F0FF]">Enterprise Software</span>
             </h2>
             <p className="text-lg text-gray-400 leading-relaxed">
-              Avi isn&apos;t your typical tech founder. Before writing a single line of code for TravelSuite, he lived across <strong className="text-white">30+ US states</strong>, explored the sweeping savannas of <strong className="text-white">Masai Mara</strong>, navigated the streets of <strong className="text-white">Vietnam, Mexico, Thailand, Egypt, the Bahamas,</strong> and <strong className="text-white">Santo Domingo</strong>.
+              Avi isn&apos;t your typical tech founder. Before writing a single line of code for TravelBuilt, he lived across <strong className="text-white">30+ US states</strong>, explored the sweeping savannas of <strong className="text-white">Masai Mara</strong>, navigated the streets of <strong className="text-white">Vietnam, Mexico, Thailand, Egypt, the Bahamas,</strong> and <strong className="text-white">Santo Domingo</strong>.
             </p>
             <p className="text-lg text-gray-400 leading-relaxed">
               But Avi is also a <strong className="text-white">software engineer with over a decade of experience</strong> as an Analytics Developer — someone who understands data, dashboards, and business intelligence at an enterprise level.
             </p>
             <p className="text-lg text-gray-400 leading-relaxed">
-              This rare combination — <em className="text-[#00F0FF]">deep travel industry knowledge fused with world-class engineering</em> — is what makes TravelSuite fundamentally different from any other travel-tech platform. It&apos;s not built by outsiders looking in. It&apos;s built by someone who has <strong className="text-white">lived the journey</strong>.
+              This rare combination — <em className="text-[#00F0FF]">deep travel industry knowledge fused with world-class engineering</em> — is what makes TravelBuilt fundamentally different from any other travel-tech platform. It&apos;s not built by outsiders looking in. It&apos;s built by someone who has <strong className="text-white">lived the journey</strong>.
             </p>
           </motion.div>
         </div>
@@ -231,7 +231,7 @@ export default function AboutPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#A259FF]/30 text-[#A259FF] text-sm font-semibold tracking-widest uppercase mb-4">
               <Compass size={14} /> Our Principles
             </div>
-            <h2 className="text-3xl md:text-5xl font-bold">Why TravelSuite is <span className="text-[#A259FF]">Different</span></h2>
+            <h2 className="text-3xl md:text-5xl font-bold">Why TravelBuilt is <span className="text-[#A259FF]">Different</span></h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -275,7 +275,7 @@ export default function AboutPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#00F0FF]/30 text-[#00F0FF] text-sm font-semibold tracking-widest uppercase mb-4">
               <Users size={14} /> The Team
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold">The People Behind TravelSuite</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">The People Behind TravelBuilt</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
@@ -311,7 +311,7 @@ export default function AboutPage() {
               <h3 className="text-xl font-bold text-white">Anvesh</h3>
               <p className="text-[#FF9933] text-sm font-semibold mb-3">Co-Founder & Industry Advisor</p>
               <p className="text-sm text-gray-400 leading-relaxed">
-                Founder of Go Buddy Adventures. Expert in trekking, mountaineering, and sustainable tourism. The real-world operator whose daily challenges shaped every feature.
+                Founder of TravelBuilt. Expert in trekking, mountaineering, and sustainable tourism. The real-world operator whose daily challenges shaped every feature.
               </p>
             </motion.div>
           </div>

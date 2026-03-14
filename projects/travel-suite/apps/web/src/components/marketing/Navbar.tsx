@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Plane, ChevronDown } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
+import { TravelBuiltLogo } from './TravelBuiltLogo';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -46,12 +47,8 @@ export function Navbar() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 md:gap-3 no-underline z-50">
-            <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#0070F3] flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] md:shadow-[0_0_28px_rgba(0,240,255,0.6)]">
-              <Plane className="w-5 h-5 md:w-7 md:h-7 text-white" />
-            </div>
-            <span className="font-black text-2xl md:text-3xl tracking-tight text-white leading-none">
-              Travel<span className="text-[#00F0FF]">Suite</span>
-            </span>
+            <TravelBuiltLogo size="md" className="hidden md:block" />
+            <TravelBuiltLogo size="sm" className="block md:hidden" />
           </Link>
 
           {/* Desktop Nav Links */}

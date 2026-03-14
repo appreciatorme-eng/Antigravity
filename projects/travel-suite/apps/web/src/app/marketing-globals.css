@@ -1,11 +1,17 @@
 /* Marketing-specific design tokens and utilities.
-   Scoped under .marketing-theme to avoid collision with SaaS globals.css. */
+   Scoped under .marketing-theme to avoid collision with SaaS globals.css.
+   Brand: TravelBuilt — warm orange + teal accent on deep dark canvas. */
 
 .marketing-theme {
+  /* Brand palette */
+  --color-brand-primary: #FF6B2C;
+  --color-brand-accent: #00D4AA;
   --color-brand-saffron: #FF9933;
   --color-brand-aqua: #00F0FF;
-  --color-background-deep: #0A0A0A;
-  --color-background-slate: #171717;
+  --color-brand-purple: #A259FF;
+  --color-background-deep: #0A0A0F;
+  --color-background-slate: #141419;
+  --color-surface: rgba(255, 255, 255, 0.03);
 
   background-color: var(--color-background-deep);
   color: #fff;
@@ -13,14 +19,36 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.marketing-theme h1,
-.marketing-theme h2,
-.marketing-theme h3,
+/* --- FLUID TYPOGRAPHY --- */
+
+.marketing-theme h1 {
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-weight: 900;
+}
+
+.marketing-theme h2 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.marketing-theme h3 {
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
 .marketing-theme h4,
 .marketing-theme h5,
 .marketing-theme h6 {
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
 }
+
+/* --- GLASSMORPHISM --- */
 
 .marketing-theme .glass {
   background: rgba(255, 255, 255, 0.05);
@@ -31,32 +59,264 @@
 }
 
 .marketing-theme .glass-card {
-  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.marketing-theme .glass-card:hover {
+  border-color: rgba(255, 107, 44, 0.25);
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(255, 107, 44, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* --- TEXT GLOWS --- */
+
 .marketing-theme .text-glow-aqua {
-  text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+  text-shadow: 0 0 30px rgba(0, 240, 255, 0.35), 0 0 60px rgba(0, 240, 255, 0.15);
 }
 
 .marketing-theme .text-glow-saffron {
-  text-shadow: 0 0 20px rgba(255, 153, 51, 0.4);
+  text-shadow: 0 0 30px rgba(255, 153, 51, 0.35), 0 0 60px rgba(255, 153, 51, 0.15);
 }
 
-/* Scoped scrollbar for marketing sections */
+.marketing-theme .text-glow-primary {
+  text-shadow: 0 0 30px rgba(255, 107, 44, 0.35), 0 0 60px rgba(255, 107, 44, 0.15);
+}
+
+/* --- GRADIENT TEXT --- */
+
+.marketing-theme .gradient-text-brand {
+  background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.marketing-theme .gradient-text-warm {
+  background: linear-gradient(135deg, #FF6B2C, #FF9933, #FFD699);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.marketing-theme .gradient-text-cool {
+  background: linear-gradient(135deg, #00D4AA, #00F0FF, #A259FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- NOISE TEXTURE OVERLAY --- */
+
+.marketing-theme .noise-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+}
+
+/* --- MESH GRADIENT BACKGROUNDS --- */
+
+.marketing-theme .mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(255, 107, 44, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(162, 89, 255, 0.06) 0%, transparent 50%),
+    var(--color-background-deep);
+}
+
+/* --- BUTTON STYLES --- */
+
+.marketing-theme .btn-primary {
+  background: linear-gradient(135deg, var(--color-brand-primary), #FF9933);
+  color: white;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 0.875rem 2rem;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.marketing-theme .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(255, 107, 44, 0.4);
+}
+
+.marketing-theme .btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.marketing-theme .btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.875rem 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.marketing-theme .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* --- LINK HOVER EFFECTS --- */
+
+.marketing-theme .link-underline {
+  position: relative;
+  text-decoration: none;
+}
+
+.marketing-theme .link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-brand-primary), var(--color-brand-accent));
+  transition: width 0.3s ease;
+}
+
+.marketing-theme .link-underline:hover::after {
+  width: 100%;
+}
+
+/* --- MARQUEE (customer logos) --- */
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marketing-theme .marquee-track {
+  display: flex;
+  animation: marquee 30s linear infinite;
+  width: max-content;
+}
+
+.marketing-theme .marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* --- SECTION SPACING --- */
+
+.marketing-theme .section-padding {
+  padding: clamp(4rem, 10vw, 8rem) clamp(1.5rem, 5vw, 6rem);
+}
+
+/* --- SCROLLBAR --- */
+
 .marketing-theme::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 .marketing-theme::-webkit-scrollbar-track {
   background: var(--color-background-deep);
 }
 .marketing-theme::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
 .marketing-theme::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* --- PROSE (blog content) --- */
+
+.marketing-theme .prose-blog {
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.8;
+  font-size: 1.125rem;
+}
+
+.marketing-theme .prose-blog h2 {
+  color: white;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.marketing-theme .prose-blog h3 {
+  color: white;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.marketing-theme .prose-blog p {
+  margin-bottom: 1.25rem;
+}
+
+.marketing-theme .prose-blog strong {
+  color: white;
+  font-weight: 600;
+}
+
+.marketing-theme .prose-blog a {
+  color: var(--color-brand-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.marketing-theme .prose-blog a:hover {
+  color: var(--color-brand-primary);
+}
+
+.marketing-theme .prose-blog ul,
+.marketing-theme .prose-blog ol {
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.marketing-theme .prose-blog li {
+  margin-bottom: 0.5rem;
+}
+
+.marketing-theme .prose-blog blockquote {
+  border-left: 3px solid var(--color-brand-primary);
+  padding-left: 1.25rem;
+  margin: 1.5rem 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+}
+
+.marketing-theme .prose-blog code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.marketing-theme .prose-blog pre {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.marketing-theme .prose-blog img {
+  border-radius: 12px;
+  margin: 2rem 0;
 }

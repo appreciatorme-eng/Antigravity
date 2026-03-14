@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { FadeInOnScroll } from "@/components/marketing/effects";
 
 const proposalDays = [
   {
@@ -77,8 +78,9 @@ export function ProposalPreviewSection() {
           viewport={{ once: true }}
           className="relative max-w-lg mx-auto"
         >
+          <FadeInOnScroll direction="right">
           {/* Phone container */}
-          <div className="rounded-[32px] border-[6px] border-white/10 bg-[#0A0A0A] overflow-hidden shadow-2xl">
+          <div className="rounded-[32px] border-[6px] border-white/10 bg-[#0A0A0A] overflow-hidden shadow-2xl shadow-[#A259FF]/10" style={{ boxShadow: '0 0 60px rgba(162, 89, 255, 0.12), 0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             {/* Image */}
             <div className="relative h-56 w-full overflow-hidden">
               <AnimatePresence mode="wait">
@@ -175,6 +177,7 @@ export function ProposalPreviewSection() {
               </div>
             </div>
           </div>
+          </FadeInOnScroll>
         </motion.div>
       </div>
     </section>

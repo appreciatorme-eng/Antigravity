@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
-import { SplineScene } from "@/components/marketing/SplineScene";
 import ShinyText from "@/components/marketing/ShinyText";
+import { HeroScreens } from "@/components/marketing/HeroScreens";
 import dynamic from "next/dynamic";
 import { ArrowRight } from "lucide-react";
 import gsap from "gsap";
@@ -25,77 +25,8 @@ const ForceFieldBackground = dynamic(
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: containerRef });
-  const [isSplineReady, setIsSplineReady] = useState(false);
 
   const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onSplineLoad = (splineApp: any) => {
-    const targetsToHide = [
-      "PROJECT NAME",
-      "PROMO",
-      "your logo+text",
-      "P",
-      "E",
-      "A",
-      "R",
-      "L",
-      "PEARL",
-    ];
-    targetsToHide.forEach((name) => {
-      const obj = splineApp.findObjectByName(name);
-      if (obj && typeof obj.text !== "undefined") {
-        obj.text = "";
-      }
-      if (obj) {
-        obj.visible = false;
-      }
-    });
-
-    const mockups = [
-      "/marketing/dashboard_ui_mockup_1773059467134.png",
-      "/marketing/booking_ui_mockup_1773059498138.png",
-      "/marketing/crm_ui_mockup_1773059519930.png",
-      "/marketing/itinerary_ui_mockup_1773062264651.png",
-      "/marketing/analytics_ui_mockup_1773062281103.png",
-      "/marketing/invoicing_ui_mockup_1773062297390.png",
-    ];
-
-    setTimeout(async () => {
-      const texturePromises: Promise<void>[] = [];
-
-      for (let i = 1; i <= 6; i++) {
-        const panelName = `1700x950 ${i}`;
-        const panel = splineApp.findObjectByName(panelName);
-        if (panel) {
-          try {
-            if (panel.material && panel.material.layers) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              panel.material.layers.forEach((layer: any) => {
-                if (layer.type === "texture" || layer.type === "matcap") {
-                  const fullUrl = window.location.origin + mockups[i - 1];
-                  texturePromises.push(layer.updateTexture(fullUrl));
-                }
-              });
-            }
-          } catch (err) {
-            console.log(`Could not inject mockup into ${panelName}`, err);
-          }
-        }
-      }
-
-      try {
-        await Promise.all(texturePromises);
-      } catch (err) {
-        console.error(
-          "Some textures failed to map, continuing anyway",
-          err
-        );
-      }
-
-      setIsSplineReady(true);
-    }, 1000);
-  };
 
   useEffect(() => {
     gsap.utils.toArray(".reveal-text").forEach((text) => {
@@ -159,23 +90,15 @@ export function HeroSection() {
           />
         </div>
 
-        {/* 3D Spline Layer */}
-        <div className="absolute inset-0 z-[10] pointer-events-none">
-          <motion.div
-            style={{ y: yParallax }}
-            className={`w-full h-[120%] -top-20 relative z-10 pointer-events-auto transition-opacity duration-[1500ms] ease-in-out ${
-              isSplineReady ? "opacity-90" : "opacity-0"
-            }`}
-          >
-            <SplineScene
-              sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode"
-              onLoad={onSplineLoad}
-            />
-          </motion.div>
-
+        {/* 3D Spline + Floating Screens */}
+        <motion.div
+          style={{ y: yParallax }}
+          className="absolute inset-0 z-[10] pointer-events-none"
+        >
+          <HeroScreens />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-[11] pointer-events-none" />
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-[11] pointer-events-none" />
-        </div>
+        </motion.div>
 
         <div className="relative z-20 max-w-3xl space-y-8 pointer-events-none">
           <motion.div
@@ -190,7 +113,7 @@ export function HeroSection() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00F0FF]"></span>
               </span>
               <ShinyText
-                text="Travel Suite OS is Live"
+                text="TravelBuilt is Live"
                 speed={3}
                 color="#00F0FF"
                 shineColor="#ffffff"

@@ -6,11 +6,11 @@ import { Plus, Minus } from 'lucide-react';
 
 const faqs = [
     {
-        question: "Do I need to be a technical expert to use TravelSuite?",
-        answer: "Not at all. TravelSuite is designed specifically for travel professionals, not developers. Our intuitive drag-and-drop interface means you can start building beautiful itineraries on day one, without writing a single line of code."
+        question: "Do I need to be a technical expert to use TravelBuilt?",
+        answer: "Not at all. TravelBuilt is designed specifically for travel professionals, not developers. Our intuitive drag-and-drop interface means you can start building beautiful itineraries on day one, without writing a single line of code."
     },
     {
-        question: "Does TravelSuite integrate with my existing GDS?",
+        question: "Does TravelBuilt integrate with my existing GDS?",
         answer: "Yes, we offer seamless integrations with major GDS providers including Amadeus, Sabre, and Travelport. Your negotiated rates and PNRs sync directly into the platform."
     },
     {
@@ -23,7 +23,7 @@ const faqs = [
     },
     {
         question: "Is there a limit on how many proposals I can send?",
-        answer: "No. All TravelSuite plans include unlimited proposal generation, unlimited client portals, and unlimited invoice creation."
+        answer: "No. All TravelBuilt plans include unlimited proposal generation, unlimited client portals, and unlimited invoice creation."
     }
 ];
 
