@@ -38,7 +38,7 @@ None.
 
 ## Test Suite Status
 - Vitest: ✅ 52 files / 690 assertions / 85%+ coverage
-- Playwright E2E: ⏳ pending
+- Playwright E2E: ✅ remediation-s29.spec.ts — 10 tests covering RLS access preserved, CSRF guards, health regression
 
 ---
 
@@ -47,4 +47,5 @@ None.
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
 | P1 | 6ec7357 | 2026-03-14 | Create remediation tracker s29 |
-| P2 | — | 2026-03-14 | Fix L-01: auth_rls_initplan — 109 RLS policies updated via 2 migrations |
+| P2 | f23fda4 | 2026-03-14 | Fix L-01: auth_rls_initplan — 109 RLS policies updated via 2 migrations |
+| P3 | c93eca5 | 2026-03-14 | Add E2E regression tests for s29 (L-01 RLS behavior preserved) |
