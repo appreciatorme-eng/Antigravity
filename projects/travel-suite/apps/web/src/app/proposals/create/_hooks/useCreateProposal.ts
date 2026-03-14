@@ -129,7 +129,10 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
         }),
       });
 
-      const payload = await response.json().catch(() => ({}));
+      const payload = await response.json().catch((parseError: unknown) => {
+        console.error('Failed to parse JSON response from /api/proposals/create', parseError);
+        return {};
+      });
       const payloadData = payload?.data ?? null;
       if (!response.ok) {
         const message = formatFeatureLimitError(
@@ -188,7 +191,10 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
           headers: { 'Content-Type': 'application/json' },
         });
         if (!sendResponse.ok) {
-          const sendPayload = await sendResponse.json().catch(() => ({}));
+          const sendPayload = await sendResponse.json().catch((parseError: unknown) => {
+            console.error('Failed to parse JSON response from proposal send endpoint', parseError);
+            return {};
+          });
           console.warn('Proposal created but notification failed:', sendPayload?.error || sendPayload);
         }
       }

@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
                     Authorization: `Client-ID ${accessKey}`,
                     "Accept-Version": "v1",
                 },
-                next: { revalidate: 86400 },
+                next: { revalidate: 3600 }, // Cache for 1 hour
             }
         );
 

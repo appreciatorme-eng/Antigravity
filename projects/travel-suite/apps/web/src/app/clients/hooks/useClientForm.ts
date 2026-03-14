@@ -14,6 +14,8 @@ import {
     formatFeatureLimitError,
 } from "../types";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface UseClientFormReturn {
     formData: ClientFormData;
     setFormData: React.Dispatch<React.SetStateAction<ClientFormData>>;
@@ -74,8 +76,13 @@ export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormR
     }, []);
 
     const handleSaveClient = useCallback(async () => {
+        if (saving) return;
         if (!formData.full_name.trim() || !formData.email.trim()) {
             setFormError("Name and email are required.");
+            return;
+        }
+        if (formData.email.trim() && !EMAIL_REGEX.test(formData.email.trim())) {
+            setFormError("Please enter a valid email address.");
             return;
         }
         setSaving(true);
@@ -108,7 +115,7 @@ export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormR
         } finally {
             setSaving(false);
         }
-    }, [formData, editingClientId, supabase, onSaved, resetForm, toast]);
+    }, [formData, editingClientId, saving, supabase, onSaved, resetForm, toast]);
 
     return {
         formData,

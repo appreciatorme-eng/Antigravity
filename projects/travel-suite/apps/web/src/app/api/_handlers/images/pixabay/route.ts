@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         const response = await fetch(
             `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&per_page=3&safesearch=true`,
             {
-                next: { revalidate: 86400 }, // Cache for 24 hours
+                next: { revalidate: 3600 }, // Cache for 1 hour
             }
         );
 

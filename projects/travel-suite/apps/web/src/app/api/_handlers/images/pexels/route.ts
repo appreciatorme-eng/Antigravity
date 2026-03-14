@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
                 headers: {
                     Authorization: apiKey,
                 },
-                next: { revalidate: 86400 }, // Cache for 24 hours
+                next: { revalidate: 3600 }, // Cache for 1 hour
             }
         );
 
