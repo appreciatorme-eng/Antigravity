@@ -16,7 +16,7 @@ None.
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| H-01 | Stored XSS in marketing blog rendering via unsanitized `dangerouslySetInnerHTML` | `src/components/marketing/blog/BlogPost.tsx:107` | Pending DOMPurify-based sanitization of rendered HTML | Pending | ⏳ |
+| H-01 | Stored XSS in marketing blog rendering via unsanitized `dangerouslySetInnerHTML` | `src/components/marketing/blog/BlogPost.tsx:107` | Added DOMPurify sanitization around rendered markdown HTML with an allowlist limited to the tags/classes emitted by the existing renderer | `npm run typecheck` and `npm run lint` pass after the XSS remediation | ✅ |
 | H-02 | Admin dashboard page exceeds file/function size thresholds and mixes orchestration with rendering | `src/app/admin/page.tsx:120` | Pending extraction into focused `_components/` sections | Pending | ⏳ |
 | H-03 | Onboarding page exceeds file/function size thresholds and mixes wizard state, polling, and rendering | `src/app/onboarding/page.tsx:119` | Pending extraction into focused `_components/` steps/sections | Pending | ⏳ |
 | H-04 | `ItineraryTemplatePages.tsx` exceeds file/function size thresholds and concentrates PDF rendering logic | `src/components/pdf/templates/ItineraryTemplatePages.tsx:368` | Pending extraction into dedicated `sections/` modules | Pending | ⏳ |
