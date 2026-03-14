@@ -18,8 +18,8 @@ import {
 
 import {
   ActionPickerProps,
-  MOCK_DRIVERS,
-  type MockDriver,
+  type Driver,
+  useOrganizationDrivers,
 } from "./shared";
 
 export function DriverPicker({
@@ -27,20 +27,21 @@ export function DriverPicker({
   channel,
   onSend,
 }: ActionPickerProps) {
+  const { data: drivers, loading, error } = useOrganizationDrivers();
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<MockDriver | null>(null);
+  const [selected, setSelected] = useState<Driver | null>(null);
   const [pickupTime, setPickupTime] = useState("06:00");
   const [pickupLocation, setPickupLocation] = useState("");
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return MOCK_DRIVERS.filter(
+    return drivers.filter(
       (driver) =>
         driver.name.toLowerCase().includes(q) ||
         driver.vehicle.toLowerCase().includes(q) ||
         driver.vehicleNumber.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, drivers]);
 
   function buildMessage(): { body: string; subject?: string } {
     if (!selected) return { body: "" };
@@ -76,6 +77,18 @@ export function DriverPicker({
   }
 
   const { body, subject } = buildMessage();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-xs text-red-400 text-center py-6">{error}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -135,6 +148,11 @@ export function DriverPicker({
             )}
           </button>
         ))}
+        {filtered.length === 0 && (
+          <p className="text-xs text-slate-500 text-center py-6">
+            No drivers found
+          </p>
+        )}
       </div>
 
       {selected && (

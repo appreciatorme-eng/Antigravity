@@ -17,8 +17,8 @@ import {
 import {
   ActionPickerProps,
   formatCurrency,
-  MOCK_TRIPS,
-  type MockTrip,
+  type Trip,
+  useOrganizationTrips,
 } from "./shared";
 
 export function PaymentPicker({
@@ -26,7 +26,8 @@ export function PaymentPicker({
   channel,
   onSend,
 }: ActionPickerProps) {
-  const [selectedTrip, setSelectedTrip] = useState<MockTrip | null>(null);
+  const { data: trips, loading, error } = useOrganizationTrips();
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [paymentType, setPaymentType] = useState<
@@ -37,12 +38,12 @@ export function PaymentPicker({
 
   const filteredTrips = useMemo(() => {
     const q = search.toLowerCase();
-    return MOCK_TRIPS.filter(
+    return trips.filter(
       (trip) =>
         trip.name.toLowerCase().includes(q) ||
         trip.destination.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, trips]);
 
   function getAmount() {
     if (paymentType === "advance" && selectedTrip) {
@@ -108,6 +109,13 @@ export function PaymentPicker({
   return (
     <div className="flex flex-col gap-4">
       {showTripList ? (
+        loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          </div>
+        ) : error ? (
+          <p className="text-xs text-red-400 text-center py-6">{error}</p>
+        ) : (
         <>
           <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">
             <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -137,14 +145,20 @@ export function PaymentPicker({
                     {trip.name}
                   </p>
                   <p className="text-[11px] text-slate-400">
-                    {trip.bookingId} · Total {formatCurrency(trip.amount)}
+                    {trip.bookingId}{trip.amount > 0 ? ` · Total ${formatCurrency(trip.amount)}` : ""}
                   </p>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
               </button>
             ))}
+            {filteredTrips.length === 0 && (
+              <p className="text-xs text-slate-500 text-center py-6">
+                No trips found
+              </p>
+            )}
           </div>
         </>
+        )
       ) : (
         <>
           <button

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { MOCK_TRIPS } from './ActionPickerModal';
+import { useOrganizationTrips, type Trip } from './action-picker/shared';
 import type { ConversationContact } from './whatsapp.types';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
@@ -109,10 +109,10 @@ function formatCurrency(n: number): string {
 
 // ─── TRIP DETAIL PANEL ───────────────────────────────────────────────────────
 
-function TripDetailPanel({ tripName }: { tripName?: string }) {
+function TripDetailPanel({ tripName, trips }: { tripName?: string; trips: Trip[] }) {
   const trip = useMemo(
-    () => MOCK_TRIPS.find((t) => t.name.toLowerCase().includes((tripName ?? '').toLowerCase())),
-    [tripName],
+    () => trips.find((t) => t.name.toLowerCase().includes((tripName ?? '').toLowerCase())),
+    [tripName, trips],
   );
 
   if (!trip) {
@@ -179,14 +179,15 @@ function TripDetailPanel({ tripName }: { tripName?: string }) {
 
 // ─── CREATE TRIP PANEL ────────────────────────────────────────────────────────
 
-const DESTINATIONS = [...new Set(MOCK_TRIPS.map((t) => t.destination))];
 const TRIP_TYPES = ['Honeymoon', 'Family Holiday', 'Adventure', 'Corporate Offsite', 'Beach Getaway', 'Heritage Tour'];
 
 function CreateTripPanel({
   contact,
+  trips,
   onClose,
 }: {
   contact: ConversationContact;
+  trips: Trip[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -196,10 +197,15 @@ function CreateTripPanel({
   const [startDate, setStartDate] = useState('');
   const [notes, setNotes] = useState('');
 
+  const destinations = useMemo(
+    () => [...new Set(trips.map((t) => t.destination).filter(Boolean))],
+    [trips],
+  );
+
   const destinationSuggestions = useMemo(() => {
     const q = destination.toLowerCase();
-    return q ? DESTINATIONS.filter((d) => d.toLowerCase().includes(q)) : DESTINATIONS;
-  }, [destination]);
+    return q ? destinations.filter((d) => d.toLowerCase().includes(q)) : destinations;
+  }, [destination, destinations]);
 
   function handleCreate() {
     const params = new URLSearchParams({
@@ -615,6 +621,7 @@ export function ContextActionModal({
   onClose,
 }: ContextActionModalProps) {
   const config = MODAL_CONFIG[type];
+  const { data: trips } = useOrganizationTrips();
 
   async function handleSend(message: string, subject?: string) {
     const result = await onSendMessage?.(message, subject);
@@ -674,8 +681,8 @@ export function ContextActionModal({
             </div>
 
             <div className="p-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              {type === 'trip-detail' && <TripDetailPanel tripName={tripName} />}
-              {type === 'create-trip' && <CreateTripPanel contact={contact} onClose={onClose} />}
+              {type === 'trip-detail' && <TripDetailPanel tripName={tripName} trips={trips} />}
+              {type === 'create-trip' && <CreateTripPanel contact={contact} trips={trips} onClose={onClose} />}
               {type === 'send-quote' && (
                 <SendQuotePanel contact={contact} channel={channel} onSend={handleSend} />
               )}

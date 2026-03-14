@@ -11,8 +11,8 @@ import {
 import {
   ActionPickerProps,
   formatCurrency,
-  MOCK_TRIPS,
-  type MockTrip,
+  type Trip,
+  useOrganizationTrips,
 } from "./shared";
 
 export function ItineraryPicker({
@@ -20,18 +20,19 @@ export function ItineraryPicker({
   channel,
   onSend,
 }: ActionPickerProps) {
+  const { data: trips, loading, error } = useOrganizationTrips();
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<MockTrip | null>(null);
+  const [selected, setSelected] = useState<Trip | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return MOCK_TRIPS.filter(
+    return trips.filter(
       (trip) =>
         trip.name.toLowerCase().includes(q) ||
         trip.destination.toLowerCase().includes(q) ||
         trip.bookingId.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, trips]);
 
   function buildMessage(): { body: string; subject?: string } {
     if (!selected) return { body: "" };
@@ -65,6 +66,18 @@ export function ItineraryPicker({
   }
 
   const { body, subject } = buildMessage();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-xs text-red-400 text-center py-6">{error}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
