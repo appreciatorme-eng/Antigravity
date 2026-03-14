@@ -12,9 +12,9 @@ export function Footer() {
     {
       title: 'Platform',
       links: [
-        { label: 'Marketplace', href: '#' },
-        { label: 'Booking Engine', href: '#' },
-        { label: 'Inventory', href: '#' },
+        { label: 'Marketplace' },
+        { label: 'Booking Engine' },
+        { label: 'Inventory' },
         { label: 'Pricing', href: '/pricing' },
       ]
     },
@@ -22,19 +22,25 @@ export function Footer() {
       title: 'Company',
       links: [
         { label: 'About Us', href: '/about' },
-        { label: 'Careers', href: '#' },
+        { label: 'Careers' },
         { label: 'Blog', href: '/blog' },
-        { label: 'Contact', href: '#' },
+        { label: 'Contact' },
       ]
     },
     {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy', href: '#' },
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Cookie Policy', href: '#' },
+        { label: 'Privacy Policy' },
+        { label: 'Terms of Service' },
+        { label: 'Cookie Policy' },
       ]
     }
+  ];
+
+  const socialLinks = [
+    { Icon: Twitter, label: 'TravelBuilt on Twitter' },
+    { Icon: Instagram, label: 'TravelBuilt on Instagram' },
+    { Icon: Linkedin, label: 'TravelBuilt on LinkedIn' },
   ];
 
   return (
@@ -51,10 +57,14 @@ export function Footer() {
               The first truly modern operating system for Indian tour operators. Built by operators, for operators. Revolutionizing how itineraries are built and trips are sold.
             </p>
             <div className="flex items-center gap-4">
-              {[Twitter, Instagram, Linkedin].map((Icon, i) => (
-                <Link key={i} href="#" className="w-9 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all">
+              {socialLinks.map(({ Icon, label }) => (
+                <span
+                  key={label}
+                  className="w-9 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-gray-400"
+                  title={label}
+                >
                   <Icon size={18} />
-                </Link>
+                </span>
               ))}
             </div>
           </div>
@@ -66,9 +76,13 @@ export function Footer() {
               <ul className="space-y-4">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors text-sm">
-                      {link.label}
-                    </Link>
+                    {link.href ? (
+                      <Link href={link.href} className="text-gray-400 hover:text-white transition-colors text-sm">
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <span className="text-gray-500 text-sm">{link.label}</span>
+                    )}
                   </li>
                 ))}
               </ul>

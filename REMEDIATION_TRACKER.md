@@ -1,5 +1,5 @@
-# Remediation Tracker s29
-**Date**: 2026-03-14 | **Branch**: `fix/remediation-s29` | **Source**: /review-deep (score 46/60, delta +6 vs S28)
+# Remediation Tracker s30
+**Date**: 2026-03-14 | **Branch**: `fix/remediation-s30` | **Source**: `AUDIT_REPORT_2026-03-14_8a6e783.md`
 
 ## Legend
 ✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
@@ -12,9 +12,16 @@ None.
 
 ---
 
-## HIGH (0)
+## HIGH (6)
 
-None.
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| H-01 | Stored XSS in marketing blog rendering via unsanitized `dangerouslySetInnerHTML` | `src/components/marketing/blog/BlogPost.tsx:107` | Pending DOMPurify-based sanitization of rendered HTML | Pending | ⏳ |
+| H-02 | Admin dashboard page exceeds file/function size thresholds and mixes orchestration with rendering | `src/app/admin/page.tsx:120` | Pending extraction into focused `_components/` sections | Pending | ⏳ |
+| H-03 | Onboarding page exceeds file/function size thresholds and mixes wizard state, polling, and rendering | `src/app/onboarding/page.tsx:119` | Pending extraction into focused `_components/` steps/sections | Pending | ⏳ |
+| H-04 | `ItineraryTemplatePages.tsx` exceeds file/function size thresholds and concentrates PDF rendering logic | `src/components/pdf/templates/ItineraryTemplatePages.tsx:368` | Pending extraction into dedicated `sections/` modules | Pending | ⏳ |
+| H-05 | Admin insights page exceeds file/function size thresholds and mixes fetch fan-out with rendering | `src/app/admin/insights/page.tsx:29` | Pending extraction into focused `_components/` panels | Pending | ⏳ |
+| H-06 | Admin settings page exceeds file/function size thresholds and mixes settings domains in one component | `src/app/admin/settings/page.tsx:38` | Pending extraction into focused `_components/` sections | Pending | ⏳ |
 
 ---
 
@@ -22,23 +29,23 @@ None.
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-01 | `multiple_permissive_policies` — 214 advisor findings across 23 tables; PostgreSQL evaluates all PERMISSIVE policies via OR, wasting compute | Supabase DB — 23 tables incl. clients, trips, itineraries, profiles, push_tokens, concierge_requests | Documented — consolidating 214 findings across 23 core tables requires schema redesign sprint; risk of security regression if policies merged incorrectly | Accepted design decision | 📝 |
+| M-01 | Undeclared direct dependency on `@tsparticles/slim` breaks clean installs/typecheck stability | `src/components/marketing/ForceFieldBackground.tsx:4` | Added `@tsparticles/slim` to `package.json`/`package-lock.json` via `npm install @tsparticles/slim` and re-ran validation | `npm run typecheck` and `npm run lint` both pass after dependency install | ✅ |
 
 ---
 
-## LOW (3)
+## LOW (1)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| L-01 | `auth_rls_initplan` — 116 RLS policies call bare `auth.uid()` per row instead of `(select auth.uid())` once | Supabase DB | Applied 2 migrations: `20260325000001` (92 SELECT/UPDATE/DELETE/ALL policies) + `20260325000002` (17 INSERT-only WITH CHECK policies); 0 bare occurrences remaining | Performance improvement — all 109 policies fixed | ✅ |
-| L-02 | `unused_index` — 202 indexes never used by query planner (was 198 in S28) | Supabase DB | Documented — requires per-index manual review before dropping | Tracked for DBA sprint | 📝 |
-| L-03 | 6 files >800 lines: `ItineraryTemplatePages.tsx` (915), `onboarding/page.tsx` (823), `admin/page.tsx` (803), `drivers/page.tsx` (798), `clients/[id]/page.tsx` (798), `AdminRevenueView.tsx` (794) | Multiple files | Documented — requires dedicated refactor sprint | Tracked for next sprint | 📝 |
+| L-01 | Marketing footer uses placeholder `href="#"` links and unlabeled icon-only social links | `src/components/marketing/Footer.tsx:15` | Replaced placeholder anchors with static text where routes do not exist and removed dead social links instead of shipping empty destinations | Footer no longer renders `href="#"` targets; lint and typecheck remain clean | ✅ |
 
 ---
 
 ## Test Suite Status
-- Vitest: ✅ 52 files / 690 assertions / 85%+ coverage
-- Playwright E2E: ✅ remediation-s29.spec.ts — 10 tests covering RLS access preserved, CSRF guards, health regression
+- Vitest: ⏳ Pending
+- Playwright E2E: ⏳ Pending
+- Lint: ✅ `npm run lint`
+- Typecheck: ✅ `npm run typecheck`
 
 ---
 
@@ -46,6 +53,4 @@ None.
 
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| P1 | 6ec7357 | 2026-03-14 | Create remediation tracker s29 |
-| P2 | f23fda4 | 2026-03-14 | Fix L-01: auth_rls_initplan — 109 RLS policies updated via 2 migrations |
-| P3 | c93eca5 | 2026-03-14 | Add E2E regression tests for s29 (L-01 RLS behavior preserved) |
+| P1 | Pending | 2026-03-14 | Initialize remediation tracker s30 |
