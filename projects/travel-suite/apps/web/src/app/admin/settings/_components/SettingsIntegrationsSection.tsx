@@ -14,7 +14,7 @@ import {
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
-import type { WhatsAppProfile } from "./shared";
+import type { WhatsAppProfile } from "../shared";
 
 interface SettingsIntegrationsSectionProps {
     handleActivatePlaces: () => Promise<void>;
