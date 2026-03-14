@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { useAnalytics } from '@/lib/analytics/events';
 import { useToast } from '@/components/ui/toast';
 import type { FeatureLimitSnapshot } from '../_types';
@@ -114,9 +115,10 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
         headers.Authorization = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch('/api/proposals/create', {
+      const response = await fetchWithTimeout('/api/proposals/create', {
         method: 'POST',
         headers,
+        timeoutMs: 30_000,
         body: JSON.stringify({
           templateId: selectedTemplateId,
           clientId: selectedClientId,

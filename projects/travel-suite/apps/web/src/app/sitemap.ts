@@ -52,8 +52,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .order("published_at", { ascending: false });
 
     if (posts) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      blogEntries = (posts as any[]).map((post: { slug: string; updated_at: string | null; published_at: string | null }) => ({
+      interface BlogPost {
+        readonly slug: string;
+        readonly updated_at: string | null;
+        readonly published_at: string | null;
+      }
+      blogEntries = (posts as unknown as BlogPost[]).map((post) => ({
         url: `${BASE_URL}/blog/${post.slug}`,
         lastModified: new Date(post.updated_at ?? post.published_at ?? Date.now()),
         changeFrequency: "monthly" as const,

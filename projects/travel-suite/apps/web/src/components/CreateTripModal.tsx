@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
+import { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
 
 interface SavedItinerary {
     id: string;
@@ -39,20 +40,6 @@ interface FeatureLimitSnapshot {
     limit: number | null;
     remaining: number | null;
     tier: string;
-}
-
-function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (payload?.code !== "FEATURE_LIMIT_EXCEEDED") {
-        return fallback;
-    }
-
-    const limit = Number(payload?.limit || 0);
-    const used = Number(payload?.used || 0);
-    const feature = String(payload?.feature || "usage");
-    if (limit > 0) {
-        return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
-    }
-    return payload?.error || fallback;
 }
 
 interface CreateTripModalProps {

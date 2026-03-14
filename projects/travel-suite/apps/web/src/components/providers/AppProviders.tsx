@@ -5,6 +5,7 @@ import { AlertToToastBridge, ToastProvider } from "@/components/ui/toast";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { QueryProvider } from "./query-provider";
 import { DemoModeProvider } from "@/lib/demo/demo-mode-context";
+import { SessionRefreshGuard } from "./SessionRefreshGuard";
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
     return (
@@ -13,6 +14,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
                 <ToastProvider>
                     <ServiceWorkerRegistrar />
                     <QueryProvider>
+                        <SessionRefreshGuard />
                         {children}
                     </QueryProvider>
                     <AlertToToastBridge />

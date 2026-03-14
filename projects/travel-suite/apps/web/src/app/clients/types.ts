@@ -205,14 +205,7 @@ export const DEFAULT_FORM_DATA: ClientFormData = {
     languagePreference: "English",
 };
 
-export function formatFeatureLimitError(payload: Record<string, unknown> | null | undefined, fallback: string): string {
-    if (payload?.code !== "FEATURE_LIMIT_EXCEEDED") return fallback;
-    const limit = Number(payload?.limit || 0);
-    const used = Number(payload?.used || 0);
-    const feature = String(payload?.feature || "usage");
-    if (limit > 0) return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
-    return typeof payload?.error === "string" ? payload.error : fallback;
-}
+export { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
 
 export const formatINR = (n: number): string => "\u20B9" + Math.round(n).toLocaleString("en-IN");
 

@@ -4,19 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Client, TourTemplate, AddOn, FeatureLimitSnapshot } from '../_types';
 
-export function formatFeatureLimitError(payload: any, fallback: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
-  if (payload?.code !== 'FEATURE_LIMIT_EXCEEDED') {
-    return fallback;
-  }
-
-  const limit = Number(payload?.limit || 0);
-  const used = Number(payload?.used || 0);
-  const feature = String(payload?.feature || 'usage');
-  if (limit > 0) {
-    return `Limit reached for ${feature}: ${used}/${limit}. Upgrade in Billing to continue.`;
-  }
-  return payload?.error || fallback;
-}
+import { formatFeatureLimitError } from '@/lib/subscriptions/feature-limit-error';
+export { formatFeatureLimitError } from '@/lib/subscriptions/feature-limit-error';
 
 export interface UseProposalDataReturn {
   loading: boolean;
