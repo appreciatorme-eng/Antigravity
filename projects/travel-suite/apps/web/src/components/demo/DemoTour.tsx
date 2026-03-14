@@ -227,9 +227,11 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
   return createPortal(
     <>
       {/* Backdrop overlay — subtle */}
-      <div
-        className="fixed inset-0 bg-black/10 z-40 pointer-events-auto"
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/10 z-40 pointer-events-auto border-0 cursor-default"
         onClick={closeTour}
+        aria-label="Close tour"
       />
 
       {/* Tooltip Card */}

@@ -79,10 +79,11 @@ export default function WelcomeModal() {
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 border-0 cursor-default"
         onClick={handleClose}
-        aria-hidden="true"
+        aria-label="Close modal"
       />
 
       {/* Modal Card */}

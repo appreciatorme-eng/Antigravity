@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -102,8 +103,7 @@ export default function SolutionPage({ params }: { params: Promise<{ type: strin
               <div className="lg:w-1/2 w-full">
                 <div className="relative rounded-[2rem] overflow-hidden border border-white/10 aspect-square md:aspect-[4/3]">
                   <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/20 to-[#FF9933]/20 mix-blend-overlay z-10" />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={data.heroImg} alt={data.badge} className="w-full h-full object-cover grayscale opacity-80" />
+                  <Image src={data.heroImg} alt={data.badge} width={800} height={600} className="w-full h-full object-cover grayscale opacity-80" />
                 </div>
               </div>
             </div>
