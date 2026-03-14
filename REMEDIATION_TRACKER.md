@@ -1,65 +1,67 @@
-# Remediation Tracker s30
-**Date**: 2026-03-14 | **Branch**: `fix/remediation-s30` | **Source**: `AUDIT_REPORT_2026-03-14_8a6e783.md`
+# Remediation Tracker s31
+
+**Date**: 2026-03-14 | **Branch**: `fix/remediation-s31` | **Source**: Production readiness audit (d899e1c)
 
 ## Legend
+
 ✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
 
 ---
 
-## CRITICAL (0)
-
-None.
-
----
-
-## HIGH (6)
+## BLOCKER (3)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| H-01 | Stored XSS in marketing blog rendering via unsanitized `dangerouslySetInnerHTML` | `src/components/marketing/blog/BlogPost.tsx:107` | Added DOMPurify sanitization around rendered markdown HTML with an allowlist limited to the tags/classes emitted by the existing renderer | `npm run typecheck` and `npm run lint` pass after the XSS remediation | ✅ |
-| H-02 | Admin dashboard page exceeds file/function size thresholds and mixes orchestration with rendering | `src/app/admin/page.tsx:120` | Extracted a dashboard data hook plus focused stats, analytics, and activity section components under `src/app/admin/_components/` | Parent page reduced to 93 lines; `npm run test:coverage` stays green after the split | ✅ |
-| H-03 | Onboarding page exceeds file/function size thresholds and mixes wizard state, polling, and rendering | `src/app/onboarding/page.tsx:119` | Extracted typed wizard constants plus dedicated onboarding shell, details-step, and first-value sprint components into `src/app/onboarding/_components/` while keeping state flow in the parent page | Parent page reduced to 373 lines; `npm run test:coverage` stays green after the split | ✅ |
-| H-04 | `ItineraryTemplatePages.tsx` exceeds file/function size thresholds and concentrates PDF rendering logic | `src/components/pdf/templates/ItineraryTemplatePages.tsx:368` | Extracted shared PDF helpers plus dedicated safari/urban section modules under `src/components/pdf/templates/sections/` | Parent file reduced to 29 lines; `npm run test:coverage` remains green after extraction | ✅ |
-| H-05 | Admin insights page exceeds file/function size thresholds and mixes fetch fan-out with rendering | `src/app/admin/insights/page.tsx:29` | Extracted five focused insight panel components under `src/app/admin/insights/_components/` while keeping the stream loader in the page | Parent page reduced to 201 lines; `npm run test:coverage` stays green after the split | ✅ |
-| H-06 | Admin settings page exceeds file/function size thresholds and mixes settings domains in one component | `src/app/admin/settings/page.tsx:38` | Extracted focused organization, branding, integrations, and workflow/settings sections under `src/app/admin/settings/_components/` | Parent page reduced to 397 lines; `npm run test:coverage` stays green after the split | ✅ |
+| B-01 | Payment webhook idempotency | invoice-service.ts:165-183 | Verify existing guard | Already has dedup check on `reference` field + early return | 📝 |
+| B-03 | Admin Activity hardcoded mock | admin/activity/page.tsx:31-55 | Replace with "Coming Soon" | | ⏳ |
+| B-04 | WhatsApp pickers use mock data | action-picker/shared.ts:41-176 | Replace with real API hooks | | ⏳ |
 
----
-
-## MEDIUM (1)
+## HIGH (10)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-01 | Undeclared direct dependency on `@tsparticles/slim` breaks clean installs/typecheck stability | `src/components/marketing/ForceFieldBackground.tsx:4` | Added `@tsparticles/slim` to `package.json`/`package-lock.json` via `npm install @tsparticles/slim` and re-ran validation | `npm run typecheck` and `npm run lint` both pass after dependency install | ✅ |
+| H-04 | `as any` in critical paths | sitemap.ts, useProposalData.ts | Add proper types | | ⏳ |
+| H-05 | console.error in assistant handlers | _handlers/assistant/*.ts | Replace with logError() | | ⏳ |
+| H-06 | console.log debug in proposals | proposals/[id]/page.tsx:225,229,233 | Remove debug logs | | ⏳ |
+| H-07 | Missing loading.tsx | 2/97 routes have loading | Add to 11+ routes | | ⏳ |
+| H-08 | Middleware ignores profile error | middleware.ts:104 | Destructure error, fail-open | | ⏳ |
+| H-09 | No session expiry handler | Root layout | Add useSessionRefresh hook | | ⏳ |
+| H-10 | Fetch without timeout | useCreateProposal.ts:117 | Create fetchWithTimeout utility | | ⏳ |
+| H-01 | Rate limiter 59% coverage | rate-limit.ts | Write tests | | ⏳ |
+| H-02 | Cron auth 74% coverage | cron-auth.ts | Write tests | | ⏳ |
+| H-03 | Payment handler 50% fn coverage | create-order/route.ts | Write tests | | ⏳ |
 
----
-
-## LOW (1)
+## MEDIUM (8)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| L-01 | Marketing footer uses placeholder `href="#"` links and unlabeled icon-only social links | `src/components/marketing/Footer.tsx:15` | Replaced placeholder anchors with static text where routes do not exist and removed dead social links instead of shipping empty destinations | Footer no longer renders `href="#"` targets; lint and typecheck remain clean | ✅ |
+| M-02 | Image APIs no cache directive | images/{pexels,unsplash,pixabay} | Add cache headers | | ⏳ |
+| M-03 | JSON parse errors swallowed | useCreateProposal.ts:130,189 | Log before returning {} | | ⏳ |
+| M-05 | Email format validation | useClientForm.ts:77 | Add regex check | | ⏳ |
+| M-06 | Unused mock-data.ts | reputation/_components/mock-data.ts | Delete if unused | | ⏳ |
+| M-08 | Demo component a11y | components/demo/*.tsx | Add keyboard support | | ⏳ |
+| M-01 | 6 files >750 lines | drivers/page, clients/[id], etc. | Extract sub-components | Deferred — large refactor | 📝 |
+| M-04 | Form double-submit | useClientForm.ts | Audit submit buttons | | ⏳ |
+| M-07 | .single() error handling | 534 occurrences | Audit critical paths | Deferred — systematic audit | 📝 |
+
+## LOW (5)
+
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| L-01 | Spline `any` types | SplineScene.tsx, HeroScreens.tsx | Third-party limitation | | 📝 |
+| L-02 | Recharts `any` type | TrendChart.tsx | Third-party limitation | | 📝 |
+| L-03 | `<img>` in marketing | solutions/[type]/page.tsx | Replace with next/image | | ⏳ |
+| L-04 | 500+ `use client` directives | Multiple files | Audit for server potential | Deferred | 📝 |
+| L-05 | formatFeatureLimitError duplication | 5 files | Extract shared utility | | ⏳ |
 
 ---
 
 ## Test Suite Status
-- Vitest: ✅ `npm run test:coverage` — 52 files / 690 tests, coverage lines 86.31%, functions 95.65%, branches 80.72%
-- Playwright E2E: ✅ `npm run test:e2e -- e2e/tests/remediation-s30.spec.ts --project=chromium` — 1 passed, 8 skipped (environment-conditional skips for missing admin auth state, unavailable `/api/blog` mutation route, and no published blog detail fixtures)
-- Lint: ✅ `npm run lint`
-- Typecheck: ✅ `npm run typecheck`
 
----
+- Vitest: pending
+- Playwright E2E: pending
 
 ## Commit Log
 
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| P1 | `372f04f` | 2026-03-14 | Add `@tsparticles/slim` and clean up placeholder footer links (M-01, L-01) |
-| P2 | `81b02a2` | 2026-03-14 | Sanitize marketing blog HTML with DOMPurify (H-01) |
-| P3 | `8c82174` | 2026-03-14 | Extract itinerary PDF template sections (H-04) |
-| P4 | `8477749` | 2026-03-14 | Extract admin dashboard sections (H-02) |
-| P5 | `44e81bc` | 2026-03-14 | Extract onboarding steps (H-03) |
-| P6 | `8d7a88a` | 2026-03-14 | Extract admin insights panels (H-05) |
-| P7 | `832ad3c` | 2026-03-14 | Extract admin settings sections (H-06) |
-| P8 | `945540c` | 2026-03-14 | Resolve verification regressions after the refactors |
-| P9 | `e9f0c63` | 2026-03-14 | Fix the Spline scene wrapper so Playwright can boot the marketing app |
-| P10 | `1393065` | 2026-03-14 | Add the S30 Playwright regression spec |
