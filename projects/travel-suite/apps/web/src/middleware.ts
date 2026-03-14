@@ -101,11 +101,17 @@ export async function middleware(request: NextRequest) {
         return sessionResponse;
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("organization_id, role, onboarding_step")
         .eq("id", user.id)
         .maybeSingle();
+
+    // Fail-open: if profile lookup fails (Supabase outage), allow through
+    // since auth already passed. Better than incorrectly redirecting to onboarding.
+    if (profileError) {
+        return sessionResponse;
+    }
 
     const onboardingComplete = isOnboardingComplete(profile);
 

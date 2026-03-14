@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 
 const PREFERENCE_KEY = "custom_quick_prompts";
 const MAX_PROMPTS = 8;
@@ -85,7 +86,7 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      console.error("Quick prompts read error:", error);
+      logError("Quick prompts read error", error);
       return jsonError("Failed to load quick prompts", 500);
     }
 
@@ -94,7 +95,7 @@ export async function GET() {
 
     return NextResponse.json({ prompts });
   } catch (error) {
-    console.error("Quick prompts GET error:", error);
+    logError("Quick prompts GET error", error);
     return jsonError("Internal server error", 500);
   }
 }
@@ -132,13 +133,13 @@ export async function POST(request: Request) {
       );
 
     if (error) {
-      console.error("Quick prompts write error:", error);
+      logError("Quick prompts write error", error);
       return jsonError("Failed to save quick prompts", 500);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Quick prompts POST error:", error);
+    logError("Quick prompts POST error", error);
     return jsonError("Internal server error", 500);
   }
 }

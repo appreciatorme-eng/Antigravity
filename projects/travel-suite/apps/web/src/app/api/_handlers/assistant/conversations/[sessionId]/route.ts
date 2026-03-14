@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getConversation } from "@/lib/assistant/conversation-store";
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 
 function jsonError(message: string, status: number) {
@@ -63,7 +64,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, conversation });
   } catch (error) {
-    console.error("Conversation detail error:", error);
+    logError("Conversation detail error", error);
     return jsonError("Internal server error", 500);
   }
 }

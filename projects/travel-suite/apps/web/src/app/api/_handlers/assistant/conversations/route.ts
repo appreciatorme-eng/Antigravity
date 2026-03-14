@@ -6,6 +6,7 @@ import {
   searchConversations,
   deleteConversation,
 } from "@/lib/assistant/conversation-store";
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 
 function jsonError(message: string, status: number) {
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
     const conversations = await listConversations(ctx, { limit, offset });
     return NextResponse.json({ success: true, conversations });
   } catch (error) {
-    console.error("Conversations list error:", error);
+    logError("Conversations list error", error);
     return jsonError("Internal server error", 500);
   }
 }
@@ -107,7 +108,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Conversation delete error:", error);
+    logError("Conversation delete error", error);
     return jsonError("Internal server error", 500);
   }
 }

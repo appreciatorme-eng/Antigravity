@@ -6,6 +6,7 @@ import { findAction } from "@/lib/assistant/actions/registry";
 import { isActionBlocked } from "@/lib/assistant/guardrails";
 import { logAuditEvent } from "@/lib/assistant/audit";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 
 export async function POST(req: Request) {
@@ -131,7 +132,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   } catch (error) {
-    console.error("Assistant confirm error:", error);
+    logError("Assistant confirm error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

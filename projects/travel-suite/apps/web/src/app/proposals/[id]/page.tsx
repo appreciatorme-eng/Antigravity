@@ -221,16 +221,13 @@ export default function AdminProposalViewPage() {
   // Real-time subscription
   const { isSubscribed } = useRealtimeProposal({
     proposalId,
-    onProposalUpdate: (payload) => {
-      console.log('[Admin] Proposal updated via realtime:', payload);
+    onProposalUpdate: () => {
       void loadProposal(); // Reload proposal data
     },
-    onActivityUpdate: (payload) => {
-      console.log('[Admin] Activity updated via realtime:', payload);
+    onActivityUpdate: () => {
       void loadProposal(); // Reload to update stats
     },
-    onCommentAdded: (payload) => {
-      console.log('[Admin] New comment via realtime:', payload);
+    onCommentAdded: () => {
       void loadComments(); // Reload comments only
     },
     enabled: !loading && !!proposal,

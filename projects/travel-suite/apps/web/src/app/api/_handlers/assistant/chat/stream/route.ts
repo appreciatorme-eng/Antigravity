@@ -19,6 +19,7 @@ import { findWorkflow, ALL_WORKFLOWS } from "@/lib/assistant/workflows/definitio
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -684,7 +685,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Assistant stream error:", error);
+    logError("Assistant stream error", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

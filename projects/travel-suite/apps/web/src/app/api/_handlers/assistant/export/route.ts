@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { generateCSVExport } from "@/lib/assistant/export";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(req: Request) {
   try {
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Export error:", error);
+    logError("Export error", error);
     return new Response(JSON.stringify({ error: "Export failed" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

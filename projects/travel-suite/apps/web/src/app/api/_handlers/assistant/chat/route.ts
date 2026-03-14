@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { handleMessage } from "@/lib/assistant/orchestrator";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { logError } from "@/lib/observability/logger";
 import type { ConversationMessage } from "@/lib/assistant/types";
 
 export async function POST(req: Request) {
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
     // 6. Return orchestrator response
     return apiSuccess(response);
   } catch (error) {
-    console.error("Assistant chat error:", error);
+    logError("Assistant chat error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

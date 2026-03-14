@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api-response";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUsageStats } from "@/lib/assistant/usage-meter";
+import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 
 export async function GET() {
@@ -45,7 +46,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, usage });
   } catch (error) {
-    console.error("Assistant usage endpoint error:", error);
+    logError("Assistant usage endpoint error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
