@@ -57,8 +57,8 @@ export function HeroSection() {
         <div
           className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden"
           style={{
-            width: "45%",
-            height: "60%",
+            width: "55%",
+            height: "70%",
             maskImage:
               "linear-gradient(to right, black 65%, transparent 100%)",
             WebkitMaskImage:
@@ -67,7 +67,7 @@ export function HeroSection() {
         >
           <ForceFieldBackground
             id="tsparticles-hero-top"
-            particleCount={180}
+            particleCount={220}
           />
         </div>
 
@@ -75,8 +75,8 @@ export function HeroSection() {
         <div
           className="absolute bottom-0 left-0 z-[15] pointer-events-none overflow-hidden"
           style={{
-            width: "50%",
-            height: "45%",
+            width: "60%",
+            height: "55%",
             maskImage:
               "linear-gradient(to right, black 70%, transparent 100%), linear-gradient(to top, black 40%, transparent 100%)",
             WebkitMaskImage:
@@ -86,19 +86,23 @@ export function HeroSection() {
         >
           <ForceFieldBackground
             id="tsparticles-hero-bottom"
-            particleCount={140}
+            particleCount={180}
           />
         </div>
 
-        {/* 3D Spline + Floating Screens */}
-        <motion.div
-          style={{ y: yParallax }}
-          className="absolute inset-0 z-[10] pointer-events-none"
-        >
-          <HeroScreens />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-[11] pointer-events-none" />
-          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-[11] pointer-events-none" />
-        </motion.div>
+        {/* 3D Spline + Floating Screens — full viewport coverage */}
+        <div className="absolute inset-0 z-[10] pointer-events-none">
+          <motion.div
+            style={{ y: yParallax }}
+            className="w-full h-[120%] -top-20 relative z-10 pointer-events-auto"
+          >
+            <HeroScreens />
+          </motion.div>
+        </div>
+
+        {/* Gradient overlays — fixed, not parallaxed, for smooth blending */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/80 via-[rgba(10,10,10,0.4)] to-transparent z-[11] pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0A0A0A] to-transparent z-[11] pointer-events-none" />
 
         <div className="relative z-20 max-w-3xl space-y-8 pointer-events-none">
           <motion.div
