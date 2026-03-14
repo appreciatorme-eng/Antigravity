@@ -30,8 +30,8 @@
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-01 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/availability/route.ts` | Migrated handler to `_handlers/availability/route.ts`, registered in catch-all, deleted direct route | Global rate limit + CSRF now covered | 🔄 |
-| M-02 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/whatsapp/chatbot-sessions/[id]/route.ts` | Migrated handler to `_handlers/whatsapp/chatbot-sessions/[id]/route.ts`, registered in catch-all as `whatsapp/chatbot-sessions/:id`, deleted direct route | Global rate limit + CSRF now covered | 🔄 |
+| M-01 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/availability/route.ts` | Migrated handler to `_handlers/availability/route.ts`, registered in catch-all, deleted direct route | Global rate limit + CSRF now covered | ✅ |
+| M-02 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/whatsapp/chatbot-sessions/[id]/route.ts` | Migrated handler to `_handlers/whatsapp/chatbot-sessions/[id]/route.ts`, registered in catch-all as `whatsapp/chatbot-sessions/:id`, deleted direct route | Global rate limit + CSRF now covered | ✅ |
 | M-03 | 18 files >600 lines (max 800, goal 400) | Multiple — top: `ItineraryTemplatePages.tsx` (915) | Documented — requires dedicated refactor sprint | Tracked for next sprint | 📝 |
 
 ---
@@ -41,7 +41,7 @@
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
 | L-01 | 198 unused DB indexes wasting storage, slowing writes | Supabase DB | Documented — requires manual review per index before dropping | Tracked for DBA sprint | 📝 |
-| L-02 | 5 unindexed foreign keys (slow JOINs) | Supabase DB | Add covering indexes via migration | Performance improvement | ⏳ |
+| L-02 | 5 unindexed foreign keys (slow JOINs) | Supabase DB | Applied migration `add_unindexed_fk_covering_indexes` — indexes on assistant_conversations(user_id), assistant_preferences(user_id), crm_contacts(assigned_to), dashboard_task_dismissals(user_id), trip_service_costs(trip_id) | All 5 indexes created | ✅ |
 | L-03 | 116 RLS policies re-evaluate `auth.uid()` per row | Supabase DB | Use `(select auth.uid())` pattern — tracked for migration | Performance improvement | 📝 |
 | L-04 | ~200+ dead symbols in web app (Axon) | Various | Documented — requires symbol-by-symbol review | Tracked for cleanup sprint | 📝 |
 | L-05 | 94 `eslint-disable` comments across 70 files | Various | Documented — mostly legitimate (Spline types, dynamic imports) | Periodic audit scheduled | 📝 |
@@ -60,3 +60,5 @@
 |-------|--------|------|---------|
 | P1 | efa017f | 2026-03-14 | Create remediation tracker s28 |
 | P2-CRIT | 9387ff3 | 2026-03-14 | Fix C-01 jsdom + C-02 undici CVEs |
+| P2-HIGH/MED/LOW | 211fe0a | 2026-03-14 | H-01..04 documented, M-01/M-02 catch-all migration, L-02 FK indexes |
+| P3 | — | 2026-03-14 | E2E tests: remediation-s28.spec.ts |
