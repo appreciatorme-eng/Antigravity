@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -57,25 +58,13 @@ const VALID_PLATFORMS: ConnectionPlatform[] = [
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
 
     const platform = body.platform as ConnectionPlatform | undefined;
@@ -92,10 +81,10 @@ export async function POST(req: Request) {
     }
 
     // Check for duplicate connection
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
       .from("reputation_platform_connections")
       .select("id")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId)
       .eq("platform", platform)
       .maybeSingle();
 
@@ -104,7 +93,7 @@ export async function POST(req: Request) {
     }
 
     const insertData = {
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       platform,
       platform_account_id: body.platform_account_id,
       platform_account_name: body.platform_account_name,
@@ -112,7 +101,7 @@ export async function POST(req: Request) {
       sync_enabled: true,
     };
 
-    const { data: connectionData, error } = await supabase
+    const { data: connectionData, error } = await adminClient
       .from("reputation_platform_connections")
       .insert(insertData)
       .select(REPUTATION_PLATFORM_CONNECTION_SELECT)
@@ -133,25 +122,13 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const url = new URL(req.url);
     const connectionId = url.searchParams.get("id");
 
@@ -159,11 +136,11 @@ export async function DELETE(req: Request) {
       return apiError("id query parameter is required", 400);
     }
 
-    const { error } = await supabase
+    const { error } = await adminClient
       .from("reputation_platform_connections")
       .delete()
       .eq("id", connectionId)
-      .eq("organization_id", profile.organization_id);
+      .eq("organization_id", organizationId);
 
     if (error) {
       throw error;

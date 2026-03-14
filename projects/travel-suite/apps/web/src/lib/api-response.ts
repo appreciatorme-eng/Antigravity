@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 export type ApiSuccessResponse<T> = {
-    success: true;
     data: T;
+    error: null;
 };
 
 export type ApiErrorResponse = {
-    success: false;
+    data: null;
     error: string;
     code?: string;
 };
@@ -23,11 +23,14 @@ export type ApiPaginatedResponse<T> = ApiSuccessResponse<T> & {
 };
 
 export function apiSuccess<T>(data: T, status = 200): NextResponse<ApiSuccessResponse<T>> {
-    return NextResponse.json({ success: true as const, data }, { status });
+    return NextResponse.json({ data, error: null }, { status });
 }
 
 export function apiError(error: string, status = 400, code?: string): NextResponse<ApiErrorResponse> {
-    return NextResponse.json({ success: false as const, error, ...(code ? { code } : {}) }, { status });
+    return NextResponse.json(
+        { data: null, error, ...(code ? { code } : {}) },
+        { status }
+    );
 }
 
 export function apiPaginated<T>(
@@ -37,8 +40,8 @@ export function apiPaginated<T>(
 ): NextResponse<ApiPaginatedResponse<T>> {
     return NextResponse.json(
         {
-            success: true as const,
             data,
+            error: null,
             meta: { ...meta, hasMore: meta.page * meta.limit < meta.total },
         },
         { status },

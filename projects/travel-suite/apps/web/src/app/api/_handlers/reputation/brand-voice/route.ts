@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import { REPUTATION_BRAND_VOICE_SELECT } from "@/lib/reputation/selects";
@@ -17,6 +18,26 @@ const VALID_LANGUAGES: LanguagePreference[] = ["en", "hi", "mixed"];
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function buildDefaultBrandVoice(organizationId: string): ReputationBrandVoice {
+  const now = new Date().toISOString();
+  return {
+    id: "default",
+    organization_id: organizationId,
+    tone: "professional_warm",
+    language_preference: "en",
+    owner_name: null,
+    sign_off: null,
+    key_phrases: [],
+    avoid_phrases: [],
+    sample_responses: [],
+    auto_respond_positive: false,
+    auto_respond_min_rating: 4,
+    escalation_threshold: 2,
+    created_at: now,
+    updated_at: now,
+  };
 }
 
 export async function GET() {
@@ -43,56 +64,21 @@ export async function GET() {
     const organizationId = profile.organization_id;
 
     // Fetch existing brand voice
-    const { data: existingData } = await supabase
+    const { data: existingData, error: existingError } = await supabase
       .from("reputation_brand_voice")
       .select(REPUTATION_BRAND_VOICE_SELECT)
       .eq("organization_id", organizationId)
       .maybeSingle();
     const existing = existingData as unknown as ReputationBrandVoice | null;
+    if (existingError) {
+      throw existingError;
+    }
 
     if (existing) {
       return NextResponse.json({ brandVoice: existing });
     }
 
-    // Create default if not exists
-    const defaultVoice = {
-      organization_id: organizationId,
-      tone: "professional_warm" as const,
-      language_preference: "en" as const,
-      owner_name: null,
-      sign_off: null,
-      key_phrases: [] as string[],
-      avoid_phrases: [] as string[],
-      sample_responses: [] as string[],
-      auto_respond_positive: false,
-      auto_respond_min_rating: 4,
-      escalation_threshold: 2,
-    };
-
-    const { data: createdData, error: insertError } = await supabase
-      .from("reputation_brand_voice")
-      .insert(defaultVoice)
-      .select(REPUTATION_BRAND_VOICE_SELECT)
-      .single();
-    const created = createdData as unknown as ReputationBrandVoice | null;
-
-    if (insertError) {
-      // If insert fails (race condition), try to fetch again
-      const { data: retryFetchData } = await supabase
-        .from("reputation_brand_voice")
-        .select(REPUTATION_BRAND_VOICE_SELECT)
-        .eq("organization_id", organizationId)
-        .maybeSingle();
-      const retryFetch = retryFetchData as unknown as ReputationBrandVoice | null;
-
-      if (retryFetch) {
-        return NextResponse.json({ brandVoice: retryFetch });
-      }
-
-      throw insertError;
-    }
-
-    return NextResponse.json({ brandVoice: created });
+    return NextResponse.json({ brandVoice: buildDefaultBrandVoice(organizationId) });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
     console.error("Error fetching brand voice:", error);
@@ -102,26 +88,13 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
-    const organizationId = profile.organization_id;
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
 
     // Validate fields
@@ -203,7 +176,7 @@ export async function PUT(req: Request) {
     updateData.updated_at = new Date().toISOString();
 
     // Upsert: update if exists, insert default + updates if not
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
       .from("reputation_brand_voice")
       .select("id")
       .eq("organization_id", organizationId)
@@ -212,7 +185,7 @@ export async function PUT(req: Request) {
     let brandVoice: ReputationBrandVoice;
 
     if (existing) {
-      const { data: updatedData, error: updateError } = await supabase
+      const { data: updatedData, error: updateError } = await adminClient
         .from("reputation_brand_voice")
         .update(updateData as Database['public']['Tables']['reputation_brand_voice']['Update'])
         .eq("organization_id", organizationId)
@@ -240,7 +213,7 @@ export async function PUT(req: Request) {
         ...updateData,
       };
 
-      const { data: createdData, error: insertError } = await supabase
+      const { data: createdData, error: insertError } = await adminClient
         .from("reputation_brand_voice")
         .insert(defaultWithUpdates as Database['public']['Tables']['reputation_brand_voice']['Insert'])
         .select(REPUTATION_BRAND_VOICE_SELECT)

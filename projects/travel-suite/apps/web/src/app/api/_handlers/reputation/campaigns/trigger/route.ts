@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
   REPUTATION_CAMPAIGN_SEND_SELECT,
   REPUTATION_REVIEW_CAMPAIGN_SELECT,
@@ -15,32 +15,20 @@ type CampaignSendRow = Database["public"]["Tables"]["reputation_campaign_sends"]
 /** Fields selected from the clients table -- not all columns exist in generated types */
 type ClientContactFields = { name: string | null; phone: string | null; email: string | null };
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const supabase = auth.adminClient;
     // Fetch active campaigns for this org
     const { data: campaignsData, error: campaignsError } = await supabase
       .from("reputation_review_campaigns")
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId)
       .eq("status", "active")
       .in("trigger_event", ["trip_completed", "trip_day_2"]);
     const campaigns = campaignsData as unknown as CampaignRow[] | null;
@@ -65,7 +53,7 @@ export async function POST() {
       const { data: trips, error: tripsError } = await supabase
         .from("trips")
         .select("id, client_id, organization_id")
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", organizationId)
         .eq("status", "completed")
         .gte("end_date", cutoffTime)
         .lte("end_date", new Date().toISOString());
@@ -122,7 +110,7 @@ export async function POST() {
         ).toISOString();
 
         const sendPayload = {
-          organization_id: profile.organization_id,
+          organization_id: organizationId,
           campaign_id: campaign.id,
           trip_id: trip.id,
           client_id: trip.client_id,
@@ -155,7 +143,7 @@ export async function POST() {
         if (send && clientPhone && campaign.channel_sequence?.includes("whatsapp")) {
           // notification_queue insert uses runtime schema fields not in generated types
           const notificationPayload = {
-            organization_id: profile.organization_id,
+            organization_id: organizationId,
             channel: "whatsapp",
             recipient: clientPhone,
             template_name: campaign.whatsapp_template_name || "nps_survey",

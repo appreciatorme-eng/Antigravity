@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -57,25 +58,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
 
     if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
@@ -95,7 +84,7 @@ export async function POST(req: Request) {
     }
 
     const insertData = {
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       name: body.name.trim(),
       campaign_type: body.campaign_type,
       status: "active" as const,
@@ -120,7 +109,7 @@ export async function POST(req: Request) {
       stats_reviews_generated: 0,
     };
 
-    const { data: campaignData, error } = await supabase
+    const { data: campaignData, error } = await adminClient
       .from("reputation_review_campaigns")
       .insert(insertData)
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)

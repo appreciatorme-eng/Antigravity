@@ -42,6 +42,15 @@ const MONTHS = MONTH_NAMES.map((m, i) => ({
   value: `${CURRENT_YEAR}-${String(i + 1).padStart(2, "0")}`,
 }));
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -120,12 +129,13 @@ function generatePDF(rows: GSTRow[], month: string): void {
     },
     { base: 0, gst: 0, total: 0 }
   );
+  const safeMonth = escapeHtml(month);
 
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>GST Report ${month}</title>
+      <title>GST Report ${safeMonth}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 24px; color: #1a1a2e; font-size: 12px; }
         h1 { font-size: 18px; margin-bottom: 4px; }
@@ -142,7 +152,7 @@ function generatePDF(rows: GSTRow[], month: string): void {
       </style>
     </head>
     <body>
-      <h1>GST Monthly Report — ${month}</h1>
+      <h1>GST Monthly Report — ${safeMonth}</h1>
       <div class="sub">SAC: 998552 | GST Rate: 5% on Packaged Tours | GSTR-1 due by 11th of next month</div>
       <table>
         <thead>
@@ -156,14 +166,14 @@ function generatePDF(rows: GSTRow[], month: string): void {
             .map(
               (r) => `
             <tr>
-              <td>${r.invoiceNo}</td>
+              <td>${escapeHtml(r.invoiceNo)}</td>
               <td>${formatDate(r.date)}</td>
-              <td>${r.client}</td>
-              <td>${r.trip}</td>
+              <td>${escapeHtml(r.client)}</td>
+              <td>${escapeHtml(r.trip)}</td>
               <td>₹${r.baseAmount.toLocaleString("en-IN")}</td>
               <td>₹${r.gst.toLocaleString("en-IN")}</td>
               <td>₹${r.total.toLocaleString("en-IN")}</td>
-              <td class="badge-${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</td>
+              <td class="badge-${r.status}">${escapeHtml(r.status.charAt(0).toUpperCase() + r.status.slice(1))}</td>
             </tr>`
             )
             .join("")}

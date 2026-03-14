@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/database.types";
@@ -62,25 +63,13 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
 
     const allowedFields = [
@@ -112,11 +101,11 @@ export async function PATCH(
       return apiError("No valid fields to update", 400);
     }
 
-    const { data: campaignData, error } = await supabase
+    const { data: campaignData, error } = await adminClient
       .from("reputation_review_campaigns")
       .update(updateData as Database['public']['Tables']['reputation_review_campaigns']['Update'])
       .eq("id", id)
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId)
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .single();
     const campaign = campaignData as unknown as CampaignRow | null;
@@ -143,30 +132,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(_req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
-    const { data: campaignData, error } = await supabase
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
+    const { data: campaignData, error } = await adminClient
       .from("reputation_review_campaigns")
       .update({ status: "archived" })
       .eq("id", id)
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", organizationId)
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .single();
     const campaign = campaignData as unknown as CampaignRow | null;

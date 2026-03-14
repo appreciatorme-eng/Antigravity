@@ -8,6 +8,7 @@ import {
 } from "@/lib/marketplace-listing-plans";
 import { paymentService } from "@/lib/payments/payment-service";
 import type { Database } from "@/lib/database.types";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,6 +22,10 @@ const cancelListingSubscriptionSchema = z.object({
 
 type MarketplaceListingSubscriptionRow =
   Database["public"]["Tables"]["marketplace_listing_subscriptions"]["Row"];
+type MarketplaceListingSubscriptionSummary = Omit<
+  MarketplaceListingSubscriptionRow,
+  "created_by" | "razorpay_order_id" | "razorpay_payment_id"
+>;
 
 const MARKETPLACE_LISTING_SUBSCRIPTION_SELECT = [
   "amount_paise",
@@ -124,6 +129,30 @@ async function normalizeCurrentSubscription(
   return subscription;
 }
 
+function sanitizeSubscription(
+  subscription: MarketplaceListingSubscriptionRow | null,
+): MarketplaceListingSubscriptionSummary | null {
+  if (!subscription) {
+    return null;
+  }
+
+  return {
+    amount_paise: subscription.amount_paise,
+    boost_score: subscription.boost_score,
+    cancelled_at: subscription.cancelled_at,
+    created_at: subscription.created_at,
+    currency: subscription.currency,
+    current_period_end: subscription.current_period_end,
+    id: subscription.id,
+    marketplace_profile_id: subscription.marketplace_profile_id,
+    organization_id: subscription.organization_id,
+    plan_id: subscription.plan_id,
+    started_at: subscription.started_at,
+    status: subscription.status,
+    updated_at: subscription.updated_at,
+  };
+}
+
 export async function GET() {
   try {
     const { user, profile } = await getAuthContext();
@@ -150,7 +179,7 @@ export async function GET() {
     ]);
 
     return apiSuccess({
-      currentSubscription: subscription,
+      currentSubscription: sanitizeSubscription(subscription),
       currentTier: marketplaceProfile?.listing_tier || "free",
       currentBoostScore: marketplaceProfile?.boost_score || 0,
       isFeatured: marketplaceProfile?.is_featured || false,
@@ -170,18 +199,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { user, profile } = await getAuthContext();
-    if (!user || !profile) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    if (profile.role !== "admin") {
-      return apiError("Forbidden", 403);
-    }
-    const organizationId = profile.organization_id;
-    if (!organizationId) {
-      return apiError("Organization not found", 404);
-    }
+    const organizationId = auth.organizationId!;
+    const admin = auth.adminClient;
 
     const body = await request.json().catch(() => null);
     const parsed = createListingSubscriptionSchema.safeParse(body);
@@ -192,7 +216,6 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = getMarketplaceListingPlan(parsed.data.planId);
-    const admin = createAdminClient();
 
     const { data: marketplaceProfile, error: profileError } = await admin
       .from("marketplace_profiles")
@@ -225,7 +248,7 @@ export async function POST(request: NextRequest) {
         currency: "INR",
         boost_score: plan.boostScore,
         razorpay_order_id: order.id,
-        created_by: user.id,
+        created_by: auth.userId,
       })
       .select(MARKETPLACE_LISTING_SUBSCRIPTION_SELECT)
       .single();
@@ -248,18 +271,13 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { user, profile } = await getAuthContext();
-    if (!user || !profile) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    if (profile.role !== "admin") {
-      return apiError("Forbidden", 403);
-    }
-    const organizationId = profile.organization_id;
-    if (!organizationId) {
-      return apiError("Organization not found", 404);
-    }
+    const organizationId = auth.organizationId!;
+    const admin = auth.adminClient;
 
     const body = await request.json().catch(() => null);
     const parsed = cancelListingSubscriptionSchema.safeParse(body);
@@ -267,8 +285,7 @@ export async function PATCH(request: NextRequest) {
       return apiError("Invalid listing action", 400);
     }
 
-    const admin = createAdminClient();
-    await admin
+    const { error: subscriptionUpdateError } = await admin
       .from("marketplace_listing_subscriptions")
       .update({
         status: "cancelled",
@@ -277,8 +294,11 @@ export async function PATCH(request: NextRequest) {
       })
       .eq("organization_id", organizationId)
       .in("status", ["pending", "active"]);
+    if (subscriptionUpdateError) {
+      return apiError("Failed to cancel listing subscription", 500);
+    }
 
-    await admin
+    const { error: profileUpdateError } = await admin
       .from("marketplace_profiles")
       .update({
         listing_tier: "free",
@@ -288,6 +308,9 @@ export async function PATCH(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("organization_id", organizationId);
+    if (profileUpdateError) {
+      return apiError("Failed to update marketplace profile", 500);
+    }
 
     return apiSuccess({
       status: "cancelled",

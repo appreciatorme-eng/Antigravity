@@ -11,11 +11,12 @@ const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
 );
 
 type HandlerMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-// ctx is typed as `any` because each handler narrows params differently (e.g. { id: string })
-// while the dispatcher calls them uniformly. Return type is still enforced.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type HandlerFn = (req: NextRequest, ctx: any) => Response | Promise<Response | undefined> | undefined;
-type HandlerModule = Partial<Record<HandlerMethod, HandlerFn>>;
+type HandlerContext = { params: Promise<Record<string, string>> };
+type HandlerFn = (
+  req: NextRequest,
+  ctx: HandlerContext,
+) => Response | Promise<Response | undefined> | undefined;
+type HandlerModule = Partial<Record<HandlerMethod, unknown>>;
 type RouteEntry = [string, () => Promise<HandlerModule>];
 
 export interface DispatcherRateLimitConfig {

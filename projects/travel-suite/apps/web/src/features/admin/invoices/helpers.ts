@@ -1,5 +1,30 @@
 import type { InvoiceRecord, InvoiceTemplate, OrganizationSnapshot } from "./types";
 
+const PRINT_WINDOW_URL_BASE = "https://print.antigravity.local";
+
+function escapeHtml(value: string | null | undefined): string {
+  return (value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function sanitizePrintUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value, PRINT_WINDOW_URL_BASE);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
@@ -46,6 +71,10 @@ export function buildAddressLine(address?: OrganizationSnapshot["billing_address
     .join(", ");
 }
 
+function buildEscapedAddressLine(address?: OrganizationSnapshot["billing_address"] | null): string {
+  return escapeHtml(buildAddressLine(address));
+}
+
 export function computeTaxSplit(
   totalTax: number,
   billingState: string | null,
@@ -72,18 +101,34 @@ export function buildInvoiceMarkup(invoice: InvoiceRecord, template: InvoiceTemp
     heritage: { accent: "#9a3412", secondary: "#fff7ed", heading: "#292524" },
   }[template];
 
-  const logoHtml = org?.logo_url
-    ? `<img src="${org.logo_url}" alt="${org?.name || "Logo"}" style="width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;margin-right:14px;" />`
-    : `<div style="width:56px;height:56px;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#94a3b8;margin-right:14px;background:#f8fafc;">${(org?.name || "T")[0]}</div>`;
+  const safeLogoUrl = sanitizePrintUrl(org?.logo_url);
+  const safeOrgName = escapeHtml(org?.name || "Travel Suite");
+  const safeLogoInitial = escapeHtml((org?.name || "T").charAt(0) || "T");
+  const safeAddressLine = buildEscapedAddressLine(org?.billing_address);
+  const safeClientName = escapeHtml(client?.full_name || "Walk-in client");
+  const safeNotes = escapeHtml(invoice.notes);
+  const safeInvoiceNumber = escapeHtml(invoice.invoice_number);
+  const safeStatus = escapeHtml(invoice.status.replace(/_/g, " "));
+  const safePlaceOfSupply = escapeHtml(invoice.place_of_supply);
+  const safeSacCode = escapeHtml(invoice.sac_code);
+  const safeOrgGstin = escapeHtml(org?.gstin);
+  const safeOrgPhone = escapeHtml(org?.billing_address?.phone);
+  const safeOrgEmail = escapeHtml(org?.billing_address?.email);
+  const safeClientEmail = escapeHtml(client?.email);
+  const safeClientPhone = escapeHtml(client?.phone);
+
+  const logoHtml = safeLogoUrl
+    ? `<img src="${safeLogoUrl}" alt="${safeOrgName || "Logo"}" style="width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;margin-right:14px;" />`
+    : `<div style="width:56px;height:56px;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#94a3b8;margin-right:14px;background:#f8fafc;">${safeLogoInitial}</div>`;
 
   const rows = invoice.line_items
     .map(
       (item) => `
       <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${item.description}</td>
-        <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${item.quantity}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${escapeHtml(item.description)}</td>
+        <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${escapeHtml(String(item.quantity))}</td>
         <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${formatMoney(item.unit_price, invoice.currency)}</td>
-        <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${item.tax_rate}%</td>
+        <td style="text-align:center;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px">${escapeHtml(String(item.tax_rate))}%</td>
         <td style="text-align:right;padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600">${formatMoney(item.line_total, invoice.currency)}</td>
       </tr>
     `
@@ -94,7 +139,7 @@ export function buildInvoiceMarkup(invoice: InvoiceRecord, template: InvoiceTemp
   <html>
     <head>
       <meta charset="utf-8" />
-      <title>${invoice.invoice_number}</title>
+      <title>${safeInvoiceNumber}</title>
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a; margin: 26px; }
         .paper { border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; }
@@ -118,28 +163,28 @@ export function buildInvoiceMarkup(invoice: InvoiceRecord, template: InvoiceTemp
             ${logoHtml}
             <div>
               <div class="kicker">Tax Invoice</div>
-              <h1 class="org-name">${org?.name || "Travel Suite"}</h1>
-              ${org?.gstin ? `<div class="meta">GSTIN: ${org.gstin}</div>` : ""}
-              ${buildAddressLine(org?.billing_address) ? `<div class="meta">${buildAddressLine(org?.billing_address)}</div>` : ""}
-              ${org?.billing_address?.phone ? `<div class="meta">Phone: ${org.billing_address.phone}</div>` : ""}
-              ${org?.billing_address?.email ? `<div class="meta">Email: ${org.billing_address.email}</div>` : ""}
+              <h1 class="org-name">${safeOrgName}</h1>
+              ${safeOrgGstin ? `<div class="meta">GSTIN: ${safeOrgGstin}</div>` : ""}
+              ${safeAddressLine ? `<div class="meta">${safeAddressLine}</div>` : ""}
+              ${safeOrgPhone ? `<div class="meta">Phone: ${safeOrgPhone}</div>` : ""}
+              ${safeOrgEmail ? `<div class="meta">Email: ${safeOrgEmail}</div>` : ""}
             </div>
           </div>
           <div style="text-align:right">
             <div class="kicker">Invoice #</div>
-            <div style="font-size:18px; font-weight:700; color:${theme.heading}">${invoice.invoice_number}</div>
+            <div style="font-size:18px; font-weight:700; color:${theme.heading}">${safeInvoiceNumber}</div>
             <div class="meta">Issued: ${formatDate(invoice.issued_at || invoice.created_at)}</div>
             <div class="meta">Due: ${formatDate(invoice.due_date)}</div>
-            <div class="meta">Status: ${invoice.status.replace(/_/g, " ")}</div>
-            ${invoice.place_of_supply ? `<div class="meta">Place of Supply: ${invoice.place_of_supply}</div>` : ""}
-            ${invoice.sac_code ? `<div class="meta">SAC: ${invoice.sac_code}</div>` : ""}
+            <div class="meta">Status: ${safeStatus}</div>
+            ${safePlaceOfSupply ? `<div class="meta">Place of Supply: ${safePlaceOfSupply}</div>` : ""}
+            ${safeSacCode ? `<div class="meta">SAC: ${safeSacCode}</div>` : ""}
           </div>
         </div>
         <div style="padding:14px 20px 8px; font-size:12px; color:#475569">
           <strong style="display:block; color:${theme.heading}; margin-bottom:4px">Billed To</strong>
-          ${client?.full_name || "Walk-in client"}
-          ${client?.email ? `<div>${client.email}</div>` : ""}
-          ${client?.phone ? `<div>${client.phone}</div>` : ""}
+          ${safeClientName}
+          ${safeClientEmail ? `<div>${safeClientEmail}</div>` : ""}
+          ${safeClientPhone ? `<div>${safeClientPhone}</div>` : ""}
         </div>
         <table>
           <thead>
@@ -163,7 +208,7 @@ export function buildInvoiceMarkup(invoice: InvoiceRecord, template: InvoiceTemp
           <div class="totals-row"><span>Paid</span><span>${formatMoney(invoice.paid_amount, invoice.currency)}</span></div>
           <div class="totals-row"><span>Balance</span><span>${formatMoney(invoice.balance_amount, invoice.currency)}</span></div>
         </div>
-        ${invoice.notes ? `<div class="notes"><strong>Notes:</strong><div style="margin-top:4px">${invoice.notes}</div></div>` : ""}
+        ${safeNotes ? `<div class="notes"><strong>Notes:</strong><div style="margin-top:4px">${safeNotes}</div></div>` : ""}
       </div>
     </body>
   </html>`;

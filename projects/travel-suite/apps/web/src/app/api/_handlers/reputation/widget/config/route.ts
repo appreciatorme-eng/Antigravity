@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
+import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_WIDGET_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/database.types";
@@ -60,25 +61,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
 
     // Validate required fields
@@ -103,7 +92,7 @@ export async function POST(req: Request) {
     const embedToken = crypto.randomUUID().replace(/-/g, "");
 
     const insertData = {
-      organization_id: profile.organization_id,
+      organization_id: organizationId,
       name: body.name,
       widget_type: body.widget_type,
       theme,
@@ -126,7 +115,7 @@ export async function POST(req: Request) {
       custom_footer: body.custom_footer || null,
     };
 
-    const { data: widgetData, error } = await supabase
+    const { data: widgetData, error } = await adminClient
       .from("reputation_widgets")
       .insert(insertData)
       .select(REPUTATION_WIDGET_SELECT)
@@ -147,25 +136,13 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(req, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.organization_id) {
-      return apiError("No organization found", 400);
-    }
-
+    const organizationId = auth.organizationId!;
+    const adminClient = auth.adminClient;
     const body = await req.json();
     const widgetId =
       typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
@@ -238,10 +215,10 @@ export async function PUT(req: Request) {
       return apiError("No valid fields to update", 400);
     }
 
-    let query = supabase
+    let query = adminClient
       .from("reputation_widgets")
       .update(updateData as Database['public']['Tables']['reputation_widgets']['Update'])
-      .eq("organization_id", profile.organization_id);
+      .eq("organization_id", organizationId);
 
     query = widgetId ? query.eq("id", widgetId) : query.eq("is_active", true);
 
