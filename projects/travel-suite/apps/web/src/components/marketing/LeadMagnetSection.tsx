@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Download, ShieldCheck } from 'lucide-react';
 
@@ -42,14 +43,20 @@ export function LeadMagnetSection() {
                         </div>
 
                         <div className="relative z-10 mt-12 flex justify-center">
-                            <motion.img
+                            <motion.div
                                 initial={{ y: 20, rotate: -3 }}
                                 whileInView={{ y: 0, rotate: -5 }}
                                 transition={{ duration: 1, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-                                src="/marketing/guide_cover.png"
-                                alt="Guide Preview"
-                                className="w-64 md:w-72 rounded-2xl shadow-2xl border-4 border-white/20 hover:rotate-0 transition-transform duration-500"
-                            />
+                                className="w-64 md:w-72 rounded-2xl shadow-2xl border-4 border-white/20 hover:rotate-0 transition-transform duration-500 overflow-hidden"
+                            >
+                                <Image
+                                    src="/marketing/guide_cover.png"
+                                    alt="Guide Preview"
+                                    width={288}
+                                    height={384}
+                                    className="w-full h-auto"
+                                />
+                            </motion.div>
                         </div>
                     </div>
 

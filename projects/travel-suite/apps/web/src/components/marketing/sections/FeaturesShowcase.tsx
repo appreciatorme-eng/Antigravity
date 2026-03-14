@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -46,11 +47,12 @@ function MagicLinkFeature() {
           <div className="absolute inset-0 bg-[#0A0A0A] overflow-hidden flex flex-col">
             {/* Header Image */}
             <div className="relative h-56 w-full shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
                 alt="Bali"
-                className="w-full h-full object-cover"
+                fill
+                sizes="260px"
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
               <div className="absolute bottom-4 left-4 right-4">
@@ -270,12 +272,13 @@ function AddonsFeature() {
               className="p-0 overflow-hidden group border-white/10"
             >
               <div className="relative h-full w-full flex flex-col">
-                <div className="flex-1 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative flex-1 overflow-hidden">
+                  <Image
                     src={addon.image}
                     alt={addon.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    fill
+                    sizes="320px"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/50 to-transparent" />
                 </div>
@@ -334,12 +337,13 @@ function CRMFeature() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="relative z-10 p-4 rounded-2xl glass border border-[#FF9933]/30 flex items-center gap-4 bg-[#FF9933]/5 shadow-[0_0_20px_rgba(255,153,51,0.1)] translate-x-12"
           >
-            <div className="w-12 h-12 rounded-full border-2 border-[#FF9933] overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="relative w-12 h-12 rounded-full border-2 border-[#FF9933] overflow-hidden">
+              <Image
                 src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop"
                 alt="Priya"
-                className="w-full h-full object-cover"
+                width={48}
+                height={48}
+                className="object-cover"
               />
             </div>
             <div className="flex-1">

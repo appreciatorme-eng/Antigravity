@@ -125,9 +125,10 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
               }} />
               <Image
                 src={src} alt={alt}
-                width={1400} height={840}
+                fill
+                sizes={`${w}vw`}
                 priority
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                className="object-cover"
               />
             </motion.div>
           ))}

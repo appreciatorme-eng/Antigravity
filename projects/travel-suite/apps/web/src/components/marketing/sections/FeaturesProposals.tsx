@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -37,11 +38,12 @@ function MagicLinkFeature() {
           <div className="absolute inset-0 bg-[#0A0A0A] overflow-hidden flex flex-col">
             {/* Header Image */}
             <div className="relative h-56 w-full shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
                 alt="Bali"
-                className="w-full h-full object-cover"
+                fill
+                sizes="260px"
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
               <div className="absolute bottom-4 left-4 right-4">

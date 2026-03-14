@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { FadeInOnScroll } from "@/components/marketing/effects";
@@ -84,16 +85,22 @@ export function ProposalPreviewSection() {
             {/* Image */}
             <div className="relative h-56 w-full overflow-hidden">
               <AnimatePresence mode="wait">
-                <motion.img
+                <motion.div
                   key={currentDay}
-                  src={proposalDays[currentDay].image}
-                  alt={proposalDays[currentDay].title}
-                  className="w-full h-full object-cover"
+                  className="absolute inset-0"
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -50 }}
                   transition={{ duration: 0.3 }}
-                />
+                >
+                  <Image
+                    src={proposalDays[currentDay].image}
+                    alt={proposalDays[currentDay].title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 512px"
+                    className="object-cover"
+                  />
+                </motion.div>
               </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] to-transparent"></div>
               <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-xs text-white font-bold border border-white/20">
