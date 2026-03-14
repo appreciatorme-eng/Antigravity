@@ -43,7 +43,8 @@ Full test plan with 487 cases: [qa-test-plan.md](qa-test-plan.md)
 | S20 — Post-automation live smoke (public routes + security headers + rate limit validation) | 2026-03-12 | 12 | 11 | 0 | 1 | 0 |
 | S21 — Post-Social-Studio-redesign regression: Vitest 581/0, lint 0 warnings, typecheck 0 errors | 2026-03-11 | 581 | 581 | 0 | 0 | 0 |
 | S25 — Remediation S25: Vitest 600/0, lint 0 warnings, typecheck 0 errors. Fixed C-01/C-02/C-03 (rate limiting + N+1), H-04/H-05/H-06/H-08 (RLS + security_invoker + bulk batch), M-03/M-04 (useMemo/useCallback), L-01 (vector schema). E2E: remediation-s25.spec.ts added (pre-deploy) | 2026-03-13 | 600 | 600 | 0 | 0 | 0 |
-| **Total** | | **~3529** | **~3222** | **~110** | **~84** | **~344** |
+| S28 — Remediation S28: Vitest 52 files / 690 assertions ✅, lint 0 warnings ✅, typecheck 0 errors ✅, coverage 85.4% lines / 81.0% branches / 95.7% functions. Fixed C-01 jsdom+testing-lib deps, C-02 undici CVEs (npm audit fix), M-01/M-02 direct routes migrated to catch-all dispatcher, L-02 5 FK covering indexes applied. H-01/02/03/04 documented (accepted decisions). E2E: remediation-s28.spec.ts added (pre-deploy) | 2026-03-14 | 690 | 690 | 0 | 0 | 0 |
+| **Total** | | **~4219** | **~3912** | **~110** | **~84** | **~344** |
 
 **Blocking pattern discovered in S2**: Many root-level API handlers (`/api/trips`, `/api/add-ons`, `/api/assistant/*`, `/api/reputation/*`, `/api/social/*`, `/api/billing/*`, `/api/settings/*`) use Supabase cookie-based session auth rather than Bearer JWT. curl-based tests with Bearer JWT cannot reach these. All such tests were marked ⏭ BLOCKED.
 

@@ -49,8 +49,8 @@
 ---
 
 ## Test Suite Status
-- Vitest: ✅ 52 tests pass, 690 assertions, 85.39% lines coverage (post C-01 fix)
-- Playwright E2E: ⏳ pending
+- Vitest: ✅ 52 files / 690 assertions — 85.39% lines / 80.98% branches / 95.65% functions / 86.31% stmts (all thresholds met)
+- Playwright E2E: ✅ remediation-s28.spec.ts written (pre-deploy, runs against Vercel)
 
 ---
 
@@ -61,4 +61,6 @@
 | P1 | efa017f | 2026-03-14 | Create remediation tracker s28 |
 | P2-CRIT | 9387ff3 | 2026-03-14 | Fix C-01 jsdom + C-02 undici CVEs |
 | P2-HIGH/MED/LOW | 211fe0a | 2026-03-14 | H-01..04 documented, M-01/M-02 catch-all migration, L-02 FK indexes |
-| P3 | — | 2026-03-14 | E2E tests: remediation-s28.spec.ts |
+| P3 | 7f5b1e5 | 2026-03-14 | E2E tests: remediation-s28.spec.ts |
+| P4-QA | — | 2026-03-14 | QA log updated |
+| P5-FINAL | — | 2026-03-14 | Final lint ✅ typecheck ✅ tests ✅ — merging to main |
