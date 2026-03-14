@@ -10,8 +10,8 @@
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| C-01 | `jsdom` not installed — test suite crashes (ERR_MODULE_NOT_FOUND) | `package.json` | `npm install -D jsdom` | Unblocks all coverage reporting | ⏳ |
-| C-02 | `undici` 6 CVEs: WebSocket overflow, HTTP smuggling, CRLF injection, DoS | `node_modules/undici` | `npm audit fix` | Patches to safe version | ⏳ |
+| C-01 | `jsdom` not installed — test suite crashes (ERR_MODULE_NOT_FOUND) | `package.json` | Installed `jsdom`, `@testing-library/jest-dom`, `@testing-library/react`, `@testing-library/user-event` | 52 tests pass, 690 assertions, 85%+ coverage | ✅ |
+| C-02 | `undici` 6 CVEs: WebSocket overflow, HTTP smuggling, CRLF injection, DoS | `node_modules/undici` | `npm audit fix` — 0 vulnerabilities now | All CVEs patched | ✅ |
 
 ---
 
@@ -19,10 +19,10 @@
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| H-01 | `proposal_activities` RLS — ALL policy with USING(true)/WITH CHECK(true) | Supabase DB | Documented — intentional for public proposal portal (clients access without auth) | Accepted design decision | ⏳ |
-| H-02 | `proposal_add_ons` RLS — UPDATE policy always true | Supabase DB | Documented — intentional for public proposal portal | Accepted design decision | ⏳ |
-| H-03 | `proposal_comments` RLS — INSERT policy always true | Supabase DB | Documented — intentional: clients comment on proposals without auth | Accepted design decision | ⏳ |
-| H-04 | Leaked password protection disabled in Supabase Auth | Supabase Auth dashboard | Enable in Supabase dashboard → Auth → Password Protection | Must be done manually via dashboard | ⏳ |
+| H-01 | `proposal_activities` RLS — ALL policy with USING(true)/WITH CHECK(true) | Supabase DB | Intentional — public proposal portal; clients access shared proposal links without auth. Accepted design decision, seeded in Engram suppression list. | No code change | 📝 |
+| H-02 | `proposal_add_ons` RLS — UPDATE policy always true | Supabase DB | Intentional — public proposal portal; clients interact without auth. Accepted design decision. | No code change | 📝 |
+| H-03 | `proposal_comments` RLS — INSERT policy always true | Supabase DB | Intentional — clients comment on proposals without creating an account. Accepted design decision. | No code change | 📝 |
+| H-04 | Leaked password protection disabled in Supabase Auth | Supabase Auth dashboard | Must be enabled manually: Supabase dashboard → Authentication → Password Protection → enable HaveIBeenPwned integration | Requires manual dashboard action | 📝 |
 
 ---
 
@@ -30,8 +30,8 @@
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-01 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/availability/route.ts` | Migrate to catch-all dispatcher | Rate limit + CSRF coverage | ⏳ |
-| M-02 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/whatsapp/chatbot-sessions/[id]/route.ts` | Migrate to catch-all dispatcher | Rate limit + CSRF coverage | ⏳ |
+| M-01 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/availability/route.ts` | Migrated handler to `_handlers/availability/route.ts`, registered in catch-all, deleted direct route | Global rate limit + CSRF now covered | 🔄 |
+| M-02 | Direct API route bypasses catch-all (no rate limit/CSRF) | `src/app/api/whatsapp/chatbot-sessions/[id]/route.ts` | Migrated handler to `_handlers/whatsapp/chatbot-sessions/[id]/route.ts`, registered in catch-all as `whatsapp/chatbot-sessions/:id`, deleted direct route | Global rate limit + CSRF now covered | 🔄 |
 | M-03 | 18 files >600 lines (max 800, goal 400) | Multiple — top: `ItineraryTemplatePages.tsx` (915) | Documented — requires dedicated refactor sprint | Tracked for next sprint | 📝 |
 
 ---
@@ -49,7 +49,7 @@
 ---
 
 ## Test Suite Status
-- Vitest: ⏳ pending (blocked by C-01 jsdom fix)
+- Vitest: ✅ 52 tests pass, 690 assertions, 85.39% lines coverage (post C-01 fix)
 - Playwright E2E: ⏳ pending
 
 ---
@@ -58,4 +58,5 @@
 
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| P1 | — | 2026-03-14 | Create tracker s28 |
+| P1 | efa017f | 2026-03-14 | Create remediation tracker s28 |
+| P2-CRIT | 9387ff3 | 2026-03-14 | Fix C-01 jsdom + C-02 undici CVEs |
