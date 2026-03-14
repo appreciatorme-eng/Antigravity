@@ -1,5 +1,6 @@
 'use client';
 
+import DOMPurify from 'dompurify';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Tag, User } from 'lucide-react';
 
@@ -21,7 +22,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-// TODO: Replace with next-mdx-remote MDX rendering when package is installed
+// TODO: Replace this regex-based markdown renderer with a structured markdown pipeline if the blog surface expands.
 function renderMarkdownContent(content: string): string {
   return content
     // Headings: ### before ## to avoid double-matching
@@ -53,7 +54,12 @@ export function BlogPost({
   category,
   tags,
 }: BlogPostProps) {
-  const htmlContent = renderMarkdownContent(content);
+  const rawHtml = renderMarkdownContent(content);
+  const htmlContent = DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: ['h2', 'h3', 'p', 'strong', 'em', 'li'],
+    ALLOWED_ATTR: ['class'],
+    FORCE_BODY: true,
+  });
 
   return (
     <div className="max-w-3xl mx-auto">
