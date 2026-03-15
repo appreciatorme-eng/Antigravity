@@ -31,18 +31,20 @@ export function Navbar() {
   return (
     <>
       <header
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          transition: 'all 0.5s ease',
-          background: scrolled ? 'rgba(10,10,10,0.85)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(255,255,255,0.1)' : 'none',
-        }}
+        className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+          scrolled 
+            ? 'bg-[#0A0A0A]/80 backdrop-blur-2xl py-0' 
+            : 'bg-transparent py-2'
+        }`}
       >
+        {/* Animated glowing bottom border when scrolled */}
+        <div 
+          className={`absolute bottom-0 left-0 right-0 h-[1px] transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,153,51,0.5) 25%, rgba(162,89,255,0.8) 50%, rgba(0,240,255,0.5) 75%, transparent 100%)',
+            boxShadow: '0 1px 10px rgba(162,89,255,0.4)',
+          }}
+        />
         <div className="max-w-7xl mx-auto px-6 md:px-10 h-20 md:h-[120px] flex items-center justify-between">
 
           {/* Logo */}
