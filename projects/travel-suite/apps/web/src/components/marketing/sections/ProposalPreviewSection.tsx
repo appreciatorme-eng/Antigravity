@@ -61,14 +61,18 @@ export function ProposalPreviewSection() {
 
   // Trigger generation animation when the section enters the viewport
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isInView && generationPhase === "idle") {
       setGenerationPhase("generating");
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setGenerationPhase("complete");
-      }, 1800);
-      return () => clearTimeout(timer);
+      }, 3000);
     }
-  }, [isInView, generationPhase]);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInView]);
 
   const nextDay = useCallback(() => {
     setCurrentDay((prev) => Math.min(prev + 1, proposalDays.length - 1));
@@ -153,7 +157,7 @@ export function ProposalPreviewSection() {
                         className="h-full bg-gradient-to-r from-[#A259FF] to-[#00F0FF] rounded-full"
                         initial={{ width: "0%" }}
                         animate={{ width: "100%" }}
-                        transition={{ duration: 1.6, ease: "easeInOut" }}
+                        transition={{ duration: 2.8, ease: "easeInOut" }}
                       />
                     </div>
 
