@@ -81,8 +81,8 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
 
   return (
     <div style={{
-      position: 'absolute', top: 0, right: 0,
-      width: '60%', height: '100%',
+      position: 'absolute', inset: 0,
+      width: '100%', height: '100%',
       overflow: 'visible', zIndex: 10,
     }}>
 
@@ -90,7 +90,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       <div
         style={{
           position: 'absolute',
-          top: '5%', left: '0', right: '0', bottom: '5%',
+          top: '5%', bottom: '5%', right: 0, width: '60%',
           opacity: splineLoaded ? 0 : 1,
           transition: 'opacity 1.2s ease-in-out',
           pointerEvents: splineLoaded ? 'none' : 'auto',
@@ -140,7 +140,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       <div
         style={{
           position: 'absolute',
-          top: '-5%', bottom: '-5%', left: '-15%', right: '-5%',
+          inset: 0,
           opacity: splineLoaded ? 0.92 : 0,
           transition: 'opacity 1.5s ease-in-out',
           pointerEvents: splineLoaded ? 'auto' : 'none',

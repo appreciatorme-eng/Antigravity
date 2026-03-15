@@ -35,12 +35,23 @@ const LivePulseSection = dynamic(
     ),
   { ssr: false }
 );
+const ForceFieldBackground = dynamic(
+  () =>
+    import("@/components/marketing/ForceFieldBackground").then(
+      (m) => m.ForceFieldBackground
+    ),
+  { ssr: false }
+);
 
 export default function HomePage() {
   return (
-    <main className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
-      <HeroSection />
-      <SectionDivider variant="wave" />
+    <>
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <ForceFieldBackground id="tsparticles-global" />
+      </div>
+      <main className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
+        <HeroSection />
+        <SectionDivider variant="wave" />
       <CustomerLogos />
       <HowItWorks />
       <BeforeAfterSection />
@@ -54,5 +65,6 @@ export default function HomePage() {
       <SectionDivider variant="wave" flip />
       <FinalCTASection />
     </main>
+    </>
   );
 }
