@@ -80,20 +80,14 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
   };
 
   return (
-    <div style={{
-      position: 'absolute', top: 0, right: 0,
-      width: '60%', height: '100%',
-      overflow: 'visible', zIndex: 10,
-    }}>
+    <div className="absolute inset-0 w-full h-full z-10 overflow-visible pointer-events-none">
 
       {/* ─── LAYER 1: Static CSS placeholder — INSTANT ─── */}
       <div
+        className="absolute top-[5%] bottom-[5%] right-0 w-[60%] pointer-events-auto"
         style={{
-          position: 'absolute',
-          top: '5%', left: '0', right: '0', bottom: '5%',
           opacity: splineLoaded ? 0 : 1,
           transition: 'opacity 1.2s ease-in-out',
-          pointerEvents: splineLoaded ? 'none' : 'auto',
           perspective: '1400px',
           perspectiveOrigin: '40% 50%',
           zIndex: 2,
@@ -137,9 +131,8 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
 
       {/* ─── LAYER 2: Spline 3D — loads behind, crossfades in ─── */}
       <div
+        className="absolute inset-x-0 w-full top-[-5%] bottom-[-5%] pointer-events-auto"
         style={{
-          position: 'absolute',
-          top: '-5%', bottom: '-5%', left: '-15%', right: '-5%',
           opacity: splineLoaded ? 0.92 : 0,
           transition: 'opacity 1.5s ease-in-out',
           pointerEvents: splineLoaded ? 'auto' : 'none',
@@ -149,6 +142,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
         <SplineScene
           sceneUrl="https://prod.spline.design/FOAdqNVCO1g5ncBd/scene.splinecode"
           onLoad={onSplineLoad}
+          className="w-full h-full"
         />
       </div>
 
