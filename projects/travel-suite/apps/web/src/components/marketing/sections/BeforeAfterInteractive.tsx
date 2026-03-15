@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate, AnimationPlaybackControls } from "framer-motion";
 import { XCircle, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BeforeAfterInteractiveProps {
@@ -22,8 +22,10 @@ export function BeforeAfterInteractive({ oldWayItems, newWayItems }: BeforeAfter
     const updateWidth = () => {
       if (containerRef.current) {
         setContainerWidth(containerRef.current.getBoundingClientRect().width);
-        // Initialize handle to center
-        x.set(containerRef.current.getBoundingClientRect().width / 2);
+        // Initialize handle to center if not set
+        if (x.get() === 0) {
+          x.set(containerRef.current.getBoundingClientRect().width / 2);
+        }
       }
     };
 
@@ -31,6 +33,47 @@ export function BeforeAfterInteractive({ oldWayItems, newWayItems }: BeforeAfter
     window.addEventListener("resize", updateWidth);
     return () => window.removeEventListener("resize", updateWidth);
   }, [x]);
+
+  // Auto-slide animation
+  useEffect(() => {
+    if (!containerWidth || isDragging) return;
+
+    let isCancelled = false;
+    let currentAnimation: AnimationPlaybackControls;
+
+    const startAnimation = (targetX: number) => {
+      if (isCancelled) return;
+      
+      // Calculate a duration based on distance so the speed feels consistent
+      const distanceFraction = Math.abs(targetX - x.get()) / containerWidth;
+      const duration = distanceFraction * 8 + 2; // e.g. 2 to 10 seconds
+
+      currentAnimation = animate(x, targetX, {
+        duration,
+        ease: "easeInOut",
+        onComplete: () => {
+          if (!isCancelled) {
+            // Reverse direction
+            startAnimation(targetX > containerWidth * 0.5 ? containerWidth * 0.2 : containerWidth * 0.8);
+          }
+        }
+      });
+    };
+
+    // Initial direction: move towards the side we are further away from
+    const initialTarget = x.get() > containerWidth * 0.5 ? containerWidth * 0.2 : containerWidth * 0.8;
+    
+    // Add a small delay before auto-sliding resumes after drag
+    const timeout = setTimeout(() => {
+      startAnimation(initialTarget);
+    }, 1000);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeout);
+      if (currentAnimation) currentAnimation.stop();
+    };
+  }, [x, containerWidth, isDragging]);
 
   // Convert pixel position to a percentage (0% to 100%) for clipping
   const clipPercentage = useTransform(x, [0, containerWidth], [0, 100]);
