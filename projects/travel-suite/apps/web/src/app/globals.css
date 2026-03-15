@@ -259,3 +259,26 @@
     color: #D4AF37;
   }
 }
+
+/* === Demo Tour === */
+/* Applied via JS to sidebar links while the guided tour is active. */
+/* Using a CSS selector avoids direct style mutations in the DOM. */
+[data-tour-active="true"] {
+  box-shadow: 0 0 0 2px rgba(0, 208, 132, 0.5), 0 0 20px rgba(0, 208, 132, 0.15);
+  z-index: 51;
+  position: relative;
+}
+
+/* === Shimmer animation for DemoModeBanner === */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-gradient {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  animation: shimmer 3s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(0, 208, 132, 0.06), transparent);
+}

@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+// Intentionally NOT using the `persist` middleware — this store holds transient UI state
+// (sidebar open, modal, command menu) that should reset on page reload.
+// For persistent state across navigation, see onboarding-store.ts which uses `persist`.
 
 interface UIState {
     sidebarOpen: boolean;

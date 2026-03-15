@@ -1,4 +1,5 @@
 import { safeEqual } from "./safe-equal";
+import { logError } from "@/lib/observability/logger";
 
 type HeaderLike = {
   get(name: string): string | null;
@@ -49,6 +50,17 @@ export function passesMutationCsrfGuard(req: RequestLike): boolean {
   }
 
   const configuredToken = process.env.ADMIN_MUTATION_CSRF_TOKEN?.trim();
+
+  if (!configuredToken && process.env.NODE_ENV === "production") {
+    // Warn once per cold start — origin-only trust is weaker than token-based CSRF protection.
+    // Set ADMIN_MUTATION_CSRF_TOKEN to enforce strict token validation on all admin mutations.
+    logError(
+      "[csrf] ADMIN_MUTATION_CSRF_TOKEN not set — falling back to same-origin check. " +
+      "Set the env var for stronger CSRF protection in production.",
+      null,
+    );
+  }
+
   if (configuredToken) {
     const providedToken = (req.headers.get("x-admin-csrf") || "").trim();
     if (!providedToken) {

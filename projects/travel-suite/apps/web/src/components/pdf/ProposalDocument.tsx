@@ -542,7 +542,6 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         <View style={{ marginTop: 30, textAlign: 'center' }}>
           <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 10 }}>Questions? Contact Us</Text>
           <Text style={{ fontSize: 9, color: '#666666' }}>Email: info@{organizationName.toLowerCase().replace(/\s/g, '')}.com</Text>
-          <Text style={{ fontSize: 9, color: '#666666' }}>Phone: +91 XXX XXX XXXX</Text>
         </View>
 
         <Text style={styles.footer}>

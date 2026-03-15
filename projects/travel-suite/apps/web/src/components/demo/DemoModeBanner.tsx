@@ -52,13 +52,8 @@ export default function DemoModeBanner({ onStartTour }: DemoModeBannerProps) {
       )}
     >
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute inset-0 -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent, rgba(0,208,132,0.06), transparent)",
-          }}
-        />
+        {/* shimmer-gradient class defined in globals.css to avoid inline styles */}
+        <div className="shimmer-gradient" />
       </div>
 
       <Sparkles className="w-3.5 h-3.5 text-[#00d084] flex-shrink-0" />
@@ -94,12 +89,6 @@ export default function DemoModeBanner({ onStartTour }: DemoModeBannerProps) {
         <X className="w-3.5 h-3.5" />
       </button>
 
-      <style jsx>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </div>
   );
 }

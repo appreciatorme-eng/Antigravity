@@ -151,11 +151,8 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
 
       if (target) {
         const rect = target.getBoundingClientRect();
-        // Add highlight ring to the target
+        // Add highlight ring via CSS data attribute (styles defined in globals.css)
         target.setAttribute("data-tour-active", "true");
-        target.style.boxShadow = "0 0 0 2px rgba(0,208,132,0.5), 0 0 20px rgba(0,208,132,0.15)";
-        target.style.zIndex = "51";
-        target.style.position = "relative";
 
         setTooltipPos({
           top: rect.top + rect.height / 2,
@@ -169,14 +166,9 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
 
     return () => {
       clearTimeout(timer);
-      // Clean up highlights
+      // Clean up highlights — removing the attribute removes the CSS styles
       const highlighted = document.querySelectorAll('[data-tour-active="true"]');
-      highlighted.forEach((el) => {
-        (el as HTMLElement).style.boxShadow = "";
-        (el as HTMLElement).style.zIndex = "";
-        (el as HTMLElement).style.position = "";
-        el.removeAttribute("data-tour-active");
-      });
+      highlighted.forEach((el) => el.removeAttribute("data-tour-active"));
     };
   }, [active, currentStep, pathname]);
 

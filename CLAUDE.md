@@ -171,6 +171,19 @@ When adding a new route group, create `error.tsx` as a one-line re-export. **Nev
 - **Maximum fragmentation**: Aim for 4-6 sub-components per parent, not 8-10. Each file should justify its existence.
 - **Test before extracting**: Write (or verify) a test for the parent's behavior first. Extract the sub-component. Verify the test still passes.
 
+## WhatsApp Integration
+
+The codebase supports **two WhatsApp implementations**:
+
+| Mode | Config | Files | Status |
+|------|--------|-------|--------|
+| **Meta Cloud API** (primary) | `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` | `src/lib/whatsapp.server.ts` | ✅ Production path |
+| **WPPConnect** (secondary) | `WPPCONNECT_URL` + `WPPCONNECT_TOKEN` | `src/lib/whatsapp-wppconnect.ts` | 🔄 Kept for self-hosted fallback |
+
+**Primary path for production is Meta Cloud API.** WPPConnect support is retained for operators who self-host WhatsApp Business (on-premise). The code detects which mode is active based on which env vars are set — `WHATSAPP_API_TOKEN` takes precedence.
+
+**Deprecation plan**: WPPConnect path will be removed once 100% of active customers migrate to Meta Cloud.
+
 ## API Route Rules
 
 - **No new direct routes**: All new endpoints go through catch-all dispatchers (`src/app/api/[...path]/route.ts` or domain-specific catch-alls). Register handlers via `createCatchAllHandlers()`.
