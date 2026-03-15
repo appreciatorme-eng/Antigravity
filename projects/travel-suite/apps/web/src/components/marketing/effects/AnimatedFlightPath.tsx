@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useSpring } from "framer-motion";
 
 export function AnimatedFlightPath() {
   // We attach the scroll progress to the entire document body
