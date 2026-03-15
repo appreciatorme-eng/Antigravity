@@ -35,4 +35,4 @@ Base: `b7914ac33412851755c92488d5d3ecd8849b20e1`
 
 ## Commit Log
 
-- [x] pending commit on `codex/audit-remediation-s33` (to be replaced by hash on merge)
+- [x] `8af799a` — fix: complete audit remediation tracker s33
