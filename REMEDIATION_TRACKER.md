@@ -1,85 +1,87 @@
-# Remediation Tracker s31
-
-**Date**: 2026-03-14 | **Branch**: `fix/remediation-s31` | **Source**: Production readiness audit (d899e1c)
+# Remediation Tracker S34
+**Date**: 2026-03-15 | **Branch**: `fix/remediation-s34` | **Source**: /review (MVP production readiness audit)
 
 ## Legend
-
 ✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
-
----
 
 ## BLOCKER (3)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| B-01 | Payment webhook idempotency | invoice-service.ts:165-183 | Verify existing guard | Already has dedup check on `reference` field + early return | 📝 |
-| B-03 | Admin Activity hardcoded mock | admin/activity/page.tsx:31-55 | Replace with "Coming Soon" | Replaced 257-line mock page with 33-line Coming Soon placeholder | ✅ |
-| B-04 | WhatsApp pickers use mock data | action-picker/shared.ts:41-176 | Replace with real API hooks | Created useOrganizationTrips/useOrganizationDrivers hooks, removed all mock data | ✅ |
+| B-01 | ESLint fails — 3 unused imports | AnimatedFlightPath.tsx:3-4, SpotlightCard.tsx:3 | Remove unused imports | | ⏳ |
+| B-02 | Mock Razorpay endpoint no production guard | payments/razorpay/route.ts | Add NODE_ENV guard | | ⏳ |
+| B-03 | Demo data active without feature flag | lib/demo-data.ts, lib/integrations.ts:71 | Gate behind env var | | ⏳ |
 
-## HIGH (10)
-
-| ID | Finding | File:Line | Action | Outcome | Status |
-|----|---------|-----------|--------|---------|--------|
-| H-04 | `as any` in critical paths | sitemap.ts, useProposalData.ts | Add proper types | Extracted shared formatFeatureLimitError, typed BlogPost interface | ✅ |
-| H-05 | console.error in assistant handlers | _handlers/assistant/*.ts | Replace with logError() | 12 replacements across 8 handler files | ✅ |
-| H-06 | console.log debug in proposals | proposals/[id]/page.tsx:225,229,233 | Remove debug logs | 3 console.log statements removed | ✅ |
-| H-07 | Missing loading.tsx | 2/97 routes have loading | Add to 11+ routes | 11 loading.tsx skeleton files added (trips, proposals, clients, drivers, inbox, analytics, calendar, settings, planner, reputation, social) | ✅ |
-| H-08 | Middleware ignores profile error | middleware.ts:104 | Destructure error, fail-open | Added profileError destructuring + fail-open guard | ✅ |
-| H-09 | No session expiry handler | Root layout | Add useSessionRefresh hook | Created hook + SessionRefreshGuard in AppProviders | ✅ |
-| H-10 | Fetch without timeout | useCreateProposal.ts:117 | Create fetchWithTimeout utility | Created lib/fetch-with-timeout.ts, applied to useCreateProposal | ✅ |
-| H-01 | Rate limiter 59% coverage | rate-limit.ts | Write tests | 13 tests: 100% lines/functions/branches | ✅ |
-| H-02 | Cron auth 74% coverage | cron-auth.ts | Write tests | 22 tests: 100% lines/functions, 98.86% branches | ✅ |
-| H-03 | Payment handler 50% fn coverage | create-order/route.ts | Write tests | 23 tests: 100% lines/functions, 95.34% branches | ✅ |
-
-## MEDIUM (8)
+## HIGH (19)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-02 | Image APIs no cache directive | images/{pexels,unsplash,pixabay} | Add cache headers | Updated revalidate from 86400s to 3600s | ✅ |
-| M-03 | JSON parse errors swallowed | useCreateProposal.ts:130,189 | Log before returning {} | Added console.error logging (client component) | ✅ |
-| M-05 | Email format validation | useClientForm.ts:77 | Add regex check | Added EMAIL_REGEX validation | ✅ |
-| M-06 | Unused mock-data.ts | reputation/_components/mock-data.ts | Delete if unused | Confirmed unused, deleted 571-line file | ✅ |
-| M-08 | Demo component a11y | components/demo/*.tsx | Add keyboard support | Replaced div onClick with button in DemoTour, WelcomeModal | ✅ |
-| M-01 | 6 files >750 lines | drivers/page, clients/[id], etc. | Extract sub-components | Deferred — large refactor | 📝 |
-| M-04 | Form double-submit | useClientForm.ts | Audit submit buttons | Added early-return guard when saving | ✅ |
-| M-07 | .single() error handling | 534 occurrences | Audit critical paths | Deferred — systematic audit | 📝 |
+| H-01 | 93 pages missing SEO metadata | 93 page.tsx files | Add metadata to marketing + auth pages | | ⏳ |
+| H-02 | 85 pages missing loading.tsx | 85 route groups | Add loading.tsx skeletons | | ⏳ |
+| H-03 | 11 files over 735 lines | Multiple files | Extract sub-components | | ⏳ |
+| H-04 | WhatsApp inbox uses mock data | whatsapp/inbox-mock-data.ts | Replace with real API | | ⏳ |
+| H-05 | 618 console statements in prod code | 16+ files | Replace with logError() | | ⏳ |
+| H-06 | Type safety — double casts + null checks | 8 locations | Add type guards + null checks | | ⏳ |
+| H-07 | Silent error swallowing | 5 locations | Add logError() | | ⏳ |
+| H-08 | Client-side API calls should be server-side | 5 pages | Move to server components / React Query | | ⏳ |
+| H-09 | Missing Zod validation in handlers | 4 handlers | Add Zod schemas | | ⏳ |
+| H-10 | Hardcoded fallback URL in email.ts | lib/email.ts:26 | Use NEXT_PUBLIC_APP_URL | | ⏳ |
+| H-11 | map-test page exposed in production | app/map-test/page.tsx | Add notFound() guard | | ⏳ |
+| H-12 | Cron secret naming inconsistency | .env.example | Document / consolidate | | ⏳ |
+| H-13 | Sentry/PostHog no startup warning | sentry configs, PostHogProvider | Add prod startup log | | ⏳ |
+| H-14 | Accessibility gaps | 5+ files | Add ARIA attributes | | ⏳ |
+| H-15 | Missing TS interfaces for 30+ component props | 20+ files | Add interface Props | | ⏳ |
+| H-16 | Webhook payload validation missing | lib/whatsapp.server.ts | Add Zod schemas | | ⏳ |
+| H-17 | Duplicate WhatsApp webhook registration | [...path]/route.ts | Remove duplicate | | ⏳ |
+| H-18 | Inline styles in non-PDF components | DemoTour.tsx, DemoModeBanner.tsx | Convert to Tailwind | | ⏳ |
+| H-19 | Settings page PlaceholderTab | app/settings/page.tsx:195 | Implement or remove tabs | | ⏳ |
 
-## LOW (5)
+## MEDIUM (12)
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| L-01 | Spline `any` types | SplineScene.tsx, HeroScreens.tsx | Third-party limitation | | 📝 |
-| L-02 | Recharts `any` type | TrendChart.tsx | Third-party limitation | | 📝 |
-| L-03 | `<img>` in marketing | solutions/[type]/page.tsx | Replace with next/image | Replaced with Image component (800x600) | ✅ |
-| L-04 | 500+ `use client` directives | Multiple files | Audit for server potential | Deferred | 📝 |
-| L-05 | formatFeatureLimitError duplication | 5 files | Extract shared utility | Extracted to lib/subscriptions/feature-limit-error.ts | ✅ |
+| M-01 | Test coverage 4.3% of full codebase | tests/ | Add critical path tests | | ⏳ |
+| M-02 | Missing key props in JSX maps | DemoTour.tsx, WelcomeModal.tsx, etc. | Add stable keys | | ⏳ |
+| M-03 | Hardcoded pricing data | (marketing)/pricing/page.tsx | Move to constants | | ⏳ |
+| M-04 | God page hardcoded system health | god/page.tsx:126-139 | Wire to health endpoints | | ⏳ |
+| M-05 | Inconsistent validation patterns | Multiple handlers | Standardize on Zod | | ⏳ |
+| M-06 | CSRF token fallback behavior | admin-mutation-csrf.ts:60 | Require token in production | | ⏳ |
+| M-07 | Missing library input validation | 4 lib files | Add parameter guards | | ⏳ |
+| M-08 | Hardcoded brand strings | welcome/page.tsx, ProposalDocument | Update branding | | ⏳ |
+| M-09 | Debug endpoint config leak risk | _handlers/debug/route.ts | Add NODE_ENV guard | | ⏳ |
+| M-10 | Hardcoded color values | inbox, pricing, about pages | Use Tailwind tokens | | ⏳ |
+| M-11 | WhatsApp dual-mode undocumented | .env.example | Document in CLAUDE.md | | ⏳ |
+| M-12 | Cold start rate limit gap | rate-limit.ts | Startup validation for Redis | | ⏳ |
 
----
+## LOW (6 actionable)
 
-## Summary
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| L-01 | 6 TODO/FIXME comments | Various | Resolve or track | | ⏳ |
+| L-02 | Inline styles (29+ files) | Various | Convert to Tailwind | | ⏳ |
+| L-03 | Component tests are type-checks only | tests/component/ | Add render tests | | ⏳ |
+| L-04 | Zustand store middleware inconsistency | ui-store.ts vs onboarding-store.ts | Document intent | | ⏳ |
+| L-05 | OG route bypasses catch-all | app/api/og/route.tsx | Add comment | | ⏳ |
+| L-07 | DemoTour direct DOM manipulation | demo/DemoTour.tsx:156-158 | Use data attrs + CSS | | ⏳ |
 
-| Severity | Total | Fixed | Documented | Deferred |
-|----------|-------|-------|------------|----------|
-| BLOCKER | 3 | 2 | 1 | 0 |
-| HIGH | 10 | 10 | 0 | 0 |
-| MEDIUM | 8 | 6 | 0 | 2 |
-| LOW | 5 | 2 | 3 | 0 |
-| **Total** | **26** | **20** | **4** | **2** |
+## ACCEPTED (no action)
+
+| ID | Decision | Reason |
+|----|----------|--------|
+| A-01 | CSP unsafe-inline | Next.js requirement |
+| A-02 | No circuit breaker / DLQ | Vercel Hobby stateless |
+| A-03 | Both leaflet + maplibre-gl | Different use cases |
+| A-04 | Polling intervals contextual | Not magic numbers |
+| A-05 | india-templates.ts 786 lines | Data file not logic |
+| A-06 | PDF inline styles | @react-pdf/renderer requirement |
+| A-07 | OG route as direct route | Edge runtime |
+| A-08 | 60-module vitest coverage scope | Deliberately scoped |
 
 ## Test Suite Status
-
-- Vitest: **748 tests passed** (55 files) — 91.59% lines / 89.03% branches / 97.1% functions
-- Playwright E2E: remediation-s31.spec.ts created (pre-deploy static checks)
+- Vitest: pending
+- Playwright E2E: pending
 
 ## Commit Log
-
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| Tracker | 8db9ec8 | 2026-03-14 | chore: create remediation tracker s31 |
-| Blockers | 111013e | 2026-03-14 | fix: B-03 coming-soon, B-04 real API hooks |
-| HIGH quick | b81ca33 | 2026-03-14 | fix: H-05 logError, H-06 debug logs, H-08 fail-open |
-| HIGH remaining | 74f7dfc | 2026-03-14 | fix: H-04 as-any, H-07 loading.tsx x11, H-09 session, H-10 timeout |
-| Tests | 29ca48f | 2026-03-14 | test: H-01 rate-limit, H-02 cron-auth, H-03 create-order |
-| MEDIUM | 79b9c37 | 2026-03-14 | fix: M-02 cache, M-03 logging, M-04 double-submit, M-05 email, M-06 delete |
-| LOW+A11y | 3468926 | 2026-03-14 | fix: M-08 a11y, L-03 next/image |
-| E2E | 288abe4 | 2026-03-14 | test: E2E regression tests for s31 |
+| P1 | — | 2026-03-15 | Create tracker |
