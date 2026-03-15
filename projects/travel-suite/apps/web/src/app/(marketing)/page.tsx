@@ -9,6 +9,7 @@ import { LeadMagnetSection } from "@/components/marketing/LeadMagnetSection";
 import { BeforeAfterSection } from "@/components/marketing/sections/BeforeAfterSection";
 import { ProposalPreviewSection } from "@/components/marketing/sections/ProposalPreviewSection";
 import { FinalCTASection } from "@/components/marketing/sections/FinalCTASection";
+import { SwipeCardStack } from "@/components/marketing/sections/SwipeCardStack";
 import { SectionDivider, AnimatedFlightPath } from "@/components/marketing/effects";
 
 // GSAP-dependent sections must be dynamically imported (no SSR)
@@ -61,6 +62,7 @@ export default function HomePage() {
       <ProposalPreviewSection />
       <LivePulseSection />
       <InteractiveDemo />
+      <SwipeCardStack />
       <Testimonials />
       <LeadMagnetSection />
       <SectionDivider variant="wave" flip />
