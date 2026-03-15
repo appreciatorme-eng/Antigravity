@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Zap, XCircle, CheckCircle2 } from "lucide-react";
 import { FadeInOnScroll } from "@/components/marketing/effects";
+import { BeforeAfterInteractive } from "./BeforeAfterInteractive";
 
 const oldWayItems = [
   { text: "Client details scattered across 5 WhatsApp groups", icon: "..." },
@@ -41,7 +42,12 @@ export function BeforeAfterSection() {
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="mt-12 hidden md:block">
+          <BeforeAfterInteractive oldWayItems={oldWayItems} newWayItems={newWayItems} />
+        </div>
+
+        {/* MOBILE FALLBACK: Stack them normally on small screens since swiping content is tricky when vertical scrolling */}
+        <div className="grid md:hidden gap-6">
           {/* OLD WAY */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -71,7 +77,7 @@ export function BeforeAfterSection() {
             ))}
           </motion.div>
 
-          {/* TRAVELSUITE WAY */}
+          {/* TRAVELSUILT WAY */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}

@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { ArrowRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { MagneticButton } from "@/components/marketing/effects";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -147,18 +148,20 @@ export function HeroSection() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="pt-6 pointer-events-auto"
           >
-            <Link
-              href="/login"
-              className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)] no-underline"
-            >
-              <ShinyText
-                text="Experience the Magic"
-                speed={2.5}
-                color="#ffffff"
-                shineColor="#FFEBCC"
-              />
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            <MagneticButton strength={0.4}>
+              <Link
+                href="/login"
+                className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-300 ease-in-out bg-[#FF9933] rounded-full hover:bg-[#FFB366] hover:scale-105 hover:shadow-[0_0_40px_rgba(255,153,51,0.6)] no-underline"
+              >
+                <ShinyText
+                  text="Experience the Magic"
+                  speed={2.5}
+                  color="#ffffff"
+                  shineColor="#FFEBCC"
+                />
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </MagneticButton>
           </motion.div>
         </div>
       </section>

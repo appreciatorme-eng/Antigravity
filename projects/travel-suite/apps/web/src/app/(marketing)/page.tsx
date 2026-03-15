@@ -9,7 +9,7 @@ import { LeadMagnetSection } from "@/components/marketing/LeadMagnetSection";
 import { BeforeAfterSection } from "@/components/marketing/sections/BeforeAfterSection";
 import { ProposalPreviewSection } from "@/components/marketing/sections/ProposalPreviewSection";
 import { FinalCTASection } from "@/components/marketing/sections/FinalCTASection";
-import { SectionDivider } from "@/components/marketing/effects";
+import { SectionDivider, AnimatedFlightPath } from "@/components/marketing/effects";
 
 // GSAP-dependent sections must be dynamically imported (no SSR)
 const HeroSection = dynamic(
@@ -49,6 +49,7 @@ export default function HomePage() {
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <ForceFieldBackground id="tsparticles-global" />
       </div>
+      <AnimatedFlightPath />
       <main className="relative z-10 min-h-[300vh] bg-transparent text-white overflow-hidden">
         <HeroSection />
         <SectionDivider variant="wave" />

@@ -6,3 +6,5 @@ export { SectionDivider } from './SectionDivider';
 export { CounterAnimation } from './CounterAnimation';
 export { ParallaxLayer } from './ParallaxLayer';
 export { FadeInOnScroll } from './FadeInOnScroll';
+export { AnimatedFlightPath } from './AnimatedFlightPath';
+export { SpotlightCard } from './SpotlightCard';
