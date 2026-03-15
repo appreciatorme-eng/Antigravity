@@ -12,15 +12,15 @@ import type { Application } from '@splinetool/runtime';
  * Each screen is positioned as % of the container so they stay in view.
  */
 const screens = [
-  // Row 1: two screens at top — positioned right of center for full-width container
-  { src: '/marketing/dashboard_ui_mockup_1773059467134.png', alt: 'Dashboard',  top: '4%',  left: '32%', w: 38, h: 22, rz: -2,  delay: 0.05 },
-  { src: '/marketing/analytics_ui_mockup_1773062281103.png', alt: 'Analytics',  top: '2%',  left: '62%', w: 30, h: 18, rz: 2.5, delay: 0.15 },
+  // Row 1: two screens at top
+  { src: '/marketing/dashboard_ui_mockup_1773059467134.png', alt: 'Dashboard',  top: '4%',  left: '-8%', w: 48, h: 27, rz: -2,  delay: 0.05 },
+  { src: '/marketing/analytics_ui_mockup_1773062281103.png', alt: 'Analytics',  top: '2%',  left: '35%', w: 38, h: 22, rz: 2.5, delay: 0.15 },
   // Row 2: two screens in middle (largest)
-  { src: '/marketing/crm_ui_mockup_1773059519930.png',       alt: 'CRM',        top: '33%', left: '30%', w: 40, h: 24, rz: -1,  delay: 0.1 },
-  { src: '/marketing/booking_ui_mockup_1773059498138.png',   alt: 'Bookings',   top: '34%', left: '60%', w: 32, h: 20, rz: 2,   delay: 0.2 },
+  { src: '/marketing/crm_ui_mockup_1773059519930.png',       alt: 'CRM',        top: '33%', left: '-10%',w: 52, h: 30, rz: -1,  delay: 0.1 },
+  { src: '/marketing/booking_ui_mockup_1773059498138.png',   alt: 'Bookings',   top: '34%', left: '36%', w: 40, h: 24, rz: 2,   delay: 0.2 },
   // Row 3: two screens at bottom
-  { src: '/marketing/itinerary_ui_mockup_1773062264651.png', alt: 'Itinerary',  top: '65%', left: '34%', w: 35, h: 20, rz: -1.5,delay: 0.25 },
-  { src: '/marketing/invoicing_ui_mockup_1773062297390.png', alt: 'Invoicing',  top: '66%', left: '60%', w: 28, h: 17, rz: 1.5, delay: 0.3 },
+  { src: '/marketing/itinerary_ui_mockup_1773062264651.png', alt: 'Itinerary',  top: '65%', left: '-6%', w: 44, h: 25, rz: -1.5,delay: 0.25 },
+  { src: '/marketing/invoicing_ui_mockup_1773062297390.png', alt: 'Invoicing',  top: '66%', left: '33%', w: 36, h: 21, rz: 1.5, delay: 0.3 },
 ];
 
 interface HeroScreensProps {
@@ -81,7 +81,8 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      position: 'absolute', top: 0, right: 0,
+      width: '60%', height: '100%',
       overflow: 'visible', zIndex: 10,
     }}>
 
@@ -139,7 +140,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: '-5%', bottom: '-5%', left: '-15%', right: '-5%',
           opacity: splineLoaded ? 0.92 : 0,
           transition: 'opacity 1.5s ease-in-out',
           pointerEvents: splineLoaded ? 'auto' : 'none',

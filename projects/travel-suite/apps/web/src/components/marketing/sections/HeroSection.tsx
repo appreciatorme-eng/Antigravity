@@ -57,8 +57,8 @@ export function HeroSection() {
         <div
           className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden"
           style={{
-            width: "55%",
-            height: "70%",
+            width: "45%",
+            height: "60%",
             maskImage:
               "linear-gradient(to right, black 65%, transparent 100%)",
             WebkitMaskImage:
@@ -75,8 +75,8 @@ export function HeroSection() {
         <div
           className="absolute bottom-0 left-0 z-[15] pointer-events-none overflow-hidden"
           style={{
-            width: "60%",
-            height: "55%",
+            width: "50%",
+            height: "45%",
             maskImage:
               "linear-gradient(to right, black 70%, transparent 100%), linear-gradient(to top, black 40%, transparent 100%)",
             WebkitMaskImage:
@@ -94,7 +94,7 @@ export function HeroSection() {
         <div className="absolute inset-0 z-[10] pointer-events-none">
           <motion.div
             style={{ y: yParallax }}
-            className="w-full h-full relative z-10 pointer-events-auto"
+            className="w-full h-[120%] -top-20 relative z-10 pointer-events-auto"
           >
             <HeroScreens />
           </motion.div>
