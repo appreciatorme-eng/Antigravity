@@ -145,7 +145,7 @@ export function Navbar() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Account Login
+              Agent Login
             </Link>
           </div>
 
@@ -216,7 +216,7 @@ export function Navbar() {
                 <ThemeToggle />
               </div>
               <Link href="/auth" onClick={() => setMobileOpen(false)} className="text-center p-4 rounded-full text-base font-semibold text-[#00F0FF] border-2 border-[#00F0FF]/40 hover:bg-[#00F0FF]/10 transition-colors">
-                Account Login
+                Agent Login
               </Link>
             </div>
           </motion.div>

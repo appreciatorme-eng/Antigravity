@@ -100,8 +100,8 @@ function AuthPageContent() {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg mb-4 transform hover:rotate-3 transition-transform duration-300">
                         <Plane className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-3xl font-serif text-secondary tracking-tight">GoBuddy Adventures</h1>
-                    <p className="text-gray-500 mt-2 font-light">Your AI-powered travel companion</p>
+                    <h1 className="text-3xl font-serif text-secondary tracking-tight">TravelBuilt OS</h1>
+                    <p className="text-gray-500 mt-2 font-light">The all-in-one operating system for modern travel professionals</p>
                 </div>
 
                 {/* Auth Card */}
@@ -116,7 +116,7 @@ function AuthPageContent() {
                                     : "text-gray-500 hover:text-gray-700 hover:bg-gray-100/50"
                                     }`}
                             >
-                                Sign In
+                                Agent Login
                             </button>
                             <button
                                 onClick={() => setMode("signup")}
@@ -125,7 +125,7 @@ function AuthPageContent() {
                                     : "text-gray-500 hover:text-gray-700 hover:bg-gray-100/50"
                                     }`}
                             >
-                                Create Account
+                                Create Agent account
                             </button>
                         </div>
 
@@ -208,7 +208,7 @@ function AuthPageContent() {
                                 className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                             >
                                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                                {mode === "login" ? "Sign In" : "Create Account"}
+                                {mode === "login" ? "Agent Login" : "Create Agent account"}
                             </Button>
                         </form>
 

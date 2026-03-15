@@ -32,8 +32,7 @@ export const metadata: Metadata = {
     template: "%s | TravelBuilt",
     default: "TravelBuilt | Build Your Travel Empire",
   },
-  description:
-    "The all-in-one operating system for modern Indian tour operators. Proposals, CRM, WhatsApp automation, invoicing — from one screen.",
+  description: "Create instant packages, share stunning white label itineraries, and get them closed ASAP. The ultimate operating system for modern travel professionals.",
   keywords: [
     "tour operator software",
     "travel agency CRM",

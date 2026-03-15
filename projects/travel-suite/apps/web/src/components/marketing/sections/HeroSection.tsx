@@ -126,7 +126,7 @@ export function HeroSection() {
 
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight text-glow-aqua">
               Run Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF9933] to-[#FFD699]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] via-[#0088FF] to-[#00F0FF] animate-text-shimmer">
                 Travel Empire.
               </span>
             </h1>
@@ -138,8 +138,7 @@ export function HeroSection() {
             transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
             className="text-lg md:text-2xl text-gray-400 font-light max-w-2xl"
           >
-            No more messy PDFs. No more lost WhatsApp chats. The all-in-one
-            operating system for modern Indian tour operators.
+            Create instant packages, share stunning white-label itineraries, and get them closed ASAP. The all-in-one operating system for modern travel professionals.
           </motion.p>
 
           <motion.div
