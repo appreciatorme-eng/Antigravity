@@ -46,11 +46,14 @@ interface PreferenceItem {
 }
 
 function formatBudgetRange(min?: number | null, max?: number | null): string | null {
-  if (min == null && max == null) return null;
+  const minMissing = min === null || min === undefined;
+  const maxMissing = max === null || max === undefined;
+  if (minMissing && maxMissing) return null;
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
-  if (min != null && max != null) return `${fmt(min)} – ${fmt(max)}`;
-  if (min != null) return `From ${fmt(min)}`;
-  return `Up to ${fmt(max!)}`;
+  if (!minMissing && !maxMissing) return `${fmt(min)} – ${fmt(max)}`;
+  if (!minMissing) return `From ${fmt(min)}`;
+  if (!maxMissing) return `Up to ${fmt(max)}`;
+  return null;
 }
 
 function buildPreferences(client: TripProfile): readonly PreferenceItem[] {

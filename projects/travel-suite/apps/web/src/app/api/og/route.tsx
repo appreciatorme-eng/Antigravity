@@ -1,13 +1,45 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "edge";
 
+function getRequestIp(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function sanitizeOgText(value: string | null, fallback: string, maxLength: number): string {
+  const normalized = (value || fallback).replace(/[\u0000-\u001F\u007F]/g, " ").trim();
+  if (!normalized) return fallback;
+  return normalized.length > maxLength ? normalized.slice(0, maxLength).trim() : normalized;
+}
+
 export async function GET(request: NextRequest) {
+  const rateLimit = await enforceRateLimit({
+    identifier: getRequestIp(request),
+    limit: 60,
+    windowMs: 60_000,
+    prefix: "api:og:get",
+  });
+  if (!rateLimit.success) {
+    return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+      status: 429,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title") ?? "TravelBuilt";
-  const subtitle =
-    searchParams.get("subtitle") ?? "Build Your Travel Empire";
+  const title = sanitizeOgText(searchParams.get("title"), "TravelBuilt", 120);
+  const subtitle = sanitizeOgText(
+    searchParams.get("subtitle"),
+    "Build Your Travel Empire",
+    180,
+  );
 
   return new ImageResponse(
     (

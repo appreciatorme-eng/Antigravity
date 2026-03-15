@@ -223,7 +223,7 @@ const RequestSchema = z.object({
 });
 
 
-export async function POST(req: NextRequest) {
+async function handleGenerateItineraryPost(req: NextRequest) {
     // 1. Authentication Check
     const serverClient = await createServerClient();
     const { data: { user } } = await serverClient.auth.getUser();
@@ -748,4 +748,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         void trackOrgAiUsage(user.id, "fallback", 0);
         return NextResponse.json(await buildFallbackItinerary(prompt, days));
     }
+}
+
+export async function POST(req: NextRequest) {
+    return handleGenerateItineraryPost(req);
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-response";
-import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { sendBookingConfirmation } from "@/lib/email/notifications";
 import { getNextInvoiceNumber } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -45,8 +44,6 @@ const PROPOSAL_CONVERT_SELECT = [
     "tour_templates(destination)",
 ].join(", ");
 
-const supabaseAdmin = createAdminClient();
-
 function normalizeTemplateDestination(
     tourTemplates: { destination?: string | null } | { destination?: string | null }[] | null
 ): string {
@@ -64,52 +61,23 @@ function normalizeTemplateDestination(
     return "Unknown Destination";
 }
 
-async function getAdminUserId(req: Request) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
-
-    if (token) {
-        const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-        if (!authError && authData?.user) {
-            return authData.user.id;
-        }
-    }
-
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    return user?.id || null;
-}
-
-async function requireAdmin(req: Request) {
-    const adminUserId = await getAdminUserId(req);
-    if (!adminUserId) {
-        return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-    }
-
-    const { data: adminProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, organization_id")
-        .eq("id", adminUserId)
-        .single();
-
-    if (!adminProfile || adminProfile.role !== "admin") {
-        return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
-    if (!adminProfile.organization_id) {
-        return { error: NextResponse.json({ error: "Admin organization not configured" }, { status: 400 }) };
-    }
-
-    return { userId: adminUserId, organizationId: adminProfile.organization_id };
-}
-
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id: proposalId } = await params;
-        const admin = await requireAdmin(req);
-        if ("error" in admin) return admin.error;
+        const auth = await requireAdmin(req, { requireOrganization: true });
+        if (!auth.ok) {
+            return auth.response;
+        }
+        if (!auth.organizationId) {
+            return apiError("Admin organization not configured", 400);
+        }
+
+        const supabaseAdmin = auth.adminClient;
+        const organizationId = auth.organizationId;
+        const adminUserId = auth.userId;
         const body = await req.json();
         const startDateStr = String(body.startDate || "");
 
@@ -126,7 +94,7 @@ export async function POST(
             .from("proposals")
             .select(PROPOSAL_CONVERT_SELECT)
             .eq("id", proposalId)
-            .eq("organization_id", admin.organizationId)
+            .eq("organization_id", organizationId)
             .single();
         const proposalRow = proposal as unknown as ProposalConvertRow | null;
 
@@ -227,7 +195,7 @@ export async function POST(
             .from("trips")
             .insert({
                 client_id: proposalRow.client_id,
-                organization_id: admin.organizationId,
+                organization_id: organizationId,
                 start_date: startDate.toISOString().split('T')[0],
                 end_date: endDate.toISOString().split('T')[0],
                 status: "confirmed", // Auto-confirm since it came from an approved proposal
@@ -250,12 +218,12 @@ export async function POST(
         // 7. Auto-create draft invoice linked to the new trip
         let invoiceId: string | null = null;
         try {
-            const invoiceNumber = await getNextInvoiceNumber(supabaseAdmin, admin.organizationId);
+            const invoiceNumber = await getNextInvoiceNumber(supabaseAdmin, organizationId);
             const totalAmount = Number(proposalRow.client_selected_price ?? proposalRow.total_price ?? 0);
             const { data: invoiceData } = await supabaseAdmin
                 .from("invoices")
                 .insert({
-                    organization_id: admin.organizationId,
+                    organization_id: organizationId,
                     client_id: proposalRow.client_id || null,
                     trip_id: insertedTrip.id,
                     invoice_number: invoiceNumber,
@@ -283,12 +251,12 @@ export async function POST(
             supabaseAdmin
                 .from("profiles")
                 .select("full_name, email")
-                .eq("id", admin.userId)
+                .eq("id", adminUserId)
                 .maybeSingle(),
             supabaseAdmin
                 .from("organizations")
                 .select("name")
-                .eq("id", admin.organizationId)
+                .eq("id", organizationId)
                 .maybeSingle(),
         ]);
 

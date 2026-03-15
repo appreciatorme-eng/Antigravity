@@ -33,9 +33,11 @@ export default function SlideOutPanel({ open, onClose, title, children, width = 
 
     return (
         <>
-            <div
+            <button
+                type="button"
                 className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
                 onClick={onClose}
+                aria-label="Close panel"
             />
             <div className={cn(
                 "fixed right-0 top-0 h-full bg-gray-900 border-l border-gray-700 z-50 flex flex-col",

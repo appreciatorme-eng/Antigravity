@@ -16,7 +16,7 @@ type HandlerFn = (
   req: NextRequest,
   ctx: HandlerContext,
 ) => Response | Promise<Response | undefined> | undefined;
-type HandlerModule = Partial<Record<HandlerMethod, unknown>>;
+type HandlerModule = Record<string, unknown>;
 type RouteEntry = [string, () => Promise<HandlerModule>];
 
 export interface DispatcherRateLimitConfig {
@@ -109,7 +109,11 @@ async function dispatch(
 
     const isMutation = method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE";
     const routePath = pathParts.join("/");
-    const csrfExempt = routePath.startsWith("webhook") || routePath.startsWith("cron/") || routePath === "payments/webhook" || routePath === "webhooks/waha";
+    const csrfExempt =
+      routePath.startsWith("cron/") ||
+      routePath === "payments/webhook" ||
+      routePath === "whatsapp/webhook" ||
+      routePath.startsWith("webhooks/");
     if (isMutation && !csrfExempt && !passesMutationCsrfGuard(req)) {
       return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
     }

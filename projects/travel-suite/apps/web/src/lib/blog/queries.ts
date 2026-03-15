@@ -23,7 +23,7 @@ export type BlogPostSummary = Pick<
 
 // blog_posts is not yet in the generated database types (migration pending).
 // Use an untyped .from() call via `as never` to bypass the type checker.
-// TODO: Remove these casts after regenerating database.types.ts
+// TODO(blog,S33-A17-2): Remove these casts after regenerating database.types.ts.
 
 export async function getAllPublishedPosts(): Promise<{ data: BlogPostSummary[] | null; error: string | null }> {
   try {

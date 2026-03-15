@@ -232,7 +232,13 @@ export async function handleWhatsAppMessage(
         { role: "user" as const, content: sanitizedText },
         { role: "assistant" as const, content: confirmReply },
       ];
-      await updateSessionHistory(ctx, session.id, updatedHistory).catch(() => {});
+      await updateSessionHistory(ctx, session.id, updatedHistory).catch((historyError) => {
+        console.error("[assistant/whatsapp] failed to persist confirmation history", {
+          sessionId: session.id,
+          organizationId: ctx.organizationId,
+          error: historyError instanceof Error ? historyError.message : String(historyError),
+        });
+      });
 
       const formatted = formatForWhatsApp(confirmReply);
       await sendWhatsAppText(senderPhone, formatted);
@@ -271,7 +277,13 @@ export async function handleWhatsAppMessage(
       { role: "user" as const, content: sanitizedText },
       { role: "assistant" as const, content: replyText },
     ];
-    await updateSessionHistory(ctx, session.id, updatedHistory).catch(() => {});
+    await updateSessionHistory(ctx, session.id, updatedHistory).catch((historyError) => {
+      console.error("[assistant/whatsapp] failed to persist conversation history", {
+        sessionId: session.id,
+        organizationId: ctx.organizationId,
+        error: historyError instanceof Error ? historyError.message : String(historyError),
+      });
+    });
 
     // 8. Send reply via WhatsApp
     const formatted = formatForWhatsApp(replyText);

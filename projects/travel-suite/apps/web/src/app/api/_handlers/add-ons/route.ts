@@ -39,6 +39,9 @@ export async function GET(request: Request) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const cursor = searchParams.get("cursor") || null;
+    const limitRaw = Number(searchParams.get("limit") || "50");
+    const limit = Math.min(Math.max(1, Number.isNaN(limitRaw) ? 50 : limitRaw), 100);
 
     // Build query
     let query = supabase
@@ -51,8 +54,11 @@ export async function GET(request: Request) {
     if (category && category !== 'All') {
       query = query.eq('category', category);
     }
+    if (cursor) {
+      query = query.lt("created_at", cursor);
+    }
 
-    const { data: addOnsData, error } = await query;
+    const { data: addOnsData, error } = await query.limit(limit);
     const addOns = addOnsData as unknown as AddOnRow[] | null;
 
     if (error) {
@@ -60,7 +66,9 @@ export async function GET(request: Request) {
       return apiError("Failed to fetch add-ons", 500);
     }
 
-    return NextResponse.json({ addOns });
+    const rows = addOns ?? [];
+    const nextCursor = rows.length === limit ? rows[rows.length - 1]?.created_at ?? null : null;
+    return NextResponse.json({ addOns: rows, nextCursor, hasMore: nextCursor !== null });
   } catch (error) {
     console.error('Error in GET /api/add-ons:', error);
     return apiError('Internal server error', 500);

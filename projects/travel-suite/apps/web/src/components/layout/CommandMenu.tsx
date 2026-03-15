@@ -22,9 +22,11 @@ export function CommandMenu() {
 
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/20 backdrop-blur-sm">
-            <div
+            <button
+                type="button"
                 className="fixed inset-0"
                 onClick={() => setCommandMenuOpen(false)}
+                aria-label="Close command menu"
             />
 
             <div className="relative w-full max-w-xl mx-4 overflow-hidden bg-white/90 dark:bg-[#0a1628]/90 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 duration-200">

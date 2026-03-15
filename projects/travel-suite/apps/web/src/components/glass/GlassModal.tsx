@@ -134,19 +134,21 @@ export function GlassModal({
   };
 
   const modalContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8"
-      onClick={(e) => {
-        if (closeOnBackdrop && e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        aria-hidden="true"
-      />
+      {closeOnBackdrop ? (
+        <button
+          type="button"
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in cursor-default"
+          onClick={onClose}
+          aria-label="Close modal"
+        />
+      ) : (
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+          aria-hidden="true"
+        />
+      )}
 
       {/* Modal */}
       <div

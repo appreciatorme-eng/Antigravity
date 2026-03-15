@@ -18,10 +18,14 @@ const AvailabilityCreateSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const adminResult = await requireAdmin(request);
+    const adminResult = await requireAdmin(request, { requireOrganization: true });
     if (!adminResult.ok) {
       return adminResult.response;
     }
+    if (!adminResult.organizationId) {
+      return apiError("Admin organization not configured", 400);
+    }
+    const organizationId = adminResult.organizationId;
 
     const rateLimit = await enforceRateLimit({
       identifier: adminResult.userId,
@@ -49,7 +53,7 @@ export async function GET(request: Request) {
     const { data, error } = await admin
       .from("operator_unavailability")
       .select("id, start_date, end_date, reason, created_at")
-      .eq("organization_id", adminResult.organizationId!)
+      .eq("organization_id", organizationId)
       .lte("start_date", parsed.data.to)
       .gte("end_date", parsed.data.from)
       .order("start_date", { ascending: true });
@@ -77,10 +81,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAdmin(request);
+    const admin = await requireAdmin(request, { requireOrganization: true });
     if (!admin.ok) {
       return admin.response;
     }
+    if (!admin.organizationId) {
+      return apiError("Admin organization not configured", 400);
+    }
+    const organizationId = admin.organizationId;
 
     const rateLimit = await enforceRateLimit({
       identifier: admin.userId,
@@ -110,7 +118,7 @@ export async function POST(request: Request) {
     const { data, error } = await admin.adminClient
       .from("operator_unavailability")
       .insert({
-        organization_id: admin.organizationId!,
+        organization_id: organizationId,
         start_date: parsed.data.start_date,
         end_date: parsed.data.end_date,
         reason: parsed.data.reason?.trim() || null,
@@ -138,10 +146,14 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const admin = await requireAdmin(request);
+    const admin = await requireAdmin(request, { requireOrganization: true });
     if (!admin.ok) {
       return admin.response;
     }
+    if (!admin.organizationId) {
+      return apiError("Admin organization not configured", 400);
+    }
+    const organizationId = admin.organizationId;
 
     const rateLimit = await enforceRateLimit({
       identifier: admin.userId,
@@ -166,7 +178,7 @@ export async function DELETE(request: Request) {
       .from("operator_unavailability")
       .delete()
       .eq("id", id)
-      .eq("organization_id", admin.organizationId!);
+      .eq("organization_id", organizationId);
 
     if (error) {
       console.error("[availability] failed to delete blocked dates:", error);

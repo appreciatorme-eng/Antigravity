@@ -84,11 +84,15 @@ function PhoneMockup({ preset, templateData, dims, onClose }: PhoneMockupProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/85 z-30 flex items-center justify-center p-4"
-            onClick={onClose}
         >
+            <button
+                type="button"
+                className="absolute inset-0"
+                onClick={onClose}
+                aria-label="Close preview"
+            />
             <div
-                className="relative w-[190px] bg-black rounded-[32px] p-[5px] shadow-2xl border-[2px] border-slate-700"
-                onClick={e => e.stopPropagation()}
+                className="relative z-10 w-[190px] bg-black rounded-[32px] p-[5px] shadow-2xl border-[2px] border-slate-700"
             >
                 {/* Notch */}
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-3 bg-black rounded-full z-10 border border-slate-600" />
