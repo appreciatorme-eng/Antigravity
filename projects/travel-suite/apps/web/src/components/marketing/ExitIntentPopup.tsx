@@ -50,7 +50,7 @@ export function ExitIntentPopup() {
 
                         <button
                             onClick={() => setIsVisible(false)}
-                            className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white transition-colors bg-white/5 rounded-full hover:bg-white/10 z-10"
+                            className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white transition-colors bg-white/5 rounded-full hover:bg-white/10 z-50 cursor-pointer"
                         >
                             <X size={20} />
                         </button>
