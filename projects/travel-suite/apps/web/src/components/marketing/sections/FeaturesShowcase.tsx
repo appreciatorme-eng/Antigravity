@@ -18,7 +18,8 @@ import { TiltCard, FadeInOnScroll, SpotlightCard } from "@/components/marketing/
 /* ─── Feature 1: Magic Link Proposals ─── */
 function MagicLinkFeature() {
   return (
-    <SpotlightCard className="grid md:grid-cols-2 gap-10 md:gap-16 items-center p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+    <SpotlightCard className="p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
       <FadeInOnScroll>
         <div className="space-y-6 reveal-text">
           <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#00F0FF]">
@@ -166,6 +167,7 @@ function MagicLinkFeature() {
         </motion.div>
       </div>
       </TiltCard>
+      </div>
     </SpotlightCard>
   );
 }
@@ -173,7 +175,8 @@ function MagicLinkFeature() {
 /* ─── Feature 2: WhatsApp Engine ─── */
 function WhatsAppFeature() {
   return (
-    <SpotlightCard className="grid md:grid-cols-2 gap-10 md:gap-16 items-center p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+    <SpotlightCard className="p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
       <div className="order-2 md:order-1 relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FF9933]/10 to-transparent">
         <motion.div
           initial={{ opacity: 0, x: -50 }}
@@ -212,6 +215,7 @@ function WhatsAppFeature() {
           </p>
         </div>
       </FadeInOnScroll>
+      </div>
     </SpotlightCard>
   );
 }
@@ -240,7 +244,8 @@ const addons = [
 
 function AddonsFeature() {
   return (
-    <SpotlightCard className="grid md:grid-cols-2 gap-10 md:gap-16 items-center p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+    <SpotlightCard className="p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
       <FadeInOnScroll>
         <div className="space-y-6 reveal-text">
           <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff99d6]">
@@ -298,6 +303,7 @@ function AddonsFeature() {
           ))}
         </CardSwap>
       </div>
+      </div>
     </SpotlightCard>
   );
 }
@@ -305,7 +311,8 @@ function AddonsFeature() {
 /* ─── Feature 4: Intelligent Client CRM ─── */
 function CRMFeature() {
   return (
-    <SpotlightCard className="grid md:grid-cols-2 gap-10 md:gap-16 items-center p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+    <SpotlightCard className="p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
       <div
         className="order-2 md:order-1 relative h-[500px] w-full glass-card rounded-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#A259FF]/10 to-transparent group"
         style={{ perspective: "1000px" }}
@@ -391,6 +398,7 @@ function CRMFeature() {
           </p>
         </div>
       </FadeInOnScroll>
+      </div>
     </SpotlightCard>
   );
 }
@@ -398,7 +406,8 @@ function CRMFeature() {
 /* ─── Feature 5: Drag & Drop Builder ─── */
 function BuilderFeature() {
   return (
-    <SpotlightCard className="grid md:grid-cols-2 gap-10 md:gap-16 items-center p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+    <SpotlightCard className="p-6 md:p-10 rounded-[40px] border border-white/5 bg-white/[0.02]">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
       <FadeInOnScroll>
         <div className="space-y-6 reveal-text">
           <div className="w-16 h-16 rounded-2xl glass-card flex items-center justify-center text-[#ff3366]">
@@ -490,6 +499,7 @@ function BuilderFeature() {
             </motion.div>
           </div>
         </div>
+      </div>
       </div>
     </SpotlightCard>
   );
