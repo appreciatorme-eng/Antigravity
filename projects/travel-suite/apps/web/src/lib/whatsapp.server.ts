@@ -1,6 +1,55 @@
 import "server-only";
 
+import { z } from "zod";
 import { logError } from "@/lib/observability/logger";
+
+// ─── Webhook Payload Schemas ────────────────────────────────────────────────
+// Meta Cloud API delivers webhook payloads in a nested envelope structure.
+// We validate the shape with Zod before accessing fields to avoid unsafe casts.
+
+const _WhatsAppMsgBaseSchema = z.object({
+    from: z.string(),
+    id: z.string(),
+    type: z.string(),
+    timestamp: z.string(),
+});
+
+const _WhatsAppWebhookEnvelopeSchema = z.object({
+    entry: z.array(z.object({
+        changes: z.array(z.object({
+            value: z.object({
+                messages: z.array(_WhatsAppMsgBaseSchema.passthrough()).optional(),
+            }).passthrough().optional(),
+        })).optional(),
+    })).optional(),
+});
+
+const _WhatsAppLocationMsgSchema = _WhatsAppMsgBaseSchema.extend({
+    type: z.literal("location"),
+    location: z.object({
+        latitude: z.number(),
+        longitude: z.number(),
+        name: z.string().optional(),
+        address: z.string().optional(),
+    }),
+});
+
+const _WhatsAppImageMsgSchema = _WhatsAppMsgBaseSchema.extend({
+    type: z.literal("image"),
+    image: z.object({
+        id: z.string(),
+        caption: z.string().optional(),
+        mime_type: z.string().optional(),
+    }),
+});
+
+const _WhatsAppTextMsgSchema = _WhatsAppMsgBaseSchema.extend({
+    type: z.literal("text"),
+    text: z.object({
+        body: z.string(),
+    }),
+});
+// ────────────────────────────────────────────────────────────────────────────
 
 export interface WhatsAppSendResult {
     success: boolean;
@@ -161,44 +210,32 @@ export async function sendWhatsAppTemplate(
 }
 
 export function parseWhatsAppLocationMessages(payload: unknown): WhatsAppLocationMessage[] {
-    const body = payload as {
-        entry?: Array<{ changes?: Array<{ value?: { messages?: Array<Record<string, unknown>> } }> }>;
-    };
+    const envelope = _WhatsAppWebhookEnvelopeSchema.safeParse(payload);
+    if (!envelope.success) {
+        logError("[whatsapp] Invalid webhook payload (location)", envelope.error);
+        return [];
+    }
 
-    const entries = body.entry || [];
     const output: WhatsAppLocationMessage[] = [];
-
-    for (const entry of entries) {
-        const changes = entry.changes || [];
-        for (const change of changes) {
-            const messages = change.value?.messages || [];
-            for (const message of messages) {
-                if (message.type !== "location") continue;
-
-                const location = message.location as Record<string, unknown> | undefined;
-                const from = typeof message.from === "string" ? message.from : "";
-                const messageId = typeof message.id === "string" ? message.id : "";
-                const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";
-
-                const latitude = Number(location?.latitude);
-                const longitude = Number(location?.longitude);
-                if (!from || !messageId || Number.isNaN(latitude) || Number.isNaN(longitude)) {
-                    continue;
-                }
-
+    for (const entry of (envelope.data.entry ?? [])) {
+        for (const change of (entry.changes ?? [])) {
+            for (const rawMsg of (change.value?.messages ?? [])) {
+                if (rawMsg.type !== "location") continue;
+                const msg = _WhatsAppLocationMsgSchema.safeParse(rawMsg);
+                if (!msg.success) continue;
+                const { from, id, location, timestamp } = msg.data;
                 output.push({
                     waId: normalizeWaId(from),
-                    messageId,
-                    latitude,
-                    longitude,
-                    name: typeof location?.name === "string" ? location.name : undefined,
-                    address: typeof location?.address === "string" ? location.address : undefined,
+                    messageId: id,
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    name: location.name,
+                    address: location.address,
                     timestamp,
                 });
             }
         }
     }
-
     return output;
 }
 
@@ -219,31 +256,23 @@ export interface WhatsAppTextMessage {
 }
 
 export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessage[] {
-    const body = payload as {
-        entry?: Array<{ changes?: Array<{ value?: { messages?: Array<Record<string, unknown>> } }> }>;
-    };
-    const entries = body.entry || [];
+    const envelope = _WhatsAppWebhookEnvelopeSchema.safeParse(payload);
+    if (!envelope.success) {
+        logError("[whatsapp] Invalid webhook payload (image)", envelope.error);
+        return [];
+    }
+
     const output: WhatsAppImageMessage[] = [];
-
-    for (const entry of entries) {
-        const changes = entry.changes || [];
-        for (const change of changes) {
-            const messages = change.value?.messages || [];
-            for (const message of messages) {
-                if (message.type !== "image") continue;
-
-                const image = message.image as { id?: string; caption?: string; mime_type?: string } | undefined;
-                const from = typeof message.from === "string" ? message.from : "";
-                const messageId = typeof message.id === "string" ? message.id : "";
-                const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";
-
-                if (!from || !messageId || !image?.id) {
-                    continue;
-                }
-
+    for (const entry of (envelope.data.entry ?? [])) {
+        for (const change of (entry.changes ?? [])) {
+            for (const rawMsg of (change.value?.messages ?? [])) {
+                if (rawMsg.type !== "image") continue;
+                const msg = _WhatsAppImageMsgSchema.safeParse(rawMsg);
+                if (!msg.success) continue;
+                const { from, id, image, timestamp } = msg.data;
                 output.push({
                     waId: normalizeWaId(from),
-                    messageId,
+                    messageId: id,
                     imageId: image.id,
                     caption: image.caption,
                     mimeType: image.mime_type,
@@ -252,45 +281,33 @@ export function parseWhatsAppImageMessages(payload: unknown): WhatsAppImageMessa
             }
         }
     }
-
     return output;
 }
 
 export function parseWhatsAppTextMessages(payload: unknown): WhatsAppTextMessage[] {
-    const body = payload as {
-        entry?: Array<{ changes?: Array<{ value?: { messages?: Array<Record<string, unknown>> } }> }>;
-    };
+    const envelope = _WhatsAppWebhookEnvelopeSchema.safeParse(payload);
+    if (!envelope.success) {
+        logError("[whatsapp] Invalid webhook payload (text)", envelope.error);
+        return [];
+    }
 
-    const entries = body.entry || [];
     const output: WhatsAppTextMessage[] = [];
-
-    for (const entry of entries) {
-        const changes = entry.changes || [];
-        for (const change of changes) {
-            const messages = change.value?.messages || [];
-            for (const message of messages) {
-                if (message.type !== "text") continue;
-
-                const text = message.text as Record<string, unknown> | undefined;
-                const from = typeof message.from === "string" ? message.from : "";
-                const messageId = typeof message.id === "string" ? message.id : "";
-                const textBody = typeof text?.body === "string" ? text.body : "";
-                const timestamp = typeof message.timestamp === "string" ? message.timestamp : "";
-
-                if (!from || !messageId || !textBody) {
-                    continue;
-                }
-
+    for (const entry of (envelope.data.entry ?? [])) {
+        for (const change of (entry.changes ?? [])) {
+            for (const rawMsg of (change.value?.messages ?? [])) {
+                if (rawMsg.type !== "text") continue;
+                const msg = _WhatsAppTextMsgSchema.safeParse(rawMsg);
+                if (!msg.success) continue;
+                const { from, id, text, timestamp } = msg.data;
                 output.push({
                     waId: normalizeWaId(from),
-                    messageId,
-                    body: textBody,
+                    messageId: id,
+                    body: text.body,
                     timestamp,
                 });
             }
         }
     }
-
     return output;
 }
 
