@@ -23,7 +23,7 @@ export async function sendWelcomeEmail(payload: WelcomeEmailPayload): Promise<We
 
     const subject = "Welcome to Travel Suite";
     const greetingName = payload.fullName?.trim() || "there";
-    const loginUrl = payload.loginUrl || "https://your-app.vercel.app";
+    const loginUrl = payload.loginUrl || process.env.NEXT_PUBLIC_APP_URL || "";
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6;">
         <h2>Welcome, ${greetingName}!</h2>

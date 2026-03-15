@@ -1,10 +1,15 @@
 "use client";
 
+import { notFound } from "next/navigation";
 import { MapDemo } from "@/components/map/MapDemo";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export default function MapTestPage() {
+    if (process.env.NODE_ENV === "production") {
+        notFound();
+    }
+
     return (
         <main className="min-h-screen bg-gray-50 p-10">
             <div className="max-w-4xl mx-auto">
