@@ -16,8 +16,12 @@ function getRedisClient(): Redis | null {
     return _redis;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function checkDatabase(client: any): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
+type SuperAdminClient = Extract<
+  Awaited<ReturnType<typeof requireSuperAdmin>>,
+  { ok: true }
+>["adminClient"];
+
+async function checkDatabase(client: SuperAdminClient): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
     const start = Date.now();
     try {
         if (!client) return { status: "down", latency_ms: -1 };

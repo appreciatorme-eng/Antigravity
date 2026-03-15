@@ -45,6 +45,15 @@ function validateGSTIN(gstin: string): boolean {
   return gstinRegex.test(gstin.toUpperCase())
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
 
 function PaymentStatusBadge({ status }: { status: GSTInvoiceData['paymentStatus'] }) {
@@ -238,13 +247,14 @@ export function GSTInvoice({ invoiceData, onDownload }: GSTInvoiceProps) {
 
     const win = window.open('', '_blank', 'width=900,height=700')
     if (!win) return
+    const safeInvoiceNumber = escapeHtml(invoiceData.invoiceNumber)
 
     win.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8"/>
-          <title>Invoice ${invoiceData.invoiceNumber}</title>
+          <title>Invoice ${safeInvoiceNumber}</title>
           <style>
             body { font-family: sans-serif; margin: 0; padding: 16px; }
             @media print { body { padding: 0; } }

@@ -39,6 +39,10 @@ const TOOLTIP_STYLE = {
     fontSize: "12px",
 };
 
+interface ChartClickPayload {
+    activePayload?: Array<{ payload: Record<string, string | number> }>;
+}
+
 export default function TrendChart({
     data,
     series,
@@ -53,10 +57,9 @@ export default function TrendChart({
     const commonProps = {
         data,
         style: CHART_STYLE,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onClick: onClickBar ? (payload: any) => {
+        onClick: onClickBar ? (payload: ChartClickPayload) => {
             if (payload?.activePayload) {
-                const item = (payload.activePayload as Array<{ payload: Record<string, string | number> }>)[0]?.payload;
+                const item = payload.activePayload[0]?.payload;
                 if (item) onClickBar(item);
             }
         } : undefined,

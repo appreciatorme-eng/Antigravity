@@ -17,7 +17,7 @@ async function getGooglePlaceConnection(
   supabaseAdmin: AdminClient,
   organizationId: string,
 ) {
-  const { data: connection } = await supabaseAdmin
+  const { data: connection, error } = await supabaseAdmin
     .from("reputation_platform_connections")
     .select("id, platform_account_id, platform_account_name, platform_location_id")
     .eq("organization_id", organizationId)
@@ -25,6 +25,9 @@ async function getGooglePlaceConnection(
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) {
+    throw error;
+  }
 
   return connection ?? null;
 }
@@ -38,7 +41,7 @@ async function ensureGooglePlaceConfigured(
   const existingConnection = await getGooglePlaceConnection(supabaseAdmin, organizationId);
 
   if (existingConnection?.id) {
-    await supabaseAdmin
+    const { error: updateConnectionError } = await supabaseAdmin
       .from("reputation_platform_connections")
       .update({
         platform_account_id: trimmedPlaceId,
@@ -49,8 +52,11 @@ async function ensureGooglePlaceConfigured(
         updated_at: new Date().toISOString(),
       })
       .eq("id", existingConnection.id);
+    if (updateConnectionError) {
+      throw updateConnectionError;
+    }
   } else {
-    await supabaseAdmin.from("reputation_platform_connections").insert({
+    const { error: insertConnectionError } = await supabaseAdmin.from("reputation_platform_connections").insert({
       organization_id: organizationId,
       platform: "google_business",
       platform_account_id: trimmedPlaceId,
@@ -58,9 +64,12 @@ async function ensureGooglePlaceConfigured(
       platform_location_id: trimmedPlaceId,
       sync_enabled: true,
     });
+    if (insertConnectionError) {
+      throw insertConnectionError;
+    }
   }
 
-  await supabaseAdmin.from("organization_settings").upsert(
+  const { error: settingsUpsertError } = await supabaseAdmin.from("organization_settings").upsert(
     {
       organization_id: organizationId,
       google_places_enabled: true,
@@ -68,6 +77,9 @@ async function ensureGooglePlaceConfigured(
     },
     { onConflict: "organization_id" },
   );
+  if (settingsUpsertError) {
+    throw settingsUpsertError;
+  }
 }
 
 async function validatePlacesApiKey(placeId?: string) {
@@ -166,7 +178,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await supabaseAdmin.from("organization_settings").upsert(
+    const { error: settingsUpsertError } = await supabaseAdmin.from("organization_settings").upsert(
       {
         organization_id: organizationId,
         google_places_enabled: true,
@@ -174,6 +186,9 @@ export async function POST(request: NextRequest) {
       },
       { onConflict: "organization_id" },
     );
+    if (settingsUpsertError) {
+      throw settingsUpsertError;
+    }
 
     return NextResponse.json({ success: true, enabled: true });
   } catch (error: unknown) {

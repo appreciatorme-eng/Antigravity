@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+    apiSuccess as canonicalApiSuccess,
+    apiError as canonicalApiError,
+} from "@/lib/api/response";
 
 export type ApiSuccessResponse<T> = {
     data: T;
@@ -23,14 +27,11 @@ export type ApiPaginatedResponse<T> = ApiSuccessResponse<T> & {
 };
 
 export function apiSuccess<T>(data: T, status = 200): NextResponse<ApiSuccessResponse<T>> {
-    return NextResponse.json({ data, error: null }, { status });
+    return canonicalApiSuccess(data, { status });
 }
 
 export function apiError(error: string, status = 400, code?: string): NextResponse<ApiErrorResponse> {
-    return NextResponse.json(
-        { data: null, error, ...(code ? { code } : {}) },
-        { status }
-    );
+    return canonicalApiError(error, status, code ? { code } : undefined);
 }
 
 export function apiPaginated<T>(

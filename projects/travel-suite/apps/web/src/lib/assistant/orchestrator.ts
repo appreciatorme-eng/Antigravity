@@ -174,7 +174,7 @@ interface OpenAIResponse {
 // ---------------------------------------------------------------------------
 
 interface ChatMessage {
-  readonly role: string;
+  readonly role: ConversationMessage["role"];
   readonly content: string;
   readonly tool_call_id?: string;
   readonly name?: string;

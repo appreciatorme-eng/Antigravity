@@ -5,7 +5,7 @@ import { handleMessage } from "@/lib/assistant/orchestrator";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { logError } from "@/lib/observability/logger";
-import type { ConversationMessage } from "@/lib/assistant/types";
+import { normalizeClientConversationHistory } from "@/lib/assistant/history-validation";
 
 export async function POST(req: Request) {
   try {
@@ -50,12 +50,15 @@ export async function POST(req: Request) {
     }
 
     // 3. Parse request body
-    const body = (await req.json()) as {
-      message?: string;
-      history?: Array<{ role: string; content: string }>;
-    };
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 },
+      );
+    }
 
-    const { message, history = [] } = body;
+    const message = body.message;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return NextResponse.json(
@@ -73,13 +76,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Normalize history to ConversationMessage format
-    const normalizedHistory: ConversationMessage[] = history
-      .slice(-20)
-      .map((msg) => ({
-        role: msg.role as ConversationMessage["role"],
-        content: msg.content,
-      }));
+    const normalizedHistoryResult = normalizeClientConversationHistory(body.history);
+    if (!normalizedHistoryResult.ok) {
+      return NextResponse.json(
+        { error: normalizedHistoryResult.error },
+        { status: 400 },
+      );
+    }
+    const normalizedHistory = normalizedHistoryResult.history;
 
     // 5. Call the orchestrator
     const response = await handleMessage({
