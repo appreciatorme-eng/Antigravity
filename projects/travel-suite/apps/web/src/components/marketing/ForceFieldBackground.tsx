@@ -4,7 +4,7 @@ import Particles, { initParticlesEngine } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import type { Engine } from '@tsparticles/engine';
 
-export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCount = 280 }: { id?: string; particleCount?: number }) {
+export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCount = 500 }: { id?: string; particleCount?: number }) {
   const [init, setInit] = useState(false);
   const [activeParticleCount, setActiveParticleCount] = useState(particleCount);
 
@@ -21,10 +21,10 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
     const handleResize = () => {
       if (window.innerWidth < 768) {
         // Mobile: drastically reduce count for performance, but keep interaction
-        setActiveParticleCount(Math.min(40, Math.floor(particleCount * 0.3)));
+        setActiveParticleCount(Math.min(150, Math.floor(particleCount * 0.3)));
       } else if (window.innerWidth < 1024) {
         // Tablet: moderate reduction
-        setActiveParticleCount(Math.min(100, Math.floor(particleCount * 0.6)));
+        setActiveParticleCount(Math.min(300, Math.floor(particleCount * 0.6)));
       } else {
         // Desktop: full count
         setActiveParticleCount(particleCount);

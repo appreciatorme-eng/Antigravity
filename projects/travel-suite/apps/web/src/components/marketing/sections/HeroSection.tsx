@@ -67,7 +67,7 @@ export function HeroSection() {
         >
           <ForceFieldBackground
             id="tsparticles-hero-top"
-            particleCount={220}
+            particleCount={450}
           />
         </div>
 
@@ -86,7 +86,7 @@ export function HeroSection() {
         >
           <ForceFieldBackground
             id="tsparticles-hero-bottom"
-            particleCount={180}
+            particleCount={350}
           />
         </div>
 
@@ -94,7 +94,7 @@ export function HeroSection() {
         <div className="absolute inset-0 z-[10] pointer-events-none">
           <motion.div
             style={{ y: yParallax }}
-            className="w-full h-[120%] -top-20 relative z-10 pointer-events-auto"
+            className="w-full h-full relative z-10 pointer-events-auto"
           >
             <HeroScreens />
           </motion.div>

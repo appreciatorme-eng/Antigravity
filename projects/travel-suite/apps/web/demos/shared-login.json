@@ -1,0 +1,6 @@
+{
+  "steps": [
+    { "action": "pause", "ms": 2000 },
+    { "action": "wait", "selector": "body", "timeout": 10000 }
+  ]
+}

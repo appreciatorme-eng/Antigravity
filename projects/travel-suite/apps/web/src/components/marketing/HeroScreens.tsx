@@ -139,7 +139,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       <div
         style={{
           position: 'absolute',
-          top: '-10%', bottom: '-10%', left: '-10%', right: '-10%',
+          inset: 0,
           opacity: splineLoaded ? 0.92 : 0,
           transition: 'opacity 1.5s ease-in-out',
           pointerEvents: splineLoaded ? 'auto' : 'none',

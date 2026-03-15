@@ -1,0 +1,129 @@
+{
+  "$schema": "https://webreel.dev/schema/v1.json",
+  "outDir": "demos/videos/",
+  "baseUrl": "http://localhost:3000",
+  "viewport": { "width": 1920, "height": 1080 },
+  "defaultDelay": 800,
+  "include": ["./shared-login.json"],
+  "videos": {
+    "dashboard-overview": {
+      "url": "/",
+      "output": "dashboard-overview.mp4",
+      "thumbnail": { "time": 3 },
+      "steps": [
+        { "action": "wait", "selector": "[data-testid='dashboard']", "timeout": 10000 },
+        { "action": "pause", "ms": 1500 },
+        { "action": "screenshot", "output": "screenshots/dashboard-loaded.png" },
+
+        { "action": "moveTo", "text": "Today's Revenue" },
+        { "action": "pause", "ms": 600 },
+        { "action": "moveTo", "text": "Active Trips" },
+        { "action": "pause", "ms": 600 },
+        { "action": "moveTo", "text": "Pending Actions" },
+        { "action": "pause", "ms": 600 },
+
+        { "action": "scroll", "y": 400, "delay": 300 },
+        { "action": "pause", "ms": 1000 },
+        { "action": "screenshot", "output": "screenshots/dashboard-activity.png" },
+
+        { "action": "scroll", "y": 400, "delay": 300 },
+        { "action": "pause", "ms": 800 }
+      ]
+    },
+
+    "create-proposal": {
+      "url": "/",
+      "output": "create-proposal.mp4",
+      "thumbnail": { "time": 5 },
+      "include": ["./shared-login.json"],
+      "steps": [
+        { "action": "wait", "selector": "[data-testid='dashboard']", "timeout": 10000 },
+        { "action": "pause", "ms": 800 },
+
+        { "action": "click", "text": "New Proposal", "delay": 500 },
+        { "action": "wait", "text": "Create Proposal", "timeout": 5000 },
+        { "action": "pause", "ms": 800 },
+        { "action": "screenshot", "output": "screenshots/proposal-form.png" },
+
+        { "action": "click", "selector": "[name='title']" },
+        { "action": "type", "text": "Rajasthan Heritage Tour", "charDelay": 40 },
+        { "action": "pause", "ms": 400 },
+
+        { "action": "click", "selector": "[name='clientName']" },
+        { "action": "type", "text": "John Smith", "charDelay": 40 },
+        { "action": "pause", "ms": 400 },
+
+        { "action": "click", "selector": "[name='clientEmail']" },
+        { "action": "type", "text": "john@example.com", "charDelay": 30 },
+        { "action": "pause", "ms": 400 },
+
+        { "action": "scroll", "y": 300, "delay": 200 },
+        { "action": "pause", "ms": 600 },
+        { "action": "screenshot", "output": "screenshots/proposal-filled.png" }
+      ]
+    },
+
+    "client-management": {
+      "url": "/clients",
+      "output": "client-management.mp4",
+      "thumbnail": { "time": 2 },
+      "include": ["./shared-login.json"],
+      "steps": [
+        { "action": "wait", "selector": "table, [role='grid']", "timeout": 10000 },
+        { "action": "pause", "ms": 1200 },
+        { "action": "screenshot", "output": "screenshots/clients-list.png" },
+
+        { "action": "moveTo", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 500 },
+        { "action": "click", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 1500 },
+        { "action": "screenshot", "output": "screenshots/client-detail.png" },
+
+        { "action": "scroll", "y": 400, "delay": 300 },
+        { "action": "pause", "ms": 800 }
+      ]
+    },
+
+    "bookings-flow": {
+      "url": "/bookings",
+      "output": "bookings-flow.mp4",
+      "thumbnail": { "time": 2 },
+      "include": ["./shared-login.json"],
+      "steps": [
+        { "action": "wait", "selector": "table, [role='grid']", "timeout": 10000 },
+        { "action": "pause", "ms": 1200 },
+        { "action": "screenshot", "output": "screenshots/bookings-list.png" },
+
+        { "action": "moveTo", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 500 },
+        { "action": "click", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 1500 },
+
+        { "action": "scroll", "y": 300, "delay": 200 },
+        { "action": "pause", "ms": 800 },
+        { "action": "screenshot", "output": "screenshots/booking-detail.png" }
+      ]
+    },
+
+    "driver-tracking": {
+      "url": "/drivers",
+      "output": "driver-tracking.mp4",
+      "thumbnail": { "time": 2 },
+      "include": ["./shared-login.json"],
+      "steps": [
+        { "action": "wait", "selector": "table, [role='grid'], [data-testid]", "timeout": 10000 },
+        { "action": "pause", "ms": 1200 },
+        { "action": "screenshot", "output": "screenshots/drivers-list.png" },
+
+        { "action": "scroll", "y": 300, "delay": 200 },
+        { "action": "pause", "ms": 800 },
+
+        { "action": "moveTo", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 500 },
+        { "action": "click", "selector": "table tbody tr:first-child" },
+        { "action": "pause", "ms": 1500 },
+        { "action": "screenshot", "output": "screenshots/driver-detail.png" }
+      ]
+    }
+  }
+}
