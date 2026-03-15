@@ -8,7 +8,7 @@ import { GlassBadge } from '@/components/glass/GlassBadge'
 import { GlassButton } from '@/components/glass/GlassButton'
 import { GlassCard } from '@/components/glass/GlassCard'
 
-interface TeamMemberCardProps {
+export interface TeamMemberCardProps {
   member: TeamMember
   currentUserRole: TeamRole
   onRoleChange?: (memberId: string, newRole: Exclude<TeamRole, 'owner'>) => Promise<void> | void

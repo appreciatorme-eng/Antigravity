@@ -11,7 +11,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { motion, HTMLMotionProps } from 'framer-motion';
 
-interface GlassCardProps extends Omit<HTMLMotionProps<"div">, "children"> {
+export interface GlassCardProps extends Omit<HTMLMotionProps<"div">, "children"> {
   children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
@@ -19,6 +19,8 @@ interface GlassCardProps extends Omit<HTMLMotionProps<"div">, "children"> {
   opacity?: 'low' | 'medium' | 'high';
   rounded?: 'md' | 'lg' | 'xl' | '2xl' | 'pill';
   hoverEffect?: boolean;
+  /** Accessible label for the card region. When provided, the card gets role="region". */
+  'aria-label'?: string;
 }
 
 const paddingClasses = {
@@ -58,10 +60,13 @@ export function GlassCard({
   rounded = 'xl',
   onClick,
   hoverEffect = false,
+  'aria-label': ariaLabel,
   ...rest
 }: GlassCardProps) {
   return (
     <motion.div
+      role={ariaLabel ? 'region' : undefined}
+      aria-label={ariaLabel}
       whileHover={hoverEffect || onClick ? { scale: 1.01, y: -2 } : {}}
       whileTap={onClick ? { scale: 0.98 } : {}}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -150,12 +155,14 @@ export function GlassIconButton({
   size = 'md',
   variant = 'default',
   className,
+  'aria-label': ariaLabel,
 }: {
   icon: React.ReactNode;
   onClick?: () => void;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'primary';
   className?: string;
+  'aria-label'?: string;
 }) {
   const sizeClasses = {
     sm: 'w-8 h-8',
@@ -170,7 +177,9 @@ export function GlassIconButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-label={ariaLabel}
       className={cn(
         'inline-flex items-center justify-center',
         'rounded-full',

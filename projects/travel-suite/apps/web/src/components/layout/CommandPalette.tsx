@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Command } from "cmdk";
 import {
     Search,
@@ -22,6 +22,7 @@ import { useUIStore } from "@/stores/ui-store";
 export default function CommandPalette() {
     const [open, setOpen] = useState(false);
     const router = useRouter();
+    const listboxId = useId();
 
     const { modalState, closeModal } = useUIStore();
 
@@ -74,17 +75,21 @@ export default function CommandPalette() {
                     >
                         <Command label="Command Palette" className="flex flex-col h-full">
                             <div className="flex items-center gap-3 px-4 border-b border-gray-100 dark:border-slate-800">
-                                <Search className="w-5 h-5 text-gray-400" />
+                                <Search className="w-5 h-5 text-gray-400" aria-hidden="true" />
                                 <Command.Input
                                     placeholder="Search command or navigate..."
                                     className="flex-1 h-14 bg-transparent border-none outline-none text-base placeholder:text-gray-400 dark:text-slate-200"
+                                    role="combobox"
+                                    aria-expanded={open}
+                                    aria-controls={listboxId}
+                                    aria-label="Search commands or navigate"
                                 />
                                 <kbd className="hidden sm:inline-flex h-6 items-center gap-1 rounded border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 px-1.5 text-[10px] font-medium text-gray-500 uppercase">
                                     ESC
                                 </kbd>
                             </div>
 
-                            <Command.List className="max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">
+                            <Command.List id={listboxId} role="listbox" className="max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">
                                 <Command.Empty className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                                     No results found.
                                 </Command.Empty>
@@ -192,6 +197,7 @@ function CommandItem({
     return (
         <Command.Item
             onSelect={onSelect}
+            role="option"
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-600 dark:text-slate-300 aria-selected:bg-primary aria-selected:text-white transition-all cursor-pointer group"
         >
             <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center group-aria-selected:bg-white/20 group-aria-selected:scale-110 transition-transform">

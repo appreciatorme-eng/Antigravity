@@ -365,7 +365,12 @@ function renderTheme(theme: string, accent: string): React.ReactNode {
 
 // ── Main overlay component ──────────────────────────────────────────────────
 
-export const ThemeOverlay = ({ templateId, accent }: { templateId: string; accent: string }) => {
+export interface ThemeDecorationsProps {
+    templateId: string;
+    accent: string;
+}
+
+export const ThemeOverlay = ({ templateId, accent }: ThemeDecorationsProps) => {
     const theme = resolveTheme(templateId);
     if (!theme) return null;
 

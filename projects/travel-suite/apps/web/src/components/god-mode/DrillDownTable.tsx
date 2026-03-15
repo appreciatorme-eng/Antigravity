@@ -14,7 +14,7 @@ export interface TableColumn<T> {
     className?: string;
 }
 
-interface DrillDownTableProps<T extends Record<string, unknown>> {
+export interface DrillDownTableProps<T extends Record<string, unknown>> {
     columns: TableColumn<T>[];
     data: T[];
     onRowClick?: (row: T) => void;

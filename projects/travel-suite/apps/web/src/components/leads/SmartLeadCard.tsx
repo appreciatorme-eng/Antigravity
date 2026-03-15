@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { MapPin, Users, Calendar, Zap, ChevronRight } from 'lucide-react';
 import { parseLeadMessage, ParsedIntent } from '@/lib/leads/intent-parser';
 
-interface SmartLeadCardProps {
+export interface SmartLeadCardProps {
   message: string;
   phone: string;
   contactName?: string;

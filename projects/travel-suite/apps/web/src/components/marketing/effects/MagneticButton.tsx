@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 
-interface MagneticButtonProps {
+export interface MagneticButtonProps {
   children: React.ReactNode;
   className?: string;
   strength?: number;

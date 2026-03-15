@@ -74,6 +74,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     return (
       <motion.button
         ref={ref}
+        type="button"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.95 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -85,6 +86,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
           className
         )}
         disabled={isDisabled}
+        aria-disabled={isDisabled || undefined}
         onClick={handleClick}
         {...(props as Omit<HTMLMotionProps<"button">, "children">)}
       >

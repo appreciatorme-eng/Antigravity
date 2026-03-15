@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-interface FadeInOnScrollProps {
+export interface FadeInOnScrollProps {
   children: React.ReactNode;
   className?: string;
   delay?: number;

@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface SlideOutPanelProps {
+export interface SlideOutPanelProps {
     open: boolean;
     onClose: () => void;
     title: string;
@@ -39,7 +39,11 @@ export default function SlideOutPanel({ open, onClose, title, children, width = 
                 onClick={onClose}
                 aria-label="Close panel"
             />
-            <div className={cn(
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
+                className={cn(
                 "fixed right-0 top-0 h-full bg-gray-900 border-l border-gray-700 z-50 flex flex-col",
                 "transform transition-transform duration-300",
                 WIDTH_CLASSES[width]
@@ -48,6 +52,7 @@ export default function SlideOutPanel({ open, onClose, title, children, width = 
                     <h2 className="text-base font-semibold text-white">{title}</h2>
                     <button
                         onClick={onClose}
+                        aria-label="Close panel"
                         className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                     >
                         <X className="w-4 h-4" />
