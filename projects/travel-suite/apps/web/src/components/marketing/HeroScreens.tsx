@@ -81,8 +81,8 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
 
   return (
     <div style={{
-      position: 'absolute', inset: 0,
-      width: '100%', height: '100%',
+      position: 'absolute', top: 0, right: 0,
+      width: '60%', height: '100%',
       overflow: 'visible', zIndex: 10,
     }}>
 
@@ -90,12 +90,12 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       <div
         style={{
           position: 'absolute',
-          top: '5%', bottom: '5%', right: 0, width: '60%',
+          top: '5%', left: '0', right: '0', bottom: '5%',
           opacity: splineLoaded ? 0 : 1,
           transition: 'opacity 1.2s ease-in-out',
           pointerEvents: splineLoaded ? 'none' : 'auto',
           perspective: '1400px',
-          perspectiveOrigin: '40% 50%',  // shifted left so 3D tilt doesn't push right
+          perspectiveOrigin: '40% 50%',
           zIndex: 2,
         }}
       >
@@ -126,21 +126,20 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
               }} />
               <Image
                 src={src} alt={alt}
-                fill
-                sizes={`${w}vw`}
+                width={1400} height={840}
                 priority
-                className="object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </motion.div>
           ))}
         </div>
       </div>
 
-      {/* ─── LAYER 2: Spline 3D — full viewport coverage, crossfades in ─── */}
+      {/* ─── LAYER 2: Spline 3D — loads behind, crossfades in ─── */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: '-5%', bottom: '-5%', left: '-15%', right: '-5%',
           opacity: splineLoaded ? 0.92 : 0,
           transition: 'opacity 1.5s ease-in-out',
           pointerEvents: splineLoaded ? 'auto' : 'none',

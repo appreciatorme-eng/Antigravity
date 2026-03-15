@@ -48,12 +48,7 @@ export function HeroSection() {
 
   return (
     <div ref={containerRef}>
-      {/* GLOBAL FIXED BACKGROUND */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <ForceFieldBackground id="tsparticles-global" />
-      </div>
-
-      <section className="relative h-screen flex items-center justify-between px-6 md:px-24 overflow-hidden pt-20 transform-gpu isolate">
+      <section className="relative h-screen flex items-center justify-between px-6 md:px-24 overflow-hidden pt-4 transform-gpu isolate">
         {/* Particles -- TOP LEFT */}
         <div
           className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden"

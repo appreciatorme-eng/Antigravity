@@ -1,7 +1,9 @@
+import Image from 'next/image';
+
 const sizeMap = {
-  sm: { fontSize: 20, height: 24 },
-  md: { fontSize: 28, height: 32 },
-  lg: { fontSize: 36, height: 42 },
+  sm: { width: 120, height: 32 },
+  md: { width: 160, height: 42 },
+  lg: { width: 200, height: 52 },
 } as const;
 
 type LogoSize = keyof typeof sizeMap;
@@ -12,35 +14,17 @@ interface TravelBuiltLogoProps {
 }
 
 export function TravelBuiltLogo({ size = "md", className = "" }: TravelBuiltLogoProps) {
-  const { fontSize, height } = sizeMap[size];
-  const gradientId = `travelbuilt-gradient-${size}`;
+  const { width, height } = sizeMap[size];
 
   return (
-    <svg
+    <Image
+      src="/marketing/travelbuilt-logo-premium.png"
+      alt="TravelBuilt"
+      width={width}
       height={height}
-      viewBox={`0 0 ${fontSize * 7} ${height}`}
-      xmlns="http://www.w3.org/2000/svg"
+      priority
       className={className}
-      aria-label="TravelBuilt"
-      role="img"
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#FF6B2C" />
-          <stop offset="100%" stopColor="#00D4AA" />
-        </linearGradient>
-      </defs>
-      <text
-        x="0"
-        y={height * 0.78}
-        fill={`url(#${gradientId})`}
-        fontFamily="inherit"
-        fontWeight="900"
-        fontSize={fontSize}
-        letterSpacing="-0.02em"
-      >
-        TravelBuilt
-      </text>
-    </svg>
+      style={{ objectFit: 'contain' }}
+    />
   );
 }
