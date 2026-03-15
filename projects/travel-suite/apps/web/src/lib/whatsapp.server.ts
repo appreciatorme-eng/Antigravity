@@ -46,7 +46,7 @@ const _WhatsAppImageMsgSchema = _WhatsAppMsgBaseSchema.extend({
 const _WhatsAppTextMsgSchema = _WhatsAppMsgBaseSchema.extend({
     type: z.literal("text"),
     text: z.object({
-        body: z.string(),
+        body: z.string().min(1),
     }),
 });
 // ────────────────────────────────────────────────────────────────────────────

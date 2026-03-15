@@ -8,15 +8,15 @@ vi.mock("lucide-react", () => ({
 }));
 
 describe("PlaceholderTab", () => {
-  it("renders subsystem initializing heading", () => {
+  it("renders coming soon heading", () => {
     render(<PlaceholderTab />);
-    expect(screen.getByText("Subsystem Initializing")).toBeInTheDocument();
+    expect(screen.getByText("Coming Soon")).toBeInTheDocument();
   });
 
-  it("renders deployment message", () => {
+  it("renders under development message", () => {
     render(<PlaceholderTab />);
     expect(
-      screen.getByText(/queued for standard deployment/)
+      screen.getByText(/under development and will be available/)
     ).toBeInTheDocument();
   });
 
