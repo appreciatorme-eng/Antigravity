@@ -25,7 +25,10 @@ const ForceFieldBackground = dynamic(
 
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: containerRef });
+  const { scrollYProgress } = useScroll({ 
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
 
   const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
