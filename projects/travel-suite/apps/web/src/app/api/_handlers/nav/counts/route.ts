@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiSuccess } from "@/lib/api-response";
+import { apiSuccess } from "@/lib/api/response";
 import { unstable_cache } from "next/cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";

@@ -2,7 +2,7 @@
 // Supports search, category, vendor filters and sort options.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { safeErrorMessage } from "@/lib/security/safe-error";

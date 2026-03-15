@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
 
 type AdminContext = Extract<RequireAdminResult, { ok: true }>;

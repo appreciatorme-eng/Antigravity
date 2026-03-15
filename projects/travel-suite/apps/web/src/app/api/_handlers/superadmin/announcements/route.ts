@@ -1,7 +1,7 @@
 // GET + POST /api/superadmin/announcements — list all and create new announcements.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
             announcement_id: announcement?.id, title,
         });
 
-        return apiSuccess(announcement, 201);
+        return apiSuccess(announcement, { status: 201 });
     } catch (err) {
         console.error("[superadmin/announcements POST]", err);
         return apiError("Failed to create announcement", 500);

@@ -195,7 +195,8 @@ export default function DriversPage() {
                     email,
                     full_name
                 )
-            `);
+            `)
+                .in("external_driver_id", driverIds);
 
             const mapping: Record<string, DriverAccountLink> = {};
             (links as DriverAccountJoinRow[] | null || [])

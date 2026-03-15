@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { getWeatherForLocation, getWeatherForLocations, type LocationWeather } from "@/lib/external/weather";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { enforceRateLimit } from "@/lib/security/rate-limit";

@@ -2,7 +2,7 @@
 // Sends a test message from the connected session to the operator's own number.
 // Requires admin role — any member could otherwise trigger real outbound messages.
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";

@@ -1,7 +1,7 @@
 // GET /api/superadmin/settings — return all platform_settings as key-value map.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 export async function GET(request: NextRequest) {

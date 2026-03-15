@@ -1,7 +1,7 @@
 // POST /api/superadmin/announcements/:id/send — send a draft announcement to target users.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { sendNotificationToUser } from "@/lib/notifications";

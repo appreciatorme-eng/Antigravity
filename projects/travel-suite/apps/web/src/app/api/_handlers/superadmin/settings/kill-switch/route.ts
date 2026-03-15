@@ -1,7 +1,7 @@
 // POST /api/superadmin/settings/kill-switch — update a platform_settings key (maintenance, feature flags, spend limits).
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { setPlatformSetting, type JsonValue } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";

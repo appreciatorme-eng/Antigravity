@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { handleMessage } from "@/lib/assistant/orchestrator";
 import { enforceRateLimit } from "@/lib/security/rate-limit";

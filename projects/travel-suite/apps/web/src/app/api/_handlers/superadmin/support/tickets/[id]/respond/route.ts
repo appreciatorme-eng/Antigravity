@@ -1,7 +1,7 @@
 // POST /api/superadmin/support/tickets/:id/respond — add admin response and update status.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
 

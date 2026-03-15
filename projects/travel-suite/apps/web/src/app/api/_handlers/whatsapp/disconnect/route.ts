@@ -2,7 +2,7 @@
 // Closes the WPPConnect session for the caller's org and marks the DB row disconnected.
 // Requires admin role — any member could otherwise reset the shared org session.
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import {

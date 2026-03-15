@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { renderPoster } from "@/lib/social/poster-renderer";
 import type { LayoutType, AspectRatio } from "@/lib/social/types";

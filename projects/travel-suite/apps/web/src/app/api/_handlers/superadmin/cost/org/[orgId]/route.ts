@@ -1,7 +1,7 @@
 // GET /api/superadmin/cost/org/:orgId — detailed cost breakdown for a single organization.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function monthStartISO(): string {

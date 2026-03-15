@@ -2,7 +2,7 @@
 // Returns { qrBase64: string } — call every 15 s while QR is visible (expires ~60 s).
 // Session name is derived server-side from organizationId (never trusted from query param).
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { getWahaQR, sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";

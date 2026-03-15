@@ -128,11 +128,14 @@ export async function POST(req: NextRequest) {
       return apiError(safeErrorMessage(cloneError, "Failed to create proposal"), 400);
     }
 
-    const { data: activeAddOns } = await admin.adminClient
+    const { data: activeAddOns, error: activeAddOnsError } = await admin.adminClient
       .from("add_ons")
       .select("id, name, description, category, image_url, price")
       .eq("organization_id", admin.organizationId)
       .eq("is_active", true);
+    if (activeAddOnsError) {
+      return apiError(safeErrorMessage(activeAddOnsError, "Failed to load add-ons"), 500);
+    }
 
     const addOns = (activeAddOns || []) as ActiveAddOn[];
     const transportAddOns = addOns.filter((a) => a.category === "Transport");
@@ -175,18 +178,27 @@ export async function POST(req: NextRequest) {
       }));
 
       // proposal_add_ons is optional on older DBs. Best-effort insert only.
-      await admin.adminClient.from("proposal_add_ons").insert(insertPayload);
+      const { error: addOnInsertError } = await admin.adminClient.from("proposal_add_ons").insert(insertPayload);
+      if (addOnInsertError && addOnInsertError.code !== "42P01") {
+        return apiError(safeErrorMessage(addOnInsertError, "Failed to attach add-ons"), 500);
+      }
     }
 
-    const { data: newPrice } = await admin.adminClient.rpc("calculate_proposal_price", {
+    const { data: newPrice, error: newPriceError } = await admin.adminClient.rpc("calculate_proposal_price", {
       p_proposal_id: proposalId,
     });
+    if (newPriceError) {
+      return apiError(safeErrorMessage(newPriceError, "Failed to calculate proposal price"), 500);
+    }
 
     if (newPrice !== null && newPrice !== undefined) {
-      await admin.adminClient
+      const { error: priceUpdateError } = await admin.adminClient
         .from("proposals")
         .update({ client_selected_price: newPrice })
         .eq("id", proposalId);
+      if (priceUpdateError) {
+        return apiError(safeErrorMessage(priceUpdateError, "Failed to update proposal price"), 500);
+      }
     }
 
     const proposalUpdates: Record<string, unknown> = {};
@@ -201,7 +213,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (Object.keys(proposalUpdates).length > 0) {
-      await admin.adminClient.from("proposals").update(proposalUpdates).eq("id", proposalId);
+      const { error: proposalUpdateError } = await admin.adminClient
+        .from("proposals")
+        .update(proposalUpdates)
+        .eq("id", proposalId);
+      if (proposalUpdateError) {
+        return apiError(safeErrorMessage(proposalUpdateError, "Failed to update proposal details"), 500);
+      }
     }
 
     const refreshedLimitStatus = await getFeatureLimitStatus(

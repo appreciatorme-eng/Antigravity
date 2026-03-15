@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { revalidateTag } from "next/cache";
 import { env } from "@/lib/config/env";
 import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects";

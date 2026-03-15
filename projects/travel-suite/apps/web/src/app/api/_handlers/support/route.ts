@@ -1,4 +1,4 @@
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 

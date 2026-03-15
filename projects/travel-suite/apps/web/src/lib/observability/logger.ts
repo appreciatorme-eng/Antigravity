@@ -69,7 +69,14 @@ export function getRequestId(request: NextRequest): string {
         return globalThis.crypto.randomUUID();
     }
 
-    return `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    if (globalThis.crypto?.getRandomValues) {
+        const bytes = new Uint8Array(8);
+        globalThis.crypto.getRandomValues(bytes);
+        const suffix = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        return `req_${Date.now().toString(36)}_${suffix}`;
+    }
+
+    return `req_${Date.now().toString(36)}_${request.method.toLowerCase()}`;
 }
 
 export function getRequestContext(request: NextRequest, requestId: string): LogContext {
