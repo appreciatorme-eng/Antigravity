@@ -1,4 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import {
@@ -32,6 +31,9 @@ import {
 } from "./client-profile-shared";
 
 // ─── Page ────────────────────────────────────────────────────────────────────
+function isAdminRole(role: string | null | undefined): role is "admin" | "super_admin" {
+    return role === "admin" || role === "super_admin";
+}
 
 export async function renderClientProfilePage({
     params,
@@ -39,95 +41,55 @@ export async function renderClientProfilePage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
+    const supabase = await createClient();
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) notFound();
 
-    // ─── Get a working Supabase client ────────────────────────────────────────
-    // Strategy: try admin client first (bypasses RLS), fall back to server client
-    let supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>;
-    try {
-        const admin = createAdminClient();
-        // Test that the admin client is functional (not the unavailable Proxy)
-        // by attempting a lightweight operation
-        const testResult = await admin.from("profiles").select("id").limit(1);
-        if (testResult.error && testResult.error.message?.includes("not configured")) {
-            throw new Error("Admin unavailable");
-        }
-        supabase = admin;
-    } catch {
-        // Admin client unavailable — fall back to server client (uses cookies/session)
-        console.warn("Admin client unavailable, falling back to server client for client profile");
-        supabase = await createClient();
-    }
-
-    // ─── Fetch profile ────────────────────────────────────────────────────────
-    let profile: ClientProfile | null = null;
-    try {
-        // First try the profiles table directly
-        const { data, error: profileError } = await supabase
-            .from("profiles")
-            .select(CLIENT_PROFILE_SELECT)
-            .eq("id", id)
-            .single();
-        const directProfile = data as unknown as ClientProfile | null;
-
-        if (!profileError && directProfile) {
-            profile = directProfile;
-        } else if (profileError) {
-            console.warn("Direct profile fetch failed:", profileError.message);
-            // If RLS blocked the direct profile fetch, try through the clients table
-            // (which has org-level RLS allowing admins to see their org's clients)
-            const { data: clientRow, error: clientError } = await supabase
-                .from("clients")
-                .select("id, organization_id, created_at")
-                .eq("id", id)
-                .single();
-
-            if (clientError || !clientRow) {
-                console.error("Client lookup also failed:", clientError?.message);
-                notFound();
-            }
-
-            // If we found the client entry, try fetching the profile again
-            // using a broader approach
-            const { data: profileRetry } = await supabase
-                .from("profiles")
-                .select(CLIENT_PROFILE_SELECT)
-                .eq("id", clientRow.id)
-                .maybeSingle();
-            const retriedProfile = profileRetry as unknown as ClientProfile | null;
-
-            if (retriedProfile) {
-                profile = retriedProfile;
-            } else {
-                // Build a minimal profile from the client record
-                profile = {
-                    id: clientRow.id,
-                    full_name: null,
-                    email: null,
-                    phone: null,
-                    created_at: clientRow.created_at,
-                    organization_id: clientRow.organization_id,
-                };
-            }
-        }
-    } catch (err) {
-        console.error("Profile fetch exception:", err);
+    const { data: viewerProfile, error: viewerProfileError } = await supabase
+        .from("profiles")
+        .select("role, organization_id")
+        .eq("id", user.id)
+        .maybeSingle();
+    if (viewerProfileError || !viewerProfile || !isAdminRole(viewerProfile.role)) {
         notFound();
     }
 
-    if (!profile) {
+    const isSuperAdmin = viewerProfile.role === "super_admin";
+    const organizationId = viewerProfile.organization_id;
+    if (!isSuperAdmin && !organizationId) {
         notFound();
     }
+
+    let profileQuery = supabase
+        .from("profiles")
+        .select(CLIENT_PROFILE_SELECT)
+        .eq("id", id);
+    if (!isSuperAdmin) {
+        profileQuery = profileQuery.eq("organization_id", organizationId!);
+    }
+
+    const { data: profileData, error: profileError } = await profileQuery.maybeSingle();
+    if (profileError || !profileData) {
+        notFound();
+    }
+    const profile = profileData as unknown as ClientProfile;
 
     // ─── Fetch trips (partial failure OK) ─────────────────────────────────────
     let trips: TripRow[] = [];
     try {
-        const { data, error } = await supabase
+        let tripsQuery = supabase
             .from("trips")
             .select("id, status, start_date, end_date, itinerary_id, created_at")
             .eq("client_id", id)
             .order("created_at", { ascending: false });
+        if (!isSuperAdmin) {
+            tripsQuery = tripsQuery.eq("organization_id", organizationId!);
+        }
+        const { data, error } = await tripsQuery;
         if (!error && data) trips = data;
-        else if (error) console.warn("Trips fetch:", error.message);
     } catch (err) {
         console.warn("Trips fetch failed:", err);
     }
@@ -157,14 +119,17 @@ export async function renderClientProfilePage({
     // ─── Fetch proposals (partial failure OK) ─────────────────────────────────
     let proposals: ProposalRow[] = [];
     try {
-        const { data, error } = await supabase
+        let proposalsQuery = supabase
             .from("proposals")
             .select("id, title, status, total_price, created_at, viewed_at, approved_at, expires_at")
             .eq("client_id", id)
             .order("created_at", { ascending: false })
             .limit(15);
+        if (!isSuperAdmin) {
+            proposalsQuery = proposalsQuery.eq("organization_id", organizationId!);
+        }
+        const { data, error } = await proposalsQuery;
         if (!error && data) proposals = data;
-        else if (error) console.warn("Proposals fetch:", error.message);
     } catch (err) {
         console.warn("Proposals fetch failed:", err);
     }

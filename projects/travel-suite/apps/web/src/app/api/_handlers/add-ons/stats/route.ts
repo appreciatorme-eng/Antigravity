@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from '@/lib/security/safe-error';
 

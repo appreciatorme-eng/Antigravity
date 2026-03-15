@@ -14,7 +14,7 @@
 import { createHmac } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";

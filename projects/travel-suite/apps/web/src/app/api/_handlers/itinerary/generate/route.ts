@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import { z } from 'zod';
 import Groq from "groq-sdk";

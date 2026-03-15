@@ -12,7 +12,7 @@
  * ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse, after } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
@@ -59,6 +59,23 @@ function payloadHash(rawBody: string): string {
         throw new Error("WHATSAPP_APP_SECRET is required for HMAC operations");
     }
     return createHmac("sha256", appSecret).update(rawBody).digest("hex");
+}
+
+async function updateWebhookEvent(
+    providerMessageId: string,
+    updates: Record<string, unknown>,
+    requestContext: ReturnType<typeof getRequestContext>,
+): Promise<void> {
+    const { error } = await supabaseAdmin
+        .from("whatsapp_webhook_events")
+        .update(updates)
+        .eq("provider_message_id", providerMessageId);
+    if (error) {
+        logError("Failed to update whatsapp_webhook_events", error, {
+            ...requestContext,
+            provider_message_id: providerMessageId,
+        });
+    }
 }
 
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
@@ -159,6 +176,10 @@ export async function POST(request: NextRequest) {
                 duplicates += 1;
                 continue;
             }
+            if (eventError) {
+                logError("Failed to persist location webhook event", eventError, requestContext);
+                continue;
+            }
 
             const { data: profile } = await supabaseAdmin
                 .from("profiles")
@@ -167,13 +188,14 @@ export async function POST(request: NextRequest) {
                 .maybeSingle();
 
             if (!profile || profile.role !== "driver") {
-                await supabaseAdmin
-                    .from("whatsapp_webhook_events")
-                    .update({
+                await updateWebhookEvent(
+                    location.messageId,
+                    {
                         processing_status: "rejected",
                         reject_reason: "driver_not_found",
-                    })
-                    .eq("provider_message_id", location.messageId);
+                    },
+                    requestContext,
+                );
                 continue;
             }
 
@@ -188,21 +210,23 @@ export async function POST(request: NextRequest) {
 
             if (!error) {
                 stored += 1;
-                await supabaseAdmin
-                    .from("whatsapp_webhook_events")
-                    .update({
+                await updateWebhookEvent(
+                    location.messageId,
+                    {
                         processing_status: "processed",
                         processed_at: new Date().toISOString(),
-                    })
-                    .eq("provider_message_id", location.messageId);
+                    },
+                    requestContext,
+                );
             } else {
-                await supabaseAdmin
-                    .from("whatsapp_webhook_events")
-                    .update({
+                await updateWebhookEvent(
+                    location.messageId,
+                    {
                         processing_status: "rejected",
                         reject_reason: safeErrorMessage(error, "location_processing_failed"),
-                    })
-                    .eq("provider_message_id", location.messageId);
+                    },
+                    requestContext,
+                );
             }
         }
 
@@ -265,26 +289,38 @@ async function processWhatsAppTextMessages(
             });
 
         if (eventError?.code === "23505") continue; // duplicate
+        if (eventError) {
+            logError("Failed to persist text webhook event", eventError, requestContext);
+            continue;
+        }
 
         // 2. Process through assistant
         try {
             const result = await handleWhatsAppMessage(textMsg.waId, textMsg.body, textMsg.waId);
 
-            await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: result.success ? "processed" : "rejected",
-                reject_reason: result.error || null,
-                processed_at: new Date().toISOString(),
-                metadata: {
-                    body_preview: textMsg.body.slice(0, 100),
-                    signature_verified: signatureValid,
-                    reply_sent: result.replySent,
+            await updateWebhookEvent(
+                textMsg.messageId,
+                {
+                    processing_status: result.success ? "processed" : "rejected",
+                    reject_reason: result.error || null,
+                    processed_at: new Date().toISOString(),
+                    metadata: {
+                        body_preview: textMsg.body.slice(0, 100),
+                        signature_verified: signatureValid,
+                        reply_sent: result.replySent,
+                    },
                 },
-            }).eq("provider_message_id", textMsg.messageId);
+                requestContext,
+            );
         } catch (error) {
-            await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: "rejected",
-                reject_reason: safeErrorMessage(error, "text_processing_failed"),
-            }).eq("provider_message_id", textMsg.messageId);
+            await updateWebhookEvent(
+                textMsg.messageId,
+                {
+                    processing_status: "rejected",
+                    reject_reason: safeErrorMessage(error, "text_processing_failed"),
+                },
+                requestContext,
+            );
         }
     }
 }
@@ -318,6 +354,10 @@ async function processWhatsAppImages(
             });
 
         if (eventError?.code === "23505") continue; // duplicate
+        if (eventError) {
+            logError("Failed to persist image webhook event", eventError, requestContext);
+            continue;
+        }
 
         // 2. Find org by user
         const { data: profile } = await supabaseAdmin
@@ -327,18 +367,28 @@ async function processWhatsAppImages(
             .maybeSingle();
 
         if (!profile || !profile.organization_id) {
-            await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: "rejected", reject_reason: "user_or_org_not_found"
-            }).eq("provider_message_id", image.messageId);
+            await updateWebhookEvent(
+                image.messageId,
+                {
+                    processing_status: "rejected",
+                    reject_reason: "user_or_org_not_found",
+                },
+                requestContext,
+            );
             continue;
         }
 
         // 3. Download Media
         const mediaBuffer = await downloadWhatsAppMedia(image.imageId);
         if (!mediaBuffer) {
-            await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: "rejected", reject_reason: "media_download_failed"
-            }).eq("provider_message_id", image.messageId);
+            await updateWebhookEvent(
+                image.messageId,
+                {
+                    processing_status: "rejected",
+                    reject_reason: "media_download_failed",
+                },
+                requestContext,
+            );
             continue;
         }
 
@@ -355,14 +405,19 @@ async function processWhatsAppImages(
             });
 
         if (uploadError) {
-            await supabaseAdmin.from("whatsapp_webhook_events").update({
-                processing_status: "rejected", reject_reason: "storage_upload_failed"
-            }).eq("provider_message_id", image.messageId);
+            await updateWebhookEvent(
+                image.messageId,
+                {
+                    processing_status: "rejected",
+                    reject_reason: "storage_upload_failed",
+                },
+                requestContext,
+            );
             continue;
         }
 
         // 5. Save directly to social_media_library
-        await supabaseAdmin.from('social_media_library').insert({
+        const { error: socialLibraryInsertError } = await supabaseAdmin.from('social_media_library').insert({
             organization_id: profile.organization_id,
             file_path: filePath,
             mime_type: image.mimeType || 'image/jpeg',
@@ -373,10 +428,30 @@ async function processWhatsAppImages(
                 message_id: image.messageId
             }
         });
+        if (socialLibraryInsertError) {
+            logError("Failed to persist social media library record", socialLibraryInsertError, {
+                ...requestContext,
+                provider_message_id: image.messageId,
+            });
+            await updateWebhookEvent(
+                image.messageId,
+                {
+                    processing_status: "rejected",
+                    reject_reason: "social_media_library_insert_failed",
+                },
+                requestContext,
+            );
+            continue;
+        }
 
         // 6. Mark processed
-        await supabaseAdmin.from("whatsapp_webhook_events").update({
-            processing_status: "processed", processed_at: new Date().toISOString()
-        }).eq("provider_message_id", image.messageId);
+        await updateWebhookEvent(
+            image.messageId,
+            {
+                processing_status: "processed",
+                processed_at: new Date().toISOString(),
+            },
+            requestContext,
+        );
     }
 }

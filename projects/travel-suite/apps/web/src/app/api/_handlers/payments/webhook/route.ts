@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { revalidateTag } from 'next/cache';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
@@ -162,7 +162,9 @@ export async function POST(request: NextRequest) {
         payment_operation: 'verify_webhook_signature',
         payment_alert_severity: 'high',
       });
-      return apiError('Missing webhook signature', 400, 'payments_webhook_signature_invalid');
+      return apiError('Missing webhook signature', 400, {
+        code: 'payments_webhook_signature_invalid',
+      });
     }
 
     // Get raw body for signature verification
@@ -176,7 +178,9 @@ export async function POST(request: NextRequest) {
         payment_operation: 'verify_webhook_signature',
         payment_alert_severity: 'high',
       });
-      return apiError('Invalid signature', 401, 'payments_webhook_signature_invalid');
+      return apiError('Invalid signature', 401, {
+        code: 'payments_webhook_signature_invalid',
+      });
     }
 
     // Parse webhook payload

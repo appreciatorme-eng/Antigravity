@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 
 const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, budget, raw_data, created_at, updated_at";

@@ -1,7 +1,7 @@
 // GET /api/superadmin/overview — platform KPI summary for the command center.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function monthStart(): string {

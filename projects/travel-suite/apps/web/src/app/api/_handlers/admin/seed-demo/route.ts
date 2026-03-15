@@ -2,7 +2,7 @@
 // POST /api/admin/seed-demo  →  inserts GoBuddy Adventures (Demo) org + all records.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEMO_ORG_ID } from "@/lib/demo/constants";
 import { requireAdmin } from "@/lib/auth/admin";

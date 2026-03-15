@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { TRIP_SERVICE_COST_SELECT } from "@/lib/business/selects";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
-    return apiSuccess(data, 201);
+    return apiSuccess(data, { status: 201 });
   } catch (error) {
     console.error("[/api/admin/pricing/trip-costs:POST] Unhandled error:", error);
     return Response.json(

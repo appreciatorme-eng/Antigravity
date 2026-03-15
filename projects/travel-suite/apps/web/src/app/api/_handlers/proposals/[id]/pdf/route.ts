@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { NextResponse } from 'next/server';
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';

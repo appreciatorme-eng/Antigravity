@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getRequestContext, getRequestId, logError } from "@/lib/observability/logger";
 import { enforceRateLimit } from "@/lib/security/rate-limit";

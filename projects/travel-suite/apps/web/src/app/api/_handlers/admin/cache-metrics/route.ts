@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 
 import { getSharedCacheStats } from "@/lib/shared-itinerary-cache";
 import { requireAdmin } from "@/lib/auth/admin";

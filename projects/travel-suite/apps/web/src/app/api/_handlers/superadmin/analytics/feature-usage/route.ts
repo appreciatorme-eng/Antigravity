@@ -1,7 +1,7 @@
 // GET /api/superadmin/analytics/feature-usage -- cross-org feature usage aggregate.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function daysAgo(n: number): string {

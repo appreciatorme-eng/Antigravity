@@ -1,7 +1,7 @@
 // GET /api/superadmin/cost/trends — daily cost trend for specified range and optional category.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 function daysAgo(n: number): string {

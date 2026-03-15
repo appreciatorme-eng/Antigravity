@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createHash } from "node:crypto";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const supabaseAdmin = createAdminClient();
 const SHARE_RATE_LIMIT_WINDOW_MS = 60_000;
 const SHARE_RATE_LIMIT_MAX_REQUESTS = 40;
-
-function sha256(value: string): string {
-    return createHash("sha256").update(value).digest("hex");
-}
 
 function getClientIp(req: Request): string {
     const forwarded = req.headers.get("x-forwarded-for");
@@ -30,32 +26,14 @@ export async function GET(
             return apiError("Invalid share token format", 400);
         }
 
-        const ipHash = sha256(getClientIp(req));
-        const tokenHash = sha256(token);
-        const windowStartIso = new Date(Date.now() - SHARE_RATE_LIMIT_WINDOW_MS).toISOString();
-
-        const { count: recentCount, error: rateLimitError } = await supabaseAdmin
-            .from("trip_location_share_access_logs")
-            .select("id", { count: "exact", head: true })
-            .eq("share_token_hash", tokenHash)
-            .eq("ip_hash", ipHash)
-            .gte("created_at", windowStartIso);
-
-        if (rateLimitError) {
-            return apiError("Location share is temporarily unavailable", 503);
-        }
-
-        if ((recentCount || 0) >= SHARE_RATE_LIMIT_MAX_REQUESTS) {
-            return apiError("Rate limit exceeded", 429);
-        }
-
-        const { error: accessLogError } = await supabaseAdmin.from("trip_location_share_access_logs").insert({
-            share_token_hash: tokenHash,
-            ip_hash: ipHash,
+        const rateLimit = await enforceRateLimit({
+            identifier: `${token}:${getClientIp(req)}`,
+            limit: SHARE_RATE_LIMIT_MAX_REQUESTS,
+            windowMs: SHARE_RATE_LIMIT_WINDOW_MS,
+            prefix: "api:location:live:get",
         });
-
-        if (accessLogError) {
-            return apiError("Location share is temporarily unavailable", 503);
+        if (!rateLimit.success) {
+            return apiError("Rate limit exceeded", 429);
         }
 
         const { data: share, error: shareError } = await supabaseAdmin

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { unstable_cache } from "next/cache";
 import type { Database } from "@/lib/database.types";
 import { buildRevenueSeries } from "@/lib/admin/dashboard-metrics";

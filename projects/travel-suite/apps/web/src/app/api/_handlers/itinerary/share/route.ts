@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";

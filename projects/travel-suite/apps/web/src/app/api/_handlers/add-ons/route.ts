@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { ADD_ON_SELECT } from "@/lib/business/selects";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';

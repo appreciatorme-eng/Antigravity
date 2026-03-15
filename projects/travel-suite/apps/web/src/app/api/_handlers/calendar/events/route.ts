@@ -2,7 +2,7 @@
 // The calendar UI uses direct Supabase queries; this endpoint serves API consumers.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 
 function getMonthWindow(year: number, month: number) {

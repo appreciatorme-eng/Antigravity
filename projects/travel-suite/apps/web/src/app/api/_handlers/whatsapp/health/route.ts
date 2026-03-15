@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiSuccess } from "@/lib/api-response";
+import { apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { checkWPPConnectHealth } from "@/lib/whatsapp/session-health";
 

@@ -2,7 +2,7 @@
 // Stage changes emit lead_events audit entries and conversion_events funnel events.
 
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { CRM_CONTACT_SELECT } from "@/lib/business/selects";

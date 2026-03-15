@@ -1,7 +1,7 @@
 // GET /api/superadmin/cost/aggregate — cross-org API cost summary with per-org breakdown.
 
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
 

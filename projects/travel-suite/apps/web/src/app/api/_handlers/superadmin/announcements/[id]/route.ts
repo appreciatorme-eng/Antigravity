@@ -1,7 +1,7 @@
 // PATCH /api/superadmin/announcements/:id — update a draft announcement.
 
 import { NextRequest } from "next/server";
-import { apiSuccess, apiError } from "@/lib/api-response";
+import { apiSuccess, apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 
 const PLATFORM_ANNOUNCEMENT_SELECT = [

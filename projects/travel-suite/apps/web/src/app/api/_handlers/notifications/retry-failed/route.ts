@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { isCronSecretBearer } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -74,6 +74,6 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET(request: NextRequest) {
-    return POST(request);
+export async function GET() {
+    return apiError("Method not allowed", 405);
 }

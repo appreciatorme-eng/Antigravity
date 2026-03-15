@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { InvoiceDocument, type InvoicePdfData } from "@/components/pdf/InvoiceDocument";
 import { requireAdmin } from "@/lib/auth/admin";
 import { INVOICE_SELECT, normalizeInvoiceMetadata } from "@/lib/invoices/module";

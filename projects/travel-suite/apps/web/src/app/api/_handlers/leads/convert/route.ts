@@ -4,7 +4,7 @@
 
 import { safeEqual } from "@/lib/security/safe-equal";
 import { NextRequest, NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";

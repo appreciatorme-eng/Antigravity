@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { SOCIAL_POST_SELECT } from "@/lib/social/selects";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";

@@ -2,7 +2,7 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 
 import { NextResponse } from 'next/server';
-import { apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
 import * as cheerio from 'cheerio';
